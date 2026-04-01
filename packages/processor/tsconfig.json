@@ -1,0 +1,8 @@
+{
+	"extends": "../../tsconfig.json",
+  "compilerOptions": {
+		"paths": {
+			"@maskor/shared": ["../shared/src/index.ts"]
+		}
+  }
+}
