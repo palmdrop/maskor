@@ -1,5 +1,3 @@
-
-
 export type Piece = {
-  content: string
+  content: string;
 };
