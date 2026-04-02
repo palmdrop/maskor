@@ -2,10 +2,13 @@ import type { Brand } from "ts-brand"
 import type { UUID } from "../utils";
 import type { NoteUUID } from "./note";
 
-type AspectUUID = Brand<UUID, 'aspect'>;
+export type AspectUUID = Brand<UUID, 'aspect'>;
 
+// NOTE: do I need both aspect and arch?
 export type Aspect = {
 	uuid: AspectUUID
 	key: string
-	notes: NoteUUID[]
+	notes: NoteUUID[],
+  category: string,
+  value: string
 }

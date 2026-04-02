@@ -1,3 +1,1 @@
-type UUID = `${string}-${string}-${string}-${string}-${string}`;
-
-export type { UUID }
+export type UUID = `${string}-${string}-${string}-${string}-${string}`;
