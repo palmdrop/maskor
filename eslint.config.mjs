@@ -1,37 +1,25 @@
-import { defineConfig } from "eslint/config";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import jsxA11y from "eslint-plugin-jsx-a11y";
-import prettier from "eslint-plugin-prettier";
-import prettierConfig from "eslint-config-prettier";
-import path from "node:path";
+import prettierRecommended from "eslint-plugin-prettier/recommended";
 
-const root = import.meta.dirname;
-
-export default defineConfig(
+export default tseslint.config(
   // --- ignore patterns ---
-  {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/*.gen.ts"],
-  },
+  { ignores: ["**/dist/**", "**/node_modules/**", "**/*.gen.ts"] },
 
   // --- base: all TS/JS files ---
   js.configs.recommended,
-  ...tseslint.configs.recommended,
-  prettierConfig,
+  tseslint.configs.recommended,
+  prettierRecommended,
   {
     languageOptions: {
       parserOptions: {
-        // Disambiguates the root tsconfig when multiple are present in the repo
-        tsconfigRootDir: root,
-        project: ["./**/tsconfig*.json"],
+        tsconfigRootDir: import.meta.dirname,
       },
     },
-    plugins: { prettier },
     rules: {
-      "prettier/prettier": "error",
-
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
@@ -44,23 +32,18 @@ export default defineConfig(
     },
   },
 
-  // --- frontend: override tsconfig root to the package ---
+  // --- frontend: React + JSX ---
   {
     files: ["packages/frontend/**/*.{ts,tsx}"],
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: path.join(root, "packages/frontend"),
-      },
-    },
+    ...react.configs.flat.recommended,
     plugins: {
-      react,
+      ...react.configs.flat.recommended.plugins,
+      "react-hooks": reactHooks,
       "jsx-a11y": jsxA11y,
     },
-    settings: {
-      react: { version: "detect" },
-    },
+    settings: { react: { version: "19" } },
     rules: {
-      ...react.configs.recommended.rules,
+      ...react.configs.flat.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
@@ -68,7 +51,7 @@ export default defineConfig(
     },
   },
 
-  // --- backend services ---
+  // --- backend services: relax any ---
   {
     files: [
       "packages/api/**/*.ts",

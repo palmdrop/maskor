@@ -9,7 +9,7 @@
   "peerDependencies": {
     "typescript": "^5"
   },
-	"dependencies": {
-		"@maskor/shared": "workspace:*"
-	}
+  "dependencies": {
+    "@maskor/shared": "workspace:*"
+  }
 }

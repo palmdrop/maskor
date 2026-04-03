@@ -1,8 +1,12 @@
 {
-	"extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-		"paths": {
-			"@maskor/shared": ["../shared/src/index.ts"]
-		}
-  }
+    "allowImportingTsExtensions": false,
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist"
+  },
+  "include": ["src"]
 }

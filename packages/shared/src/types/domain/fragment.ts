@@ -1,10 +1,10 @@
 import type { Brand } from "ts-brand";
-import type { Aspect } from "./aspect.ts";
-import type { UUID } from "../utils.ts";
-import type { NoteUUID } from "./note.ts";
-import type { Pool /* PoolUUID */ } from "./pool.ts";
-import type { Markdown } from "../markdown.ts";
-import type { ReferenceUUID } from "./reference.ts";
+import type { Aspect } from "./aspect";
+import type { UUID } from "../utils";
+import type { NoteUUID } from "./note";
+import type { Pool /* PoolUUID */ } from "./pool";
+import type { Markdown } from "../markdown";
+import type { ReferenceUUID } from "./reference";
 
 export type FragmentUUID = Brand<UUID, "fragment">;
 
@@ -21,15 +21,15 @@ export type ReadyStatus = number;
 export type Fragment = {
   version: number;
   properties: FragmentProperties;
-  uuid: string;
+  uuid: FragmentUUID;
   contentHash: string;
   title: string;
   updatedAt: Date;
   notes: NoteUUID[];
   references: ReferenceUUID[];
-  pool: Pool; // maybe just PoolType?
+  pool: Pool;
   readyStatus: number;
   // TODO: add links?
 
-  content: Markdown; // markdown
+  content: Markdown;
 };

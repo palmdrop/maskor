@@ -4,7 +4,6 @@ import type { NoteUUID } from "./note";
 
 export type AspectUUID = Brand<UUID, "aspect">;
 
-// NOTE: do I need both aspect and arch?
 export type Aspect = {
   uuid: AspectUUID;
   key: string;

@@ -1,10 +1,4 @@
 {
   "files": [],
-  "extends": "../../tsconfig.json",
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
-  "compilerOptions": {
-    "paths": {
-      "@maskor/shared": ["../shared/src/index.ts"]
-    }
-  }
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }
