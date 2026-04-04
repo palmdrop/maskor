@@ -16,6 +16,6 @@ export type Section = {
 
 export type Sequence = {
   name: string;
-  uuid: SectionUUID;
+  uuid: SequenceUUID;
   sections: Section[];
 };

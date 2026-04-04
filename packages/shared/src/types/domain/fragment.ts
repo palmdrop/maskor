@@ -26,7 +26,7 @@ export type Fragment = {
   notes: string[];
   references: string[];
   pool: Pool;
-  readyStatus: number;
+  readyStatus: ReadyStatus;
   // TODO: add links?
 
   content: Markdown;
