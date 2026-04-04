@@ -9,8 +9,8 @@ import * as aspectMapper from "./mappers/aspect";
 import * as noteMapper from "./mappers/note";
 import * as referenceMapper from "./mappers/reference";
 import { initFragment } from "./init";
-import { readdir, rename, unlink } from "node:fs/promises";
-import { join, basename } from "node:path";
+import { rename, unlink } from "node:fs/promises";
+import { join, basename, sep } from "node:path";
 
 // --- helpers ---
 
@@ -29,16 +29,6 @@ const writeMarkdown = async (filePath: string, content: string): Promise<void> =
   await Bun.write(filePath, content);
 };
 
-const listMarkdownFiles = async (dir: string): Promise<string[]> => {
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return [];
-  }
-  return entries.filter((f) => f.endsWith(".md")).map((f) => join(dir, f));
-};
-
 // --- factory ---
 
 export const createVault = (config: VaultConfig): Vault => {
@@ -53,12 +43,30 @@ export const createVault = (config: VaultConfig): Vault => {
       child: () => log,
     } as unknown as Logger);
 
+  const listMarkdownFiles = async (directory: string): Promise<string[]> => {
+    const glob = new Bun.Glob("*.md");
+    const entries: string[] = [];
+    try {
+      for await (const file of glob.scan({ cwd: directory, onlyFiles: true })) {
+        entries.push(join(directory, file));
+      }
+    } catch (err) {
+      log.error(
+        { directory, errMessage: err instanceof Error ? err.message : String(err) },
+        "failed to list markdown files in directory",
+      );
+      return [];
+    }
+    return entries;
+  };
+
   return {
     fragments: {
       async read(filePath) {
         const raw = await readMarkdown(filePath);
         const parsed = parseFile(raw);
-        const isDiscarded = filePath.includes(`fragments/discarded`);
+        const discardedDirectory = path("fragments", "discarded");
+        const isDiscarded = filePath.startsWith(discardedDirectory + sep);
 
         if (isDiscarded && parsed.frontmatter.pool !== "discarded") {
           log.warn(
@@ -79,20 +87,22 @@ export const createVault = (config: VaultConfig): Vault => {
       async readAll() {
         const active = await listMarkdownFiles(path("fragments"));
         const discarded = await listMarkdownFiles(path("fragments", "discarded"));
-        return Promise.all([...active, ...discarded].map((f) => this.read(f)));
+        // TODO: batch read?
+        return Promise.all([...active, ...discarded].map((file) => this.read(file)));
       },
 
       async write(fragment) {
         const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
         const slug = slugify(fragment.title);
-        const dir =
+        const directory =
           fragment.pool === "discarded" ? path("fragments", "discarded") : path("fragments");
-        const filePath = join(dir, `${slug}.md`);
+        const filePath = join(directory, `${slug}.md`);
         await writeMarkdown(filePath, serializeFile({ frontmatter, inlineFields, body }));
         log.debug({ filePath }, "fragment written");
       },
 
       async discard(uuid: FragmentUUID) {
+        // TODO: this should use an internal database to avoid having to read all fragments
         const all = await listMarkdownFiles(path("fragments"));
         for (const filePath of all) {
           const raw = await readMarkdown(filePath);
@@ -117,13 +127,12 @@ export const createVault = (config: VaultConfig): Vault => {
             );
           }
 
-          const updated = serializeFile({
-            frontmatter: { ...parsed.frontmatter, pool: "discarded" },
-            inlineFields: Object.fromEntries(
-              Object.entries(parsed.inlineFields).map(([k, v]) => [k, parseFloat(v)]),
-            ),
-            body: parsed.body,
-          });
+          const discardedFragment = {
+            ...fragmentMapper.fromFile(parsed, filePath),
+            pool: "discarded" as const,
+          };
+          const { frontmatter, inlineFields, body } = fragmentMapper.toFile(discardedFragment);
+          const updated = serializeFile({ frontmatter, inlineFields, body });
           await writeMarkdown(destination, updated);
 
           log.info({ uuid, filePath, destination }, "fragment discarded");
@@ -145,7 +154,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async readAll() {
         const files = await listMarkdownFiles(path("aspects"));
-        return Promise.all(files.map((f) => this.read(f)));
+        return Promise.all(files.map((file) => this.read(file)));
       },
 
       async write(aspect: Aspect) {
@@ -164,7 +173,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async readAll() {
         const files = await listMarkdownFiles(path("notes"));
-        return Promise.all(files.map((f) => this.read(f)));
+        return Promise.all(files.map((file) => this.read(file)));
       },
 
       async write(note: Note) {
@@ -183,7 +192,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async readAll() {
         const files = await listMarkdownFiles(path("references"));
-        return Promise.all(files.map((f) => this.read(f)));
+        return Promise.all(files.map((file) => this.read(file)));
       },
 
       async write(reference: Reference) {

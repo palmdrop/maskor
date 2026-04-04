@@ -4,28 +4,26 @@ import type { VaultConfig } from "../types";
 import { VaultError } from "../types";
 import { serializeFile } from "./serialize";
 import { join } from "node:path";
-import { existsSync } from "node:fs";
 
-const deriveTitle = (piece: Piece): string => {
+const deriveTitle = (piece: Piece, uuid: FragmentUUID): string => {
   if (piece.title && piece.title.trim() !== "") return piece.title.trim();
-  const firstLine = piece.content.split("\n").find((l: string) => l.trim() !== "");
-  return firstLine?.trim() ?? "Untitled";
+  const firstLine = piece.content.split("\n").find((line: string) => line.trim() !== "");
+  return firstLine?.trim() ?? `fragment-${uuid}`;
 };
 
 export const initFragment = async (config: VaultConfig, piece: Piece): Promise<Fragment> => {
-  const title = deriveTitle(piece);
+  const uuid = crypto.randomUUID() as FragmentUUID;
+  const title = deriveTitle(piece, uuid);
   const slug = slugify(title);
   const filePath = join(config.root, "fragments", `${slug}.md`);
 
-  if (existsSync(filePath)) {
+  if (await Bun.file(filePath).exists()) {
     throw new VaultError(
       "FILE_ALREADY_EXISTS",
       `Cannot initialize fragment: file already exists at "${filePath}"`,
       { filePath, reason: "A fragment with this title already exists in fragments/" },
     );
   }
-
-  const uuid = crypto.randomUUID() as FragmentUUID;
 
   const fragment: Fragment = {
     uuid,

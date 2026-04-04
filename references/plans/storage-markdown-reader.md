@@ -204,7 +204,7 @@ export const toFile = (fragment: Fragment): {
 
 **Missing field defaults:**
 - `uuid` missing → caller assigns a new UUID before writing back.
-- `title` missing → derive from filename (strip `.md` extension, keep as-is).
+- `title` missing → derive from filename (strip `.md` extension, keep as-is). For `initFragment`, fall back to `fragment-<uuid>` when content has no non-empty first line.
 - `pool` missing → `"incomplete"` if any other required frontmatter field is also absent; `"unplaced"` if all fields are present.
 - `version` missing → default to `1`.
 - `readyStatus` missing → default to `0`.
@@ -239,7 +239,7 @@ export const initFragment = (
 ): Promise<Fragment>
 ```
 
-- `piece.title` is optional. If missing, derive from the first non-empty line of content, or fall back to `"Untitled"`.
+- `piece.title` is optional. If missing, derive from the first non-empty line of content, or fall back to `fragment-<uuid>` using the fragment's own UUID.
 - Generates a UUID via `crypto.randomUUID()`.
 - Constructs a `Fragment` with safe defaults:
   - `pool: "unprocessed"`

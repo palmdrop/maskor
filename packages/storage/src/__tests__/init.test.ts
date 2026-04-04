@@ -63,10 +63,10 @@ describe("initFragment", () => {
     expect(fragment.title).toBe("A line that becomes the title.");
   });
 
-  it("falls back to Untitled when content has no text", async () => {
+  it("falls back to fragment-<uuid> when content has no text", async () => {
     const piece = { content: "" };
     const fragment = await initFragment(config, piece);
-    expect(fragment.title).toBe("Untitled");
+    expect(fragment.title).toBe(`fragment-${fragment.uuid}`);
   });
 
   it("throws VaultError when file already exists", async () => {

@@ -6,10 +6,10 @@ export type ParsedFile = {
   body: string;
 };
 
-const INLINE_FIELD_RE = /^([\w-]+):: (.+)$/;
+const INLINE_FIELD_REGEX = /^([\w-]+):: (.+)$/;
 
-export const parseFile = (raw: string): ParsedFile => {
-  const parsed = matter(raw);
+export const parseFile = (rawFile: string): ParsedFile => {
+  const parsed = matter(rawFile);
   const frontmatter = parsed.data as Record<string, unknown>;
 
   const lines = parsed.content.split("\n");
@@ -20,7 +20,7 @@ export const parseFile = (raw: string): ParsedFile => {
     const line = lines[i];
     if (line === undefined || line.trim() === "") continue;
 
-    const match = INLINE_FIELD_RE.exec(line);
+    const match = INLINE_FIELD_REGEX.exec(line);
     if (match && match[1] !== undefined && match[2] !== undefined) {
       inlineFields[match[1]] = match[2].trim();
       bodyStartIndex = i + 1;

@@ -11,7 +11,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
       : basename(filePath).replace(/\.md$/, "");
 
   return {
-    uuid: frontmatter.uuid as string as NoteUUID,
+    uuid: frontmatter.uuid as NoteUUID,
     title,
     content: parsed.body,
   };

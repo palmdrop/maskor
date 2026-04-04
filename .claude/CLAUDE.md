@@ -38,7 +38,7 @@ After making changes, run the commands or test related to the changes and check 
 
 At the end of every major change, add, remove or update an actionable item to the `@references/SUGGESTIONS.md` file. This should be something that is missing, could be improved or that you think really needs changing. Be specific, pointing to files, errors or issues that I can observe myself.
 
-### Rule 5
+### Rule 5: Consider context
 
 Be succinct. Keep context length in mind. Prefer short, snappy sentences and remove fluff. Bullet points are better than long paragraphs. However, do not skip or exclude important information.
 
@@ -62,5 +62,13 @@ When creating plans, always add a a `date` and `status` value below the title of
 
 ## Coding standards
 
-- Avoid abbreviations for function and variable names. A long name using camelcase is preferable. The exception is standardized abbreviations, such as `id` and iterator variables. Example: `const fm = {}` should be `const frontmatter = {}`
-- Use spread syntax instead of mapping each value when applicable. For example, instead of `const copy = { a: original.a, b: original.b }` use `const copy = { ...original }`. If certain properties should be excluded, consider this pattern: `const { c: _, d: __, ...rest } = original;`
+Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key rules:
+
+- No abbreviated names — `f` → `file`, `dir` → `directory`, `fm` → `frontmatter`, etc. Exceptions: `id`, `uuid`, `acc`, single-letter iterators.
+- Use spread syntax over manual property mapping. Exclude with destructuring: `const { c: _, ...rest } = original`.
+- Regex constants end in `_REGEX`.
+- Explicit braces on all `if` bodies. Explicit `return` in multi-line arrow functions.
+- Prefer `reduce` over `for...of` when accumulating into an object.
+- No redundant intermediate type casts (`as string as T` → `as T`).
+- Descriptive fallback identifiers — not `"Untitled"`.
+- Mark known limitations with `// TODO:` and a reason.

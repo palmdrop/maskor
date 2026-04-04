@@ -8,9 +8,9 @@ export const fromFile = (parsed: ParsedFile): Aspect => {
   const description = parsed.body?.trim() || undefined;
 
   return {
-    uuid: frontmatter.uuid as string as AspectUUID,
+    uuid: frontmatter.uuid as AspectUUID,
     key: (frontmatter.key as string) ?? "",
-    category: (frontmatter.category as string | undefined) ?? undefined,
+    category: frontmatter.category as string | undefined,
     description,
     notes: (frontmatter.notes as string[]) ?? [],
   };
@@ -33,23 +33,21 @@ export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; 
 
 // --- Inline field helpers for FragmentProperties ---
 
-export const inlineFieldsToProperties = (fields: Record<string, string>): FragmentProperties => {
-  const properties: FragmentProperties = {};
-  for (const [key, value] of Object.entries(fields)) {
+export const inlineFieldsToProperties = (fields: Record<string, string>): FragmentProperties =>
+  Object.entries(fields).reduce((acc, [key, value]) => {
     const weight = parseFloat(value);
     if (!isNaN(weight)) {
-      properties[key] = { weight };
+      acc[key] = { weight };
     }
-  }
-  return properties;
-};
+    return acc;
+  }, {} as FragmentProperties);
 
-export const propertiesToInlineFields = (
-  properties: FragmentProperties,
-): Record<string, number> => {
-  const fields: Record<string, number> = {};
-  for (const [key, value] of Object.entries(properties)) {
-    if (value !== undefined) fields[key] = value.weight;
-  }
-  return fields;
-};
+export const propertiesToInlineFields = (properties: FragmentProperties): Record<string, number> =>
+  Object.entries(properties).reduce(
+    (acc, [key, value]) => {
+      if (value === undefined) return acc;
+      acc[key] = value.weight;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
