@@ -3,6 +3,11 @@
   "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

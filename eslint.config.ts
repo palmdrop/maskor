@@ -1,25 +1,37 @@
+import { defineConfig } from "eslint/config";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import react from "eslint-plugin-react";
-import reactHooks from "eslint-plugin-react-hooks";
+//import reactHooks from "eslint-plugin-react-hooks";
 import jsxA11y from "eslint-plugin-jsx-a11y";
-import prettierRecommended from "eslint-plugin-prettier/recommended";
+import prettier from "eslint-plugin-prettier";
+import prettierConfig from "eslint-config-prettier";
+import path from "node:path";
 
-export default tseslint.config(
+const root = import.meta.dirname;
+
+export default defineConfig(
   // --- ignore patterns ---
-  { ignores: ["**/dist/**", "**/node_modules/**", "**/*.gen.ts"] },
+  {
+    ignores: ["**/dist/**", "**/node_modules/**", "**/*.gen.ts"],
+  },
 
   // --- base: all TS/JS files ---
   js.configs.recommended,
-  tseslint.configs.recommended,
-  prettierRecommended,
+  ...tseslint.configs.recommended,
+  prettierConfig,
   {
     languageOptions: {
       parserOptions: {
-        tsconfigRootDir: import.meta.dirname,
+        // Disambiguates the root tsconfig when multiple are present in the repo
+        tsconfigRootDir: root,
+        project: ["./**/tsconfig*.json"],
       },
     },
+    plugins: { prettier },
     rules: {
+      "prettier/prettier": "error",
+
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
@@ -32,26 +44,31 @@ export default tseslint.config(
     },
   },
 
-  // --- frontend: React + JSX ---
+  // --- frontend: override tsconfig root to the package ---
   {
     files: ["packages/frontend/**/*.{ts,tsx}"],
-    ...react.configs.flat.recommended,
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: path.join(root, "packages/frontend"),
+      },
+    },
     plugins: {
-      ...react.configs.flat.recommended.plugins,
-      "react-hooks": reactHooks,
+      react,
       "jsx-a11y": jsxA11y,
     },
-    settings: { react: { version: "19" } },
+    settings: {
+      react: { version: "19" },
+    },
     rules: {
-      ...react.configs.flat.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
+      ...react.configs.recommended.rules,
+      // ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
     },
   },
 
-  // --- backend services: relax any ---
+  // --- backend services ---
   {
     files: [
       "packages/api/**/*.ts",
@@ -59,7 +76,7 @@ export default tseslint.config(
       "packages/processor/**/*.ts",
       "packages/sequencer/**/*.ts",
       "packages/shared/**/*.ts",
-      "packages/watcher/**/*.ts",
+      "packages/storage/**/*.ts",
     ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

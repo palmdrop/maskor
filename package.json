@@ -7,7 +7,11 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "format": "eslint --fix . && prettier --write ."
+    "format": "eslint --fix . && prettier --write .",
+    "test": "bun run test:backend && bun run test:frontend",
+    "test:backend": "bun test packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer",
+    "test:frontend": "bun run --cwd packages/frontend test",
+    "test:coverage": "bun test --coverage packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer && bun run --cwd packages/frontend test:coverage"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

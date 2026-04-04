@@ -1,6 +1,6 @@
 This is a monorepo for a fragmented writing app written with `bun`, `typescript` and `react`, with "Obsidian" acting as the "backend" for now. See `@project_specs.md` for more detailed information about the project.
 
-The project uses `bun`, `typescript`, a file watcher, processing queue (`redis`?), a fragment api, an import manager for consuming word files etc, a sequencer that helps place the fragments in the desired order, and a shared package for type declarations and utils.
+The project uses `bun`, `typescript`, a storage solution, a file watcher, processing queue (`redis`?), a fragment api, an import manager for consuming word files etc, a sequencer that helps place the fragments in the desired order, and a shared package for type declarations and utils.
 
 Possible technologies:
 
@@ -28,7 +28,7 @@ This project is opinionated. It is made for personal use, but is expansive by de
 
 ### Rule 2: Challenge the direction
 
-Think critically. Challenge my suggestions and suggest more better options when applicable. Push back if there's a smarter, more effective alternative to reach the goal.
+Think critically. Challenge my suggestions and suggest more better options when applicable. Push back if there's a smarter, more effective alternative to reach the goal. Always be clear about any unintended consequences or problems down the line a decision might have.
 
 ### Rule 3: Test before you respond
 
@@ -36,9 +36,11 @@ After making changes, run the commands or test related to the changes and check 
 
 ### Rule 4: Add suggestions
 
-At the end of every major change, add, remove or update an actionable item to the `@references/suggestions.md` file. This should be something that is missing, could be improved or that you think really needs changing. Be specific, pointing to files, errors or issues that I can observe myself.
+At the end of every major change, add, remove or update an actionable item to the `@references/SUGGESTIONS.md` file. This should be something that is missing, could be improved or that you think really needs changing. Be specific, pointing to files, errors or issues that I can observe myself.
 
-### Rule 5:
+### Rule 5
+
+Be succinct. Keep context length in mind. Prefer short, snappy sentences and remove fluff. Bullet points are better than long paragraphs. However, do not skip or exclude important information.
 
 ## References
 
@@ -46,20 +48,6 @@ Additional references, such as diagrams, documentation, etc. Add in the list bel
 
 - **Project specs**: `@project_specs.md`
 
-## Architecture
+## Planning
 
-- TODO: how to provide claude with file paths?
-
-Monorepo structure with packages stored in `@packages/`. Each package should eventually be deployable as a docker container, or bundled using `bun` and run as a sidecar in `Tauri`.
-
-Packages:
-
-- `@packages/api/`: Main API for managing fragments, adding metadata, sequences, aspects, arcs, etc.
-- `@packages/frontend/`: Frontend for fragment editor, sequencing and overview.
-- `@packages/importer/`: Tool for importing writing from other file formats and splitting it into fragments.
-- `@packages/processor/`: Responsible for managing queues and converting pieces to fragments, etc.
-- `@packages/sequencer/`: Contains the core sequencing and fitting logic.
-- `@packages/shared/`: Project-wide type definitions, database schemas, util functions, etc.
-- `@packages/watcher/`: Watches and updates the database based on user edits to fragments inside the Obsidian vault.
-
-NOTE: Might also need a database package.
+When asked to plan, echo a summary of the plan to standard output, but write the full plan to `@references/plans/<topic>`. Create a new file each time, for me to review and edit. Reference the updated plan when implementing features.

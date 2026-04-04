@@ -9,6 +9,11 @@
   },
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage"
+  },
   "dependencies": {
     "ts-brand": "^0.2.0"
   }

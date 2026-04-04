@@ -1,16 +1,15 @@
 import type { Brand } from "ts-brand";
-import type { Aspect } from "./aspect";
-import type { UUID } from "../utils";
+import type { UUID } from "../utils/uuid";
 import type { NoteUUID } from "./note";
 import type { Pool /* PoolUUID */ } from "./pool";
-import type { Markdown } from "../markdown";
+import type { Markdown } from "../utils/markdown";
 import type { ReferenceUUID } from "./reference";
 
 export type FragmentUUID = Brand<UUID, "fragment">;
 
+// Keyed by aspect key (unique name). Full Aspect resolution happens at the DB layer.
 export type FragmentProperties = {
-  [key: string]: {
-    aspect: Aspect; // or just AspectUUID?
+  [aspectKey: string]: {
     weight: number;
   };
 };
