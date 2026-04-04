@@ -9,6 +9,9 @@
     "remkar",
     "hono",
     "tauri",
-    "Dataview"
+    "Dataview",
+    "multistream",
+    "pino",
+    "slugify"
   ]
 }

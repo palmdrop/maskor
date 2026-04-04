@@ -1,6 +1,5 @@
 import type { Brand } from "ts-brand";
 import type { UUID } from "../utils/uuid";
-import type { NoteUUID } from "./note";
 
 export type AspectUUID = Brand<UUID, "aspect">;
 
@@ -9,5 +8,6 @@ export type Aspect = {
   key: string;
   category?: string;
   description?: string;
-  notes: NoteUUID[];
+  // stored as titles at the file layer; resolved to UUIDs at the DB layer
+  notes: string[];
 };

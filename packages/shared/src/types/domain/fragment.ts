@@ -1,9 +1,7 @@
 import type { Brand } from "ts-brand";
 import type { UUID } from "../utils/uuid";
-import type { NoteUUID } from "./note";
 import type { Pool /* PoolUUID */ } from "./pool";
 import type { Markdown } from "../utils/markdown";
-import type { ReferenceUUID } from "./reference";
 
 export type FragmentUUID = Brand<UUID, "fragment">;
 
@@ -24,8 +22,9 @@ export type Fragment = {
   contentHash: string;
   title: string;
   updatedAt: Date;
-  notes: NoteUUID[];
-  references: ReferenceUUID[];
+  // stored as titles at the file layer; resolved to UUIDs at the DB layer
+  notes: string[];
+  references: string[];
   pool: Pool;
   readyStatus: number;
   // TODO: add links?

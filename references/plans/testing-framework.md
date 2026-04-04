@@ -1,7 +1,7 @@
 # Testing Framework Plan
 
 **Date:** 2026-04-04  
-**Status:** Draft
+**Status:** Done
 
 ---
 
@@ -72,6 +72,7 @@ packages/
 ```
 
 Test file naming:
+
 - Unit: `*.test.ts` / `*.test.tsx`
 - Integration: `*.integration.test.ts`
 - E2E (later): `*.e2e.ts` in a top-level `e2e/` directory
@@ -97,24 +98,24 @@ coverageDir = "coverage"
 Place at `packages/frontend/vitest.config.ts`:
 
 ```typescript
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'happy-dom',
+    environment: "happy-dom",
     globals: true,
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/test/**', 'src/main.tsx', 'src/**/*.d.ts'],
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/test/**", "src/main.tsx", "src/**/*.d.ts"],
     },
   },
-})
+});
 ```
 
 ### 3.3 Frontend test setup file
@@ -122,7 +123,7 @@ export default defineConfig({
 `packages/frontend/src/test/setup.ts`:
 
 ```typescript
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 // Add any global mocks, custom matchers, or MSW setup here
 ```
 
@@ -195,19 +196,20 @@ Priority order (highest ROI first):
 
 ```typescript
 // packages/shared/src/utils/__tests__/example.test.ts
-import { describe, it, expect } from 'bun:test'
-import { someUtil } from '../someUtil'
+import { describe, it, expect } from "bun:test";
+import { someUtil } from "../someUtil";
 
-describe('someUtil', () => {
-  it('does the thing', () => {
-    expect(someUtil('input')).toBe('expected')
-  })
-})
+describe("someUtil", () => {
+  it("does the thing", () => {
+    expect(someUtil("input")).toBe("expected");
+  });
+});
 ```
 
 ### `@maskor/sequencer` — Core logic, highest complexity
 
 This is the most logic-heavy package. Tests should cover:
+
 - Fitting score calculations
 - Placement engine with mock fragment data
 - Deadlock/loop detection
@@ -216,20 +218,20 @@ This is the most logic-heavy package. Tests should cover:
 
 ```typescript
 // packages/sequencer/src/__tests__/fitting.test.ts
-import { describe, it, expect } from 'bun:test'
-import { computeFitScore } from '../fitting'
+import { describe, it, expect } from "bun:test";
+import { computeFitScore } from "../fitting";
 
-describe('computeFitScore', () => {
-  it('returns higher score for matching aspects', () => {
+describe("computeFitScore", () => {
+  it("returns higher score for matching aspects", () => {
     // ...
-  })
+  });
 
-  it('returns same score for same seed (determinism)', () => {
-    const score1 = computeFitScore(fragment, context, seed)
-    const score2 = computeFitScore(fragment, context, seed)
-    expect(score1).toBe(score2)
-  })
-})
+  it("returns same score for same seed (determinism)", () => {
+    const score1 = computeFitScore(fragment, context, seed);
+    const score2 = computeFitScore(fragment, context, seed);
+    expect(score1).toBe(score2);
+  });
+});
 ```
 
 ### `@maskor/storage` — File I/O, vault sync
@@ -245,15 +247,15 @@ describe('computeFitScore', () => {
 - Use Hono's `app.request()` for lightweight route testing without spinning up a server
 
 ```typescript
-import { describe, it, expect } from 'bun:test'
-import app from '../app'
+import { describe, it, expect } from "bun:test";
+import app from "../app";
 
-describe('GET /fragments', () => {
-  it('returns 200 with fragment list', async () => {
-    const res = await app.request('/fragments')
-    expect(res.status).toBe(200)
-  })
-})
+describe("GET /fragments", () => {
+  it("returns 200 with fragment list", async () => {
+    const res = await app.request("/fragments");
+    expect(res.status).toBe(200);
+  });
+});
 ```
 
 ### `@maskor/importer` — File parsing
@@ -268,23 +270,23 @@ Focus on behavior, not implementation:
 
 ```tsx
 // packages/frontend/src/components/FragmentEditor/__tests__/FragmentEditor.test.tsx
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { FragmentEditor } from '../FragmentEditor'
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { FragmentEditor } from "../FragmentEditor";
 
-describe('FragmentEditor', () => {
-  it('renders fragment title', () => {
-    render(<FragmentEditor fragment={mockFragment} />)
-    expect(screen.getByText('My Fragment')).toBeInTheDocument()
-  })
+describe("FragmentEditor", () => {
+  it("renders fragment title", () => {
+    render(<FragmentEditor fragment={mockFragment} />);
+    expect(screen.getByText("My Fragment")).toBeInTheDocument();
+  });
 
-  it('calls onAccept when accept button clicked', async () => {
-    const onAccept = jest.fn()
-    render(<FragmentEditor fragment={mockFragment} onAccept={onAccept} />)
-    await userEvent.click(screen.getByRole('button', { name: /accept/i }))
-    expect(onAccept).toHaveBeenCalledWith(mockFragment.id)
-  })
-})
+  it("calls onAccept when accept button clicked", async () => {
+    const onAccept = jest.fn();
+    render(<FragmentEditor fragment={mockFragment} onAccept={onAccept} />);
+    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    expect(onAccept).toHaveBeenCalledWith(mockFragment.id);
+  });
+});
 ```
 
 ---
@@ -294,9 +296,9 @@ describe('FragmentEditor', () => {
 ### Backend — Bun mock
 
 ```typescript
-import { mock, spyOn } from 'bun:test'
+import { mock, spyOn } from "bun:test";
 
-const mockDb = mock(() => ({ find: mock(() => []) }))
+const mockDb = mock(() => ({ find: mock(() => []) }));
 ```
 
 ### Frontend — MSW (Mock Service Worker) for API calls
@@ -309,21 +311,22 @@ bun add -D msw --cwd packages/frontend
 
 ```typescript
 // packages/frontend/src/test/handlers.ts
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse } from "msw";
 
 export const handlers = [
-  http.get('/api/fragments', () => {
-    return HttpResponse.json([{ id: '1', title: 'Test Fragment' }])
+  http.get("/api/fragments", () => {
+    return HttpResponse.json([{ id: "1", title: "Test Fragment" }]);
   }),
-]
+];
 ```
 
 Add to `setup.ts`:
+
 ```typescript
-import { server } from './server'
-beforeAll(() => server.listen())
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
+import { server } from "./server";
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 ```
 
 ---

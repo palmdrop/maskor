@@ -44,10 +44,23 @@ Be succinct. Keep context length in mind. Prefer short, snappy sentences and rem
 
 ## References
 
-Additional references, such as diagrams, documentation, etc. Add in the list below whenever important docs are created. Add new references to the `@references/` folder.
+Additional references, such as diagrams, documentation, etc. Add new references to the `@references/` folder.
 
-- **Project specs**: `@project_specs.md`
+Also, keep the `packages/*/README.md` files up to date as you work on a feature. These should contain short but clear documentation of the package and its feature. Context length is important, so keep that in mind. The README should act as a quick context-refresher when working on a package.
 
 ## Planning
 
 When asked to plan, echo a summary of the plan to standard output, but write the full plan to `@references/plans/<topic>`. Create a new file each time, for me to review and edit. Reference the updated plan when implementing features.
+
+When creating plans, always add a a `date` and `status` value below the title of the file. When the plan is implemented, update the `status` field to say "done". Also add a `implementedAt` field with the time of implementation. See format below:
+
+```markdown
+**Date**: DD-MM-YYYY
+**Status**: Todo <!--Possible values: Todo, In progress, Done --->
+**Implemented At**: DD-MM-YYYY <!-- Only add this field when plan is implemented -->
+```
+
+## Coding standards
+
+- Avoid abbreviations for function and variable names. A long name using camelcase is preferable. The exception is standardized abbreviations, such as `id` and iterator variables. Example: `const fm = {}` should be `const frontmatter = {}`
+- Use spread syntax instead of mapping each value when applicable. For example, instead of `const copy = { a: original.a, b: original.b }` use `const copy = { ...original }`. If certain properties should be excluded, consider this pattern: `const { c: _, d: __, ...rest } = original;`

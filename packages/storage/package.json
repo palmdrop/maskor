@@ -10,7 +10,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@maskor/shared": "workspace:*"
+    "@maskor/shared": "workspace:*",
+    "gray-matter": "^4.0.3"
   },
   "scripts": {
     "test": "bun test",
