@@ -25,9 +25,8 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
-  },
-  "compilerOptions": {
+    "noPropertyAccessFromIndexSignature": false,
+
     "paths": {
       "@maskor/shared": ["./packages/shared/src/index.ts"],
       "@maskor/shared/*": ["./packages/shared/src/*"]
