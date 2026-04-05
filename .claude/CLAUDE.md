@@ -75,4 +75,10 @@ Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key
 
 ## When done
 
-When you are done with implementing a `plan` or running another large task, always run `bun run format`.
+When you are done with implementing a `plan` or running a large task, always run `bun run test` and then `bun run format`.
+
+## Manual development
+
+I will frequently edit code manually. This might cause the code to not fully match your memory, `references/` files or `README.md` files. If you encounter discrepancies, but no major bugs or problems, simply update the `reference/` files, memory and other documentation. Feel free to ask if you need clarification.
+
+Happy coding.

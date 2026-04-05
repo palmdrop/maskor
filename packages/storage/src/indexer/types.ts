@@ -67,15 +67,18 @@ export interface VaultIndexer {
   aspects: {
     findAll(): Promise<IndexedAspect[]>;
     findByKey(key: string): Promise<IndexedAspect | null>;
+    findByUUID(uuid: AspectUUID): Promise<IndexedAspect | null>;
   };
 
   notes: {
     findAll(): Promise<IndexedNote[]>;
     findByTitle(title: string): Promise<IndexedNote | null>;
+    findByUUID(uuid: NoteUUID): Promise<IndexedNote | null>;
   };
 
   references: {
     findAll(): Promise<IndexedReference[]>;
     findByName(name: string): Promise<IndexedReference | null>;
+    findByUUID(uuid: ReferenceUUID): Promise<IndexedReference | null>;
   };
 }

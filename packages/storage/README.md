@@ -27,7 +27,7 @@ Also manages a local project registry (SQLite) that maps project UUIDs to vault 
 
 ### Low-level: `createVault`
 
-Direct vault access with no project awareness:
+Direct vault access with no project awareness. All paths are **relative to the vault root**. Paths that escape the vault root throw `VaultError("PATH_OUT_OF_BOUNDS")`.
 
 ```ts
 import { createVault } from "@maskor/storage";
@@ -35,9 +35,11 @@ import { createVault } from "@maskor/storage";
 const vault = createVault({ root: "/path/to/vault" });
 
 const fragments = await vault.fragments.readAll();
-const fragment = await vault.fragments.read("/path/to/vault/fragments/the-bridge.md");
+const fragment = await vault.fragments.read("the-bridge.md"); // relative to fragments/
 await vault.fragments.write(fragment);
-await vault.fragments.discard(fragment.uuid);
+// note: prefer StorageService.fragments.discard(context, uuid) over calling vault directly —
+// the service handles UUID→path resolution via the index.
+await vault.fragments.discard("the-bridge.md"); // discarded → "discarded/the-bridge.md"
 
 const aspects = await vault.aspects.readAll();
 const notes = await vault.notes.readAll();
@@ -49,7 +51,7 @@ const newFragments = await vault.pieces.consumeAll();
 
 ### High-level: `createStorageService`
 
-Project-aware wrapper. Maintains a registry of known projects and caches vault instances:
+Project-aware wrapper. All operations are UUID-based — no file paths exposed to the caller. Vault and indexer instances are cached internally per project UUID.
 
 ```ts
 import { createStorageService } from "@maskor/storage";
@@ -59,24 +61,35 @@ const service = createStorageService(); // uses ~/.config/maskor by default
 // register a vault as a named project
 const record = await service.registerProject("My Novel", "/path/to/vault");
 
-// resolve a project context from its UUID
+// resolve a project context from its UUID (throws ProjectNotFoundError if unknown)
 const context = await service.resolveProject(record.projectUUID);
-// throws ProjectNotFoundError if UUID is unknown
 
-// get a Vault instance (cached by project UUID)
-const vault = service.getVault(context);
-const fragments = await vault.fragments.readAll();
+// rebuild the content index (full scan; call on startup or after bulk file changes)
+await service.index.rebuild(context);
 
-// get a VaultIndexer — fast DB-backed queries (rebuild first to sync)
-const indexer = service.getVaultIndexer(context);
-await indexer.rebuild(); // full scan; idempotent
-const bridge = await indexer.fragments.findByUUID(someUUID);
-const discarded = await indexer.fragments.findByPool("discarded");
+// fragment operations
+const fragments = await service.fragments.readAll(context); // IndexedFragment[]
+const unplaced = await service.fragments.findByPool(context, "unplaced");
+const fragment = await service.fragments.read(context, uuid); // full Fragment with content
+await service.fragments.write(context, fragment);
+await service.fragments.discard(context, uuid); // UUID-based; needs prior rebuild
 
-// list and remove
+// aspect / note / reference operations
+const aspects = await service.aspects.readAll(context); // IndexedAspect[]
+const aspect = await service.aspects.read(context, uuid);
+await service.aspects.write(context, aspect);
+const notes = await service.notes.readAll(context);
+const references = await service.references.readAll(context);
+
+// piece import
+const newFragments = await service.pieces.consumeAll(context);
+
+// list and remove projects
 const projects = await service.listProjects();
-await service.removeProject(record.projectUUID); // evicts vault + indexer caches
+await service.removeProject(record.projectUUID);
 ```
+
+> **Index staleness:** `discard` and `write` update vault files but do not update the SQLite index. Call `service.index.rebuild(context)` after bulk mutations to bring the index back in sync. This limitation goes away when the chokidar file watcher is added.
 
 Set `MASKOR_CONFIG_DIR` to override the registry database location (useful for tests).
 
@@ -109,10 +122,14 @@ Two separate SQLite databases — different physical locations, different schema
 
 ```
 caller
-  └─ service.resolveProject(projectUUID)  →  ProjectContext
-  └─ service.getVault(context)            →  Vault (cached)          — reads/writes files
-  └─ service.getVaultIndexer(context)     →  VaultIndexer (cached)   — fast DB queries
+  └─ service.resolveProject(projectUUID)         →  ProjectContext
+  └─ service.index.rebuild(context)              →  syncs vault files → SQLite index
+  └─ service.fragments.readAll(context)          →  IndexedFragment[] (from index)
+  └─ service.fragments.read(context, uuid)       →  Fragment (from vault file, via index lookup)
+  └─ service.fragments.discard(context, uuid)    →  moves file; index stale until next rebuild
 ```
+
+`Vault` and `VaultIndexer` are internal to the service — consumers interact with UUID-based methods only. File paths never leave the service boundary.
 
 When hosting is introduced, a thin adapter (e.g. Hono middleware) replaces the direct `resolveProject` call — the `StorageService` interface and `ProjectContext` type stay unchanged.
 

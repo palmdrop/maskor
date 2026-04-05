@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
-import type { ProjectUUID } from "@maskor/shared";
+import type { FragmentUUID, ProjectUUID } from "@maskor/shared";
 
 const FIXTURES = join(import.meta.dir, "../../fixtures/vault");
 
@@ -26,8 +26,8 @@ afterEach(() => {
 
 const makeService = () => createStorageService({ configDirectory: configDir });
 
-describe("StorageService.registerProject + resolveProject + getVault", () => {
-  it("registers a project and resolves a vault that can read fragments", async () => {
+describe("StorageService.registerProject + resolveProject", () => {
+  it("registers a project and resolves a context with correct fields", async () => {
     const service = makeService();
     const record = await service.registerProject("Test Project", vaultDir);
 
@@ -35,20 +35,16 @@ describe("StorageService.registerProject + resolveProject + getVault", () => {
     expect(context.projectUUID).toBe(record.projectUUID);
     expect(context.vaultPath).toBe(vaultDir);
     expect(context.userUUID).toBe(LOCAL_USER_UUID);
-
-    const vault = service.getVault(context);
-    const fragments = await vault.fragments.readAll();
-    expect(fragments.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("getVault returns the same cached instance on repeated calls", async () => {
+  it("can read fragments after rebuild", async () => {
     const service = makeService();
     const record = await service.registerProject("Test Project", vaultDir);
     const context = await service.resolveProject(record.projectUUID);
 
-    const vaultOne = service.getVault(context);
-    const vaultTwo = service.getVault(context);
-    expect(vaultOne).toBe(vaultTwo);
+    await service.index.rebuild(context);
+    const fragments = await service.fragments.readAll(context);
+    expect(fragments.length).toBeGreaterThanOrEqual(5);
   });
 });
 
@@ -62,13 +58,13 @@ describe("StorageService.resolveProject", () => {
 });
 
 describe("StorageService.removeProject", () => {
-  it("removes the project and evicts the vault cache", async () => {
+  it("removes the project from the registry", async () => {
     const service = makeService();
     const record = await service.registerProject("Test Project", vaultDir);
     const context = await service.resolveProject(record.projectUUID);
 
-    // populate cache
-    service.getVault(context);
+    // populate internal caches
+    await service.index.rebuild(context);
 
     await service.removeProject(record.projectUUID);
 
@@ -78,6 +74,43 @@ describe("StorageService.removeProject", () => {
     await expect(service.resolveProject(record.projectUUID)).rejects.toBeInstanceOf(
       ProjectNotFoundError,
     );
+  });
+});
+
+describe("StorageService.fragments.discard", () => {
+  it("moves a fragment to discarded/ using UUID lookup from the index", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const unplaced = await service.fragments.findByPool(context, "unplaced");
+    expect(unplaced.length).toBeGreaterThan(0);
+
+    const target = unplaced[0];
+    if (!target) throw new Error("expected at least one unplaced fragment in fixtures");
+
+    await service.fragments.discard(context, target.uuid);
+
+    // Rebuild required — discard does not update the index.
+    await service.index.rebuild(context);
+    const all = await service.fragments.readAll(context);
+    const discarded = all.find((fragment) => fragment.uuid === target.uuid);
+    expect(discarded?.pool).toBe("discarded");
+  });
+
+  it("throws FRAGMENT_NOT_FOUND when UUID is not in the index", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const unknownUUID = "00000000-0000-0000-0000-000000000000" as FragmentUUID;
+    await expect(service.fragments.discard(context, unknownUUID)).rejects.toMatchObject({
+      code: "FRAGMENT_NOT_FOUND",
+    });
   });
 });
 

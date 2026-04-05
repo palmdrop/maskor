@@ -345,7 +345,7 @@ describe("fragments.findAll relation isolation", () => {
 // --- StorageService integration ---
 
 describe("StorageService integration", () => {
-  it("getVaultIndexer returns an indexer that can rebuild and query", async () => {
+  it("service.index.rebuild returns correct stats and fragments are queryable", async () => {
     const { createStorageService } = await import("../service/storage-service");
 
     const configDir = join(tmpDir, "config");
@@ -354,16 +354,15 @@ describe("StorageService integration", () => {
     const record = await service.registerProject("Test", vaultDir);
     const context = await service.resolveProject(record.projectUUID);
 
-    const indexer = service.getVaultIndexer(context);
-    const stats = await indexer.rebuild();
+    const stats = await service.index.rebuild(context);
 
     expect(stats.fragments).toBe(5);
 
-    const fragments = await indexer.fragments.findAll();
+    const fragments = await service.fragments.readAll(context);
     expect(fragments.length).toBe(5);
   });
 
-  it("getVaultIndexer returns the same cached instance", async () => {
+  it("repeated rebuild calls use the same cached indexer", async () => {
     const { createStorageService } = await import("../service/storage-service");
 
     const configDir = join(tmpDir, "config");
@@ -372,6 +371,8 @@ describe("StorageService integration", () => {
     const record = await service.registerProject("Test", vaultDir);
     const context = await service.resolveProject(record.projectUUID);
 
-    expect(service.getVaultIndexer(context)).toBe(service.getVaultIndexer(context));
+    const firstStats = await service.index.rebuild(context);
+    const secondStats = await service.index.rebuild(context);
+    expect(firstStats.fragments).toBe(secondStats.fragments);
   });
 });

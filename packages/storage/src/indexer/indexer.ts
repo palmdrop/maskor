@@ -409,6 +409,19 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         const results = await loadAspectRelations([row]);
         return results[0] ?? null;
       },
+
+      async findByUUID(uuid: AspectUUID) {
+        const row = vaultDatabase
+          .select()
+          .from(aspectsTable)
+          .where(eq(aspectsTable.uuid, uuid))
+          .get();
+
+        if (!row || row.deletedAt !== null) return null;
+
+        const results = await loadAspectRelations([row]);
+        return results[0] ?? null;
+      },
     },
 
     notes: {
@@ -435,6 +448,13 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         if (!row || row.deletedAt !== null) return null;
         return { uuid: row.uuid as NoteUUID, title: row.title, filePath: row.filePath };
       },
+
+      async findByUUID(uuid: NoteUUID) {
+        const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
+
+        if (!row || row.deletedAt !== null) return null;
+        return { uuid: row.uuid as NoteUUID, title: row.title, filePath: row.filePath };
+      },
     },
 
     references: {
@@ -456,6 +476,17 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .select()
           .from(referencesTable)
           .where(eq(referencesTable.name, name))
+          .get();
+
+        if (!row || row.deletedAt !== null) return null;
+        return { uuid: row.uuid as ReferenceUUID, name: row.name, filePath: row.filePath };
+      },
+
+      async findByUUID(uuid: ReferenceUUID) {
+        const row = vaultDatabase
+          .select()
+          .from(referencesTable)
+          .where(eq(referencesTable.uuid, uuid))
           .get();
 
         if (!row || row.deletedAt !== null) return null;

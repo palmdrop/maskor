@@ -32,7 +32,7 @@ describe("vault.fragments.readAll", () => {
   it("sets pool to discarded for files in discarded/ folder", async () => {
     const vault = createVault(config);
     const fragments = await vault.fragments.readAll();
-    const discarded = fragments.filter((f) => f.pool === "discarded");
+    const discarded = fragments.filter((fragment) => fragment.pool === "discarded");
     expect(discarded.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -40,15 +40,15 @@ describe("vault.fragments.readAll", () => {
     const vault = createVault(config);
     const fragments = await vault.fragments.readAll();
     // the-window.md is in discarded/ but has pool: unplaced in frontmatter
-    const theWindow = fragments.find((f) => f.title === "The Window");
+    const theWindow = fragments.find((fragment) => fragment.title === "The Window");
     expect(theWindow?.pool ?? null).toBe("discarded");
   });
 });
 
 describe("vault.fragments.read", () => {
-  it("reads a fragment by file path", async () => {
+  it("reads a fragment by filename", async () => {
     const vault = createVault(config);
-    const fragment = await vault.fragments.read(join(tmpDir, "fragments", "the-bridge.md"));
+    const fragment = await vault.fragments.read("the-bridge.md");
     expect(fragment.title).toBe("The Bridge");
     expect(fragment.properties["grief"]).toEqual({ weight: 0.6 });
     expect(fragment.notes).toContain("bridge observation");
@@ -56,7 +56,7 @@ describe("vault.fragments.read", () => {
 
   it("assigns uuid from frontmatter", async () => {
     const vault = createVault(config);
-    const fragment = await vault.fragments.read(join(tmpDir, "fragments", "the-bridge.md"));
+    const fragment = await vault.fragments.read("the-bridge.md");
     expect(fragment.uuid as string).toBe("frag-0001-0000-0000-000000000001");
   });
 });
@@ -64,11 +64,11 @@ describe("vault.fragments.read", () => {
 describe("vault.fragments.write", () => {
   it("writes a fragment file and reads it back", async () => {
     const vault = createVault(config);
-    const original = await vault.fragments.read(join(tmpDir, "fragments", "the-bridge.md"));
+    const original = await vault.fragments.read("the-bridge.md");
     const modified = { ...original, readyStatus: 0.95 };
 
     await vault.fragments.write(modified);
-    const reread = await vault.fragments.read(join(tmpDir, "fragments", "the-bridge.md"));
+    const reread = await vault.fragments.read("the-bridge.md");
     expect(reread.readyStatus).toBe(0.95);
   });
 });
@@ -76,18 +76,22 @@ describe("vault.fragments.write", () => {
 describe("vault.fragments.discard", () => {
   it("moves fragment to discarded/ and updates pool", async () => {
     const vault = createVault(config);
-    const fragment = await vault.fragments.read(join(tmpDir, "fragments", "the-bridge.md"));
-    await vault.fragments.discard(fragment.uuid);
+    await vault.fragments.discard("the-bridge.md");
 
-    const discarded = await vault.fragments.read(
-      join(tmpDir, "fragments", "discarded", "the-bridge.md"),
-    );
+    const discarded = await vault.fragments.read("discarded/the-bridge.md");
     expect(discarded.pool).toBe("discarded");
   });
 
-  it("throws when uuid not found", async () => {
+  it("throws when file not found", async () => {
     const vault = createVault(config);
-    expect(vault.fragments.discard("nonexistent-uuid" as any)).rejects.toThrow();
+    await expect(vault.fragments.discard("nonexistent.md")).rejects.toThrow();
+  });
+
+  it("throws PATH_OUT_OF_BOUNDS for paths outside the fragments directory", async () => {
+    const vault = createVault(config);
+    await expect(vault.fragments.discard("../aspects/grief.md")).rejects.toMatchObject({
+      code: "PATH_OUT_OF_BOUNDS",
+    });
   });
 });
 
@@ -98,7 +102,7 @@ describe("vault.aspects.readAll", () => {
     const vault = createVault(config);
     const aspects = await vault.aspects.readAll();
     expect(aspects.length).toBe(4);
-    const keys = aspects.map((a) => a.key);
+    const keys = aspects.map((aspect) => aspect.key);
     expect(keys).toContain("grief");
     expect(keys).toContain("city");
   });
@@ -106,7 +110,7 @@ describe("vault.aspects.readAll", () => {
   it("reads description from body", async () => {
     const vault = createVault(config);
     const aspects = await vault.aspects.readAll();
-    const grief = aspects.find((a) => a.key === "grief");
+    const grief = aspects.find((aspect) => aspect.key === "grief");
     expect(grief?.description ?? null).toBeTruthy();
   });
 });
@@ -115,11 +119,11 @@ describe("vault.aspects.write", () => {
   it("writes and reads back an aspect", async () => {
     const vault = createVault(config);
     const aspects = await vault.aspects.readAll();
-    const grief = aspects.find((a) => a.key === "grief")!;
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
     const modified = { ...grief, category: "emotion" };
 
     await vault.aspects.write(modified);
-    const reread = await vault.aspects.read(join(tmpDir, "aspects", "grief.md"));
+    const reread = await vault.aspects.read("grief.md");
     expect(reread.category).toBe("emotion");
   });
 });
@@ -136,7 +140,7 @@ describe("vault.notes.readAll", () => {
   it("reads note content", async () => {
     const vault = createVault(config);
     const notes = await vault.notes.readAll();
-    const bridgeNote = notes.find((n) => n.title === "bridge observation");
+    const bridgeNote = notes.find((note) => note.title === "bridge observation");
     expect(bridgeNote?.content).toBeTruthy();
   });
 });
@@ -146,9 +150,9 @@ describe("vault.notes.readAll", () => {
 describe("vault.references.readAll", () => {
   it("reads all references", async () => {
     const vault = createVault(config);
-    const refs = await vault.references.readAll();
-    expect(refs.length).toBe(1);
-    expect(refs[0]?.name).toBe("city research");
+    const references = await vault.references.readAll();
+    expect(references.length).toBe(1);
+    expect(references[0]?.name).toBe("city research");
   });
 });
 

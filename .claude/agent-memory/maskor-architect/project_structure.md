@@ -12,15 +12,15 @@ Monorepo at `/Users/antonhildingsson/Personal/maskor`. Bun workspaces in root `p
 
 ## Package status
 
-| Package     | Path                    | Status     | Notes                                      |
-| ----------- | ----------------------- | ---------- | ------------------------------------------ |
-| `shared`    | `packages/shared/src/`  | Built      | Types, branded UUIDs, slugify, pino logger |
-| `storage`   | `packages/storage/src/` | Built      | Vault I/O, indexer, registry, service      |
-| `api`       | `packages/api/src/`     | Scaffolded | `index.ts` stub + tests only               |
-| `processor` | `packages/processor/`   | Scaffolded | Stub only                                  |
-| `sequencer` | `packages/sequencer/`   | Scaffolded | Stub only                                  |
-| `importer`  | `packages/importer/`    | Scaffolded | Stub only                                  |
-| `frontend`  | `packages/frontend/src/`| Scaffolded | Vite + React, no API calls yet             |
+| Package     | Path                     | Status     | Notes                                      |
+| ----------- | ------------------------ | ---------- | ------------------------------------------ |
+| `shared`    | `packages/shared/src/`   | Built      | Types, branded UUIDs, slugify, pino logger |
+| `storage`   | `packages/storage/src/`  | Built      | Vault I/O, indexer, registry, service      |
+| `api`       | `packages/api/src/`      | Scaffolded | `index.ts` stub + tests only               |
+| `processor` | `packages/processor/`    | Scaffolded | Stub only                                  |
+| `sequencer` | `packages/sequencer/`    | Scaffolded | Stub only                                  |
+| `importer`  | `packages/importer/`     | Scaffolded | Stub only                                  |
+| `frontend`  | `packages/frontend/src/` | Scaffolded | Vite + React, no API calls yet             |
 
 ## Key files
 

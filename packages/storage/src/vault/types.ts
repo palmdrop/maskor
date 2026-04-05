@@ -1,4 +1,4 @@
-import type { Aspect, Fragment, FragmentUUID, Logger, Note, Reference } from "@maskor/shared";
+import type { Aspect, Fragment, Logger, Note, Reference } from "@maskor/shared";
 
 export type VaultConfig = {
   root: string;
@@ -10,7 +10,9 @@ export type VaultErrorCode =
   | "FILE_ALREADY_EXISTS"
   | "FILE_DELETE_FAILED"
   | "FILE_MOVE_FAILED"
+  | "PATH_OUT_OF_BOUNDS"
   | "FRAGMENT_NOT_FOUND"
+  | "ENTITY_NOT_FOUND"
   | "PIECE_CONSUME_FAILED";
 
 export type VaultErrorContext = {
@@ -44,7 +46,7 @@ export type Vault = {
     readAllWithFilePaths(): Promise<Array<WithFilePath<Fragment>>>;
     read(filePath: string): Promise<Fragment>;
     write(fragment: Fragment): Promise<void>;
-    discard(uuid: FragmentUUID): Promise<void>;
+    discard(filePath: string): Promise<void>;
   };
   aspects: {
     readAll(): Promise<Aspect[]>;
