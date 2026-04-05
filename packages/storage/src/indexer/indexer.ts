@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { AspectUUID, FragmentUUID, NoteUUID, Pool, ReferenceUUID } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
@@ -20,54 +19,8 @@ import type {
   SyncWarning,
   VaultIndexer,
 } from "./types";
-
-// --- helpers ---
-
-const hashContent = (content: string): string => createHash("sha256").update(content).digest("hex");
-
-// --- assembly helpers ---
-
-const assembleFragment = (
-  row: typeof fragmentsTable.$inferSelect,
-  noteRows: Array<{ noteTitle: string }>,
-  referenceRows: Array<{ referenceName: string }>,
-  propertyRows: Array<{
-    aspectKey: string;
-    aspectUuid: string | null;
-    weight: number;
-  }>,
-): IndexedFragment => ({
-  uuid: row.uuid as FragmentUUID,
-  title: row.title,
-  version: row.version,
-  pool: row.pool as Pool,
-  readyStatus: row.readyStatus,
-  contentHash: row.contentHash,
-  filePath: row.filePath,
-  notes: noteRows.map((note) => note.noteTitle),
-  references: referenceRows.map((reference) => reference.referenceName),
-  properties: propertyRows.reduce(
-    (acc, property) => {
-      acc[property.aspectKey] = {
-        weight: property.weight,
-        aspectUuid: property.aspectUuid as AspectUUID | null,
-      };
-      return acc;
-    },
-    {} as IndexedFragment["properties"],
-  ),
-});
-
-const assembleAspect = (
-  row: typeof aspectsTable.$inferSelect,
-  noteRows: Array<{ noteTitle: string }>,
-): IndexedAspect => ({
-  uuid: row.uuid as AspectUUID,
-  key: row.key,
-  category: row.category ?? undefined,
-  filePath: row.filePath,
-  notes: noteRows.map((note) => note.noteTitle),
-});
+import { hashContent } from "../utils/hash";
+import { assembleAspect, assembleFragment } from "./assemblers";
 
 // --- indexer factory ---
 
@@ -286,7 +239,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
       // Soft-delete fragments absent from vault.
       const activeFragmentUuids = fragmentEntries.map(({ entity }) => entity.uuid as string);
-      if (activeFragmentUuids.length > 0) {
+      if (activeFragmentUuids.length) {
         tx.update(fragmentsTable)
           .set({ deletedAt: syncedAt })
           .where(

@@ -1,12 +1,12 @@
 # General
 
-- [ ] Review claude-generated SYNC_CONTRACT
+- [x] Review claude-generated SYNC_CONTRACT
 
-- [ ] Implement basic storage API with Obsidian vault (raw markdown files) as backend.
+- [x] Implement basic storage API with Obsidian vault (raw markdown files) as backend.
   - `@packages/storage`
   - research api best practices
 
-- [ ] Setup testing framework
+- [x] Setup testing framework
 
 - [ ] Figure out which framework to use for APIs... NestJS? Hono?
 
