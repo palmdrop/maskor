@@ -141,6 +141,79 @@ return firstLine?.trim() ?? `fragment-${uuid.substring(0, 8)}`;
 
 ---
 
+## Formatting
+
+### Blank lines between logical blocks
+
+Separate distinct logical steps within a function with a blank line. This applies even to short functions — grouping related lines visually makes the intent clearer.
+
+```ts
+// Bad
+export const createRegistryDatabase = (configDirectory: string) => {
+  mkdirSync(configDirectory, { recursive: true });
+  const database = new Database(join(configDirectory, "registry.db"));
+  const registryDatabase = drizzle(database, { schema });
+  migrate(registryDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });
+  return registryDatabase;
+};
+
+// Good
+export const createRegistryDatabase = (configDirectory: string) => {
+  mkdirSync(configDirectory, { recursive: true });
+
+  const database = new Database(join(configDirectory, "registry.db"));
+  const registryDatabase = drizzle(database, { schema });
+
+  migrate(registryDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });
+
+  return registryDatabase;
+};
+```
+
+---
+
+## Conditionals
+
+### Prefer optional chaining over explicit `!== undefined` checks
+
+```ts
+// Bad
+if (match && match[1] !== undefined && match[2] !== undefined) { ... }
+
+// Good
+if (match?.[1] && match?.[2]) { ... }
+```
+
+### Prefer `!!` / `!` over `> 0` / `=== 0` for length checks
+
+```ts
+// Bad
+if (Object.keys(fields).length > 0) { ... }
+if (result.length === 0) { ... }
+
+// Good
+if (!!Object.keys(fields).length) { ... }
+if (!result.length) { ... }
+```
+
+---
+
+## Database migrations
+
+### Use descriptive, date-prefixed migration filenames
+
+Name migration files `YYYYMMDD_description.sql` rather than accepting auto-generated names. Auto-generated names (e.g. `0000_rare_norman_osborn`) carry no semantic meaning.
+
+```
+// Bad
+0000_rare_norman_osborn.sql
+
+// Good
+20260404_create_projects_table.sql
+```
+
+---
+
 ## Comments
 
 ### Mark known limitations with `// TODO:`

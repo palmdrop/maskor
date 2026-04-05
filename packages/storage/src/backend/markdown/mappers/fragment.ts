@@ -22,10 +22,12 @@ const deriveTitle = (frontmatter: Record<string, unknown>, filePath: string): st
 
 const derivePool = (frontmatter: Record<string, unknown>, poolOverride?: Pool): Pool => {
   if (poolOverride) return poolOverride;
+
   if (frontmatter.pool === "unprocessed") return "unprocessed";
   if (frontmatter.pool === "incomplete") return "incomplete";
   if (frontmatter.pool === "unplaced") return "unplaced";
   if (frontmatter.pool === "discarded") return "discarded";
+
   return hasRequiredFields(frontmatter) ? "unplaced" : "incomplete";
 };
 

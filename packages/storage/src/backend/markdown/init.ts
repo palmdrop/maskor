@@ -6,7 +6,9 @@ import { serializeFile } from "./serialize";
 import { join } from "node:path";
 
 const deriveTitle = (piece: Piece, uuid: FragmentUUID): string => {
-  if (piece.title && piece.title.trim() !== "") return piece.title.trim();
+  if (piece.title && piece.title.trim() !== "") {
+    return piece.title.trim();
+  }
   const firstLine = piece.content.split("\n").find((line: string) => line.trim() !== "");
   return firstLine?.trim() ?? `fragment-${uuid}`;
 };

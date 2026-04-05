@@ -13,8 +13,11 @@ export const DEFAULT_CONFIG_DIRECTORY =
 
 export const createRegistryDatabase = (configDirectory: string) => {
   mkdirSync(configDirectory, { recursive: true });
+
   const database = new Database(join(configDirectory, "registry.db"));
   const registryDatabase = drizzle(database, { schema });
+
   migrate(registryDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });
+
   return registryDatabase;
 };

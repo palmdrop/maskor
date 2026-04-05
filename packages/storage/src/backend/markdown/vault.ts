@@ -46,17 +46,19 @@ export const createVault = (config: VaultConfig): Vault => {
   const listMarkdownFiles = async (directory: string): Promise<string[]> => {
     const glob = new Bun.Glob("*.md");
     const entries: string[] = [];
+
     try {
       for await (const file of glob.scan({ cwd: directory, onlyFiles: true })) {
         entries.push(join(directory, file));
       }
-    } catch (err) {
+    } catch (error) {
       log.error(
-        { directory, errMessage: err instanceof Error ? err.message : String(err) },
+        { directory, errorMessage: error instanceof Error ? error.message : String(error) },
         "failed to list markdown files in directory",
       );
       return [];
     }
+
     return entries;
   };
 
@@ -97,6 +99,7 @@ export const createVault = (config: VaultConfig): Vault => {
         const directory =
           fragment.pool === "discarded" ? path("fragments", "discarded") : path("fragments");
         const filePath = join(directory, `${slug}.md`);
+
         await writeMarkdown(filePath, serializeFile({ frontmatter, inlineFields, body }));
         log.debug({ filePath }, "fragment written");
       },
@@ -131,6 +134,7 @@ export const createVault = (config: VaultConfig): Vault => {
             ...fragmentMapper.fromFile(parsed, filePath),
             pool: "discarded" as const,
           };
+
           const { frontmatter, inlineFields, body } = fragmentMapper.toFile(discardedFragment);
           const updated = serializeFile({ frontmatter, inlineFields, body });
           await writeMarkdown(destination, updated);
@@ -160,6 +164,7 @@ export const createVault = (config: VaultConfig): Vault => {
       async write(aspect: Aspect) {
         const { frontmatter, body } = aspectMapper.toFile(aspect);
         const filePath = path("aspects", `${slugify(aspect.key)}.md`);
+
         await writeMarkdown(filePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath }, "aspect written");
       },
@@ -179,6 +184,7 @@ export const createVault = (config: VaultConfig): Vault => {
       async write(note: Note) {
         const { frontmatter, body } = noteMapper.toFile(note);
         const filePath = path("notes", `${slugify(note.title)}.md`);
+
         await writeMarkdown(filePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath }, "note written");
       },
@@ -198,6 +204,7 @@ export const createVault = (config: VaultConfig): Vault => {
       async write(reference: Reference) {
         const { frontmatter, body } = referenceMapper.toFile(reference);
         const filePath = path("references", `${slugify(reference.name)}.md`);
+
         await writeMarkdown(filePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath }, "reference written");
       },
@@ -227,12 +234,12 @@ export const createVault = (config: VaultConfig): Vault => {
             }
 
             log.info({ filePath, fragmentTitle: fragment.title }, "piece consumed");
-          } catch (err) {
+          } catch (error) {
             log.error(
               {
                 filePath,
-                errCode: err instanceof VaultError ? err.code : undefined,
-                errMessage: err instanceof Error ? err.message : String(err),
+                errorCode: error instanceof VaultError ? error.code : undefined,
+                errorMessage: error instanceof Error ? error.message : String(error),
               },
               "failed to consume piece — skipping",
             );

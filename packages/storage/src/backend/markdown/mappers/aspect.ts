@@ -23,7 +23,9 @@ export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; 
     notes: aspect.notes,
   };
 
-  if (aspect.category !== undefined) frontmatter.category = aspect.category;
+  if (aspect.category !== undefined) {
+    frontmatter.category = aspect.category;
+  }
 
   return {
     frontmatter,

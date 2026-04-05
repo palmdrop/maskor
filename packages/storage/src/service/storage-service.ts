@@ -12,8 +12,10 @@ export type StorageServiceConfig = {
 
 export const createStorageService = (config: StorageServiceConfig = {}) => {
   const configDirectory = config.configDirectory ?? DEFAULT_CONFIG_DIRECTORY;
+
   const database = createRegistryDatabase(configDirectory);
   const registry = createProjectRegistry(database);
+
   const vaultCache = new Map<ProjectUUID, Vault>();
 
   return {
@@ -35,6 +37,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       if (!record) {
         throw new ProjectNotFoundError(projectUUID);
       }
+
       return {
         userUUID: record.userUUID,
         projectUUID: record.projectUUID,
@@ -47,8 +50,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       if (cached) {
         return cached;
       }
+
       const vault = createVault({ root: context.vaultPath });
       vaultCache.set(context.projectUUID, vault);
+
       return vault;
     },
   };

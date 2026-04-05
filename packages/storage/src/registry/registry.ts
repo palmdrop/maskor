@@ -59,6 +59,10 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         })
         .returning();
 
+      if (!row) {
+        throw new Error(`Failed to register project "${name}" at "${vaultPath}"`);
+      }
+
       return toProjectRecord(row);
     },
 
@@ -73,6 +77,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         .from(projectsTable)
         .where(eq(projectsTable.uuid, projectUUID))
         .limit(1);
+
       return rows[0] ? toProjectRecord(rows[0]) : null;
     },
 
@@ -82,7 +87,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         .where(eq(projectsTable.uuid, projectUUID))
         .returning({ uuid: projectsTable.uuid });
 
-      if (result.length === 0) {
+      if (!result.length) {
         throw new ProjectNotFoundError(projectUUID);
       }
     },

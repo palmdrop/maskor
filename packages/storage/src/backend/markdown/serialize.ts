@@ -10,7 +10,7 @@ export const serializeFile = ({ frontmatter, inlineFields, body }: SerializeOpti
   const frontmatterString = matter.stringify("", frontmatter).trimEnd();
 
   const inlineSection =
-    inlineFields && Object.keys(inlineFields).length > 0
+    inlineFields && !!Object.keys(inlineFields).length
       ? Object.entries(inlineFields)
           .map(([key, value]) => `${key}:: ${value}`)
           .join("\n")
