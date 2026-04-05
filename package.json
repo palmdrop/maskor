@@ -8,6 +8,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "format": "eslint --fix . && prettier --write .",
+    "lint": "eslint . && prettier --check .",
     "test": "bun run test:backend && bun run test:frontend",
     "test:backend": "bun test packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer",
     "test:frontend": "bun run --cwd packages/frontend test",
