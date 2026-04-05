@@ -51,7 +51,7 @@ aspect-name:: 0.8
 other-aspect:: 0.3
 ```
 
-The watcher parses these lines, resolves the aspect name to a UUID in the DB, and updates `FragmentProperties` accordingly. If an aspect name is not found in the DB, Maskor logs a warning but does not fail.
+The watcher (and full rebuild) parses these lines and resolves the aspect name to a UUID via the `aspectsTable`. Both the raw key and the resolved UUID are stored in `fragment_properties` — the UUID column is `NULL` if no active aspect matches the key. An unresolved key produces a typed `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }` returned from `rebuild()` (and emitted by the watcher on sync). Maskor never auto-modifies fragment files to fix stale keys — the user is prompted to resolve the mismatch.
 
 Maps to `properties: FragmentProperties` on `Fragment`, where each entry is `{ aspect: Aspect, weight: number }`.
 

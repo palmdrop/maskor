@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1775392632104,
+      "tag": "20260405_create_vault_tables",
+      "breakpoints": true
+    }
+  ]
+}

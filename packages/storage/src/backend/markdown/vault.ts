@@ -93,6 +93,17 @@ export const createVault = (config: VaultConfig): Vault => {
         return Promise.all([...active, ...discarded].map((file) => this.read(file)));
       },
 
+      async readAllWithFilePaths() {
+        const active = await listMarkdownFiles(path("fragments"));
+        const discarded = await listMarkdownFiles(path("fragments", "discarded"));
+        return Promise.all(
+          [...active, ...discarded].map(async (filePath) => ({
+            entity: await this.read(filePath),
+            filePath,
+          })),
+        );
+      },
+
       async write(fragment) {
         const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
         const slug = slugify(fragment.title);
@@ -161,6 +172,13 @@ export const createVault = (config: VaultConfig): Vault => {
         return Promise.all(files.map((file) => this.read(file)));
       },
 
+      async readAllWithFilePaths() {
+        const files = await listMarkdownFiles(path("aspects"));
+        return Promise.all(
+          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+        );
+      },
+
       async write(aspect: Aspect) {
         const { frontmatter, body } = aspectMapper.toFile(aspect);
         const filePath = path("aspects", `${slugify(aspect.key)}.md`);
@@ -181,6 +199,13 @@ export const createVault = (config: VaultConfig): Vault => {
         return Promise.all(files.map((file) => this.read(file)));
       },
 
+      async readAllWithFilePaths() {
+        const files = await listMarkdownFiles(path("notes"));
+        return Promise.all(
+          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+        );
+      },
+
       async write(note: Note) {
         const { frontmatter, body } = noteMapper.toFile(note);
         const filePath = path("notes", `${slugify(note.title)}.md`);
@@ -199,6 +224,13 @@ export const createVault = (config: VaultConfig): Vault => {
       async readAll() {
         const files = await listMarkdownFiles(path("references"));
         return Promise.all(files.map((file) => this.read(file)));
+      },
+
+      async readAllWithFilePaths() {
+        const files = await listMarkdownFiles(path("references"));
+        return Promise.all(
+          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+        );
       },
 
       async write(reference: Reference) {

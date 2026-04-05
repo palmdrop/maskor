@@ -36,25 +36,31 @@ export class VaultError extends Error {
   }
 }
 
+export type WithFilePath<T> = { entity: T; filePath: string };
+
 export type Vault = {
   fragments: {
     readAll(): Promise<Fragment[]>;
+    readAllWithFilePaths(): Promise<Array<WithFilePath<Fragment>>>;
     read(filePath: string): Promise<Fragment>;
     write(fragment: Fragment): Promise<void>;
     discard(uuid: FragmentUUID): Promise<void>;
   };
   aspects: {
     readAll(): Promise<Aspect[]>;
+    readAllWithFilePaths(): Promise<Array<WithFilePath<Aspect>>>;
     read(filePath: string): Promise<Aspect>;
     write(aspect: Aspect): Promise<void>;
   };
   notes: {
     readAll(): Promise<Note[]>;
+    readAllWithFilePaths(): Promise<Array<WithFilePath<Note>>>;
     read(filePath: string): Promise<Note>;
     write(note: Note): Promise<void>;
   };
   references: {
     readAll(): Promise<Reference[]>;
+    readAllWithFilePaths(): Promise<Array<WithFilePath<Reference>>>;
     read(filePath: string): Promise<Reference>;
     write(reference: Reference): Promise<void>;
   };

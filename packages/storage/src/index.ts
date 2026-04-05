@@ -10,3 +10,18 @@ export { LOCAL_USER_UUID, ProjectNotFoundError } from "./registry";
 
 export { createStorageService } from "./service";
 export type { StorageService, StorageServiceConfig } from "./service";
+
+export { createVaultDatabase } from "./db/vault-db";
+export type { VaultDatabase } from "./db/vault-db";
+
+export { createVaultIndexer } from "./index/indexer";
+export type {
+  VaultIndexer,
+  IndexedFragment,
+  IndexedFragmentProperty,
+  IndexedAspect,
+  IndexedNote,
+  IndexedReference,
+  RebuildStats,
+  SyncWarning,
+} from "./index/types";
