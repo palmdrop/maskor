@@ -12,5 +12,5 @@ export type Project = {
   vaultPath: string;
   notes: Note[];
   aspects: Aspect[];
-  archUUIDs: Arc[];
+  arcUUIDs: Arc[];
 };

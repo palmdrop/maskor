@@ -3,12 +3,13 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import * as schema from "./schema";
 
 export type RegistryDatabase = ReturnType<typeof createRegistryDatabase>;
 
 export const DEFAULT_CONFIG_DIRECTORY =
-  process.env["MASKOR_CONFIG_DIR"] ?? join(process.env["HOME"] ?? "~", ".config", "maskor");
+  process.env["MASKOR_CONFIG_DIR"] ?? join(homedir(), ".config", "maskor");
 
 export const createRegistryDatabase = (configDirectory: string) => {
   mkdirSync(configDirectory, { recursive: true });

@@ -1,19 +1,18 @@
 import { eq } from "drizzle-orm";
 import { join } from "node:path";
-import { stat } from "node:fs/promises";
-import type { ProjectUUID } from "@maskor/shared";
+import { stat, mkdir } from "node:fs/promises";
+import type { ProjectUUID, UserUUID } from "@maskor/shared";
 import type { RegistryDatabase } from "../db";
 import { projectsTable } from "../db/schema";
+import { ProjectNotFoundError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
 const toProjectRecord = (row: typeof projectsTable.$inferSelect): ProjectRecord => {
+  const { uuid, userUuid, ...rest } = row;
   return {
-    projectUUID: row.uuid as ProjectUUID,
-    userUUID: row.userUuid as typeof LOCAL_USER_UUID,
-    name: row.name,
-    vaultPath: row.vaultPath,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    ...rest,
+    projectUUID: uuid as ProjectUUID,
+    userUUID: userUuid as UserUUID,
   };
 };
 
@@ -23,15 +22,19 @@ const writeVaultManifest = async (
   name: string,
 ): Promise<void> => {
   const maskorDirectory = join(vaultPath, ".maskor");
+  await mkdir(maskorDirectory, { recursive: true });
   await Bun.write(
     join(maskorDirectory, "project.json"),
     JSON.stringify({ projectUUID, name, registeredAt: new Date().toISOString() }, null, 2),
   );
 };
 
+// TODO: manifest-based DB recovery is not yet implemented — if the registry DB is lost,
+// the .maskor/project.json manifests cannot currently be used to re-register projects.
 export const createProjectRegistry = (database: RegistryDatabase) => {
   return {
     async registerProject(name: string, vaultPath: string): Promise<ProjectRecord> {
+      // TODO: Bun.file().exists() cannot distinguish file vs directory — keeping node:fs/promises stat
       const vaultStat = await stat(vaultPath).catch(() => null);
       if (!vaultStat?.isDirectory()) {
         throw new Error(`Vault path does not exist or is not a directory: "${vaultPath}"`);
@@ -40,25 +43,23 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       const now = new Date();
       const projectUUID = crypto.randomUUID() as ProjectUUID;
 
-      await database.insert(projectsTable).values({
-        uuid: projectUUID,
-        userUuid: LOCAL_USER_UUID,
-        name,
-        vaultPath,
-        createdAt: now,
-        updatedAt: now,
-      });
-
+      // Write manifest first: if DB insert fails after a successful manifest write, the worst case
+      // is a stale manifest file — far less harmful than a ghost DB record with no manifest.
       await writeVaultManifest(vaultPath, projectUUID, name);
 
-      return {
-        projectUUID,
-        userUUID: LOCAL_USER_UUID,
-        name,
-        vaultPath,
-        createdAt: now,
-        updatedAt: now,
-      };
+      const [row] = await database
+        .insert(projectsTable)
+        .values({
+          uuid: projectUUID,
+          userUuid: LOCAL_USER_UUID,
+          name,
+          vaultPath,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      return toProjectRecord(row);
     },
 
     async listProjects(): Promise<ProjectRecord[]> {
@@ -76,7 +77,14 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
     },
 
     async removeProject(projectUUID: ProjectUUID): Promise<void> {
-      await database.delete(projectsTable).where(eq(projectsTable.uuid, projectUUID));
+      const result = await database
+        .delete(projectsTable)
+        .where(eq(projectsTable.uuid, projectUUID))
+        .returning({ uuid: projectsTable.uuid });
+
+      if (result.length === 0) {
+        throw new ProjectNotFoundError(projectUUID);
+      }
     },
   };
 };

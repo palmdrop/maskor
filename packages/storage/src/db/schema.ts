@@ -7,5 +7,6 @@ export const projectsTable = sqliteTable("projects", {
   name: text("name").notNull(),
   vaultPath: text("vault_path").notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  // TODO: updatedAt is reserved for a future updateProject method — always equals createdAt for now
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

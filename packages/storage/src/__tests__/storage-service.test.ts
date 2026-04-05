@@ -57,7 +57,7 @@ describe("StorageService.resolveProject", () => {
     const service = makeService();
     const unknownUUID = "00000000-0000-0000-0000-000000000000" as ProjectUUID;
 
-    expect(service.resolveProject(unknownUUID)).rejects.toBeInstanceOf(ProjectNotFoundError);
+    await expect(service.resolveProject(unknownUUID)).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
 });
 
@@ -75,7 +75,9 @@ describe("StorageService.removeProject", () => {
     const projects = await service.listProjects();
     expect(projects.length).toBe(0);
 
-    expect(service.resolveProject(record.projectUUID)).rejects.toBeInstanceOf(ProjectNotFoundError);
+    await expect(service.resolveProject(record.projectUUID)).rejects.toBeInstanceOf(
+      ProjectNotFoundError,
+    );
   });
 });
 

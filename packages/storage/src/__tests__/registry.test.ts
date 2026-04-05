@@ -56,13 +56,13 @@ describe("registry.registerProject", () => {
 
   it("throws when vault path does not exist", async () => {
     const registry = makeRegistry();
-    expect(registry.registerProject("Bad Project", "/nonexistent/path")).rejects.toThrow();
+    await expect(registry.registerProject("Bad Project", "/nonexistent/path")).rejects.toThrow();
   });
 
   it("throws when vault path is a file, not a directory", async () => {
     const registry = makeRegistry();
     const filePath = join(vaultDir, "fragments", "the-bridge.md");
-    expect(registry.registerProject("Bad Project", filePath)).rejects.toThrow();
+    await expect(registry.registerProject("Bad Project", filePath)).rejects.toThrow();
   });
 });
 
