@@ -293,18 +293,18 @@ Contains `bun run index.ts` and no description of what the package exports. Per 
 
 Given the SYNC_CONTRACT and project goals, the following types are absent:
 
-| Missing type | Why it's needed |
-|---|---|
-| `AspectsApi` | API surface for aspect CRUD — file `apis/aspects.ts` is blank |
-| `FragmentFile` (or equivalent) | To separate file-layer fields from DB-only fields on `Fragment` |
-| `SyncEvent` | The watcher needs to emit typed events (created / updated / deleted / renamed) per entity type |
-| `SyncResult` | Result of a sync operation — success, conflict, warnings |
-| `FittingScore` | The SYNC_CONTRACT mentions fitting scores as a DB-only computed field; there is no type for this |
-| `ContentHash` | `contentHash: string` on `Fragment` has no type alias; a `Brand<string, "contentHash">` would prevent accidental string assignment |
-| `Weight` | `0–1` float used in both `FragmentProperties` and `Arc.movement` — a shared branded or documented alias would make the constraint explicit |
-| `VaultPath` | File paths appear as raw `string` in the planned Vault API — a `Brand<string, "vaultPath">` or at least a type alias prevents mixing absolute system paths with relative vault paths |
-| `SequenceRecord` | A sequence with resolved, ordered fragments (not just UUIDs) — needed by the sequencer and UI |
-| `ImportResult` | Result of importing a `Piece` — success with the new `Fragment`, or failure with reason |
+| Missing type                   | Why it's needed                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AspectsApi`                   | API surface for aspect CRUD — file `apis/aspects.ts` is blank                                                                                                                        |
+| `FragmentFile` (or equivalent) | To separate file-layer fields from DB-only fields on `Fragment`                                                                                                                      |
+| `SyncEvent`                    | The watcher needs to emit typed events (created / updated / deleted / renamed) per entity type                                                                                       |
+| `SyncResult`                   | Result of a sync operation — success, conflict, warnings                                                                                                                             |
+| `FittingScore`                 | The SYNC_CONTRACT mentions fitting scores as a DB-only computed field; there is no type for this                                                                                     |
+| `ContentHash`                  | `contentHash: string` on `Fragment` has no type alias; a `Brand<string, "contentHash">` would prevent accidental string assignment                                                   |
+| `Weight`                       | `0–1` float used in both `FragmentProperties` and `Arc.movement` — a shared branded or documented alias would make the constraint explicit                                           |
+| `VaultPath`                    | File paths appear as raw `string` in the planned Vault API — a `Brand<string, "vaultPath">` or at least a type alias prevents mixing absolute system paths with relative vault paths |
+| `SequenceRecord`               | A sequence with resolved, ordered fragments (not just UUIDs) — needed by the sequencer and UI                                                                                        |
+| `ImportResult`                 | Result of importing a `Piece` — success with the new `Fragment`, or failure with reason                                                                                              |
 
 ---
 

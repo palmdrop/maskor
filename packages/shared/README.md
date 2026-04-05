@@ -1,15 +1,31 @@
-# shared
+# @maskor/shared
 
-To install dependencies:
+Shared types and utilities used across all Maskor packages.
 
-```bash
-bun install
+---
+
+## Domain types
+
+| Type                        | Description                                                                 |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `Fragment` / `FragmentUUID` | Core unit of writing                                                        |
+| `Aspect`                    | A thematic dimension (e.g. grief, city)                                     |
+| `Note`                      | Freeform note attached to a fragment                                        |
+| `Reference`                 | External source referenced by a fragment                                    |
+| `Piece`                     | Raw drop-in file before conversion to a fragment                            |
+| `Project` / `ProjectUUID`   | A named project backed by an Obsidian vault (`vaultPath`)                   |
+| `User` / `UserUUID`         | User identity (single local user for now)                                   |
+| `Pool`                      | Fragment lifecycle stage (`unprocessed`, `unplaced`, `placed`, `discarded`) |
+| `Sequence` / `Arc`          | Ordering and grouping constructs                                            |
+
+## Utilities
+
+- `slugify(text)` — converts a title to a filesystem-safe slug
+
+---
+
+## Tests
+
 ```
-
-To run:
-
-```bash
-bun run index.ts
+bun test --cwd packages/shared
 ```
-
-This project was created using `bun init` in bun v1.3.11. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

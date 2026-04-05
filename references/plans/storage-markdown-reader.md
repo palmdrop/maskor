@@ -203,6 +203,7 @@ export const toFile = (fragment: Fragment): {
 - All string UUIDs are force-cast to their branded types (`uuid as FragmentUUID`, etc.).
 
 **Missing field defaults:**
+
 - `uuid` missing → caller assigns a new UUID before writing back.
 - `title` missing → derive from filename (strip `.md` extension, keep as-is). For `initFragment`, fall back to `fragment-<uuid>` when content has no non-empty first line.
 - `pool` missing → `"incomplete"` if any other required frontmatter field is also absent; `"unplaced"` if all fields are present.

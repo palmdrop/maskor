@@ -9,6 +9,7 @@ export type ProjectUUID = Brand<UUID, "project">;
 export type Project = {
   uuid: ProjectUUID;
   name: string;
+  vaultPath: string;
   notes: Note[];
   aspects: Aspect[];
   archUUIDs: Arc[];

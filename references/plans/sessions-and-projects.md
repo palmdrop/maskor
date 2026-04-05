@@ -1,7 +1,8 @@
 # Plan: Multi-Project Support & Future Hosting Readiness
 
 **Date**: 04-04-2026
-**Status**: In progress
+**Status**: Done
+**Implemented At**: 05-04-2026
 
 ## Context
 
@@ -130,11 +131,11 @@ New file: `packages/storage/src/service/storage-service.ts`
 
 ```typescript
 interface StorageService {
-  registerProject(name, vaultPath): Promise<ProjectRecord>
-  listProjects(): Promise<ProjectRecord[]>
-  removeProject(projectUUID): Promise<void>
-  resolveProject(projectUUID): Promise<ProjectContext>  // throws ProjectNotFoundError if not found
-  getVault(context: ProjectContext): Vault              // synchronous, caches instances
+  registerProject(name, vaultPath): Promise<ProjectRecord>;
+  listProjects(): Promise<ProjectRecord[]>;
+  removeProject(projectUUID): Promise<void>;
+  resolveProject(projectUUID): Promise<ProjectContext>; // throws ProjectNotFoundError if not found
+  getVault(context: ProjectContext): Vault; // synchronous, caches instances
 }
 ```
 
@@ -164,6 +165,7 @@ index.ts         ← extend exports
 ### 8. Dependency additions
 
 `packages/storage/package.json`:
+
 - `drizzle-orm` — ORM (bun:sqlite adapter built-in)
 - `drizzle-kit` (devDependency) — migration generation CLI
 
@@ -192,17 +194,17 @@ No changes to `StorageService`, `ProjectContext`, or any consumer code.
 
 ## Critical Files
 
-| File | Action |
-|---|---|
-| `packages/shared/src/types/domain/project.ts` | Add `vaultPath: string` |
-| `packages/storage/src/db/index.ts` | Replace stub with `createRegistryDatabase` (runs `migrate()` at init) |
-| `packages/storage/src/db/schema.ts` | New — Drizzle `projectsTable` |
-| `packages/storage/src/registry/types.ts` | New — `ProjectRecord`, `ProjectContext`, `LOCAL_USER_UUID` |
-| `packages/storage/src/registry/errors.ts` | New — `ProjectNotFoundError` |
-| `packages/storage/src/registry/registry.ts` | New — `createProjectRegistry` |
-| `packages/storage/src/service/storage-service.ts` | New — `createStorageService` |
-| `packages/storage/src/index.ts` | Extend exports |
-| `packages/storage/package.json` | Add `drizzle-orm`, `drizzle-kit` |
+| File                                              | Action                                                                |
+| ------------------------------------------------- | --------------------------------------------------------------------- |
+| `packages/shared/src/types/domain/project.ts`     | Add `vaultPath: string`                                               |
+| `packages/storage/src/db/index.ts`                | Replace stub with `createRegistryDatabase` (runs `migrate()` at init) |
+| `packages/storage/src/db/schema.ts`               | New — Drizzle `projectsTable`                                         |
+| `packages/storage/src/registry/types.ts`          | New — `ProjectRecord`, `ProjectContext`, `LOCAL_USER_UUID`            |
+| `packages/storage/src/registry/errors.ts`         | New — `ProjectNotFoundError`                                          |
+| `packages/storage/src/registry/registry.ts`       | New — `createProjectRegistry`                                         |
+| `packages/storage/src/service/storage-service.ts` | New — `createStorageService`                                          |
+| `packages/storage/src/index.ts`                   | Extend exports                                                        |
+| `packages/storage/package.json`                   | Add `drizzle-orm`, `drizzle-kit`                                      |
 
 ---
 

@@ -1,20 +1,19 @@
-// TODO: constants management?
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { join } from "node:path";
+import { mkdirSync } from "node:fs";
+import * as schema from "./schema";
 
-// TODO: figure out how to handle session
+export type RegistryDatabase = ReturnType<typeof createRegistryDatabase>;
 
-export const db = {
-  getFilePath: (_uuid: string) => {
-    // TODO: perform db query
-    if (_uuid.length < 16) throw new Error("Invalid UUID"); // DUMMY error for now
-    return "/path/to/file/on/disk";
-  },
+export const DEFAULT_CONFIG_DIRECTORY =
+  process.env["MASKOR_CONFIG_DIR"] ?? join(process.env["HOME"] ?? "~", ".config", "maskor");
 
-  getFilePaths: (uuids: string[]) => {
-    return uuids.map((uuid) => {
-      return {
-        uuid,
-        path: `/path/to/file/on/disk/${uuid}`,
-      };
-    });
-  },
+export const createRegistryDatabase = (configDirectory: string) => {
+  mkdirSync(configDirectory, { recursive: true });
+  const database = new Database(join(configDirectory, "registry.db"));
+  const registryDatabase = drizzle(database, { schema });
+  migrate(registryDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });
+  return registryDatabase;
 };

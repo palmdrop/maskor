@@ -116,10 +116,10 @@ const result: FragmentProperties = Object.entries(fields).reduce((acc, [key, val
 
 ```ts
 // Bad
-uuid: frontmatter.uuid as string as FragmentUUID
+uuid: frontmatter.uuid as string as FragmentUUID;
 
 // Good
-uuid: frontmatter.uuid as FragmentUUID
+uuid: frontmatter.uuid as FragmentUUID;
 ```
 
 ---

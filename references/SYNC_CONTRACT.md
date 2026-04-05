@@ -104,12 +104,12 @@ Aspect definitions live in the vault. The user creates and manages aspects here.
 
 Maps to fields on the `Aspect` type.
 
-| Frontmatter key | Type field           | Notes                                             |
-| --------------- | -------------------- | ------------------------------------------------- |
-| `uuid`          | `uuid: AspectUUID`   | Assigned by Maskor on first detection if missing. |
-| `key`           | `key: string`        | Unique name. Used in fragment inline fields.      |
-| `category`      | `category?: string`  | Optional group label (e.g. `"theme"`, `"character"`, `"setting"`). |
-| `notes`         | `notes: string[]`    | List of note titles attached to this aspect.      |
+| Frontmatter key | Type field          | Notes                                                              |
+| --------------- | ------------------- | ------------------------------------------------------------------ |
+| `uuid`          | `uuid: AspectUUID`  | Assigned by Maskor on first detection if missing.                  |
+| `key`           | `key: string`       | Unique name. Used in fragment inline fields.                       |
+| `category`      | `category?: string` | Optional group label (e.g. `"theme"`, `"character"`, `"setting"`). |
+| `notes`         | `notes: string[]`   | List of note titles attached to this aspect.                       |
 
 ### Body (markdown-owned)
 

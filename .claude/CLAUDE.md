@@ -72,3 +72,7 @@ Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key
 - No redundant intermediate type casts (`as string as T` → `as T`).
 - Descriptive fallback identifiers — not `"Untitled"`.
 - Mark known limitations with `// TODO:` and a reason.
+
+## When done
+
+When you are done with implementing a `plan` or running another large task, always run `bun run format`.
