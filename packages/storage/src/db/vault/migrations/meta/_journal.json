@@ -8,6 +8,13 @@
       "when": 1775392632104,
       "tag": "20260405_create_vault_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775422549303,
+      "tag": "20260405_add_missing_indices",
+      "breakpoints": true
     }
   ]
 }

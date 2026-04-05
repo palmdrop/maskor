@@ -1,16 +1,26 @@
-import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey, index } from "drizzle-orm/sqlite-core";
 
-export const fragmentsTable = sqliteTable("fragments", {
-  uuid: text("uuid").primaryKey(),
-  title: text("title").notNull(),
-  version: integer("version").notNull().default(0),
-  pool: text("pool").notNull(), // 'unprocessed' | 'incomplete' | 'unplaced' | 'discarded'
-  readyStatus: real("ready_status").notNull().default(0),
-  contentHash: text("content_hash").notNull(),
-  filePath: text("file_path").notNull().unique(),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-});
+export const fragmentsTable = sqliteTable(
+  "fragments",
+  {
+    uuid: text("uuid").primaryKey(),
+    title: text("title").notNull(),
+    version: integer("version").notNull().default(0),
+    pool: text("pool").notNull(), // 'unprocessed' | 'incomplete' | 'unplaced' | 'discarded'
+    readyStatus: real("ready_status").notNull().default(0),
+    contentHash: text("content_hash").notNull(),
+    filePath: text("file_path").notNull().unique(),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
+    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    // Covers findAll (deleted_at IS NULL) and the soft-delete sweep in rebuild().
+    index("fragments_deleted_at_idx").on(table.deletedAt),
+    // Covers findByPool (pool = ? AND deleted_at IS NULL). pool first so the index also
+    // serves pool-only queries; deleted_at second to filter active rows efficiently.
+    index("fragments_pool_deleted_at_idx").on(table.pool, table.deletedAt),
+  ],
+);
 
 export const fragmentNotesTable = sqliteTable(
   "fragment_notes",
@@ -48,14 +58,18 @@ export const fragmentPropertiesTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.fragmentUuid, table.aspectKey] })],
 );
 
-export const aspectsTable = sqliteTable("aspects", {
-  uuid: text("uuid").primaryKey(),
-  key: text("key").notNull().unique(),
-  category: text("category"),
-  filePath: text("file_path").notNull().unique(),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-});
+export const aspectsTable = sqliteTable(
+  "aspects",
+  {
+    uuid: text("uuid").primaryKey(),
+    key: text("key").notNull().unique(),
+    category: text("category"),
+    filePath: text("file_path").notNull().unique(),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
+    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("aspects_deleted_at_idx").on(table.deletedAt)],
+);
 
 export const aspectNotesTable = sqliteTable(
   "aspect_notes",
@@ -68,20 +82,28 @@ export const aspectNotesTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.aspectUuid, table.noteTitle] })],
 );
 
-export const notesTable = sqliteTable("notes", {
-  uuid: text("uuid").primaryKey(),
-  title: text("title").notNull().unique(),
-  contentHash: text("content_hash").notNull(),
-  filePath: text("file_path").notNull().unique(),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-});
+export const notesTable = sqliteTable(
+  "notes",
+  {
+    uuid: text("uuid").primaryKey(),
+    title: text("title").notNull().unique(),
+    contentHash: text("content_hash").notNull(),
+    filePath: text("file_path").notNull().unique(),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
+    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("notes_deleted_at_idx").on(table.deletedAt)],
+);
 
-export const referencesTable = sqliteTable("project_references", {
-  uuid: text("uuid").primaryKey(),
-  name: text("name").notNull().unique(),
-  contentHash: text("content_hash").notNull(),
-  filePath: text("file_path").notNull().unique(),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-});
+export const referencesTable = sqliteTable(
+  "project_references",
+  {
+    uuid: text("uuid").primaryKey(),
+    name: text("name").notNull().unique(),
+    contentHash: text("content_hash").notNull(),
+    filePath: text("file_path").notNull().unique(),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
+    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("references_deleted_at_idx").on(table.deletedAt)],
+);

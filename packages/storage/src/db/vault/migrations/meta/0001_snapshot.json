@@ -1,0 +1,549 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "f3ae8069-2c26-483f-99b3-e467d1f89b02",
+  "prevId": "f7987f10-7df2-4800-a145-2fac1a8e0bc3",
+  "tables": {
+    "aspect_notes": {
+      "name": "aspect_notes",
+      "columns": {
+        "aspect_uuid": {
+          "name": "aspect_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note_title": {
+          "name": "note_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "aspect_notes_aspect_uuid_aspects_uuid_fk": {
+          "name": "aspect_notes_aspect_uuid_aspects_uuid_fk",
+          "tableFrom": "aspect_notes",
+          "tableTo": "aspects",
+          "columnsFrom": [
+            "aspect_uuid"
+          ],
+          "columnsTo": [
+            "uuid"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "aspect_notes_aspect_uuid_note_title_pk": {
+          "columns": [
+            "aspect_uuid",
+            "note_title"
+          ],
+          "name": "aspect_notes_aspect_uuid_note_title_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "aspects": {
+      "name": "aspects",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "aspects_key_unique": {
+          "name": "aspects_key_unique",
+          "columns": [
+            "key"
+          ],
+          "isUnique": true
+        },
+        "aspects_file_path_unique": {
+          "name": "aspects_file_path_unique",
+          "columns": [
+            "file_path"
+          ],
+          "isUnique": true
+        },
+        "aspects_deleted_at_idx": {
+          "name": "aspects_deleted_at_idx",
+          "columns": [
+            "deleted_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "fragment_notes": {
+      "name": "fragment_notes",
+      "columns": {
+        "fragment_uuid": {
+          "name": "fragment_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note_title": {
+          "name": "note_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fragment_notes_fragment_uuid_fragments_uuid_fk": {
+          "name": "fragment_notes_fragment_uuid_fragments_uuid_fk",
+          "tableFrom": "fragment_notes",
+          "tableTo": "fragments",
+          "columnsFrom": [
+            "fragment_uuid"
+          ],
+          "columnsTo": [
+            "uuid"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "fragment_notes_fragment_uuid_note_title_pk": {
+          "columns": [
+            "fragment_uuid",
+            "note_title"
+          ],
+          "name": "fragment_notes_fragment_uuid_note_title_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "fragment_properties": {
+      "name": "fragment_properties",
+      "columns": {
+        "fragment_uuid": {
+          "name": "fragment_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aspect_key": {
+          "name": "aspect_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aspect_uuid": {
+          "name": "aspect_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fragment_properties_fragment_uuid_fragments_uuid_fk": {
+          "name": "fragment_properties_fragment_uuid_fragments_uuid_fk",
+          "tableFrom": "fragment_properties",
+          "tableTo": "fragments",
+          "columnsFrom": [
+            "fragment_uuid"
+          ],
+          "columnsTo": [
+            "uuid"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "fragment_properties_aspect_uuid_aspects_uuid_fk": {
+          "name": "fragment_properties_aspect_uuid_aspects_uuid_fk",
+          "tableFrom": "fragment_properties",
+          "tableTo": "aspects",
+          "columnsFrom": [
+            "aspect_uuid"
+          ],
+          "columnsTo": [
+            "uuid"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "fragment_properties_fragment_uuid_aspect_key_pk": {
+          "columns": [
+            "fragment_uuid",
+            "aspect_key"
+          ],
+          "name": "fragment_properties_fragment_uuid_aspect_key_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "fragment_references": {
+      "name": "fragment_references",
+      "columns": {
+        "fragment_uuid": {
+          "name": "fragment_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reference_name": {
+          "name": "reference_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fragment_references_fragment_uuid_fragments_uuid_fk": {
+          "name": "fragment_references_fragment_uuid_fragments_uuid_fk",
+          "tableFrom": "fragment_references",
+          "tableTo": "fragments",
+          "columnsFrom": [
+            "fragment_uuid"
+          ],
+          "columnsTo": [
+            "uuid"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "fragment_references_fragment_uuid_reference_name_pk": {
+          "columns": [
+            "fragment_uuid",
+            "reference_name"
+          ],
+          "name": "fragment_references_fragment_uuid_reference_name_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "fragments": {
+      "name": "fragments",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "pool": {
+          "name": "pool",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ready_status": {
+          "name": "ready_status",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "fragments_file_path_unique": {
+          "name": "fragments_file_path_unique",
+          "columns": [
+            "file_path"
+          ],
+          "isUnique": true
+        },
+        "fragments_deleted_at_idx": {
+          "name": "fragments_deleted_at_idx",
+          "columns": [
+            "deleted_at"
+          ],
+          "isUnique": false
+        },
+        "fragments_pool_deleted_at_idx": {
+          "name": "fragments_pool_deleted_at_idx",
+          "columns": [
+            "pool",
+            "deleted_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notes": {
+      "name": "notes",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "notes_title_unique": {
+          "name": "notes_title_unique",
+          "columns": [
+            "title"
+          ],
+          "isUnique": true
+        },
+        "notes_file_path_unique": {
+          "name": "notes_file_path_unique",
+          "columns": [
+            "file_path"
+          ],
+          "isUnique": true
+        },
+        "notes_deleted_at_idx": {
+          "name": "notes_deleted_at_idx",
+          "columns": [
+            "deleted_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_references": {
+      "name": "project_references",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_references_name_unique": {
+          "name": "project_references_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        },
+        "project_references_file_path_unique": {
+          "name": "project_references_file_path_unique",
+          "columns": [
+            "file_path"
+          ],
+          "isUnique": true
+        },
+        "references_deleted_at_idx": {
+          "name": "references_deleted_at_idx",
+          "columns": [
+            "deleted_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
