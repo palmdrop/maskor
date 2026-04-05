@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { cpSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createVault } from "../backend/markdown";
-import { createVaultDatabase } from "../db/vault-db";
-import { createVaultIndexer } from "../index/indexer";
+import { createVault } from "../vault/markdown";
+import { createVaultDatabase } from "../db/vault";
+import { createVaultIndexer } from "../indexer/indexer";
 import type { FragmentUUID } from "@maskor/shared";
 
 const FIXTURES = join(import.meta.dir, "../../fixtures/vault");

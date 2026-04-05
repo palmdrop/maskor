@@ -1,8 +1,8 @@
-export { createVault } from "./backend/markdown";
-export type { Vault, VaultConfig, VaultError } from "./backend/markdown";
+export { createVault } from "./vault/markdown";
+export type { Vault, VaultConfig, VaultError } from "./vault/markdown";
 
-export { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "./db";
-export type { RegistryDatabase } from "./db";
+export { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "./db/registry";
+export type { RegistryDatabase } from "./db/registry";
 
 export { createProjectRegistry } from "./registry";
 export type { ProjectRegistry, ProjectRecord, ProjectContext } from "./registry";
@@ -11,10 +11,10 @@ export { LOCAL_USER_UUID, ProjectNotFoundError } from "./registry";
 export { createStorageService } from "./service";
 export type { StorageService, StorageServiceConfig } from "./service";
 
-export { createVaultDatabase } from "./db/vault-db";
-export type { VaultDatabase } from "./db/vault-db";
+export { createVaultDatabase } from "./db/vault";
+export type { VaultDatabase } from "./db/vault";
 
-export { createVaultIndexer } from "./index/indexer";
+export { createVaultIndexer } from "./indexer/indexer";
 export type {
   VaultIndexer,
   IndexedFragment,
@@ -24,4 +24,4 @@ export type {
   IndexedReference,
   RebuildStats,
   SyncWarning,
-} from "./index/types";
+} from "./indexer/types";

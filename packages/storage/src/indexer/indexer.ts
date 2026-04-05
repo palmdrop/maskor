@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { AspectUUID, FragmentUUID, NoteUUID, Pool, ReferenceUUID } from "@maskor/shared";
-import type { VaultDatabase } from "../db/vault-db";
+import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
   aspectsTable,
@@ -11,8 +11,8 @@ import {
   fragmentsTable,
   notesTable,
   referencesTable,
-} from "../db/vault-db/schema";
-import type { Vault } from "../backend/types";
+} from "../db/vault/schema";
+import type { Vault } from "../vault/types";
 import type {
   IndexedAspect,
   IndexedFragment,

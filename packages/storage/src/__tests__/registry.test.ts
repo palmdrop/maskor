@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createRegistryDatabase } from "../db";
+import { createRegistryDatabase } from "../db/registry";
 import { createProjectRegistry } from "../registry/registry";
 import { LOCAL_USER_UUID } from "../registry/types";
 import type { ProjectUUID } from "@maskor/shared";

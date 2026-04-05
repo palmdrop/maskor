@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { fromFile, toFile } from "../../backend/markdown/mappers/fragment";
-import type { ParsedFile } from "../../backend/markdown/parse";
+import { fromFile, toFile } from "../../vault/markdown/mappers/fragment";
+import type { ParsedFile } from "../../vault/markdown/parse";
 import type { Fragment, FragmentUUID } from "@maskor/shared";
 
 const PARSED: ParsedFile = {

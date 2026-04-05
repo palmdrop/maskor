@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { parseFile } from "../backend/markdown/parse";
+import { parseFile } from "../vault/markdown/parse";
 
 const FULL_FILE = `---
 uuid: "frag-0001"

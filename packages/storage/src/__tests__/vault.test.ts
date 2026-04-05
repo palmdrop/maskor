@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { createVault } from "../backend/markdown/vault";
-import type { VaultConfig } from "../backend/types";
+import { createVault } from "../vault/markdown/vault";
+import type { VaultConfig } from "../vault/types";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";

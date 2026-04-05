@@ -2,8 +2,8 @@ import { eq } from "drizzle-orm";
 import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { ProjectUUID, UserUUID } from "@maskor/shared";
-import type { RegistryDatabase } from "../db";
-import { projectsTable } from "../db/schema";
+import type { RegistryDatabase } from "../db/registry";
+import { projectsTable } from "../db/registry/schema";
 import { ProjectNotFoundError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 

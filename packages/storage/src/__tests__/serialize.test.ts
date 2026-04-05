@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { serializeFile } from "../backend/markdown/serialize";
-import { parseFile } from "../backend/markdown/parse";
+import { serializeFile } from "../vault/markdown/serialize";
+import { parseFile } from "../vault/markdown/parse";
 
 describe("serializeFile", () => {
   it("produces valid frontmatter", () => {

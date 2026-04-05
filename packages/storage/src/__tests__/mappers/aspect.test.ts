@@ -4,8 +4,8 @@ import {
   toFile,
   inlineFieldsToProperties,
   propertiesToInlineFields,
-} from "../../backend/markdown/mappers/aspect";
-import type { ParsedFile } from "../../backend/markdown/parse";
+} from "../../vault/markdown/mappers/aspect";
+import type { ParsedFile } from "../../vault/markdown/parse";
 import type { Aspect, AspectUUID } from "@maskor/shared";
 
 const PARSED_ASPECT: ParsedFile = {

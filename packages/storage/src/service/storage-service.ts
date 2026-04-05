@@ -1,11 +1,11 @@
 import type { ProjectUUID } from "@maskor/shared";
-import { createVault } from "../backend/markdown";
-import type { Vault } from "../backend/types";
-import { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "../db";
-import { createVaultDatabase } from "../db/vault-db";
-import type { VaultDatabase } from "../db/vault-db";
-import { createVaultIndexer } from "../index/indexer";
-import type { VaultIndexer } from "../index/types";
+import { createVault } from "../vault/markdown";
+import type { Vault } from "../vault/types";
+import { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "../db/registry";
+import { createVaultDatabase } from "../db/vault";
+import type { VaultDatabase } from "../db/vault";
+import { createVaultIndexer } from "../indexer/indexer";
+import type { VaultIndexer } from "../indexer/types";
 import { createProjectRegistry } from "../registry/registry";
 import { ProjectNotFoundError } from "../registry/errors";
 import type { ProjectContext, ProjectRecord } from "../registry/types";

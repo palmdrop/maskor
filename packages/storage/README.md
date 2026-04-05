@@ -2,7 +2,7 @@
 
 Reads and writes the Maskor vault — a directory of human-editable markdown files that act as the source of truth for fragments, aspects, notes, and references.
 
-Also manages a local project registry (SQLite) that maps project UUIDs to vault paths.
+Also manages a local project registry (SQLite) that maps project UUIDs to vault paths, and a per-vault content index (SQLite) that enables fast lookups without full file scans.
 
 ---
 
@@ -18,6 +18,7 @@ Also manages a local project registry (SQLite) that maps project UUIDs to vault 
   pieces/               # consume directory — drop raw .md files here to import
   .maskor/
     project.json        # written on registerProject — marks vault as a known project
+    vault.db            # content index — rebuilt from files on demand, never source of truth
 ```
 
 ---
@@ -66,9 +67,15 @@ const context = await service.resolveProject(record.projectUUID);
 const vault = service.getVault(context);
 const fragments = await vault.fragments.readAll();
 
+// get a VaultIndexer — fast DB-backed queries (rebuild first to sync)
+const indexer = service.getVaultIndexer(context);
+await indexer.rebuild(); // full scan; idempotent
+const bridge = await indexer.fragments.findByUUID(someUUID);
+const discarded = await indexer.fragments.findByPool("discarded");
+
 // list and remove
 const projects = await service.listProjects();
-await service.removeProject(record.projectUUID); // also evicts vault cache
+await service.removeProject(record.projectUUID); // evicts vault + indexer caches
 ```
 
 Set `MASKOR_CONFIG_DIR` to override the registry database location (useful for tests).
@@ -79,22 +86,32 @@ Set `MASKOR_CONFIG_DIR` to override the registry database location (useful for t
 
 ### Layers
 
-| Layer     | Files                           | Role                                                   |
-| --------- | ------------------------------- | ------------------------------------------------------ |
-| Parse     | `backend/markdown/parse.ts`     | Raw string → `ParsedFile`                              |
-| Serialize | `backend/markdown/serialize.ts` | Domain parts → markdown string                         |
-| Mappers   | `backend/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                            |
-| Vault     | `backend/markdown/vault.ts`     | File I/O via `createVault`                             |
-| Registry  | `registry/registry.ts`          | SQLite project registry via `createProjectRegistry`    |
-| Service   | `service/storage-service.ts`    | Project-aware vault factory via `createStorageService` |
+| Layer     | Files                         | Role                                                   |
+| --------- | ----------------------------- | ------------------------------------------------------ |
+| Parse     | `vault/markdown/parse.ts`     | Raw string → `ParsedFile`                              |
+| Serialize | `vault/markdown/serialize.ts` | Domain parts → markdown string                         |
+| Mappers   | `vault/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                            |
+| Vault     | `vault/markdown/vault.ts`     | File I/O via `createVault`                             |
+| Indexer   | `indexer/indexer.ts`          | DB-backed query layer via `createVaultIndexer`         |
+| Registry  | `registry/registry.ts`        | SQLite project registry via `createProjectRegistry`    |
+| Service   | `service/storage-service.ts`  | Project-aware vault factory via `createStorageService` |
+
+### Databases
+
+Two separate SQLite databases — different physical locations, different schemas, separate migration folders:
+
+| Database    | Location                       | Schema                  | Purpose                       |
+| ----------- | ------------------------------ | ----------------------- | ----------------------------- |
+| Registry DB | `~/.config/maskor/registry.db` | `db/registry/schema.ts` | Maps project UUIDs to vaults  |
+| Vault DB    | `<vault>/.maskor/vault.db`     | `db/vault/schema.ts`    | Content index (derived cache) |
 
 ### Project context flow (native mode)
 
 ```
 caller
   └─ service.resolveProject(projectUUID)  →  ProjectContext
-  └─ service.getVault(context)            →  Vault (cached)
-  └─ vault.fragments.readAll()            →  Fragment[]
+  └─ service.getVault(context)            →  Vault (cached)          — reads/writes files
+  └─ service.getVaultIndexer(context)     →  VaultIndexer (cached)   — fast DB queries
 ```
 
 When hosting is introduced, a thin adapter (e.g. Hono middleware) replaces the direct `resolveProject` call — the `StorageService` interface and `ProjectContext` type stay unchanged.

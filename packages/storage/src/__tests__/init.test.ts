@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { initFragment } from "../backend/markdown/init";
-import { parseFile } from "../backend/markdown/parse";
-import type { VaultConfig } from "../backend/types";
+import { initFragment } from "../vault/markdown/init";
+import { parseFile } from "../vault/markdown/parse";
+import type { VaultConfig } from "../vault/types";
 import { mkdtempSync, rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
