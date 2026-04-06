@@ -1,5 +1,6 @@
-export { createVault } from "./vault/markdown";
-export type { Vault, VaultConfig, VaultError } from "./vault/markdown";
+export { createVault, VaultError } from "./vault/markdown";
+export type { Vault, VaultConfig } from "./vault/markdown";
+export type { VaultErrorCode } from "./vault/types";
 
 export { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "./db/registry";
 export type { RegistryDatabase } from "./db/registry";

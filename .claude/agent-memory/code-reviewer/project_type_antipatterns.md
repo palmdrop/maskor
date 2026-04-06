@@ -20,3 +20,5 @@ Structural issue: `Fragment` type mixes markdown-owned fields with DB-only field
 `Action` type mixes data fields with executable functions (`execute`, `revert`) — will break if actions are ever serialized.
 
 `project.ts` has `archUUIDs: Arc[]` — should be `arcUUIDs: Arc[]`. Pre-existing typo, noted in 2026-04-05 review.
+
+`Fragment` has `contentHash: string` as a required field — handlers that construct `Fragment` objects from user input (e.g. `POST /fragments`) are currently setting `contentHash: ""`. This is latently broken if the indexer or watcher ever uses `contentHash` for change detection. Noted in 2026-04-06 review.

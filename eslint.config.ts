@@ -13,7 +13,7 @@ const root = import.meta.dirname;
 export default defineConfig(
   // --- ignore patterns ---
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/*.gen.ts"],
+    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/*.gen.ts"],
   },
 
   // --- base: all TS/JS files ---

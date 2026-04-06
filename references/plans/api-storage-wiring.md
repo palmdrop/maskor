@@ -1,7 +1,8 @@
 # API + Storage Wiring
 
 **Date**: 06-04-2026
-**Status**: Todo
+**Status**: Done
+**Implemented At**: 06-04-2026
 
 ---
 
@@ -25,7 +26,7 @@ Out of scope: auth, file watcher, import pipeline, sequencer, frontend integrati
 
 ### 1. Service injection — Hono context variables
 
-Use Hono's typed context variables (`app.use` + `c.set`/`c.get`) to share the single `StorageService` instance across handlers.
+Use Hono's typed context variables (`app.use` + `ctx.set`/`ctx.get`) to share the single `StorageService` instance across handlers.
 
 **Why not a module-level singleton?** A module singleton makes test isolation hard — you can't swap the service between test runs without module cache tricks. Hono's context approach is explicit, typed, and testable.
 
@@ -34,12 +35,13 @@ Use Hono's typed context variables (`app.use` + `c.set`/`c.get`) to share the si
 ```ts
 type AppVariables = {
   storageService: StorageService;
+  projectContext?: ProjectContext;
 };
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.use("*", (context, next) => {
-  context.set("storageService", storageService);
+app.use("*", (ctx, next) => {
+  ctx.set("storageService", storageService);
   return next();
 });
 ```
@@ -48,7 +50,7 @@ The `storageService` instance is created once at startup and injected. Tests cre
 
 ### 2. Project resolution — dedicated middleware on project-scoped routes
 
-`resolveProject` is extracted into a middleware that runs on all routes under `/:projectId/`. It resolves the context once, attaches it to Hono variables, and handlers read it with `c.get("projectContext")`.
+`resolveProject` is a plain middleware (not a factory) that runs on all routes under `/:projectId/`. It reads `storageService` from context via `ctx.get("storageService")` and `:projectId` from path params, resolves the project, attaches the result to Hono variables, and handlers read it with `ctx.get("projectContext")`. The service is already injected at the app level — no factory argument needed.
 
 **Why not per-handler?** Duplication, and it forces every handler author to remember error handling for `ProjectNotFoundError`. Middleware centralises that.
 
@@ -57,9 +59,11 @@ The `storageService` instance is created once at startup and injected. Tests cre
 ```ts
 type AppVariables = {
   storageService: StorageService;
-  projectContext: ProjectContext; // only set on project-scoped routes
+  projectContext?: ProjectContext; // only set on project-scoped routes
 };
 ```
+
+`projectContext` is typed as optional because routes like `GET /projects` never set it. Project-scoped handlers can assert it is defined after the middleware guarantees it (or use a narrowing check). Do not type it as required — TypeScript would lie to callers on non-project-scoped routes.
 
 ### 3. Route scope — minimal but complete first milestone
 
@@ -67,7 +71,8 @@ Project registry routes (no context required):
 
 ```
 GET    /projects                     — list all registered projects
-POST   /projects                     — register a new project (name + vaultPath)
+GET    /projects/:projectId          — get a single project record
+POST   /projects                     — register a new project (name + vaultPath) → 201
 DELETE /projects/:projectId          — remove a project
 ```
 
@@ -76,8 +81,8 @@ Fragment routes (project-scoped):
 ```
 GET    /projects/:projectId/fragments              — list all (indexed, no body)
 GET    /projects/:projectId/fragments/:fragmentId  — read one (full body)
-GET    /projects/:projectId/fragments?pool=:pool   — filter by pool (query param on list)
-POST   /projects/:projectId/fragments              — write a fragment
+GET    /projects/:projectId/fragments?pool=poolname — filter by pool (query param on list)
+POST   /projects/:projectId/fragments              — write a fragment → 201
 DELETE /projects/:projectId/fragments/:fragmentId  — discard a fragment
 ```
 
@@ -98,6 +103,22 @@ Index route:
 POST   /projects/:projectId/index/rebuild
 ```
 
+**POST /projects request body:**
+
+```json
+{ "name": "My project", "vaultPath": "/absolute/path/to/vault" }
+```
+
+`vaultPath` is a raw filesystem path. See deferred note in Open Questions.
+
+**POST /projects/:projectId/fragments request body:**
+
+```json
+{ "title": "Fragment title", "content": "Markdown body", "pool": "default" }
+```
+
+The server generates the UUID. The `StorageService.fragments.write` method takes a full `Fragment` — the API handler assembles one from the request body fields and a freshly-generated UUID before calling write. The created fragment (including its UUID) is returned in the 201 response.
+
 **What's deferred:** piece consumption (`/pieces`), write endpoints for aspects/notes/references — they exist in storage but aren't needed until the frontend requests them. Add them when needed, don't preemptively scaffold them.
 
 ### 4. Error taxonomy — map storage errors to HTTP at the handler boundary
@@ -105,7 +126,7 @@ POST   /projects/:projectId/index/rebuild
 Index staleness and filesystem inconsistencies are **storage service concerns**, not API concerns. The API should never need to reason about whether the index is stale. The storage service is responsible for detecting and surfacing these as domain-level errors.
 
 **Required storage service change (prerequisite):**
-Add `"STALE_INDEX"` to `VaultErrorCode` in `packages/storage/src/vault/types.ts`. When a UUID-based lookup (e.g. `fragments.read`, `fragments.discard`) resolves a path from the index but that file does not exist on disk, throw `VaultError("STALE_INDEX", ...)` rather than letting `FILE_NOT_FOUND` bubble up. This keeps the API ignorant of filesystem details.
+Add `"STALE_INDEX"` to `VaultErrorCode` in `packages/storage/src/vault/types.ts`. In `storage-service.ts`, wrap the `vault.*.read(filePath)` call in `fragments.read`, `aspects.read`, `notes.read`, and `references.read` in a try/catch and unconditionally re-throw any `FILE_NOT_FOUND` error as `VaultError("STALE_INDEX", ...)`. At that callsite the path is always index-derived — there is no ambiguity to detect. Do not add conditional logic to distinguish "direct path" vs "index path"; the distinction does not exist at that call site.
 
 **Error mapping in the API:**
 
@@ -114,6 +135,8 @@ Add `"STALE_INDEX"` to `VaultErrorCode` in `packages/storage/src/vault/types.ts`
   - `FRAGMENT_NOT_FOUND`, `ENTITY_NOT_FOUND` → **404**
   - `STALE_INDEX` → **404** with informational hint (see below)
   - all others → **500**
+
+`STALE_INDEX` maps to **404**, not 409. The resource is effectively absent from the API's perspective. 409 Conflict implies a clash between two valid states — that is not what is happening here. The decision is settled; do not revisit at implementation time.
 
 Define a single `handleStorageError(error: unknown): Response` utility in `src/errors.ts`. Every handler passes unknown errors through it. Do not scatter `instanceof` checks across route files.
 
@@ -129,7 +152,7 @@ Define a single `handleStorageError(error: unknown): Response` utility in `src/e
 { "error": "NOT_FOUND", "message": "Fragment not found: <uuid>", "hint": "index_may_be_stale" }
 ```
 
-No envelope for success responses — return data directly. Arrays at the top level are fine.
+No envelope for success responses — return data directly. Arrays at the top level are fine. `POST` routes that create resources return 201 with the created entity body.
 
 ### 5. Rebuild trigger — explicit route, no automatic rebuild
 
@@ -149,6 +172,8 @@ Use Hono's `app.request()` for in-process HTTP testing — no network, no port b
 
 **Why not a full network server?** `app.request()` is faster, avoids port conflicts, and tests the same code path without the OS network stack.
 
+`createTestApp` returns a `{ app, cleanup }` tuple. Tests call `cleanup()` in `afterAll` to remove the temp directory. This is important for test isolation — do not leave cleanup implicit or rely on the test runner to handle it.
+
 Test structure:
 
 ```
@@ -161,7 +186,7 @@ packages/api/src/__tests__/
     references.test.ts
     index.test.ts
   helpers/
-    create-test-app.ts   — builds app with temp storageService
+    create-test-app.ts   — builds app with temp storageService, returns { app, cleanup }
     seed-vault.ts        — writes fixture fragments/aspects into temp vault
 ```
 
@@ -182,25 +207,26 @@ The `api` package `CLAUDE.md` says "don't use express" and implies Bun-native AP
 
 ### `packages/storage/src/service/storage-service.ts` (prerequisite change)
 
-- In `fragments.read`, `fragments.discard`, `aspects.read`, `notes.read`, `references.read`: catch `VaultError("FILE_NOT_FOUND")` thrown after an index-based path lookup and re-throw as `VaultError("STALE_INDEX", ...)`
-- Only re-throw as `STALE_INDEX` when the path came from an index lookup — genuine missing files from direct paths should remain `FILE_NOT_FOUND`
+- In `fragments.read`, `fragments.discard`, `aspects.read`, `notes.read`, `references.read`: wrap the `vault.*.read(filePath)` call in a try/catch and unconditionally re-throw `FILE_NOT_FOUND` as `VaultError("STALE_INDEX", ...)`
+- No conditional logic is needed — the path at that callsite is always index-derived
 
 ### `packages/api/package.json`
 
 - Add `hono` as a dependency
 - Add `@maskor/storage` as a workspace dependency
 
+### `packages/api/src/app.ts` (new)
+
+- Create and export `createApp(storageService: StorageService): Hono`
+- Registers all middleware (including CORS) and routes
+- CORS belongs here, not in `index.ts` — it must be present when tests call `createApp` directly
+- Separated from `index.ts` so tests can call `createApp` without binding a port
+
 ### `packages/api/src/index.ts`
 
 - Replace stub with Hono app wiring and `Bun.serve()` call
 - Read port from `process.env.PORT` with a sensible default (e.g. 3001)
-- Add CORS middleware (Hono has a built-in `cors()` helper)
-
-### `packages/api/src/app.ts` (new)
-
-- Create and export `createApp(storageService: StorageService): Hono`
-- Registers all middleware and routes
-- Separated from `index.ts` so tests can call `createApp` without binding a port
+- Does not register middleware — delegates to `createApp`
 
 ### `packages/api/src/errors.ts` (new)
 
@@ -209,19 +235,21 @@ The `api` package `CLAUDE.md` says "don't use express" and implies Bun-native AP
 
 ### `packages/api/src/middleware/resolve-project.ts` (new)
 
-- Hono middleware factory: reads `:projectId` from path params, calls `resolveProject`, sets `projectContext` on `c`
+- Plain Hono middleware (not a factory): reads `storageService` from `ctx.get("storageService")` and `:projectId` from path params, calls `resolveProject`, sets `projectContext` on `ctx`
 - Returns 404 JSON if `ProjectNotFoundError` is thrown
 
 ### `packages/api/src/routes/projects.ts` (new)
 
 - `GET /` — `listProjects()`
-- `POST /` — `registerProject(name, vaultPath)` from request body
+- `GET /:projectId` — `getProject(uuid)`, returns single project record
+- `POST /` — `registerProject(name, vaultPath)` from request body, returns 201 with created project
 - `DELETE /:projectId` — `removeProject(uuid)`
 
 ### `packages/api/src/routes/fragments.ts` (new)
 
 - All fragment routes (list, get, write, discard)
-- Pool filter via `?pool=` query param on `GET /`
+- Pool filter via `?pool=poolname` query param on `GET /`
+- `POST /` assembles a full `Fragment` from body fields + server-generated UUID, returns 201 with created fragment
 - After write/discard: do NOT auto-rebuild. Index staleness is the caller's responsibility — document it in the handler comment
 
 ### `packages/api/src/routes/aspects.ts` (new)
@@ -236,15 +264,16 @@ The `api` package `CLAUDE.md` says "don't use express" and implies Bun-native AP
 
 - `GET /` and `GET /:referenceId` only (read-only for now)
 
-### `packages/api/src/routes/index-routes.ts` (new)
+### `packages/api/src/routes/vault-index-routes.ts` (new)
 
 - `POST /rebuild` (mounted at `/projects/:projectId/index`)
 - Returns `RebuildStats` as JSON
 
 ### `packages/api/src/__tests__/helpers/create-test-app.ts` (new)
 
-- Creates a temp config directory, instantiates `StorageService`, calls `createApp`, returns the Hono app
-- Cleans up temp directory after test
+- Creates a temp config directory, instantiates `StorageService`, calls `createApp`
+- Returns `{ app, cleanup }` tuple — callers must invoke `cleanup()` in `afterAll` to remove the temp directory
+- This is required for test isolation; do not leave teardown implicit
 
 ### `packages/api/src/__tests__/helpers/seed-vault.ts` (new)
 
@@ -254,7 +283,8 @@ The `api` package `CLAUDE.md` says "don't use express" and implies Bun-native AP
 ### `packages/api/src/__tests__/routes/*.test.ts` (new)
 
 - One file per route group, using `app.request()` for in-process HTTP calls
-- Covers: success cases, 404 on unknown UUID, 400 on missing body fields
+- Each test suite calls `cleanup()` in `afterAll`
+- Covers: success cases, 404 on unknown UUID, 400 on missing body fields, 201 on creation
 
 ---
 
@@ -268,17 +298,18 @@ The `api` package `CLAUDE.md` says "don't use express" and implies Bun-native AP
 
 4. **Logging** — `@maskor/shared` exports a pino logger factory. Wire it into the API but don't go deep on structured logging yet. A single logger instance on the app is enough.
 
-5. **`VaultError` `FILE_NOT_FOUND` as 409** — this mapping is a judgment call. The client asked for a resource that exists in theory (it's registered) but the index is stale. 409 Conflict is the closest fit semantically. Revisit if this causes confusion in the frontend.
+5. **`vaultPath` in `POST /projects` body** — `vaultPath` is a raw filesystem path. For a local app this is fine, but the frontend (even in Tauri/Electron) must know the path to supply it. Deferred options: read from a config file, expose a file picker over IPC, or add a path-validation/discovery endpoint. Do not leave this implicit when frontend integration begins.
 
 ---
 
 ## Implementation Order
 
 1. Install deps (`hono`, `@maskor/storage`)
-2. Create `errors.ts` and `middleware/resolve-project.ts`
-3. Create `app.ts` with CORS and route mounting
-4. Implement route files (projects → fragments → aspects/notes/references → index)
-5. Wire `index.ts` with `Bun.serve()`
-6. Write test helpers
-7. Write integration tests per route group
-8. Run `bun run test` and `bun run format`
+2. Add `"STALE_INDEX"` to `VaultErrorCode` and update `storage-service.ts` (prerequisite)
+3. Create `errors.ts` and `middleware/resolve-project.ts`
+4. Create `app.ts` with CORS and route mounting
+5. Implement route files (projects → fragments → aspects/notes/references → vault-index-routes)
+6. Wire `index.ts` with `Bun.serve()`
+7. Write test helpers (`create-test-app.ts`, `seed-vault.ts`)
+8. Write integration tests per route group
+9. Run `bun run test` and `bun run format`

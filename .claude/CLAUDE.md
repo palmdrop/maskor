@@ -75,7 +75,7 @@ Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key
 
 ## When done
 
-When you are done with implementing a `plan` or running a large task, always run `bun run test` and then `bun run format`.
+When you are done with implementing a `plan` or running a large task, always run `bun run test`, `bun run format` and `bun run typecheck`. If anything breaks, fix.
 
 ## Manual development
 

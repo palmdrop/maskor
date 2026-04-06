@@ -9,12 +9,15 @@
     "test:coverage": "bun test --coverage"
   },
   "devDependencies": {
+    "@maskor/test-fixtures": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@maskor/shared": "workspace:*"
+    "@maskor/shared": "workspace:*",
+    "@maskor/storage": "workspace:*",
+    "hono": "^4.7.10"
   }
 }

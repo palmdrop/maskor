@@ -29,7 +29,9 @@
 
     "paths": {
       "@maskor/shared": ["./packages/shared/src/index.ts"],
-      "@maskor/shared/*": ["./packages/shared/src/*"]
+      "@maskor/shared/*": ["./packages/shared/src/*"],
+      "@maskor/storage": ["./packages/storage/src/index.ts"],
+      "@maskor/test-fixtures": ["./packages/test-fixtures/index.ts"]
     }
   },
   "exclude": ["packages/frontend", "node_modules"]

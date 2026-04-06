@@ -6,8 +6,7 @@ import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import type { FragmentUUID } from "@maskor/shared";
-
-const FIXTURES = join(import.meta.dir, "../../fixtures/vault");
+import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
 let vaultDir: string;
@@ -15,7 +14,7 @@ let vaultDir: string;
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "maskor-indexer-test-"));
   vaultDir = join(tmpDir, "vault");
-  cpSync(FIXTURES, vaultDir, { recursive: true });
+  cpSync(BASIC_VAULT, vaultDir, { recursive: true });
 });
 
 afterEach(() => {

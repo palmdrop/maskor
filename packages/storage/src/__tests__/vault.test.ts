@@ -4,15 +4,14 @@ import type { VaultConfig } from "../vault/types";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-
-const FIXTURES = join(import.meta.dir, "../../fixtures/vault");
+import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
 let config: VaultConfig;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "maskor-vault-test-"));
-  cpSync(FIXTURES, tmpDir, { recursive: true });
+  cpSync(BASIC_VAULT, tmpDir, { recursive: true });
   config = { root: tmpDir };
 });
 

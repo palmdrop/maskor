@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@maskor/shared": ["../shared/src/index.ts"]
+      "@maskor/shared": ["../shared/src/index.ts"],
+      "@maskor/storage": ["../storage/src/index.ts"]
     }
   },
-  "references": [{ "path": "../shared" }],
+  "references": [{ "path": "../shared" }, { "path": "../storage" }],
   "include": ["src"]
 }

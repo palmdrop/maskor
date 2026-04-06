@@ -13,7 +13,8 @@ export type VaultErrorCode =
   | "PATH_OUT_OF_BOUNDS"
   | "FRAGMENT_NOT_FOUND"
   | "ENTITY_NOT_FOUND"
-  | "PIECE_CONSUME_FAILED";
+  | "PIECE_CONSUME_FAILED"
+  | "STALE_INDEX";
 
 export type VaultErrorContext = {
   filePath?: string;

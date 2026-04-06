@@ -6,8 +6,7 @@ import { createStorageService } from "../service/storage-service";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
 import type { FragmentUUID, ProjectUUID } from "@maskor/shared";
-
-const FIXTURES = join(import.meta.dir, "../../fixtures/vault");
+import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
 let vaultDir: string;
@@ -17,7 +16,7 @@ beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "maskor-service-test-"));
   vaultDir = join(tmpDir, "vault");
   configDir = join(tmpDir, "config");
-  cpSync(FIXTURES, vaultDir, { recursive: true });
+  cpSync(BASIC_VAULT, vaultDir, { recursive: true });
 });
 
 afterEach(() => {
@@ -119,7 +118,7 @@ describe("StorageService.listProjects", () => {
     const service = makeService();
 
     const secondVaultDir = join(tmpDir, "vault2");
-    cpSync(FIXTURES, secondVaultDir, { recursive: true });
+    cpSync(BASIC_VAULT, secondVaultDir, { recursive: true });
 
     await service.registerProject("Alpha", vaultDir);
     await service.registerProject("Beta", secondVaultDir);

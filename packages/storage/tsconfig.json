@@ -3,7 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@maskor/shared": ["../shared/src/index.ts"]
-    }
+    },
+    "composite": true
   },
   "references": [{ "path": "../shared" }],
   "include": ["src"]

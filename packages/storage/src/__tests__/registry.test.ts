@@ -6,8 +6,7 @@ import { createRegistryDatabase } from "../db/registry";
 import { createProjectRegistry } from "../registry/registry";
 import { LOCAL_USER_UUID } from "../registry/types";
 import type { ProjectUUID } from "@maskor/shared";
-
-const FIXTURES = join(import.meta.dir, "../../fixtures/vault");
+import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
 let vaultDir: string;
@@ -17,7 +16,7 @@ beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "maskor-registry-test-"));
   vaultDir = join(tmpDir, "vault");
   configDir = join(tmpDir, "config");
-  cpSync(FIXTURES, vaultDir, { recursive: true });
+  cpSync(BASIC_VAULT, vaultDir, { recursive: true });
 });
 
 afterEach(() => {
@@ -78,7 +77,7 @@ describe("registry.listProjects", () => {
     await registry.registerProject("Project A", vaultDir);
 
     const secondVaultDir = join(tmpDir, "vault2");
-    cpSync(FIXTURES, secondVaultDir, { recursive: true });
+    cpSync(BASIC_VAULT, secondVaultDir, { recursive: true });
     await registry.registerProject("Project B", secondVaultDir);
 
     const projects = await registry.listProjects();

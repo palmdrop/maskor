@@ -84,6 +84,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       vaultIndexerCache.delete(projectUUID);
     },
 
+    async getProject(projectUUID: ProjectUUID): Promise<ProjectRecord> {
+      const record = await registry.findByUUID(projectUUID);
+      if (!record) {
+        throw new ProjectNotFoundError(projectUUID);
+      }
+      return record;
+    },
+
     async resolveProject(projectUUID: ProjectUUID): Promise<ProjectContext> {
       const record = await registry.findByUUID(projectUUID);
       if (!record) {
@@ -110,7 +118,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           });
         }
 
-        return getVault(context).fragments.read(filePath);
+        try {
+          return await getVault(context).fragments.read(filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Fragment "${uuid}" file missing — index may be stale`,
+              { uuid, filePath },
+            );
+          }
+          throw error;
+        }
       },
 
       async readAll(context: ProjectContext): Promise<IndexedFragment[]> {
@@ -142,7 +161,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         // TODO: the vault index is stale after discard until the next rebuild(). A subsequent
         // findFilePath(uuid) will return the old (now-moved) path, causing FILE_NOT_FOUND.
         // Once the chokidar watcher is added this becomes a non-issue.
-        await getVault(context).fragments.discard(filePath);
+        try {
+          await getVault(context).fragments.discard(filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot discard: fragment "${uuid}" file missing — index may be stale`,
+              { uuid, filePath },
+            );
+          }
+          throw error;
+        }
       },
     },
 
@@ -160,7 +190,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           });
         }
 
-        return getVault(context).aspects.read(indexed.filePath);
+        try {
+          return await getVault(context).aspects.read(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Aspect "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
       },
 
       async readAll(context: ProjectContext): Promise<IndexedAspect[]> {
@@ -186,7 +227,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           });
         }
 
-        return getVault(context).notes.read(indexed.filePath);
+        try {
+          return await getVault(context).notes.read(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Note "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
       },
 
       async readAll(context: ProjectContext): Promise<IndexedNote[]> {
@@ -212,7 +264,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           });
         }
 
-        return getVault(context).references.read(indexed.filePath);
+        try {
+          return await getVault(context).references.read(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Reference "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
       },
 
       async readAll(context: ProjectContext): Promise<IndexedReference[]> {
