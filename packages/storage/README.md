@@ -141,6 +141,20 @@ Fragment files use YAML frontmatter + Dataview-compatible inline fields + markdo
 
 ---
 
+## Database
+
+Two SQLite databases are managed via Drizzle ORM. Schema lives in `src/db/*/schema.ts`; migrations in `src/db/*/migrations/`.
+
+| Script | When to use |
+|---|---|
+| `bun run db:push` | **Active development** — syncs schema directly, no migration file generated |
+| `bun run db:generate` | Pre-release — generate a migration from schema changes |
+| `bun run db:migrate` | Apply pending migration files |
+
+> During early development (no deployed instances), `db:push` is preferred. Switch to `db:generate` + `db:migrate` once real user data exists.
+
+---
+
 ## Tests
 
 ```
