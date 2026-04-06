@@ -56,7 +56,7 @@ describe("vault.fragments.read", () => {
   it("assigns uuid from frontmatter", async () => {
     const vault = createVault(config);
     const fragment = await vault.fragments.read("the-bridge.md");
-    expect(fragment.uuid as string).toBe("frag-0001-0000-0000-000000000001");
+    expect(fragment.uuid as string).toBe("f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b");
   });
 });
 

@@ -121,7 +121,7 @@ describe("fragments.findByUUID", () => {
     await indexer.rebuild();
 
     const bridge = await indexer.fragments.findByUUID(
-      "frag-0001-0000-0000-000000000001" as FragmentUUID,
+      "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID,
     );
 
     expect(bridge).not.toBeNull();
@@ -164,7 +164,7 @@ describe("fragments.findFilePath", () => {
     await indexer.rebuild();
 
     const filePath = await indexer.fragments.findFilePath(
-      "frag-0001-0000-0000-000000000001" as FragmentUUID,
+      "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID,
     );
 
     expect(filePath).not.toBeNull();
@@ -274,7 +274,7 @@ describe("soft-delete on rebuild", () => {
     await indexer.rebuild();
 
     // Verify the bridge fragment is active after first rebuild
-    const bridgeUuid = "frag-0001-0000-0000-000000000001" as FragmentUUID;
+    const bridgeUuid = "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID;
     expect(await indexer.fragments.findByUUID(bridgeUuid)).not.toBeNull();
 
     // Delete the bridge file from the temp vault

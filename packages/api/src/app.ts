@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
 import type { StorageService, ProjectContext } from "@maskor/storage";
 import { resolveProject } from "./middleware/resolve-project";
@@ -14,8 +15,10 @@ export type AppVariables = {
   projectContext?: ProjectContext;
 };
 
-export const createApp = (storageService: StorageService): Hono<{ Variables: AppVariables }> => {
-  const app = new Hono<{ Variables: AppVariables }>();
+export const createApp = (
+  storageService: StorageService,
+): OpenAPIHono<{ Variables: AppVariables }> => {
+  const app = new OpenAPIHono<{ Variables: AppVariables }>();
 
   // TODO: cors() with no args allows all origins (*). Once auth headers are added,
   // browsers will reject credentialed requests to a wildcard origin. Restrict to
@@ -30,7 +33,7 @@ export const createApp = (storageService: StorageService): Hono<{ Variables: App
   app.route("/projects", projectsRouter);
 
   // Project-scoped sub-app with resolveProject middleware
-  const projectScopedApp = new Hono<{ Variables: AppVariables }>();
+  const projectScopedApp = new OpenAPIHono<{ Variables: AppVariables }>();
   projectScopedApp.use("*", resolveProject);
   projectScopedApp.route("/fragments", fragmentsRouter);
   projectScopedApp.route("/aspects", aspectsRouter);
@@ -42,6 +45,13 @@ export const createApp = (storageService: StorageService): Hono<{ Variables: App
   // (including storageService) to the sub-app. app.mount() creates an isolated sub-application
   // and context inheritance would break.
   app.route("/projects/:projectId", projectScopedApp);
+
+  app.doc("/doc", {
+    openapi: "3.1.0",
+    info: { title: "Maskor API", version: "0.1.0" },
+  });
+
+  app.get("/ui", swaggerUI({ url: "/doc" }));
 
   return app;
 };

@@ -3,11 +3,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "@maskor/storage";
 import { createApp } from "../../app";
-import type { Hono } from "hono";
+import type { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppVariables } from "../../app";
 
 type TestApp = {
-  app: Hono<{ Variables: AppVariables }>;
+  app: OpenAPIHono<{ Variables: AppVariables }>;
   storageService: ReturnType<typeof createStorageService>;
   temporaryDirectory: string;
   cleanup: () => void;

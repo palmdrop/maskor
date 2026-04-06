@@ -1,5 +1,5 @@
 ---
-uuid: "frag-0001-0000-0000-000000000005"
+uuid: "0eb24e80-cb2a-4af2-a6f0-2536fd8776dd"
 title: "The Window"
 version: 2
 pool: unplaced

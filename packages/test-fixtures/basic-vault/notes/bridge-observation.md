@@ -1,5 +1,5 @@
 ---
-uuid: "note-0001-0000-0000-000000000001"
+uuid: "2c562d55-4f9b-4246-a2bd-89de4a860bd9"
 title: "bridge observation"
 ---
 
