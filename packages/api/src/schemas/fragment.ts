@@ -4,12 +4,12 @@ export const PoolSchema = z.enum(["unprocessed", "incomplete", "unplaced", "disc
 
 const IndexedFragmentPropertySchema = z.object({
   weight: z.number(),
-  aspectUuid: z.string().uuid().nullable(),
+  aspectUuid: z.uuid().nullable(),
 });
 
 export const FragmentSchema = z
   .object({
-    uuid: z.string().uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    uuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     title: z.string().openapi({ example: "Harbour Lights" }),
     version: z.number().int(),
     pool: PoolSchema,
@@ -31,8 +31,8 @@ export const FragmentCreateSchema = z
   .openapi("FragmentCreate");
 
 export const FragmentUUIDParamSchema = z.object({
-  projectId: z.string().uuid(),
-  fragmentId: z.string().uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+  projectId: z.uuid(),
+  fragmentId: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
 });
 
 export const FragmentPoolQuerySchema = z.object({

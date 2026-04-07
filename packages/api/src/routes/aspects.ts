@@ -5,7 +5,7 @@ import { handleStorageError } from "../errors";
 import { AspectSchema, AspectUUIDParamSchema } from "../schemas/aspect";
 import { ErrorResponseSchema } from "../schemas/error";
 
-const projectIdParamSchema = z.object({ projectId: z.string().uuid() });
+const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
 export const aspectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 

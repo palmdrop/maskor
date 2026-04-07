@@ -3,7 +3,7 @@ import type { AppVariables } from "../app";
 import { handleStorageError } from "../errors";
 import { RebuildStatsSchema } from "../schemas/vault-index";
 
-const projectIdParamSchema = z.object({ projectId: z.string().uuid() });
+const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
 export const vaultIndexRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 

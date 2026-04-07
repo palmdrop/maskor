@@ -5,7 +5,7 @@ import { handleStorageError } from "../errors";
 import { NoteSchema, NoteUUIDParamSchema } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 
-const projectIdParamSchema = z.object({ projectId: z.string().uuid() });
+const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
 export const notesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 

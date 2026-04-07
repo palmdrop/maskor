@@ -3,7 +3,7 @@ import { z } from "@hono/zod-openapi";
 const SyncWarningSchema = z.object({
   kind: z.literal("UNKNOWN_ASPECT_KEY"),
   aspectKey: z.string(),
-  fragmentUuids: z.array(z.string().uuid()),
+  fragmentUuids: z.array(z.uuid()),
 });
 
 export const RebuildStatsSchema = z

@@ -5,7 +5,7 @@ import { handleStorageError } from "../errors";
 import { ReferenceSchema, ReferenceUUIDParamSchema } from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
 
-const projectIdParamSchema = z.object({ projectId: z.string().uuid() });
+const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
 export const referencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 

@@ -11,7 +11,7 @@ import {
 } from "../schemas/fragment";
 import { ErrorResponseSchema } from "../schemas/error";
 
-const projectIdParamSchema = z.object({ projectId: z.string().uuid() });
+const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
 export const fragmentsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
