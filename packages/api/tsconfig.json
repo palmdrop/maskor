@@ -6,6 +6,5 @@
       "@maskor/storage": ["../storage/src/index.ts"]
     }
   },
-  "references": [{ "path": "../shared" }, { "path": "../storage" }],
   "include": ["src"]
 }
