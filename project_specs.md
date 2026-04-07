@@ -153,14 +153,15 @@ References to sources or inspirations. Can be attached to fragments.
 
 ## Architecture
 
-Monorepo structure with packages stored in `@packages/`. Each package should eventually be deployable as a docker container, or bundled using `bun` and run as a sidecar in `Tauri`.
+Monorepo structure with packages stored in `packages/`. Each package should eventually be deployable as a docker container, or bundled using `bun` and run as a sidecar in `Tauri`.
 
 Packages:
 
-- `@packages/api/`: Main API for managing fragments, adding metadata, sequences, aspects, arcs, etc.
-- `@packages/frontend/`: Frontend for fragment editor, sequencing and overview.
-- `@packages/importer/`: Tool for importing writing from other file formats and splitting it into fragments.
-- `@packages/processor/`: Responsible for managing queues and converting pieces to fragments, etc.
-- `@packages/sequencer/`: Contains the core sequencing and fitting logic.
-- `@packages/shared/`: Project-wide type definitions, database schemas, util functions, etc.
-- `@packages/storage/`: Writes to and watches the Obsidian vault. Also manages related databases.
+- `packages/api/`: Main API for managing fragments, adding metadata, sequences, aspects, arcs, etc.
+- `packages/frontend/`: Frontend for fragment editor, sequencing and overview.
+- `packages/importer/`: Tool for importing writing from other file formats and splitting it into fragments.
+- `packages/processor/`: Responsible for managing queues and converting pieces to fragments, etc.
+- `packages/sequencer/`: Contains the core sequencing and fitting logic.
+- `packages/shared/`: Project-wide type definitions, util functions, logger, etc.
+- `packages/storage/`: Vault I/O, SQLite index, project registry, storage service.
+- `packages/test-fixtures/`: Shared test vault fixtures used across packages.
