@@ -1,8 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { NoteUUID } from "@maskor/shared";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
-import { NoteSchema, NoteUUIDParamSchema } from "../schemas/note";
+import { throwStorageError } from "../errors";
+import { NoteSchema, IndexedNoteSchema, NoteUUIDParamSchema } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 
 const projectIdParamSchema = z.object({ projectId: z.uuid() });
@@ -17,8 +16,12 @@ const listNotesRoute = createRoute({
   request: { params: projectIdParamSchema },
   responses: {
     200: {
-      content: { "application/json": { schema: z.array(NoteSchema) } },
+      content: { "application/json": { schema: z.array(IndexedNoteSchema) } },
       description: "List of notes",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -38,6 +41,10 @@ const getNoteRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Note not found",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -46,9 +53,9 @@ notesRouter.openapi(listNotesRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const notes = await storageService.notes.readAll(projectContext);
-    return ctx.json(notes as never, 200);
+    return ctx.json(notes, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -57,9 +64,9 @@ notesRouter.openapi(getNoteRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const { noteId } = ctx.req.valid("param");
-    const note = await storageService.notes.read(projectContext, noteId as NoteUUID);
-    return ctx.json(note as never, 200);
+    const note = await storageService.notes.read(projectContext, noteId);
+    return ctx.json(note, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });

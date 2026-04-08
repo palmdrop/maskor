@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
-import type { ProjectUUID, UserUUID } from "@maskor/shared";
+import type { ProjectUUID } from "@maskor/shared";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
 import { ProjectNotFoundError } from "./errors";
@@ -11,8 +11,8 @@ const toProjectRecord = (row: typeof projectsTable.$inferSelect): ProjectRecord 
   const { uuid, userUuid, ...rest } = row;
   return {
     ...rest,
-    projectUUID: uuid as ProjectUUID,
-    userUUID: userUuid as UserUUID,
+    projectUUID: uuid,
+    userUUID: userUuid,
   };
 };
 
@@ -41,7 +41,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       }
 
       const now = new Date();
-      const projectUUID = crypto.randomUUID() as ProjectUUID;
+      const projectUUID = crypto.randomUUID();
 
       // Write manifest first: if DB insert fails after a successful manifest write, the worst case
       // is a stale manifest file — far less harmful than a ghost DB record with no manifest.

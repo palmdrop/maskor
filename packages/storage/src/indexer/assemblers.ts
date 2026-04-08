@@ -1,6 +1,6 @@
 // --- assembly helpers ---
 
-import type { AspectUUID, FragmentUUID, Pool } from "@maskor/shared/src";
+import type { Pool } from "@maskor/shared/src";
 import type { aspectsTable, fragmentsTable } from "../db/vault/schema";
 import type { IndexedAspect, IndexedFragment } from "./types";
 
@@ -14,7 +14,7 @@ export const assembleFragment = (
     weight: number;
   }>,
 ): IndexedFragment => ({
-  uuid: row.uuid as FragmentUUID,
+  uuid: row.uuid,
   title: row.title,
   version: row.version,
   pool: row.pool as Pool,
@@ -27,7 +27,7 @@ export const assembleFragment = (
     (acc, property) => {
       acc[property.aspectKey] = {
         weight: property.weight,
-        aspectUuid: property.aspectUuid as AspectUUID | null,
+        aspectUuid: property.aspectUuid,
       };
       return acc;
     },
@@ -39,7 +39,7 @@ export const assembleAspect = (
   row: typeof aspectsTable.$inferSelect,
   noteRows: Array<{ noteTitle: string }>,
 ): IndexedAspect => ({
-  uuid: row.uuid as AspectUUID,
+  uuid: row.uuid,
   key: row.key,
   category: row.category ?? undefined,
   filePath: row.filePath,

@@ -1,4 +1,4 @@
-import type { Fragment, FragmentUUID, Pool } from "@maskor/shared";
+import type { Fragment, Pool } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { inlineFieldsToProperties, propertiesToInlineFields } from "./aspect";
 import { basename } from "node:path";
@@ -38,7 +38,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string, poolOverride?: Po
   const pool = derivePool(frontmatter, poolOverride);
 
   return {
-    uuid: frontmatter.uuid as FragmentUUID,
+    uuid: frontmatter.uuid as string,
     title,
     version: typeof frontmatter.version === "number" ? frontmatter.version : 1,
     pool,

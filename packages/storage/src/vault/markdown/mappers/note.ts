@@ -1,4 +1,4 @@
-import type { Note, NoteUUID } from "@maskor/shared";
+import type { Note } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { basename } from "node:path";
 
@@ -11,7 +11,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
       : basename(filePath).replace(/\.md$/, "");
 
   return {
-    uuid: frontmatter.uuid as NoteUUID,
+    uuid: frontmatter.uuid as string,
     title,
     content: parsed.body,
   };

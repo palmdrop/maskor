@@ -1,7 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
+import { throwStorageError } from "../errors";
 import { RebuildStatsSchema } from "../schemas/vault-index";
+import { ErrorResponseSchema } from "../schemas/error";
 
 const projectIdParamSchema = z.object({ projectId: z.uuid() });
 
@@ -18,6 +19,10 @@ const rebuildIndexRoute = createRoute({
       content: { "application/json": { schema: RebuildStatsSchema } },
       description: "Rebuild complete",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -28,6 +33,6 @@ vaultIndexRouter.openapi(rebuildIndexRoute, async (ctx) => {
     const stats = await storageService.index.rebuild(projectContext);
     return ctx.json(stats, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });

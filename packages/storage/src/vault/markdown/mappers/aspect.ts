@@ -1,4 +1,4 @@
-import type { Aspect, AspectUUID, FragmentProperties } from "@maskor/shared";
+import type { Aspect, FragmentProperties } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 
 // --- Aspect file mapper ---
@@ -8,7 +8,7 @@ export const fromFile = (parsed: ParsedFile): Aspect => {
   const description = parsed.body?.trim() || undefined;
 
   return {
-    uuid: frontmatter.uuid as AspectUUID,
+    uuid: frontmatter.uuid as string,
     key: (frontmatter.key as string) ?? "",
     category: frontmatter.category as string | undefined,
     description,

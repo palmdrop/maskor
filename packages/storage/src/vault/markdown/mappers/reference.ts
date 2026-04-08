@@ -1,4 +1,4 @@
-import type { Reference, ReferenceUUID } from "@maskor/shared";
+import type { Reference } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { basename } from "node:path";
 
@@ -11,7 +11,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Reference => {
       : basename(filePath).replace(/\.md$/, "");
 
   return {
-    uuid: frontmatter.uuid as ReferenceUUID,
+    uuid: frontmatter.uuid as string,
     name,
     content: parsed.body,
   };

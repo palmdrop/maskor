@@ -1,7 +1,4 @@
-import type { Brand } from "ts-brand";
-import type { UUID } from "../utils/uuid";
-
-export type ReferenceUUID = Brand<UUID, "reference">;
+export type ReferenceUUID = string;
 
 export type Reference = {
   uuid: ReferenceUUID;

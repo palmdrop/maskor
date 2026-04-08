@@ -1,8 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { ReferenceUUID } from "@maskor/shared";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
-import { ReferenceSchema, ReferenceUUIDParamSchema } from "../schemas/reference";
+import { throwStorageError } from "../errors";
+import {
+  ReferenceSchema,
+  IndexedReferenceSchema,
+  ReferenceUUIDParamSchema,
+} from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
 
 const projectIdParamSchema = z.object({ projectId: z.uuid() });
@@ -17,8 +20,12 @@ const listReferencesRoute = createRoute({
   request: { params: projectIdParamSchema },
   responses: {
     200: {
-      content: { "application/json": { schema: z.array(ReferenceSchema) } },
+      content: { "application/json": { schema: z.array(IndexedReferenceSchema) } },
       description: "List of references",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -38,6 +45,10 @@ const getReferenceRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Reference not found",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -46,9 +57,9 @@ referencesRouter.openapi(listReferencesRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const references = await storageService.references.readAll(projectContext);
-    return ctx.json(references as never, 200);
+    return ctx.json(references, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -57,12 +68,9 @@ referencesRouter.openapi(getReferenceRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const { referenceId } = ctx.req.valid("param");
-    const reference = await storageService.references.read(
-      projectContext,
-      referenceId as ReferenceUUID,
-    );
-    return ctx.json(reference as never, 200);
+    const reference = await storageService.references.read(projectContext, referenceId);
+    return ctx.json(reference, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });

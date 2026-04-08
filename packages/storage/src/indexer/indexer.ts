@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import type { AspectUUID, FragmentUUID, NoteUUID, Pool, ReferenceUUID } from "@maskor/shared";
+import type { Pool } from "@maskor/shared";
+import type { AspectUUID, FragmentUUID } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
@@ -432,7 +433,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(isNull(notesTable.deletedAt))
           .all()
           .map((row) => ({
-            uuid: row.uuid as NoteUUID,
+            uuid: row.uuid,
             title: row.title,
             filePath: row.filePath,
           }));
@@ -446,14 +447,14 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid as NoteUUID, title: row.title, filePath: row.filePath };
+        return { uuid: row.uuid, title: row.title, filePath: row.filePath };
       },
 
-      async findByUUID(uuid: NoteUUID) {
+      async findByUUID(uuid: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid as NoteUUID, title: row.title, filePath: row.filePath };
+        return { uuid: row.uuid, title: row.title, filePath: row.filePath };
       },
     },
 
@@ -465,7 +466,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(isNull(referencesTable.deletedAt))
           .all()
           .map((row) => ({
-            uuid: row.uuid as ReferenceUUID,
+            uuid: row.uuid,
             name: row.name,
             filePath: row.filePath,
           }));
@@ -479,10 +480,10 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid as ReferenceUUID, name: row.name, filePath: row.filePath };
+        return { uuid: row.uuid, name: row.name, filePath: row.filePath };
       },
 
-      async findByUUID(uuid: ReferenceUUID) {
+      async findByUUID(uuid: string) {
         const row = vaultDatabase
           .select()
           .from(referencesTable)
@@ -490,7 +491,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid as ReferenceUUID, name: row.name, filePath: row.filePath };
+        return { uuid: row.uuid, name: row.name, filePath: row.filePath };
       },
     },
   };

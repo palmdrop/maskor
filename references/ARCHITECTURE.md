@@ -12,15 +12,15 @@ Maskor is a local-first, fragmented writing tool. The user writes in disconnecte
 
 ## Monorepo Structure
 
-| Package     | Role                                                                | Status     |
-| ----------- | ------------------------------------------------------------------- | ---------- |
-| `shared`    | Domain types, branded UUIDs, slugify util, pino logger factory      | Built      |
-| `storage`   | Vault I/O, parse/serialize, mappers, SQLite index, project registry | Built      |
-| `api`       | OpenAPIHono HTTP API — fragments, aspects, notes, references, projects, index | Built |
-| `processor` | Processing queue — enriches/validates pieces → fragments            | Scaffolded |
-| `sequencer` | Arc-fitting engine, deterministic placement with seeded noise       | Scaffolded |
-| `importer`  | Converts external files (.docx etc.) to fragments via Pandoc        | Scaffolded |
-| `frontend`  | React + Vite UI — editor, sequencer view, arc overview              | Scaffolded |
+| Package     | Role                                                                          | Status     |
+| ----------- | ----------------------------------------------------------------------------- | ---------- |
+| `shared`    | Domain types, branded UUIDs, slugify util, pino logger factory                | Built      |
+| `storage`   | Vault I/O, parse/serialize, mappers, SQLite index, project registry           | Built      |
+| `api`       | OpenAPIHono HTTP API — fragments, aspects, notes, references, projects, index | Built      |
+| `processor` | Processing queue — enriches/validates pieces → fragments                      | Scaffolded |
+| `sequencer` | Arc-fitting engine, deterministic placement with seeded noise                 | Scaffolded |
+| `importer`  | Converts external files (.docx etc.) to fragments via Pandoc                  | Scaffolded |
+| `frontend`  | React + Vite UI — editor, sequencer view, arc overview                        | Scaffolded |
 
 Scaffolded = `src/index.ts` + test stub only. No business logic yet.
 
@@ -164,14 +164,14 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 
 `getVault`, `getVaultDatabase`, `getVaultIndexer` are private. All callers go through the namespaced surface:
 
-| Namespace            | Methods                                          |
-| -------------------- | ------------------------------------------------ |
-| `service.fragments`  | `read`, `readAll`, `findByPool`, `write`, `discard` |
-| `service.aspects`    | `read`, `readAll`, `write`                       |
-| `service.notes`      | `read`, `readAll`, `write`                       |
-| `service.references` | `read`, `readAll`, `write`                       |
-| `service.pieces`     | `consumeAll`                                     |
-| `service.index`      | `rebuild`                                        |
+| Namespace            | Methods                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `service.fragments`  | `read`, `readAll`, `findByPool`, `write`, `discard`                                |
+| `service.aspects`    | `read`, `readAll`, `write`                                                         |
+| `service.notes`      | `read`, `readAll`, `write`                                                         |
+| `service.references` | `read`, `readAll`, `write`                                                         |
+| `service.pieces`     | `consumeAll`                                                                       |
+| `service.index`      | `rebuild`                                                                          |
 | (top-level)          | `registerProject`, `listProjects`, `getProject`, `resolveProject`, `removeProject` |
 
 All vault paths passed into `StorageService` methods are **relative to vault root**. A `resolvePath` guard enforces this with a `PATH_OUT_OF_BOUNDS` error on traversal attempts.
@@ -218,28 +218,28 @@ Project-scoped routes (`/projects/:projectId/*`) run `resolveProject` middleware
 
 All request/response shapes live in `packages/api/src/schemas/`:
 
-| File            | Covers                               |
-| --------------- | ------------------------------------ |
-| `fragment.ts`   | `FragmentSchema`, `FragmentCreateSchema`, query/param schemas |
-| `project.ts`    | `ProjectSchema`, `ProjectCreateSchema`, param schema |
-| `aspect.ts`     | `AspectSchema`                       |
-| `note.ts`       | `NoteSchema`                         |
-| `reference.ts`  | `ReferenceSchema`                    |
-| `error.ts`      | `ErrorResponseSchema`                |
-| `vault-index.ts`| Rebuild response schema              |
+| File             | Covers                                                        |
+| ---------------- | ------------------------------------------------------------- |
+| `fragment.ts`    | `FragmentSchema`, `FragmentCreateSchema`, query/param schemas |
+| `project.ts`     | `ProjectSchema`, `ProjectCreateSchema`, param schema          |
+| `aspect.ts`      | `AspectSchema`                                                |
+| `note.ts`        | `NoteSchema`                                                  |
+| `reference.ts`   | `ReferenceSchema`                                             |
+| `error.ts`       | `ErrorResponseSchema`                                         |
+| `vault-index.ts` | Rebuild response schema                                       |
 
 ### Error handling
 
 `packages/api/src/errors.ts` maps `VaultError` codes to HTTP responses:
 
-| `VaultErrorCode`       | HTTP  |
-| ---------------------- | ----- |
-| `FRAGMENT_NOT_FOUND`   | 404   |
-| `ENTITY_NOT_FOUND`     | 404   |
-| `STALE_INDEX`          | 409   |
-| `PATH_OUT_OF_BOUNDS`   | 400   |
-| `PROJECT_NOT_FOUND`    | 404   |
-| (unknown)              | 500   |
+| `VaultErrorCode`     | HTTP |
+| -------------------- | ---- |
+| `FRAGMENT_NOT_FOUND` | 404  |
+| `ENTITY_NOT_FOUND`   | 404  |
+| `STALE_INDEX`        | 409  |
+| `PATH_OUT_OF_BOUNDS` | 400  |
+| `PROJECT_NOT_FOUND`  | 404  |
+| (unknown)            | 500  |
 
 ---
 

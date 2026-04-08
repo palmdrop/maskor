@@ -1,8 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { isAbsolute } from "node:path";
-import type { ProjectUUID } from "@maskor/shared";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
+import { throwStorageError } from "../errors";
 import { ProjectSchema, ProjectCreateSchema, ProjectUUIDParamSchema } from "../schemas/project";
 import { ErrorResponseSchema } from "../schemas/error";
 
@@ -17,6 +16,10 @@ const listProjectsRoute = createRoute({
     200: {
       content: { "application/json": { schema: z.array(ProjectSchema) } },
       description: "List of projects",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -35,6 +38,10 @@ const getProjectRoute = createRoute({
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Project not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -56,6 +63,10 @@ const createProjectRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Invalid request body",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -71,6 +82,10 @@ const deleteProjectRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Project not found",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -78,9 +93,9 @@ projectsRouter.openapi(listProjectsRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const projects = await storageService.listProjects();
-    return ctx.json(projects as never, 200);
+    return ctx.json(projects, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -88,10 +103,10 @@ projectsRouter.openapi(getProjectRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
-    const project = await storageService.getProject(projectId as ProjectUUID);
-    return ctx.json(project as never, 200);
+    const project = await storageService.getProject(projectId);
+    return ctx.json(project, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -105,9 +120,9 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
     }
 
     const project = await storageService.registerProject(name, vaultPath);
-    return ctx.json(project as never, 201);
+    return ctx.json(project, 201);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -115,9 +130,9 @@ projectsRouter.openapi(deleteProjectRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
-    await storageService.removeProject(projectId as ProjectUUID);
-    return new Response(null, { status: 204 }) as never;
+    await storageService.removeProject(projectId);
+    return ctx.body(null, 204);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });

@@ -1,10 +1,20 @@
 import { z } from "@hono/zod-openapi";
 
-export const ReferenceSchema = z
+// List response — index layer fields
+export const IndexedReferenceSchema = z
   .object({
     uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     name: z.string().openapi({ example: "The Old Man and the Sea" }),
     filePath: z.string(),
+  })
+  .openapi("IndexedReference");
+
+// Single-get response — vault type with content
+export const ReferenceSchema = z
+  .object({
+    uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    name: z.string().openapi({ example: "The Old Man and the Sea" }),
+    content: z.string(),
   })
   .openapi("Reference");
 

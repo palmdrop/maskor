@@ -1,8 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { AspectUUID } from "@maskor/shared";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
-import { AspectSchema, AspectUUIDParamSchema } from "../schemas/aspect";
+import { throwStorageError } from "../errors";
+import { AspectSchema, IndexedAspectSchema, AspectUUIDParamSchema } from "../schemas/aspect";
 import { ErrorResponseSchema } from "../schemas/error";
 
 const projectIdParamSchema = z.object({ projectId: z.uuid() });
@@ -17,8 +16,12 @@ const listAspectsRoute = createRoute({
   request: { params: projectIdParamSchema },
   responses: {
     200: {
-      content: { "application/json": { schema: z.array(AspectSchema) } },
+      content: { "application/json": { schema: z.array(IndexedAspectSchema) } },
       description: "List of aspects",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -38,6 +41,10 @@ const getAspectRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Aspect not found",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -46,9 +53,9 @@ aspectsRouter.openapi(listAspectsRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const aspects = await storageService.aspects.readAll(projectContext);
-    return ctx.json(aspects as never, 200);
+    return ctx.json(aspects, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -57,9 +64,9 @@ aspectsRouter.openapi(getAspectRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const { aspectId } = ctx.req.valid("param");
-    const aspect = await storageService.aspects.read(projectContext, aspectId as AspectUUID);
-    return ctx.json(aspect as never, 200);
+    const aspect = await storageService.aspects.read(projectContext, aspectId);
+    return ctx.json(aspect, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });

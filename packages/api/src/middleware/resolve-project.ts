@@ -1,6 +1,5 @@
 import type { Context, Next } from "hono";
 import { ProjectNotFoundError } from "@maskor/storage";
-import type { ProjectUUID } from "@maskor/shared";
 import type { AppVariables } from "../app";
 
 export const resolveProject = async (
@@ -8,10 +7,10 @@ export const resolveProject = async (
   next: Next,
 ): Promise<Response | void> => {
   const storageService = ctx.get("storageService");
-  const projectId = ctx.req.param("projectId");
+  const projectId = ctx.req.param("projectId") ?? "";
 
   try {
-    const projectContext = await storageService.resolveProject(projectId as ProjectUUID);
+    const projectContext = await storageService.resolveProject(projectId);
     ctx.set("projectContext", projectContext);
     return next();
   } catch (error) {

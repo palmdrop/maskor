@@ -19,7 +19,10 @@ const myRoute = createRoute({
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
     200: { content: { "application/json": { schema: MyEntitySchema } }, description: "ok" },
-    404: { content: { "application/json": { schema: ErrorResponseSchema } }, description: "not found" },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "not found",
+    },
   },
 });
 

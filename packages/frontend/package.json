@@ -14,9 +14,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@maskor/shared": "workspace:*",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "@maskor/shared": "workspace:*"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

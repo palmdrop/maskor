@@ -1,7 +1,4 @@
-import type { Brand } from "ts-brand";
-import type { UUID } from "../utils/uuid";
-
-export type InterleavingUUID = Brand<UUID, "interleaving">;
+export type InterleavingUUID = string;
 
 export type Interleaving = {
   uuid: InterleavingUUID;

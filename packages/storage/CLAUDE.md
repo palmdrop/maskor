@@ -46,10 +46,10 @@ await service.removeProject(projectUUID);
 
 ## Two databases
 
-| DB | Location | Schema | Drizzle config |
-|----|----------|--------|----------------|
-| Registry | `~/.config/maskor/registry.db` | `src/db/registry/schema.ts` | `drizzle.config.ts` |
-| Vault | `<vault>/.maskor/vault.db` | `src/db/vault/schema.ts` | `drizzle.vault.config.ts` |
+| DB       | Location                       | Schema                      | Drizzle config            |
+| -------- | ------------------------------ | --------------------------- | ------------------------- |
+| Registry | `~/.config/maskor/registry.db` | `src/db/registry/schema.ts` | `drizzle.config.ts`       |
+| Vault    | `<vault>/.maskor/vault.db`     | `src/db/vault/schema.ts`    | `drizzle.vault.config.ts` |
 
 Both use `bun:sqlite` + Drizzle. Migrations run automatically at DB init via `migrate()` — never via CLI at runtime.
 

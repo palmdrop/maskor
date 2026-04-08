@@ -1,11 +1,11 @@
-import type { Fragment, FragmentUUID, Piece } from "@maskor/shared";
+import type { Fragment, Piece } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import type { VaultConfig } from "../types";
 import { VaultError } from "../types";
 import { serializeFile } from "./serialize";
 import { join } from "node:path";
 
-const deriveTitle = (piece: Piece, uuid: FragmentUUID): string => {
+const deriveTitle = (piece: Piece, uuid: string): string => {
   if (piece.title && piece.title.trim() !== "") {
     return piece.title.trim();
   }
@@ -14,7 +14,7 @@ const deriveTitle = (piece: Piece, uuid: FragmentUUID): string => {
 };
 
 export const initFragment = async (config: VaultConfig, piece: Piece): Promise<Fragment> => {
-  const uuid = crypto.randomUUID() as FragmentUUID;
+  const uuid = crypto.randomUUID();
   const title = deriveTitle(piece, uuid);
   const slug = slugify(title);
   const filePath = join(config.root, "fragments", `${slug}.md`);

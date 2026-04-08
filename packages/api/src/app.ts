@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import type { StorageService, ProjectContext } from "@maskor/storage";
 import { resolveProject } from "./middleware/resolve-project";
 import { projectsRouter } from "./routes/projects";
@@ -52,6 +53,13 @@ export const createApp = (
   });
 
   app.get("/ui", swaggerUI({ url: "/doc" }));
+
+  app.onError((error, ctx) => {
+    if (error instanceof HTTPException) {
+      return error.getResponse();
+    }
+    return ctx.json({ error: "INTERNAL_ERROR", message: "An unexpected error occurred" }, 500);
+  });
 
   return app;
 };

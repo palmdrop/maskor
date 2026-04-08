@@ -1,9 +1,7 @@
-import type { Brand } from "ts-brand";
 import type { FragmentUUID } from "./fragment";
-import type { UUID } from "../utils/uuid";
 
-export type SectionUUID = Brand<UUID, "section">;
-export type SequenceUUID = Brand<UUID, "sequence">;
+export type SectionUUID = string;
+export type SequenceUUID = string;
 
 export type Section = {
   name: string;

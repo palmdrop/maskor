@@ -26,6 +26,8 @@ Please note that all tools and technologies are not settled yet. Suggest better 
 
 This project is opinionated. It is made for personal use, but is expansive by design, to help me learn new concepts. It should span multiple services, apis, databases, ORMs, dockerfiles, file watchers, etc. I want to learn. Prioritize quick suggestions and explanations, and always ask before doing large code changes. Create plans and showcase your thinking for me to review, but be ready to just execute when I tell you to.
 
+**Plans are for review, not immediate execution.** When asked to "make a plan", write the plan and stop. Do not begin implementing until explicitly told to ("implement", "go ahead", "do it", etc.).
+
 ### Rule 2: Challenge the direction
 
 Think critically. Challenge my suggestions and suggest more better options when applicable. Push back if there's a smarter, more effective alternative to reach the goal. Always be clear about any unintended consequences or problems down the line a decision might have.

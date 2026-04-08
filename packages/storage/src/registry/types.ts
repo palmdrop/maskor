@@ -1,6 +1,6 @@
 import type { ProjectUUID, UserUUID } from "@maskor/shared";
 
-export const LOCAL_USER_UUID = "local" as UserUUID;
+export const LOCAL_USER_UUID: UserUUID = "local";
 
 export type ProjectRecord = {
   projectUUID: ProjectUUID;

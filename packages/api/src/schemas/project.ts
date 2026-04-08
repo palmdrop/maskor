@@ -10,8 +10,8 @@ export const ProjectSchema = z
     userUUID: z.string().openapi({ example: "local" }),
     name: z.string().openapi({ example: "My Writing Project" }),
     vaultPath: z.string().openapi({ example: "/Users/me/Documents/my-vault" }),
-    createdAt: z.string().datetime().openapi({ example: "2026-01-01T00:00:00.000Z" }),
-    updatedAt: z.string().datetime().openapi({ example: "2026-01-01T00:00:00.000Z" }),
+    createdAt: z.string().openapi({ example: "2026-01-01T00:00:00.000Z" }),
+    updatedAt: z.string().openapi({ example: "2026-01-01T00:00:00.000Z" }),
   })
   .openapi("Project");
 

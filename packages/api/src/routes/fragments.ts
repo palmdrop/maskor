@@ -1,10 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
-import type { Fragment, FragmentUUID, Pool } from "@maskor/shared";
+import type { Fragment, Pool } from "@maskor/shared";
 import type { AppVariables } from "../app";
-import { handleStorageError } from "../errors";
+import { throwStorageError } from "../errors";
 import {
   FragmentSchema,
+  IndexedFragmentSchema,
   FragmentCreateSchema,
   FragmentUUIDParamSchema,
   FragmentPoolQuerySchema,
@@ -26,8 +27,12 @@ const listFragmentsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: z.array(FragmentSchema) } },
+      content: { "application/json": { schema: z.array(IndexedFragmentSchema) } },
       description: "List of fragments",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -46,6 +51,10 @@ const getFragmentRoute = createRoute({
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
     },
   },
 });
@@ -68,6 +77,10 @@ const createFragmentRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Invalid request body",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -83,6 +96,10 @@ const discardFragmentRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
     },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
   },
 });
 
@@ -96,9 +113,9 @@ fragmentsRouter.openapi(listFragmentsRoute, async (ctx) => {
       ? await storageService.fragments.findByPool(projectContext, pool as Pool)
       : await storageService.fragments.readAll(projectContext);
 
-    return ctx.json(fragments as never, 200);
+    return ctx.json(fragments, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -107,13 +124,10 @@ fragmentsRouter.openapi(getFragmentRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const { fragmentId } = ctx.req.valid("param");
-    const fragment = await storageService.fragments.read(
-      projectContext,
-      fragmentId as FragmentUUID,
-    );
-    return ctx.json(fragment as never, 200);
+    const fragment = await storageService.fragments.read(projectContext, fragmentId);
+    return ctx.json(fragment, 200);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -124,7 +138,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
     const { title, content, pool } = ctx.req.valid("json");
 
     const fragment: Fragment = {
-      uuid: randomUUID() as FragmentUUID,
+      uuid: randomUUID(),
       title,
       content,
       pool: pool as Pool,
@@ -139,9 +153,9 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
 
     // NOTE: After write the index is stale until the next rebuild.
     await storageService.fragments.write(projectContext, fragment);
-    return ctx.json(fragment as never, 201);
+    return ctx.json(fragment, 201);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
 
@@ -152,9 +166,9 @@ fragmentsRouter.openapi(discardFragmentRoute, async (ctx) => {
     const { fragmentId } = ctx.req.valid("param");
 
     // NOTE: After discard the index is stale until the next rebuild.
-    await storageService.fragments.discard(projectContext, fragmentId as FragmentUUID);
-    return new Response(null, { status: 204 }) as never;
+    await storageService.fragments.discard(projectContext, fragmentId);
+    return ctx.body(null, 204);
   } catch (error) {
-    return handleStorageError(error) as never;
+    return throwStorageError(error);
   }
 });
