@@ -3,12 +3,12 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { NoteSchema, IndexedNoteSchema, NoteUUIDParamSchema } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
-
-const projectIdParamSchema = z.object({ projectId: z.uuid() });
+import { projectIdParamSchema } from "../schemas/shared";
 
 export const notesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const listNotesRoute = createRoute({
+  operationId: "listNotes",
   method: "get",
   path: "/",
   tags: ["Notes"],
@@ -27,6 +27,7 @@ const listNotesRoute = createRoute({
 });
 
 const getNoteRoute = createRoute({
+  operationId: "getNote",
   method: "get",
   path: "/{noteId}",
   tags: ["Notes"],

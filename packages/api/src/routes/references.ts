@@ -7,12 +7,12 @@ import {
   ReferenceUUIDParamSchema,
 } from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
-
-const projectIdParamSchema = z.object({ projectId: z.uuid() });
+import { projectIdParamSchema } from "../schemas/shared";
 
 export const referencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const listReferencesRoute = createRoute({
+  operationId: "listReferences",
   method: "get",
   path: "/",
   tags: ["References"],
@@ -31,6 +31,7 @@ const listReferencesRoute = createRoute({
 });
 
 const getReferenceRoute = createRoute({
+  operationId: "getReference",
   method: "get",
   path: "/{referenceId}",
   tags: ["References"],

@@ -8,6 +8,7 @@ import { ErrorResponseSchema } from "../schemas/error";
 export const projectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const listProjectsRoute = createRoute({
+  operationId: "listProjects",
   method: "get",
   path: "/",
   tags: ["Projects"],
@@ -25,6 +26,7 @@ const listProjectsRoute = createRoute({
 });
 
 const getProjectRoute = createRoute({
+  operationId: "getProject",
   method: "get",
   path: "/{projectId}",
   tags: ["Projects"],
@@ -47,6 +49,7 @@ const getProjectRoute = createRoute({
 });
 
 const createProjectRoute = createRoute({
+  operationId: "createProject",
   method: "post",
   path: "/",
   tags: ["Projects"],
@@ -71,6 +74,7 @@ const createProjectRoute = createRoute({
 });
 
 const deleteProjectRoute = createRoute({
+  operationId: "deleteProject",
   method: "delete",
   path: "/{projectId}",
   tags: ["Projects"],

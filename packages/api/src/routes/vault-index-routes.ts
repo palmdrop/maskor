@@ -1,14 +1,14 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { RebuildStatsSchema } from "../schemas/vault-index";
 import { ErrorResponseSchema } from "../schemas/error";
-
-const projectIdParamSchema = z.object({ projectId: z.uuid() });
+import { projectIdParamSchema } from "../schemas/shared";
 
 export const vaultIndexRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const rebuildIndexRoute = createRoute({
+  operationId: "rebuildIndex",
   method: "post",
   path: "/rebuild",
   tags: ["Index"],

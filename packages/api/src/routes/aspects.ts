@@ -3,12 +3,12 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { AspectSchema, IndexedAspectSchema, AspectUUIDParamSchema } from "../schemas/aspect";
 import { ErrorResponseSchema } from "../schemas/error";
-
-const projectIdParamSchema = z.object({ projectId: z.uuid() });
+import { projectIdParamSchema } from "../schemas/shared";
 
 export const aspectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const listAspectsRoute = createRoute({
+  operationId: "listAspects",
   method: "get",
   path: "/",
   tags: ["Aspects"],
@@ -27,6 +27,7 @@ const listAspectsRoute = createRoute({
 });
 
 const getAspectRoute = createRoute({
+  operationId: "getAspect",
   method: "get",
   path: "/{aspectId}",
   tags: ["Aspects"],

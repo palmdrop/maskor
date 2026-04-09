@@ -11,12 +11,12 @@ import {
   FragmentPoolQuerySchema,
 } from "../schemas/fragment";
 import { ErrorResponseSchema } from "../schemas/error";
-
-const projectIdParamSchema = z.object({ projectId: z.uuid() });
+import { projectIdParamSchema } from "../schemas/shared";
 
 export const fragmentsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const listFragmentsRoute = createRoute({
+  operationId: "listFragments",
   method: "get",
   path: "/",
   tags: ["Fragments"],
@@ -38,6 +38,7 @@ const listFragmentsRoute = createRoute({
 });
 
 const getFragmentRoute = createRoute({
+  operationId: "getFragment",
   method: "get",
   path: "/{fragmentId}",
   tags: ["Fragments"],
@@ -60,6 +61,7 @@ const getFragmentRoute = createRoute({
 });
 
 const createFragmentRoute = createRoute({
+  operationId: "createFragment",
   method: "post",
   path: "/",
   tags: ["Fragments"],
@@ -85,6 +87,7 @@ const createFragmentRoute = createRoute({
 });
 
 const discardFragmentRoute = createRoute({
+  operationId: "discardFragment",
   method: "delete",
   path: "/{fragmentId}",
   tags: ["Fragments"],
