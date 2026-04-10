@@ -1,73 +1,53 @@
-This is a monorepo for a fragmented writing app written with `bun`, `typescript` and `react`, with "Obsidian" acting as the "backend" for now. See `@project_specs.md` for more detailed information about the project.
+Monorepo for a fragmented writing app — `bun`, `typescript`, `react`, Obsidian as temp backend. See `@project_specs.md` for details.
 
-The project uses `bun`, `typescript`, a storage solution, a file watcher, processing queue (`redis`?), a fragment api, an import manager for consuming word files etc, a sequencer that helps place the fragments in the desired order, and a shared package for type declarations and utils.
-
-Possible technologies:
-
-- bun
-- typescript
-- redis
-- postgres/sqlite (or another relational database)
-- drizzle
-- obsidian
-- pandoc
-- chokidar
-- hono
-- tauri or electron
-- react
-- d3
-- remkar, mdx
-
-Please note that all tools and technologies are not settled yet. Suggest better options wherever applicable.
+Stack: bun, typescript, storage, file watcher, processing queue (redis?), fragment API, import manager (Word files), sequencer, shared package. Technologies not fully settled — suggest better options where applicable.
 
 ## Development rules
 
 ### Rule 1: Learning
 
-This project is opinionated. It is made for personal use, but is expansive by design, to help me learn new concepts. It should span multiple services, apis, databases, ORMs, dockerfiles, file watchers, etc. I want to learn. Prioritize quick suggestions and explanations, and always ask before doing large code changes. Create plans and showcase your thinking for me to review, but be ready to just execute when I tell you to.
+Personal learning project — expansive by design. Spans services, APIs, databases, ORMs, dockerfiles, file watchers. Prioritize quick suggestions and explanations. Ask before large code changes. Create plans for review, execute when told.
 
-**Plans are for review, not immediate execution.** When asked to "make a plan", write the plan and stop. Do not begin implementing until explicitly told to ("implement", "go ahead", "do it", etc.).
+**Plans are for review, not immediate execution.** When asked to "make a plan", write the plan and stop. Do not implement until explicitly told ("implement", "go ahead", "do it", etc.).
 
 ### Rule 2: Challenge the direction
 
-Think critically. Challenge my suggestions and suggest more better options when applicable. Push back if there's a smarter, more effective alternative to reach the goal. Always be clear about any unintended consequences or problems down the line a decision might have.
+Think critically. Push back when a smarter alternative exists. Always flag unintended consequences or downstream problems.
 
 ### Rule 3: Test before you respond
 
-After making changes, run the commands or test related to the changes and check for errors. Do not say "done" unless the code has been tested.
+After changes, run relevant commands/tests and check for errors. Do not say "done" unless tested.
 
 ### Rule 4: Add suggestions
 
-At the end of every major change, add, remove or update an actionable item to the `@references/SUGGESTIONS.md` file. This should be something that is missing, could be improved or that you think really needs changing. Be specific, pointing to files, errors or issues that I can observe myself.
+After every major change, add/remove/update an actionable item in `@references/SUGGESTIONS.md`. Be specific — point to files, errors, or issues that can be observed directly.
 
 ### Rule 5: Consider context
 
-Be succinct. Keep context length in mind. Prefer short, snappy sentences and remove fluff. Bullet points are better than long paragraphs. However, do not skip or exclude important information.
+Be succinct. Prefer bullets over paragraphs. No fluff. Don't skip important information.
 
 ## References
 
-Additional references, such as diagrams, documentation, etc. Add new references to the `@references/` folder.
-
-Also, keep the `packages/*/README.md` files up to date as you work on a feature. These should contain short but clear documentation of the package and its feature. Context length is important, so keep that in mind. The README should act as a quick context-refresher when working on a package.
+Add references (diagrams, docs, etc.) to `@references/`. Keep `packages/*/README.md` files up to date as you work — short, clear, context-refresher quality.
 
 ## Planning
 
-When asked to plan, echo a summary of the plan to standard output, but write the full plan to `@references/plans/<topic>`. Create a new file each time, for me to review and edit. Reference the updated plan when implementing features.
+When asked to plan: echo a summary to stdout, write the full plan to `@references/plans/<topic>` (new file each time). Reference the plan when implementing.
 
-When creating plans, always add a a `date` and `status` value below the title of the file. When the plan is implemented, update the `status` field to say "done". Also add a `implementedAt` field with the time of implementation. See format below:
+Always add `date` and `status` below the plan title:
 
 ```markdown
 **Date**: DD-MM-YYYY
 **Status**: Todo <!--Possible values: Todo, In progress, Done --->
-**Implemented At**: DD-MM-YYYY <!-- Only add this field when plan is implemented -->
+**Implemented At**: DD-MM-YYYY <!-- Only add when implemented -->
 ```
 
 ## Coding standards
 
-Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key rules:
+Full standards in `@references/CODING_STANDARDS.md`. Key rules:
 
-- No abbreviated names — `f` → `file`, `dir` → `directory`, `fm` → `frontmatter`, etc. Exceptions: `id`, `uuid`, `acc`, single-letter iterators.
-- Use spread syntax over manual property mapping. Exclude with destructuring: `const { c: _, ...rest } = original`.
+- No abbreviated names — `f` → `file`, `dir` → `directory`, `fm` → `frontmatter`. Exceptions: `id`, `uuid`, `acc`, single-letter iterators.
+- Spread syntax over manual property mapping. Exclude with destructuring: `const { c: _, ...rest } = original`.
 - Regex constants end in `_REGEX`.
 - Explicit braces on all `if` bodies. Explicit `return` in multi-line arrow functions.
 - Prefer `reduce` over `for...of` when accumulating into an object.
@@ -77,10 +57,8 @@ Full standards are in `@references/CODING_STANDARDS.md`. Always follow them. Key
 
 ## When done
 
-When you are done with implementing a `plan` or running a large task, always run `bun run test`, `bun run format` and `bun run typecheck`. If anything breaks, fix.
+After implementing a plan or large task, run `bun run test`, `bun run format`, `bun run typecheck`. Fix anything that breaks.
 
 ## Manual development
 
-I will frequently edit code manually. This might cause the code to not fully match your memory, `references/` files, `project_specs.md` or `README.md` files. If you encounter discrepancies, but no major bugs or problems, simply update the `reference/` files, memory and other documentation. Feel free to ask if you need clarification.
-
-Happy coding.
+I frequently edit code manually — this may cause discrepancies with memory, `references/`, `project_specs.md`, or `README.md`. If no major bugs, just update the docs. Ask if clarification is needed.

@@ -4,13 +4,12 @@ description: When orval uses a custom mutator, generated response types are disc
 type: project
 ---
 
-When orval generates hooks with a custom `mutator`, the generated TypeScript types wrap responses in a discriminated union envelope (`{ data: T, status: number, headers: Headers }`). However, if the custom fetch mutator returns `response.json()` directly (plain `T`), the runtime value is the raw body — not the envelope. The types and runtime are misaligned.
+Orval with a custom `mutator` generates TypeScript types wrapping responses in `{ data: T, status: number, headers: Headers }`. If the mutator returns `response.json()` directly (plain `T`), the runtime value is the raw body — types and runtime are misaligned. Consumer code accessing `.data` will get `undefined` at runtime even though TypeScript considers it valid.
 
-**Why:** Orval's envelope typing is only correct when the mutator returns the full `{ data, status, headers }` shape. If the mutator returns a plain body, consumer code accessing `.data` will get `undefined` at runtime even though TypeScript believes it is valid.
+**Why:** Envelope typing is only correct when the mutator returns the full `{ data, status, headers }` shape.
 
-**How to apply:** When reviewing or writing orval codegen setups, always verify the custom mutator's return shape matches what the generated types expect. Either:
+**How to apply:** When reviewing orval setups, verify the custom mutator's return shape matches generated types. Either:
+- Return `{ data: await response.json(), status: response.status, headers: response.headers }`, OR
+- Configure orval for flat `T` hooks via `useOptions` / `httpClient` config.
 
-- Make the mutator return `{ data: await response.json(), status: response.status, headers: response.headers }` to match the envelope, OR
-- Configure orval to generate flat `T` hooks (not envelope) using `useOptions` or `httpClient` config.
-
-Also flag that consumer code accessing `.length` or index properties on what TypeScript types as an envelope union will silently fail at runtime.
+Flag consumer code accessing `.length` or index properties on an envelope union — these will silently fail at runtime.

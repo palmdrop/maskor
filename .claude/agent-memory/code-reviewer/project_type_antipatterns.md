@@ -4,21 +4,16 @@ description: Known structural issues in packages/shared/src/types observed durin
 type: project
 ---
 
-Two confirmed critical bugs in domain types as of 2026-04-04:
+Confirmed bugs as of 2026-04-04:
 
-- `Sequence.uuid` is typed as `SectionUUID` instead of `SequenceUUID` (sequence.ts line 18)
-- `ArcUUID` brand string is `"arch"` instead of `"arc"` (arc.ts line 5)
+- `Sequence.uuid` typed as `SectionUUID` instead of `SequenceUUID` (sequence.ts:18)
+- `ArcUUID` brand string is `"arch"` not `"arc"` (arc.ts:5)
+- `project.ts` has `archUUIDs: Arc[]` — should be `arcUUIDs` (typo, noted 2026-04-05)
+- `Fragment.contentHash` is required but POST handlers set it to `""` — latently broken if watcher uses it for change detection (noted 2026-04-06)
+- `Fragment` mixes markdown-owned fields with DB-only fields (`contentHash`, `updatedAt`) — `FragmentFile`/`Fragment` split is the intended fix
+- `apis/aspects.ts` exported but blank — flag any aspects API review
+- `Action` type has `execute`/`revert` function fields — will break on serialization
 
-**Why:** Copy-paste errors that pass type-checking silently because brands are just strings.
+**Why:** Copy-paste errors and mixed-concern types that pass type-checking silently.
 
-**How to apply:** Flag any new sequence or arc related code until these are fixed. Do not assume UUID brands are correct — verify them on each review.
-
-Structural issue: `Fragment` type mixes markdown-owned fields with DB-only fields (`contentHash`, `updatedAt`) in a single type. The storage layer has to fabricate values for DB-only fields when constructing from a file. A `FragmentFile` / `Fragment` split is the intended fix.
-
-`apis/aspects.ts` is exported but blank — any review touching the aspects API should note this.
-
-`Action` type mixes data fields with executable functions (`execute`, `revert`) — will break if actions are ever serialized.
-
-`project.ts` has `archUUIDs: Arc[]` — should be `arcUUIDs: Arc[]`. Pre-existing typo, noted in 2026-04-05 review.
-
-`Fragment` has `contentHash: string` as a required field — handlers that construct `Fragment` objects from user input (e.g. `POST /fragments`) are currently setting `contentHash: ""`. This is latently broken if the indexer or watcher ever uses `contentHash` for change detection. Noted in 2026-04-06 review.
+**How to apply:** Flag sequence/arc UUID brands on each review. Don't assume brands are correct — verify them.

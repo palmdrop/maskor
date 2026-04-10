@@ -4,11 +4,9 @@ description: Package locations, roles, and build status across the monorepo
 type: project
 ---
 
-Monorepo at `/Users/antonhildingsson/Personal/maskor`. Bun workspaces in root `package.json`.
+Monorepo at `/Users/antonhildingsson/Personal/maskor`. Bun workspaces in root `package.json`. Packages reference each other via `workspace:*`.
 
-**Why:** Learning project — expansive by design. Packages reference each other via `workspace:*`.
-
-**How to apply:** Always use absolute paths. Check package status before suggesting work in a package.
+**How to apply:** Use absolute paths. Check package status before suggesting work in a package.
 
 ## Package status
 
@@ -24,7 +22,7 @@ Monorepo at `/Users/antonhildingsson/Personal/maskor`. Bun workspaces in root `p
 
 ## Key files
 
-- Root config: `/Users/antonhildingsson/Personal/maskor/package.json`
+- Root config: `package.json`
 - Shared types: `packages/shared/src/types/domain/`
 - Vault I/O: `packages/storage/src/vault/markdown/vault.ts`
 - Parse: `packages/storage/src/vault/markdown/parse.ts`
