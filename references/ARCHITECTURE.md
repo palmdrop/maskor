@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Maskor is a local-first, fragmented writing tool. The user writes in disconnected units called fragments, assigns thematic dimensions (aspects) and weights to each, then uses an arc-guided sequencer to arrange them into a coherent whole. An Obsidian-compatible markdown vault is the permanent, human-editable source of truth. A SQLite index derived from the vault enables fast queries without full file scans. All DB-only data (sequences, fitting scores, arc positions) can be lost and re-derived or re-entered; vault data cannot.
+Maskor is a local-first, fragmented writing tool. Users write in disconnected units (fragments), assign thematic dimensions (aspects) and weights, then use an arc-guided sequencer to arrange them into a coherent whole. An Obsidian-compatible markdown vault is the permanent, human-editable source of truth. A SQLite index derived from the vault enables fast queries. All DB-only data (sequences, fitting scores, arc positions) can be lost and re-derived; vault data cannot.
 
 ---
 
@@ -24,7 +24,7 @@ Maskor is a local-first, fragmented writing tool. The user writes in disconnecte
 
 Scaffolded = `src/index.ts` + test stub only. No business logic yet.
 
-Runtime: **Bun** throughout (except `frontend`, which uses Vite/Vitest). Workspaces declared in root `package.json`. TypeScript everywhere. Packages reference each other via `workspace:*`.
+Runtime: **Bun** throughout (except `frontend`, which uses Vite/Vitest). Workspaces in root `package.json`. TypeScript everywhere. Packages reference each other via `workspace:*`.
 
 ---
 
@@ -59,7 +59,7 @@ Piece    ──── transient ──→ becomes Fragment on consume
 unprocessed → incomplete → unplaced → (placed in Sequence) → discarded
 ```
 
-`placed` is not a pool value — placement is tracked in Sequence/Section, not on the fragment itself.
+`placed` is not a pool value — placement is tracked in Sequence/Section, not on the fragment.
 
 ### Field ownership
 
@@ -162,7 +162,7 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 
 ### StorageService namespaced API
 
-`getVault`, `getVaultDatabase`, `getVaultIndexer` are private. All callers go through the namespaced surface:
+`getVault`, `getVaultDatabase`, `getVaultIndexer` are private. All callers use the namespaced surface:
 
 | Namespace            | Methods                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------- |
@@ -174,9 +174,9 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 | `service.index`      | `rebuild`                                                                          |
 | (top-level)          | `registerProject`, `listProjects`, `getProject`, `resolveProject`, `removeProject` |
 
-All vault paths passed into `StorageService` methods are **relative to vault root**. A `resolvePath` guard enforces this with a `PATH_OUT_OF_BOUNDS` error on traversal attempts.
+All vault paths are **relative to vault root**. A `resolvePath` guard enforces this with `PATH_OUT_OF_BOUNDS` on traversal attempts.
 
-`FILE_NOT_FOUND` from vault is re-thrown as `STALE_INDEX` at index-derived call sites (i.e. when a path came from the index but the file is now gone).
+`FILE_NOT_FOUND` from vault is re-thrown as `STALE_INDEX` at index-derived call sites (file expected from index is now gone).
 
 | Layer      | File(s)                       | Responsibility                                 |
 | ---------- | ----------------------------- | ---------------------------------------------- |
@@ -202,21 +202,21 @@ Both use `bun:sqlite` + Drizzle ORM + migration runner.
 
 ## API Package (`@maskor/api`)
 
-Framework: **OpenAPIHono** (`@hono/zod-openapi`). All routes defined with `createRoute()` + `.openapi()` — Zod-validated request/response, spec-annotated.
+Framework: **OpenAPIHono** (`@hono/zod-openapi`). All routes use `createRoute()` + `.openapi()` — Zod-validated request/response, spec-annotated.
 
 ### Context injection pattern
 
-`StorageService` is constructed once at startup and injected via a Hono middleware into all routes:
+`StorageService` is constructed once at startup and injected via middleware:
 
 ```
 createApp(storageService) → sets ctx.var.storageService on every request
 ```
 
-Project-scoped routes (`/projects/:projectId/*`) run `resolveProject` middleware first, which calls `storageService.resolveProject(projectId)` and sets `ctx.var.projectContext`. Route handlers then call `ctx.get("projectContext")` — no direct registry access from routes.
+Project-scoped routes (`/projects/:projectId/*`) run `resolveProject` middleware first → calls `storageService.resolveProject(projectId)` → sets `ctx.var.projectContext`. Route handlers call `ctx.get("projectContext")` — no direct registry access from routes.
 
 ### Zod schemas
 
-All request/response shapes live in `packages/api/src/schemas/`:
+All request/response shapes in `packages/api/src/schemas/`:
 
 | File             | Covers                                                        |
 | ---------------- | ------------------------------------------------------------- |
@@ -245,19 +245,13 @@ All request/response shapes live in `packages/api/src/schemas/`:
 
 ## Sync Contract (summary)
 
-**Vault owns:** uuid, title, pool, version, readyStatus, notes[], references[], inline aspect weights, body content.
-
-**DB owns:** contentHash, updatedAt/syncedAt, sequence positions, fitting scores, arc positions, filePath index.
-
-**UUID assignment:** Maskor writes `uuid` into frontmatter on first detection if missing. UUID never changes. Entities tracked by UUID, not filename.
-
-**Rebuild semantics:** Full O(n) scan over all vault files. Inserts/updates all entities in a single SQLite transaction. Soft-deletes entities absent from vault (`deletedAt` timestamp). Never hard-deletes fragments — moves to `discarded` pool.
-
-**Aspect key resolution:** Inline fields (`aspect-name:: 0.8`) stored by string key. UUID resolved at rebuild via `aspectKeyToUuid` map. Unresolved keys produce `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }` — user prompted to fix, Maskor never auto-rewrites fragment files.
-
-**Conflict rules:** last-write-wins for most fields. `pool` defers to file on conflict. Stale `version` is a warning, not an error.
-
-**Stale index window:** After any write (fragment write, discard) the index is stale until the next `rebuild()`. `STALE_INDEX` is the error code when a file expected from the index is missing. Clients should treat it as retryable. This gap closes once chokidar incremental index updates are added.
+- **Vault owns:** uuid, title, pool, version, readyStatus, notes[], references[], inline aspect weights, body content.
+- **DB owns:** contentHash, updatedAt/syncedAt, sequence positions, fitting scores, arc positions, filePath index.
+- **UUID assignment:** Written into frontmatter on first detection if missing. Never changes. Entities tracked by UUID, not filename.
+- **Rebuild:** Full O(n) scan, single SQLite transaction. Inserts/updates all entities. Soft-deletes entities absent from vault (`deletedAt`). Never hard-deletes fragments — moves to `discarded`.
+- **Aspect key resolution:** Inline fields stored by string key, UUID resolved at rebuild. Unresolved keys → `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }`. Maskor never auto-rewrites fragment files.
+- **Conflicts:** Last-write-wins for most fields. `pool` defers to file. Stale `version` is a warning, not an error.
+- **Stale index window:** Index is stale after any write until next `rebuild()`. `STALE_INDEX` = file expected from index is missing. Treat as retryable. Closes once chokidar is integrated.
 
 ---
 
@@ -278,26 +272,26 @@ All request/response shapes live in `packages/api/src/schemas/`:
 | Single transaction on rebuild   | Atomicity + batched disk flushes = consistent state + performance                |
 | OpenAPIHono + Zod               | Type-safe routes, OpenAPI spec generated from code, no separate schema file      |
 | StorageService namespaced API   | Encapsulates vault/indexer internals; consumers never touch raw DB or vault      |
-| Relative vault paths            | All file operations are relative to vault root; `resolvePath` blocks traversal   |
+| Relative vault paths            | All file operations relative to vault root; `resolvePath` blocks traversal       |
 
 ### Open / unsettled
 
-- **File watcher**: Chokidar planned. Not yet integrated. `rebuild()` is the current sync mechanism. The stale-index window after writes is the main pain point.
-- **Frontend shell**: Tauri vs Electron vs browser-only — undecided. `@maskor/frontend` currently plain Vite/React with no shell.
+- **File watcher**: Chokidar planned, not yet integrated. `rebuild()` is current sync. Stale-index window after writes is the main pain point.
+- **Frontend shell**: Tauri vs Electron vs browser-only — undecided. `@maskor/frontend` is plain Vite/React with no shell.
 - **`Interleaving` type**: Stub only — `TODO: No idea how to configure this`.
-- **`Action` type**: `execute` and `revert` are function fields on the type, which cannot be serialized. Needs rethinking if actions are to be logged to disk.
-- **`Pool` as enum vs entity**: Commented-out entity version exists in `pool.ts`. Current flat union is correct; keep it unless sectioned pools with custom rules are needed.
-- **Sequences/Sections DB schema**: Not yet in `vault/schema.ts` — no tables exist for `sequences` or `sections` yet.
-- **`contentHash` on create**: `POST /fragments` sets `contentHash: ""` — no hash computed at write time. Downstream consumers must not rely on it until fixed.
+- **`Action` type**: `execute` and `revert` are function fields — not serializable if actions are logged to disk.
+- **`Pool` as enum vs entity**: Commented-out entity version exists in `pool.ts`. Current flat union is correct; revisit only if sectioned pools with custom rules are needed.
+- **Sequences/Sections DB schema**: No tables yet in `vault/schema.ts`.
+- **`contentHash` on create**: `POST /fragments` sets `contentHash: ""` — downstream consumers must not rely on it until fixed.
 
 ---
 
 ## Known Structural Debt
 
-- `rebuild()` holds all vault data in memory before writing. Acceptable now; chunked approach needed for large vaults.
+- `rebuild()` holds all vault data in memory before writing — needs chunked approach for large vaults.
 - No DB indexes on hot columns (`pool`, `deleted_at`) in `vault/schema.ts`.
-- `Piece` type has no UUID — intentional (transient), but `consumeAll` uses the filename as title, which is fragile.
-- Registry manifest recovery (`recoverFromManifests`) not implemented — DB loss cannot currently be self-healed from vault manifests.
-- After a fragment `write()` or `discard()` the index is stale until the next `rebuild()`. A subsequent read by UUID will return `STALE_INDEX`. Chokidar integration is the fix.
-- `cors()` with no args allows all origins. Must be restricted before any auth integration is added.
-- Fragment title rename via `write()` creates a new file at the new slug path — old file becomes an orphan until the next rebuild soft-deletes it.
+- `Piece` has no UUID — intentional (transient), but `consumeAll` uses filename as title, which is fragile.
+- Registry manifest recovery (`recoverFromManifests`) not implemented — DB loss cannot self-heal from vault manifests.
+- After `write()` or `discard()`, index is stale until next `rebuild()`. Subsequent read by UUID returns `STALE_INDEX`. Chokidar integration is the fix.
+- `cors()` with no args allows all origins — must be restricted before any auth integration.
+- Fragment title rename via `write()` creates a new file at the new slug path — old file becomes an orphan until next rebuild soft-deletes it.
