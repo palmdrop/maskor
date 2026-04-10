@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListFragments, getListFragmentsQueryKey } from "../api/generated/fragments/fragments";
@@ -9,10 +9,11 @@ import { FragmentDetail } from "../components/FragmentDetail";
 export function ProjectShellPage() {
   const queryClient = useQueryClient();
   const { projectId } = useParams({ from: "/projects/$projectId" });
-  const [isRebuilding, setIsRebuilding] = useState(false);
+  const hasRebuiltDatabase = useRef<string | null>(null);
 
   const [selectedFragmentId, setSelectedFragmentId] = useState<string | null>(null);
 
+  // TODO: make sure EVERYTHING waits for rebuild? use Suspense?
   const rebuildMutation = useRebuildIndex({
     mutation: {
       onSuccess: () => {
@@ -26,11 +27,13 @@ export function ProjectShellPage() {
   // Trigger a full index rebuild on every project load as a stopgap until the file watcher
   // keeps the index live. Fires twice in dev due to StrictMode — this is expected, not a bug.
   useEffect(() => {
-    if (isRebuilding) return;
-    setIsRebuilding(true);
+    if (!projectId) return;
+
+    if (hasRebuiltDatabase.current === projectId) return;
+    hasRebuiltDatabase.current = projectId;
 
     triggerRebuild({ projectId }, {});
-  }, [projectId, triggerRebuild, isRebuilding]);
+  }, [projectId, triggerRebuild]);
 
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
 

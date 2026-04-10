@@ -19,6 +19,9 @@ export default defineConfig({
           path: "src/api/fetch.ts",
           name: "customFetch",
         },
+        query: {
+          signal: true,
+        },
       },
     },
   },

@@ -8,6 +8,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { ProjectSelectionPage } from "./pages/ProjectSelectionPage";
 import { ProjectShellPage } from "./pages/ProjectShellPage";
 import { getListProjectsQueryOptions } from "./api/generated/projects/projects";
+import { queryClient } from "./queryClient";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -40,7 +41,7 @@ const projectRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([indexRoute, projectRoute]);
 
-export const router = createRouter({ routeTree, context: { queryClient: undefined! } });
+export const router = createRouter({ routeTree, context: { queryClient } });
 
 declare module "@tanstack/react-router" {
   interface Register {

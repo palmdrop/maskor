@@ -4,115 +4,113 @@
  * Maskor API
  * OpenAPI spec version: 0.1.0
  */
-import { useMutation } from "@tanstack/react-query";
+import {
+  useMutation
+} from '@tanstack/react-query';
 import type {
   MutationFunction,
   QueryClient,
   UseMutationOptions,
-  UseMutationResult,
-} from "@tanstack/react-query";
+  UseMutationResult
+} from '@tanstack/react-query';
 
-import type { ErrorResponse, RebuildStats } from "../maskorAPI.schemas";
+import type {
+  ErrorResponse,
+  RebuildStats
+} from '../maskorAPI.schemas';
 
-import { customFetch } from "../../fetch";
+import { customFetch } from '../../fetch';
+
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
 
 /**
  * @summary Trigger a full vault index rebuild
  */
 export type RebuildIndexResponse200 = {
-  data: RebuildStats;
-  status: 200;
-};
+  data: RebuildStats
+  status: 200
+}
 
 export type RebuildIndexResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
-export type RebuildIndexResponseSuccess = RebuildIndexResponse200 & {
+export type RebuildIndexResponseSuccess = (RebuildIndexResponse200) & {
   headers: Headers;
 };
-export type RebuildIndexResponseError = RebuildIndexResponse500 & {
+export type RebuildIndexResponseError = (RebuildIndexResponse500) & {
   headers: Headers;
 };
 
-export type RebuildIndexResponse = RebuildIndexResponseSuccess | RebuildIndexResponseError;
+export type RebuildIndexResponse = (RebuildIndexResponseSuccess | RebuildIndexResponseError)
 
-export const getRebuildIndexUrl = (projectId: string) => {
-  return `/projects/${projectId}/index/rebuild`;
-};
+export const getRebuildIndexUrl = (projectId: string,) => {
 
-export const RebuildIndex = async (
-  projectId: string,
-  options?: RequestInit,
-): Promise<RebuildIndexResponse> => {
-  return customFetch<RebuildIndexResponse>(getRebuildIndexUrl(projectId), {
+
+
+
+  return `/projects/${projectId}/index/rebuild`
+}
+
+export const RebuildIndex = async (projectId: string, options?: RequestInit): Promise<RebuildIndexResponse> => {
+
+  return customFetch<RebuildIndexResponse>(getRebuildIndexUrl(projectId),
+  {
     ...options,
-    method: "POST",
-  });
-};
+    method: 'POST'
 
-export const getRebuildIndexMutationOptions = <
-  TError = ErrorResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof RebuildIndex>>,
-    TError,
-    { projectId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof RebuildIndex>>,
-  TError,
-  { projectId: string },
-  TContext
-> => {
-  const mutationKey = ["rebuildIndex"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
 
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof RebuildIndex>>,
-    { projectId: string }
-  > = (props) => {
-    const { projectId } = props ?? {};
+  }
+);}
 
-    return RebuildIndex(projectId, requestOptions);
-  };
 
-  return { mutationFn, ...mutationOptions };
-};
 
-export type RebuildIndexMutationResult = NonNullable<Awaited<ReturnType<typeof RebuildIndex>>>;
 
-export type RebuildIndexMutationError = ErrorResponse;
+export const getRebuildIndexMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof RebuildIndex>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof RebuildIndex>>, TError,{projectId: string}, TContext> => {
 
-/**
+const mutationKey = ['rebuildIndex'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof RebuildIndex>>, {projectId: string}> = (props) => {
+          const {projectId} = props ?? {};
+
+          return  RebuildIndex(projectId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RebuildIndexMutationResult = NonNullable<Awaited<ReturnType<typeof RebuildIndex>>>
+
+    export type RebuildIndexMutationError = ErrorResponse
+
+    /**
  * @summary Trigger a full vault index rebuild
  */
-export const useRebuildIndex = <TError = ErrorResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof RebuildIndex>>,
-      TError,
-      { projectId: string },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof RebuildIndex>>,
-  TError,
-  { projectId: string },
-  TContext
-> => {
-  return useMutation(getRebuildIndexMutationOptions(options), queryClient);
-};
+export const useRebuildIndex = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof RebuildIndex>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof RebuildIndex>>,
+        TError,
+        {projectId: string},
+        TContext
+      > => {
+      return useMutation(getRebuildIndexMutationOptions(options), queryClient);
+    }
