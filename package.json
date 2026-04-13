@@ -12,7 +12,9 @@
     "test": "bun run test:backend && bun run test:frontend",
     "test:backend": "bun test packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer",
     "test:frontend": "bun run --cwd packages/frontend test",
-    "test:coverage": "bun test --coverage packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer && bun run --cwd packages/frontend test:coverage"
+    "test:coverage": "bun test --coverage packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer && bun run --cwd packages/frontend test:coverage",
+    "dev:api": "bun run --cwd packages/api dev",
+    "dev:frontend": "bun run --cwd packages/frontend dev"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

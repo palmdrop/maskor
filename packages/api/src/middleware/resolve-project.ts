@@ -2,6 +2,10 @@ import type { Context, Next } from "hono";
 import { ProjectNotFoundError } from "@maskor/storage";
 import type { AppVariables } from "../app";
 
+// Tracks which projects have had their initial index rebuild triggered this process lifetime.
+// Prevents redundant rebuilds on every request — the watcher keeps the index live after startup.
+const rebuiltProjects = new Set<string>();
+
 export const resolveProject = async (
   ctx: Context<{ Variables: AppVariables }>,
   next: Next,
@@ -13,10 +17,15 @@ export const resolveProject = async (
     const projectContext = await storageService.resolveProject(projectId);
     ctx.set("projectContext", projectContext);
     // Start the watcher lazily on first project access. start() is idempotent — safe to
-    // call on every request. Rebuild must be called separately before starting for a clean
-    // baseline (POST /index/rebuild), but the watcher will still catch any changes that
-    // happen after server startup even without an explicit rebuild.
+    // call on every request.
     storageService.watcher.start(projectContext);
+    // Trigger a full index rebuild once per project per process lifetime. Fire-and-forget —
+    // rebuild logs internally via StorageService. The watcher catches any changes that
+    // arrive while the rebuild is in progress.
+    if (!rebuiltProjects.has(projectContext.projectUUID)) {
+      rebuiltProjects.add(projectContext.projectUUID);
+      storageService.index.rebuild(projectContext).catch(() => {});
+    }
     return next();
   } catch (error) {
     if (error instanceof ProjectNotFoundError) {

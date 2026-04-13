@@ -10,6 +10,7 @@ import { aspectsRouter } from "./routes/aspects";
 import { notesRouter } from "./routes/notes";
 import { referencesRouter } from "./routes/references";
 import { vaultIndexRouter } from "./routes/vault-index-routes";
+import { eventsRouter } from "./routes/events";
 import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
@@ -67,6 +68,7 @@ export const createApp = (
   projectScopedApp.route("/notes", notesRouter);
   projectScopedApp.route("/references", referencesRouter);
   projectScopedApp.route("/index", vaultIndexRouter);
+  projectScopedApp.route("/events", eventsRouter);
 
   // Note: use app.route(), not app.mount(). app.route() propagates parent context variables
   // (including storageService) to the sub-app. app.mount() creates an isolated sub-application

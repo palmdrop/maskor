@@ -1,6 +1,6 @@
 import chokidar from "chokidar";
 import path from "node:path";
-import type { Logger } from "@maskor/shared";
+import type { Logger, VaultSyncEvent } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import { fragmentsTable } from "../db/vault/schema";
@@ -34,6 +34,8 @@ export type VaultWatcher = {
   // Use during rebuild() to avoid the watcher/rebuild race condition.
   pause(): void;
   resume(): void;
+  // Subscribe to vault sync events. Returns an unsubscribe function.
+  subscribe(callback: (event: VaultSyncEvent) => void): () => void;
 };
 
 // Checks whether a UUID already exists in the fragments table at a different file path.
@@ -79,6 +81,14 @@ export const createVaultWatcher = (
 
   let watcher: ReturnType<typeof chokidar.watch> | null = null;
   let isPaused = false;
+
+  const subscribers = new Set<(event: VaultSyncEvent) => void>();
+
+  const emit = (event: VaultSyncEvent): void => {
+    for (const callback of subscribers) {
+      callback(event);
+    }
+  };
 
   // --- per-entity sync handlers ---
 
@@ -161,6 +171,8 @@ export const createVaultWatcher = (
       return upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
     });
 
+    emit({ type: "fragment:synced", uuid });
+
     for (const warning of warnings) {
       log.warn(
         { aspectKey: warning.aspectKey, fragmentUuids: warning.fragmentUuids },
@@ -205,6 +217,8 @@ export const createVaultWatcher = (
       upsertAspect(tx, aspect, entityRelativePath);
     });
 
+    emit({ type: "aspect:synced", uuid });
+
     log.debug({ filePath: entityRelativePath }, "watcher: aspect synced");
   };
 
@@ -238,6 +252,8 @@ export const createVaultWatcher = (
     vaultDatabase.transaction((tx) => {
       upsertNote(tx, note, entityRelativePath, rawContent);
     });
+
+    emit({ type: "note:synced", uuid });
 
     log.debug({ filePath: entityRelativePath }, "watcher: note synced");
   };
@@ -275,6 +291,8 @@ export const createVaultWatcher = (
     vaultDatabase.transaction((tx) => {
       upsertReference(tx, reference, entityRelativePath, rawContent);
     });
+
+    emit({ type: "reference:synced", uuid });
 
     log.debug({ filePath: entityRelativePath }, "watcher: reference synced");
   };
@@ -326,6 +344,8 @@ export const createVaultWatcher = (
         upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
       }
     });
+
+    emit({ type: "pieces:consumed", count: fragments.length });
 
     log.debug({ count: fragments.length }, "watcher: pieces consumed and indexed");
   };
@@ -388,21 +408,25 @@ export const createVaultWatcher = (
         vaultDatabase.transaction((tx) => {
           softDeleteFragmentByFilePath(tx, entityRelativePath);
         });
+        emit({ type: "fragment:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(ASPECT_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, ASPECT_PREFIX);
         vaultDatabase.transaction((tx) => {
           softDeleteAspectByFilePath(tx, entityRelativePath);
         });
+        emit({ type: "aspect:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(NOTE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, NOTE_PREFIX);
         vaultDatabase.transaction((tx) => {
           softDeleteNoteByFilePath(tx, entityRelativePath);
         });
+        emit({ type: "note:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(REFERENCE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, REFERENCE_PREFIX);
         vaultDatabase.transaction((tx) => {
           softDeleteReferenceByFilePath(tx, entityRelativePath);
         });
+        emit({ type: "reference:deleted", filePath: entityRelativePath });
       }
 
       log.debug({ filePath: absolutePath }, "watcher: entity soft-deleted on unlink");
@@ -461,6 +485,13 @@ export const createVaultWatcher = (
 
     resume() {
       isPaused = false;
+    },
+
+    subscribe(callback: (event: VaultSyncEvent) => void): () => void {
+      subscribers.add(callback);
+      return () => {
+        subscribers.delete(callback);
+      };
     },
   };
 };

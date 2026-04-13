@@ -1,4 +1,13 @@
-import type { Aspect, Fragment, FragmentUUID, Logger, Note, Pool, Reference } from "@maskor/shared";
+import type {
+  Aspect,
+  Fragment,
+  FragmentUUID,
+  Logger,
+  Note,
+  Pool,
+  Reference,
+  VaultSyncEvent,
+} from "@maskor/shared";
 import type { AspectUUID, NoteUUID, ReferenceUUID, ProjectUUID } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import { join } from "node:path";
@@ -468,6 +477,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async stop(context: ProjectContext): Promise<void> {
         await getVaultWatcher(context).stop();
+      },
+
+      subscribe(context: ProjectContext, callback: (event: VaultSyncEvent) => void): () => void {
+        return getVaultWatcher(context).subscribe(callback);
       },
     },
   };
