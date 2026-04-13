@@ -9,6 +9,7 @@ Orval with a custom `mutator` generates TypeScript types wrapping responses in `
 **Why:** Envelope typing is only correct when the mutator returns the full `{ data, status, headers }` shape.
 
 **How to apply:** When reviewing orval setups, verify the custom mutator's return shape matches generated types. Either:
+
 - Return `{ data: await response.json(), status: response.status, headers: response.headers }`, OR
 - Configure orval for flat `T` hooks via `useOptions` / `httpClient` config.
 

@@ -26,3 +26,6 @@ export type {
   RebuildStats,
   SyncWarning,
 } from "./indexer/types";
+
+export { createVaultWatcher } from "./watcher";
+export type { VaultWatcher } from "./watcher";

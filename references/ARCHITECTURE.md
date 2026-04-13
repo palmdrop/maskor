@@ -92,8 +92,8 @@ unprocessed → incomplete → unplaced → (placed in Sequence) → discarded
   <vault>/references/*.md
   <vault>/pieces/         ← drop zone for raw imports
         │
-        │  (future: chokidar file watcher → incremental upserts)
-        │  (current: VaultIndexer.rebuild() — full O(n) scan)
+        │  VaultWatcher (chokidar) → incremental upserts on add/change/unlink
+        │  VaultIndexer.rebuild() — full O(n) scan on startup
         ▼
   <vault>/.maskor/vault.db    (SQLite — content index, per-vault)
         │
@@ -172,22 +172,25 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 | `service.references` | `read`, `readAll`, `write`                                                         |
 | `service.pieces`     | `consumeAll`                                                                       |
 | `service.index`      | `rebuild`                                                                          |
+| `service.watcher`    | `start`, `stop`                                                                    |
 | (top-level)          | `registerProject`, `listProjects`, `getProject`, `resolveProject`, `removeProject` |
 
 All vault paths are **relative to vault root**. A `resolvePath` guard enforces this with `PATH_OUT_OF_BOUNDS` on traversal attempts.
 
 `FILE_NOT_FOUND` from vault is re-thrown as `STALE_INDEX` at index-derived call sites (file expected from index is now gone).
 
-| Layer      | File(s)                       | Responsibility                                 |
-| ---------- | ----------------------------- | ---------------------------------------------- |
-| Parse      | `vault/markdown/parse.ts`     | raw string → `ParsedFile` (fm + inline + body) |
-| Serialize  | `vault/markdown/serialize.ts` | domain parts → markdown string                 |
-| Mappers    | `vault/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                    |
-| Vault      | `vault/markdown/vault.ts`     | File I/O via `Bun.file` / `Bun.write`          |
-| Indexer    | `indexer/indexer.ts`          | Full rebuild + DB-backed queries               |
-| Assemblers | `indexer/assemblers.ts`       | DB rows → `IndexedFragment` / `IndexedAspect`  |
-| Registry   | `registry/registry.ts`        | Project CRUD against `registry.db`             |
-| Service    | `service/storage-service.ts`  | Composes vault + indexer + registry            |
+| Layer      | File(s)                       | Responsibility                                          |
+| ---------- | ----------------------------- | ------------------------------------------------------- |
+| Parse      | `vault/markdown/parse.ts`     | raw string → `ParsedFile` (fm + inline + body)          |
+| Serialize  | `vault/markdown/serialize.ts` | domain parts → markdown string                          |
+| Mappers    | `vault/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                             |
+| Vault      | `vault/markdown/vault.ts`     | File I/O via `Bun.file` / `Bun.write`                   |
+| Indexer    | `indexer/indexer.ts`          | Full rebuild + DB-backed queries                        |
+| Upserts    | `indexer/upserts.ts`          | Per-entity upsert helpers (shared by indexer + watcher) |
+| Assemblers | `indexer/assemblers.ts`       | DB rows → `IndexedFragment` / `IndexedAspect`           |
+| Watcher    | `watcher/watcher.ts`          | Chokidar watcher → incremental DB sync                  |
+| Registry   | `registry/registry.ts`        | Project CRUD against `registry.db`                      |
+| Service    | `service/storage-service.ts`  | Composes vault + indexer + watcher + registry           |
 
 ### Two databases
 
@@ -276,7 +279,7 @@ All request/response shapes in `packages/api/src/schemas/`:
 
 ### Open / unsettled
 
-- **File watcher**: Chokidar planned, not yet integrated. `rebuild()` is current sync. Stale-index window after writes is the main pain point.
+- **File watcher**: Chokidar integrated (`VaultWatcher`). Started lazily on first project access via `resolveProject` middleware. Rebuild + start is the recommended startup sequence.
 - **Frontend shell**: Tauri vs Electron vs browser-only — undecided. `@maskor/frontend` is plain Vite/React with no shell.
 - **`Interleaving` type**: Stub only — `TODO: No idea how to configure this`.
 - **`Action` type**: `execute` and `revert` are function fields — not serializable if actions are logged to disk.
@@ -292,6 +295,6 @@ All request/response shapes in `packages/api/src/schemas/`:
 - No DB indexes on hot columns (`pool`, `deleted_at`) in `vault/schema.ts`.
 - `Piece` has no UUID — intentional (transient), but `consumeAll` uses filename as title, which is fragile.
 - Registry manifest recovery (`recoverFromManifests`) not implemented — DB loss cannot self-heal from vault manifests.
-- After `write()` or `discard()`, index is stale until next `rebuild()`. Subsequent read by UUID returns `STALE_INDEX`. Chokidar integration is the fix.
+- After `write()` or `discard()`, the inline DB update closes the stale-index window immediately. The watcher fires afterward and hash-guards to a no-op.
 - `cors()` with no args allows all origins — must be restricted before any auth integration.
 - Fragment title rename via `write()` creates a new file at the new slug path — old file becomes an orphan until next rebuild soft-deletes it.

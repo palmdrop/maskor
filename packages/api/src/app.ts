@@ -10,6 +10,7 @@ import { aspectsRouter } from "./routes/aspects";
 import { notesRouter } from "./routes/notes";
 import { referencesRouter } from "./routes/references";
 import { vaultIndexRouter } from "./routes/vault-index-routes";
+import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
   storageService: StorageService;
@@ -18,13 +19,38 @@ export type AppVariables = {
 
 export const createApp = (
   storageService: StorageService,
+  logger?: Logger,
 ): OpenAPIHono<{ Variables: AppVariables }> => {
   const app = new OpenAPIHono<{ Variables: AppVariables }>();
+
+  const log: Logger =
+    logger?.child({ module: "api" }) ??
+    ({
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {},
+      child: () => log,
+    } as unknown as Logger);
 
   // TODO: cors() with no args allows all origins (*). Once auth headers are added,
   // browsers will reject credentialed requests to a wildcard origin. Restrict to
   // the frontend origin before any auth integration.
   app.use("*", cors());
+
+  app.use("*", async (ctx, next) => {
+    const start = Date.now();
+    await next();
+    log.info(
+      {
+        method: ctx.req.method,
+        path: new URL(ctx.req.url).pathname,
+        status: ctx.res.status,
+        durationMs: Date.now() - start,
+      },
+      "request",
+    );
+  });
 
   app.use("*", (ctx, next) => {
     ctx.set("storageService", storageService);
@@ -58,6 +84,14 @@ export const createApp = (
     if (error instanceof HTTPException) {
       return error.getResponse();
     }
+    log.error(
+      {
+        method: ctx.req.method,
+        path: new URL(ctx.req.url).pathname,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "unhandled error",
+    );
     return ctx.json({ error: "INTERNAL_ERROR", message: "An unexpected error occurred" }, 500);
   });
 

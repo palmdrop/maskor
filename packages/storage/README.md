@@ -64,8 +64,9 @@ const record = await service.registerProject("My Novel", "/path/to/vault");
 // resolve a project context from its UUID (throws ProjectNotFoundError if unknown)
 const context = await service.resolveProject(record.projectUUID);
 
-// rebuild the content index (full scan; call on startup or after bulk file changes)
-await service.index.rebuild(context);
+// recommended startup sequence for a project:
+await service.index.rebuild(context); // full scan — establishes a clean baseline
+service.watcher.start(context); // begin watching for incremental changes
 
 // fragment operations
 const fragments = await service.fragments.readAll(context); // IndexedFragment[]
@@ -84,12 +85,14 @@ const references = await service.references.readAll(context);
 // piece import
 const newFragments = await service.pieces.consumeAll(context);
 
+// watcher lifecycle (usually handled by resolve-project middleware in @maskor/api)
+service.watcher.start(context); // idempotent — safe to call on every request
+await service.watcher.stop(context);
+
 // list and remove projects
 const projects = await service.listProjects();
-await service.removeProject(record.projectUUID);
+await service.removeProject(record.projectUUID); // also stops + evicts the watcher
 ```
-
-> **Index staleness:** `discard` and `write` update vault files but do not update the SQLite index. Call `service.index.rebuild(context)` after bulk mutations to bring the index back in sync. This limitation goes away when the chokidar file watcher is added.
 
 Set `MASKOR_CONFIG_DIR` to override the registry database location (useful for tests).
 
@@ -99,15 +102,17 @@ Set `MASKOR_CONFIG_DIR` to override the registry database location (useful for t
 
 ### Layers
 
-| Layer     | Files                         | Role                                                   |
-| --------- | ----------------------------- | ------------------------------------------------------ |
-| Parse     | `vault/markdown/parse.ts`     | Raw string → `ParsedFile`                              |
-| Serialize | `vault/markdown/serialize.ts` | Domain parts → markdown string                         |
-| Mappers   | `vault/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                            |
-| Vault     | `vault/markdown/vault.ts`     | File I/O via `createVault`                             |
-| Indexer   | `indexer/indexer.ts`          | DB-backed query layer via `createVaultIndexer`         |
-| Registry  | `registry/registry.ts`        | SQLite project registry via `createProjectRegistry`    |
-| Service   | `service/storage-service.ts`  | Project-aware vault factory via `createStorageService` |
+| Layer     | Files                         | Role                                                    |
+| --------- | ----------------------------- | ------------------------------------------------------- |
+| Parse     | `vault/markdown/parse.ts`     | Raw string → `ParsedFile`                               |
+| Serialize | `vault/markdown/serialize.ts` | Domain parts → markdown string                          |
+| Mappers   | `vault/markdown/mappers/*.ts` | `ParsedFile` ↔ domain types                             |
+| Vault     | `vault/markdown/vault.ts`     | File I/O via `createVault`                              |
+| Indexer   | `indexer/indexer.ts`          | DB-backed query layer via `createVaultIndexer`          |
+| Upserts   | `indexer/upserts.ts`          | Per-entity DB write helpers (used by indexer + watcher) |
+| Watcher   | `watcher/watcher.ts`          | Chokidar watcher → incremental DB sync                  |
+| Registry  | `registry/registry.ts`        | SQLite project registry via `createProjectRegistry`     |
+| Service   | `service/storage-service.ts`  | Project-aware vault factory via `createStorageService`  |
 
 ### Databases
 
@@ -126,10 +131,12 @@ caller
   └─ service.index.rebuild(context)              →  syncs vault files → SQLite index
   └─ service.fragments.readAll(context)          →  IndexedFragment[] (from index)
   └─ service.fragments.read(context, uuid)       →  Fragment (from vault file, via index lookup)
-  └─ service.fragments.discard(context, uuid)    →  moves file; index stale until next rebuild
+  └─ service.watcher.start(context)              →  watches for external vault edits going forward
+  └─ service.fragments.write(context, fragment)  →  writes file + updates index inline (no stale window)
+  └─ service.fragments.discard(context, uuid)    →  moves file + updates index inline (no stale window)
 ```
 
-`Vault` and `VaultIndexer` are internal to the service — consumers interact with UUID-based methods only. File paths never leave the service boundary.
+`Vault`, `VaultIndexer`, and `VaultWatcher` are internal to the service — consumers interact with UUID-based methods only. File paths never leave the service boundary.
 
 When hosting is introduced, a thin adapter (e.g. Hono middleware) replaces the direct `resolveProject` call — the `StorageService` interface and `ProjectContext` type stay unchanged.
 

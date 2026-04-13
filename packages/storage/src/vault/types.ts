@@ -39,9 +39,10 @@ export class VaultError extends Error {
   }
 }
 
-export type WithFilePath<T> = { entity: T; filePath: string };
+export type WithFilePath<T> = { entity: T; filePath: string; rawContent: string };
 
 export type Vault = {
+  root: string;
   fragments: {
     readAll(): Promise<Fragment[]>;
     readAllWithFilePaths(): Promise<Array<WithFilePath<Fragment>>>;

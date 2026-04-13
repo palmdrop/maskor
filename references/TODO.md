@@ -1,9 +1,11 @@
 # General
 
-- [ ] Next step: connect storage-service to API.
+- [ ] Review the latest watcher implementation, double check everything...
 
-- [ ] Figure out which framework to use for APIs... NestJS? Hono?
+- [x] Next step: connect storage-service to API.
 
-- [ ] Figure out how to handle user/project sessions in backend
+- [x] Figure out which framework to use for APIs... NestJS? Hono?
 
-- [ ] Add skills for more specific planning modes?
+- [x] Figure out how to handle user/project sessions in backend
+
+- [-] Add skills for more specific planning modes?

@@ -90,6 +90,7 @@ export const createVault = (config: VaultConfig): Vault => {
   };
 
   return {
+    root: config.root,
     fragments: {
       // filePath is relative to the fragments/ directory.
       // Active fragments: "the-bridge.md"
@@ -129,10 +130,18 @@ export const createVault = (config: VaultConfig): Vault => {
         const discardedFiles = await listMarkdownFiles(vaultPath("fragments", "discarded"));
         const discarded = discardedFiles.map((fileName) => join("discarded", fileName));
         return Promise.all(
-          [...active, ...discarded].map(async (filePath) => ({
-            entity: await this.read(filePath),
-            filePath,
-          })),
+          [...active, ...discarded].map(async (filePath) => {
+            const absolutePath = toAbsoluteFragment(filePath);
+            const rawContent = await readMarkdown(absolutePath);
+            const parsed = parseFile(rawContent);
+            const isDiscarded = filePath.startsWith("discarded" + sep);
+            const entity = fragmentMapper.fromFile(
+              parsed,
+              filePath,
+              isDiscarded ? "discarded" : undefined,
+            );
+            return { entity, filePath, rawContent };
+          }),
         );
       },
 
@@ -205,7 +214,12 @@ export const createVault = (config: VaultConfig): Vault => {
       async readAllWithFilePaths() {
         const files = await listMarkdownFiles(vaultPath("aspects"));
         return Promise.all(
-          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+          files.map(async (filePath) => {
+            const absolutePath = toAbsoluteAspect(filePath);
+            const rawContent = await readMarkdown(absolutePath);
+            const entity = aspectMapper.fromFile(parseFile(rawContent));
+            return { entity, filePath, rawContent };
+          }),
         );
       },
 
@@ -233,7 +247,12 @@ export const createVault = (config: VaultConfig): Vault => {
       async readAllWithFilePaths() {
         const files = await listMarkdownFiles(vaultPath("notes"));
         return Promise.all(
-          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+          files.map(async (filePath) => {
+            const absolutePath = toAbsoluteNote(filePath);
+            const rawContent = await readMarkdown(absolutePath);
+            const entity = noteMapper.fromFile(parseFile(rawContent), filePath);
+            return { entity, filePath, rawContent };
+          }),
         );
       },
 
@@ -261,7 +280,12 @@ export const createVault = (config: VaultConfig): Vault => {
       async readAllWithFilePaths() {
         const files = await listMarkdownFiles(vaultPath("references"));
         return Promise.all(
-          files.map(async (filePath) => ({ entity: await this.read(filePath), filePath })),
+          files.map(async (filePath) => {
+            const absolutePath = toAbsoluteReference(filePath);
+            const rawContent = await readMarkdown(absolutePath);
+            const entity = referenceMapper.fromFile(parseFile(rawContent), filePath);
+            return { entity, filePath, rawContent };
+          }),
         );
       },
 
@@ -285,6 +309,15 @@ export const createVault = (config: VaultConfig): Vault => {
             const content = await Bun.file(absolutePath).text();
             const title = fileName.replace(/\.md$/, "");
             const fragment = await initFragment(config, { title, content });
+
+            // Write the fragment to fragments/ so the watcher can re-read it for hashing.
+            const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
+            const absoluteFragmentPath = toAbsoluteFragment(`${slugify(fragment.title)}.md`);
+            await writeMarkdown(
+              absoluteFragmentPath,
+              serializeFile({ frontmatter, inlineFields, body }),
+            );
+
             results.push(fragment);
 
             try {

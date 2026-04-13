@@ -1,5 +1,7 @@
-import type { Aspect, Fragment, FragmentUUID, Note, Pool, Reference } from "@maskor/shared";
+import type { Aspect, Fragment, FragmentUUID, Logger, Note, Pool, Reference } from "@maskor/shared";
 import type { AspectUUID, NoteUUID, ReferenceUUID, ProjectUUID } from "@maskor/shared";
+import { slugify } from "@maskor/shared";
+import { join } from "node:path";
 import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
 import { VaultError } from "../vault/types";
@@ -18,13 +20,37 @@ import type {
 import { createProjectRegistry } from "../registry/registry";
 import { ProjectNotFoundError } from "../registry/errors";
 import type { ProjectContext, ProjectRecord } from "../registry/types";
+import { createVaultWatcher } from "../watcher/watcher";
+import type { VaultWatcher } from "../watcher/watcher";
+import {
+  loadAspectKeyToUuid,
+  upsertFragment,
+  upsertAspect,
+  upsertNote,
+  upsertReference,
+  softDeleteFragmentByFilePath,
+} from "../indexer/upserts";
+import { parseFile } from "../vault/markdown/parse";
+import * as fragmentMapper from "../vault/markdown/mappers/fragment";
 
 export type StorageServiceConfig = {
+  logger?: Logger;
   configDirectory?: string;
 };
 
 export const createStorageService = (config: StorageServiceConfig = {}) => {
   const configDirectory = config.configDirectory ?? DEFAULT_CONFIG_DIRECTORY;
+  const logger = config.logger;
+
+  const log =
+    logger?.child({ module: "service" }) ??
+    ({
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {},
+      child: () => log,
+    } as unknown as Logger);
 
   const database = createRegistryDatabase(configDirectory);
   const registry = createProjectRegistry(database);
@@ -32,6 +58,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const vaultCache = new Map<ProjectUUID, Vault>();
   const vaultDatabaseCache = new Map<ProjectUUID, VaultDatabase>();
   const vaultIndexerCache = new Map<ProjectUUID, VaultIndexer>();
+  const vaultWatcherCache = new Map<ProjectUUID, VaultWatcher>();
 
   // --- private helpers ---
 
@@ -39,7 +66,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const cached = vaultCache.get(context.projectUUID);
     if (cached) return cached;
 
-    const vault = createVault({ root: context.vaultPath });
+    const vault = createVault({ root: context.vaultPath, logger });
     vaultCache.set(context.projectUUID, vault);
     return vault;
   };
@@ -64,13 +91,26 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     return indexer;
   };
 
+  const getVaultWatcher = (context: ProjectContext): VaultWatcher => {
+    const cached = vaultWatcherCache.get(context.projectUUID);
+    if (cached) return cached;
+
+    const vault = getVault(context);
+    const vaultDatabase = getVaultDatabase(context);
+    const watcher = createVaultWatcher(vaultDatabase, vault, logger);
+    vaultWatcherCache.set(context.projectUUID, watcher);
+    return watcher;
+  };
+
   // --- public API ---
 
   return {
     // Registry operations (no context required)
 
     async registerProject(name: string, vaultPath: string): Promise<ProjectRecord> {
-      return registry.registerProject(name, vaultPath);
+      const record = await registry.registerProject(name, vaultPath);
+      log.info({ projectUUID: record.projectUUID, name, vaultPath }, "project registered");
+      return record;
     },
 
     async listProjects(): Promise<ProjectRecord[]> {
@@ -78,10 +118,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     },
 
     async removeProject(projectUUID: ProjectUUID): Promise<void> {
+      // Stop and evict the watcher first — a stale watcher on a removed project would
+      // hold file handles open and continue firing events against a deleted DB.
+      const watcherToStop = vaultWatcherCache.get(projectUUID);
+      if (watcherToStop) {
+        await watcherToStop.stop();
+        vaultWatcherCache.delete(projectUUID);
+        log.info({ projectUUID }, "watcher stopped for removed project");
+      }
+
       await registry.removeProject(projectUUID);
       vaultCache.delete(projectUUID);
       vaultDatabaseCache.delete(projectUUID);
       vaultIndexerCache.delete(projectUUID);
+      log.info({ projectUUID }, "project removed");
     },
 
     async getProject(projectUUID: ProjectUUID): Promise<ProjectRecord> {
@@ -122,6 +172,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           return await getVault(context).fragments.read(filePath);
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn({ uuid, filePath }, "stale index: fragment file missing on read");
             throw new VaultError(
               "STALE_INDEX",
               `Fragment "${uuid}" file missing — index may be stale`,
@@ -141,16 +192,32 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, fragment: Fragment): Promise<void> {
-        // TODO: if a fragment's title changes, write() creates a new file at the new slug path.
-        // The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
+        // TODO: title-change orphan — write() creates a new file at the new slug path if the title
+        // changed. The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
         await getVault(context).fragments.write(fragment);
+
+        // Inline DB update — closes the stale-index window for API-originated writes.
+        // The watcher will fire afterward and hash-guard to a no-op.
+        const entityRelativePath =
+          fragment.pool === "discarded"
+            ? join("discarded", `${slugify(fragment.title)}.md`)
+            : `${slugify(fragment.title)}.md`;
+
+        const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
+        const rawContent = await Bun.file(absolutePath).text();
+        const vaultDatabase = getVaultDatabase(context);
+        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+
+        vaultDatabase.transaction((tx) => {
+          upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
+        });
       },
 
       async discard(context: ProjectContext, uuid: FragmentUUID): Promise<void> {
         const indexer = getVaultIndexer(context);
-        const filePath = await indexer.fragments.findFilePath(uuid);
+        const indexed = await indexer.fragments.findByUUID(uuid);
 
-        if (!filePath) {
+        if (!indexed) {
           throw new VaultError(
             "FRAGMENT_NOT_FOUND",
             `Cannot discard: fragment "${uuid}" not found in index`,
@@ -158,21 +225,53 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           );
         }
 
-        // TODO: the vault index is stale after discard until the next rebuild(). A subsequent
-        // findFilePath(uuid) will return the old (now-moved) path, causing FILE_NOT_FOUND.
-        // Once the chokidar watcher is added this becomes a non-issue.
+        const sourceEntityRelativePath = indexed.filePath;
+        const destinationEntityRelativePath = join("discarded", `${slugify(indexed.title)}.md`);
+
         try {
-          await getVault(context).fragments.discard(filePath);
+          await getVault(context).fragments.discard(sourceEntityRelativePath);
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: sourceEntityRelativePath },
+              "stale index: fragment file missing on discard",
+            );
             throw new VaultError(
               "STALE_INDEX",
               `Cannot discard: fragment "${uuid}" file missing — index may be stale`,
-              { uuid, filePath },
+              { uuid, filePath: sourceEntityRelativePath },
             );
           }
           throw error;
         }
+
+        // Inline DB update: soft-delete old path, upsert at new discarded path.
+        const absoluteDestination = join(
+          context.vaultPath,
+          "fragments",
+          destinationEntityRelativePath,
+        );
+        const rawContent = await Bun.file(absoluteDestination).text();
+        const vaultDatabase = getVaultDatabase(context);
+        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+
+        // Parse the discarded fragment directly from rawContent — avoids a second file read.
+        const discardedFragment = fragmentMapper.fromFile(
+          parseFile(rawContent),
+          destinationEntityRelativePath,
+          "discarded",
+        );
+
+        vaultDatabase.transaction((tx) => {
+          softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          upsertFragment(
+            tx,
+            discardedFragment,
+            destinationEntityRelativePath,
+            rawContent,
+            aspectKeyToUuid,
+          );
+        });
       },
     },
 
@@ -210,6 +309,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async write(context: ProjectContext, aspect: Aspect): Promise<void> {
         await getVault(context).aspects.write(aspect);
+
+        // Inline DB update — closes the stale-index window for API-originated writes.
+        // Aspects have no contentHash column, so no file re-read is needed.
+        const entityRelativePath = `${slugify(aspect.key)}.md`;
+        const vaultDatabase = getVaultDatabase(context);
+
+        vaultDatabase.transaction((tx) => {
+          upsertAspect(tx, aspect, entityRelativePath);
+        });
       },
     },
 
@@ -247,6 +355,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async write(context: ProjectContext, note: Note): Promise<void> {
         await getVault(context).notes.write(note);
+
+        // Inline DB update — closes the stale-index window for API-originated writes.
+        const entityRelativePath = `${slugify(note.title)}.md`;
+        const absolutePath = join(context.vaultPath, "notes", entityRelativePath);
+        const rawContent = await Bun.file(absolutePath).text();
+        const vaultDatabase = getVaultDatabase(context);
+
+        vaultDatabase.transaction((tx) => {
+          upsertNote(tx, note, entityRelativePath, rawContent);
+        });
       },
     },
 
@@ -284,6 +402,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async write(context: ProjectContext, reference: Reference): Promise<void> {
         await getVault(context).references.write(reference);
+
+        // Inline DB update — closes the stale-index window for API-originated writes.
+        const entityRelativePath = `${slugify(reference.name)}.md`;
+        const absolutePath = join(context.vaultPath, "references", entityRelativePath);
+        const rawContent = await Bun.file(absolutePath).text();
+        const vaultDatabase = getVaultDatabase(context);
+
+        vaultDatabase.transaction((tx) => {
+          upsertReference(tx, reference, entityRelativePath, rawContent);
+        });
       },
     },
 
@@ -299,7 +427,47 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     index: {
       async rebuild(context: ProjectContext): Promise<RebuildStats> {
-        return getVaultIndexer(context).rebuild();
+        // Pause the watcher during rebuild to prevent the watcher/rebuild race:
+        // a watcher event mid-rebuild would be overwritten by rebuild's stale snapshot.
+        const watcher = getVaultWatcher(context);
+        watcher.pause();
+        log.info({ projectUUID: context.projectUUID }, "index rebuild started");
+        try {
+          const stats = await getVaultIndexer(context).rebuild();
+          log.info(
+            {
+              projectUUID: context.projectUUID,
+              fragments: stats.fragments,
+              aspects: stats.aspects,
+              notes: stats.notes,
+              references: stats.references,
+              durationMs: Math.round(stats.durationMs),
+              warnings: stats.warnings.length,
+            },
+            "index rebuild complete",
+          );
+          if (stats.warnings.length > 0) {
+            log.warn(
+              { projectUUID: context.projectUUID, warnings: stats.warnings },
+              "index rebuild completed with warnings",
+            );
+          }
+          return stats;
+        } finally {
+          watcher.resume();
+        }
+      },
+    },
+
+    // Watcher operations
+
+    watcher: {
+      start(context: ProjectContext): void {
+        getVaultWatcher(context).start();
+      },
+
+      async stop(context: ProjectContext): Promise<void> {
+        await getVaultWatcher(context).stop();
       },
     },
   };

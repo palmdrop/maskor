@@ -1,6 +1,8 @@
-Monorepo for a fragmented writing app — `bun`, `typescript`, `react`, Obsidian as temp backend. See `@project_specs.md` for details.
+Monorepo for a fragmented writing app — `bun`, `typescript`, `react`. See `@project_specs.md` for details.
 
-Stack: bun, typescript, storage, file watcher, processing queue (redis?), fragment API, import manager (Word files), sequencer, shared package. Technologies not fully settled — suggest better options where applicable.
+If you ever encounter anything surprising in the code base, notify the developer.
+
+This is a greenfield project with nu live users. Feel free to update schemas, paths, API endpoints, etc, without worrying.
 
 ## Development rules
 

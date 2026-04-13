@@ -1,8 +1,10 @@
 import { createStorageService } from "@maskor/storage";
 import { createApp } from "./app";
+import { createLogger } from "@maskor/shared";
 
-const storageService = createStorageService();
-const app = createApp(storageService);
+const logger = createLogger({ service: "api" });
+const storageService = createStorageService({ logger });
+const app = createApp(storageService, logger);
 
 const port = Number(process.env.PORT ?? 3001);
 
@@ -11,4 +13,4 @@ Bun.serve({
   fetch: app.fetch,
 });
 
-console.log(`Maskor API running on http://localhost:${port}`);
+logger.info({ port }, "Maskor API is running");

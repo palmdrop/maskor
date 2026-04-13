@@ -158,30 +158,36 @@ All `Sequence` and `Section` data (including fragment positions) is DB-only. No 
 ## Sync Rules
 
 **File created outside Maskor**
+
 - Watcher creates a DB record.
 - If `uuid` missing, Maskor assigns one and writes it back.
 - If `uuid` collides, Maskor assigns a new one, writes it back, logs a warning.
 
 **File edited outside Maskor**
+
 - Watcher detects change via `contentHash` comparison and filesystem events.
 - Frontmatter and inline fields re-synced to DB.
 - DB-only fields (scores, positions) recalculated as needed.
 - Unknown aspect names produce a warning, not a hard error.
 
 **File renamed**
+
 - Entities tracked by `uuid`, not filename — a rename updates only the DB path record.
 - Title references in other entities' frontmatter are updated in DB. Maskor does not rewrite other files' frontmatter — stale title references may persist until those files are next synced.
 
 **File deleted**
+
 - Fragment moved to `discarded` pool, not hard-deleted.
 - Notes and references soft-deleted in DB. No automatic hard deletion.
 
 **Conflict (Maskor and user edit frontmatter concurrently)**
+
 - Last-write-wins for most fields.
 - `pool` conflict: Maskor defers to file, logs conflict.
 - `version`: Maskor always increments on write; stale version in file triggers a warning, not a hard error.
 
 **DB lost or corrupted**
+
 - Full rebuild recovers all markdown-owned properties.
 - DB-only properties (sequence positions, fitting scores, arc positions) are lost — must be recalculated or re-entered.
 

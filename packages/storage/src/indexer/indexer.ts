@@ -20,8 +20,8 @@ import type {
   SyncWarning,
   VaultIndexer,
 } from "./types";
-import { hashContent } from "../utils/hash";
 import { assembleAspect, assembleFragment } from "./assemblers";
+import { upsertAspect, upsertFragment, upsertNote, upsertReference } from "./upserts";
 
 // --- indexer factory ---
 
@@ -42,58 +42,21 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     ]);
 
     // Build aspect key → UUID resolution map (used when indexing fragment properties).
-    const aspectKeyToUuid = new Map<string, AspectUUID>();
-    for (const { entity: aspect } of aspectEntries) {
-      aspectKeyToUuid.set(aspect.key, aspect.uuid);
-    }
-
-    // Collect unresolved aspect keys before entering the transaction.
-    const unresolvedKeys = new Map<string, Set<FragmentUUID>>();
-    for (const { entity: fragment } of fragmentEntries) {
-      for (const aspectKey of Object.keys(fragment.properties)) {
-        if (!aspectKeyToUuid.has(aspectKey)) {
-          if (!unresolvedKeys.has(aspectKey)) {
-            unresolvedKeys.set(aspectKey, new Set());
-          }
-          unresolvedKeys.get(aspectKey)!.add(fragment.uuid);
-        }
-      }
-    }
+    const aspectKeyToUuid = aspectEntries.reduce((map, { entity: aspect }) => {
+      map.set(aspect.key, aspect.uuid as AspectUUID);
+      return map;
+    }, new Map<string, AspectUUID>());
 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
     // rebuild is interrupted. It also batches all fsyncs for a significant performance win.
     const syncedAt = new Date();
+    const fragmentWarnings: SyncWarning[] = [];
 
     vaultDatabase.transaction((tx) => {
       // 1. Upsert aspects.
       for (const { entity: aspect, filePath } of aspectEntries) {
-        tx.insert(aspectsTable)
-          .values({
-            uuid: aspect.uuid,
-            key: aspect.key,
-            category: aspect.category ?? null,
-            filePath,
-            deletedAt: null,
-            syncedAt,
-          })
-          .onConflictDoUpdate({
-            target: aspectsTable.uuid,
-            set: {
-              key: aspect.key,
-              category: aspect.category ?? null,
-              filePath,
-              deletedAt: null,
-              syncedAt,
-            },
-          })
-          .run();
-
-        tx.delete(aspectNotesTable).where(eq(aspectNotesTable.aspectUuid, aspect.uuid)).run();
-
-        for (const noteTitle of aspect.notes) {
-          tx.insert(aspectNotesTable).values({ aspectUuid: aspect.uuid, noteTitle }).run();
-        }
+        upsertAspect(tx, aspect, filePath);
       }
 
       // Soft-delete aspects absent from vault.
@@ -113,22 +76,8 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       }
 
       // 2. Upsert notes.
-      for (const { entity: note, filePath } of noteEntries) {
-        const contentHash = hashContent(note.content);
-        tx.insert(notesTable)
-          .values({
-            uuid: note.uuid,
-            title: note.title,
-            contentHash,
-            filePath,
-            deletedAt: null,
-            syncedAt,
-          })
-          .onConflictDoUpdate({
-            target: notesTable.uuid,
-            set: { title: note.title, contentHash, filePath, deletedAt: null, syncedAt },
-          })
-          .run();
+      for (const { entity: note, filePath, rawContent } of noteEntries) {
+        upsertNote(tx, note, filePath, rawContent);
       }
 
       const activeNoteUuids = noteEntries.map(({ entity }) => entity.uuid as string);
@@ -145,22 +94,8 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       }
 
       // 3. Upsert references.
-      for (const { entity: reference, filePath } of referenceEntries) {
-        const contentHash = hashContent(reference.content);
-        tx.insert(referencesTable)
-          .values({
-            uuid: reference.uuid,
-            name: reference.name,
-            contentHash,
-            filePath,
-            deletedAt: null,
-            syncedAt,
-          })
-          .onConflictDoUpdate({
-            target: referencesTable.uuid,
-            set: { name: reference.name, contentHash, filePath, deletedAt: null, syncedAt },
-          })
-          .run();
+      for (const { entity: reference, filePath, rawContent } of referenceEntries) {
+        upsertReference(tx, reference, filePath, rawContent);
       }
 
       const activeReferenceUuids = referenceEntries.map(({ entity }) => entity.uuid as string);
@@ -182,60 +117,9 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       }
 
       // 4. Upsert fragments last — aspect resolution map is ready.
-      for (const { entity: fragment, filePath } of fragmentEntries) {
-        const contentHash = hashContent(fragment.content);
-        tx.insert(fragmentsTable)
-          .values({
-            uuid: fragment.uuid,
-            title: fragment.title,
-            version: fragment.version,
-            pool: fragment.pool,
-            readyStatus: fragment.readyStatus,
-            contentHash,
-            filePath,
-            deletedAt: null,
-            syncedAt,
-          })
-          .onConflictDoUpdate({
-            target: fragmentsTable.uuid,
-            set: {
-              title: fragment.title,
-              version: fragment.version,
-              pool: fragment.pool,
-              readyStatus: fragment.readyStatus,
-              contentHash,
-              filePath,
-              deletedAt: null,
-              syncedAt,
-            },
-          })
-          .run();
-
-        tx.delete(fragmentNotesTable)
-          .where(eq(fragmentNotesTable.fragmentUuid, fragment.uuid))
-          .run();
-        for (const noteTitle of fragment.notes) {
-          tx.insert(fragmentNotesTable).values({ fragmentUuid: fragment.uuid, noteTitle }).run();
-        }
-
-        tx.delete(fragmentReferencesTable)
-          .where(eq(fragmentReferencesTable.fragmentUuid, fragment.uuid))
-          .run();
-        for (const referenceName of fragment.references) {
-          tx.insert(fragmentReferencesTable)
-            .values({ fragmentUuid: fragment.uuid, referenceName })
-            .run();
-        }
-
-        tx.delete(fragmentPropertiesTable)
-          .where(eq(fragmentPropertiesTable.fragmentUuid, fragment.uuid))
-          .run();
-        for (const [aspectKey, { weight }] of Object.entries(fragment.properties)) {
-          const resolvedUuid = aspectKeyToUuid.get(aspectKey) ?? null;
-          tx.insert(fragmentPropertiesTable)
-            .values({ fragmentUuid: fragment.uuid, aspectKey, aspectUuid: resolvedUuid, weight })
-            .run();
-        }
+      for (const { entity: fragment, filePath, rawContent } of fragmentEntries) {
+        const warnings = upsertFragment(tx, fragment, filePath, rawContent, aspectKeyToUuid);
+        fragmentWarnings.push(...warnings);
       }
 
       // Soft-delete fragments absent from vault.
@@ -258,23 +142,13 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       }
     });
 
-    // 5. Emit one warning per unresolved aspect key.
-    const warnings: SyncWarning[] = [];
-    for (const [aspectKey, uuidSet] of unresolvedKeys.entries()) {
-      warnings.push({
-        kind: "UNKNOWN_ASPECT_KEY",
-        aspectKey,
-        fragmentUuids: Array.from(uuidSet),
-      });
-    }
-
     return {
       fragments: fragmentEntries.length,
       aspects: aspectEntries.length,
       notes: noteEntries.length,
       references: referenceEntries.length,
       durationMs: performance.now() - startTime,
-      warnings,
+      warnings: fragmentWarnings,
     };
   };
 

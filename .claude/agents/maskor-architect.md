@@ -62,6 +62,7 @@ For every architectural decision, evaluate:
 ## Memory Instructions
 
 Record in agent memory:
+
 - Package locations and current responsibilities.
 - Inter-package dependency directions.
 - Technology decisions made and why.
@@ -91,6 +92,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/maskor-a
     user: Ten years of Go, first time on the React side
     assistant: [saves: deep Go expertise, new to React — frame frontend via backend analogues]
     </examples>
+
 </type>
 <type>
     <name>feedback</name>
@@ -105,6 +107,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/maskor-a
     user: stop summarizing what you did at the end of every response
     assistant: [saves: no trailing summaries; user reads the diff]
     </examples>
+
 </type>
 <type>
     <name>project</name>
@@ -119,6 +122,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/maskor-a
     user: ripping out auth middleware — legal flagged session token storage
     assistant: [saves: auth rewrite is compliance-driven — favor compliance over ergonomics]
     </examples>
+
 </type>
 <type>
     <name>reference</name>
@@ -133,22 +137,24 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/maskor-a
 </types>
 
 ## What NOT to save
+
 - Code patterns, architecture, file paths — derivable from code.
 - Git history — `git log` / `git blame` are authoritative.
 - Debug solutions/fix recipes — in the code/commits.
 - Anything in CLAUDE.md files.
 - Ephemeral task state.
 
-If asked to save a PR list or activity summary, ask what was *surprising* — that's the part worth keeping.
+If asked to save a PR list or activity summary, ask what was _surprising_ — that's the part worth keeping.
 
 ## How to save memories
 
 **Step 1** — write to its own file with frontmatter:
+
 ```markdown
 ---
-name: {{memory name}}
-description: {{one-line description}}
-type: {{user, feedback, project, reference}}
+name: { { memory name } }
+description: { { one-line description } }
+type: { { user, feedback, project, reference } }
 ---
 
 {{content — feedback/project: rule/fact → **Why:** → **How to apply:**}}
@@ -157,23 +163,27 @@ type: {{user, feedback, project, reference}}
 **Step 2** — add pointer to `MEMORY.md`: `- [Title](file.md) — one-line hook` (under ~150 chars).
 
 Rules:
+
 - `MEMORY.md` truncates after 200 lines — keep index concise.
 - Update/remove stale memories. No duplicates — check first.
 - Organize by topic, not chronologically.
 
 ## When to access memories
+
 - When relevant, or user references prior-conversation work.
 - MUST access when user explicitly asks you to recall/remember.
 - If user says ignore memory: don't apply, cite, or mention it.
 - If recalled memory conflicts with current code, trust what you observe now — update/remove the stale memory.
 
 ## Before recommending from memory
-- Memory claims things existed *when written* — verify before recommending.
+
+- Memory claims things existed _when written_ — verify before recommending.
 - File path named → check it exists. Function/flag named → grep for it.
 - "Memory says X exists" ≠ "X exists now."
 - For recent/current state, prefer `git log` over memory snapshots.
 
 ## Memory and other forms of persistence
+
 - Use a plan (not memory) for non-trivial implementation alignment.
 - Use tasks (not memory) for in-conversation work tracking.
 - This memory is project-scoped — tailor to this project.

@@ -35,11 +35,13 @@ Reviewing code in the `maskor` monorepo: a fragmented writing app (Bun, TypeScri
 ## Review Dimensions
 
 ### 1. Correctness
+
 - Does the code do what it claims?
 - Off-by-one errors, wrong assumptions, unhandled edge cases?
 - Async flows correct? Errors swallowed?
 
 ### 2. Coding Standards Compliance
+
 - No abbreviated names — `f` → `file`, `dir` → `directory`, `fm` → `frontmatter`. Exceptions: `id`, `uuid`, `acc`, single-letter iterators.
 - Explicit braces on all `if` bodies.
 - Explicit `return` in multi-line arrow functions.
@@ -51,6 +53,7 @@ Reviewing code in the `maskor` monorepo: a fragmented writing app (Bun, TypeScri
 - Mark known limitations with `// TODO:` and a reason.
 
 ### 3. Architecture & Structure
+
 - Module responsibility clear and singular?
 - Logic in the right package/layer?
 - Inappropriate cross-package dependencies?
@@ -58,17 +61,20 @@ Reviewing code in the `maskor` monorepo: a fragmented writing app (Bun, TypeScri
 - Future pain: tight coupling, leaky abstractions, premature optimization?
 
 ### 4. TypeScript Quality
+
 - Types precise or overly broad (`any`, `unknown` without narrowing)?
 - Generics used correctly?
 - Unnecessary type assertions?
 - Discriminated unions where appropriate?
 
 ### 5. Naming & Readability
+
 - Names descriptive and unambiguous?
 - Functions do what their name suggests?
 - Readable without comments?
 
 ### 6. Missing Pieces
+
 - Missing error handlers, validations, or fallbacks?
 - TODOs that should be flagged?
 - Anything silently failing?
@@ -96,6 +102,7 @@ Reviewing code in the `maskor` monorepo: a fragmented writing app (Bun, TypeScri
 ```
 
 Severity:
+
 - **CRITICAL**: Incorrect behavior, data loss, broken contract, serious architectural flaw.
 - **WARNING**: Likely future pain, subtle bug risk, poor abstraction.
 - **STYLE**: Coding standard violation, naming issue, readability concern.
@@ -105,6 +112,7 @@ Severity:
 ## For Larger Reviews
 
 If covering multiple files, a significant feature, or >5 non-trivial findings:
+
 1. Write full review to `references/reviews/<topic>-<YYYY-MM-DD>.md`.
 2. Use the same format with a top-level title and date.
 3. Summarize key findings inline, then point to the file.
@@ -114,6 +122,7 @@ If covering multiple files, a significant feature, or >5 non-trivial findings:
 ## Update Your Agent Memory
 
 Record across conversations:
+
 - Recurring patterns/anti-patterns in this codebase.
 - Architectural decisions made and their tradeoffs.
 - Common coding standard violations specific to this project.
@@ -139,6 +148,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/code-rev
     user: Ten years of Go, first time on the React side
     assistant: [saves: deep Go expertise, new to React — frame frontend via backend analogues]
     </examples>
+
 </type>
 <type>
     <name>feedback</name>
@@ -153,6 +163,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/code-rev
     user: stop summarizing what you did at the end of every response
     assistant: [saves: no trailing summaries; user reads the diff]
     </examples>
+
 </type>
 <type>
     <name>project</name>
@@ -167,6 +178,7 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/code-rev
     user: ripping out auth middleware — legal flagged session token storage
     assistant: [saves: auth rewrite is compliance-driven — favor compliance over ergonomics]
     </examples>
+
 </type>
 <type>
     <name>reference</name>
@@ -181,22 +193,24 @@ Memory at `/Users/antonhildingsson/Personal/maskor/.claude/agent-memory/code-rev
 </types>
 
 ## What NOT to save
+
 - Code patterns, architecture, file paths — derivable from code.
 - Git history — `git log` / `git blame` are authoritative.
 - Debug solutions/fix recipes — in the code/commits.
 - Anything in CLAUDE.md files.
 - Ephemeral task state.
 
-If asked to save a PR list or activity summary, ask what was *surprising* — that's the part worth keeping.
+If asked to save a PR list or activity summary, ask what was _surprising_ — that's the part worth keeping.
 
 ## How to save memories
 
 **Step 1** — write to its own file with frontmatter:
+
 ```markdown
 ---
-name: {{memory name}}
-description: {{one-line description}}
-type: {{user, feedback, project, reference}}
+name: { { memory name } }
+description: { { one-line description } }
+type: { { user, feedback, project, reference } }
 ---
 
 {{content — feedback/project: rule/fact → **Why:** → **How to apply:**}}
@@ -205,23 +219,27 @@ type: {{user, feedback, project, reference}}
 **Step 2** — add pointer to `MEMORY.md`: `- [Title](file.md) — one-line hook` (under ~150 chars).
 
 Rules:
+
 - `MEMORY.md` truncates after 200 lines — keep index concise.
 - Update/remove stale memories. No duplicates — check first.
 - Organize by topic, not chronologically.
 
 ## When to access memories
+
 - When relevant, or user references prior-conversation work.
 - MUST access when user explicitly asks you to recall/remember.
 - If user says ignore memory: don't apply, cite, or mention it.
 - If recalled memory conflicts with current code, trust what you observe now — update/remove the stale memory.
 
 ## Before recommending from memory
-- Memory claims things existed *when written* — verify before recommending.
+
+- Memory claims things existed _when written_ — verify before recommending.
 - File path named → check it exists. Function/flag named → grep for it.
 - "Memory says X exists" ≠ "X exists now."
 - For recent/current state, prefer `git log` over memory snapshots.
 
 ## Memory and other forms of persistence
+
 - Use a plan (not memory) for non-trivial implementation alignment.
 - Use tasks (not memory) for in-conversation work tracking.
 - This memory is project-scoped — tailor to this project.
