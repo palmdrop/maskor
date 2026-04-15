@@ -94,7 +94,7 @@ describe("GET /projects/:projectId/fragments/:fragmentId", () => {
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments/${uuid}`,
     );
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(503);
     const body = (await response.json()) as ApiError;
     expect(body.hint).toBe("index_may_be_stale");
   });

@@ -395,7 +395,7 @@ export const createVaultWatcher = (
     }
   };
 
-  const handleUnlink = (absolutePath: string): void => {
+  const handleUnlink = async (absolutePath: string): Promise<void> => {
     if (isPaused) return;
     if (!absolutePath.endsWith(".md")) return;
 

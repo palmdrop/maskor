@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useListFragments } from "../api/generated/fragments/fragments";
-import { FragmentList } from "../components/FragmentList";
-import { FragmentDetail } from "../components/FragmentDetail";
+import { FragmentList } from "../components/fragments/FragmentList";
+import { FragmentDetail } from "../components/fragments/FragmentDetail";
 import { useVaultEvents } from "../hooks/useVaultEvents";
 
 export function ProjectShellPage() {

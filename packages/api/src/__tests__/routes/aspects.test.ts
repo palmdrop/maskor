@@ -3,7 +3,7 @@ import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 
-type EntityShape = { uuid: string };
+type EntityShape = { uuid: string; key?: string };
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -24,7 +24,7 @@ describe("GET /projects/:projectId/aspects", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as EntityShape[];
     expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBeGreaterThan(0);
+    expect(body.some((aspect) => aspect.key === "city")).toBe(true);
   });
 });
 
@@ -45,6 +45,57 @@ describe("GET /projects/:projectId/aspects/:aspectId", () => {
   it("returns 404 for an unknown aspect UUID", async () => {
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/aspects/00000000-0000-0000-0000-000000000000`,
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("POST /projects/:projectId/aspects", () => {
+  it("creates and returns a new aspect with 201", async () => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/aspects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "pacing", category: "style", notes: [] }),
+    });
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as EntityShape & { key: string };
+    expect(body.uuid).toBeDefined();
+    expect(body.key).toBe("pacing");
+  });
+
+  it("returns 400 when key is missing", async () => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/aspects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: "style" }),
+    });
+    expect(response.status).toBe(400);
+  });
+});
+
+describe("DELETE /projects/:projectId/aspects/:aspectId", () => {
+  it("deletes an aspect and returns 204", async () => {
+    const createResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "to-delete-aspect", notes: [] }),
+      },
+    );
+    const created = (await createResponse.json()) as EntityShape;
+
+    const deleteResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${created.uuid}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(204);
+  });
+
+  it("returns 404 for an unknown aspect UUID", async () => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/00000000-0000-0000-0000-000000000000`,
+      { method: "DELETE" },
     );
     expect(response.status).toBe(404);
   });

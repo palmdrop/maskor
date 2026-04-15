@@ -61,13 +61,13 @@ Mount under `/projects/:projectId/`. The `resolveProject` middleware (`src/middl
 
 ## Error handling
 
-All storage errors go through `handleStorageError` from `src/errors.ts`. Never scatter `instanceof` checks across route files.
+All storage errors go through `throwStorageError` from `src/errors.ts`. Never scatter `instanceof` checks across route files.
 
 ```ts
 try {
   // ...
 } catch (error) {
-  return handleStorageError(error, ctx);
+  return throwStorageError(error);
 }
 ```
 

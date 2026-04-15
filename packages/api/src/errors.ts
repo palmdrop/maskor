@@ -25,10 +25,14 @@ export const throwStorageError = (error: unknown): never => {
           res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
         });
       case "STALE_INDEX":
-        throw new HTTPException(404, {
+        throw new HTTPException(503, {
           res: errorResponse(
-            { error: "NOT_FOUND", message: error.message, hint: "index_may_be_stale" },
-            404,
+            {
+              error: "SERVICE_UNAVAILABLE",
+              message: "Index is temporarily out of sync, please retry.",
+              hint: "index_may_be_stale",
+            },
+            503,
           ),
         });
       default:

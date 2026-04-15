@@ -1,4 +1,5 @@
-import { useGetFragment } from "../api/generated/fragments/fragments";
+import { useGetFragment } from "../../api/generated/fragments/fragments";
+import { FragmentMetadata } from "./FragmentMetadata";
 
 type Props = {
   projectId: string;
@@ -25,7 +26,7 @@ export function FragmentDetail({ projectId, fragmentId }: Props) {
   return (
     <div>
       <h2>{fragment.title}</h2>
-      <p>Pool: {fragment.pool}</p>
+      <FragmentMetadata fragment={fragment} />
       <pre>{fragment.content}</pre>
     </div>
   );

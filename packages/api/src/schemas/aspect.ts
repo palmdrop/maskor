@@ -26,3 +26,12 @@ export const AspectUUIDParamSchema = z.object({
   projectId: z.uuid(),
   aspectId: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
 });
+
+export const AspectCreateSchema = z
+  .object({
+    key: z.string().min(1).openapi({ example: "tone" }),
+    category: z.string().optional().openapi({ example: "style" }),
+    description: z.string().optional(),
+    notes: z.array(z.string()).default([]),
+  })
+  .openapi("AspectCreate");

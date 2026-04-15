@@ -230,6 +230,26 @@ export const createVault = (config: VaultConfig): Vault => {
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "aspect written");
       },
+
+      async delete(filePath: string) {
+        const absolutePath = toAbsoluteAspect(filePath);
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") {
+            throw new VaultError(
+              "FILE_NOT_FOUND",
+              `Aspect file not found: ${filePath}`,
+              {
+                filePath,
+              },
+              { cause },
+            );
+          }
+          throw cause;
+        }
+        log.debug({ filePath }, "aspect deleted");
+      },
     },
 
     notes: {
@@ -263,6 +283,24 @@ export const createVault = (config: VaultConfig): Vault => {
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "note written");
       },
+
+      async delete(filePath: string) {
+        const absolutePath = toAbsoluteNote(filePath);
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") {
+            throw new VaultError(
+              "FILE_NOT_FOUND",
+              `Note file not found: ${filePath}`,
+              { filePath },
+              { cause },
+            );
+          }
+          throw cause;
+        }
+        log.debug({ filePath }, "note deleted");
+      },
     },
 
     references: {
@@ -295,6 +333,26 @@ export const createVault = (config: VaultConfig): Vault => {
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "reference written");
+      },
+
+      async delete(filePath: string) {
+        const absolutePath = toAbsoluteReference(filePath);
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") {
+            throw new VaultError(
+              "FILE_NOT_FOUND",
+              `Reference file not found: ${filePath}`,
+              {
+                filePath,
+              },
+              { cause },
+            );
+          }
+          throw cause;
+        }
+        log.debug({ filePath }, "reference deleted");
       },
     },
 

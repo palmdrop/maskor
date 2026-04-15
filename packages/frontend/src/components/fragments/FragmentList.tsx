@@ -1,4 +1,4 @@
-import type { IndexedFragment } from "../api/generated/maskorAPI.schemas";
+import type { IndexedFragment } from "../../api/generated/maskorAPI.schemas";
 
 type Props = {
   fragments: IndexedFragment[];

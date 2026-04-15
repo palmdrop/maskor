@@ -4,6 +4,9 @@ import type { AppVariables } from "../app";
 
 // Tracks which projects have had their initial index rebuild triggered this process lifetime.
 // Prevents redundant rebuilds on every request — the watcher keeps the index live after startup.
+// TODO: This Set never shrinks. If a project is removed via removeProject() and re-added within
+// the same process lifetime, the second registration will not trigger a rebuild. To fix, either
+// delete from rebuiltProjects in removeProject(), or scope the Set to the StorageService instance.
 const rebuiltProjects = new Set<string>();
 
 export const resolveProject = async (

@@ -11,10 +11,14 @@
             "id": "3a4193f099850b0d",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "fragments/the-bridge.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "the-bridge"
             }
           }
         ]
@@ -179,6 +183,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "3a4193f099850b0d",
-  "lastOpenFiles": ["fragments/harbour-lights.md", "Welcome.md"]
+  "active": "c5e145d77e853c0c",
+  "lastOpenFiles": [
+    "fragments/test.md",
+    "fragments/late-winter.md",
+    "fragments/harbour-lights.md",
+    "Welcome.md"
+  ]
 }

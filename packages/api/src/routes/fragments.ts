@@ -53,6 +53,10 @@ const getFragmentRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
     },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Internal error",
@@ -98,6 +102,10 @@ const discardFragmentRoute = createRoute({
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },

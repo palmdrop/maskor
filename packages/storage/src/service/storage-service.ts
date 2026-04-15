@@ -38,6 +38,9 @@ import {
   upsertNote,
   upsertReference,
   softDeleteFragmentByFilePath,
+  softDeleteAspectByFilePath,
+  softDeleteNoteByFilePath,
+  softDeleteReferenceByFilePath,
 } from "../indexer/upserts";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
@@ -328,6 +331,44 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           upsertAspect(tx, aspect, entityRelativePath);
         });
       },
+
+      async delete(context: ProjectContext, uuid: AspectUUID): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.aspects.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "ENTITY_NOT_FOUND",
+            `Cannot delete: aspect "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        try {
+          await getVault(context).aspects.delete(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: indexed.filePath },
+              "stale index: aspect file missing on delete",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot delete: aspect "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+
+        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
+        // If the transaction fails after unlink, the DB row remains active with a dead file path.
+        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
+        const vaultDatabase = getVaultDatabase(context);
+        vaultDatabase.transaction((tx) => {
+          softDeleteAspectByFilePath(tx, indexed.filePath);
+        });
+      },
     },
 
     // Note operations
@@ -375,6 +416,44 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           upsertNote(tx, note, entityRelativePath, rawContent);
         });
       },
+
+      async delete(context: ProjectContext, uuid: NoteUUID): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.notes.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "ENTITY_NOT_FOUND",
+            `Cannot delete: note "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        try {
+          await getVault(context).notes.delete(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: indexed.filePath },
+              "stale index: note file missing on delete",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot delete: note "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+
+        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
+        // If the transaction fails after unlink, the DB row remains active with a dead file path.
+        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
+        const vaultDatabase = getVaultDatabase(context);
+        vaultDatabase.transaction((tx) => {
+          softDeleteNoteByFilePath(tx, indexed.filePath);
+        });
+      },
     },
 
     // Reference operations
@@ -420,6 +499,44 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         vaultDatabase.transaction((tx) => {
           upsertReference(tx, reference, entityRelativePath, rawContent);
+        });
+      },
+
+      async delete(context: ProjectContext, uuid: ReferenceUUID): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.references.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "ENTITY_NOT_FOUND",
+            `Cannot delete: reference "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        try {
+          await getVault(context).references.delete(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: indexed.filePath },
+              "stale index: reference file missing on delete",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot delete: reference "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+
+        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
+        // If the transaction fails after unlink, the DB row remains active with a dead file path.
+        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
+        const vaultDatabase = getVaultDatabase(context);
+        vaultDatabase.transaction((tx) => {
+          softDeleteReferenceByFilePath(tx, indexed.filePath);
         });
       },
     },

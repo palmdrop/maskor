@@ -22,3 +22,10 @@ export const ReferenceUUIDParamSchema = z.object({
   projectId: z.uuid(),
   referenceId: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
 });
+
+export const ReferenceCreateSchema = z
+  .object({
+    name: z.string().min(1).openapi({ example: "The Old Man and the Sea" }),
+    content: z.string().openapi({ example: "Hemingway. Santiago. Marlin." }),
+  })
+  .openapi("ReferenceCreate");
