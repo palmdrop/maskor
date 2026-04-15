@@ -18,7 +18,8 @@
 
     /* Path aliases */
     "paths": {
-      "@maskor/shared": ["../../shared/src/index.ts"]
+      "@maskor/shared": ["../../shared/src/index.ts"],
+      "@/*": ["./src/*"]
     },
 
     /* Linting */
