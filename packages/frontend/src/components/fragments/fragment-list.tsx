@@ -1,8 +1,9 @@
 import type { IndexedFragment } from "../../api/generated/maskorAPI.schemas";
+import { Button } from "../ui/button";
 
 type Props = {
   fragments: IndexedFragment[];
-  selectedId: string | null;
+  selectedId: string | null | undefined;
   onSelect: (uuid: string) => void;
 };
 
@@ -14,9 +15,9 @@ export function FragmentList({ fragments, selectedId, onSelect }: Props) {
           key={fragment.uuid}
           style={{ fontWeight: selectedId === fragment.uuid ? "bold" : "normal" }}
         >
-          <button onClick={() => onSelect(fragment.uuid)}>
+          <Button onClick={() => onSelect(fragment.uuid)}>
             {fragment.title} [{fragment.pool}] ({fragment.readyStatus})
-          </button>
+          </Button>
         </li>
       ))}
     </ul>

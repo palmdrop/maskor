@@ -1,5 +1,7 @@
 import { useGetFragment } from "../../api/generated/fragments/fragments";
-import { FragmentMetadata } from "./FragmentMetadata";
+import { Heading } from "../heading";
+import { Separator } from "../ui/separator";
+import { FragmentMetadata } from "./fragment-metadata";
 
 type Props = {
   projectId: string;
@@ -25,9 +27,11 @@ export function FragmentDetail({ projectId, fragmentId }: Props) {
 
   return (
     <div>
-      <h2>{fragment.title}</h2>
+      <Heading level={1}>{fragment.title}</Heading>
+      <Separator />
       <FragmentMetadata fragment={fragment} />
-      <pre>{fragment.content}</pre>
+      <Separator />
+      <pre className="prose text-wrap">{fragment.content}</pre>
     </div>
   );
 }

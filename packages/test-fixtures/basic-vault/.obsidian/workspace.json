@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "fragments/the-bridge.md",
+                "file": "references/city-research.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "the-bridge"
+              "title": "city-research"
             }
           }
         ]
@@ -183,8 +183,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "c5e145d77e853c0c",
+  "active": "3a4193f099850b0d",
   "lastOpenFiles": [
+    "fragments/the-bridge.md",
     "fragments/test.md",
     "fragments/late-winter.md",
     "fragments/harbour-lights.md",

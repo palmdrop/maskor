@@ -1,17 +1,19 @@
 {
   "version": "0.2",
   "words": [
-    "Maskor",
-    "frontmatter",
     "chokidar",
-    "drizzle",
-    "pandoc",
-    "remkar",
-    "hono",
-    "tauri",
     "Dataview",
+    "drizzle",
+    "fontsource",
+    "frontmatter",
+    "hono",
+    "Maskor",
     "multistream",
+    "pandoc",
     "pino",
-    "slugify"
+    "remkar",
+    "shadcn",
+    "slugify",
+    "tauri"
   ]
 }

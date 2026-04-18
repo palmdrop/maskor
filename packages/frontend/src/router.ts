@@ -7,8 +7,10 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { ProjectSelectionPage } from "./pages/ProjectSelectionPage";
 import { ProjectShellPage } from "./pages/ProjectShellPage";
+import { FragmentPage } from "./pages/FragmentPage";
 import { getListProjectsQueryOptions } from "./api/generated/projects/projects";
 import { queryClient } from "./queryClient";
+import z from "zod";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -33,13 +35,24 @@ const indexRoute = createRoute({
   component: ProjectSelectionPage,
 });
 
+const projectSearchSchema = z.object({
+  fragment: z.uuid().optional(),
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects/$projectId",
   component: ProjectShellPage,
+  validateSearch: projectSearchSchema,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, projectRoute]);
+const fragmentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects/$projectId/fragment/$fragmentId",
+  component: FragmentPage,
+});
+
+const routeTree = rootRoute.addChildren([indexRoute, projectRoute, fragmentRoute]);
 
 export const router = createRouter({ routeTree, context: { queryClient } });
 
