@@ -1,11 +1,9 @@
 import { useParams } from "@tanstack/react-router";
-import { FragmentDetail } from "../components/fragments/fragment-detail";
+import { FragmentEditor } from "../components/fragments/fragment-editor";
 
 export function FragmentPage() {
   const from = "/projects/$projectId/fragment/$fragmentId" as const;
   const { projectId, fragmentId } = useParams({ from });
 
-  console.log("FRAGMNET PAGE");
-
-  return <FragmentDetail projectId={projectId} fragmentId={fragmentId} />;
+  return <FragmentEditor projectId={projectId} fragmentId={fragmentId} />;
 }

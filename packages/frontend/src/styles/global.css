@@ -38,8 +38,6 @@
     --tw-prose-code: var(--color-foreground);
     --tw-prose-quotes: var(--color-muted-foreground);
     font-family: var(--font-serif);
-
-    font-variant-caps: 
   }
   * {
     @apply border-border outline-ring/50;

@@ -10,8 +10,6 @@ Standards derived from code review and CLAUDE.md conventions.
 
 Use full, descriptive names — even in callbacks, loops, and short functions. This includes camelCase names for multi-word identifiers.
 
-Use full, descriptive names — even in callbacks, loops, and short functions.
-
 ```ts
 // Bad
 files.map((f) => this.read(f));
@@ -53,6 +51,8 @@ const INLINE_FIELD_RE = /^([\w-]+):: (.+)$/;
 const INLINE_FIELD_REGEX = /^([\w-]+):: (.+)$/;
 ```
 
+NOTE: Anonymous regexes are alright for minor things.
+
 ---
 
 ## Control flow
@@ -85,6 +85,27 @@ const hasRequiredFields = (fm: Record<string, unknown>): boolean => {
   return typeof fm.title === "string" && fm.title.trim() !== "";
 };
 ```
+
+### Prefer early returns
+
+Avoid nesting if-clauses and instead use early returns:
+
+```ts
+// Bad
+if (x > 10) {
+  if (y < 5) {
+    doThing();
+  }
+}
+
+// Good
+if (x <= 10) return;
+if (y >= 5) return;
+
+doThing();
+```
+
+Prefer early returns if possible, even when dealing with only one if-clause.
 
 ---
 

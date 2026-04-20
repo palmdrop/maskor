@@ -4,10 +4,7 @@
  * Maskor API
  * OpenAPI spec version: 0.1.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -20,467 +17,522 @@ import type {
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
-  UseQueryResult
-} from '@tanstack/react-query';
+  UseQueryResult,
+} from "@tanstack/react-query";
 
-import type {
-  Aspect,
-  AspectCreate,
-  ErrorResponse,
-  IndexedAspect
-} from '../maskorAPI.schemas';
+import type { Aspect, AspectCreate, ErrorResponse, IndexedAspect } from "../maskorAPI.schemas";
 
-import { customFetch } from '../../fetch';
-
+import { customFetch } from "../../fetch";
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-
 
 /**
  * @summary List all indexed aspects for a project
  */
 export type ListAspectsResponse200 = {
-  data: IndexedAspect[]
-  status: 200
-}
+  data: IndexedAspect[];
+  status: 200;
+};
 
 export type ListAspectsResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
-export type ListAspectsResponseSuccess = (ListAspectsResponse200) & {
-  headers: Headers;
-};
-export type ListAspectsResponseError = (ListAspectsResponse500) & {
-  headers: Headers;
+  data: ErrorResponse;
+  status: 500;
 };
 
-export type ListAspectsResponse = (ListAspectsResponseSuccess | ListAspectsResponseError)
+export type ListAspectsResponseSuccess = ListAspectsResponse200 & {
+  headers: Headers;
+};
+export type ListAspectsResponseError = ListAspectsResponse500 & {
+  headers: Headers;
+};
 
-export const getListAspectsUrl = (projectId: string,) => {
+export type ListAspectsResponse = ListAspectsResponseSuccess | ListAspectsResponseError;
 
+export const getListAspectsUrl = (projectId: string) => {
+  return `/projects/${projectId}/aspects`;
+};
 
-
-
-  return `/projects/${projectId}/aspects`
-}
-
-export const ListAspects = async (projectId: string, options?: RequestInit): Promise<ListAspectsResponse> => {
-
-  return customFetch<ListAspectsResponse>(getListAspectsUrl(projectId),
-  {
+export const ListAspects = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<ListAspectsResponse> => {
+  return customFetch<ListAspectsResponse>(getListAspectsUrl(projectId), {
     ...options,
-    method: 'GET'
+    method: "GET",
+  });
+};
 
+export const getListAspectsQueryKey = (projectId: string) => {
+  return [`/projects/${projectId}/aspects`] as const;
+};
 
-  }
-);}
-
-
-
-
-
-export const getListAspectsQueryKey = (projectId: string,) => {
-    return [
-    `/projects/${projectId}/aspects`
-    ] as const;
-    }
-
-
-export const getListAspectsQueryOptions = <TData = Awaited<ReturnType<typeof ListAspects>>, TError = ErrorResponse>(projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListAspectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof ListAspects>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
 ) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListAspectsQueryKey(projectId);
 
-  const queryKey =  queryOptions?.queryKey ?? getListAspectsQueryKey(projectId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof ListAspects>>> = ({ signal }) =>
+    ListAspects(projectId, { signal, ...requestOptions });
 
+  return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof ListAspects>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
+export type ListAspectsQueryResult = NonNullable<Awaited<ReturnType<typeof ListAspects>>>;
+export type ListAspectsQueryError = ErrorResponse;
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ListAspects>>> = ({ signal }) => ListAspects(projectId, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListAspectsQueryResult = NonNullable<Awaited<ReturnType<typeof ListAspects>>>
-export type ListAspectsQueryError = ErrorResponse
-
-
-export function useListAspects<TData = Awaited<ReturnType<typeof ListAspects>>, TError = ErrorResponse>(
- projectId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>> & Pick<
+export function useListAspects<
+  TData = Awaited<ReturnType<typeof ListAspects>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof ListAspects>>,
           TError,
           Awaited<ReturnType<typeof ListAspects>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAspects<TData = Awaited<ReturnType<typeof ListAspects>>, TError = ErrorResponse>(
- projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>> & Pick<
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAspects<
+  TData = Awaited<ReturnType<typeof ListAspects>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof ListAspects>>,
           TError,
           Awaited<ReturnType<typeof ListAspects>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAspects<TData = Awaited<ReturnType<typeof ListAspects>>, TError = ErrorResponse>(
- projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAspects<
+  TData = Awaited<ReturnType<typeof ListAspects>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List all indexed aspects for a project
  */
 
-export function useListAspects<TData = Awaited<ReturnType<typeof ListAspects>>, TError = ErrorResponse>(
- projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+export function useListAspects<
+  TData = Awaited<ReturnType<typeof ListAspects>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListAspects>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListAspectsQueryOptions(projectId, options);
 
-  const queryOptions = getListAspectsQueryOptions(projectId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 /**
  * @summary Create a new aspect in the vault
  */
 export type CreateAspectResponse201 = {
-  data: Aspect
-  status: 201
-}
+  data: Aspect;
+  status: 201;
+};
 
 export type CreateAspectResponse400 = {
-  data: ErrorResponse
-  status: 400
-}
+  data: ErrorResponse;
+  status: 400;
+};
 
 export type CreateAspectResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
+  data: ErrorResponse;
+  status: 500;
+};
 
-export type CreateAspectResponseSuccess = (CreateAspectResponse201) & {
+export type CreateAspectResponseSuccess = CreateAspectResponse201 & {
   headers: Headers;
 };
 export type CreateAspectResponseError = (CreateAspectResponse400 | CreateAspectResponse500) & {
   headers: Headers;
 };
 
-export type CreateAspectResponse = (CreateAspectResponseSuccess | CreateAspectResponseError)
+export type CreateAspectResponse = CreateAspectResponseSuccess | CreateAspectResponseError;
 
-export const getCreateAspectUrl = (projectId: string,) => {
+export const getCreateAspectUrl = (projectId: string) => {
+  return `/projects/${projectId}/aspects`;
+};
 
-
-
-
-  return `/projects/${projectId}/aspects`
-}
-
-export const CreateAspect = async (projectId: string,
-    aspectCreate: AspectCreate, options?: RequestInit): Promise<CreateAspectResponse> => {
-
-  return customFetch<CreateAspectResponse>(getCreateAspectUrl(projectId),
-  {
+export const CreateAspect = async (
+  projectId: string,
+  aspectCreate: AspectCreate,
+  options?: RequestInit,
+): Promise<CreateAspectResponse> => {
+  return customFetch<CreateAspectResponse>(getCreateAspectUrl(projectId), {
     ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      aspectCreate,)
-  }
-);}
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aspectCreate),
+  });
+};
 
+export const getCreateAspectMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof CreateAspect>>,
+    TError,
+    { projectId: string; data: AspectCreate },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof CreateAspect>>,
+  TError,
+  { projectId: string; data: AspectCreate },
+  TContext
+> => {
+  const mutationKey = ["createAspect"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof CreateAspect>>,
+    { projectId: string; data: AspectCreate }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
 
+    return CreateAspect(projectId, data, requestOptions);
+  };
 
-export const getCreateAspectMutationOptions = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof CreateAspect>>, TError,{projectId: string;data: AspectCreate}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof CreateAspect>>, TError,{projectId: string;data: AspectCreate}, TContext> => {
+  return { mutationFn, ...mutationOptions };
+};
 
-const mutationKey = ['createAspect'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+export type CreateAspectMutationResult = NonNullable<Awaited<ReturnType<typeof CreateAspect>>>;
+export type CreateAspectMutationBody = AspectCreate;
+export type CreateAspectMutationError = ErrorResponse;
 
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof CreateAspect>>, {projectId: string;data: AspectCreate}> = (props) => {
-          const {projectId,data} = props ?? {};
-
-          return  CreateAspect(projectId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateAspectMutationResult = NonNullable<Awaited<ReturnType<typeof CreateAspect>>>
-    export type CreateAspectMutationBody = AspectCreate
-    export type CreateAspectMutationError = ErrorResponse
-
-    /**
+/**
  * @summary Create a new aspect in the vault
  */
-export const useCreateAspect = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof CreateAspect>>, TError,{projectId: string;data: AspectCreate}, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof CreateAspect>>,
-        TError,
-        {projectId: string;data: AspectCreate},
-        TContext
-      > => {
-      return useMutation(getCreateAspectMutationOptions(options), queryClient);
-    }
-    /**
+export const useCreateAspect = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof CreateAspect>>,
+      TError,
+      { projectId: string; data: AspectCreate },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof CreateAspect>>,
+  TError,
+  { projectId: string; data: AspectCreate },
+  TContext
+> => {
+  return useMutation(getCreateAspectMutationOptions(options), queryClient);
+};
+/**
  * @summary Get a single aspect by UUID
  */
 export type GetAspectResponse200 = {
-  data: Aspect
-  status: 200
-}
+  data: Aspect;
+  status: 200;
+};
 
 export type GetAspectResponse404 = {
-  data: ErrorResponse
-  status: 404
-}
+  data: ErrorResponse;
+  status: 404;
+};
 
 export type GetAspectResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
+  data: ErrorResponse;
+  status: 500;
+};
 
 export type GetAspectResponse503 = {
-  data: ErrorResponse
-  status: 503
-}
-
-export type GetAspectResponseSuccess = (GetAspectResponse200) & {
-  headers: Headers;
-};
-export type GetAspectResponseError = (GetAspectResponse404 | GetAspectResponse500 | GetAspectResponse503) & {
-  headers: Headers;
+  data: ErrorResponse;
+  status: 503;
 };
 
-export type GetAspectResponse = (GetAspectResponseSuccess | GetAspectResponseError)
+export type GetAspectResponseSuccess = GetAspectResponse200 & {
+  headers: Headers;
+};
+export type GetAspectResponseError = (
+  | GetAspectResponse404
+  | GetAspectResponse500
+  | GetAspectResponse503
+) & {
+  headers: Headers;
+};
 
-export const getGetAspectUrl = (projectId: string,
-    aspectId: string,) => {
+export type GetAspectResponse = GetAspectResponseSuccess | GetAspectResponseError;
 
+export const getGetAspectUrl = (projectId: string, aspectId: string) => {
+  return `/projects/${projectId}/aspects/${aspectId}`;
+};
 
-
-
-  return `/projects/${projectId}/aspects/${aspectId}`
-}
-
-export const GetAspect = async (projectId: string,
-    aspectId: string, options?: RequestInit): Promise<GetAspectResponse> => {
-
-  return customFetch<GetAspectResponse>(getGetAspectUrl(projectId,aspectId),
-  {
+export const GetAspect = async (
+  projectId: string,
+  aspectId: string,
+  options?: RequestInit,
+): Promise<GetAspectResponse> => {
+  return customFetch<GetAspectResponse>(getGetAspectUrl(projectId, aspectId), {
     ...options,
-    method: 'GET'
+    method: "GET",
+  });
+};
 
+export const getGetAspectQueryKey = (projectId: string, aspectId: string) => {
+  return [`/projects/${projectId}/aspects/${aspectId}`] as const;
+};
 
-  }
-);}
-
-
-
-
-
-export const getGetAspectQueryKey = (projectId: string,
-    aspectId: string,) => {
-    return [
-    `/projects/${projectId}/aspects/${aspectId}`
-    ] as const;
-    }
-
-
-export const getGetAspectQueryOptions = <TData = Awaited<ReturnType<typeof GetAspect>>, TError = ErrorResponse>(projectId: string,
-    aspectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetAspectQueryOptions = <
+  TData = Awaited<ReturnType<typeof GetAspect>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  aspectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
 ) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetAspectQueryKey(projectId, aspectId);
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAspectQueryKey(projectId,aspectId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof GetAspect>>> = ({ signal }) =>
+    GetAspect(projectId, aspectId, { signal, ...requestOptions });
 
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(projectId && aspectId),
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
 
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof GetAspect>>> = ({ signal }) => GetAspect(projectId,aspectId, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: !!(projectId && aspectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetAspectQueryResult = NonNullable<Awaited<ReturnType<typeof GetAspect>>>
-export type GetAspectQueryError = ErrorResponse
-
+export type GetAspectQueryResult = NonNullable<Awaited<ReturnType<typeof GetAspect>>>;
+export type GetAspectQueryError = ErrorResponse;
 
 export function useGetAspect<TData = Awaited<ReturnType<typeof GetAspect>>, TError = ErrorResponse>(
- projectId: string,
-    aspectId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>> & Pick<
+  projectId: string,
+  aspectId: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof GetAspect>>,
           TError,
           Awaited<ReturnType<typeof GetAspect>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetAspect<TData = Awaited<ReturnType<typeof GetAspect>>, TError = ErrorResponse>(
- projectId: string,
-    aspectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>> & Pick<
+  projectId: string,
+  aspectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof GetAspect>>,
           TError,
           Awaited<ReturnType<typeof GetAspect>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetAspect<TData = Awaited<ReturnType<typeof GetAspect>>, TError = ErrorResponse>(
- projectId: string,
-    aspectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  projectId: string,
+  aspectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Get a single aspect by UUID
  */
 
 export function useGetAspect<TData = Awaited<ReturnType<typeof GetAspect>>, TError = ErrorResponse>(
- projectId: string,
-    aspectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  projectId: string,
+  aspectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetAspect>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetAspectQueryOptions(projectId, aspectId, options);
 
-  const queryOptions = getGetAspectQueryOptions(projectId,aspectId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 /**
  * @summary Delete an aspect from the vault
  */
 export type DeleteAspectResponse204 = {
-  data: void
-  status: 204
-}
+  data: void;
+  status: 204;
+};
 
 export type DeleteAspectResponse404 = {
-  data: ErrorResponse
-  status: 404
-}
+  data: ErrorResponse;
+  status: 404;
+};
 
 export type DeleteAspectResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
+  data: ErrorResponse;
+  status: 500;
+};
 
 export type DeleteAspectResponse503 = {
-  data: ErrorResponse
-  status: 503
-}
-
-export type DeleteAspectResponseSuccess = (DeleteAspectResponse204) & {
-  headers: Headers;
-};
-export type DeleteAspectResponseError = (DeleteAspectResponse404 | DeleteAspectResponse500 | DeleteAspectResponse503) & {
-  headers: Headers;
+  data: ErrorResponse;
+  status: 503;
 };
 
-export type DeleteAspectResponse = (DeleteAspectResponseSuccess | DeleteAspectResponseError)
+export type DeleteAspectResponseSuccess = DeleteAspectResponse204 & {
+  headers: Headers;
+};
+export type DeleteAspectResponseError = (
+  | DeleteAspectResponse404
+  | DeleteAspectResponse500
+  | DeleteAspectResponse503
+) & {
+  headers: Headers;
+};
 
-export const getDeleteAspectUrl = (projectId: string,
-    aspectId: string,) => {
+export type DeleteAspectResponse = DeleteAspectResponseSuccess | DeleteAspectResponseError;
 
+export const getDeleteAspectUrl = (projectId: string, aspectId: string) => {
+  return `/projects/${projectId}/aspects/${aspectId}`;
+};
 
-
-
-  return `/projects/${projectId}/aspects/${aspectId}`
-}
-
-export const DeleteAspect = async (projectId: string,
-    aspectId: string, options?: RequestInit): Promise<DeleteAspectResponse> => {
-
-  return customFetch<DeleteAspectResponse>(getDeleteAspectUrl(projectId,aspectId),
-  {
+export const DeleteAspect = async (
+  projectId: string,
+  aspectId: string,
+  options?: RequestInit,
+): Promise<DeleteAspectResponse> => {
+  return customFetch<DeleteAspectResponse>(getDeleteAspectUrl(projectId, aspectId), {
     ...options,
-    method: 'DELETE'
+    method: "DELETE",
+  });
+};
 
+export const getDeleteAspectMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof DeleteAspect>>,
+    TError,
+    { projectId: string; aspectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof DeleteAspect>>,
+  TError,
+  { projectId: string; aspectId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAspect"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
-  }
-);}
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof DeleteAspect>>,
+    { projectId: string; aspectId: string }
+  > = (props) => {
+    const { projectId, aspectId } = props ?? {};
 
+    return DeleteAspect(projectId, aspectId, requestOptions);
+  };
 
+  return { mutationFn, ...mutationOptions };
+};
 
+export type DeleteAspectMutationResult = NonNullable<Awaited<ReturnType<typeof DeleteAspect>>>;
 
-export const getDeleteAspectMutationOptions = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof DeleteAspect>>, TError,{projectId: string;aspectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof DeleteAspect>>, TError,{projectId: string;aspectId: string}, TContext> => {
+export type DeleteAspectMutationError = ErrorResponse;
 
-const mutationKey = ['deleteAspect'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof DeleteAspect>>, {projectId: string;aspectId: string}> = (props) => {
-          const {projectId,aspectId} = props ?? {};
-
-          return  DeleteAspect(projectId,aspectId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteAspectMutationResult = NonNullable<Awaited<ReturnType<typeof DeleteAspect>>>
-
-    export type DeleteAspectMutationError = ErrorResponse
-
-    /**
+/**
  * @summary Delete an aspect from the vault
  */
-export const useDeleteAspect = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof DeleteAspect>>, TError,{projectId: string;aspectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof DeleteAspect>>,
-        TError,
-        {projectId: string;aspectId: string},
-        TContext
-      > => {
-      return useMutation(getDeleteAspectMutationOptions(options), queryClient);
-    }
+export const useDeleteAspect = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof DeleteAspect>>,
+      TError,
+      { projectId: string; aspectId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof DeleteAspect>>,
+  TError,
+  { projectId: string; aspectId: string },
+  TContext
+> => {
+  return useMutation(getDeleteAspectMutationOptions(options), queryClient);
+};

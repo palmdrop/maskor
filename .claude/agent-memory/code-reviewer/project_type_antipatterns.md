@@ -13,7 +13,8 @@ Confirmed bugs as of 2026-04-04:
 - `Fragment` mixes markdown-owned fields with DB-only fields (`contentHash`, `updatedAt`) — `FragmentFile`/`Fragment` split is the intended fix
 - `apis/aspects.ts` exported but blank — flag any aspects API review
 - `Action` type has `execute`/`revert` function fields — will break on serialization
+- `onSubmit: (update: Partial<Fragment>)` used instead of `onSubmit: (update: FragmentUpdate)` in `FragmentMetadataForm` — `as FragmentUpdate` cast in caller silences the mismatch (noted 2026-04-20)
 
 **Why:** Copy-paste errors and mixed-concern types that pass type-checking silently.
 
-**How to apply:** Flag sequence/arc UUID brands on each review. Don't assume brands are correct — verify them.
+**How to apply:** Flag sequence/arc UUID brands on each review. Don't assume brands are correct — verify them. Check callback prop types match the domain type, not a broader Partial<> version.

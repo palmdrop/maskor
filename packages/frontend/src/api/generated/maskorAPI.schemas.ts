@@ -26,20 +26,21 @@ export interface ProjectCreate {
   vaultPath: string;
 }
 
-export type IndexedFragmentPool = typeof IndexedFragmentPool[keyof typeof IndexedFragmentPool];
-
+export type IndexedFragmentPool = (typeof IndexedFragmentPool)[keyof typeof IndexedFragmentPool];
 
 export const IndexedFragmentPool = {
-  unprocessed: 'unprocessed',
-  incomplete: 'incomplete',
-  unplaced: 'unplaced',
-  discarded: 'discarded',
+  unprocessed: "unprocessed",
+  incomplete: "incomplete",
+  unplaced: "unplaced",
+  discarded: "discarded",
 } as const;
 
-export type IndexedFragmentProperties = {[key: string]: {
-  weight: number;
-  aspectUuid: string | null;
-}};
+export type IndexedFragmentProperties = {
+  [key: string]: {
+    weight: number;
+    aspectUuid: string | null;
+  };
+};
 
 export interface IndexedFragment {
   uuid: string;
@@ -47,9 +48,9 @@ export interface IndexedFragment {
   version: number;
   pool: IndexedFragmentPool;
   /**
-     * @minimum 0
-     * @maximum 1
-     */
+   * @minimum 0
+   * @maximum 1
+   */
   readyStatus: number;
   contentHash: string;
   filePath: string;
@@ -58,19 +59,20 @@ export interface IndexedFragment {
   properties: IndexedFragmentProperties;
 }
 
-export type FragmentPool = typeof FragmentPool[keyof typeof FragmentPool];
-
+export type FragmentPool = (typeof FragmentPool)[keyof typeof FragmentPool];
 
 export const FragmentPool = {
-  unprocessed: 'unprocessed',
-  incomplete: 'incomplete',
-  unplaced: 'unplaced',
-  discarded: 'discarded',
+  unprocessed: "unprocessed",
+  incomplete: "incomplete",
+  unplaced: "unplaced",
+  discarded: "discarded",
 } as const;
 
-export type FragmentProperties = {[key: string]: {
-  weight: number;
-}};
+export type FragmentProperties = {
+  [key: string]: {
+    weight: number;
+  };
+};
 
 export interface Fragment {
   uuid: string;
@@ -78,9 +80,9 @@ export interface Fragment {
   version: number;
   pool: FragmentPool;
   /**
-     * @minimum 0
-     * @maximum 1
-     */
+   * @minimum 0
+   * @maximum 1
+   */
   readyStatus: number;
   contentHash: string;
   notes: string[];
@@ -90,14 +92,13 @@ export interface Fragment {
   updatedAt: string;
 }
 
-export type FragmentCreatePool = typeof FragmentCreatePool[keyof typeof FragmentCreatePool];
-
+export type FragmentCreatePool = (typeof FragmentCreatePool)[keyof typeof FragmentCreatePool];
 
 export const FragmentCreatePool = {
-  unprocessed: 'unprocessed',
-  incomplete: 'incomplete',
-  unplaced: 'unplaced',
-  discarded: 'discarded',
+  unprocessed: "unprocessed",
+  incomplete: "incomplete",
+  unplaced: "unplaced",
+  discarded: "discarded",
 } as const;
 
 export interface FragmentCreate {
@@ -106,6 +107,36 @@ export interface FragmentCreate {
   /** @minLength 1 */
   content: string;
   pool: FragmentCreatePool;
+}
+
+export type FragmentUpdatePool = (typeof FragmentUpdatePool)[keyof typeof FragmentUpdatePool];
+
+export const FragmentUpdatePool = {
+  unprocessed: "unprocessed",
+  incomplete: "incomplete",
+  unplaced: "unplaced",
+  discarded: "discarded",
+} as const;
+
+export type FragmentUpdateProperties = {
+  [key: string]: {
+    weight: number;
+  };
+};
+
+export interface FragmentUpdate {
+  /** @minLength 1 */
+  title?: string;
+  content?: string;
+  pool?: FragmentUpdatePool;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  readyStatus?: number;
+  notes?: string[];
+  references?: string[];
+  properties?: FragmentUpdateProperties;
 }
 
 export interface IndexedAspect {
@@ -168,11 +199,11 @@ export interface ReferenceCreate {
   content: string;
 }
 
-export type RebuildStatsWarningsItemKind = typeof RebuildStatsWarningsItemKind[keyof typeof RebuildStatsWarningsItemKind];
-
+export type RebuildStatsWarningsItemKind =
+  (typeof RebuildStatsWarningsItemKind)[keyof typeof RebuildStatsWarningsItemKind];
 
 export const RebuildStatsWarningsItemKind = {
-  UNKNOWN_ASPECT_KEY: 'UNKNOWN_ASPECT_KEY',
+  UNKNOWN_ASPECT_KEY: "UNKNOWN_ASPECT_KEY",
 } as const;
 
 export type RebuildStatsWarningsItem = {
@@ -191,16 +222,14 @@ export interface RebuildStats {
 }
 
 export type ListFragmentsParams = {
-pool?: ListFragmentsPool;
+  pool?: ListFragmentsPool;
 };
 
-export type ListFragmentsPool = typeof ListFragmentsPool[keyof typeof ListFragmentsPool];
-
+export type ListFragmentsPool = (typeof ListFragmentsPool)[keyof typeof ListFragmentsPool];
 
 export const ListFragmentsPool = {
-  unprocessed: 'unprocessed',
-  incomplete: 'incomplete',
-  unplaced: 'unplaced',
-  discarded: 'discarded',
+  unprocessed: "unprocessed",
+  incomplete: "incomplete",
+  unplaced: "unplaced",
+  discarded: "discarded",
 } as const;
-

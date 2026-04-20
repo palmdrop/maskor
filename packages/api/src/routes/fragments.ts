@@ -7,6 +7,7 @@ import {
   FragmentSchema,
   IndexedFragmentSchema,
   FragmentCreateSchema,
+  FragmentUpdateSchema,
   FragmentUUIDParamSchema,
   FragmentPoolQuerySchema,
 } from "../schemas/fragment";
@@ -90,6 +91,40 @@ const createFragmentRoute = createRoute({
   },
 });
 
+const updateFragmentRoute = createRoute({
+  operationId: "updateFragment",
+  method: "patch",
+  path: "/{fragmentId}",
+  tags: ["Fragments"],
+  summary: "Partially update a fragment's fields",
+  request: {
+    params: FragmentUUIDParamSchema,
+    body: { content: { "application/json": { schema: FragmentUpdateSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: FragmentSchema } },
+      description: "Updated fragment",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const discardFragmentRoute = createRoute({
   operationId: "discardFragment",
   method: "delete",
@@ -165,6 +200,28 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
     // NOTE: After write the index is stale until the next rebuild.
     await storageService.fragments.write(projectContext, fragment);
     return ctx.json(fragment, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("param");
+    const update = ctx.req.valid("json");
+
+    const existing = await storageService.fragments.read(projectContext, fragmentId);
+    const updated = {
+      ...existing,
+      ...update,
+      version: existing.version + 1,
+      updatedAt: new Date(),
+    };
+
+    await storageService.fragments.write(projectContext, updated);
+    return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
   }

@@ -52,6 +52,18 @@ export const FragmentCreateSchema = z
   })
   .openapi("FragmentCreate");
 
+export const FragmentUpdateSchema = z
+  .object({
+    title: z.string().min(1).optional().openapi({ example: "Harbour Lights" }),
+    content: z.string().optional().openapi({ example: "The lights flickered at dusk..." }),
+    pool: PoolSchema.optional().openapi({ example: "unplaced" }),
+    readyStatus: z.number().min(0).max(1).optional(),
+    notes: z.array(z.string()).optional(),
+    references: z.array(z.string()).optional(),
+    properties: z.record(z.string(), FragmentPropertySchema).optional(),
+  })
+  .openapi("FragmentUpdate");
+
 export const FragmentUUIDParamSchema = z.object({
   projectId: z.uuid(),
   fragmentId: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
