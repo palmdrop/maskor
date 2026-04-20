@@ -24,11 +24,12 @@ DELETE /projects/:projectId              — remove a project
 ### Fragments (project-scoped)
 
 ```
-GET    /projects/:projectId/fragments              — list all indexed fragments
-GET    /projects/:projectId/fragments?pool=<pool>  — filter by pool
-GET    /projects/:projectId/fragments/:fragmentId  — read one fragment
-POST   /projects/:projectId/fragments              — write { title, content, pool } → 201
-DELETE /projects/:projectId/fragments/:fragmentId  — discard a fragment
+GET    /projects/:projectId/fragments                        — list all indexed fragments
+GET    /projects/:projectId/fragments/:fragmentId            — read one fragment
+POST   /projects/:projectId/fragments                        — write { title, content } → 201
+PATCH  /projects/:projectId/fragments/:fragmentId            — update fragment fields
+DELETE /projects/:projectId/fragments/:fragmentId            — discard a fragment (move to discarded/)
+POST   /projects/:projectId/fragments/:fragmentId/restore    — restore a discarded fragment
 ```
 
 ### Aspects / Notes / References (read-only)

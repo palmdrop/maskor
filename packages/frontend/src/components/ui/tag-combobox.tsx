@@ -10,7 +10,11 @@ type Props = {
   onSelect: (value: string) => void;
 };
 
-export function TagCombobox({ availableOptions, placeholder = "Add — type to filter", onSelect }: Props) {
+export function TagCombobox({
+  availableOptions,
+  placeholder = "Add — type to filter",
+  onSelect,
+}: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

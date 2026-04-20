@@ -1,4 +1,3 @@
-import type { Pool /* PoolUUID */ } from "./pool";
 import type { Markdown } from "../utils/markdown";
 
 export type FragmentUUID = string;
@@ -23,7 +22,7 @@ export type Fragment = {
   // stored as titles at the file layer; resolved to UUIDs at the DB layer
   notes: string[];
   references: string[];
-  pool: Pool;
+  isDiscarded: boolean;
   readyStatus: ReadyStatus;
   // TODO: add links?
 

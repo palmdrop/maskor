@@ -26,15 +26,6 @@ export interface ProjectCreate {
   vaultPath: string;
 }
 
-export type IndexedFragmentPool = (typeof IndexedFragmentPool)[keyof typeof IndexedFragmentPool];
-
-export const IndexedFragmentPool = {
-  unprocessed: "unprocessed",
-  incomplete: "incomplete",
-  unplaced: "unplaced",
-  discarded: "discarded",
-} as const;
-
 export type IndexedFragmentProperties = {
   [key: string]: {
     weight: number;
@@ -46,7 +37,7 @@ export interface IndexedFragment {
   uuid: string;
   title: string;
   version: number;
-  pool: IndexedFragmentPool;
+  isDiscarded: boolean;
   /**
    * @minimum 0
    * @maximum 1
@@ -59,15 +50,6 @@ export interface IndexedFragment {
   properties: IndexedFragmentProperties;
 }
 
-export type FragmentPool = (typeof FragmentPool)[keyof typeof FragmentPool];
-
-export const FragmentPool = {
-  unprocessed: "unprocessed",
-  incomplete: "incomplete",
-  unplaced: "unplaced",
-  discarded: "discarded",
-} as const;
-
 export type FragmentProperties = {
   [key: string]: {
     weight: number;
@@ -78,7 +60,7 @@ export interface Fragment {
   uuid: string;
   title: string;
   version: number;
-  pool: FragmentPool;
+  isDiscarded: boolean;
   /**
    * @minimum 0
    * @maximum 1
@@ -92,31 +74,12 @@ export interface Fragment {
   updatedAt: string;
 }
 
-export type FragmentCreatePool = (typeof FragmentCreatePool)[keyof typeof FragmentCreatePool];
-
-export const FragmentCreatePool = {
-  unprocessed: "unprocessed",
-  incomplete: "incomplete",
-  unplaced: "unplaced",
-  discarded: "discarded",
-} as const;
-
 export interface FragmentCreate {
   /** @minLength 1 */
   title: string;
   /** @minLength 1 */
   content: string;
-  pool: FragmentCreatePool;
 }
-
-export type FragmentUpdatePool = (typeof FragmentUpdatePool)[keyof typeof FragmentUpdatePool];
-
-export const FragmentUpdatePool = {
-  unprocessed: "unprocessed",
-  incomplete: "incomplete",
-  unplaced: "unplaced",
-  discarded: "discarded",
-} as const;
 
 export type FragmentUpdateProperties = {
   [key: string]: {
@@ -128,7 +91,6 @@ export interface FragmentUpdate {
   /** @minLength 1 */
   title?: string;
   content?: string;
-  pool?: FragmentUpdatePool;
   /**
    * @minimum 0
    * @maximum 1
@@ -220,16 +182,3 @@ export interface RebuildStats {
   durationMs: number;
   warnings: RebuildStatsWarningsItem[];
 }
-
-export type ListFragmentsParams = {
-  pool?: ListFragmentsPool;
-};
-
-export type ListFragmentsPool = (typeof ListFragmentsPool)[keyof typeof ListFragmentsPool];
-
-export const ListFragmentsPool = {
-  unprocessed: "unprocessed",
-  incomplete: "incomplete",
-  unplaced: "unplaced",
-  discarded: "discarded",
-} as const;

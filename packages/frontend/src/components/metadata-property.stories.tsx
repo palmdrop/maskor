@@ -10,13 +10,12 @@ export default meta;
 type Story = StoryObj<typeof MetadataProperty>;
 
 export const Single: Story = {
-  render: () => <MetadataProperty label="Pool" value="main" />,
+  render: () => <MetadataProperty label="Status" value="ready" />,
 };
 
 export const List: Story = {
   render: () => (
     <MetadataList>
-      <MetadataProperty label="Pool" value="main" />
       <MetadataProperty label="Status" value="ready" />
       <MetadataProperty label="Created" value="2026-04-16" />
     </MetadataList>

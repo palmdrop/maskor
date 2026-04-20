@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
-import type { Fragment, Pool } from "@maskor/shared";
+import type { Fragment } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -9,7 +9,6 @@ import {
   FragmentCreateSchema,
   FragmentUpdateSchema,
   FragmentUUIDParamSchema,
-  FragmentPoolQuerySchema,
 } from "../schemas/fragment";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -24,7 +23,6 @@ const listFragmentsRoute = createRoute({
   summary: "List all indexed fragments for a project",
   request: {
     params: projectIdParamSchema,
-    query: FragmentPoolQuerySchema,
   },
   responses: {
     200: {
@@ -130,10 +128,34 @@ const discardFragmentRoute = createRoute({
   method: "delete",
   path: "/{fragmentId}",
   tags: ["Fragments"],
-  summary: "Discard a fragment (moves to the discarded pool)",
+  summary: "Discard a fragment (moves to discarded/)",
   request: { params: FragmentUUIDParamSchema },
   responses: {
     204: { description: "Fragment discarded" },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const restoreFragmentRoute = createRoute({
+  operationId: "restoreFragment",
+  method: "post",
+  path: "/{fragmentId}/restore",
+  tags: ["Fragments"],
+  summary: "Restore a discarded fragment (moves out of discarded/)",
+  request: { params: FragmentUUIDParamSchema },
+  responses: {
+    204: { description: "Fragment restored" },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
@@ -153,12 +175,7 @@ fragmentsRouter.openapi(listFragmentsRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { pool } = ctx.req.valid("query");
-
-    const fragments = pool
-      ? await storageService.fragments.findByPool(projectContext, pool as Pool)
-      : await storageService.fragments.readAll(projectContext);
-
+    const fragments = await storageService.fragments.readAll(projectContext);
     return ctx.json(fragments, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -181,13 +198,13 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { title, content, pool } = ctx.req.valid("json");
+    const { title, content } = ctx.req.valid("json");
 
     const fragment: Fragment = {
       uuid: randomUUID(),
       title,
       content,
-      pool: pool as Pool,
+      isDiscarded: false,
       version: 1,
       readyStatus: 0,
       notes: [],
@@ -235,6 +252,19 @@ fragmentsRouter.openapi(discardFragmentRoute, async (ctx) => {
 
     // NOTE: After discard the index is stale until the next rebuild.
     await storageService.fragments.discard(projectContext, fragmentId);
+    return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(restoreFragmentRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("param");
+
+    await storageService.fragments.restore(projectContext, fragmentId);
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

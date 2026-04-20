@@ -4,7 +4,6 @@ import type {
   FragmentUUID,
   Logger,
   Note,
-  Pool,
   Reference,
   VaultSyncEvent,
 } from "@maskor/shared";
@@ -199,10 +198,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         return getVaultIndexer(context).fragments.findAll();
       },
 
-      async findByPool(context: ProjectContext, pool: Pool): Promise<IndexedFragment[]> {
-        return getVaultIndexer(context).fragments.findByPool(pool);
-      },
-
       async write(context: ProjectContext, fragment: Fragment): Promise<void> {
         // TODO: title-change orphan — write() creates a new file at the new slug path if the title
         // changed. The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
@@ -210,10 +205,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         // Inline DB update — closes the stale-index window for API-originated writes.
         // The watcher will fire afterward and hash-guard to a no-op.
-        const entityRelativePath =
-          fragment.pool === "discarded"
-            ? join("discarded", `${slugify(fragment.title)}.md`)
-            : `${slugify(fragment.title)}.md`;
+        const entityRelativePath = fragment.isDiscarded
+          ? join("discarded", `${slugify(fragment.title)}.md`)
+          : `${slugify(fragment.title)}.md`;
 
         const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
@@ -268,10 +262,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
 
         // Parse the discarded fragment directly from rawContent — avoids a second file read.
+        // isDiscarded is derived from the destination path in fromFile.
         const discardedFragment = fragmentMapper.fromFile(
           parseFile(rawContent),
           destinationEntityRelativePath,
-          "discarded",
         );
 
         vaultDatabase.transaction((tx) => {
@@ -279,6 +273,75 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           upsertFragment(
             tx,
             discardedFragment,
+            destinationEntityRelativePath,
+            rawContent,
+            aspectKeyToUuid,
+          );
+        });
+      },
+
+      async restore(context: ProjectContext, uuid: FragmentUUID): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.fragments.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "FRAGMENT_NOT_FOUND",
+            `Cannot restore: fragment "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        if (!indexed.isDiscarded) {
+          throw new VaultError(
+            "FRAGMENT_NOT_DISCARDED",
+            `Cannot restore: fragment "${uuid}" is not discarded`,
+            { uuid },
+          );
+        }
+
+        // TODO: restore-collision — if a fragment already exists at the destination slug,
+        // rename will overwrite it silently. Guard with an existence check or unique slug.
+        const sourceEntityRelativePath = indexed.filePath;
+        const destinationEntityRelativePath = `${slugify(indexed.title)}.md`;
+
+        try {
+          await getVault(context).fragments.restore(sourceEntityRelativePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: sourceEntityRelativePath },
+              "stale index: fragment file missing on restore",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot restore: fragment "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: sourceEntityRelativePath },
+            );
+          }
+          throw error;
+        }
+
+        // Inline DB update: soft-delete old discarded path, upsert at restored path.
+        const absoluteDestination = join(
+          context.vaultPath,
+          "fragments",
+          destinationEntityRelativePath,
+        );
+        const rawContent = await Bun.file(absoluteDestination).text();
+        const vaultDatabase = getVaultDatabase(context);
+        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+
+        const restoredFragment = fragmentMapper.fromFile(
+          parseFile(rawContent),
+          destinationEntityRelativePath,
+        );
+
+        vaultDatabase.transaction((tx) => {
+          softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          upsertFragment(
+            tx,
+            restoredFragment,
             destinationEntityRelativePath,
             rawContent,
             aspectKeyToUuid,

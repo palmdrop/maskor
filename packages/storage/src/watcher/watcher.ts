@@ -157,14 +157,7 @@ export const createVaultWatcher = (
       return;
     }
 
-    const isDiscarded =
-      entityRelativePath.startsWith("discarded" + path.sep) ||
-      entityRelativePath.startsWith("discarded/");
-    const fragment = fragmentMapper.fromFile(
-      parsed,
-      entityRelativePath,
-      isDiscarded ? "discarded" : undefined,
-    );
+    const fragment = fragmentMapper.fromFile(parsed, entityRelativePath);
     const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
 
     const warnings = vaultDatabase.transaction((tx) => {

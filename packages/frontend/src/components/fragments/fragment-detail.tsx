@@ -1,3 +1,8 @@
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Markdown } from "tiptap-markdown";
+import Link from "@tiptap/extension-link";
+import Typography from "@tiptap/extension-typography";
 import { useGetFragment } from "../../api/generated/fragments/fragments";
 import { Heading } from "../heading";
 import { Separator } from "../ui/separator";
@@ -7,6 +12,26 @@ type Props = {
   projectId: string;
   fragmentId: string;
 };
+
+function ProseViewer({ content }: { content: string }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Markdown.configure({ html: false, transformPastedText: true }),
+      Link.configure({ openOnClick: false }),
+      Typography,
+    ],
+    content,
+    editable: false,
+    editorProps: {
+      attributes: {
+        class: "prose prose-stone dark:prose-invert max-w-none px-1 py-2",
+      },
+    },
+  });
+
+  return <EditorContent editor={editor} />;
+}
 
 export function FragmentDetail({ projectId, fragmentId }: Props) {
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
@@ -31,7 +56,7 @@ export function FragmentDetail({ projectId, fragmentId }: Props) {
       <Separator />
       <FragmentMetadata fragment={fragment} />
       <Separator />
-      <pre className="prose text-wrap">{fragment.content}</pre>
+      <ProseViewer content={fragment.content} />
     </div>
   );
 }

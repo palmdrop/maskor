@@ -14,7 +14,8 @@ export type VaultErrorCode =
   | "FRAGMENT_NOT_FOUND"
   | "ENTITY_NOT_FOUND"
   | "PIECE_CONSUME_FAILED"
-  | "STALE_INDEX";
+  | "STALE_INDEX"
+  | "FRAGMENT_NOT_DISCARDED";
 
 export type VaultErrorContext = {
   filePath?: string;
@@ -49,6 +50,7 @@ export type Vault = {
     read(filePath: string): Promise<Fragment>;
     write(fragment: Fragment): Promise<void>;
     discard(filePath: string): Promise<void>;
+    restore(filePath: string): Promise<void>;
   };
   aspects: {
     readAll(): Promise<Aspect[]>;

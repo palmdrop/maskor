@@ -5,7 +5,7 @@ const FULL_FILE = `---
 uuid: "frag-0001"
 title: "The Bridge"
 version: 3
-pool: unplaced
+customField: some-value
 readyStatus: 0.8
 notes:
   - "bridge observation"
@@ -24,7 +24,7 @@ describe("parseFile", () => {
     expect(result.frontmatter.uuid).toBe("frag-0001");
     expect(result.frontmatter.title).toBe("The Bridge");
     expect(result.frontmatter.version).toBe(3);
-    expect(result.frontmatter.pool).toBe("unplaced");
+    expect(result.frontmatter.customField).toBe("some-value");
     expect(result.frontmatter.readyStatus).toBe(0.8);
   });
 

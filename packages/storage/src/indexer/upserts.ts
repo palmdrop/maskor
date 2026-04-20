@@ -130,12 +130,14 @@ export const upsertFragment = (
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
 
+  const isDiscarded = filePath.startsWith("discarded/");
+
   tx.insert(fragmentsTable)
     .values({
       uuid: fragment.uuid,
       title: fragment.title,
       version: fragment.version,
-      pool: fragment.pool,
+      isDiscarded,
       readyStatus: fragment.readyStatus,
       contentHash,
       filePath,
@@ -147,7 +149,7 @@ export const upsertFragment = (
       set: {
         title: fragment.title,
         version: fragment.version,
-        pool: fragment.pool,
+        isDiscarded,
         readyStatus: fragment.readyStatus,
         contentHash,
         filePath,

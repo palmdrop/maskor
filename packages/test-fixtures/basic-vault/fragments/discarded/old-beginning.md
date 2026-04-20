@@ -2,7 +2,6 @@
 uuid: "124d379e-e809-49f9-9766-b8c76cbe555f"
 title: "Old Beginning"
 version: 1
-pool: discarded
 readyStatus: 0.1
 notes: []
 references: []

@@ -1,5 +1,4 @@
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import type { Pool } from "@maskor/shared";
 import type { AspectUUID, FragmentUUID } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import {
@@ -239,15 +238,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
         const results = await loadFragmentRelations([row]);
         return results[0] ?? null;
-      },
-
-      async findByPool(pool: Pool) {
-        const rows = vaultDatabase
-          .select()
-          .from(fragmentsTable)
-          .where(and(eq(fragmentsTable.pool, pool), isNull(fragmentsTable.deletedAt)))
-          .all();
-        return loadFragmentRelations(rows);
       },
 
       async findFilePath(uuid: FragmentUUID) {

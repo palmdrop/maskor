@@ -2,7 +2,6 @@
 uuid: "0eb24e80-cb2a-4af2-a6f0-2536fd8776dd"
 title: "The Window"
 version: 2
-pool: unplaced
 readyStatus: 0.6
 notes: []
 references: []

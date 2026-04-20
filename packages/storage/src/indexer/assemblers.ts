@@ -1,6 +1,5 @@
 // --- assembly helpers ---
 
-import type { Pool } from "@maskor/shared/src";
 import type { aspectsTable, fragmentsTable } from "../db/vault/schema";
 import type { IndexedAspect, IndexedFragment } from "./types";
 
@@ -17,7 +16,7 @@ export const assembleFragment = (
   uuid: row.uuid,
   title: row.title,
   version: row.version,
-  pool: row.pool as Pool,
+  isDiscarded: row.isDiscarded,
   readyStatus: row.readyStatus,
   contentHash: row.contentHash,
   filePath: row.filePath,

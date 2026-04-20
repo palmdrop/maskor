@@ -5,13 +5,13 @@ import { parseFile } from "../vault/markdown/parse";
 describe("serializeFile", () => {
   it("produces valid frontmatter", () => {
     const result = serializeFile({
-      frontmatter: { uuid: "frag-0001", title: "The Bridge", pool: "unplaced" },
+      frontmatter: { uuid: "frag-0001", title: "The Bridge", customField: "some-value" },
       body: "Body text.",
     });
     const parsed = parseFile(result);
     expect(parsed.frontmatter.uuid).toBe("frag-0001");
     expect(parsed.frontmatter.title).toBe("The Bridge");
-    expect(parsed.frontmatter.pool).toBe("unplaced");
+    expect(parsed.frontmatter.customField).toBe("some-value");
   });
 
   it("writes inline fields between frontmatter and body", () => {

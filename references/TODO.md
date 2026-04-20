@@ -1,8 +1,15 @@
 # General
 
-- [ ] Users do not set fragment pool manually, it is set by the system automatically when a fragment has sufficient metadata, is placed, etc
+- [ ] Have conversation with Claude about specs, check obsidian vault, check files in the project
+  - create a map of all that is implemented and needs to be done
+  - inspo https://ghuntley.com/ralph/
+  - iterate, look at specs, look at plan, implement, review
+  - https://www.augmentcode.com/
+    - or other tool for mapping/indexing code base
 
-- [ ] Fragment editor needs a discard button > to automatically move a fragment to discarded
+- [x] Users do not set fragment pool manually, it is set by the system automatically when a fragment has sufficient metadata, is placed, etc
+
+- [x] Fragment editor needs a discard button > to automatically move a fragment to discarded
   - the other properties, like incomplete, unplaced, are derived automatically...
   - NOTE: This makes me think that the pool property is not needed. However, we should probably have a way of detecting if a fragment is incomplete... and make it possible to search this? but what if a fragment is placed and then becomes incomplete due to a deleted metadata property?
 

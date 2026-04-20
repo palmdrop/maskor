@@ -44,7 +44,7 @@ CREATE TABLE `fragments` (
 	`uuid` text PRIMARY KEY NOT NULL,
 	`title` text NOT NULL,
 	`version` integer DEFAULT 0 NOT NULL,
-	`pool` text NOT NULL,
+	`is_discarded` integer DEFAULT 0 NOT NULL,
 	`ready_status` real DEFAULT 0 NOT NULL,
 	`content_hash` text NOT NULL,
 	`file_path` text NOT NULL,

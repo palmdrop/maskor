@@ -26,7 +26,6 @@ import type {
   FragmentCreate,
   FragmentUpdate,
   IndexedFragment,
-  ListFragmentsParams,
 } from "../maskorAPI.schemas";
 
 import { customFetch } from "../../fetch";
@@ -55,35 +54,22 @@ export type ListFragmentsResponseError = ListFragmentsResponse500 & {
 
 export type ListFragmentsResponse = ListFragmentsResponseSuccess | ListFragmentsResponseError;
 
-export const getListFragmentsUrl = (projectId: string, params?: ListFragmentsParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/projects/${projectId}/fragments?${stringifiedParams}`
-    : `/projects/${projectId}/fragments`;
+export const getListFragmentsUrl = (projectId: string) => {
+  return `/projects/${projectId}/fragments`;
 };
 
 export const ListFragments = async (
   projectId: string,
-  params?: ListFragmentsParams,
   options?: RequestInit,
 ): Promise<ListFragmentsResponse> => {
-  return customFetch<ListFragmentsResponse>(getListFragmentsUrl(projectId, params), {
+  return customFetch<ListFragmentsResponse>(getListFragmentsUrl(projectId), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListFragmentsQueryKey = (projectId: string, params?: ListFragmentsParams) => {
-  return [`/projects/${projectId}/fragments`, ...(params ? [params] : [])] as const;
+export const getListFragmentsQueryKey = (projectId: string) => {
+  return [`/projects/${projectId}/fragments`] as const;
 };
 
 export const getListFragmentsQueryOptions = <
@@ -91,7 +77,6 @@ export const getListFragmentsQueryOptions = <
   TError = ErrorResponse,
 >(
   projectId: string,
-  params?: ListFragmentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -99,10 +84,10 @@ export const getListFragmentsQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListFragmentsQueryKey(projectId, params);
+  const queryKey = queryOptions?.queryKey ?? getListFragmentsQueryKey(projectId);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof ListFragments>>> = ({ signal }) =>
-    ListFragments(projectId, params, { signal, ...requestOptions });
+    ListFragments(projectId, { signal, ...requestOptions });
 
   return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof ListFragments>>,
@@ -114,75 +99,21 @@ export const getListFragmentsQueryOptions = <
 export type ListFragmentsQueryResult = NonNullable<Awaited<ReturnType<typeof ListFragments>>>;
 export type ListFragmentsQueryError = ErrorResponse;
 
-export function useListFragments<
-  TData = Awaited<ReturnType<typeof ListFragments>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  params: undefined | ListFragmentsParams,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ListFragments>>,
-          TError,
-          Awaited<ReturnType<typeof ListFragments>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListFragments<
-  TData = Awaited<ReturnType<typeof ListFragments>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  params?: ListFragmentsParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ListFragments>>,
-          TError,
-          Awaited<ReturnType<typeof ListFragments>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListFragments<
-  TData = Awaited<ReturnType<typeof ListFragments>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  params?: ListFragmentsParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List all indexed fragments for a project
  */
-
 export function useListFragments<
   TData = Awaited<ReturnType<typeof ListFragments>>,
   TError = ErrorResponse,
 >(
   projectId: string,
-  params?: ListFragmentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListFragmentsQueryOptions(projectId, params, options);
+  const queryOptions = getListFragmentsQueryOptions(projectId, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -586,7 +517,7 @@ export const useUpdateFragment = <TError = ErrorResponse, TContext = unknown>(
   return useMutation(getUpdateFragmentMutationOptions(options), queryClient);
 };
 /**
- * @summary Discard a fragment (moves to the discarded pool)
+ * @summary Discard a fragment
  */
 export type DiscardFragmentResponse204 = {
   data: void;
@@ -679,7 +610,7 @@ export type DiscardFragmentMutationResult = NonNullable<
 export type DiscardFragmentMutationError = ErrorResponse;
 
 /**
- * @summary Discard a fragment (moves to the discarded pool)
+ * @summary Discard a fragment (moves to discarded/)
  */
 export const useDiscardFragment = <TError = ErrorResponse, TContext = unknown>(
   options?: {
@@ -699,4 +630,120 @@ export const useDiscardFragment = <TError = ErrorResponse, TContext = unknown>(
   TContext
 > => {
   return useMutation(getDiscardFragmentMutationOptions(options), queryClient);
+};
+
+/**
+ * @summary Restore a discarded fragment (moves out of discarded/)
+ */
+export type RestoreFragmentResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type RestoreFragmentResponse404 = {
+  data: ErrorResponse;
+  status: 404;
+};
+
+export type RestoreFragmentResponse500 = {
+  data: ErrorResponse;
+  status: 500;
+};
+
+export type RestoreFragmentResponse503 = {
+  data: ErrorResponse;
+  status: 503;
+};
+
+export type RestoreFragmentResponseSuccess = RestoreFragmentResponse204 & {
+  headers: Headers;
+};
+export type RestoreFragmentResponseError = (
+  | RestoreFragmentResponse404
+  | RestoreFragmentResponse500
+  | RestoreFragmentResponse503
+) & {
+  headers: Headers;
+};
+
+export type RestoreFragmentResponse = RestoreFragmentResponseSuccess | RestoreFragmentResponseError;
+
+export const getRestoreFragmentUrl = (projectId: string, fragmentId: string) => {
+  return `/projects/${projectId}/fragments/${fragmentId}/restore`;
+};
+
+export const RestoreFragment = async (
+  projectId: string,
+  fragmentId: string,
+  options?: RequestInit,
+): Promise<RestoreFragmentResponse> => {
+  return customFetch<RestoreFragmentResponse>(getRestoreFragmentUrl(projectId, fragmentId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreFragmentMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof RestoreFragment>>,
+    TError,
+    { projectId: string; fragmentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof RestoreFragment>>,
+  TError,
+  { projectId: string; fragmentId: string },
+  TContext
+> => {
+  const mutationKey = ["restoreFragment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof RestoreFragment>>,
+    { projectId: string; fragmentId: string }
+  > = (props) => {
+    const { projectId, fragmentId } = props ?? {};
+
+    return RestoreFragment(projectId, fragmentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreFragmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof RestoreFragment>>
+>;
+
+export type RestoreFragmentMutationError = ErrorResponse;
+
+/**
+ * @summary Restore a discarded fragment (moves out of discarded/)
+ */
+export const useRestoreFragment = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof RestoreFragment>>,
+      TError,
+      { projectId: string; fragmentId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof RestoreFragment>>,
+  TError,
+  { projectId: string; fragmentId: string },
+  TContext
+> => {
+  return useMutation(getRestoreFragmentMutationOptions(options), queryClient);
 };

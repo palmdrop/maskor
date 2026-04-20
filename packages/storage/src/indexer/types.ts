@@ -1,4 +1,4 @@
-import type { AspectUUID, FragmentUUID, NoteUUID, Pool, ReferenceUUID } from "@maskor/shared";
+import type { AspectUUID, FragmentUUID, NoteUUID, ReferenceUUID } from "@maskor/shared";
 
 export type SyncWarning = {
   kind: "UNKNOWN_ASPECT_KEY";
@@ -25,7 +25,7 @@ export type IndexedFragment = {
   uuid: FragmentUUID;
   title: string;
   version: number;
-  pool: Pool;
+  isDiscarded: boolean;
   readyStatus: number;
   contentHash: string;
   filePath: string;
@@ -60,7 +60,6 @@ export interface VaultIndexer {
   fragments: {
     findAll(): Promise<IndexedFragment[]>;
     findByUUID(uuid: FragmentUUID): Promise<IndexedFragment | null>;
-    findByPool(pool: Pool): Promise<IndexedFragment[]>;
     findFilePath(uuid: FragmentUUID): Promise<string | null>;
   };
 

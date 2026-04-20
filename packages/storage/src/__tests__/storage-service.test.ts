@@ -84,19 +84,18 @@ describe("StorageService.fragments.discard", () => {
 
     await service.index.rebuild(context);
 
-    const unplaced = await service.fragments.findByPool(context, "unplaced");
-    expect(unplaced.length).toBeGreaterThan(0);
+    const allFragments = await service.fragments.readAll(context);
+    const active = allFragments.filter((fragment) => !fragment.isDiscarded);
+    expect(active.length).toBeGreaterThan(0);
 
-    const target = unplaced[0];
-    if (!target) throw new Error("expected at least one unplaced fragment in fixtures");
+    const target = active[0];
+    if (!target) throw new Error("expected at least one active fragment in fixtures");
 
     await service.fragments.discard(context, target.uuid);
 
-    // Rebuild required — discard does not update the index.
-    await service.index.rebuild(context);
     const all = await service.fragments.readAll(context);
     const discarded = all.find((fragment) => fragment.uuid === target.uuid);
-    expect(discarded?.pool).toBe("discarded");
+    expect(discarded?.isDiscarded).toBe(true);
   });
 
   it("throws FRAGMENT_NOT_FOUND when UUID is not in the index", async () => {
@@ -109,6 +108,55 @@ describe("StorageService.fragments.discard", () => {
     const unknownUUID = "00000000-0000-0000-0000-000000000000" as FragmentUUID;
     await expect(service.fragments.discard(context, unknownUUID)).rejects.toMatchObject({
       code: "FRAGMENT_NOT_FOUND",
+    });
+  });
+});
+
+describe("StorageService.fragments.restore", () => {
+  it("moves a discarded fragment back to fragments/ and marks it active", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const discarded = allFragments.find((fragment) => fragment.isDiscarded);
+    if (!discarded) throw new Error("expected at least one discarded fragment in fixtures");
+
+    await service.fragments.restore(context, discarded.uuid);
+
+    const all = await service.fragments.readAll(context);
+    const restored = all.find((fragment) => fragment.uuid === discarded.uuid);
+    expect(restored?.isDiscarded).toBe(false);
+  });
+
+  it("throws FRAGMENT_NOT_FOUND when UUID is not in the index", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const unknownUUID = "00000000-0000-0000-0000-000000000000" as FragmentUUID;
+    await expect(service.fragments.restore(context, unknownUUID)).rejects.toMatchObject({
+      code: "FRAGMENT_NOT_FOUND",
+    });
+  });
+
+  it("throws FRAGMENT_NOT_DISCARDED when fragment is not discarded", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const active = allFragments.find((fragment) => !fragment.isDiscarded);
+    if (!active) throw new Error("expected at least one active fragment in fixtures");
+
+    await expect(service.fragments.restore(context, active.uuid)).rejects.toMatchObject({
+      code: "FRAGMENT_NOT_DISCARDED",
     });
   });
 });

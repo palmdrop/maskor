@@ -6,7 +6,7 @@ export const fragmentsTable = sqliteTable(
     uuid: text("uuid").primaryKey(),
     title: text("title").notNull(),
     version: integer("version").notNull().default(0),
-    pool: text("pool").notNull(), // 'unprocessed' | 'incomplete' | 'unplaced' | 'discarded'
+    isDiscarded: integer("is_discarded", { mode: "boolean" }).notNull().default(false),
     readyStatus: real("ready_status").notNull().default(0),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(),
@@ -16,9 +16,8 @@ export const fragmentsTable = sqliteTable(
   (table) => [
     // Covers findAll (deleted_at IS NULL) and the soft-delete sweep in rebuild().
     index("fragments_deleted_at_idx").on(table.deletedAt),
-    // Covers findByPool (pool = ? AND deleted_at IS NULL). pool first so the index also
-    // serves pool-only queries; deleted_at second to filter active rows efficiently.
-    index("fragments_pool_deleted_at_idx").on(table.pool, table.deletedAt),
+    // Covers isDiscarded queries (is_discarded = 1 AND deleted_at IS NULL).
+    index("fragments_is_discarded_deleted_at_idx").on(table.isDiscarded, table.deletedAt),
   ],
 );
 

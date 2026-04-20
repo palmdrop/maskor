@@ -32,15 +32,13 @@ describe("GET /projects/:projectId/fragments", () => {
     expect(body.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("filters fragments by pool query param", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments?pool=unplaced`,
-    );
+  it("returns fragments with isDiscarded field", async () => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as IndexedFragment[];
     expect(Array.isArray(body)).toBe(true);
     body.forEach((fragment) => {
-      expect(fragment.pool).toBe("unplaced");
+      expect(typeof fragment.isDiscarded).toBe("boolean");
     });
   });
 });
@@ -78,7 +76,6 @@ describe("GET /projects/:projectId/fragments/:fragmentId", () => {
         body: JSON.stringify({
           title: "Stale Deletion Test",
           content: "This file will be deleted.",
-          pool: "unplaced",
         }),
       },
     );
@@ -91,11 +88,11 @@ describe("GET /projects/:projectId/fragments/:fragmentId", () => {
     // Delete the underlying file directly, bypassing the service
     unlinkSync(join(vaultDirectory, "fragments", "stale-deletion-test.md"));
 
-    const response = await testContext.app.request(
+    const getResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments/${uuid}`,
     );
-    expect(response.status).toBe(503);
-    const body = (await response.json()) as ApiError;
+    expect(getResponse.status).toBe(503);
+    const body = (await getResponse.json()) as ApiError;
     expect(body.hint).toBe("index_may_be_stale");
   });
 });
@@ -108,7 +105,6 @@ describe("POST /projects/:projectId/fragments", () => {
       body: JSON.stringify({
         title: "Test Fragment",
         content: "Some content here.",
-        pool: "unplaced",
       }),
     });
 
@@ -116,14 +112,14 @@ describe("POST /projects/:projectId/fragments", () => {
     const body = (await response.json()) as IndexedFragment;
     expect(body.uuid).toBeDefined();
     expect(body.title).toBe("Test Fragment");
-    expect(body.pool).toBe("unplaced");
+    expect(body.isDiscarded).toBe(false);
   });
 
   it("returns 400 when required fields are missing", async () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Missing pool and content" }),
+      body: JSON.stringify({ title: "Missing content" }),
     });
     expect(response.status).toBe(400);
   });
@@ -132,11 +128,12 @@ describe("POST /projects/:projectId/fragments", () => {
 describe("DELETE /projects/:projectId/fragments/:fragmentId", () => {
   it("discards a fragment and returns 204", async () => {
     const listResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments?pool=unplaced`,
+      `/projects/${project.projectUUID}/fragments`,
     );
     const fragments = (await listResponse.json()) as IndexedFragment[];
-    expect(fragments.length).toBeGreaterThan(0);
-    const target = fragments[0]!;
+    const active = fragments.filter((fragment) => !fragment.isDiscarded);
+    expect(active.length).toBeGreaterThan(0);
+    const target = active[0]!;
 
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments/${target.uuid}`,

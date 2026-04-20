@@ -11,17 +11,12 @@ import { useListAspects } from "../../api/generated/aspects/aspects";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Slider } from "../ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { TagCombobox } from "../ui/tag-combobox";
 import { useListNotes } from "../../api/generated/notes/notes";
 import { useListReferences } from "../../api/generated/references/references";
 
-// TODO: infer the schema and available options from the backend somehow? schema should already be there
-const POOL_OPTIONS = ["unprocessed", "incomplete", "unplaced", "discarded"] as const;
-
 const fragmentFormSchema = z.object({
   title: z.string().min(1),
-  pool: z.enum(POOL_OPTIONS),
   readyStatus: z.number().min(0).max(100),
   notes: z.array(z.object({ value: z.string() })),
   references: z.array(z.object({ value: z.string() })),
@@ -33,7 +28,6 @@ type FragmentFormValues = z.infer<typeof fragmentFormSchema>;
 function buildDefaultValues(fragment: Fragment, aspects: IndexedAspect[]): FragmentFormValues {
   return {
     title: fragment.title,
-    pool: fragment.pool as (typeof POOL_OPTIONS)[number],
     readyStatus: Math.round(fragment.readyStatus * 100),
     notes: fragment.notes.map((value) => ({ value })),
     references: fragment.references.map((value) => ({ value })),
@@ -60,7 +54,6 @@ function buildUpdatePayload(
 
   return {
     title: values.title,
-    pool: values.pool,
     readyStatus: values.readyStatus / 100,
     notes: values.notes.map(({ value }) => value),
     references: values.references.map(({ value }) => value),
@@ -157,29 +150,6 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
         <div className="flex flex-col gap-1">
           <Label htmlFor="title">Title</Label>
           <Input id="title" {...register("title")} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label>Pool</Label>
-          {/* TODO: this should not be user-controlled directly. The system should verify if a fragment is ready or not. NOTE: pools might end up being unnecessary */}
-          <Controller
-            control={control}
-            name="pool"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {POOL_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
         </div>
 
         <div className="flex flex-col gap-2">

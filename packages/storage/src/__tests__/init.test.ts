@@ -29,7 +29,7 @@ describe("initFragment", () => {
     const parsed = parseFile(raw);
 
     expect(parsed.frontmatter.title).toBe("The Bridge");
-    expect(parsed.frontmatter.pool).toBe("unprocessed");
+    expect("pool" in parsed.frontmatter).toBe(false);
     expect(parsed.frontmatter.readyStatus).toBe(0);
     expect(parsed.frontmatter.version).toBe(1);
     expect(parsed.frontmatter.uuid).toBe(fragment.uuid);
@@ -51,7 +51,7 @@ describe("initFragment", () => {
     const fragment = await initFragment(config, piece);
 
     expect(fragment.title).toBe("Late Winter");
-    expect(fragment.pool).toBe("unprocessed");
+    expect(fragment.isDiscarded).toBe(false);
     expect(fragment.version).toBe(1);
     expect(fragment.readyStatus).toBe(0);
     expect(typeof fragment.uuid).toBe("string");

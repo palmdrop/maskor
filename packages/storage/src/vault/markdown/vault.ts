@@ -99,22 +99,7 @@ export const createVault = (config: VaultConfig): Vault => {
         const absolutePath = toAbsoluteFragment(filePath);
         const raw = await readMarkdown(absolutePath);
         const parsed = parseFile(raw);
-        const isDiscarded = filePath.startsWith("discarded" + sep);
-
-        if (isDiscarded && parsed.frontmatter.pool !== "discarded") {
-          log.warn(
-            { filePath, frontmatterPool: parsed.frontmatter.pool },
-            "pool/folder conflict: fragment in discarded/ but frontmatter pool is not discarded — overriding",
-          );
-        }
-        if (!isDiscarded && parsed.frontmatter.pool === "discarded") {
-          log.warn(
-            { filePath, frontmatterPool: parsed.frontmatter.pool },
-            "pool/folder conflict: fragment has pool=discarded but is not in discarded/ — pool not overridden",
-          );
-        }
-
-        return fragmentMapper.fromFile(parsed, filePath, isDiscarded ? "discarded" : undefined);
+        return fragmentMapper.fromFile(parsed, filePath);
       },
 
       async readAll() {
@@ -134,12 +119,7 @@ export const createVault = (config: VaultConfig): Vault => {
             const absolutePath = toAbsoluteFragment(filePath);
             const rawContent = await readMarkdown(absolutePath);
             const parsed = parseFile(rawContent);
-            const isDiscarded = filePath.startsWith("discarded" + sep);
-            const entity = fragmentMapper.fromFile(
-              parsed,
-              filePath,
-              isDiscarded ? "discarded" : undefined,
-            );
+            const entity = fragmentMapper.fromFile(parsed, filePath);
             return { entity, filePath, rawContent };
           }),
         );
@@ -148,10 +128,9 @@ export const createVault = (config: VaultConfig): Vault => {
       async write(fragment) {
         const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
         const slug = slugify(fragment.title);
-        const absoluteFilePath =
-          fragment.pool === "discarded"
-            ? toAbsoluteFragment(join("discarded", `${slug}.md`))
-            : toAbsoluteFragment(`${slug}.md`);
+        const absoluteFilePath = fragment.isDiscarded
+          ? toAbsoluteFragment(join("discarded", `${slug}.md`))
+          : toAbsoluteFragment(`${slug}.md`);
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, inlineFields, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "fragment written");
@@ -181,21 +160,34 @@ export const createVault = (config: VaultConfig): Vault => {
           );
         }
 
-        // TODO: non-atomic two-step — file is renamed before frontmatter is rewritten.
-        // If writeMarkdown fails here, the file sits in discarded/ with a stale pool value.
-        // The isDiscarded path check in read() degrades gracefully, but the window exists.
-        const discardedFragment = {
-          ...fragmentMapper.fromFile(parsed, relativeDestination),
-          pool: "discarded" as const,
-        };
-
-        const { frontmatter, inlineFields, body } = fragmentMapper.toFile(discardedFragment);
-        await writeMarkdown(
-          absoluteDestination,
-          serializeFile({ frontmatter, inlineFields, body }),
-        );
-
         log.info({ filePath, destination: relativeDestination }, "fragment discarded");
+      },
+
+      async restore(filePath: string) {
+        const absoluteSource = toAbsoluteFragment(filePath);
+        const raw = await readMarkdown(absoluteSource);
+        const parsed = parseFile(raw);
+
+        const slug = slugify(
+          typeof parsed.frontmatter.title === "string"
+            ? parsed.frontmatter.title
+            : basename(filePath).replace(/\.md$/, ""),
+        );
+        const relativeDestination = `${slug}.md`;
+        const absoluteDestination = toAbsoluteFragment(relativeDestination);
+
+        try {
+          await rename(absoluteSource, absoluteDestination);
+        } catch (cause) {
+          throw new VaultError(
+            "FILE_MOVE_FAILED",
+            `Failed to move fragment out of discarded/`,
+            { filePath, reason: "fs.rename failed" },
+            { cause },
+          );
+        }
+
+        log.info({ filePath, destination: relativeDestination }, "fragment restored");
       },
     },
 

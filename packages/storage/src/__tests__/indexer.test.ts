@@ -126,7 +126,7 @@ describe("fragments.findByUUID", () => {
 
     expect(bridge).not.toBeNull();
     expect(bridge?.title).toBe("The Bridge");
-    expect(bridge?.pool).toBe("unplaced");
+    expect(bridge?.isDiscarded).toBe(false);
     expect(bridge?.readyStatus).toBe(0.58);
   });
 
@@ -136,23 +136,6 @@ describe("fragments.findByUUID", () => {
 
     const result = await indexer.fragments.findByUUID("nonexistent" as FragmentUUID);
     expect(result).toBeNull();
-  });
-});
-
-// --- fragments.findByPool ---
-
-describe("fragments.findByPool", () => {
-  it("filters fragments by pool", async () => {
-    const indexer = makeIndexer();
-    await indexer.rebuild();
-
-    const discarded = await indexer.fragments.findByPool("discarded");
-    // harbour-lights (frontmatter discarded), old-beginning (discarded folder), the-window (discarded folder)
-    expect(discarded.length).toBeGreaterThanOrEqual(2);
-
-    const incomplete = await indexer.fragments.findByPool("incomplete");
-    expect(incomplete.length).toBe(1);
-    expect(incomplete[0]?.title).toBe("Late Winter");
   });
 });
 
@@ -299,25 +282,6 @@ describe("soft-delete on rebuild", () => {
     await indexer.rebuild();
 
     expect(await indexer.aspects.findByKey("grief")).toBeNull();
-  });
-});
-
-// --- findByPool excludes soft-deleted fragments ---
-
-describe("fragments.findByPool with soft-deleted rows", () => {
-  it("does not return a fragment with matching pool that was soft-deleted", async () => {
-    const indexer = makeIndexer();
-    await indexer.rebuild();
-
-    const unplacedBefore = await indexer.fragments.findByPool("unplaced");
-    expect(unplacedBefore.length).toBeGreaterThan(0);
-
-    // Delete a fragment that is in the unplaced pool
-    unlinkSync(join(vaultDir, "fragments", "the-bridge.md"));
-    await indexer.rebuild();
-
-    const unplacedAfter = await indexer.fragments.findByPool("unplaced");
-    expect(unplacedAfter.find((fragment) => fragment.title === "The Bridge")).toBeUndefined();
   });
 });
 

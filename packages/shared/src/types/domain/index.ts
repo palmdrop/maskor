@@ -4,7 +4,6 @@ export * from "./aspect";
 export * from "./fragment";
 export * from "./note";
 export * from "./piece";
-export * from "./pool";
 export * from "./project";
 export * from "./reference";
 export * from "./sequence";

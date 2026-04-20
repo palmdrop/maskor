@@ -28,19 +28,19 @@ describe("vault.fragments.readAll", () => {
     expect(fragments.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("sets pool to discarded for files in discarded/ folder", async () => {
+  it("marks fragments in discarded/ as isDiscarded=true", async () => {
     const vault = createVault(config);
     const fragments = await vault.fragments.readAll();
-    const discarded = fragments.filter((fragment) => fragment.pool === "discarded");
+    const discarded = fragments.filter((fragment) => fragment.isDiscarded);
     expect(discarded.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("overrides pool for file in discarded/ with wrong frontmatter", async () => {
+  it("marks fragments not in discarded/ as isDiscarded=false", async () => {
     const vault = createVault(config);
     const fragments = await vault.fragments.readAll();
-    // the-window.md is in discarded/ but has pool: unplaced in frontmatter
     const theWindow = fragments.find((fragment) => fragment.title === "The Window");
-    expect(theWindow?.pool ?? null).toBe("discarded");
+    // The Window is in discarded/ so should be isDiscarded=true
+    expect(theWindow?.isDiscarded ?? null).toBe(true);
   });
 });
 
@@ -73,12 +73,12 @@ describe("vault.fragments.write", () => {
 });
 
 describe("vault.fragments.discard", () => {
-  it("moves fragment to discarded/ and updates pool", async () => {
+  it("moves fragment to discarded/ and marks it as isDiscarded", async () => {
     const vault = createVault(config);
     await vault.fragments.discard("the-bridge.md");
 
     const discarded = await vault.fragments.read("discarded/the-bridge.md");
-    expect(discarded.pool).toBe("discarded");
+    expect(discarded.isDiscarded).toBe(true);
   });
 
   it("throws when file not found", async () => {
@@ -163,7 +163,7 @@ describe("vault.pieces.consumeAll", () => {
     const fragments = await vault.pieces.consumeAll();
 
     expect(fragments.length).toBe(1);
-    expect(fragments[0]?.pool).toBe("unprocessed");
+    expect(fragments[0]?.isDiscarded).toBe(false);
 
     // source file should be gone
     const pieceFile = Bun.file(join(tmpDir, "pieces", "raw-memory.md"));

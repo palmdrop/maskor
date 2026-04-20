@@ -1,15 +1,7 @@
-import type { Fragment, Pool } from "@maskor/shared";
+import type { Fragment } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { inlineFieldsToProperties, propertiesToInlineFields } from "./aspect";
 import { basename } from "node:path";
-
-const hasRequiredFields = (frontmatter: Record<string, unknown>): boolean => {
-  return (
-    typeof frontmatter.title === "string" &&
-    frontmatter.title.trim() !== "" &&
-    typeof frontmatter.readyStatus === "number"
-  );
-};
 
 const deriveTitle = (frontmatter: Record<string, unknown>, filePath: string): string => {
   if (typeof frontmatter.title === "string" && frontmatter.title.trim() !== "") {
@@ -20,28 +12,17 @@ const deriveTitle = (frontmatter: Record<string, unknown>, filePath: string): st
   return filename.replace(/\.md$/, "");
 };
 
-const derivePool = (frontmatter: Record<string, unknown>, poolOverride?: Pool): Pool => {
-  if (poolOverride) return poolOverride;
-
-  if (frontmatter.pool === "unprocessed") return "unprocessed";
-  if (frontmatter.pool === "incomplete") return "incomplete";
-  if (frontmatter.pool === "unplaced") return "unplaced";
-  if (frontmatter.pool === "discarded") return "discarded";
-
-  return hasRequiredFields(frontmatter) ? "unplaced" : "incomplete";
-};
-
-export const fromFile = (parsed: ParsedFile, filePath: string, poolOverride?: Pool): Fragment => {
+export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
   const frontmatter = parsed.frontmatter;
 
   const title = deriveTitle(frontmatter, filePath);
-  const pool = derivePool(frontmatter, poolOverride);
+  const isDiscarded = filePath.startsWith("discarded/");
 
   return {
     uuid: frontmatter.uuid as string,
     title,
     version: typeof frontmatter.version === "number" ? frontmatter.version : 1,
-    pool,
+    isDiscarded,
     readyStatus: typeof frontmatter.readyStatus === "number" ? frontmatter.readyStatus : 0,
     notes: (frontmatter.notes as string[]) ?? [],
     references: (frontmatter.references as string[]) ?? [],
@@ -65,7 +46,6 @@ export const toFile = (
       uuid: fragment.uuid,
       title: fragment.title,
       version: fragment.version,
-      pool: fragment.pool,
       readyStatus: fragment.readyStatus,
       notes: fragment.notes,
       references: fragment.references,
