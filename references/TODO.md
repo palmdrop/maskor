@@ -7,6 +7,8 @@
   - https://www.augmentcode.com/
     - or other tool for mapping/indexing code base
 
+- [ ] make sure API is idempotent - retried requests should not cause side effects
+
 - [x] Users do not set fragment pool manually, it is set by the system automatically when a fragment has sufficient metadata, is placed, etc
 
 - [x] Fragment editor needs a discard button > to automatically move a fragment to discarded

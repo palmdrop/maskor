@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { useDelayedPending } from "../../hooks/useDelayedPending";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetFragment,
@@ -30,6 +31,9 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
 
   const fragment = envelope?.status === 200 ? envelope.data : null;
+
+  const isActionPending = isUpdatePending || isDiscardPending || isRestorePending;
+  const showSaving = useDelayedPending(isUpdatePending);
 
   const invalidateFragment = useCallback(() => {
     queryClient.invalidateQueries({
@@ -74,8 +78,6 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
     return <p>Failed to load fragment.</p>;
   }
 
-  const isActionPending = isUpdatePending || isDiscardPending || isRestorePending;
-
   return (
     <div className="flex flex-col h-full gap-4">
       {fragment.isDiscarded && (
@@ -95,8 +97,8 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
               {isDiscardPending ? "Discarding…" : "Discard"}
             </Button>
           )}
-          <Button size="sm" disabled={isActionPending} onClick={handleSave}>
-            {isUpdatePending ? "Saving…" : "Save"}
+          <Button size="sm" disabled={isActionPending} onClick={handleSave} className="min-w-20">
+            {showSaving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>

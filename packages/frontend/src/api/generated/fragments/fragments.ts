@@ -99,9 +99,59 @@ export const getListFragmentsQueryOptions = <
 export type ListFragmentsQueryResult = NonNullable<Awaited<ReturnType<typeof ListFragments>>>;
 export type ListFragmentsQueryError = ErrorResponse;
 
+export function useListFragments<
+  TData = Awaited<ReturnType<typeof ListFragments>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ListFragments>>,
+          TError,
+          Awaited<ReturnType<typeof ListFragments>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListFragments<
+  TData = Awaited<ReturnType<typeof ListFragments>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ListFragments>>,
+          TError,
+          Awaited<ReturnType<typeof ListFragments>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListFragments<
+  TData = Awaited<ReturnType<typeof ListFragments>>,
+  TError = ErrorResponse,
+>(
+  projectId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListFragments>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List all indexed fragments for a project
  */
+
 export function useListFragments<
   TData = Awaited<ReturnType<typeof ListFragments>>,
   TError = ErrorResponse,
@@ -517,7 +567,7 @@ export const useUpdateFragment = <TError = ErrorResponse, TContext = unknown>(
   return useMutation(getUpdateFragmentMutationOptions(options), queryClient);
 };
 /**
- * @summary Discard a fragment
+ * @summary Discard a fragment (moves to discarded/)
  */
 export type DiscardFragmentResponse204 = {
   data: void;
@@ -631,7 +681,6 @@ export const useDiscardFragment = <TError = ErrorResponse, TContext = unknown>(
 > => {
   return useMutation(getDiscardFragmentMutationOptions(options), queryClient);
 };
-
 /**
  * @summary Restore a discarded fragment (moves out of discarded/)
  */

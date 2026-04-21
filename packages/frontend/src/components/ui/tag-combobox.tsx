@@ -18,6 +18,7 @@ export function TagCombobox({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const commandRef = useRef<HTMLDivElement>(null);
 
   const filtered = availableOptions.filter((option) =>
     option.toLowerCase().includes(query.toLowerCase()),
@@ -46,6 +47,13 @@ export function TagCombobox({
             if (event.key === "Escape") {
               setOpen(false);
               inputRef.current?.blur();
+              return;
+            }
+            if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key) && open) {
+              event.preventDefault();
+              commandRef.current?.dispatchEvent(
+                new KeyboardEvent("keydown", { key: event.key, bubbles: true }),
+              );
             }
           }}
         />
@@ -53,7 +61,13 @@ export function TagCombobox({
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           onOpenAutoFocus={(event) => event.preventDefault()}
-          onInteractOutside={() => setOpen(false)}
+          onInteractOutside={(event) => {
+            if (inputRef.current?.contains(event.target as Node)) {
+              event.preventDefault();
+              return;
+            }
+            setOpen(false);
+          }}
           side="bottom"
           align="start"
           sideOffset={4}
@@ -64,7 +78,7 @@ export function TagCombobox({
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           )}
         >
-          <Command shouldFilter={false}>
+          <Command ref={commandRef} shouldFilter={false}>
             <Command.List className="max-h-48 overflow-y-auto p-1">
               {filtered.length === 0 && (
                 <Command.Empty className="py-2 px-3 text-sm text-muted-foreground">
