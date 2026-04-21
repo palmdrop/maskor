@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
-import type { FragmentUUID, ProjectUUID } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -50,7 +49,7 @@ describe("StorageService.registerProject + resolveProject", () => {
 describe("StorageService.resolveProject", () => {
   it("throws ProjectNotFoundError for an unknown UUID", async () => {
     const service = makeService();
-    const unknownUUID = "00000000-0000-0000-0000-000000000000" as ProjectUUID;
+    const unknownUUID = "00000000-0000-0000-0000-000000000000";
 
     await expect(service.resolveProject(unknownUUID)).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
@@ -105,7 +104,7 @@ describe("StorageService.fragments.discard", () => {
 
     await service.index.rebuild(context);
 
-    const unknownUUID = "00000000-0000-0000-0000-000000000000" as FragmentUUID;
+    const unknownUUID = "00000000-0000-0000-0000-000000000000";
     await expect(service.fragments.discard(context, unknownUUID)).rejects.toMatchObject({
       code: "FRAGMENT_NOT_FOUND",
     });
@@ -138,7 +137,7 @@ describe("StorageService.fragments.restore", () => {
 
     await service.index.rebuild(context);
 
-    const unknownUUID = "00000000-0000-0000-0000-000000000000" as FragmentUUID;
+    const unknownUUID = "00000000-0000-0000-0000-000000000000";
     await expect(service.fragments.restore(context, unknownUUID)).rejects.toMatchObject({
       code: "FRAGMENT_NOT_FOUND",
     });

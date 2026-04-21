@@ -61,7 +61,7 @@ If this is intentional (the index doesn't track `updatedAt`), add a comment:
 export const IndexedFragmentSchema = DomainFragmentSchema.omit({
   content: true,
   updatedAt: true,
-})
+});
 ```
 
 ---

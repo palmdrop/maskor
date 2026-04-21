@@ -2,7 +2,6 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { SQLiteBunTransaction } from "drizzle-orm/bun-sqlite";
 import type { Aspect, Fragment, Note, Reference } from "@maskor/shared";
-import type { AspectUUID } from "@maskor/shared";
 import {
   aspectNotesTable,
   aspectsTable,
@@ -20,16 +19,16 @@ import { hashContent } from "../utils/hash";
 
 // Loads the active (non-deleted) aspect key → UUID map from the DB at call time.
 // Used by both the watcher and the storage service for fragment property resolution.
-export const loadAspectKeyToUuid = (vaultDatabase: VaultDatabase): Map<string, AspectUUID> => {
+export const loadAspectKeyToUuid = (vaultDatabase: VaultDatabase): Map<string, string> => {
   const rows = vaultDatabase
     .select({ key: aspectsTable.key, uuid: aspectsTable.uuid })
     .from(aspectsTable)
     .where(isNull(aspectsTable.deletedAt))
     .all();
   return rows.reduce((map, row) => {
-    map.set(row.key, row.uuid as AspectUUID);
+    map.set(row.key, row.uuid);
     return map;
-  }, new Map<string, AspectUUID>());
+  }, new Map<string, string>());
 };
 
 type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
@@ -125,7 +124,7 @@ export const upsertFragment = (
   fragment: Fragment,
   filePath: string,
   rawContent: string,
-  aspectKeyToUuid: Map<string, AspectUUID>,
+  aspectKeyToUuid: Map<string, string>,
 ): SyncWarning[] => {
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
@@ -141,6 +140,7 @@ export const upsertFragment = (
       readyStatus: fragment.readyStatus,
       contentHash,
       filePath,
+      updatedAt: fragment.updatedAt,
       deletedAt: null,
       syncedAt,
     })
@@ -153,6 +153,7 @@ export const upsertFragment = (
         readyStatus: fragment.readyStatus,
         contentHash,
         filePath,
+        updatedAt: fragment.updatedAt,
         deletedAt: null,
         syncedAt,
       },

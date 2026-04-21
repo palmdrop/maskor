@@ -4,7 +4,7 @@ description: Known structural issues in packages/shared/src/types observed durin
 type: project
 ---
 
-Confirmed bugs as of 2026-04-04:
+Confirmed bugs as of 2026-04-04 (updated 2026-04-21):
 
 - `Sequence.uuid` typed as `SectionUUID` instead of `SequenceUUID` (sequence.ts:18)
 - `ArcUUID` brand string is `"arch"` not `"arc"` (arc.ts:5)
@@ -14,6 +14,8 @@ Confirmed bugs as of 2026-04-04:
 - `apis/aspects.ts` exported but blank — flag any aspects API review
 - `Action` type has `execute`/`revert` function fields — will break on serialization
 - `onSubmit: (update: Partial<Fragment>)` used instead of `onSubmit: (update: FragmentUpdate)` in `FragmentMetadataForm` — `as FragmentUpdate` cast in caller silences the mismatch (noted 2026-04-20)
+- `ProjectSchema` in shared (post-zod-first refactor) has no `createdAt`/`updatedAt` — API layer builds ProjectSchema independently, breaking the "domain is base" invariant for this entity (noted 2026-04-21)
+- `AspectCreateSchema` in API adds `.default([])` to `notes`, making it optional at API layer while domain schema requires it — silent semantic divergence (noted 2026-04-21)
 
 **Why:** Copy-paste errors and mixed-concern types that pass type-checking silently.
 

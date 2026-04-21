@@ -1,5 +1,4 @@
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import type { AspectUUID, FragmentUUID } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
@@ -42,9 +41,9 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     // Build aspect key → UUID resolution map (used when indexing fragment properties).
     const aspectKeyToUuid = aspectEntries.reduce((map, { entity: aspect }) => {
-      map.set(aspect.key, aspect.uuid as AspectUUID);
+      map.set(aspect.key, aspect.uuid);
       return map;
-    }, new Map<string, AspectUUID>());
+    }, new Map<string, string>());
 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
@@ -227,7 +226,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         return loadFragmentRelations(rows);
       },
 
-      async findByUUID(uuid: FragmentUUID) {
+      async findByUUID(uuid: string) {
         const row = vaultDatabase
           .select()
           .from(fragmentsTable)
@@ -240,7 +239,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         return results[0] ?? null;
       },
 
-      async findFilePath(uuid: FragmentUUID) {
+      async findFilePath(uuid: string) {
         const row = vaultDatabase
           .select({ filePath: fragmentsTable.filePath, deletedAt: fragmentsTable.deletedAt })
           .from(fragmentsTable)
@@ -275,7 +274,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         return results[0] ?? null;
       },
 
-      async findByUUID(uuid: AspectUUID) {
+      async findByUUID(uuid: string) {
         const row = vaultDatabase
           .select()
           .from(aspectsTable)

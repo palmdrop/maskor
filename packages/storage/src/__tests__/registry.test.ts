@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { createRegistryDatabase } from "../db/registry";
 import { createProjectRegistry } from "../registry/registry";
 import { LOCAL_USER_UUID } from "../registry/types";
-import type { ProjectUUID } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -100,7 +99,7 @@ describe("registry.findByUUID", () => {
 
   it("returns null for an unknown UUID", async () => {
     const registry = makeRegistry();
-    const result = await registry.findByUUID("00000000-0000-0000-0000-000000000000" as ProjectUUID);
+    const result = await registry.findByUUID("00000000-0000-0000-0000-000000000000");
     expect(result).toBeNull();
   });
 });

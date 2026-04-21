@@ -6,7 +6,7 @@ import {
   propertiesToInlineFields,
 } from "../../vault/markdown/mappers/aspect";
 import type { ParsedFile } from "../../vault/markdown/parse";
-import type { Aspect, AspectUUID } from "@maskor/shared";
+import type { Aspect } from "@maskor/shared";
 
 const PARSED_ASPECT: ParsedFile = {
   frontmatter: {
@@ -50,7 +50,7 @@ describe("aspect.fromFile", () => {
 
 describe("aspect.toFile", () => {
   const aspect: Aspect = {
-    uuid: "aspect-0001-0000-0000-000000000001" as AspectUUID,
+    uuid: "aspect-0001-0000-0000-000000000001",
     key: "grief",
     category: "theme",
     description: "The presence of loss.",

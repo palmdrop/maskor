@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { fromFile, toFile } from "../../vault/markdown/mappers/fragment";
 import type { ParsedFile } from "../../vault/markdown/parse";
-import type { Fragment, FragmentUUID } from "@maskor/shared";
+import type { Fragment } from "@maskor/shared";
 
 const PARSED: ParsedFile = {
   frontmatter: {
@@ -84,7 +84,7 @@ describe("fragment.fromFile", () => {
 
 describe("fragment.toFile", () => {
   const fragment: Fragment = {
-    uuid: "frag-0001-0000-0000-000000000001" as FragmentUUID,
+    uuid: "frag-0001-0000-0000-000000000001",
     title: "The Bridge",
     version: 3,
     isDiscarded: false,

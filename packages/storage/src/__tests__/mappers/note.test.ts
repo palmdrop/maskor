@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { fromFile, toFile } from "../../vault/markdown/mappers/note";
 import type { ParsedFile } from "../../vault/markdown/parse";
-import type { Note, NoteUUID } from "@maskor/shared";
+import type { Note } from "@maskor/shared";
 
 const PARSED: ParsedFile = {
   frontmatter: {
@@ -29,7 +29,7 @@ describe("note.fromFile", () => {
 
 describe("note.toFile", () => {
   const note: Note = {
-    uuid: "note-0001-0000-0000-000000000001" as NoteUUID,
+    uuid: "note-0001-0000-0000-000000000001",
     title: "bridge observation",
     content: "The bridge detail might be too literal.",
   };

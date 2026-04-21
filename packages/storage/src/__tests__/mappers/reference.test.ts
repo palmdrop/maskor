@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { fromFile, toFile } from "../../vault/markdown/mappers/reference";
 import type { ParsedFile } from "../../vault/markdown/parse";
-import type { Reference, ReferenceUUID } from "@maskor/shared";
+import type { Reference } from "@maskor/shared";
 
 const PARSED: ParsedFile = {
   frontmatter: {
@@ -29,7 +29,7 @@ describe("reference.fromFile", () => {
 
 describe("reference.toFile", () => {
   const ref: Reference = {
-    uuid: "ref-00001-0000-0000-000000000001" as ReferenceUUID,
+    uuid: "ref-00001-0000-0000-000000000001",
     name: "city research",
     content: "Notes on urban waterways.",
   };

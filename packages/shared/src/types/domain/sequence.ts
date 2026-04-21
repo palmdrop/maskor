@@ -1,19 +1,14 @@
-import type { FragmentUUID } from "./fragment";
-
-export type SectionUUID = string;
-export type SequenceUUID = string;
-
 export type Section = {
   name: string;
-  uuid: SectionUUID;
+  uuid: string;
   fragments: {
-    fragmentUUID: FragmentUUID;
+    fragmentUUID: string;
     position: number;
   }[];
 };
 
 export type Sequence = {
   name: string;
-  uuid: SequenceUUID;
+  uuid: string;
   sections: Section[];
 };

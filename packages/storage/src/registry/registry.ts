@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
-import type { ProjectUUID } from "@maskor/shared";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
 import { ProjectNotFoundError } from "./errors";
@@ -18,7 +17,7 @@ const toProjectRecord = (row: typeof projectsTable.$inferSelect): ProjectRecord 
 
 const writeVaultManifest = async (
   vaultPath: string,
-  projectUUID: ProjectUUID,
+  projectUUID: string,
   name: string,
 ): Promise<void> => {
   const maskorDirectory = join(vaultPath, ".maskor");
@@ -71,7 +70,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       return rows.map(toProjectRecord);
     },
 
-    async findByUUID(projectUUID: ProjectUUID): Promise<ProjectRecord | null> {
+    async findByUUID(projectUUID: string): Promise<ProjectRecord | null> {
       const rows = await database
         .select()
         .from(projectsTable)
@@ -81,7 +80,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       return rows[0] ? toProjectRecord(rows[0]) : null;
     },
 
-    async removeProject(projectUUID: ProjectUUID): Promise<void> {
+    async removeProject(projectUUID: string): Promise<void> {
       const result = await database
         .delete(projectsTable)
         .where(eq(projectsTable.uuid, projectUUID))

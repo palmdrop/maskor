@@ -35,19 +35,19 @@ export type IndexedFragmentProperties = {
 
 export interface IndexedFragment {
   uuid: string;
-  title: string;
   version: number;
-  isDiscarded: boolean;
+  title: string;
   /**
    * @minimum 0
    * @maximum 1
    */
   readyStatus: number;
   contentHash: string;
-  filePath: string;
   notes: string[];
   references: string[];
+  isDiscarded: boolean;
   properties: IndexedFragmentProperties;
+  filePath: string;
 }
 
 export type FragmentProperties = {
@@ -58,20 +58,20 @@ export type FragmentProperties = {
 
 export interface Fragment {
   uuid: string;
-  title: string;
   version: number;
-  isDiscarded: boolean;
+  title: string;
+  content: string;
   /**
    * @minimum 0
    * @maximum 1
    */
   readyStatus: number;
   contentHash: string;
+  updatedAt: string;
   notes: string[];
   references: string[];
+  isDiscarded: boolean;
   properties: FragmentProperties;
-  content: string;
-  updatedAt: string;
 }
 
 export interface FragmentCreate {
@@ -105,8 +105,8 @@ export interface IndexedAspect {
   uuid: string;
   key: string;
   category?: string;
-  filePath: string;
   notes: string[];
+  filePath: string;
 }
 
 export interface Aspect {

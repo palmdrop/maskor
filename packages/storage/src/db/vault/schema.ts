@@ -10,6 +10,7 @@ export const fragmentsTable = sqliteTable(
     readyStatus: real("ready_status").notNull().default(0),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
     deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
   },

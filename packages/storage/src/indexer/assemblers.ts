@@ -20,6 +20,7 @@ export const assembleFragment = (
   readyStatus: row.readyStatus,
   contentHash: row.contentHash,
   filePath: row.filePath,
+  updatedAt: row.updatedAt,
   notes: noteRows.map((note) => note.noteTitle),
   references: referenceRows.map((reference) => reference.referenceName),
   properties: propertyRows.reduce(

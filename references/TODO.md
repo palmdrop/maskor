@@ -7,7 +7,7 @@
   - https://www.augmentcode.com/
     - or other tool for mapping/indexing code base
 
-- [ ] make sure API is idempotent - retried requests should not cause side effects
+- [-] make sure API is idempotent - retried requests should not cause side effects
 
 - [x] Users do not set fragment pool manually, it is set by the system automatically when a fragment has sufficient metadata, is placed, etc
 
@@ -20,13 +20,13 @@
 
 - [ ] Investigate if orval can be used to generate zod schemas for the frontend as well... needed for fragment editor?
 
-- [ ] Saving a discarded fragment that is not in the discarded pool accidentally creates a duplicate fragment?
+- [x] Saving a discarded fragment that is not in the discarded pool accidentally creates a duplicate fragment?
 
-- [ ] Only allow adding notes/references that already exist on the fragment editor
+- [x] Only allow adding notes/references that already exist on the fragment editor
 
 - [ ] Allow adding new aspects on the fragment editor page
 
-- [ ] Only keep one save button for both metadata and fragment content
+- [x] Only keep one save button for both metadata and fragment content
 
 - [ ] Add simple project selection page
 

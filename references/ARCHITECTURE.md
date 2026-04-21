@@ -260,22 +260,21 @@ All request/response shapes in `packages/api/src/schemas/`:
 
 ## Key Design Decisions & Constraints
 
-| Decision                        | Rationale                                                                        |
-| ------------------------------- | -------------------------------------------------------------------------------- |
-| Vault = source of truth         | Human-readable, Obsidian-compatible, survives DB loss                            |
-| DB = derived cache              | Fast queries without full file scans; always re-derivable from vault             |
-| SQLite (not Postgres)           | Local-first; no server process; `bun:sqlite` is native                           |
-| Two separate SQLite DBs         | Registry is global (user config dir); vault DB travels with the vault            |
-| Drizzle ORM                     | Type-safe queries; schema-as-code; migration runner built-in                     |
-| Branded UUIDs (`ts-brand`)      | Prevents passing a `FragmentUUID` where `AspectUUID` is expected at compile time |
-| Inline fields (Dataview syntax) | Aspect weights visible and editable in Obsidian without plugins                  |
-| `gray-matter` for frontmatter   | Battle-tested YAML parse/stringify; Obsidian-compatible                          |
-| `pino` logger in `shared`       | Structured JSON logging; passed via `VaultConfig.logger` for testability         |
-| Factory functions, not classes  | Consistent pattern across all packages (`createVault`, `createStorageService`)   |
-| Single transaction on rebuild   | Atomicity + batched disk flushes = consistent state + performance                |
-| OpenAPIHono + Zod               | Type-safe routes, OpenAPI spec generated from code, no separate schema file      |
-| StorageService namespaced API   | Encapsulates vault/indexer internals; consumers never touch raw DB or vault      |
-| Relative vault paths            | All file operations relative to vault root; `resolvePath` blocks traversal       |
+| Decision                        | Rationale                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| Vault = source of truth         | Human-readable, Obsidian-compatible, survives DB loss                          |
+| DB = derived cache              | Fast queries without full file scans; always re-derivable from vault           |
+| SQLite (not Postgres)           | Local-first; no server process; `bun:sqlite` is native                         |
+| Two separate SQLite DBs         | Registry is global (user config dir); vault DB travels with the vault          |
+| Drizzle ORM                     | Type-safe queries; schema-as-code; migration runner built-in                   |
+| Inline fields (Dataview syntax) | Aspect weights visible and editable in Obsidian without plugins                |
+| `gray-matter` for frontmatter   | Battle-tested YAML parse/stringify; Obsidian-compatible                        |
+| `pino` logger in `shared`       | Structured JSON logging; passed via `VaultConfig.logger` for testability       |
+| Factory functions, not classes  | Consistent pattern across all packages (`createVault`, `createStorageService`) |
+| Single transaction on rebuild   | Atomicity + batched disk flushes = consistent state + performance              |
+| OpenAPIHono + Zod               | Type-safe routes, OpenAPI spec generated from code, no separate schema file    |
+| StorageService namespaced API   | Encapsulates vault/indexer internals; consumers never touch raw DB or vault    |
+| Relative vault paths            | All file operations relative to vault root; `resolvePath` blocks traversal     |
 
 ### Open / unsettled
 

@@ -1,5 +1,3 @@
-import type { ProjectUUID } from "./project";
-
 // etc...
 export type Domain = "fragment" | "project" | "aspect" | "note" | "reference";
 
@@ -9,7 +7,7 @@ export type Action = {
   date: Date;
   type: ActionType;
   undoType: ActionType;
-  projectUUID: ProjectUUID;
+  projectUUID: string;
   data: unknown;
 };
 

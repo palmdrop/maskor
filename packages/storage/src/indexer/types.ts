@@ -1,9 +1,7 @@
-import type { AspectUUID, FragmentUUID, NoteUUID, ReferenceUUID } from "@maskor/shared";
-
 export type SyncWarning = {
   kind: "UNKNOWN_ASPECT_KEY";
   aspectKey: string;
-  fragmentUuids: FragmentUUID[];
+  fragmentUuids: string[];
 };
 
 export type RebuildStats = {
@@ -18,24 +16,25 @@ export type RebuildStats = {
 // NULL aspectUuid means the aspect key didn't resolve — signals drift
 export type IndexedFragmentProperty = {
   weight: number;
-  aspectUuid: AspectUUID | null;
+  aspectUuid: string | null;
 };
 
 export type IndexedFragment = {
-  uuid: FragmentUUID;
+  uuid: string;
   title: string;
   version: number;
   isDiscarded: boolean;
   readyStatus: number;
   contentHash: string;
   filePath: string;
+  updatedAt: Date;
   notes: string[];
   references: string[];
   properties: Record<string, IndexedFragmentProperty>;
 };
 
 export type IndexedAspect = {
-  uuid: AspectUUID;
+  uuid: string;
   key: string;
   category?: string;
   filePath: string;
@@ -43,13 +42,13 @@ export type IndexedAspect = {
 };
 
 export type IndexedNote = {
-  uuid: NoteUUID;
+  uuid: string;
   title: string;
   filePath: string;
 };
 
 export type IndexedReference = {
-  uuid: ReferenceUUID;
+  uuid: string;
   name: string;
   filePath: string;
 };
@@ -59,25 +58,25 @@ export interface VaultIndexer {
 
   fragments: {
     findAll(): Promise<IndexedFragment[]>;
-    findByUUID(uuid: FragmentUUID): Promise<IndexedFragment | null>;
-    findFilePath(uuid: FragmentUUID): Promise<string | null>;
+    findByUUID(uuid: string): Promise<IndexedFragment | null>;
+    findFilePath(uuid: string): Promise<string | null>;
   };
 
   aspects: {
     findAll(): Promise<IndexedAspect[]>;
     findByKey(key: string): Promise<IndexedAspect | null>;
-    findByUUID(uuid: AspectUUID): Promise<IndexedAspect | null>;
+    findByUUID(uuid: string): Promise<IndexedAspect | null>;
   };
 
   notes: {
     findAll(): Promise<IndexedNote[]>;
     findByTitle(title: string): Promise<IndexedNote | null>;
-    findByUUID(uuid: NoteUUID): Promise<IndexedNote | null>;
+    findByUUID(uuid: string): Promise<IndexedNote | null>;
   };
 
   references: {
     findAll(): Promise<IndexedReference[]>;
     findByName(name: string): Promise<IndexedReference | null>;
-    findByUUID(uuid: ReferenceUUID): Promise<IndexedReference | null>;
+    findByUUID(uuid: string): Promise<IndexedReference | null>;
   };
 }

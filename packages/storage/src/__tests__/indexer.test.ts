@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
-import type { FragmentUUID } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -120,9 +119,7 @@ describe("fragments.findByUUID", () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const bridge = await indexer.fragments.findByUUID(
-      "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID,
-    );
+    const bridge = await indexer.fragments.findByUUID("f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b");
 
     expect(bridge).not.toBeNull();
     expect(bridge?.title).toBe("The Bridge");
@@ -134,7 +131,7 @@ describe("fragments.findByUUID", () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const result = await indexer.fragments.findByUUID("nonexistent" as FragmentUUID);
+    const result = await indexer.fragments.findByUUID("nonexistent");
     expect(result).toBeNull();
   });
 });
@@ -146,9 +143,7 @@ describe("fragments.findFilePath", () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const filePath = await indexer.fragments.findFilePath(
-      "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID,
-    );
+    const filePath = await indexer.fragments.findFilePath("f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b");
 
     expect(filePath).not.toBeNull();
     expect(filePath).toContain("the-bridge.md");
@@ -158,7 +153,7 @@ describe("fragments.findFilePath", () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const filePath = await indexer.fragments.findFilePath("nonexistent" as FragmentUUID);
+    const filePath = await indexer.fragments.findFilePath("nonexistent");
     expect(filePath).toBeNull();
   });
 });
@@ -257,7 +252,7 @@ describe("soft-delete on rebuild", () => {
     await indexer.rebuild();
 
     // Verify the bridge fragment is active after first rebuild
-    const bridgeUuid = "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" as FragmentUUID;
+    const bridgeUuid = "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b";
     expect(await indexer.fragments.findByUUID(bridgeUuid)).not.toBeNull();
 
     // Delete the bridge file from the temp vault

@@ -99,7 +99,7 @@ throw new ProjectNotFoundError(projectUUID);
 Import all domain types from `@maskor/shared`. Do not re-declare `Fragment`, `Aspect`, `Note`, etc. inside this package.
 
 ```ts
-import type { Fragment, FragmentUUID, Aspect, Pool } from "@maskor/shared";
+import type { Fragment, Aspect, Pool } from "@maskor/shared";
 ```
 
 Indexed types (`IndexedFragment`, `IndexedAspect`, etc.) are storage-internal and live in `src/indexer/types.ts` — export only what consumers need.

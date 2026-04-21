@@ -1,9 +1,7 @@
-import type { ProjectUUID } from "@maskor/shared";
-
 export class ProjectNotFoundError extends Error {
-  readonly projectUUID: ProjectUUID;
+  readonly projectUUID: string;
 
-  constructor(projectUUID: ProjectUUID) {
+  constructor(projectUUID: string) {
     super(`Project not found: ${projectUUID}`);
     this.name = "ProjectNotFoundError";
     this.projectUUID = projectUUID;

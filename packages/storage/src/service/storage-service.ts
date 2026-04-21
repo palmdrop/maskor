@@ -1,13 +1,4 @@
-import type {
-  Aspect,
-  Fragment,
-  FragmentUUID,
-  Logger,
-  Note,
-  Reference,
-  VaultSyncEvent,
-} from "@maskor/shared";
-import type { AspectUUID, NoteUUID, ReferenceUUID, ProjectUUID } from "@maskor/shared";
+import type { Aspect, Fragment, Logger, Note, Reference, VaultSyncEvent } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import { join } from "node:path";
 import { createVault } from "../vault/markdown";
@@ -66,10 +57,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const database = createRegistryDatabase(configDirectory);
   const registry = createProjectRegistry(database);
 
-  const vaultCache = new Map<ProjectUUID, Vault>();
-  const vaultDatabaseCache = new Map<ProjectUUID, VaultDatabase>();
-  const vaultIndexerCache = new Map<ProjectUUID, VaultIndexer>();
-  const vaultWatcherCache = new Map<ProjectUUID, VaultWatcher>();
+  const vaultCache = new Map<string, Vault>();
+  const vaultDatabaseCache = new Map<string, VaultDatabase>();
+  const vaultIndexerCache = new Map<string, VaultIndexer>();
+  const vaultWatcherCache = new Map<string, VaultWatcher>();
 
   // --- private helpers ---
 
@@ -128,7 +119,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       return registry.listProjects();
     },
 
-    async removeProject(projectUUID: ProjectUUID): Promise<void> {
+    async removeProject(projectUUID: string): Promise<void> {
       // Stop and evict the watcher first — a stale watcher on a removed project would
       // hold file handles open and continue firing events against a deleted DB.
       const watcherToStop = vaultWatcherCache.get(projectUUID);
@@ -145,7 +136,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       log.info({ projectUUID }, "project removed");
     },
 
-    async getProject(projectUUID: ProjectUUID): Promise<ProjectRecord> {
+    async getProject(projectUUID: string): Promise<ProjectRecord> {
       const record = await registry.findByUUID(projectUUID);
       if (!record) {
         throw new ProjectNotFoundError(projectUUID);
@@ -153,7 +144,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       return record;
     },
 
-    async resolveProject(projectUUID: ProjectUUID): Promise<ProjectContext> {
+    async resolveProject(projectUUID: string): Promise<ProjectContext> {
       const record = await registry.findByUUID(projectUUID);
       if (!record) {
         throw new ProjectNotFoundError(projectUUID);
@@ -165,7 +156,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Fragment operations
 
     fragments: {
-      async read(context: ProjectContext, uuid: FragmentUUID): Promise<Fragment> {
+      async read(context: ProjectContext, uuid: string): Promise<Fragment> {
         const indexer = getVaultIndexer(context);
         const filePath = await indexer.fragments.findFilePath(uuid);
 
@@ -219,7 +210,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async discard(context: ProjectContext, uuid: FragmentUUID): Promise<void> {
+      async discard(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.fragments.findByUUID(uuid);
 
@@ -280,7 +271,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async restore(context: ProjectContext, uuid: FragmentUUID): Promise<void> {
+      async restore(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.fragments.findByUUID(uuid);
 
@@ -353,7 +344,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Aspect operations
 
     aspects: {
-      async read(context: ProjectContext, uuid: AspectUUID): Promise<Aspect> {
+      async read(context: ProjectContext, uuid: string): Promise<Aspect> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.aspects.findByUUID(uuid);
 
@@ -395,7 +386,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async delete(context: ProjectContext, uuid: AspectUUID): Promise<void> {
+      async delete(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.aspects.findByUUID(uuid);
 
@@ -437,7 +428,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Note operations
 
     notes: {
-      async read(context: ProjectContext, uuid: NoteUUID): Promise<Note> {
+      async read(context: ProjectContext, uuid: string): Promise<Note> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.notes.findByUUID(uuid);
 
@@ -480,7 +471,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async delete(context: ProjectContext, uuid: NoteUUID): Promise<void> {
+      async delete(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.notes.findByUUID(uuid);
 
@@ -522,7 +513,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Reference operations
 
     references: {
-      async read(context: ProjectContext, uuid: ReferenceUUID): Promise<Reference> {
+      async read(context: ProjectContext, uuid: string): Promise<Reference> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.references.findByUUID(uuid);
 
@@ -565,7 +556,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async delete(context: ProjectContext, uuid: ReferenceUUID): Promise<void> {
+      async delete(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.references.findByUUID(uuid);
 

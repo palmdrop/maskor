@@ -48,6 +48,7 @@ CREATE TABLE `fragments` (
 	`ready_status` real DEFAULT 0 NOT NULL,
 	`content_hash` text NOT NULL,
 	`file_path` text NOT NULL,
+	`updated_at` integer NOT NULL,
 	`deleted_at` integer,
 	`synced_at` integer NOT NULL
 );

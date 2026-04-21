@@ -1,10 +1,8 @@
-import type { ProjectUUID, UserUUID } from "@maskor/shared";
-
-export const LOCAL_USER_UUID: UserUUID = "local";
+export const LOCAL_USER_UUID = "local";
 
 export type ProjectRecord = {
-  projectUUID: ProjectUUID;
-  userUUID: UserUUID;
+  projectUUID: string;
+  userUUID: string;
   name: string;
   vaultPath: string;
   createdAt: Date;
@@ -12,7 +10,7 @@ export type ProjectRecord = {
 };
 
 export type ProjectContext = {
-  userUUID: UserUUID;
-  projectUUID: ProjectUUID;
+  userUUID: string;
+  projectUUID: string;
   vaultPath: string;
 };
