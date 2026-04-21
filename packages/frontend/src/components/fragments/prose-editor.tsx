@@ -5,7 +5,6 @@ import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
-import Link from "@tiptap/extension-link";
 import Typography from "@tiptap/extension-typography";
 import { ProseToolbar } from "./prose-toolbar";
 
@@ -52,7 +51,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     extensions: [
       StarterKit,
       Markdown.configure({ html: false, transformPastedText: true }),
-      Link.configure({ openOnClick: false }),
+      // Link.configure({ openOnClick: false }),
       Typography,
     ],
     content,

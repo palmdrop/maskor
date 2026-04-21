@@ -1,7 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
-import Link from "@tiptap/extension-link";
 import Typography from "@tiptap/extension-typography";
 import { useGetFragment } from "../../api/generated/fragments/fragments";
 import { Heading } from "../heading";
@@ -18,7 +17,6 @@ function ProseViewer({ content }: { content: string }) {
     extensions: [
       StarterKit,
       Markdown.configure({ html: false, transformPastedText: true }),
-      Link.configure({ openOnClick: false }),
       Typography,
     ],
     content,
