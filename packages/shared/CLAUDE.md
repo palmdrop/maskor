@@ -1,19 +1,33 @@
-Default to using Bun instead of Node.js.
+# Shared Package — Coding Guide
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+Runtime: **Bun**. Imported by all other packages — no runtime side effects, no service dependencies.
 
-## APIs
+## Package role
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+Single source of truth for domain types, Zod schemas, events, logger, and utilities shared across the monorepo.
+
+## Exports (always import from `@maskor/shared`, never deep-import)
+
+| Path | What's there |
+|------|-------------|
+| `src/schemas/domain/` | Zod schemas + inferred types for all domain entities |
+| `src/types/utils/` | Branded/utility types without a Zod schema (`UUID`, `Markdown`) |
+| `src/events.ts` | `VaultSyncEvent` union + `VAULT_SYNC_EVENT_TYPES` array |
+| `src/logger/` | Shared logger instance |
+| `src/utils/` | Pure utilities (`slugify`) |
+
+## Schema vs. type split
+
+- **`src/schemas/domain/`** — the default home. Define a Zod schema, export it and the inferred type from the same file. This is where `Fragment`, `Aspect`, `Note`, `Piece`, etc. live.
+- **`src/types/utils/`** — only for types that have no Zod schema and are utility/branded types (e.g. `UUID`, `Markdown`). Do not add domain types here.
+- If a domain type needs a complementary type (e.g. a `FragmentCreate` input shape), add it to the same `schemas/domain/<entity>.ts` file, not a separate types file.
+
+## Adding a new domain entity
+
+1. Create `src/schemas/domain/<entity>.ts` — define schema, export schema + inferred type.
+2. Re-export from `src/schemas/domain/index.ts`.
+3. Run `bun run typecheck` to verify nothing breaks.
+
+## VaultSyncEvent
+
+`VaultSyncEvent` in `src/events.ts` is the canonical list of events emitted by the watcher (via SSE). `VAULT_SYNC_EVENT_TYPES` is a compile-time guard — if you add a variant to the union, TypeScript will error until you also add it to the array.

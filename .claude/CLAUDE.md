@@ -18,11 +18,11 @@ Think critically. Push back when a smarter alternative exists. Always flag unint
 
 ### Rule 3: Test before you respond
 
-After changes, run relevant commands/tests and check for errors. Do not say "done" unless tested.
+After changes, run relevant commands/tests and check for errors. Do not say "done" unless tested. ONLY run tests relevant for the current changes, but error on the side of caution.
 
 ### Rule 4: Add suggestions
 
-After every major change, add/remove/update an actionable item in `@references/SUGGESTIONS.md`. Be specific — point to files, errors, or issues that can be observed directly.
+In the event of encountering a bug, inconsistency or issue, even when unrelated to the current task, add an actionable item to `@references/SUGGESTIONS.md`.
 
 ### Rule 5: Consider context
 
@@ -44,22 +44,17 @@ Always add `date` and `status` below the plan title:
 **Implemented At**: DD-MM-YYYY <!-- Only add when implemented -->
 ```
 
+## Codebase snapshot
+
+A compressed snapshot of all file signatures is at `references/CODEBASE_SNAPSHOT.md`. Use `Grep` against it to locate symbols, types, and files without traversing the source tree. **Do not read the file whole** — it is large. Regenerate with `bun run snapshot` after significant structural changes.
+
 ## Coding standards
 
-Full standards in `@references/CODING_STANDARDS.md`. Key rules:
-
-- No abbreviated names — `f` → `file`, `dir` → `directory`, `fm` → `frontmatter`. Exceptions: `id`, `uuid`, `acc`, single-letter iterators.
-- Spread syntax over manual property mapping. Exclude with destructuring: `const { c: _, ...rest } = original`.
-- Regex constants end in `_REGEX`.
-- Explicit braces on all `if` bodies. Explicit `return` in multi-line arrow functions.
-- Prefer `reduce` over `for...of` when accumulating into an object.
-- No redundant intermediate type casts (`as string as T` → `as T`).
-- Descriptive fallback identifiers — not `"Untitled"`.
-- Mark known limitations with `// TODO:` and a reason.
+Full standards in `@references/CODING_STANDARDS.md`.
 
 ## When done
 
-After implementing a plan or large task, run `bun run test`, `bun run format`, `bun run typecheck`. Fix anything that breaks.
+After implementing a plan or large task, run relevant tests, `bun run format` and `bun run typecheck`. Fix anything that breaks.
 
 ## Manual development
 

@@ -1,4 +1,3 @@
-// etc...
 export type Domain = "fragment" | "project" | "aspect" | "note" | "reference";
 
 export type ActionType = `${Domain}:${"created" | "updated" | "deleted"}`;

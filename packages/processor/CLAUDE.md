@@ -1,19 +1,21 @@
-Default to using Bun instead of Node.js.
+# Processor Package — Coding Guide
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+Runtime: **Bun**.
 
-## APIs
+## Package role
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+Intended to manage queues and convert `Piece` objects into `Fragment` objects.
+
+**Current state**: stub. `src/index.ts` is empty.
+
+> **TODO**: It's unclear whether this package is needed as a standalone service. The conversion logic may end up living directly in the API or triggered by a user action in the frontend. Revisit before implementing.
+
+## Intended design (if it stays)
+
+- Consumes `Piece` entries from the vault index (written by the importer or dropped in directly).
+- Converts each `Piece` to a `Fragment` via `StorageService` from `@maskor/storage`.
+- Would likely be triggered by watcher events (`pieces:consumed`) rather than polling.
+
+## Key types
+
+Import `Piece`, `Fragment`, `FragmentCreate` from `@maskor/shared`. Never re-declare domain types here.

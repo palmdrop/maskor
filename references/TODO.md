@@ -1,8 +1,11 @@
 # General
 
+- [ ] Try graphify: https://github.com/safishamsi/graphify
+
 - [ ] Have conversation with Claude about specs, check obsidian vault, check files in the project
   - create a map of all that is implemented and needs to be done
   - inspo https://ghuntley.com/ralph/
+    - "Specs are formed through a conversation with the agent at the beginning phase of a project. Instead of asking the agent to implement the project, what you want to do is have a long conversation with the LLM about your requirements for what you're about to implement. Once your agent has a decent understanding of the task to be done, it's at that point that you issue a prompt to write the specifications out, one per file, in the specifications folder."
   - iterate, look at specs, look at plan, implement, review
   - https://www.augmentcode.com/
     - or other tool for mapping/indexing code base

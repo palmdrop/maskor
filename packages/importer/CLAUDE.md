@@ -1,19 +1,26 @@
-Default to using Bun instead of Node.js.
+# Importer Package — Coding Guide
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+Runtime: **Bun**.
 
-## APIs
+## Package role
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+Imports writing from external formats (Word, PDF, plain text) and converts them into `Piece` objects written directly to the Obsidian vault. This is the entry point for raw content before it enters the fragment pipeline.
+
+**Current state**: stub. `src/index.ts` is empty.
+
+## Intended design
+
+- **Not a long-running service** (for now) — invoked on demand (CLI or called from the API).
+- Reads a source file, parses/splits its content, and writes one or more `Piece` files to the vault via `StorageService` from `@maskor/storage`.
+- The watcher in `@maskor/storage` picks up the new pieces and updates the index automatically — the importer does not need to notify anything.
+- A `Piece` has no UUID or full metadata; it is a temporary intermediary. The processor (or user action) converts it to a `Fragment`.
+
+## Piece → Fragment flow
+
+```
+External file → importer → Piece in vault → watcher syncs index → processor converts → Fragment
+```
+
+## Key types
+
+Import `Piece` from `@maskor/shared`. Never re-declare domain types here.

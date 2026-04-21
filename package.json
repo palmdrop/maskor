@@ -14,7 +14,8 @@
     "test:frontend": "bun run --cwd packages/frontend test",
     "test:coverage": "bun test --coverage packages/shared packages/api packages/storage packages/importer packages/processor packages/sequencer && bun run --cwd packages/frontend test:coverage",
     "dev:api": "bun run --cwd packages/api dev",
-    "dev:frontend": "bun run --cwd packages/frontend dev"
+    "dev:frontend": "bun run --cwd packages/frontend dev",
+    "snapshot": "bunx repomix --compress"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

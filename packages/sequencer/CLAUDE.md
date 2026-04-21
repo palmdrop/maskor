@@ -1,19 +1,30 @@
-Default to using Bun instead of Node.js.
+# Sequencer Package — Coding Guide
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+Runtime: **Bun**.
 
-## APIs
+## Package role
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+Stateless placement library. Given fragments, arcs, interleaving config, and a noise seed, produces a deterministic ordered sequence. No service, no persistence — pure functions in, sequence out.
+
+**Current state**: stub. `src/index.ts` is empty.
+
+## Intended design
+
+- **Stateless** — all inputs passed in, sequence returned. Same inputs + same seed = same output.
+- Placement engine: places fragments one-by-one using a fitting score (aspects, arcs, interleaving rules).
+- Handles keys (pinned positions), sections (independently sequenced groups), and locked orderings.
+- Detects and resolves loops/deadlocks from conflicting rules.
+- Noise: deterministic, seeded displacement of fitting scores — user-controlled min/max range.
+
+## Modes (from project specs)
+
+| Mode | Description |
+|------|-------------|
+| Manual | User arranges fragments directly |
+| Semi-random | Sequencer suggests; user accepts/rejects (rejected = cooldown) |
+| Automatic | All fragments placed; user rearranges |
+| Reverse | Generate arcs/rules from an existing user-ordered sequence |
+
+## Key types
+
+Import `Fragment`, `Aspect`, `Arc`, `Sequence`, `Interleaving` from `@maskor/shared`. Never re-declare domain types here.
