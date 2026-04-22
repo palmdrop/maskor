@@ -10,7 +10,7 @@ An Obsidian vault acts as the human-editable source of truth. The database is a 
 
 ## Core concepts
 
-- **Fragment** — a self-contained writing unit with a pool state (`unprocessed`, `incomplete`, `unplaced`, `discarded`) and a `readyStatus` (0–1).
+- **Fragment** — a self-contained writing unit with a `readyStatus` (0–1).
 - **Aspect** — a named dimension (e.g. `grief`, `city`) with a per-fragment weight (0–1). Used to measure thematic fit.
 - **Sequence / Section** — an ordered arrangement of fragments. DB-only; managed through the UI.
 - **Piece** — a raw `.md` file dropped into `pieces/` that gets imported as a new fragment.

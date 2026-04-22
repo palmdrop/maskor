@@ -37,5 +37,5 @@ All public surfaces are factory functions, not classes: `createVault`, `createVa
 
 - `vault.fragments.discard()` does full file scan — should use `indexer.findFilePath()`
 - `rebuild()` loads all data into memory — needs chunked approach for large vaults
-- No DB indexes on `(pool, deleted_at)` hot columns
+- No DB indexes on `(deleted_at)` hot columns
 - Registry manifest recovery not implemented (`recoverFromManifests`)

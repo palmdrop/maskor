@@ -8,7 +8,7 @@ type: project
 
 ## Core entities (`packages/shared/src/types/domain/`)
 
-- **Fragment**: uuid, title, version, pool, readyStatus, notes[], references[], properties (aspect weights), content, contentHash, updatedAt
+- **Fragment**: uuid, title, version, readyStatus, notes[], references[], properties (aspect weights), content, contentHash, updatedAt
 - **Aspect**: uuid, key (unique slug), category?, description?, notes[]
 - **Note**: uuid, title, content
 - **Reference**: uuid, name, content
@@ -17,11 +17,10 @@ type: project
 - **Section**: uuid, name, fragments[] { fragmentUUID, position }
 - **Arc**: uuid, aspectUUID, movement: number[]
 - **Project**: uuid, name, vaultPath, notes[], aspects[], arcUUIDs[]
-- **Pool**: `"unprocessed" | "incomplete" | "unplaced" | "discarded"` — union type, not entity
 
 ## Field ownership
 
-- **Vault owns**: uuid, title, pool, version, readyStatus, notes[], references[], inline aspect weights, body content
+- **Vault owns**: uuid, title, version, readyStatus, notes[], references[], inline aspect weights, body content
 - **DB owns**: contentHash, updatedAt/syncedAt, sequence positions, fitting scores, arc positions, filePath index
 
 ## Key type notes

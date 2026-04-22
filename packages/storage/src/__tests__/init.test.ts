@@ -29,7 +29,6 @@ describe("initFragment", () => {
     const parsed = parseFile(raw);
 
     expect(parsed.frontmatter.title).toBe("The Bridge");
-    expect("pool" in parsed.frontmatter).toBe(false);
     expect(parsed.frontmatter.readyStatus).toBe(0);
     expect(parsed.frontmatter.version).toBe(1);
     expect(parsed.frontmatter.uuid).toBe(fragment.uuid);

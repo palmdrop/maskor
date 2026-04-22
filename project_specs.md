@@ -84,17 +84,6 @@ Raw writing imported from external sources (Word, PDF). No UUID or full metadata
 
 The logical container for a piece of writing. Has title, UUID, metadata properties, hash, and a readiness state. Users can add custom properties, used in outlining, interleaving, and overview views. Aspects are the key fragment properties — most have an intensity factor for arc fitting.
 
-### Pools
-
-High-level processing containers with a logical flow:
-
-- **unprocessed**: raw pieces before conversion to fragments
-- **incomplete**: fragments missing properties
-- **unplaced**: complete fragments not yet in a sequence
-- **discarded**: removed fragments
-
-A fragment leaves its pool when placed in a sequence, but can be moved back.
-
 ### Fitting
 
 Score indicating how well a fragment fits its current position. Based on aspects, arcs, and strict requirements (e.g. fragment B must follow fragment A).

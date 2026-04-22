@@ -36,7 +36,6 @@ Runtime: **Bun** throughout (except `frontend`, which uses Vite/Vitest). Workspa
 Fragment ──── has many ──→ FragmentProperty { aspectKey, weight }
              ──── references ──→ Note[] (by title)
              ──── references ──→ Reference[] (by name)
-             ──── belongs to ──→ Pool (lifecycle state)
 
 Aspect   ──── identified by ──→ key (unique slug)
              ──── has many ──→ Note[] (by title)
@@ -53,19 +52,11 @@ Project  ──── points at ──→ vaultPath (Obsidian vault)
 Piece    ──── transient ──→ becomes Fragment on consume
 ```
 
-### Pool lifecycle
-
-```
-unprocessed → incomplete → unplaced → (placed in Sequence) → discarded
-```
-
-`placed` is not a pool value — placement is tracked in Sequence/Section, not on the fragment.
-
 ### Field ownership
 
 | Field / Data              | Owner        | Notes                                                |
 | ------------------------- | ------------ | ---------------------------------------------------- |
-| `uuid`, `title`, `pool`   | Vault (file) | Written by Maskor on first creation; user may edit   |
+| `uuid`, `title`,          | Vault (file) | Written by Maskor on first creation; user may edit   |
 | `version`                 | Vault (file) | Maskor increments on each sync write                 |
 | `readyStatus`             | Vault (file) | User-set; Maskor may auto-generate but file wins     |
 | `notes[]`, `references[]` | Vault (file) | Stored as title arrays in frontmatter                |
@@ -97,7 +88,7 @@ unprocessed → incomplete → unplaced → (placed in Sequence) → discarded
         ▼
   <vault>/.maskor/vault.db    (SQLite — content index, per-vault)
         │
-        ├── VaultIndexer queries (findByUUID, findByPool, findAll…)
+        ├── VaultIndexer queries (findByUUID, findAll…)
         │
         ▼
   StorageService               (project-aware factory, in-process caches)
@@ -109,7 +100,7 @@ unprocessed → incomplete → unplaced → (placed in Sequence) → discarded
         ├── GET /ui          → Swagger UI
         ├── /projects        → project CRUD (no ProjectContext required)
         └── /projects/:projectId/*  → resolveProject middleware → ProjectContext
-                ├── /fragments   (CRUD + pool filter)
+                ├── /fragments   (CRUD)
                 ├── /aspects     (read-only)
                 ├── /notes       (read-only)
                 ├── /references  (read-only)
@@ -166,7 +157,7 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 
 | Namespace            | Methods                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------- |
-| `service.fragments`  | `read`, `readAll`, `findByPool`, `write`, `discard`                                |
+| `service.fragments`  | `read`, `readAll`, `write`, `discard`                                              |
 | `service.aspects`    | `read`, `readAll`, `write`                                                         |
 | `service.notes`      | `read`, `readAll`, `write`                                                         |
 | `service.references` | `read`, `readAll`, `write`                                                         |
@@ -248,12 +239,12 @@ All request/response shapes in `packages/api/src/schemas/`:
 
 ## Sync Contract (summary)
 
-- **Vault owns:** uuid, title, pool, version, readyStatus, notes[], references[], inline aspect weights, body content.
+- **Vault owns:** uuid, title, version, readyStatus, notes[], references[], inline aspect weights, body content.
 - **DB owns:** contentHash, updatedAt/syncedAt, sequence positions, fitting scores, arc positions, filePath index.
 - **UUID assignment:** Written into frontmatter on first detection if missing. Never changes. Entities tracked by UUID, not filename.
 - **Rebuild:** Full O(n) scan, single SQLite transaction. Inserts/updates all entities. Soft-deletes entities absent from vault (`deletedAt`). Never hard-deletes fragments — moves to `discarded`.
 - **Aspect key resolution:** Inline fields stored by string key, UUID resolved at rebuild. Unresolved keys → `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }`. Maskor never auto-rewrites fragment files.
-- **Conflicts:** Last-write-wins for most fields. `pool` defers to file. Stale `version` is a warning, not an error.
+- **Conflicts:** Last-write-wins for most fields. Stale `version` is a warning, not an error.
 - **Stale index window:** Index is stale after any write until next `rebuild()`. `STALE_INDEX` = file expected from index is missing. Treat as retryable. Closes once chokidar is integrated.
 
 ---
@@ -282,7 +273,6 @@ All request/response shapes in `packages/api/src/schemas/`:
 - **Frontend shell**: Tauri vs Electron vs browser-only — undecided. `@maskor/frontend` is plain Vite/React with no shell.
 - **`Interleaving` type**: Stub only — `TODO: No idea how to configure this`.
 - **`Action` type**: `execute` and `revert` are function fields — not serializable if actions are logged to disk.
-- **`Pool` as enum vs entity**: Commented-out entity version exists in `pool.ts`. Current flat union is correct; revisit only if sectioned pools with custom rules are needed.
 - **Sequences/Sections DB schema**: No tables yet in `vault/schema.ts`.
 - **`contentHash` on create**: `POST /fragments` sets `contentHash: ""` — downstream consumers must not rely on it until fixed.
 
@@ -291,7 +281,7 @@ All request/response shapes in `packages/api/src/schemas/`:
 ## Known Structural Debt
 
 - `rebuild()` holds all vault data in memory before writing — needs chunked approach for large vaults.
-- No DB indexes on hot columns (`pool`, `deleted_at`) in `vault/schema.ts`.
+- No DB indexes on hot columns (`deleted_at`) in `vault/schema.ts`.
 - `Piece` has no UUID — intentional (transient), but `consumeAll` uses filename as title, which is fragile.
 - Registry manifest recovery (`recoverFromManifests`) not implemented — DB loss cannot self-heal from vault manifests.
 - After `write()` or `discard()`, the inline DB update closes the stale-index window immediately. The watcher fires afterward and hash-guards to a no-op.

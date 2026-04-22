@@ -105,9 +105,8 @@ describe("fragment.toFile", () => {
     expect(frontmatter.readyStatus).toBe(0.8);
   });
 
-  it("does not write pool, contentHash, or updatedAt", () => {
+  it("does not write contentHash, isDiscarded, or updatedAt", () => {
     const { frontmatter } = toFile(fragment);
-    expect("pool" in frontmatter).toBe(false);
     expect("contentHash" in frontmatter).toBe(false);
     expect("updatedAt" in frontmatter).toBe(false);
     expect("isDiscarded" in frontmatter).toBe(false);

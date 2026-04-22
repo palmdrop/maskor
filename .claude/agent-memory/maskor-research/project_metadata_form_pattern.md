@@ -8,7 +8,7 @@ Fragment metadata (frontmatter fields) should be edited via react-hook-form + `@
 
 **Why:**
 
-- The fragment schema has heterogeneous field types: enum (pool), float 0–1 (readyStatus), string[] (notes, references), and `Record<string, {weight: number}>` (properties, keyed by aspect from the API). Zod-driven auto-generation libraries (e.g. AutoForm) handle simple scalars well but break down on dynamic record keys fetched from an external endpoint.
+- The fragment schema has heterogeneous field types: float 0–1 (readyStatus), string[] (notes, references), and `Record<string, {weight: number}>` (properties, keyed by aspect from the API). Zod-driven auto-generation libraries (e.g. AutoForm) handle simple scalars well but break down on dynamic record keys fetched from an external endpoint.
 - The `properties` field (aspect weights) requires a separate API call to get the valid aspect keys — the form must be partially dynamic and cannot be fully static-schema-driven.
 - Recommended pattern: define a static Zod schema for the fixed fields; render a manual fieldset for `properties` using `useFieldArray` or a `Object.entries` loop over the aspect list fetched from `/aspects`.
 - shadcn/ui's Form component already wraps react-hook-form — Maskor has radix-ui and shadcn in deps, so this slots in naturally.
@@ -16,7 +16,6 @@ Fragment metadata (frontmatter fields) should be edited via react-hook-form + `@
 **Field rendering map:**
 
 - `title`: text input
-- `pool`: shadcn Select (enum values: unprocessed | incomplete | unplaced | discarded)
 - `readyStatus`: shadcn Slider (0–1, step 0.01) or number input
 - `notes` / `references`: tag-style multi-input (no dep needed — build with useFieldArray)
 - `properties`: per-aspect Slider rendered from fetched aspect list
