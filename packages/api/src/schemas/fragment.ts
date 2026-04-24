@@ -8,7 +8,6 @@ import {
 
 const IndexedFragmentPropertySchema = z.object({
   weight: z.number(),
-  aspectUuid: z.string().nullable(),
 });
 
 // Response schema for GET /fragments (list) — index layer fields, no content

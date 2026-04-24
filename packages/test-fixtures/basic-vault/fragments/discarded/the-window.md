@@ -1,7 +1,7 @@
 ---
 uuid: "0eb24e80-cb2a-4af2-a6f0-2536fd8776dd"
 title: "The Window"
-version: 2
+updatedAt: "2026-04-01T12:00:00.000Z"
 readyStatus: 0.6
 notes: []
 references: []

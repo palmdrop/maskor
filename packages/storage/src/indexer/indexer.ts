@@ -39,11 +39,8 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       vault.fragments.readAllWithFilePaths(),
     ]);
 
-    // Build aspect key → UUID resolution map (used when indexing fragment properties).
-    const aspectKeyToUuid = aspectEntries.reduce((map, { entity: aspect }) => {
-      map.set(aspect.key, aspect.uuid);
-      return map;
-    }, new Map<string, string>());
+    // Build known aspect key set (used for drift detection during the fragments pass).
+    const knownAspectKeys = new Set(aspectEntries.map(({ entity: aspect }) => aspect.key));
 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
@@ -53,8 +50,8 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     vaultDatabase.transaction((tx) => {
       // 1. Upsert aspects.
-      for (const { entity: aspect, filePath } of aspectEntries) {
-        upsertAspect(tx, aspect, filePath);
+      for (const { entity: aspect, filePath, rawContent } of aspectEntries) {
+        upsertAspect(tx, aspect, filePath, rawContent);
       }
 
       // Soft-delete aspects absent from vault.
@@ -114,9 +111,9 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .run();
       }
 
-      // 4. Upsert fragments last — aspect resolution map is ready.
+      // 4. Upsert fragments last — known aspect key set is ready for drift detection.
       for (const { entity: fragment, filePath, rawContent } of fragmentEntries) {
-        const warnings = upsertFragment(tx, fragment, filePath, rawContent, aspectKeyToUuid);
+        const warnings = upsertFragment(tx, fragment, filePath, rawContent, knownAspectKeys);
         fragmentWarnings.push(...warnings);
       }
 

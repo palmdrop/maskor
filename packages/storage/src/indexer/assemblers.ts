@@ -9,13 +9,11 @@ export const assembleFragment = (
   referenceRows: Array<{ referenceName: string }>,
   propertyRows: Array<{
     aspectKey: string;
-    aspectUuid: string | null;
     weight: number;
   }>,
 ): IndexedFragment => ({
   uuid: row.uuid,
   title: row.title,
-  version: row.version,
   isDiscarded: row.isDiscarded,
   readyStatus: row.readyStatus,
   contentHash: row.contentHash,
@@ -25,10 +23,7 @@ export const assembleFragment = (
   references: referenceRows.map((reference) => reference.referenceName),
   properties: propertyRows.reduce(
     (acc, property) => {
-      acc[property.aspectKey] = {
-        weight: property.weight,
-        aspectUuid: property.aspectUuid,
-      };
+      acc[property.aspectKey] = { weight: property.weight };
       return acc;
     },
     {} as IndexedFragment["properties"],

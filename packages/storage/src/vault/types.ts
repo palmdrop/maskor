@@ -75,5 +75,6 @@ export type Vault = {
   };
   pieces: {
     consumeAll(): Promise<Fragment[]>;
+    consume(filePath: string): Promise<Fragment | null>;
   };
 };

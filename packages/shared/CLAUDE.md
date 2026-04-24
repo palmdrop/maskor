@@ -8,13 +8,13 @@ Single source of truth for domain types, Zod schemas, events, logger, and utilit
 
 ## Exports (always import from `@maskor/shared`, never deep-import)
 
-| Path | What's there |
-|------|-------------|
-| `src/schemas/domain/` | Zod schemas + inferred types for all domain entities |
-| `src/types/utils/` | Branded/utility types without a Zod schema (`UUID`, `Markdown`) |
-| `src/events.ts` | `VaultSyncEvent` union + `VAULT_SYNC_EVENT_TYPES` array |
-| `src/logger/` | Shared logger instance |
-| `src/utils/` | Pure utilities (`slugify`) |
+| Path                  | What's there                                                    |
+| --------------------- | --------------------------------------------------------------- |
+| `src/schemas/domain/` | Zod schemas + inferred types for all domain entities            |
+| `src/types/utils/`    | Branded/utility types without a Zod schema (`UUID`, `Markdown`) |
+| `src/events.ts`       | `VaultSyncEvent` union + `VAULT_SYNC_EVENT_TYPES` array         |
+| `src/logger/`         | Shared logger instance                                          |
+| `src/utils/`          | Pure utilities (`slugify`)                                      |
 
 ## Schema vs. type split
 

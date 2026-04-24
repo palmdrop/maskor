@@ -18,12 +18,12 @@ Stateless placement library. Given fragments, arcs, interleaving config, and a n
 
 ## Modes (from project specs)
 
-| Mode | Description |
-|------|-------------|
-| Manual | User arranges fragments directly |
+| Mode        | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| Manual      | User arranges fragments directly                               |
 | Semi-random | Sequencer suggests; user accepts/rejects (rejected = cooldown) |
-| Automatic | All fragments placed; user rearranges |
-| Reverse | Generate arcs/rules from an existing user-ordered sequence |
+| Automatic   | All fragments placed; user rearranges                          |
+| Reverse     | Generate arcs/rules from an existing user-ordered sequence     |
 
 ## Key types
 

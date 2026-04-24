@@ -5,11 +5,10 @@ export const fragmentsTable = sqliteTable(
   {
     uuid: text("uuid").primaryKey(),
     title: text("title").notNull(),
-    version: integer("version").notNull().default(0),
     isDiscarded: integer("is_discarded", { mode: "boolean" }).notNull().default(false),
     readyStatus: real("ready_status").notNull().default(0),
     contentHash: text("content_hash").notNull(),
-    filePath: text("file_path").notNull().unique(),
+    filePath: text("file_path").notNull().unique(), // relative to vault root
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
     deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
@@ -50,9 +49,7 @@ export const fragmentPropertiesTable = sqliteTable(
     fragmentUuid: text("fragment_uuid")
       .notNull()
       .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
-    aspectKey: text("aspect_key").notNull(),
-    // NULL when the aspect key doesn't resolve to an active aspect — signals drift
-    aspectUuid: text("aspect_uuid").references(() => aspectsTable.uuid, { onDelete: "set null" }),
+    aspectKey: text("aspect_key").notNull(), // drift detected via Set<aspectKey> membership check
     weight: real("weight").notNull(),
   },
   (table) => [primaryKey({ columns: [table.fragmentUuid, table.aspectKey] })],
@@ -64,6 +61,7 @@ export const aspectsTable = sqliteTable(
     uuid: text("uuid").primaryKey(),
     key: text("key").notNull().unique(),
     category: text("category"),
+    contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(),
     deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),

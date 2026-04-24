@@ -349,6 +349,36 @@ export const createVault = (config: VaultConfig): Vault => {
     },
 
     pieces: {
+      async consume(filePath: string) {
+        const absolutePath = toAbsolutePiece(filePath);
+        if (!(await Bun.file(absolutePath).exists())) return null;
+
+        const content = await Bun.file(absolutePath).text();
+        const title = basename(filePath).replace(/\.md$/, "");
+        const fragment = await initFragment(config, { title, content });
+
+        const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
+        const absoluteFragmentPath = toAbsoluteFragment(`${slugify(fragment.title)}.md`);
+        await writeMarkdown(
+          absoluteFragmentPath,
+          serializeFile({ frontmatter, inlineFields, body }),
+        );
+
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          throw new VaultError(
+            "FILE_DELETE_FAILED",
+            `Failed to delete piece file "${filePath}" after consuming`,
+            { filePath, reason: "fs.unlink failed" },
+            { cause },
+          );
+        }
+
+        log.info({ filePath, fragmentTitle: fragment.title }, "piece consumed");
+        return fragment;
+      },
+
       async consumeAll() {
         const files = await listMarkdownFiles(vaultPath("pieces"));
         const results: Fragment[] = [];

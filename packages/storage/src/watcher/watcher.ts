@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Logger, VaultSyncEvent } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
-import { fragmentsTable } from "../db/vault/schema";
+import { aspectsTable, fragmentsTable } from "../db/vault/schema";
 import type { Vault } from "../vault/types";
 import { parseFile } from "../vault/markdown/parse";
 import { serializeFile } from "../vault/markdown/serialize";
@@ -13,7 +13,7 @@ import * as noteMapper from "../vault/markdown/mappers/note";
 import * as referenceMapper from "../vault/markdown/mappers/reference";
 import { hashContent } from "../utils/hash";
 import {
-  loadAspectKeyToUuid,
+  loadKnownAspectKeys,
   upsertAspect,
   upsertFragment,
   upsertNote,
@@ -158,10 +158,10 @@ export const createVaultWatcher = (
     }
 
     const fragment = fragmentMapper.fromFile(parsed, entityRelativePath);
-    const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+    const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
     const warnings = vaultDatabase.transaction((tx) => {
-      return upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
+      return upsertFragment(tx, fragment, entityRelativePath, rawContent, knownAspectKeys);
     });
 
     emit({ type: "fragment:synced", uuid });
@@ -199,15 +199,28 @@ export const createVaultWatcher = (
       parsed.frontmatter.uuid = uuid;
       const rewritten = serializeFile({ frontmatter: parsed.frontmatter, body: parsed.body });
       await Bun.write(absolutePath, rewritten);
+      rawContent = rewritten;
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to aspect");
     }
 
-    // Aspects have no contentHash in DB — always upsert on change.
+    // Hash guard: skip if full-file content unchanged.
+    const storedRow = vaultDatabase
+      .select({ contentHash: aspectsTable.contentHash })
+      .from(aspectsTable)
+      .where(eq(aspectsTable.uuid, uuid))
+      .get();
+    if (storedRow?.contentHash === hashContent(rawContent)) {
+      log.debug(
+        { filePath: entityRelativePath },
+        "watcher: aspect unchanged (hash match) — skipping",
+      );
+      return;
+    }
+
     const aspect = aspectMapper.fromFile(parsed);
 
-    // TODO: Is this transaction necessarY? It's just a single upsert.
     vaultDatabase.transaction((tx) => {
-      upsertAspect(tx, aspect, entityRelativePath);
+      upsertAspect(tx, aspect, entityRelativePath, rawContent);
     });
 
     emit({ type: "aspect:synced", uuid });
@@ -290,57 +303,53 @@ export const createVaultWatcher = (
     log.debug({ filePath: entityRelativePath }, "watcher: reference synced");
   };
 
-  // Pieces/ add events: consume all current pieces in batch.
-  // Trade-off: any piece add triggers consumption of ALL pieces currently in pieces/.
-  // This is intentional — vault.pieces.consumeAll() is the only available consume API.
-  // TODO: Add vault.pieces.consume(filePath) for single-piece consumption if needed.
-  const syncPieces = async (): Promise<void> => {
-    let fragments: Awaited<ReturnType<typeof vault.pieces.consumeAll>>;
+  const syncPieces = async (vaultRelativePath: string): Promise<void> => {
+    const pieceFileName = vaultRelativePath.slice(PIECE_PREFIX.length);
+    let fragment: Awaited<ReturnType<typeof vault.pieces.consume>>;
     try {
-      fragments = await vault.pieces.consumeAll();
+      fragment = await vault.pieces.consume(pieceFileName);
     } catch (error) {
       log.error(
-        { errorMessage: error instanceof Error ? error.message : String(error) },
-        "watcher: failed to consume pieces",
+        {
+          filePath: pieceFileName,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+        "watcher: failed to consume piece",
       );
       return;
     }
 
-    if (fragments.length === 0) return;
+    if (!fragment) return;
 
-    const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
-
-    // Pre-read all fragment files before entering the sync transaction (Bun.file is async;
-    // the transaction callback is synchronous).
-    type FragmentWithContent = {
-      fragment: (typeof fragments)[number];
-      entityRelativePath: string;
-      rawContent: string;
-    };
-    const fragmentsWithContent: FragmentWithContent[] = [];
-    for (const fragment of fragments) {
-      const entityRelativePath = `${slugify(fragment.title)}.md`;
-      const absoluteFragmentPath = path.join(vaultRoot, "fragments", entityRelativePath);
-      try {
-        const rawContent = await Bun.file(absoluteFragmentPath).text();
-        fragmentsWithContent.push({ fragment, entityRelativePath, rawContent });
-      } catch {
-        log.warn(
-          { filePath: absoluteFragmentPath },
-          "watcher: could not read fragment written by consumeAll — skipping upsert",
-        );
-      }
+    const entityRelativePath = `${slugify(fragment.title)}.md`;
+    const absoluteFragmentPath = path.join(vaultRoot, "fragments", entityRelativePath);
+    let rawContent: string;
+    try {
+      rawContent = await Bun.file(absoluteFragmentPath).text();
+    } catch {
+      log.warn(
+        { filePath: absoluteFragmentPath },
+        "watcher: could not read fragment written by consume — skipping upsert",
+      );
+      return;
     }
 
-    vaultDatabase.transaction((tx) => {
-      for (const { fragment, entityRelativePath, rawContent } of fragmentsWithContent) {
-        upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
-      }
+    const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+
+    const warnings = vaultDatabase.transaction((tx) => {
+      return upsertFragment(tx, fragment, entityRelativePath, rawContent, knownAspectKeys);
     });
 
-    emit({ type: "pieces:consumed", count: fragments.length });
+    emit({ type: "pieces:consumed", count: 1 });
 
-    log.debug({ count: fragments.length }, "watcher: pieces consumed and indexed");
+    for (const warning of warnings) {
+      log.warn(
+        { aspectKey: warning.aspectKey, fragmentUuids: warning.fragmentUuids },
+        "watcher: unknown aspect key on piece sync",
+      );
+    }
+
+    log.debug({ pieceFile: pieceFileName }, "watcher: piece consumed and indexed");
   };
 
   // --- event routing ---
@@ -374,7 +383,7 @@ export const createVaultWatcher = (
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, REFERENCE_PREFIX);
         await syncReference(absolutePath, entityRelativePath);
       } else if (vaultRelativePath.startsWith(PIECE_PREFIX)) {
-        await syncPieces();
+        await syncPieces(vaultRelativePath);
       }
       // .maskor/, .obsidian/, and other paths: ignored via chokidar's `ignored` config.
     } catch (error) {
@@ -473,6 +482,10 @@ export const createVaultWatcher = (
     },
 
     pause() {
+      // TODO: Async race window — any handler already past the `if (isPaused) return` check and
+      // mid-await when pause() is called will still complete and upsert before rebuild runs.
+      // A full fix requires draining in-flight handlers before proceeding. See:
+      // references/reviews/storage-sync-spec-fixes-2026-04-23.md (warning #4)
       isPaused = true;
     },
 

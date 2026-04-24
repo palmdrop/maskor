@@ -1,6 +1,7 @@
 # General
 
-- [ ] Try graphify: https://github.com/safishamsi/graphify
+- [-] Try graphify: https://github.com/safishamsi/graphify
+  - tried `repomix` instead
 
 - [ ] Have conversation with Claude about specs, check obsidian vault, check files in the project
   - create a map of all that is implemented and needs to be done

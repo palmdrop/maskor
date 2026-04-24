@@ -1,7 +1,7 @@
 ---
 uuid: 17ce3436-4426-4f4a-a60a-75dee958dd18
 title: Harbour Lights
-version: 19
+updatedAt: "2026-04-01T12:00:00.000Z"
 readyStatus: 0.5
 notes:
   - harbour observation

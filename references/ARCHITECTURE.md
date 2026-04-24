@@ -54,20 +54,21 @@ Piece    ──── transient ──→ becomes Fragment on consume
 
 ### Field ownership
 
-| Field / Data              | Owner        | Notes                                                |
-| ------------------------- | ------------ | ---------------------------------------------------- |
-| `uuid`, `title`,          | Vault (file) | Written by Maskor on first creation; user may edit   |
-| `version`                 | Vault (file) | Maskor increments on each sync write                 |
-| `readyStatus`             | Vault (file) | User-set; Maskor may auto-generate but file wins     |
-| `notes[]`, `references[]` | Vault (file) | Stored as title arrays in frontmatter                |
-| Inline aspect fields      | Vault (file) | `aspect-name:: 0.8` — Dataview-compatible            |
-| `content` (body)          | Vault (file) | Maskor never modifies                                |
-| `contentHash`             | DB only      | SHA of body at last sync                             |
-| `updatedAt`, `syncedAt`   | DB only      | Set by Maskor on sync                                |
-| Sequence positions        | DB only      | All ordering data — never written to files           |
-| Fitting scores            | DB only      | Computed from aspects + arcs + position context      |
-| Arc positions             | DB only      | Where fragment sits on arc at current sequence index |
-| `filePath` (index)        | DB only      | Populated during rebuild; tracks UUID → path mapping |
+| Field / Data              | Owner        | Notes                                                            |
+| ------------------------- | ------------ | ---------------------------------------------------------------- |
+| `uuid`, `title`           | Vault (file) | Written by Maskor on first creation; user may edit               |
+| `updatedAt`               | Vault (file) | ISO timestamp; written by Maskor on every metadata/content write |
+| `readyStatus`             | Vault (file) | User-set; Maskor may auto-generate but file wins                 |
+| `notes[]`, `references[]` | Vault (file) | Stored as title arrays in frontmatter                            |
+| Inline aspect fields      | Vault (file) | `aspect-name:: 0.8` — Dataview-compatible                        |
+| `content` (body)          | Vault (file) | Maskor never modifies                                            |
+| `contentHash`             | DB only      | SHA of full file (frontmatter + body) at last sync               |
+| `syncedAt`                | DB only      | Unix ms; set by Maskor on each DB sync event                     |
+| `filePath`                | DB only      | Relative to vault root; tracks UUID → path mapping               |
+| `isDiscarded`             | DB only      | Derived from `filePath.startsWith("discarded/")` at index time   |
+| Sequence positions        | DB only      | All ordering data — never written to files                       |
+| Fitting scores            | DB only      | Computed from aspects + arcs + position context                  |
+| Arc positions             | DB only      | Where fragment sits on arc at current sequence index             |
 
 ---
 
@@ -121,7 +122,7 @@ Piece    ──── transient ──→ becomes Fragment on consume
 ```
 <vault>/pieces/<title>.md
         │
-        ▼  vault.pieces.consumeAll()
+        ▼  vault.pieces.consume(fileName)   (per-file; watcher triggers on add)
   initFragment() → writes <vault>/fragments/<slug>.md + returns Fragment
         │
         ▼  piece file deleted (fs.unlink)
@@ -161,7 +162,7 @@ Full import pipeline (`@maskor/importer` with Pandoc for `.docx`) is not yet bui
 | `service.aspects`    | `read`, `readAll`, `write`                                                         |
 | `service.notes`      | `read`, `readAll`, `write`                                                         |
 | `service.references` | `read`, `readAll`, `write`                                                         |
-| `service.pieces`     | `consumeAll`                                                                       |
+| `service.pieces`     | `consumeAll`, `consume` (single-file)                                              |
 | `service.index`      | `rebuild`                                                                          |
 | `service.watcher`    | `start`, `stop`                                                                    |
 | (top-level)          | `registerProject`, `listProjects`, `getProject`, `resolveProject`, `removeProject` |
@@ -239,13 +240,13 @@ All request/response shapes in `packages/api/src/schemas/`:
 
 ## Sync Contract (summary)
 
-- **Vault owns:** uuid, title, version, readyStatus, notes[], references[], inline aspect weights, body content.
-- **DB owns:** contentHash, updatedAt/syncedAt, sequence positions, fitting scores, arc positions, filePath index.
+- **Vault owns:** uuid, title, updatedAt, readyStatus, notes[], references[], inline aspect weights, body content.
+- **DB owns:** contentHash, syncedAt, filePath, isDiscarded, sequence positions, fitting scores, arc positions.
 - **UUID assignment:** Written into frontmatter on first detection if missing. Never changes. Entities tracked by UUID, not filename.
-- **Rebuild:** Full O(n) scan, single SQLite transaction. Inserts/updates all entities. Soft-deletes entities absent from vault (`deletedAt`). Never hard-deletes fragments — moves to `discarded`.
-- **Aspect key resolution:** Inline fields stored by string key, UUID resolved at rebuild. Unresolved keys → `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }`. Maskor never auto-rewrites fragment files.
-- **Conflicts:** Last-write-wins for most fields. Stale `version` is a warning, not an error.
-- **Stale index window:** Index is stale after any write until next `rebuild()`. `STALE_INDEX` = file expected from index is missing. Treat as retryable. Closes once chokidar is integrated.
+- **Rebuild:** Full O(n) scan, single SQLite transaction. Aspects first (builds `Set<aspectKey>`), then notes, references, fragments. Soft-deletes entities absent from vault (`deletedAt`). Never hard-deletes fragments — moves to `discarded`. Watcher is paused during rebuild.
+- **Aspect key resolution:** Inline fields stored by `aspect_key` directly in `fragment_properties` — no `aspect_uuid` column. Drift detected via `Set<aspectKey>` membership check. Unresolved keys → `SyncWarning { kind: "UNKNOWN_ASPECT_KEY" }`. Maskor never auto-rewrites fragment files.
+- **Conflicts:** Last-write-wins for most fields.
+- **Stale index window:** API writes close the window immediately via inline DB update. The watcher fires afterward and hash-guards to a no-op.
 
 ---
 
@@ -269,12 +270,12 @@ All request/response shapes in `packages/api/src/schemas/`:
 
 ### Open / unsettled
 
-- **File watcher**: Chokidar integrated (`VaultWatcher`). Started lazily on first project access via `resolveProject` middleware. Rebuild + start is the recommended startup sequence.
 - **Frontend shell**: Tauri vs Electron vs browser-only — undecided. `@maskor/frontend` is plain Vite/React with no shell.
 - **`Interleaving` type**: Stub only — `TODO: No idea how to configure this`.
 - **`Action` type**: `execute` and `revert` are function fields — not serializable if actions are logged to disk.
 - **Sequences/Sections DB schema**: No tables yet in `vault/schema.ts`.
 - **`contentHash` on create**: `POST /fragments` sets `contentHash: ""` — downstream consumers must not rely on it until fixed.
+- **`updatedAt` for external edits**: When Obsidian edits a fragment directly, `updatedAt` in frontmatter is not updated by Maskor (only API writes stamp it). The watcher reads `updatedAt` from the file as-is.
 
 ---
 

@@ -9,6 +9,11 @@ import { tmpdir } from "node:os";
 let tmpDir: string;
 let config: VaultConfig;
 
+const isValidDateString = (dateString: string) => {
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date.getTime());
+};
+
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "maskor-test-"));
   mkdirSync(join(tmpDir, "fragments"), { recursive: true });
@@ -30,7 +35,8 @@ describe("initFragment", () => {
 
     expect(parsed.frontmatter.title).toBe("The Bridge");
     expect(parsed.frontmatter.readyStatus).toBe(0);
-    expect(parsed.frontmatter.version).toBe(1);
+    expect(typeof parsed.frontmatter.updatedAt).toBe("string");
+    expect(isValidDateString(parsed.frontmatter.updatedAt as string)).toBe(true);
     expect(parsed.frontmatter.uuid).toBe(fragment.uuid);
   });
 
@@ -51,7 +57,6 @@ describe("initFragment", () => {
 
     expect(fragment.title).toBe("Late Winter");
     expect(fragment.isDiscarded).toBe(false);
-    expect(fragment.version).toBe(1);
     expect(fragment.readyStatus).toBe(0);
     expect(typeof fragment.uuid).toBe("string");
   });

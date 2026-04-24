@@ -7,7 +7,7 @@ const PARSED: ParsedFile = {
   frontmatter: {
     uuid: "frag-0001-0000-0000-000000000001",
     title: "The Bridge",
-    version: 3,
+    updatedAt: "2026-04-01T12:00:00.000Z",
     readyStatus: 0.8,
     notes: ["bridge observation"],
     references: ["city research"],
@@ -21,11 +21,27 @@ describe("fragment.fromFile", () => {
     const fragment = fromFile(PARSED, "the-bridge.md");
     expect(fragment.uuid as string).toBe("frag-0001-0000-0000-000000000001");
     expect(fragment.title).toBe("The Bridge");
-    expect(fragment.version).toBe(3);
     expect(fragment.isDiscarded).toBe(false);
     expect(fragment.readyStatus).toBe(0.8);
     expect(fragment.notes).toEqual(["bridge observation"]);
     expect(fragment.references).toEqual(["city research"]);
+  });
+
+  it("reads updatedAt from frontmatter", () => {
+    const fragment = fromFile(PARSED, "the-bridge.md");
+    expect(fragment.updatedAt).toEqual(new Date("2026-04-01T12:00:00.000Z"));
+  });
+
+  it("defaults updatedAt to now when missing", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, updatedAt: undefined },
+    };
+    const before = new Date();
+    const fragment = fromFile(parsed, "the-bridge.md");
+    const after = new Date();
+    expect(fragment.updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    expect(fragment.updatedAt.getTime()).toBeLessThanOrEqual(after.getTime());
   });
 
   it("maps inline fields to properties", () => {
@@ -53,15 +69,6 @@ describe("fragment.fromFile", () => {
     expect(fragment.title).toBe("the-bridge");
   });
 
-  it("defaults version to 1 when missing", () => {
-    const parsed: ParsedFile = {
-      ...PARSED,
-      frontmatter: { ...PARSED.frontmatter, version: undefined },
-    };
-    const fragment = fromFile(parsed, "the-bridge.md");
-    expect(fragment.version).toBe(1);
-  });
-
   it("defaults readyStatus to 0 when missing", () => {
     const parsed: ParsedFile = {
       ...PARSED,
@@ -83,10 +90,10 @@ describe("fragment.fromFile", () => {
 });
 
 describe("fragment.toFile", () => {
+  const updatedAt = new Date("2026-04-01T12:00:00.000Z");
   const fragment: Fragment = {
     uuid: "frag-0001-0000-0000-000000000001",
     title: "The Bridge",
-    version: 3,
     isDiscarded: false,
     readyStatus: 0.8,
     notes: ["bridge observation"],
@@ -94,21 +101,20 @@ describe("fragment.toFile", () => {
     properties: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
     content: "She crossed it every morning.",
     contentHash: "abc123",
-    updatedAt: new Date(),
+    updatedAt,
   };
 
   it("writes all frontmatter fields", () => {
     const { frontmatter } = toFile(fragment);
     expect(frontmatter.uuid).toBe(fragment.uuid);
     expect(frontmatter.title).toBe("The Bridge");
-    expect(frontmatter.version).toBe(3);
+    expect(frontmatter.updatedAt).toBe("2026-04-01T12:00:00.000Z");
     expect(frontmatter.readyStatus).toBe(0.8);
   });
 
-  it("does not write contentHash, isDiscarded, or updatedAt", () => {
+  it("does not write contentHash or isDiscarded", () => {
     const { frontmatter } = toFile(fragment);
     expect("contentHash" in frontmatter).toBe(false);
-    expect("updatedAt" in frontmatter).toBe(false);
     expect("isDiscarded" in frontmatter).toBe(false);
   });
 

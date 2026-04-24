@@ -108,7 +108,6 @@ describe("fragments.findAll", () => {
     expect(bridge?.references).toContain("city research");
     expect(bridge?.properties["grief"]).toBeDefined();
     expect(bridge?.properties["grief"]?.weight).toBe(0.6);
-    expect(bridge?.properties["grief"]?.aspectUuid).toBeTruthy();
   });
 });
 

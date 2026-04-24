@@ -19,16 +19,16 @@ export const resolveProject = async (
   try {
     const projectContext = await storageService.resolveProject(projectId);
     ctx.set("projectContext", projectContext);
+    // Rebuild first, then start the watcher — spec startup sequence (storage-sync.md lines 67-70).
+    // The watcher must not run concurrently with rebuild; starting it before rebuild completes
+    // breaks the pause-based mutex.
+    if (!rebuiltProjects.has(projectContext.projectUUID)) {
+      rebuiltProjects.add(projectContext.projectUUID);
+      await storageService.index.rebuild(projectContext);
+    }
     // Start the watcher lazily on first project access. start() is idempotent — safe to
     // call on every request.
     storageService.watcher.start(projectContext);
-    // Trigger a full index rebuild once per project per process lifetime. Fire-and-forget —
-    // rebuild logs internally via StorageService. The watcher catches any changes that
-    // arrive while the rebuild is in progress.
-    if (!rebuiltProjects.has(projectContext.projectUUID)) {
-      rebuiltProjects.add(projectContext.projectUUID);
-      storageService.index.rebuild(projectContext).catch(() => {});
-    }
     return next();
   } catch (error) {
     if (error instanceof ProjectNotFoundError) {

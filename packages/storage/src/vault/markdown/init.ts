@@ -27,10 +27,10 @@ export const initFragment = async (config: VaultConfig, piece: Piece): Promise<F
     );
   }
 
+  const updatedAt = new Date();
   const fragment: Fragment = {
     uuid,
     title,
-    version: 1,
     isDiscarded: false,
     readyStatus: 0,
     properties: {},
@@ -38,14 +38,14 @@ export const initFragment = async (config: VaultConfig, piece: Piece): Promise<F
     references: [],
     content: piece.content,
     contentHash: "",
-    updatedAt: new Date(0),
+    updatedAt,
   };
 
   const serialized = serializeFile({
     frontmatter: {
       uuid,
       title,
-      version: 1,
+      updatedAt: updatedAt.toISOString(),
       readyStatus: 0,
       notes: [],
       references: [],

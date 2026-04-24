@@ -109,9 +109,9 @@ Severity:
 
 ---
 
-## For Larger Reviews
+## Review files
 
-If covering multiple files, a significant feature, or >5 non-trivial findings:
+Except otherwise stated, always write your review to a file.
 
 1. Write full review to `references/reviews/<topic>-<YYYY-MM-DD>.md`.
 2. Use the same format with a top-level title and date.

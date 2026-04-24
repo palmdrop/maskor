@@ -22,7 +22,7 @@ import type { ProjectContext, ProjectRecord } from "../registry/types";
 import { createVaultWatcher } from "../watcher/watcher";
 import type { VaultWatcher } from "../watcher/watcher";
 import {
-  loadAspectKeyToUuid,
+  loadKnownAspectKeys,
   upsertFragment,
   upsertAspect,
   upsertNote,
@@ -192,21 +192,22 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       async write(context: ProjectContext, fragment: Fragment): Promise<void> {
         // TODO: title-change orphan — write() creates a new file at the new slug path if the title
         // changed. The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
-        await getVault(context).fragments.write(fragment);
+        const fragmentToWrite = { ...fragment, updatedAt: new Date() };
+        await getVault(context).fragments.write(fragmentToWrite);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
         // The watcher will fire afterward and hash-guard to a no-op.
-        const entityRelativePath = fragment.isDiscarded
-          ? join("discarded", `${slugify(fragment.title)}.md`)
-          : `${slugify(fragment.title)}.md`;
+        const entityRelativePath = fragmentToWrite.isDiscarded
+          ? join("discarded", `${slugify(fragmentToWrite.title)}.md`)
+          : `${slugify(fragmentToWrite.title)}.md`;
 
         const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
-        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
         vaultDatabase.transaction((tx) => {
-          upsertFragment(tx, fragment, entityRelativePath, rawContent, aspectKeyToUuid);
+          upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
         });
       },
 
@@ -250,7 +251,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
         const rawContent = await Bun.file(absoluteDestination).text();
         const vaultDatabase = getVaultDatabase(context);
-        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
         // Parse the discarded fragment directly from rawContent — avoids a second file read.
         // isDiscarded is derived from the destination path in fromFile.
@@ -266,7 +267,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             discardedFragment,
             destinationEntityRelativePath,
             rawContent,
-            aspectKeyToUuid,
+            knownAspectKeys,
           );
         });
       },
@@ -321,7 +322,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
         const rawContent = await Bun.file(absoluteDestination).text();
         const vaultDatabase = getVaultDatabase(context);
-        const aspectKeyToUuid = loadAspectKeyToUuid(vaultDatabase);
+        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
         const restoredFragment = fragmentMapper.fromFile(
           parseFile(rawContent),
@@ -335,7 +336,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             restoredFragment,
             destinationEntityRelativePath,
             rawContent,
-            aspectKeyToUuid,
+            knownAspectKeys,
           );
         });
       },
@@ -377,12 +378,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         await getVault(context).aspects.write(aspect);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
-        // Aspects have no contentHash column, so no file re-read is needed.
         const entityRelativePath = `${slugify(aspect.key)}.md`;
+        const absolutePath = join(context.vaultPath, "aspects", entityRelativePath);
+        const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
 
         vaultDatabase.transaction((tx) => {
-          upsertAspect(tx, aspect, entityRelativePath);
+          upsertAspect(tx, aspect, entityRelativePath, rawContent);
         });
       },
 

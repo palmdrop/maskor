@@ -15,6 +15,20 @@
       "when": 1775422549303,
       "tag": "20260405_add_missing_indices",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1745395200000,
+      "tag": "20260423_remove_version_and_aspect_uuid",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1777009396160,
+      "tag": "0003_old_tusk",
+      "breakpoints": true
     }
   ]
 }

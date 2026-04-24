@@ -1,7 +1,7 @@
 ---
 uuid: f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b
 title: The Bridge
-version: 6
+updatedAt: "2026-04-01T12:00:00.000Z"
 readyStatus: 0.58
 notes:
   - bridge observation

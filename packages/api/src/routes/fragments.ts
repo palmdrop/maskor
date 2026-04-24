@@ -205,7 +205,6 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       title,
       content,
       isDiscarded: false,
-      version: 1,
       readyStatus: 0,
       notes: [],
       references: [],
@@ -233,7 +232,6 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
     const updated = {
       ...existing,
       ...update,
-      version: existing.version + 1,
       updatedAt: new Date(),
     };
 

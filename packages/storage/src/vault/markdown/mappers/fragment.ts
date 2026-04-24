@@ -17,20 +17,21 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
 
   const title = deriveTitle(frontmatter, filePath);
   const isDiscarded = filePath.startsWith("discarded/");
+  const updatedAtRaw = frontmatter.updatedAt;
+  const updatedAt =
+    typeof updatedAtRaw === "string" && updatedAtRaw ? new Date(updatedAtRaw) : new Date();
 
   return {
     uuid: frontmatter.uuid as string,
     title,
-    version: typeof frontmatter.version === "number" ? frontmatter.version : 1,
     isDiscarded,
     readyStatus: typeof frontmatter.readyStatus === "number" ? frontmatter.readyStatus : 0,
     notes: (frontmatter.notes as string[]) ?? [],
     references: (frontmatter.references as string[]) ?? [],
     properties: inlineFieldsToProperties(parsed.inlineFields),
     content: parsed.body,
-    // DB-only fields — set to placeholder values at this layer
     contentHash: "",
-    updatedAt: new Date(0),
+    updatedAt,
   };
 };
 
@@ -45,7 +46,7 @@ export const toFile = (
     frontmatter: {
       uuid: fragment.uuid,
       title: fragment.title,
-      version: fragment.version,
+      updatedAt: fragment.updatedAt.toISOString(),
       readyStatus: fragment.readyStatus,
       notes: fragment.notes,
       references: fragment.references,

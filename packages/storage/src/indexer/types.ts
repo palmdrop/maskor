@@ -13,16 +13,13 @@ export type RebuildStats = {
   warnings: SyncWarning[];
 };
 
-// NULL aspectUuid means the aspect key didn't resolve — signals drift
 export type IndexedFragmentProperty = {
   weight: number;
-  aspectUuid: string | null;
 };
 
 export type IndexedFragment = {
   uuid: string;
   title: string;
-  version: number;
   isDiscarded: boolean;
   readyStatus: number;
   contentHash: string;

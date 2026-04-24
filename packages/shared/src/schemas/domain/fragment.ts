@@ -4,7 +4,6 @@ export const FragmentPropertiesSchema = z.record(z.string(), z.object({ weight: 
 
 export const FragmentSchema = z.object({
   uuid: z.uuid(),
-  version: z.int(),
   title: z.string(),
   content: z.string(),
   readyStatus: z.number().min(0).max(1),

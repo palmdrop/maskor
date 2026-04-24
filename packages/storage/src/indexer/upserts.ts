@@ -17,18 +17,15 @@ import type { VaultDatabase } from "../db/vault";
 import type { SyncWarning } from "./types";
 import { hashContent } from "../utils/hash";
 
-// Loads the active (non-deleted) aspect key → UUID map from the DB at call time.
-// Used by both the watcher and the storage service for fragment property resolution.
-export const loadAspectKeyToUuid = (vaultDatabase: VaultDatabase): Map<string, string> => {
+// Loads the set of active (non-deleted) aspect keys from the DB.
+// Used for drift detection: a fragment property whose key is not in this set produces a SyncWarning.
+export const loadKnownAspectKeys = (vaultDatabase: VaultDatabase): Set<string> => {
   const rows = vaultDatabase
-    .select({ key: aspectsTable.key, uuid: aspectsTable.uuid })
+    .select({ key: aspectsTable.key })
     .from(aspectsTable)
     .where(isNull(aspectsTable.deletedAt))
     .all();
-  return rows.reduce((map, row) => {
-    map.set(row.key, row.uuid);
-    return map;
-  }, new Map<string, string>());
+  return new Set(rows.map((row) => row.key));
 };
 
 type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
@@ -36,14 +33,21 @@ type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelation
 // All helpers are synchronous — bun:sqlite is sync and callers wrap in a sync
 // transaction callback. Do not add async to these functions.
 
-export const upsertAspect = (tx: Transaction, aspect: Aspect, filePath: string): void => {
+export const upsertAspect = (
+  tx: Transaction,
+  aspect: Aspect,
+  filePath: string,
+  rawContent: string,
+): void => {
   const syncedAt = new Date();
+  const contentHash = hashContent(rawContent);
 
   tx.insert(aspectsTable)
     .values({
       uuid: aspect.uuid,
       key: aspect.key,
       category: aspect.category ?? null,
+      contentHash,
       filePath,
       deletedAt: null,
       syncedAt,
@@ -53,6 +57,7 @@ export const upsertAspect = (tx: Transaction, aspect: Aspect, filePath: string):
       set: {
         key: aspect.key,
         category: aspect.category ?? null,
+        contentHash,
         filePath,
         deletedAt: null,
         syncedAt,
@@ -124,7 +129,7 @@ export const upsertFragment = (
   fragment: Fragment,
   filePath: string,
   rawContent: string,
-  aspectKeyToUuid: Map<string, string>,
+  knownAspectKeys: Set<string>,
 ): SyncWarning[] => {
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
@@ -135,7 +140,6 @@ export const upsertFragment = (
     .values({
       uuid: fragment.uuid,
       title: fragment.title,
-      version: fragment.version,
       isDiscarded,
       readyStatus: fragment.readyStatus,
       contentHash,
@@ -148,7 +152,6 @@ export const upsertFragment = (
       target: fragmentsTable.uuid,
       set: {
         title: fragment.title,
-        version: fragment.version,
         isDiscarded,
         readyStatus: fragment.readyStatus,
         contentHash,
@@ -179,14 +182,13 @@ export const upsertFragment = (
   const properties = Object.entries(fragment.properties);
 
   for (const [aspectKey, { weight }] of properties) {
-    const resolvedUuid = aspectKeyToUuid.get(aspectKey) ?? null;
     tx.insert(fragmentPropertiesTable)
-      .values({ fragmentUuid: fragment.uuid, aspectKey, aspectUuid: resolvedUuid, weight })
+      .values({ fragmentUuid: fragment.uuid, aspectKey, weight })
       .run();
   }
 
   return properties.reduce<SyncWarning[]>((acc, [aspectKey]) => {
-    if (aspectKeyToUuid.has(aspectKey)) {
+    if (knownAspectKeys.has(aspectKey)) {
       return acc;
     }
     return [...acc, { kind: "UNKNOWN_ASPECT_KEY", aspectKey, fragmentUuids: [fragment.uuid] }];

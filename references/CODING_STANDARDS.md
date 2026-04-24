@@ -107,6 +107,22 @@ doThing();
 
 Prefer early returns if possible, even when dealing with only one if-clause.
 
+### Prefer arrow functions
+
+Unless there's a specific reason for it, use arrow functions over standard functions:
+
+```ts
+// Bad
+function doSomething(argument: Type): ReturnType {
+  // do something
+}
+
+// Good
+const doSomething = (argument: Type): ReturnType => {
+  // do something
+};
+```
+
 ---
 
 ## Data transformation
