@@ -32,6 +32,7 @@ import {
   softDeleteNoteByFilePath,
   softDeleteReferenceByFilePath,
 } from "../indexer/upserts";
+import { hashContent } from "../utils/hash";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
 
@@ -189,7 +190,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         return getVaultIndexer(context).fragments.findAll();
       },
 
-      async write(context: ProjectContext, fragment: Fragment): Promise<void> {
+      async write(context: ProjectContext, fragment: Fragment): Promise<Fragment> {
         // TODO: title-change orphan — write() creates a new file at the new slug path if the title
         // changed. The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
         const fragmentToWrite = { ...fragment, updatedAt: new Date() };
@@ -203,12 +204,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
+        const contentHash = hashContent(rawContent);
         const vaultDatabase = getVaultDatabase(context);
         const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
         vaultDatabase.transaction((tx) => {
           upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
         });
+
+        return { ...fragmentToWrite, contentHash };
       },
 
       async discard(context: ProjectContext, uuid: string): Promise<void> {

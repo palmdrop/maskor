@@ -200,7 +200,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { title, content } = ctx.req.valid("json");
 
-    const fragment: Fragment = {
+    const draft: Fragment = {
       uuid: randomUUID(),
       title,
       content,
@@ -209,12 +209,11 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       notes: [],
       references: [],
       properties: {},
-      contentHash: "", // TODO: compute a real hash (e.g. Bun.hash) once downstream consumers rely on this for change detection
+      contentHash: "",
       updatedAt: new Date(),
     };
 
-    // NOTE: After write the index is stale until the next rebuild.
-    await storageService.fragments.write(projectContext, fragment);
+    const fragment = await storageService.fragments.write(projectContext, draft);
     return ctx.json(fragment, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -229,14 +228,11 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
     const update = ctx.req.valid("json");
 
     const existing = await storageService.fragments.read(projectContext, fragmentId);
-    const updated = {
+    const fragment = await storageService.fragments.write(projectContext, {
       ...existing,
       ...update,
-      updatedAt: new Date(),
-    };
-
-    await storageService.fragments.write(projectContext, updated);
-    return ctx.json(updated, 200);
+    });
+    return ctx.json(fragment, 200);
   } catch (error) {
     return throwStorageError(error);
   }
