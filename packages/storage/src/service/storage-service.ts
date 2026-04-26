@@ -1,5 +1,6 @@
 import type { Aspect, Fragment, Logger, Note, Reference, VaultSyncEvent } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
+import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
@@ -191,9 +192,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, fragment: Fragment): Promise<Fragment> {
-        // TODO: title-change orphan — write() creates a new file at the new slug path if the title
-        // changed. The old file is not removed and becomes orphaned until the next rebuild soft-deletes it.
         const fragmentToWrite = { ...fragment, updatedAt: new Date() };
+
+        // Capture old path before writing the new file — needed for orphan cleanup on rename.
+        const indexer = getVaultIndexer(context);
+        const oldFilePath = await indexer.fragments.findFilePath(fragment.uuid);
+
         await getVault(context).fragments.write(fragmentToWrite);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
@@ -201,6 +205,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         const entityRelativePath = fragmentToWrite.isDiscarded
           ? join("discarded", `${slugify(fragmentToWrite.title)}.md`)
           : `${slugify(fragmentToWrite.title)}.md`;
+
+        // If the slug changed, delete the old file so it doesn't become orphaned.
+        if (oldFilePath && oldFilePath !== entityRelativePath) {
+          const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath);
+          await unlink(absoluteOldPath).catch(() => {
+            log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
+          });
+        }
 
         const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();

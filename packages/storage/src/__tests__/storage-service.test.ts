@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
@@ -157,6 +157,29 @@ describe("StorageService.fragments.restore", () => {
     await expect(service.fragments.restore(context, active.uuid)).rejects.toMatchObject({
       code: "FRAGMENT_NOT_DISCARDED",
     });
+  });
+});
+
+describe("StorageService.fragments.write — rename cleanup", () => {
+  it("deletes the old file when a fragment is renamed", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const indexed = allFragments.find((f) => !f.isDiscarded);
+    if (!indexed) throw new Error("expected at least one active fragment in fixtures");
+
+    const oldAbsolutePath = join(vaultDir, "fragments", indexed.filePath);
+    const fragment = await service.fragments.read(context, indexed.uuid);
+
+    const renamed = await service.fragments.write(context, { ...fragment, title: "Completely New Title" });
+
+    expect(renamed.title).toBe("Completely New Title");
+    expect(existsSync(join(vaultDir, "fragments", "completely-new-title.md"))).toBe(true);
+    expect(existsSync(oldAbsolutePath)).toBe(false);
   });
 });
 

@@ -28,7 +28,7 @@ In the event of encountering a bug, inconsistency or issue, even when unrelated 
 
 Be succinct. Prefer bullets over paragraphs. No fluff. Don't skip important information.
 
-## References
+## Rule 6: References
 
 Add references (diagrams, docs, etc.) to `@references/`. Keep `packages/*/README.md` files up to date as you work — short, clear, context-refresher quality.
 
@@ -54,7 +54,9 @@ Full standards in `@references/CODING_STANDARDS.md`.
 
 ## When done
 
-After implementing a plan or large task, run relevant tests, `bun run format` and `bun run typecheck`. Fix anything that breaks.
+After implementing a plan or large task, run relevant tests, `bun run format` and `bun run typecheck`. Fix anything that breaks. 
+
+IF TESTS ARE MISSING, CREATE NEW ONES. It is important that all features are well tested.
 
 ## Manual development
 

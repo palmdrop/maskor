@@ -17,7 +17,6 @@
 
 - [x] Fragment editor needs a discard button > to automatically move a fragment to discarded
   - the other properties, like incomplete, unplaced, are derived automatically...
-  - NOTE: This makes me think that the pool property is not needed. However, we should probably have a way of detecting if a fragment is incomplete... and make it possible to search this? but what if a fragment is placed and then becomes incomplete due to a deleted metadata property?
 
 - [ ] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
   - a sequence collection which holds sequence position data? same for sequence itself, sections, etc
