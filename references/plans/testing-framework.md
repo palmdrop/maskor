@@ -15,7 +15,7 @@ Two-runner strategy: `bun test` for all backend/shared packages (zero config, na
 
 ### Backend packages: `bun test`
 
-All of `api`, `storage`, `importer`, `processor`, `sequencer`, `shared` use Bun's built-in Jest-compatible test runner.
+All of `api`, `storage`, `importer`, `sequencer`, `shared` use Bun's built-in Jest-compatible test runner.
 
 **Why not Vitest everywhere?**  
 Backend packages don't use Vite. Bun's runner is faster for pure TS, zero-install, and the Jest-compatible API (`expect`, `describe`, `it`, `mock`) means there's no learning curve. Switching later is easy since the API is the same.

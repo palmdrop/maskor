@@ -17,7 +17,6 @@ Maskor is a local-first, fragmented writing tool. Users write in disconnected un
 | `shared`    | Domain types, branded UUIDs, slugify util, pino logger factory                | Built      |
 | `storage`   | Vault I/O, parse/serialize, mappers, SQLite index, project registry           | Built      |
 | `api`       | OpenAPIHono HTTP API — fragments, aspects, notes, references, projects, index | Built      |
-| `processor` | Processing queue — enriches/validates pieces → fragments                      | Scaffolded |
 | `sequencer` | Arc-fitting engine, deterministic placement with seeded noise                 | Scaffolded |
 | `importer`  | Converts external files (.docx etc.) to fragments via Pandoc                  | Scaffolded |
 | `frontend`  | React + Vite UI — editor, sequencer view, arc overview                        | Scaffolded |

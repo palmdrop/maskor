@@ -1,6 +1,6 @@
 # Spec: Aspect-Arc Model
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-04-26
 
 ---

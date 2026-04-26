@@ -241,4 +241,4 @@ packages/storage/src/
 ## What is NOT in scope
 
 - Per-request / per-operation correlation IDs — future concern
-- Logging in other packages (`api`, `processor`, etc.) — same pattern applies, deferred
+- Logging in other packages (`api`, `importer`, etc.) — same pattern applies, deferred
