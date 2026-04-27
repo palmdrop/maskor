@@ -86,7 +86,7 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 - **New aspect creation from the editor**: TODO.md marks this as open (`[ ] Allow adding new aspects on the fragment editor page`). Should aspects be creatable inline, or only via the project configuration view?
 - **`readyStatus` visual indicator**: The plan mentioned a color/dot indicator next to the title. Not yet implemented. What does it look like?
 - **Focus toggle shortcut**: Keyboard shortcut to switch focus between prose and metadata panels — desired but not yet defined.
-- **Fragment selection / random presentation**: What drives which fragment is shown? The editor doesn't own this — but the spec for the session/navigation layer is not yet written.
+- **Fragment selection / random presentation**: What drives which fragment is shown? The editor doesn't own this — see `navigation.md` for the surfacing model and prompting mechanism.
 - **TipTap GFM table support**: Not currently installed. If fragments contain markdown tables, `@tiptap/extension-table` is needed.
 
 ---

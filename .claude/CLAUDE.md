@@ -12,6 +12,8 @@ KEEP IN MIND:
 - Be succinct. Short sentences, no fluff.
 - Keep `README.md` files up to date with developer-facing documentation.
 - Reference `@references/CODEBASE_SNAPSHOT.md` when you need to traverse the codebase. Use `Grep` to locate symbols, types and files without traversing the source tree. Regenerate with `bun run snapshot` after structural changes.
+- Reference `@specifications/` when developing features. All top-level concepts should be tracked by a spec. Is a spec.
 - Verify changes with `bun run typecheck` and format with `bun run format`.
 - Write tests when adding features or changing behavior.
-- Update references and markdown if it is out of sync.
+- Update references and specs if they are out of sync.
+- When writing code, try to match the coding style in the already existing code.

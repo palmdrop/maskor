@@ -156,8 +156,6 @@ data: unknown;
 export type Action<T = unknown> = {
   type: ActionType;
   data: T;
-  execute: () => void;
-  revert: () => void;
   ...
 };
 ```

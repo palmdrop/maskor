@@ -33,18 +33,19 @@ Before writing any spec, familiarise yourself with the following:
 
 Based on the domain model and current build state. Ordered roughly by dependency and importance.
 
-| Spec file             | Domain / feature                                              | Notes                                             |
-| --------------------- | ------------------------------------------------------------- | ------------------------------------------------- |
-| `storage-sync.md`     | Vault ↔ DB sync contract                                      | Mostly settled — good first spec to anchor others |
-| `fragment-model.md`   | Fragment entity, lifecycle, field ownership                   | Core domain                                       |
-| `aspect-arc-model.md` | Aspects, arcs, intensity — the data model                     | Not the UI                                        |
-| `fragment-editor.md`  | Fragment editor UX — what it shows, owns, and does not own    | Core product feature                              |
-| `sequencer.md`        | Placement engine, fitting, noise, manual/semi/auto modes      | Largely unbuilt                                   |
-| `interleaving.md`     | Algorithm inputs, constraints, rules                          | Most open-ended                                   |
-| `project-config.md`   | Project setup — aspects, arcs, interleaving config            | Partially unbuilt                                 |
-| `overview.md`         | Overview view — arc/aspect inspection, sequence visualisation | Unbuilt                                           |
-| `import-pipeline.md`  | Pieces → fragments, external file import                      | Partially unbuilt                                 |
-| `export.md`           | Fragment sequence → text, PDF, Word                           | Unbuilt                                           |
+| Spec file             | Domain / feature                                                        | Notes                                             |
+| --------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
+| `storage-sync.md`     | Vault ↔ DB sync contract                                                | Mostly settled — good first spec to anchor others |
+| `fragment-model.md`   | Fragment entity, lifecycle, field ownership                             | Core domain                                       |
+| `aspect-arc-model.md` | Aspects, arcs, intensity — the data model                               | Not the UI                                        |
+| `fragment-editor.md`  | Fragment editor UX — what it shows, owns, and does not own              | Core product feature                              |
+| `sequencer.md`        | Placement engine, fitting, noise, manual/semi/auto modes                | Largely unbuilt                                   |
+| `interleaving.md`     | Algorithm inputs, constraints, rules                                    | Most open-ended                                   |
+| `project-config.md`   | Project setup — aspects, arcs, interleaving config                      | Partially unbuilt                                 |
+| `fitting-score.md`    | Calculates a score based on how well a fragment is placed in a sequence | Unbuilt                                           |
+| `overview.md`         | Overview view — arc/aspect inspection, sequence visualisation           | Unbuilt                                           |
+| `import-pipeline.md`  | Pieces → fragments, external file import                                | Partially unbuilt                                 |
+| `export.md`           | Fragment sequence → text, PDF, Word                                     | Unbuilt                                           |
 
 Do not feel obligated to write all specs before starting development. Write a spec when you are about to plan or build that feature.
 

@@ -22,15 +22,14 @@ See [`references/SYNC_CONTRACT.md`](references/SYNC_CONTRACT.md) for the full fi
 
 ## Packages
 
-| Package     | Role                                                              |
-| ----------- | ----------------------------------------------------------------- |
-| `shared`    | Domain types and shared utilities                                 |
-| `storage`   | Vault read/write — parse, serialize, map markdown ↔ domain types  |
-| `api`       | HTTP API exposing fragments, aspects, sequences                   |
-| `processor` | Processing queue — enriches and validates incoming fragments      |
-| `sequencer` | Scores and orders fragments within sequences using arc fitting    |
-| `importer`  | Converts external files (`.docx`, etc.) into fragments via Pandoc |
-| `frontend`  | React UI for browsing, editing, and sequencing fragments          |
+| Package     | Role                                                             |
+| ----------- | ---------------------------------------------------------------- |
+| `shared`    | Domain types and shared utilities                                |
+| `storage`   | Vault read/write — parse, serialize, map markdown ↔ domain types |
+| `api`       | HTTP API exposing fragments, aspects, sequences                  |
+| `sequencer` | Scores and orders fragments within sequences using arc fitting   |
+| `importer`  | Converts external files (`.docx`, etc.) into fragments           |
+| `frontend`  | React UI for browsing, editing, and sequencing fragments         |
 
 ---
 

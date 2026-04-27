@@ -2,8 +2,13 @@
 
 - [-] Try graphify: https://github.com/safishamsi/graphify
   - tried `repomix` instead
+  - or https://www.augmentcode.com/
 
-- [ ] Have conversation with Claude about specs, check obsidian vault, check files in the project
+- [ ] look for bad patterns and fix them in the codebase
+  - let the code be the documentation
+  - for example, favor arrow functions over "function" declarations
+
+- [x] Have conversation with Claude about specs, check obsidian vault, check files in the project
   - create a map of all that is implemented and needs to be done
   - inspo https://ghuntley.com/ralph/
     - "Specs are formed through a conversation with the agent at the beginning phase of a project. Instead of asking the agent to implement the project, what you want to do is have a long conversation with the LLM about your requirements for what you're about to implement. Once your agent has a decent understanding of the task to be done, it's at that point that you issue a prompt to write the specifications out, one per file, in the specifications folder."

@@ -1,6 +1,6 @@
 # Spec: Import Pipeline
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-04-26
 
 ---

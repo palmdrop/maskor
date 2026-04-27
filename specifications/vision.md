@@ -29,34 +29,39 @@ Maskor alleviates this by managing fragments for discrete editing, helps with ar
 
 ## What Maskor does
 
-Maskor lets you write in fragments, assign thematic dimensions (aspects) to each fragment, then use an arc-guided sequencer to find the order.
+Maskor lets you write in fragments, assign thematic dimensions (aspects) to each fragment, arrange them — manually or with sequencer assistance — and see the thematic shape of their arrangement as a visual arc graph.
 
 **Input:** Disconnected prose fragments, written in Obsidian or imported from external files.
 
-**Process:** Tag fragments with aspects and intensities → define how those aspects rise and fall (arcs) → let the sequencer propose or derive an order → accept, reject, or adjust. Maskor can propose an order, or the user can choose to manually arrange all fragments.
+**Process:** Tag fragments with aspects → arrange them in any order → inspect how aspects rise and fall across the sequence (the actual arc) → optionally define target arc curves and let the sequencer help close the gap. Maskor can propose an order, or the user can arrange everything manually.
 
 **Output:** A sequenced manuscript, exportable to text, PDF, or Word.
+
+The arc-guided sequencer is a power feature. The basic workflow — write, arrange manually, view the graph, export — needs no arcs or sequencer configuration at all.
 
 ---
 
 ## Core workflow
 
 1. Write fragments freely, without worrying about order
-2. Tag each fragment with aspects (characters, themes, places, etc.) and intensities
-3. Define arcs — how each aspect should rise and fall across the whole
-4. Optionally setup an "interleaving", specifying how different arcs should interact.
-5. Run the sequencer — manually, semi-randomly, or automatically
-6. Review the sequence in the overview
-7. Export
+2. Tag each fragment with aspects (characters, themes, places, etc.) and weights
+3. Arrange fragments — manually drag and drop, or use the sequencer for suggestions
+4. Inspect the actual arc graph: see how each aspect rises and falls across the sequence
+5. Optionally define target arcs and interleaving rules to guide further arrangement
+6. Export
+
+Steps 5 is optional. Most users will cycle between steps 1–4 for the entire project.
 
 ---
 
 ## Design philosophy
 
 - Fragment-first: order is derived, not imposed
-- Embraces randomness and unexpected pairings
+- Embraces randomness and unexpected pairings — including the prompting mechanism, which surfaces fragments non-deterministically to enforce non-linear working (see `prompting.md`)
+- The arc graph is the primary analytical surface: users see the actual shape of their work without needing to define targets first
 - Markdown files as source of truth — human-readable, survives tool changes
 - Local-first: no server, no account, no cloud dependency
+- The vault is an implementation detail — users work through Maskor and never need to think about markdown files or vault structure. Maskor behaves as if the vault does not exist from the user's perspective. This abstraction keeps the storage backend replaceable: if Maskor is ever deployed to the cloud, the vault can be swapped for an external database without changing the product interface.
 
 ---
 

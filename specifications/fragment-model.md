@@ -1,6 +1,6 @@
 # Spec: Fragment Model
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-04-24
 
 ---
@@ -49,6 +49,7 @@ A fragment is a titled, UUID-identified piece of writing. It has:
 - **Notes** — a list of note titles attached to this fragment.
 - **References** — a list of reference names. Same rules as notes.
 - **`isDiscarded`** — whether the fragment has been removed from the active working set.
+- **`isPlaced`** — derived, not stored. `true` if the fragment has at least one position in any sequence. See `specifications/sequencer.md`.
 
 ### Lifecycle
 
@@ -58,7 +59,7 @@ A fragment is a titled, UUID-identified piece of writing. It has:
 
 3. **Enrichment** — the user adds aspect weights, notes, and references over time. This is the primary way Maskor accumulates the data needed for sequencing.
 
-4. **Readiness** — the user manually controls `readyStatus`. A value of `1.0` signals the fragment is finished. Maskor may suggest a value, but the file is always authoritative.
+4. **Readiness** — the user manually controls `readyStatus`. A value of `1.0` signals the fragment is finished. The file is always authoritative.
 
 5. **Placement** — the fragment is assigned a position in a sequence. Handled by the sequencer (out of scope here).
 
@@ -72,7 +73,7 @@ A fragment is a titled, UUID-identified piece of writing. It has:
 
 ### Prompting mechanism (intent, deferred)
 
-The intended workflow: after finishing work on a fragment, Maskor randomly prompts the user with an unfinished fragment to work on next. This enforces non-linear writing and prevents the user from over-polishing fragments in isolation. The selection mechanism (uniform random, weighted by `readyStatus`, filtered by recency) is not yet designed. Worth preserving as a core design intention — it shapes what fields and states the fragment model needs to expose.
+The intended workflow: after finishing work on a fragment, Maskor randomly prompts the user with an unfinished fragment to work on next. This enforces non-linear writing and prevents the user from over-polishing fragments in isolation. The selection mechanism is defined in `navigation.md`. The fragment model's role is to expose `readyStatus` (the primary filter for eligibility) — no other fragment-level fields are needed by the surfacing mechanism.
 
 ### Aspect properties
 
@@ -122,10 +123,9 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 
 ## Open questions
 
-- [ ] 2026-04-24 — **`updatedAt` for externally-edited files**: when Obsidian edits a fragment directly, `updatedAt` is not updated by Maskor. Accept stale `updatedAt` for external edits, or write it back on every watcher sync?
-- [ ] 2026-04-24 — **`isComplete` and `isPlaced` derived states**: removed with pool, no replacement yet. If needed: `isComplete` could be derived from field presence, `isPlaced` from sequence membership. Decide before building the overview or sequencer UI.
-- [ ] 2026-04-24 — **Prompting mechanism**: how does Maskor select the next fragment to prompt? Uniform random among unfinished fragments, weighted by `readyStatus`, or filtered by recency/cooldown?
-- [ ] 2026-04-24 — **Custom non-aspect properties**: `project_specs.md` mentions "custom properties for outlining, interleaving, and overview views." Currently `properties` is aspect weights only. Does this expand, or do aspects cover all cases?
+- [x] 2026-04-24 — **`updatedAt` for externally-edited files**: when Obsidian edits a fragment directly, `updatedAt` is not updated by Maskor. **Resolved**: `fromFile` falls back to `new Date()` (sync time) when `updatedAt` is absent from frontmatter. For Obsidian-only edits, `updatedAt` in the DB reflects the time of sync rather than the edit time. See `storage-sync.md`.
+- [x] 2026-04-24 — **`isComplete` and `isPlaced` derived states**: removed with pool, no replacement yet. **Resolved**: `isPlaced` is a derived property — `true` if the fragment has at least one position in any sequence. `isComplete` is not reintroduced; `readyStatus === 1.0` serves that purpose. See `sequencer.md`.
+- [ ] 2026-04-24 — **Prompting mechanism cooldown**: The selection strategy is defined in `navigation.md`. Open question remaining: what is the cooldown window (N most recent fragments, or a time window)?
 
 ---
 
