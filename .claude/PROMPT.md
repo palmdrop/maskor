@@ -1,1 +1,17 @@
-Check the `references/plans/spec-extraction.md` plan. ONLY worry about `interleaving` for now. Mine `project_specs.md`, `references/ARCHITECTURE.md`, `references/TODO.md`, the code, and any relevant plans in `references/plans/`. Produce a rough draft of the spec, keeping the current contents of the `specifications/interleaving.md` file in mind. Convert to the format specified in `specifications/_template.md`.
+# Current focus
+
+Create a usable frontend view for listing fragments, editing, deleting, etc. Workable frontend navigation with a minimal UI.
+
+Study the spec and the existing frontend code, and any existing plans that seem relevant. Extract actionable items and write them to the plan.
+
+## Active spec
+
+@specifications/navigation.md
+
+## Active plan
+
+No active plan. The first step is to create one.
+
+## Key context
+
+No additional context.

@@ -1,17 +1,51 @@
 # Plan title
 
 **Date**: DD-MM-YYYY
-**Status**: Todo <!--Possible values: Todo, In progress, Done --->
-**Implemented At**: DD-MM-YYYY <!-- Only add when implemented -->
+**Status**: In progress <!-- Todo | In progress | Done -->
+**Closed**: DD-MM-YYYY <!-- Add when Status becomes Done -->
 
 ---
 
 ## Goal
 
-> what is the goal of the plan
+> One specific, testable sentence: what does "done" look like?
+> Vague goals prevent closure. If the goal shifts significantly, update it — but treat that as a signal to question scope.
 
 ---
 
-## Phases
+## Tasks
 
-> Numbered headlines with distinct plan steps, to be executed in order
+- [ ] Task A
+- [ ] Task B
+- [x] Task C *(YYYY-MM-DD)*
+- [-] Task D *(dropped — reason)*
+
+<!--
+Task states:
+  [ ] pending
+  [x] done — add completion date
+  [-] dropped — add brief reason; do not silently delete
+
+Items can be added, removed, and reshaped as the plan evolves.
+Priority is decided at runtime, not encoded here. Rough ordering in the list signals relative importance.
+
+Scope creep warning: new items should serve the goal above. If they don't, they belong in a separate plan.
+-->
+
+---
+
+## Phases (optional)
+
+<!--
+Use phases only when ordering genuinely matters — i.e. some tasks must complete before others can start.
+Phases are a loose guide, not a strict gate. As items are added mid-flight, re-evaluate whether phase
+boundaries still make sense.
+
+If used, restructure Tasks above into phase subsections:
+
+### Phase 1: Name
+- [ ] ...
+
+### Phase 2: Name
+- [ ] ...
+-->
