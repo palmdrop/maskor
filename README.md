@@ -1,78 +1,17 @@
 # Maskor
 
-**NOTE:** I tend to not use LLMs to actually write code. However, the software development industry is moving in the direction of using AI as another abstraction layer above the code itself. I figured it is good to learn the tools. This project is an opinionated, personal app I've been thinking about for a while. I'm using this as an opportunity develop this app quickly, while also learning to leverage new AI technologies. Development has relied heavily on Claude Code, mainly using agents and a `references` folder for storing context, plans and reviews.
+Maskor is an opinionated tool for fragmented writing projects. This could be an essay, a novel, a short story, an essay, a report. Anything. The core idea is non-linear workflows. The author writes fragments and orders them as they like. The author defines sections, aspects, arcs, etc, and enrich their fragments. Maskor help with overview, arrangement, fragment placement, and prompts the user with semi-random, unfinished fragments to edit. Maskor can also suggest placements based on user-defined arcs and constraints.
 
-A fragmented writing app. Write in disconnected pieces — **fragments** — then sequence them into a coherent whole.
+See `specifications/vision.md` for more detail.
 
-An Obsidian vault acts as the human-editable source of truth. The database is a derived cache that can always be fully rebuilt from markdown.
+## NOTES ABOUT AI
 
----
+AI is becoming a standardized tool within the software development industry. I remain critical to many aspects of AI, but I see the direction we are moving in, as well as the potential strength of the tools. AI tools and natural-language specifications are becoming another abstraction layer between us and the machine code that computers actually read.
 
-## Core concepts
+I'm using this project as an opportunity to learn to leverage AI tools. This project heavily relies on Claude Code. In fact, I'm experimenting with a AI-centric, spec-first workflow. However, the way I use AI agents may change a lot throughout the project.
 
-- **Fragment** — a self-contained writing unit with a `readyStatus` (0–1).
-- **Aspect** — a named dimension (e.g. `grief`, `city`) with a per-fragment weight (0–1). Used to measure thematic fit.
-- **Sequence / Section** — an ordered arrangement of fragments. DB-only; managed through the UI.
-- **Piece** — a raw `.md` file dropped into `pieces/` that gets imported as a new fragment.
-- **Arc** — a curve describing how an aspect should evolve across a sequence. Used by the sequencer to score fragment placement.
+Recently, I deleted all but the root-level `CLAUDE.md` file, which I made as minimal as possible. I also removed all my agents files and agents memory. I've transitioned to a specification-first model. Everything in `references` and `specifications` is mostly AI-written, although all the `specifications` are edited and reviewed by me.
 
-See [`references/SYNC_CONTRACT.md`](references/SYNC_CONTRACT.md) for the full field ownership table and sync rules.
+This `README.md` is NOT AI-written.
 
----
-
-## Packages
-
-| Package     | Role                                                             |
-| ----------- | ---------------------------------------------------------------- |
-| `shared`    | Domain types and shared utilities                                |
-| `storage`   | Vault read/write — parse, serialize, map markdown ↔ domain types |
-| `api`       | HTTP API exposing fragments, aspects, sequences                  |
-| `sequencer` | Scores and orders fragments within sequences using arc fitting   |
-| `importer`  | Converts external files (`.docx`, etc.) into fragments           |
-| `frontend`  | React UI for browsing, editing, and sequencing fragments         |
-
----
-
-## Stack
-
-- **Runtime:** Bun
-- **Language:** TypeScript
-- **Frontend:** React + Vite
-- **Storage:** Markdown vault (Obsidian-compatible) + SQLite/Postgres (cache)
-- **ORM:** Drizzle (planned)
-- **File watching:** Chokidar (planned)
-- **API:** Hono (planned)
-
----
-
-## Getting started
-
-```bash
-bun install
-```
-
-Run all tests:
-
-```bash
-bun test
-```
-
-Typecheck:
-
-```bash
-bun run typecheck
-```
-
----
-
-## Vault layout
-
-```
-<vault>/
-  fragments/            # active fragment files
-  fragments/discarded/  # discarded fragments
-  aspects/              # aspect definitions
-  notes/                # notes
-  references/           # references
-  pieces/               # drop raw .md files here to import as fragments
-```
+I want to try to use AI as a software-development tool, but NOT as a writing tool. Writing specs, plans and reviews is one thing, but creative writing, or most writing that is intended to be read by a human, should be written by a human. The argument for this is mostly philosophical, and I won't make it here.
