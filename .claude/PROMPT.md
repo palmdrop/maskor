@@ -6,12 +6,15 @@ Study the spec and the existing frontend code, and any existing plans that seem 
 
 ## Active spec
 
-@specifications/navigation.md
+`@specifications/navigation.md`
 
 ## Active plan
 
-No active plan. The first step is to create one.
+`@references/plans/frontend-navigation.md`
 
 ## Key context
 
-No additional context.
+Current UI before plan implementation started:
+
+`@references/assets/Fragment Editor 2026-04-27 at 22.28.16.png`
+`@references/assets/Project 2026-04-27 at 22.27.11.png`
