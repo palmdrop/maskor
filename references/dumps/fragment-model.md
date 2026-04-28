@@ -59,23 +59,23 @@ Update input (all optional): `{ title?, content?, readyStatus?, notes?, referenc
 
 ### Field ownership
 
-| Field / Data           | Owner        | Notes                                                                    |
-| ---------------------- | ------------ | ------------------------------------------------------------------------ |
-| `uuid`                 | Vault (file) | Written by Maskor on first detection; user must not edit                 |
-| `title`                | Vault (file) | Display name; slug used as filename                                      |
-| `updatedAt`            | Vault (file) | ISO 8601; written by Maskor on every API write; user should not edit     |
-| `readyStatus`          | Vault (file) | Float 0–1; user-set or auto-generated; file always wins                  |
-| `notes[]`              | Vault (file) | List of note titles in frontmatter; fragment owns the relationship       |
-| `references[]`         | Vault (file) | List of reference names in frontmatter; same rules as notes              |
-| Inline aspect fields   | Vault (file) | `aspect-name:: 0.8` — Dataview-compatible; body of frontmatter block     |
-| `content` (body)       | Vault (file) | Everything after frontmatter + inline fields; Maskor never modifies      |
-| `contentHash`          | DB only      | SHA of full file at last sync; used for watcher change detection         |
-| `syncedAt`             | DB only      | Unix ms; set on each DB sync event                                       |
-| `filePath`             | DB only      | Relative to vault root; updated on rename                                |
-| `isDiscarded`          | DB only      | Derived from `filePath.startsWith("discarded/")` at index time           |
-| Sequence positions     | DB only      | Fragment index within any Sequence/Section; all ordering lives in DB     |
-| Fitting scores         | DB only      | Computed from aspects + arcs + position context                          |
-| Arc positions          | DB only      | Where fragment sits on each arc at current sequence index                |
+| Field / Data         | Owner        | Notes                                                                |
+| -------------------- | ------------ | -------------------------------------------------------------------- |
+| `uuid`               | Vault (file) | Written by Maskor on first detection; user must not edit             |
+| `title`              | Vault (file) | Display name; slug used as filename                                  |
+| `updatedAt`          | Vault (file) | ISO 8601; written by Maskor on every API write; user should not edit |
+| `readyStatus`        | Vault (file) | Float 0–1; user-set or auto-generated; file always wins              |
+| `notes[]`            | Vault (file) | List of note titles in frontmatter; fragment owns the relationship   |
+| `references[]`       | Vault (file) | List of reference names in frontmatter; same rules as notes          |
+| Inline aspect fields | Vault (file) | `aspect-name:: 0.8` — Dataview-compatible; body of frontmatter block |
+| `content` (body)     | Vault (file) | Everything after frontmatter + inline fields; Maskor never modifies  |
+| `contentHash`        | DB only      | SHA of full file at last sync; used for watcher change detection     |
+| `syncedAt`           | DB only      | Unix ms; set on each DB sync event                                   |
+| `filePath`           | DB only      | Relative to vault root; updated on rename                            |
+| `isDiscarded`        | DB only      | Derived from `filePath.startsWith("discarded/")` at index time       |
+| Sequence positions   | DB only      | Fragment index within any Sequence/Section; all ordering lives in DB |
+| Fitting scores       | DB only      | Computed from aspects + arcs + position context                      |
+| Arc positions        | DB only      | Where fragment sits on each arc at current sequence index            |
 
 ### Discard mechanism
 
@@ -111,19 +111,19 @@ Update input (all optional): `{ title?, content?, readyStatus?, notes?, referenc
 
 ### Notes and references
 
-- Fragment stores arrays of note *titles* and reference *names* (not UUIDs) in frontmatter.
+- Fragment stores arrays of note _titles_ and reference _names_ (not UUIDs) in frontmatter.
 - Fragment owns the relationship; notes and references carry no back-reference to the fragment.
 - Only allow adding notes/references that already exist (TODO.md: done).
 
 ### API surface (settled)
 
-| Endpoint                                          | Returns            | Content included? |
-| ------------------------------------------------- | ------------------ | ----------------- |
-| `GET /projects/:id/fragments`                     | `IndexedFragment[]`| No (index fields only) |
-| `GET /projects/:id/fragments/:fragmentId`         | `Fragment`         | Yes               |
-| `POST /projects/:id/fragments`                    | `Fragment`         | Yes               |
-| `PATCH /projects/:id/fragments/:fragmentId`       | `Fragment`         | Yes               |
-| Discard (exact endpoint name unclear — see below) | —                  | —                 |
+| Endpoint                                          | Returns             | Content included?      |
+| ------------------------------------------------- | ------------------- | ---------------------- |
+| `GET /projects/:id/fragments`                     | `IndexedFragment[]` | No (index fields only) |
+| `GET /projects/:id/fragments/:fragmentId`         | `Fragment`          | Yes                    |
+| `POST /projects/:id/fragments`                    | `Fragment`          | Yes                    |
+| `PATCH /projects/:id/fragments/:fragmentId`       | `Fragment`          | Yes                    |
+| Discard (exact endpoint name unclear — see below) | —                   | —                      |
 
 `IndexedFragment` omits `content` and serializes `updatedAt` as an ISO string (not `Date`). It adds `filePath: string`.
 
@@ -139,40 +139,49 @@ Update input (all optional): `{ title?, content?, readyStatus?, notes?, referenc
 ## Open questions
 
 ### `updatedAt` for externally-edited files
+
 - SYNC_CONTRACT.md open question: when Obsidian edits a fragment directly, Maskor reads `updatedAt` from the file as-is (it may be stale or absent). Options:
   a. Accept stale `updatedAt` for external edits (vault file wins, stale is acceptable).
   b. Have Maskor write back `updatedAt` on every sync event (watcher upsert).
 
 ### `isComplete` / `isPlaced` derived states
+
 - Both removed with pool concept. No implementation or schema decision made.
 - TODO.md asks: "what if a fragment is placed and then becomes incomplete due to a deleted metadata property?" — unresolved.
 - `isPlaced` deferred until sequencer is built.
 
 ### Auto-generated `readyStatus` write-back
+
 - SYNC_CONTRACT.md: trigger is undefined. Options: on save, on explicit user action, on sequencer run.
 
 ### Fragment title rename — orphan file
+
 - `write()` with a changed title creates a new file at the new slug path. The old file becomes an orphan until the next `rebuild()` soft-deletes it. No proactive cleanup.
 - **Decision needed**: is this acceptable, or should `write()` move/rename the old file atomically?
 
 ### Discard endpoint and Restore action
+
 - `remove-pool-concept.md` plan specifies a "Discard" button calling a discard endpoint and a "Restore" button for the inverse.
 - The exact API endpoint name/method is not in the API plan or current schema (not `DELETE /fragments/:id` — that's hard delete; discard is a move).
 - **Decision needed**: `POST /projects/:id/fragments/:id/discard` and `POST /projects/:id/fragments/:id/restore`? Or a `PATCH` to a `discarded: true/false` field?
 
 ### Name/title uniqueness enforcement
+
 - SYNC_CONTRACT.md: titles must be unique but hard to enforce on external Obsidian edits.
 - Conflict resolution not defined (first-seen wins, last-modified wins, or manual resolution required).
 
 ### Stale note/reference titles on rename
+
 - SYNC_CONTRACT.md: when a note or reference is renamed, fragment frontmatter may reference the old title. Options: proactive rewrite of fragment files, or lazy resolution on next sync.
 
 ### Custom (non-aspect) user properties
+
 - `project_specs.md` says "Users can add custom properties, used in outlining, interleaving, and overview views."
 - Current `properties` field is only aspect weights. No schema or plan exists for non-aspect custom properties.
 - **Decision needed**: is `properties` ever extended beyond aspect weights, or is this a future separate field?
 
 ### Fragment as a fitting/scoring target
+
 - `Fitting` score and arc position are DB-only, fully deferred. No schema or algorithm defined yet.
 - The `properties` record is the primary input to fitting — but the fitting model itself is not specified.
 
@@ -195,16 +204,21 @@ Update input (all optional): `{ title?, content?, readyStatus?, notes?, referenc
 ## Inconsistencies and surprises
 
 ### 1. `contentHash` in the domain type — ownership mismatch
+
 `contentHash` is listed as **DB-only** in the field ownership table (`ARCHITECTURE.md`, `SYNC_CONTRACT.md`) — it's computed from the file and never written to frontmatter. Yet it lives in `FragmentSchema` (the domain type) and is included in the API response. The domain type mixes DB-derived fields with vault-owned fields without labeling the distinction. A future spec should clarify whether `contentHash` belongs in the API response at all, and whether the domain type should separate vault-owned from DB-derived fields.
 
 ### 2. `fragment-editor.md` plan references removed `pool` field
+
 The metadata table in `references/plans/fragment-editor.md` still lists `pool: enum` as an editable field (row 2 of the field table). This plan is marked Done but was written before the pool removal. The implemented UI no longer has this field; the plan is stale but does not need updating.
 
 ### 3. `vault-content-index.md` plan references removed `aspect_uuid`
+
 The older `vault-content-index.md` plan describes a nullable `aspect_uuid` column in `fragment_properties`. This was superseded by the `storage-sync-spec-fixes` plan which removed it. The column no longer exists; `aspect_key` is the join column. The historical plan is not canonical.
 
 ### 4. `IndexedFragment` serializes `updatedAt` as a string, not `Date`
+
 The domain `Fragment` type uses `updatedAt: Date`. The `IndexedFragment` API schema overrides it with `updatedAt: z.string()`. The full `FragmentSchema` (API) also re-declares `updatedAt` as `z.string()`. Consumers that treat both shapes as `Fragment` will see a type mismatch on `updatedAt`. The frontend must parse the ISO string to a `Date` where needed.
 
 ### 5. Rebuild mutex has an async race window
+
 The `pause()` method sets a flag synchronously, but watcher handlers already past the guard and mid-`await` can still complete and upsert into the DB after `pause()` returns. Rebuild's subsequent transaction would then overwrite those upserts — the exact race the mutex intended to prevent. Flagged in SUGGESTIONS.md #24 as known debt requiring a draining-counter fix.

@@ -6,11 +6,13 @@ import {
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { ProjectSelectionPage } from "./pages/ProjectSelectionPage";
-import { ProjectShellPage } from "./pages/ProjectShellPage";
+import { ProjectShellLayout } from "./pages/ProjectShellLayout";
+import { FragmentListPage } from "./pages/FragmentListPage";
 import { FragmentPage } from "./pages/FragmentPage";
+import { OverviewPage } from "./pages/OverviewPage";
+import { ProjectConfigPage } from "./pages/ProjectConfigPage";
 import { getListProjectsQueryOptions } from "./api/generated/projects/projects";
 import { queryClient } from "./queryClient";
-import z from "zod";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -22,7 +24,6 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   loader: async ({ context: { queryClient } }) => {
-    // Pre-populate TQ cache so ProjectSelectionPage renders without a second fetch.
     const envelope = await queryClient.ensureQueryData(getListProjectsQueryOptions());
     const projects = envelope.status === 200 ? envelope.data : [];
     if (projects.length === 1) {
@@ -35,24 +36,56 @@ const indexRoute = createRoute({
   component: ProjectSelectionPage,
 });
 
-const projectSearchSchema = z.object({
-  fragment: z.uuid().optional(),
-});
-
-const projectRoute = createRoute({
+const projectShellLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects/$projectId",
-  component: ProjectShellPage,
-  validateSearch: projectSearchSchema,
+  component: ProjectShellLayout,
+});
+
+const projectShellIndexRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/",
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/projects/$projectId/fragments",
+      params: { projectId: params.projectId },
+    });
+  },
+});
+
+const fragmentListRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/fragments",
+  component: FragmentListPage,
 });
 
 const fragmentRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/projects/$projectId/fragment/$fragmentId",
+  getParentRoute: () => fragmentListRoute,
+  path: "/$fragmentId",
   component: FragmentPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, projectRoute, fragmentRoute]);
+const overviewRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/overview",
+  component: OverviewPage,
+});
+
+const projectConfigRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/config",
+  component: ProjectConfigPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  projectShellLayoutRoute.addChildren([
+    projectShellIndexRoute,
+    fragmentListRoute.addChildren([fragmentRoute]),
+    overviewRoute,
+    projectConfigRoute,
+  ]),
+]);
 
 export const router = createRouter({ routeTree, context: { queryClient } });
 

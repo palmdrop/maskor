@@ -2,7 +2,7 @@
 
 Create a usable frontend view for listing fragments, editing, deleting, etc. Workable frontend navigation with a minimal UI.
 
-Study the spec and the existing frontend code, and any existing plans that seem relevant. Extract actionable items and write them to the plan.
+Pick the most important items from the plan and implement. Check of when you are done. Pause for user input if necessary. Then continue.
 
 ## Active spec
 

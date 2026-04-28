@@ -111,13 +111,13 @@ The user can arrange their fragments into an ordered sequence — manually, with
 
 The following tables are required. None exist yet — implementation is blocked until the schema is defined.
 
-| Table | Key columns | Notes |
-|---|---|---|
-| `sequences` | `uuid`, `name`, `project_uuid`, `is_main` | One row per sequence. Exactly one `is_main = true` per project. |
-| `sections` | `uuid`, `name`, `sequence_uuid`, `position` | Ordered list of sections within a sequence. `position` is the section's index among siblings. |
-| `fragment_positions` | `uuid`, `fragment_uuid`, `section_uuid`, `position` | A fragment's placement within a section. `position` is 0-based within the section. A fragment may appear in at most one position per sequence. |
-| `fitting_scores` | `id`, `fragment_uuid`, `sequence_uuid`, `position_index`, `score` | Cached derived values. DB-only; recomputable on demand. `position_index` is the fragment's absolute index within the sequence (0-based). |
-| `key_fragments` | `id`, `fragment_uuid`, `sequence_uuid`, `target_position`, `tolerance` | Key fragment pins. `target_position` and `tolerance` are both normalized [0, 1]. |
+| Table                | Key columns                                                            | Notes                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sequences`          | `uuid`, `name`, `project_uuid`, `is_main`                              | One row per sequence. Exactly one `is_main = true` per project.                                                                                |
+| `sections`           | `uuid`, `name`, `sequence_uuid`, `position`                            | Ordered list of sections within a sequence. `position` is the section's index among siblings.                                                  |
+| `fragment_positions` | `uuid`, `fragment_uuid`, `section_uuid`, `position`                    | A fragment's placement within a section. `position` is 0-based within the section. A fragment may appear in at most one position per sequence. |
+| `fitting_scores`     | `id`, `fragment_uuid`, `sequence_uuid`, `position_index`, `score`      | Cached derived values. DB-only; recomputable on demand. `position_index` is the fragment's absolute index within the sequence (0-based).       |
+| `key_fragments`      | `id`, `fragment_uuid`, `sequence_uuid`, `target_position`, `tolerance` | Key fragment pins. `target_position` and `tolerance` are both normalized [0, 1].                                                               |
 
 Vault files in `<vault>/.maskor/sequences/` are the source of truth for sequence structure. The DB tables above are a derived index — they can be rebuilt from the vault files.
 

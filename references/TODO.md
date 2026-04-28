@@ -8,6 +8,8 @@
   - let the code be the documentation
   - for example, favor arrow functions over "function" declarations
 
+- [ ] Add spec for command palette, similar to the one obsidian or vscode has. Could be nice for power users of maskor (me)
+
 - [x] Have conversation with Claude about specs, check obsidian vault, check files in the project
   - create a map of all that is implemented and needs to be done
   - inspo https://ghuntley.com/ralph/

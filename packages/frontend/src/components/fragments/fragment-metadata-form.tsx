@@ -69,10 +69,11 @@ export type FragmentMetadataFormHandle = {
 type Props = {
   fragment: Fragment;
   projectId: string;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props>(
-  function FragmentMetadataForm({ fragment, projectId }, ref) {
+  function FragmentMetadataForm({ fragment, projectId, onDirtyChange }, ref) {
     const { data: aspectsEnvelope } = useListAspects(projectId);
     const { data: notesEnvelope } = useListNotes(projectId);
     const { data: referencesEnvelope } = useListReferences(projectId);
@@ -97,6 +98,12 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       }
       reset(buildDefaultValues(fragment, aspects));
     }, [fragment, aspects, reset]);
+
+    const onDirtyChangeRef = useRef(onDirtyChange);
+    onDirtyChangeRef.current = onDirtyChange;
+    useEffect(() => {
+      onDirtyChangeRef.current?.(formState.isDirty);
+    }, [formState.isDirty]);
 
     const {
       fields: noteFields,

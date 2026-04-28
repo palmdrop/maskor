@@ -17,8 +17,8 @@
 
 - [ ] Task A
 - [ ] Task B
-- [x] Task C *(YYYY-MM-DD)*
-- [-] Task D *(dropped — reason)*
+- [x] Task C _(YYYY-MM-DD)_
+- [-] Task D _(dropped — reason)_
 
 <!--
 Task states:

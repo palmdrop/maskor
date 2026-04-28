@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDelayedPending } from "../../hooks/useDelayedPending";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,9 +18,10 @@ import { Button } from "../ui/button";
 type Props = {
   projectId: string;
   fragmentId: string;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
-export function FragmentEditor({ projectId, fragmentId }: Props) {
+export function FragmentEditor({ projectId, fragmentId, onDirtyChange }: Props) {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
   const { mutate: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
@@ -29,6 +30,40 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
 
   const proseEditorRef = useRef<ProseEditorHandle>(null);
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
+
+  const isProseEditedRef = useRef(false);
+  const isMetadataDirtyRef = useRef(false);
+  const isDirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+
+  const notifyDirtyChange = useCallback((next: boolean) => {
+    if (isDirtyRef.current !== next) {
+      isDirtyRef.current = next;
+      setIsDirty(next);
+      onDirtyChangeRef.current?.(next);
+    }
+  }, []);
+
+  const markProseEdited = useCallback(() => {
+    isProseEditedRef.current = true;
+    notifyDirtyChange(true);
+  }, [notifyDirtyChange]);
+
+  const handleMetadataDirtyChange = useCallback(
+    (dirty: boolean) => {
+      isMetadataDirtyRef.current = dirty;
+      notifyDirtyChange(isProseEditedRef.current || dirty);
+    },
+    [notifyDirtyChange],
+  );
+
+  const clearDirty = useCallback(() => {
+    isProseEditedRef.current = false;
+    isMetadataDirtyRef.current = false;
+    notifyDirtyChange(false);
+  }, [notifyDirtyChange]);
 
   const fragment = envelope?.status === 200 ? envelope.data : null;
 
@@ -45,7 +80,7 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
   }, [queryClient, projectId, fragmentId]);
 
   const handleSave = useCallback(async () => {
-    if (!fragment) {
+    if (!fragment || !isDirtyRef.current) {
       return;
     }
 
@@ -58,9 +93,14 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
 
     updateFragment(
       { projectId, fragmentId, data: { ...metadataUpdate, content } },
-      { onSuccess: invalidateFragment },
+      {
+        onSuccess: () => {
+          invalidateFragment();
+          clearDirty();
+        },
+      },
     );
-  }, [fragment, projectId, fragmentId, updateFragment, invalidateFragment]);
+  }, [fragment, projectId, fragmentId, updateFragment, invalidateFragment, clearDirty]);
 
   const handleDiscard = useCallback(() => {
     discardFragment({ projectId, fragmentId }, { onSuccess: invalidateFragment });
@@ -97,7 +137,12 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
               {isDiscardPending ? "Discarding…" : "Discard"}
             </Button>
           )}
-          <Button size="sm" disabled={isActionPending} onClick={handleSave} className="min-w-20">
+          <Button
+            size="sm"
+            disabled={isActionPending || !isDirty}
+            onClick={handleSave}
+            className="min-w-20"
+          >
             {showSaving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -105,7 +150,12 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
       <Separator />
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 border border-border">
         <aside className="lg:w-72 shrink-0 overflow-y-auto p-4">
-          <FragmentMetadataForm ref={metadataFormRef} fragment={fragment} projectId={projectId} />
+          <FragmentMetadataForm
+            ref={metadataFormRef}
+            fragment={fragment}
+            projectId={projectId}
+            onDirtyChange={handleMetadataDirtyChange}
+          />
         </aside>
         <main className="flex-1 min-h-0">
           {/* TODO: wire vimMode to a real settings/config system */}
@@ -114,6 +164,7 @@ export function FragmentEditor({ projectId, fragmentId }: Props) {
             content={fragment.content}
             vimMode={false}
             onSave={handleSave}
+            onChange={markProseEdited}
           />
         </main>
       </div>

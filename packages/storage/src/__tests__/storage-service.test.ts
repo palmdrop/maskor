@@ -175,7 +175,10 @@ describe("StorageService.fragments.write — rename cleanup", () => {
     const oldAbsolutePath = join(vaultDir, "fragments", indexed.filePath);
     const fragment = await service.fragments.read(context, indexed.uuid);
 
-    const renamed = await service.fragments.write(context, { ...fragment, title: "Completely New Title" });
+    const renamed = await service.fragments.write(context, {
+      ...fragment,
+      title: "Completely New Title",
+    });
 
     expect(renamed.title).toBe("Completely New Title");
     expect(existsSync(join(vaultDir, "fragments", "completely-new-title.md"))).toBe(true);

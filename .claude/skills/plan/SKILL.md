@@ -37,6 +37,7 @@ This skill governs how plans are written in the maskor project.
 ## Naming the file
 
 Use kebab-case derived from the topic. Examples:
+
 - "plan the fragment editor" → `fragment-editor.md`
 - "plan the import pipeline refactor" → `import-pipeline-refactor.md`
 
@@ -60,3 +61,4 @@ Each phase should contain concrete steps and changes to be implemented.
 - Implementation code or pseudocode
 - Speculative futures ("could later be extended to...")
 - Anything that belongs in a spec (`specifications/`) — reference the spec instead
+```

@@ -51,24 +51,24 @@ Each log entry records:
 
 At minimum, the following action types must be recorded:
 
-| Type                      | Undoable | Notes                                                                        |
-| ------------------------- | -------- | ---------------------------------------------------------------------------- |
+| Type                      | Undoable | Notes                                                                                                                                |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `FRAGMENT_CREATE`         | No       | Creation undo is not supported — undoing a create by moving the fragment to discarded is surprising and easy to trigger accidentally |
-| `FRAGMENT_UPDATE`         | Yes      | Undo restores previous title, readyStatus, aspect weights, notes, references |
-| `FRAGMENT_DISCARD`        | Yes      | Undo restores the fragment to active                                         |
-| `FRAGMENT_RESTORE`        | Yes      | Undo discards the fragment again                                             |
-| `ASPECT_CREATE`           | Yes      | Undo removes the aspect                                                      |
-| `ASPECT_RENAME`           | Yes      | Undo restores previous key/name                                              |
-| `ASPECT_DELETE`           | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings          |
-| `SEQUENCE_FRAGMENT_PLACE` | Yes      | Undo removes the fragment from its placed position                           |
-| `SEQUENCE_FRAGMENT_MOVE`  | Yes      | Undo returns the fragment to its previous position                           |
-| `PIECE_CONVERTED`         | No       | System action; source file is gone, reversal not possible                    |
-| `PROJECT_REGISTER`        | No       | Registration is not reversible via undo                                      |
-| `FRAGMENT_OPENED`         | No       | User navigated to a fragment in the editor; read event, not a mutation       |
-| `PROMPT_SURFACED`         | No       | A fragment was suggested by the prompting engine                              |
-| `PROMPT_ACCEPTED`         | No       | User accepted a prompt and opened the suggested fragment                      |
-| `PROMPT_SKIPPED`          | No       | User clicked "next" — saw the suggestion but asked for a different one       |
-| `PROMPT_DISMISSED`        | No       | User dismissed the prompt without accepting any suggestion                    |
+| `FRAGMENT_UPDATE`         | Yes      | Undo restores previous title, readyStatus, aspect weights, notes, references                                                         |
+| `FRAGMENT_DISCARD`        | Yes      | Undo restores the fragment to active                                                                                                 |
+| `FRAGMENT_RESTORE`        | Yes      | Undo discards the fragment again                                                                                                     |
+| `ASPECT_CREATE`           | Yes      | Undo removes the aspect                                                                                                              |
+| `ASPECT_RENAME`           | Yes      | Undo restores previous key/name                                                                                                      |
+| `ASPECT_DELETE`           | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                                                  |
+| `SEQUENCE_FRAGMENT_PLACE` | Yes      | Undo removes the fragment from its placed position                                                                                   |
+| `SEQUENCE_FRAGMENT_MOVE`  | Yes      | Undo returns the fragment to its previous position                                                                                   |
+| `PIECE_CONVERTED`         | No       | System action; source file is gone, reversal not possible                                                                            |
+| `PROJECT_REGISTER`        | No       | Registration is not reversible via undo                                                                                              |
+| `FRAGMENT_OPENED`         | No       | User navigated to a fragment in the editor; read event, not a mutation                                                               |
+| `PROMPT_SURFACED`         | No       | A fragment was suggested by the prompting engine                                                                                     |
+| `PROMPT_ACCEPTED`         | No       | User accepted a prompt and opened the suggested fragment                                                                             |
+| `PROMPT_SKIPPED`          | No       | User clicked "next" — saw the suggestion but asked for a different one                                                               |
+| `PROMPT_DISMISSED`        | No       | User dismissed the prompt without accepting any suggestion                                                                           |
 
 Additional action types are added as features are built. The list above is not exhaustive.
 

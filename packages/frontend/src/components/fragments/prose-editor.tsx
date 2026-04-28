@@ -21,6 +21,7 @@ type Props = {
   // TODO: wire to a real settings/config system
   vimMode: boolean;
   onSave?: () => void;
+  onChange?: () => void;
 };
 
 const vimEditorTheme = EditorView.theme({
@@ -42,10 +43,12 @@ const vimEditorTheme = EditorView.theme({
 });
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, onSave },
+  { content, vimMode, onSave, onChange },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const editor = useEditor({
     extensions: [
@@ -55,6 +58,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       Typography,
     ],
     content,
+    onUpdate: () => onChangeRef.current?.(),
     editorProps: {
       attributes: {
         class:
@@ -69,7 +73,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     }
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
     if (content !== current) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, false);
     }
   }, [content, editor]);
 
@@ -95,6 +99,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           viewRef.current = view;
           Vim.defineEx("w", "", () => onSave?.());
         }}
+        onChange={() => onChangeRef.current?.()}
         basicSetup={{ lineNumbers: false, foldGutter: false }}
         className="h-full"
         maxWidth="100%"
