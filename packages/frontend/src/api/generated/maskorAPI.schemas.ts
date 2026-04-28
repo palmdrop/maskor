@@ -5,10 +5,10 @@
  * OpenAPI spec version: 0.1.0
  */
 export interface Project {
-  projectUUID: string;
-  userUUID: string;
   name: string;
   vaultPath: string;
+  projectUUID: string;
+  userUUID: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,16 +26,19 @@ export interface ProjectCreate {
   vaultPath: string;
 }
 
+export interface ProjectUpdate {
+  /** @minLength 1 */
+  name?: string;
+}
+
 export type IndexedFragmentProperties = {
   [key: string]: {
     weight: number;
-    aspectUuid: string | null;
   };
 };
 
 export interface IndexedFragment {
   uuid: string;
-  version: number;
   title: string;
   /**
    * @minimum 0
@@ -48,6 +51,7 @@ export interface IndexedFragment {
   isDiscarded: boolean;
   properties: IndexedFragmentProperties;
   filePath: string;
+  updatedAt: string;
 }
 
 export type FragmentProperties = {
@@ -58,7 +62,6 @@ export type FragmentProperties = {
 
 export interface Fragment {
   uuid: string;
-  version: number;
   title: string;
   content: string;
   /**

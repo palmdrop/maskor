@@ -80,6 +80,32 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       return rows[0] ? toProjectRecord(rows[0]) : null;
     },
 
+    async updateProject(projectUUID: string, patch: { name?: string }): Promise<ProjectRecord> {
+      const updates: Partial<typeof projectsTable.$inferInsert> = {
+        updatedAt: new Date(),
+      };
+
+      if (patch.name !== undefined) {
+        updates.name = patch.name;
+      }
+
+      const [row] = await database
+        .update(projectsTable)
+        .set(updates)
+        .where(eq(projectsTable.uuid, projectUUID))
+        .returning();
+
+      if (!row) {
+        throw new ProjectNotFoundError(projectUUID);
+      }
+
+      if (patch.name !== undefined) {
+        await writeVaultManifest(row.vaultPath, row.uuid, row.name);
+      }
+
+      return toProjectRecord(row);
+    },
+
     async removeProject(projectUUID: string): Promise<void> {
       const result = await database
         .delete(projectsTable)

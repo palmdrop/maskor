@@ -1,16 +1,15 @@
 # Current focus
 
-Implement the project switching view.
+Start implementing the project config page. Continue where you last left of. Implement the Phases in order. Stop and wait for developer input after a phase is done.
 
 ## Active spec
 
-`@specifications/navigation.md`
 `@specifications/project-config.md`
 
 ## Active plan
 
-`@references/plans/project-switching-view.md`
+`@references/plans/project-config-page.md`
 
 ## Key context
 
-`@packages/frontend/src/router.ts`
+`@packages/frontend/src/pages/ProjectConfigPage.tsx`

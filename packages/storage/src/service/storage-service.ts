@@ -138,6 +138,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       log.info({ projectUUID }, "project removed");
     },
 
+    async updateProject(projectUUID: string, patch: { name?: string }): Promise<ProjectRecord> {
+      const record = await registry.updateProject(projectUUID, patch);
+      log.info({ projectUUID, patch }, "project updated");
+      return record;
+    },
+
     async getProject(projectUUID: string): Promise<ProjectRecord> {
       const record = await registry.findByUUID(projectUUID);
       if (!record) {

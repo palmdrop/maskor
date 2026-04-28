@@ -1,5 +1,7 @@
 # Current focus
 
+> Inspired by https://ghuntley.com/ralph/
+
 [One sentence: what are you working on right now?]
 
 ## Active spec

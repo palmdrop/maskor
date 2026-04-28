@@ -2,7 +2,12 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { isAbsolute } from "node:path";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
-import { ProjectSchema, ProjectCreateSchema, ProjectUUIDParamSchema } from "../schemas/project";
+import {
+  ProjectSchema,
+  ProjectCreateSchema,
+  ProjectUpdateSchema,
+  ProjectUUIDParamSchema,
+} from "../schemas/project";
 import { ErrorResponseSchema } from "../schemas/error";
 
 export const projectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
@@ -73,6 +78,36 @@ const createProjectRoute = createRoute({
   },
 });
 
+const updateProjectRoute = createRoute({
+  operationId: "updateProject",
+  method: "patch",
+  path: "/{projectId}",
+  tags: ["Projects"],
+  summary: "Update a project",
+  request: {
+    params: ProjectUUIDParamSchema,
+    body: { content: { "application/json": { schema: ProjectUpdateSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ProjectSchema } },
+      description: "Updated project",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Project not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const deleteProjectRoute = createRoute({
   operationId: "deleteProject",
   method: "delete",
@@ -125,6 +160,18 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
 
     const project = await storageService.registerProject(name, vaultPath);
     return ctx.json(project, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+projectsRouter.openapi(updateProjectRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const { projectId } = ctx.req.valid("param");
+    const patch = ctx.req.valid("json");
+    const project = await storageService.updateProject(projectId, patch);
+    return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);
   }

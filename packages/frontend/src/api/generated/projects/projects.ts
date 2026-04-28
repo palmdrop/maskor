@@ -20,7 +20,7 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { ErrorResponse, Project, ProjectCreate } from "../maskorAPI.schemas";
+import type { ErrorResponse, Project, ProjectCreate, ProjectUpdate } from "../maskorAPI.schemas";
 
 import { customFetch } from "../../fetch";
 
@@ -406,6 +406,121 @@ export function useGetProject<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+/**
+ * @summary Update a project
+ */
+export type UpdateProjectResponse200 = {
+  data: Project;
+  status: 200;
+};
+
+export type UpdateProjectResponse400 = {
+  data: ErrorResponse;
+  status: 400;
+};
+
+export type UpdateProjectResponse404 = {
+  data: ErrorResponse;
+  status: 404;
+};
+
+export type UpdateProjectResponse500 = {
+  data: ErrorResponse;
+  status: 500;
+};
+
+export type UpdateProjectResponseSuccess = UpdateProjectResponse200 & {
+  headers: Headers;
+};
+export type UpdateProjectResponseError = (
+  | UpdateProjectResponse400
+  | UpdateProjectResponse404
+  | UpdateProjectResponse500
+) & {
+  headers: Headers;
+};
+
+export type UpdateProjectResponse = UpdateProjectResponseSuccess | UpdateProjectResponseError;
+
+export const getUpdateProjectUrl = (projectId: string) => {
+  return `/projects/${projectId}`;
+};
+
+export const UpdateProject = async (
+  projectId: string,
+  projectUpdate: ProjectUpdate,
+  options?: RequestInit,
+): Promise<UpdateProjectResponse> => {
+  return customFetch<UpdateProjectResponse>(getUpdateProjectUrl(projectId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(projectUpdate),
+  });
+};
+
+export const getUpdateProjectMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof UpdateProject>>,
+    TError,
+    { projectId: string; data: ProjectUpdate },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof UpdateProject>>,
+  TError,
+  { projectId: string; data: ProjectUpdate },
+  TContext
+> => {
+  const mutationKey = ["updateProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof UpdateProject>>,
+    { projectId: string; data: ProjectUpdate }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return UpdateProject(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectMutationResult = NonNullable<Awaited<ReturnType<typeof UpdateProject>>>;
+export type UpdateProjectMutationBody = ProjectUpdate;
+export type UpdateProjectMutationError = ErrorResponse;
+
+/**
+ * @summary Update a project
+ */
+export const useUpdateProject = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof UpdateProject>>,
+      TError,
+      { projectId: string; data: ProjectUpdate },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof UpdateProject>>,
+  TError,
+  { projectId: string; data: ProjectUpdate },
+  TContext
+> => {
+  return useMutation(getUpdateProjectMutationOptions(options), queryClient);
+};
 /**
  * @summary Remove a registered project
  */
