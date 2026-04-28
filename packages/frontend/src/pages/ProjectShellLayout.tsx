@@ -16,9 +16,12 @@ export const ProjectShellLayout = () => {
     <div className="flex h-screen">
       <nav className="flex flex-col gap-1 w-48 shrink-0 border-r border-border p-4">
         {projectName && (
-          <p className="mb-3 truncate text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <Link
+            to="/"
+            className="mb-3 truncate text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground"
+          >
             {projectName}
-          </p>
+          </Link>
         )}
         <Link
           to="/projects/$projectId/fragments"

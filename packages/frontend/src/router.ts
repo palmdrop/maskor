@@ -11,7 +11,6 @@ import { FragmentListPage } from "./pages/FragmentListPage";
 import { FragmentPage } from "./pages/FragmentPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { ProjectConfigPage } from "./pages/ProjectConfigPage";
-import { getListProjectsQueryOptions } from "./api/generated/projects/projects";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -23,16 +22,6 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({});
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  loader: async ({ context: { queryClient } }) => {
-    const envelope = await queryClient.ensureQueryData(getListProjectsQueryOptions());
-    const projects = envelope.status === 200 ? envelope.data : [];
-    if (projects.length === 1) {
-      throw redirect({
-        to: "/projects/$projectId",
-        params: { projectId: projects[0].projectUUID },
-      });
-    }
-  },
   component: ProjectSelectionPage,
 });
 

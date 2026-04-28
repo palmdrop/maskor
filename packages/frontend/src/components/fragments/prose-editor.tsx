@@ -73,7 +73,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     }
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
     if (content !== current) {
-      editor.commands.setContent(content, false);
+      editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [content, editor]);
 

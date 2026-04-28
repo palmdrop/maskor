@@ -93,7 +93,7 @@ In brief: after saving a fragment and navigating away, Maskor surfaces a non-det
 - [ ] 2026-04-27 — What keyboard shortcuts are assigned to each global navigation action?
 - [ ] 2026-04-27 — Prompting mechanism open questions are tracked in `prompting.md`.
 - [ ] 2026-04-27 — Does fragment prev/next navigation within the editor follow sequence order, list order, or recency? Should it exist at all?
-- [ ] 2026-04-27 — Where does the user switch between open projects? A project picker at the top level, or a dedicated settings page?
+- [x] 2026-04-27 — Where does the user switch between open projects? **Resolved**: The project name in the sidebar links to `/` (the project management screen). No separate picker needed.
 
 ---
 
