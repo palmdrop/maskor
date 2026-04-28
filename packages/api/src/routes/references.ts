@@ -8,6 +8,7 @@ import {
   IndexedReferenceSchema,
   ReferenceUUIDParamSchema,
   ReferenceCreateSchema,
+  ReferenceUpdateSchema,
 } from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -86,6 +87,40 @@ const createReferenceRoute = createRoute({
   },
 });
 
+const updateReferenceRoute = createRoute({
+  operationId: "updateReference",
+  method: "patch",
+  path: "/{referenceId}",
+  tags: ["References"],
+  summary: "Update a reference in the vault",
+  request: {
+    params: ReferenceUUIDParamSchema,
+    body: { content: { "application/json": { schema: ReferenceUpdateSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ReferenceSchema } },
+      description: "Reference updated",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Reference not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const deleteReferenceRoute = createRoute({
   operationId: "deleteReference",
   method: "delete",
@@ -147,6 +182,19 @@ referencesRouter.openapi(createReferenceRoute, async (ctx) => {
 
     await storageService.references.write(projectContext, reference);
     return ctx.json(reference, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+referencesRouter.openapi(updateReferenceRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { referenceId } = ctx.req.valid("param");
+    const patch = ctx.req.valid("json");
+    const updated = await storageService.references.update(projectContext, referenceId, patch);
+    return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
   }

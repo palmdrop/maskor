@@ -20,7 +20,13 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { ErrorResponse, IndexedNote, Note, NoteCreate } from "../maskorAPI.schemas";
+import type {
+  ErrorResponse,
+  IndexedNote,
+  Note,
+  NoteCreate,
+  NoteUpdate,
+} from "../maskorAPI.schemas";
 
 import { customFetch } from "../../fetch";
 
@@ -408,6 +414,125 @@ export function useGetNote<TData = Awaited<ReturnType<typeof GetNote>>, TError =
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+/**
+ * @summary Update a note in the vault
+ */
+export type UpdateNoteResponse200 = {
+  data: Note;
+  status: 200;
+};
+
+export type UpdateNoteResponse400 = {
+  data: ErrorResponse;
+  status: 400;
+};
+
+export type UpdateNoteResponse404 = {
+  data: ErrorResponse;
+  status: 404;
+};
+
+export type UpdateNoteResponse500 = {
+  data: ErrorResponse;
+  status: 500;
+};
+
+export type UpdateNoteResponse503 = {
+  data: ErrorResponse;
+  status: 503;
+};
+
+export type UpdateNoteResponseSuccess = UpdateNoteResponse200 & {
+  headers: Headers;
+};
+export type UpdateNoteResponseError = (
+  | UpdateNoteResponse400
+  | UpdateNoteResponse404
+  | UpdateNoteResponse500
+  | UpdateNoteResponse503
+) & {
+  headers: Headers;
+};
+
+export type UpdateNoteResponse = UpdateNoteResponseSuccess | UpdateNoteResponseError;
+
+export const getUpdateNoteUrl = (projectId: string, noteId: string) => {
+  return `/projects/${projectId}/notes/${noteId}`;
+};
+
+export const UpdateNote = async (
+  projectId: string,
+  noteId: string,
+  noteUpdate: NoteUpdate,
+  options?: RequestInit,
+): Promise<UpdateNoteResponse> => {
+  return customFetch<UpdateNoteResponse>(getUpdateNoteUrl(projectId, noteId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(noteUpdate),
+  });
+};
+
+export const getUpdateNoteMutationOptions = <TError = ErrorResponse, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof UpdateNote>>,
+    TError,
+    { projectId: string; noteId: string; data: NoteUpdate },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof UpdateNote>>,
+  TError,
+  { projectId: string; noteId: string; data: NoteUpdate },
+  TContext
+> => {
+  const mutationKey = ["updateNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof UpdateNote>>,
+    { projectId: string; noteId: string; data: NoteUpdate }
+  > = (props) => {
+    const { projectId, noteId, data } = props ?? {};
+
+    return UpdateNote(projectId, noteId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateNoteMutationResult = NonNullable<Awaited<ReturnType<typeof UpdateNote>>>;
+export type UpdateNoteMutationBody = NoteUpdate;
+export type UpdateNoteMutationError = ErrorResponse;
+
+/**
+ * @summary Update a note in the vault
+ */
+export const useUpdateNote = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof UpdateNote>>,
+      TError,
+      { projectId: string; noteId: string; data: NoteUpdate },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof UpdateNote>>,
+  TError,
+  { projectId: string; noteId: string; data: NoteUpdate },
+  TContext
+> => {
+  return useMutation(getUpdateNoteMutationOptions(options), queryClient);
+};
 /**
  * @summary Delete a note from the vault
  */

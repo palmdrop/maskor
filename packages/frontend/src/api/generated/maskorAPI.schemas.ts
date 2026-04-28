@@ -146,6 +146,12 @@ export interface NoteCreate {
   content: string;
 }
 
+export interface NoteUpdate {
+  /** @minLength 1 */
+  title?: string;
+  content?: string;
+}
+
 export interface IndexedReference {
   uuid: string;
   name: string;
@@ -162,6 +168,12 @@ export interface ReferenceCreate {
   /** @minLength 1 */
   name: string;
   content: string;
+}
+
+export interface ReferenceUpdate {
+  /** @minLength 1 */
+  name?: string;
+  content?: string;
 }
 
 export type RebuildStatsWarningsItemKind =

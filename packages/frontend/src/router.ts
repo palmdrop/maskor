@@ -11,6 +11,8 @@ import { FragmentListPage } from "./pages/FragmentListPage";
 import { FragmentPage } from "./pages/FragmentPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { ProjectConfigPage } from "./pages/ProjectConfigPage";
+import { NoteEditorPage } from "./pages/NoteEditorPage";
+import { ReferenceEditorPage } from "./pages/ReferenceEditorPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -60,10 +62,28 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 });
 
+const validTabs = ["general", "aspects", "notes", "references"] as const;
+type ConfigTab = (typeof validTabs)[number];
+
 const projectConfigRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/config",
   component: ProjectConfigPage,
+  validateSearch: (search: Record<string, unknown>): { tab: ConfigTab } => ({
+    tab: validTabs.includes(search.tab as ConfigTab) ? (search.tab as ConfigTab) : "general",
+  }),
+});
+
+const noteEditorRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/notes/$noteId",
+  component: NoteEditorPage,
+});
+
+const referenceEditorRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/references/$referenceId",
+  component: ReferenceEditorPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -73,6 +93,8 @@ const routeTree = rootRoute.addChildren([
     fragmentListRoute.addChildren([fragmentRoute]),
     overviewRoute,
     projectConfigRoute,
+    noteEditorRoute,
+    referenceEditorRoute,
   ]),
 ]);
 

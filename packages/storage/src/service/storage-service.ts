@@ -1,4 +1,13 @@
-import type { Aspect, Fragment, Logger, Note, Reference, VaultSyncEvent } from "@maskor/shared";
+import type {
+  Aspect,
+  Fragment,
+  Logger,
+  Note,
+  NoteUpdate,
+  Reference,
+  ReferenceUpdate,
+  VaultSyncEvent,
+} from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -495,6 +504,61 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
+      async update(context: ProjectContext, uuid: string, patch: NoteUpdate): Promise<Note> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.notes.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError("ENTITY_NOT_FOUND", `Note "${uuid}" not found in index`, {
+            uuid,
+            reason: "UUID not present in vault index",
+          });
+        }
+
+        try {
+          const current = await getVault(context).notes.read(indexed.filePath);
+          const updated: Note = {
+            ...current,
+            ...(patch.title !== undefined && { title: patch.title }),
+            ...(patch.content !== undefined && { content: patch.content }),
+          };
+
+          await getVault(context).notes.write(updated);
+
+          const newFilePath = `${slugify(updated.title)}.md`;
+
+          if (indexed.filePath !== newFilePath) {
+            const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
+            await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
+              if (err.code === "ENOENT") {
+                log.warn({ filePath: indexed.filePath }, "rename cleanup: old note file already gone");
+                return;
+              }
+              throw err;
+            });
+          }
+
+          const absolutePath = join(context.vaultPath, "notes", newFilePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
+
+          vaultDatabase.transaction((tx) => {
+            upsertNote(tx, updated, newFilePath, rawContent);
+          });
+
+          return updated;
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Note "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+      },
+
       async delete(context: ProjectContext, uuid: string): Promise<void> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.notes.findByUUID(uuid);
@@ -578,6 +642,65 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         vaultDatabase.transaction((tx) => {
           upsertReference(tx, reference, entityRelativePath, rawContent);
         });
+      },
+
+      async update(
+        context: ProjectContext,
+        uuid: string,
+        patch: ReferenceUpdate,
+      ): Promise<Reference> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.references.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError("ENTITY_NOT_FOUND", `Reference "${uuid}" not found in index`, {
+            uuid,
+            reason: "UUID not present in vault index",
+          });
+        }
+
+        try {
+          const current = await getVault(context).references.read(indexed.filePath);
+          const updated: Reference = {
+            ...current,
+            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.content !== undefined && { content: patch.content }),
+          };
+
+          await getVault(context).references.write(updated);
+
+          const newFilePath = `${slugify(updated.name)}.md`;
+
+          if (indexed.filePath !== newFilePath) {
+            const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
+            await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
+              if (err.code === "ENOENT") {
+                log.warn({ filePath: indexed.filePath }, "rename cleanup: old reference file already gone");
+                return;
+              }
+              throw err;
+            });
+          }
+
+          const absolutePath = join(context.vaultPath, "references", newFilePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
+
+          vaultDatabase.transaction((tx) => {
+            upsertReference(tx, updated, newFilePath, rawContent);
+          });
+
+          return updated;
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Reference "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {

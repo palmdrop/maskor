@@ -25,6 +25,7 @@ import type {
   IndexedReference,
   Reference,
   ReferenceCreate,
+  ReferenceUpdate,
 } from "../maskorAPI.schemas";
 
 import { customFetch } from "../../fetch";
@@ -445,6 +446,130 @@ export function useGetReference<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+/**
+ * @summary Update a reference in the vault
+ */
+export type UpdateReferenceResponse200 = {
+  data: Reference;
+  status: 200;
+};
+
+export type UpdateReferenceResponse400 = {
+  data: ErrorResponse;
+  status: 400;
+};
+
+export type UpdateReferenceResponse404 = {
+  data: ErrorResponse;
+  status: 404;
+};
+
+export type UpdateReferenceResponse500 = {
+  data: ErrorResponse;
+  status: 500;
+};
+
+export type UpdateReferenceResponse503 = {
+  data: ErrorResponse;
+  status: 503;
+};
+
+export type UpdateReferenceResponseSuccess = UpdateReferenceResponse200 & {
+  headers: Headers;
+};
+export type UpdateReferenceResponseError = (
+  | UpdateReferenceResponse400
+  | UpdateReferenceResponse404
+  | UpdateReferenceResponse500
+  | UpdateReferenceResponse503
+) & {
+  headers: Headers;
+};
+
+export type UpdateReferenceResponse = UpdateReferenceResponseSuccess | UpdateReferenceResponseError;
+
+export const getUpdateReferenceUrl = (projectId: string, referenceId: string) => {
+  return `/projects/${projectId}/references/${referenceId}`;
+};
+
+export const UpdateReference = async (
+  projectId: string,
+  referenceId: string,
+  referenceUpdate: ReferenceUpdate,
+  options?: RequestInit,
+): Promise<UpdateReferenceResponse> => {
+  return customFetch<UpdateReferenceResponse>(getUpdateReferenceUrl(projectId, referenceId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(referenceUpdate),
+  });
+};
+
+export const getUpdateReferenceMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof UpdateReference>>,
+    TError,
+    { projectId: string; referenceId: string; data: ReferenceUpdate },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof UpdateReference>>,
+  TError,
+  { projectId: string; referenceId: string; data: ReferenceUpdate },
+  TContext
+> => {
+  const mutationKey = ["updateReference"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof UpdateReference>>,
+    { projectId: string; referenceId: string; data: ReferenceUpdate }
+  > = (props) => {
+    const { projectId, referenceId, data } = props ?? {};
+
+    return UpdateReference(projectId, referenceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReferenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof UpdateReference>>
+>;
+export type UpdateReferenceMutationBody = ReferenceUpdate;
+export type UpdateReferenceMutationError = ErrorResponse;
+
+/**
+ * @summary Update a reference in the vault
+ */
+export const useUpdateReference = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof UpdateReference>>,
+      TError,
+      { projectId: string; referenceId: string; data: ReferenceUpdate },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof UpdateReference>>,
+  TError,
+  { projectId: string; referenceId: string; data: ReferenceUpdate },
+  TContext
+> => {
+  return useMutation(getUpdateReferenceMutationOptions(options), queryClient);
+};
 /**
  * @summary Delete a reference from the vault
  */

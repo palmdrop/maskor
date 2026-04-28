@@ -8,6 +8,7 @@ import {
   IndexedNoteSchema,
   NoteUUIDParamSchema,
   NoteCreateSchema,
+  NoteUpdateSchema,
 } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -86,6 +87,40 @@ const createNoteRoute = createRoute({
   },
 });
 
+const updateNoteRoute = createRoute({
+  operationId: "updateNote",
+  method: "patch",
+  path: "/{noteId}",
+  tags: ["Notes"],
+  summary: "Update a note in the vault",
+  request: {
+    params: NoteUUIDParamSchema,
+    body: { content: { "application/json": { schema: NoteUpdateSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: NoteSchema } },
+      description: "Note updated",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Note not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const deleteNoteRoute = createRoute({
   operationId: "deleteNote",
   method: "delete",
@@ -147,6 +182,19 @@ notesRouter.openapi(createNoteRoute, async (ctx) => {
 
     await storageService.notes.write(projectContext, note);
     return ctx.json(note, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+notesRouter.openapi(updateNoteRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { noteId } = ctx.req.valid("param");
+    const patch = ctx.req.valid("json");
+    const updated = await storageService.notes.update(projectContext, noteId, patch);
+    return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
   }

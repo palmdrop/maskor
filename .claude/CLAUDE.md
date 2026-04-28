@@ -17,3 +17,4 @@ KEEP IN MIND:
 - Write tests when adding features or changing behavior.
 - Update references and specs if they are out of sync.
 - When writing code, try to match the coding style in the already existing code.
+- When writing code, NEVER ABBREVIATE variable names (except iterators). `err` should be `error`. Fix whenever you encounter abbreviations.

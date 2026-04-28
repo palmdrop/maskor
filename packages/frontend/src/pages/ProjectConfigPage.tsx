@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProject,
@@ -7,11 +7,24 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "../api/generated/projects/projects";
+import {
+  useListNotes,
+  useCreateNote,
+  useDeleteNote,
+  getListNotesQueryKey,
+} from "../api/generated/notes/notes";
+import {
+  useListReferences,
+  useCreateReference,
+  useDeleteReference,
+  getListReferencesQueryKey,
+} from "../api/generated/references/references";
 import type { Project } from "../api/generated/maskorAPI.schemas";
 import { Heading } from "../components/heading";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { AttachableEntityPanel } from "../components/attachable-entity-panel";
 
 const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
@@ -27,6 +40,7 @@ const GeneralTab = ({ project }: { project: Project }) => {
   }, [editing]);
 
   const handleSave = async () => {
+    if (updateProject.isPending) return;
     const trimmed = nameValue.trim();
     if (!trimmed || trimmed === project.name) {
       setNameValue(project.name);
@@ -101,8 +115,86 @@ const GeneralTab = ({ project }: { project: Project }) => {
   );
 };
 
+const NotesTab = ({ projectId }: { projectId: string }) => {
+  const queryClient = useQueryClient();
+  const { data: envelope, isLoading } = useListNotes(projectId);
+  const createNote = useCreateNote();
+  const deleteNote = useDeleteNote();
+
+  const items =
+    envelope?.status === 200
+      ? envelope.data.map((n) => ({
+          uuid: n.uuid,
+          label: n.title,
+          editTo: `/projects/${projectId}/notes/${n.uuid}`,
+        }))
+      : [];
+
+  const handleCreate = async (title: string, content: string) => {
+    await createNote.mutateAsync({ projectId, data: { title, content } });
+    queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
+  };
+
+  const handleDelete = async (noteId: string) => {
+    await deleteNote.mutateAsync({ projectId, noteId });
+    queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
+  };
+
+  return (
+    <AttachableEntityPanel
+      items={items}
+      isLoading={isLoading}
+      labelField="Title"
+      dialogTitle="New note"
+      onConfirmCreate={handleCreate}
+      onDelete={handleDelete}
+      isCreating={createNote.isPending}
+    />
+  );
+};
+
+const ReferencesTab = ({ projectId }: { projectId: string }) => {
+  const queryClient = useQueryClient();
+  const { data: envelope, isLoading } = useListReferences(projectId);
+  const createReference = useCreateReference();
+  const deleteReference = useDeleteReference();
+
+  const items =
+    envelope?.status === 200
+      ? envelope.data.map((r) => ({
+          uuid: r.uuid,
+          label: r.name,
+          editTo: `/projects/${projectId}/references/${r.uuid}`,
+        }))
+      : [];
+
+  const handleCreate = async (name: string, content: string) => {
+    await createReference.mutateAsync({ projectId, data: { name, content } });
+    queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
+  };
+
+  const handleDelete = async (referenceId: string) => {
+    await deleteReference.mutateAsync({ projectId, referenceId });
+    queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
+  };
+
+  return (
+    <AttachableEntityPanel
+      items={items}
+      isLoading={isLoading}
+      labelField="Name"
+      dialogTitle="New reference"
+      onConfirmCreate={handleCreate}
+      onDelete={handleDelete}
+      isCreating={createReference.isPending}
+    />
+  );
+};
+
 export const ProjectConfigPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/config" });
+  const { tab } = useSearch({ from: "/projects/$projectId/config" });
+  const navigate = useNavigate({ from: "/projects/$projectId/config" });
   const { data: envelope, isLoading, isError } = useGetProject(projectId);
 
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
@@ -117,7 +209,11 @@ export const ProjectConfigPage = () => {
       <Heading level={1} className="mb-4">
         {project.name}
       </Heading>
-      <Tabs defaultValue="general" className="flex-1">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => navigate({ search: { tab: value as typeof tab } })}
+        className="flex-1"
+      >
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="aspects">Aspects</TabsTrigger>
@@ -131,10 +227,10 @@ export const ProjectConfigPage = () => {
           <p className="text-sm text-muted-foreground">Aspects — not yet implemented.</p>
         </TabsContent>
         <TabsContent value="notes">
-          <p className="text-sm text-muted-foreground">Notes — not yet implemented.</p>
+          <NotesTab projectId={projectId} />
         </TabsContent>
         <TabsContent value="references">
-          <p className="text-sm text-muted-foreground">References — not yet implemented.</p>
+          <ReferencesTab projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>

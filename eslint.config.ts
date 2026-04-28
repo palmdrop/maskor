@@ -79,7 +79,6 @@ export default defineConfig(
     files: [
       "packages/api/**/*.ts",
       "packages/importer/**/*.ts",
-      "packages/processor/**/*.ts",
       "packages/sequencer/**/*.ts",
       "packages/shared/**/*.ts",
       "packages/storage/**/*.ts",

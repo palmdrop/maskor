@@ -30,14 +30,16 @@ The ProjectConfigPage is fully implemented: project name is editable, aspects ca
 
 Notes and references share an identical structural pattern. Implement them in parallel.
 
-- [ ] Notes tab: list existing notes (titles only) via `useListNotes`
-- [ ] Notes tab: create note with title + optional initial body via dialog → `useCreateNote`
-- [ ] Notes tab: delete note → `useDeleteNote`; no warning needed unless future "warn if attached" is added
-- [ ] References tab: list existing references (names only) via `useListReferences`
-- [ ] References tab: create reference with name + optional initial body via dialog → `useCreateReference`
-- [ ] References tab: delete reference → `useDeleteReference`
-- [ ] Extract shared `AttachableEntityPanel` component reused by both tabs (list + create dialog + delete button)
-- [ ] Note: body editing is out of scope for config page; body belongs in a dedicated editor or directly in vault
+- [x] Notes tab: list existing notes (titles only) via `useListNotes`
+- [x] Notes tab: create note with title + optional initial body via dialog → `useCreateNote`
+- [x] Notes tab: delete note → `useDeleteNote`; no warning needed unless future "warn if attached" is added
+- [x] References tab: list existing references (names only) via `useListReferences`
+- [x] References tab: create reference with name + optional initial body via dialog → `useCreateReference`
+- [x] References tab: delete reference → `useDeleteReference`
+- [x] Extract shared `AttachableEntityPanel` component reused by both tabs (list + create dialog + delete button)
+- [x] Note: body editing is out of scope for config page; body belongs in a dedicated editor or directly in vault
+- [x] Notes tab: edit note body via dedicated `NoteEditorPage` at `/projects/:id/notes/:noteId` using `ProseEditor` → `useUpdateNote`; `PATCH /notes/:noteId` route + storage `update` added
+- [x] References tab: edit reference body via dedicated `ReferenceEditorPage` at `/projects/:id/references/:referenceId` using `ProseEditor` → `useUpdateReference`; `PATCH /references/:referenceId` route + storage `update` added
 
 ### Phase 4: Aspects tab — CRUD
 
@@ -104,9 +106,9 @@ Arcs are vault-stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. They a
 
 ### Phase 3: Notes + References tabs (parallel)
 
-- [ ] Notes: list, create, delete
-- [ ] References: list, create, delete
-- [ ] Shared `AttachableEntityPanel` component
+- [x] Notes: list, create, delete
+- [x] References: list, create, delete
+- [x] Shared `AttachableEntityPanel` component
 
 ### Phase 4: Aspects tab
 
