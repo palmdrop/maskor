@@ -3,7 +3,7 @@ import { useGetProject } from "../api/generated/projects/projects";
 import { useVaultEvents } from "../hooks/useVaultEvents";
 import { useKeyboardNav } from "../hooks/useKeyboardNav";
 
-export function ProjectShellLayout() {
+export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
 
@@ -48,4 +48,4 @@ export function ProjectShellLayout() {
       </div>
     </div>
   );
-}
+};

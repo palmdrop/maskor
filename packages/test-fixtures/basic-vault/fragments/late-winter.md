@@ -1,7 +1,7 @@
 ---
 uuid: cfa3e92f-422a-4916-963f-999a85a96e62
 title: Late Winter
-updatedAt: '2026-04-27T23:10:16.596Z'
+updatedAt: "2026-04-27T23:10:16.596Z"
 readyStatus: 0.2
 notes: []
 references: []

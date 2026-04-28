@@ -10,7 +10,7 @@ import {
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 
-export function FragmentPage() {
+export const FragmentPage = () => {
   const from = "/projects/$projectId/fragments/$fragmentId" as const;
   const { projectId, fragmentId } = useParams({ from });
 
@@ -60,4 +60,4 @@ export function FragmentPage() {
       </Dialog>
     </>
   );
-}
+};

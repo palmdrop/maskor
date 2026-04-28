@@ -26,7 +26,7 @@ type ToolbarButtonProps = {
   label: string;
 };
 
-function ToolbarButton({ active, onClick, children, label }: ToolbarButtonProps) {
+const ToolbarButton = ({ active, onClick, children, label }: ToolbarButtonProps) => {
   return (
     <Button
       variant="ghost"
@@ -40,9 +40,9 @@ function ToolbarButton({ active, onClick, children, label }: ToolbarButtonProps)
       {children}
     </Button>
   );
-}
+};
 
-export function ProseToolbar({ editor }: Props) {
+export const ProseToolbar = ({ editor }: Props) => {
   if (!editor) {
     return null;
   }
@@ -142,4 +142,4 @@ export function ProseToolbar({ editor }: Props) {
       </ToolbarButton>
     </div>
   );
-}
+};

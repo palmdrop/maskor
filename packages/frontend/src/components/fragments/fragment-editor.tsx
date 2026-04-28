@@ -21,7 +21,7 @@ type Props = {
   onDirtyChange?: (isDirty: boolean) => void;
 };
 
-export function FragmentEditor({ projectId, fragmentId, onDirtyChange }: Props) {
+export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
   const { mutate: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
@@ -170,4 +170,4 @@ export function FragmentEditor({ projectId, fragmentId, onDirtyChange }: Props) 
       </div>
     </div>
   );
-}
+};

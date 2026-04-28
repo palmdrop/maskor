@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export function useDelayedPending(pending: boolean, delay = 150): boolean {
+export const useDelayedPending = (pending: boolean, delay = 150): boolean => {
   const [delayedPending, setDelayedPending] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -23,4 +23,4 @@ export function useDelayedPending(pending: boolean, delay = 150): boolean {
   }, [pending, delay]);
 
   return delayedPending;
-}
+};

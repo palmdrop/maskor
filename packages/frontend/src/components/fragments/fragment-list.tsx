@@ -7,7 +7,7 @@ type Props = {
   onSelect: (uuid: string) => void;
 };
 
-export function FragmentList({ fragments, selectedId, onSelect }: Props) {
+export const FragmentList = ({ fragments, selectedId, onSelect }: Props) => {
   return (
     <ul>
       {fragments.map((fragment) => (
@@ -29,4 +29,4 @@ export function FragmentList({ fragments, selectedId, onSelect }: Props) {
       ))}
     </ul>
   );
-}
+};

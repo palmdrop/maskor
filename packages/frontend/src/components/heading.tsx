@@ -16,7 +16,7 @@ type Props = React.ComponentProps<"h1"> & VariantProps<typeof headingVariants>;
 
 const TAG = { 1: "h1", 2: "h2", 3: "h3" } as const;
 
-export function Heading({ level = 1, className, ...props }: Props) {
+export const Heading = ({ level = 1, className, ...props }: Props) => {
   const Tag = TAG[level!];
   return <Tag className={cn(headingVariants({ level }), className)} {...props} />;
-}
+};

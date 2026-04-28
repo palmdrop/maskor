@@ -25,6 +25,7 @@ This skill governs how code reviews are written in the maskor project.
 Use kebab-case derived from the feature or area being reviewed, followed by the date.
 
 Examples:
+
 - "review the fragment editor" → `fragment-editor-2026-04-28.md`
 - "review the watcher changes" → `watcher-2026-04-28.md`
 

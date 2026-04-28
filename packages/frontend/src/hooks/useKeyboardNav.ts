@@ -3,15 +3,15 @@ import { useNavigate } from "@tanstack/react-router";
 
 const CHORD_TIMEOUT_MS = 500;
 
-function isTextInput(el: Element | null): boolean {
+const isTextInput = (el: Element | null): boolean => {
   if (!el) return false;
   const tag = (el as HTMLElement).tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return true;
   if ((el as HTMLElement).isContentEditable) return true;
   return false;
-}
+};
 
-export function useKeyboardNav(projectId: string) {
+export const useKeyboardNav = (projectId: string) => {
   const navigate = useNavigate();
   const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const awaitingSecondRef = useRef(false);
@@ -61,4 +61,4 @@ export function useKeyboardNav(projectId: string) {
       if (pendingRef.current) clearTimeout(pendingRef.current);
     };
   }, [projectId, navigate]);
-}
+};

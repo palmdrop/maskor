@@ -25,7 +25,7 @@ const fragmentFormSchema = z.object({
 
 type FragmentFormValues = z.infer<typeof fragmentFormSchema>;
 
-function buildDefaultValues(fragment: Fragment, aspects: IndexedAspect[]): FragmentFormValues {
+const buildDefaultValues = (fragment: Fragment, aspects: IndexedAspect[]): FragmentFormValues => {
   return {
     title: fragment.title,
     readyStatus: Math.round(fragment.readyStatus * 100),
@@ -38,13 +38,13 @@ function buildDefaultValues(fragment: Fragment, aspects: IndexedAspect[]): Fragm
       ]),
     ),
   };
-}
+};
 
-function buildUpdatePayload(
+const buildUpdatePayload = (
   values: FragmentFormValues,
   aspects: IndexedAspect[],
   originalProperties: Fragment["properties"],
-): FragmentUpdate {
+): FragmentUpdate => {
   const renderedProperties = Object.fromEntries(
     aspects.map((aspect) => [
       aspect.key,
@@ -60,7 +60,7 @@ function buildUpdatePayload(
     // Preserve unknown aspect keys from the original fragment
     properties: { ...originalProperties, ...renderedProperties },
   };
-}
+};
 
 export type FragmentMetadataFormHandle = {
   getValidatedValues: () => Promise<FragmentUpdate | null>;
@@ -72,8 +72,9 @@ type Props = {
   onDirtyChange?: (dirty: boolean) => void;
 };
 
+// eslint-disable-next-line react/display-name
 export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props>(
-  function FragmentMetadataForm({ fragment, projectId, onDirtyChange }, ref) {
+  ({ fragment, projectId, onDirtyChange }, ref) => {
     const { data: aspectsEnvelope } = useListAspects(projectId);
     const { data: notesEnvelope } = useListNotes(projectId);
     const { data: referencesEnvelope } = useListReferences(projectId);

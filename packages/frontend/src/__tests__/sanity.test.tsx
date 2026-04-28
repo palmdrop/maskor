@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 // Standalone dummy component — no import of actual source code
-function Counter({ label }: { label: string }) {
+const Counter = ({ label }: { label: string }) => {
   const [count, setCount] = useState(0);
   return (
     <div>
@@ -13,7 +13,7 @@ function Counter({ label }: { label: string }) {
       <output>{count}</output>
     </div>
   );
-}
+};
 
 describe("@maskor/frontend", () => {
   it("renders a label", () => {

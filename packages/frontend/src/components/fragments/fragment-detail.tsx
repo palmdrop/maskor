@@ -12,7 +12,7 @@ type Props = {
   fragmentId: string;
 };
 
-function ProseViewer({ content }: { content: string }) {
+const ProseViewer = ({ content }: { content: string }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -29,9 +29,9 @@ function ProseViewer({ content }: { content: string }) {
   });
 
   return <EditorContent editor={editor} />;
-}
+};
 
-export function FragmentDetail({ projectId, fragmentId }: Props) {
+export const FragmentDetail = ({ projectId, fragmentId }: Props) => {
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
 
   if (isLoading) {
@@ -57,4 +57,4 @@ export function FragmentDetail({ projectId, fragmentId }: Props) {
       <ProseViewer content={fragment.content} />
     </div>
   );
-}
+};

@@ -10,7 +10,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 
-export function FragmentListPage() {
+export const FragmentListPage = () => {
   const from = "/projects/$projectId/fragments" as const;
   const { projectId } = useParams({ from });
   const queryClient = useQueryClient();
@@ -118,4 +118,4 @@ export function FragmentListPage() {
       </main>
     </div>
   );
-}
+};

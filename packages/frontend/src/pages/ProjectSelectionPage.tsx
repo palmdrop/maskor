@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useListProjects } from "../api/generated/projects/projects";
 
-export function ProjectSelectionPage() {
+export const ProjectSelectionPage = () => {
   const navigate = useNavigate();
   const { data: envelope, isLoading, isError } = useListProjects();
 
@@ -34,4 +34,4 @@ export function ProjectSelectionPage() {
       ))}
     </ul>
   );
-}
+};
