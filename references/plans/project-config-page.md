@@ -43,11 +43,41 @@ Notes and references share an identical structural pattern. Implement them in pa
 
 ### Phase 4: Aspects tab — CRUD
 
-- [ ] Aspects tab: list existing aspects via `useListAspects` (show key + optional category)
-- [ ] Aspects tab: create aspect with key + optional category + optional description → `useCreateAspect`
-- [ ] Aspects tab: delete aspect → `useDeleteAspect` with confirmation dialog
+- [x] Aspects tab: list existing aspects via `useListAspects` (show key + optional category)
+- [x] Aspects tab: create aspect with key + optional category + optional description → `useCreateAspect`
+- [x] Aspects tab: delete aspect → `useDeleteAspect` with confirmation dialog
 
 Rename is a backend-only concern tracked separately in Phase 6. The frontend shows the key as read-only text for now. No UI work is blocked on Phase 6.
+
+### Phase 5: Arc editor (per aspect)
+
+Arcs are vault-stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. They are NOT watcher-indexed — read and written directly on demand.
+
+**Storage layer:**
+
+- [x] Implement arc vault methods: `readArc(context, aspectKey): Arc | null`, `writeArc(context, arc): void`, `deleteArc(context, aspectKey): void`
+- [x] Arc file format: YAML with `uuid`, `aspectKey`, and `points` (array of `{x, y}`)
+- [x] No DB indexing for arcs (consistent with watcher ignoring `.maskor/`)
+
+**API layer:**
+
+- [x] Add arc routes under `/projects/:projectId/aspects/:aspectId`:
+  - `GET  /arc` — returns the arc or 404 if none
+  - `PUT  /arc` — creates or replaces the arc (idempotent); body is `ArcCreateSchema`
+  - `DELETE /arc` — removes the arc YAML file
+- [x] Arc routes resolve aspect UUID → key via the aspect indexer (aspect key needed for file path)
+- [x] Regenerate orval client
+
+**Frontend — arc editor component:**
+
+- [x] Arc editor: expandable panel within each aspect row in the Aspects tab
+- [x] Display control points as an editable table of `(x, y)` pairs — input fields clamped to [0, 1]
+- [x] Add / remove control points; enforce minimum 2 points
+- [x] Sort control points by `x` on save (spec requires ordered points)
+- [x] SVG curve preview: render a simple polyline connecting control points, drawn in the panel header even when collapsed (thumbnail of the shape)
+- [x] Save arc on explicit "Save arc" button; discard on cancel
+- [x] If no arc exists for an aspect, show "Define arc" button to initialize with two default points `({x: 0, y: 0.5}, {x: 1, y: 0.5})`
+- [x] If arc exists, show "Remove arc" button with confirmation
 
 ### Phase 6: Aspect rename (backend only, deferrable)
 
@@ -59,35 +89,12 @@ Rename is isolated to the storage and API layers. The frontend does not need to 
 - [ ] Regenerate orval client after route addition
 - [ ] Once route exists, add inline rename to Aspects tab UI with key-drift warning surfaced from the response
 
-### Phase 5: Arc editor (per aspect)
+### Phase 7: Extended project type
 
-Arcs are vault-stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. They are NOT watcher-indexed — read and written directly on demand.
+Add important configuration options to project.
 
-**Storage layer:**
-
-- [ ] Implement arc vault methods: `readArc(context, aspectKey): Arc | null`, `writeArc(context, arc): void`, `deleteArc(context, aspectKey): void`
-- [ ] Arc file format: YAML with `uuid`, `aspectKey`, and `points` (array of `{x, y}`)
-- [ ] No DB indexing for arcs (consistent with watcher ignoring `.maskor/`)
-
-**API layer:**
-
-- [ ] Add arc routes under `/projects/:projectId/aspects/:aspectId`:
-  - `GET  /arc` — returns the arc or 404 if none
-  - `PUT  /arc` — creates or replaces the arc (idempotent); body is `ArcCreateSchema`
-  - `DELETE /arc` — removes the arc YAML file
-- [ ] Arc routes resolve aspect UUID → key via the aspect indexer (aspect key needed for file path)
-- [ ] Regenerate orval client
-
-**Frontend — arc editor component:**
-
-- [ ] Arc editor: expandable panel within each aspect row in the Aspects tab
-- [ ] Display control points as an editable table of `(x, y)` pairs — input fields clamped to [0, 1]
-- [ ] Add / remove control points; enforce minimum 2 points
-- [ ] Sort control points by `x` on save (spec requires ordered points)
-- [ ] SVG curve preview: render a simple polyline connecting control points, drawn in the panel header even when collapsed (thumbnail of the shape)
-- [ ] Save arc on explicit "Save arc" button; discard on cancel
-- [ ] If no arc exists for an aspect, show "Define arc" button to initialize with two default points `({x: 0, y: 0.5}, {x: 1, y: 0.5})`
-- [ ] If arc exists, show "Remove arc" button with confirmation
+- [ ] Add config for using vimMode in editors
+- [ ] Add config for using "raw markdown mode", i.e not tiptaps rich editing (vimMode enables this by default)
 
 ---
 
@@ -112,14 +119,14 @@ Arcs are vault-stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. They a
 
 ### Phase 4: Aspects tab
 
-- [ ] Aspects: list, create, delete (key displayed as read-only)
+- [x] Aspects: list, create, delete (key displayed as read-only)
 
 ### Phase 5: Arc editor
 
-- [ ] Arc vault methods
-- [ ] Arc API routes
-- [ ] Arc editor component (table + SVG preview)
-- [ ] Save/remove arc flow
+- [x] Arc vault methods
+- [x] Arc API routes
+- [x] Arc editor component (table + SVG preview)
+- [x] Save/remove arc flow
 
 ### Phase 6: Aspect rename (backend only, deferrable)
 

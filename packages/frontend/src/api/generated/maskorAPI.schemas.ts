@@ -128,6 +128,41 @@ export interface AspectCreate {
   notes?: string[];
 }
 
+export interface AspectUpdate {
+  /** @minLength 1 */
+  key?: string;
+  category?: string;
+  description?: string;
+  notes?: string[];
+}
+
+export interface ArcPoint {
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  x: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  y: number;
+}
+
+export interface Arc {
+  uuid: string;
+  aspectKey: string;
+  /** @minItems 2 */
+  points: ArcPoint[];
+}
+
+export interface ArcCreate {
+  /** @minLength 1 */
+  aspectKey: string;
+  /** @minItems 2 */
+  points: ArcPoint[];
+}
+
 export interface IndexedNote {
   uuid: string;
   title: string;

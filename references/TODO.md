@@ -1,8 +1,16 @@
 # General
 
-- [-] Try graphify: https://github.com/safishamsi/graphify
+- [ ] Try graphify: https://github.com/safishamsi/graphify
   - tried `repomix` instead
   - or https://www.augmentcode.com/
+
+- [ ] Try grok pattern - put in CLAUDE.md
+
+- [ ] Find flow for using cheaper models for appropriate tasks
+
+- [ ] Rework note/reference/aspect management... uses UUIDs for nav but slug is unique (has to be). Makes it hard to link to, if only slug is available. See `packages/frontend/src/components/fragments/fragment-metadata-form.tsx` < link to reference page is wrong
+
+- [ ] Check if eslint has a config for disallowing one-letter variables... but how to exclude iterators from this?
 
 - [ ] look for bad patterns and fix them in the codebase
   - let the code be the documentation

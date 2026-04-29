@@ -32,6 +32,7 @@ Examples:
 ## How to review
 
 1. Read the relevant diff (`git diff`) or changed files.
-2. Read the plan (`references/plans/`) and spec (`specifications/`) if they exist — check implementation against intent.
-3. Fill in each section of the template. Remove sections that have nothing to report (replace with "None.").
-4. Number items globally across sections so they stay referenceable.
+2. Check the `references/CODING_STANDARDS.md` to make sure the code conforms to the project standards.
+3. Read the plan (`references/plans/`) and spec (`specifications/`) if they exist — check implementation against intent.
+4. Fill in each section of the template. Remove sections that have nothing to report (replace with "None.").
+5. Number items globally across sections so they stay referenceable.

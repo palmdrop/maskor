@@ -3,11 +3,11 @@ import { useParams, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
-  useGetNote,
-  useUpdateNote,
-  getGetNoteQueryKey,
-  getListNotesQueryKey,
-} from "../api/generated/notes/notes";
+  useGetAspect,
+  useUpdateAspect,
+  getGetAspectQueryKey,
+  getListAspectsQueryKey,
+} from "../api/generated/aspects/aspects";
 import { ProseEditor, type ProseEditorHandle } from "../components/fragments/prose-editor";
 import { Heading } from "../components/heading";
 import { Button } from "../components/ui/button";
@@ -16,51 +16,51 @@ import { useDelayedPending } from "../hooks/useDelayedPending";
 
 type Props = {
   projectId: string;
-  noteId: string;
+  aspectId: string;
 };
 
-const NoteEditor = ({ projectId, noteId }: Props) => {
+const AspectEditor = ({ projectId, aspectId }: Props) => {
   const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
-  const { mutate: updateNote, isPending: isUpdatePending } = useUpdateNote();
+  const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
+  const { mutate: updateAspect, isPending: isUpdatePending } = useUpdateAspect();
 
   const proseEditorRef = useRef<ProseEditorHandle>(null);
   const [isDirty, setIsDirty] = useState(false);
   const showSaving = useDelayedPending(isUpdatePending);
 
-  const note = envelope?.status === 200 ? envelope.data : null;
+  const aspect = envelope?.status === 200 ? envelope.data : null;
 
   const handleSave = useCallback(() => {
-    if (!note || !isDirty) return;
-    const content = proseEditorRef.current?.getContent() ?? note.content;
-    updateNote(
-      { projectId, noteId, data: { content } },
+    if (!aspect || !isDirty) return;
+    const description = proseEditorRef.current?.getContent() ?? aspect.description ?? "";
+    updateAspect(
+      { projectId, aspectId, data: { description } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetNoteQueryKey(projectId, noteId) });
-          queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: getGetAspectQueryKey(projectId, aspectId) });
+          queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
           setIsDirty(false);
         },
       },
     );
-  }, [note, isDirty, projectId, noteId, updateNote, queryClient]);
+  }, [aspect, isDirty, projectId, aspectId, updateAspect, queryClient]);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !note)
-    return <p className="text-sm text-muted-foreground">Failed to load note.</p>;
+  if (isError || !aspect)
+    return <p className="text-sm text-muted-foreground">Failed to load aspect.</p>;
 
   return (
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "notes" }}>
+          <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "aspects" }}>
             <Button variant="ghost" size="icon-sm">
               <ArrowLeftIcon />
             </Button>
           </Link>
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Note</span>
-            <Heading level={1}>{note.title}</Heading>
+            <span className="text-xs text-muted-foreground">Aspect</span>
+            <Heading level={1}>{aspect.key}</Heading>
           </div>
         </div>
         <Button
@@ -77,7 +77,7 @@ const NoteEditor = ({ projectId, noteId }: Props) => {
         {/* TODO: wire vimMode to a real settings/config system */}
         <ProseEditor
           ref={proseEditorRef}
-          content={note.content}
+          content={aspect.description ?? ""}
           vimMode={false}
           onSave={handleSave}
           onChange={() => setIsDirty(true)}
@@ -87,11 +87,11 @@ const NoteEditor = ({ projectId, noteId }: Props) => {
   );
 };
 
-export const NoteEditorPage = () => {
-  const { projectId, noteId } = useParams({ from: "/projects/$projectId/notes/$noteId" });
+export const AspectEditorPage = () => {
+  const { projectId, aspectId } = useParams({ from: "/projects/$projectId/aspects/$aspectId" });
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <NoteEditor projectId={projectId} noteId={noteId} />
+      <AspectEditor projectId={projectId} aspectId={aspectId} />
     </div>
   );
 };

@@ -64,7 +64,10 @@ const ReferenceEditor = ({ projectId, referenceId }: Props) => {
               <ArrowLeftIcon />
             </Button>
           </Link>
-          <Heading level={1}>{reference.name}</Heading>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Reference</span>
+            <Heading level={1}>{reference.name}</Heading>
+          </div>
         </div>
         <Button
           size="sm"

@@ -14,6 +14,7 @@ import { Slider } from "../ui/slider";
 import { TagCombobox } from "../ui/tag-combobox";
 import { useListNotes } from "../../api/generated/notes/notes";
 import { useListReferences } from "../../api/generated/references/references";
+import { Link } from "@tanstack/react-router";
 
 const fragmentFormSchema = z.object({
   title: z.string().min(1),
@@ -118,6 +119,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       remove: removeReference,
     } = useFieldArray({ control, name: "references" });
 
+    // TODO: use api query for this?
     const availableNotes = useMemo(
       () =>
         (notesEnvelope?.status === 200 ? notesEnvelope.data : [])
@@ -126,6 +128,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       [notesEnvelope, noteFields],
     );
 
+    // TODO: use api query for this?
     const availableReferences = useMemo(
       () =>
         (referencesEnvelope?.status === 200 ? referencesEnvelope.data : [])
@@ -209,9 +212,11 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           <Label>References</Label>
           <div className="flex flex-wrap gap-1">
             {referenceFields.map((referenceField, index) => (
-              <span
+              <Link
                 key={referenceField.id}
                 className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm"
+                to="/projects/$projectId/references/$referenceId"
+                params={{ projectId, referenceId: referenceField.id }} // NOTE: This is wrong, uses the form type... need to lookup the uuid of the actual reference, fetched at top of component
               >
                 {referenceField.value}
                 <button
@@ -221,7 +226,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
                 >
                   ×
                 </button>
-              </span>
+              </Link>
             ))}
           </div>
           <TagCombobox

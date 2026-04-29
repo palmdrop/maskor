@@ -13,6 +13,7 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { ProjectConfigPage } from "./pages/ProjectConfigPage";
 import { NoteEditorPage } from "./pages/NoteEditorPage";
 import { ReferenceEditorPage } from "./pages/ReferenceEditorPage";
+import { AspectEditorPage } from "./pages/AspectEditorPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -86,6 +87,12 @@ const referenceEditorRoute = createRoute({
   component: ReferenceEditorPage,
 });
 
+const aspectEditorRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/aspects/$aspectId",
+  component: AspectEditorPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectShellLayoutRoute.addChildren([
@@ -95,6 +102,7 @@ const routeTree = rootRoute.addChildren([
     projectConfigRoute,
     noteEditorRoute,
     referenceEditorRoute,
+    aspectEditorRoute,
   ]),
 ]);
 

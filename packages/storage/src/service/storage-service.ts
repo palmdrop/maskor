@@ -1,5 +1,7 @@
 import type {
+  Arc,
   Aspect,
+  AspectUpdate,
   Fragment,
   Logger,
   Note,
@@ -8,9 +10,10 @@ import type {
   ReferenceUpdate,
   VaultSyncEvent,
 } from "@maskor/shared";
-import { slugify } from "@maskor/shared";
-import { unlink } from "node:fs/promises";
+import { ArcSchema, slugify } from "@maskor/shared";
+import { mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
 import { VaultError } from "../vault/types";
@@ -456,6 +459,49 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           softDeleteAspectByFilePath(tx, indexed.filePath);
         });
       },
+
+      async update(context: ProjectContext, uuid: string, patch: AspectUpdate): Promise<Aspect> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.aspects.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError("ENTITY_NOT_FOUND", `Aspect "${uuid}" not found in index`, {
+            uuid,
+            reason: "UUID not present in vault index",
+          });
+        }
+
+        try {
+          const current = await getVault(context).aspects.read(indexed.filePath);
+          const updated: Aspect = {
+            ...current,
+            ...(patch.category !== undefined && { category: patch.category }),
+            ...(patch.description !== undefined && { description: patch.description }),
+            ...(patch.notes !== undefined && { notes: patch.notes }),
+          };
+
+          await getVault(context).aspects.write(updated);
+
+          const absolutePath = join(context.vaultPath, "aspects", indexed.filePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
+
+          vaultDatabase.transaction((tx) => {
+            upsertAspect(tx, updated, indexed.filePath, rawContent);
+          });
+
+          return updated;
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            throw new VaultError(
+              "STALE_INDEX",
+              `Aspect "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+      },
     },
 
     // Note operations
@@ -531,7 +577,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
             await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
               if (err.code === "ENOENT") {
-                log.warn({ filePath: indexed.filePath }, "rename cleanup: old note file already gone");
+                log.warn(
+                  { filePath: indexed.filePath },
+                  "rename cleanup: old note file already gone",
+                );
                 return;
               }
               throw err;
@@ -675,7 +724,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
             await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
               if (err.code === "ENOENT") {
-                log.warn({ filePath: indexed.filePath }, "rename cleanup: old reference file already gone");
+                log.warn(
+                  { filePath: indexed.filePath },
+                  "rename cleanup: old reference file already gone",
+                );
                 return;
               }
               throw err;
@@ -738,6 +790,40 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         const vaultDatabase = getVaultDatabase(context);
         vaultDatabase.transaction((tx) => {
           softDeleteReferenceByFilePath(tx, indexed.filePath);
+        });
+      },
+    },
+
+    // Arc operations (vault-stored, not DB-indexed)
+
+    arcs: {
+      async read(context: ProjectContext, aspectKey: string): Promise<Arc | null> {
+        const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
+        const file = Bun.file(arcPath);
+        const exists = await file.exists();
+        if (!exists) return null;
+        const raw = await file.text();
+        const parsed = parseYaml(raw);
+        const result = ArcSchema.safeParse(parsed);
+        if (!result.success) {
+          log.warn({ aspectKey, arcPath }, "arc file failed validation, treating as missing");
+          return null;
+        }
+        return result.data;
+      },
+
+      async write(context: ProjectContext, arc: Arc): Promise<void> {
+        const arcsDir = join(context.vaultPath, ".maskor", "config", "arcs");
+        await mkdir(arcsDir, { recursive: true });
+        const arcPath = join(arcsDir, `${arc.aspectKey}.yaml`);
+        const raw = stringifyYaml({ uuid: arc.uuid, aspectKey: arc.aspectKey, points: arc.points });
+        await Bun.write(arcPath, raw);
+      },
+
+      async delete(context: ProjectContext, aspectKey: string): Promise<void> {
+        const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
+        await unlink(arcPath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") throw error;
         });
       },
     },

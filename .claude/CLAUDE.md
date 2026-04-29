@@ -4,8 +4,6 @@ This is a greenfield project with no live users.
 
 KEEP IN MIND:
 
-- When asked to plan, write the plan to `@references/plans/` and use the format described in `@references/plans/_template.md`.
-- Plans are for review, not immediate execution. Do not implement until clearly instructed by the user.
 - Think critically. Push back on bad decisions. Flag unintended consequences.
 - Run relevant tests after changes.
 - Add suggestions to `@references/SUGGESTIONS.md` when encountering issues or surprises that are not immediately fixed.

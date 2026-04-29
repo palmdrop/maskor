@@ -30,22 +30,16 @@ Items can be added, removed, and reshaped as the plan evolves.
 Priority is decided at runtime, not encoded here. Rough ordering in the list signals relative importance.
 
 Scope creep warning: new items should serve the goal above. If they don't, they belong in a separate plan.
+
+Group tasks in numbered phases for larger plans and/or where implementation order is vital.
 -->
 
 ---
 
-## Phases (optional)
+## Notes
 
 <!--
-Use phases only when ordering genuinely matters — i.e. some tasks must complete before others can start.
-Phases are a loose guide, not a strict gate. As items are added mid-flight, re-evaluate whether phase
-boundaries still make sense.
-
-If used, restructure Tasks above into phase subsections:
-
-### Phase 1: Name
-- [ ] ...
-
-### Phase 2: Name
-- [ ] ...
+Always include the statement below at the bottom of the plan. Add additional notes if necessary.
 -->
+
+DO NOT IMPLEMENT until clearly stated by the developer.
