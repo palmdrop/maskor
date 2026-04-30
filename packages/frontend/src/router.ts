@@ -79,12 +79,18 @@ const noteEditorRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/notes/$noteId",
   component: NoteEditorPage,
+  validateSearch: (search: Record<string, unknown>): { from?: string } => ({
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
 });
 
 const referenceEditorRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/references/$referenceId",
   component: ReferenceEditorPage,
+  validateSearch: (search: Record<string, unknown>): { from?: string } => ({
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
 });
 
 const aspectEditorRoute = createRoute({

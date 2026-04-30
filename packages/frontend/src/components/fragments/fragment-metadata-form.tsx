@@ -85,6 +85,16 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       [aspectsEnvelope],
     );
 
+    const noteTitleToUuid = useMemo(() => {
+      const notes = notesEnvelope?.status === 200 ? notesEnvelope.data : [];
+      return new Map(notes.map((note) => [note.title, note.uuid]));
+    }, [notesEnvelope]);
+
+    const referenceNameToUuid = useMemo(() => {
+      const references = referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
+      return new Map(references.map((reference) => [reference.name, reference.uuid]));
+    }, [referencesEnvelope]);
+
     const { register, control, handleSubmit, reset, formState } = useForm<FragmentFormValues>({
       resolver: zodResolver(fragmentFormSchema),
       defaultValues: buildDefaultValues(fragment, aspects),
@@ -185,21 +195,37 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
         <div className="flex flex-col gap-2">
           <Label>Notes</Label>
           <div className="flex flex-wrap gap-1">
-            {noteFields.map((noteField, index) => (
-              <span
-                key={noteField.id}
-                className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm"
-              >
-                {noteField.value}
-                <button
-                  type="button"
-                  onClick={() => removeNote(index)}
-                  className="ml-1 text-muted-foreground hover:text-foreground"
+            {noteFields.map((noteField, index) => {
+              const noteUuid = noteTitleToUuid.get(noteField.value);
+              const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
+              const inner = (
+                <>
+                  {noteField.value}
+                  <button
+                    type="button"
+                    onClick={() => removeNote(index)}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                </>
+              );
+              return noteUuid ? (
+                <Link
+                  key={noteField.id}
+                  className={tagClass}
+                  to="/projects/$projectId/notes/$noteId"
+                  params={{ projectId, noteId: noteUuid }}
+                  search={{ from: fragment.uuid }}
                 >
-                  ×
-                </button>
-              </span>
-            ))}
+                  {inner}
+                </Link>
+              ) : (
+                <span key={noteField.id} className={tagClass}>
+                  {inner}
+                </span>
+              );
+            })}
           </div>
           <TagCombobox
             availableOptions={availableNotes}
@@ -211,23 +237,37 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
         <div className="flex flex-col gap-2">
           <Label>References</Label>
           <div className="flex flex-wrap gap-1">
-            {referenceFields.map((referenceField, index) => (
-              <Link
-                key={referenceField.id}
-                className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm"
-                to="/projects/$projectId/references/$referenceId"
-                params={{ projectId, referenceId: referenceField.id }} // NOTE: This is wrong, uses the form type... need to lookup the uuid of the actual reference, fetched at top of component
-              >
-                {referenceField.value}
-                <button
-                  type="button"
-                  onClick={() => removeReference(index)}
-                  className="ml-1 text-muted-foreground hover:text-foreground"
+            {referenceFields.map((referenceField, index) => {
+              const referenceUuid = referenceNameToUuid.get(referenceField.value);
+              const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
+              const inner = (
+                <>
+                  {referenceField.value}
+                  <button
+                    type="button"
+                    onClick={() => removeReference(index)}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                </>
+              );
+              return referenceUuid ? (
+                <Link
+                  key={referenceField.id}
+                  className={tagClass}
+                  to="/projects/$projectId/references/$referenceId"
+                  params={{ projectId, referenceId: referenceUuid }}
+                  search={{ from: fragment.uuid }}
                 >
-                  ×
-                </button>
-              </Link>
-            ))}
+                  {inner}
+                </Link>
+              ) : (
+                <span key={referenceField.id} className={tagClass}>
+                  {inner}
+                </span>
+              );
+            })}
           </div>
           <TagCombobox
             availableOptions={availableReferences}

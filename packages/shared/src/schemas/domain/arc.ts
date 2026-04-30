@@ -20,7 +20,6 @@ export const ArcSchema = z.object({
 export type Arc = z.infer<typeof ArcSchema>;
 
 export const ArcCreateSchema = z.object({
-  aspectKey: z.string().min(1),
   points: z.array(ArcPointSchema).min(2),
 });
 

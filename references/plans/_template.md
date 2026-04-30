@@ -2,6 +2,7 @@
 
 **Date**: DD-MM-YYYY
 **Status**: In progress <!-- Todo | In progress | Done -->
+**Specs**: `specifications/<relevant specification>.md` <!-- Add if there is a relevant specification for this plan -->
 **Closed**: DD-MM-YYYY <!-- Add when Status becomes Done -->
 
 ---

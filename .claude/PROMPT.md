@@ -1,13 +1,16 @@
 # Current focus
 
-Start implementing the project config page. Continue where you last left of. Implement the Phases in order. Stop and wait for developer input after a phase is done.
+Implementing the project config page. Continue where you last left of. Implement the Phases in order. Stop and wait for developer input after a phase is done.
+
+To plans are in focus at the moment. Focus on `project-config-vault-storage.md` first before proceeding with `project-config-page.md`.
 
 ## Active spec
 
 `@specifications/project-config.md`
 
-## Active plan
+## Active plan(s)
 
+`@references/plans/project-config-vault-storage`
 `@references/plans/project-config-page.md`
 
 ## Key context

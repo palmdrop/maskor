@@ -5,14 +5,12 @@ This is a greenfield project with no live users.
 KEEP IN MIND:
 
 - Think critically. Push back on bad decisions. Flag unintended consequences.
-- Run relevant tests after changes.
 - Add suggestions to `@references/SUGGESTIONS.md` when encountering issues or surprises that are not immediately fixed.
-- Be succinct. Short sentences, no fluff.
-- Keep `README.md` files up to date with developer-facing documentation.
-- Reference `@references/CODEBASE_SNAPSHOT.md` when you need to traverse the codebase. Use `Grep` to locate symbols, types and files without traversing the source tree. Regenerate with `bun run snapshot` after structural changes.
-- Reference `@specifications/` when developing features. All top-level concepts should be tracked by a spec. Is a spec.
-- Verify changes with `bun run typecheck` and format with `bun run format`.
+- Be succinct. Short sentences, no fluff. Skip filler words. Sentence fragments are fine.
+- Reference `@references/CODEBASE_SNAPSHOT.md` instead of traversing the codebase. `grep` to locate symbols, keywords and code snippets. Regenerate with `bun run snapshot`.
+- Verify changes with `bun run test`, `bun run typecheck` and `bun run format`.
 - Write tests when adding features or changing behavior.
-- Update references and specs if they are out of sync.
-- When writing code, try to match the coding style in the already existing code.
+- Make note of `specifications` that are out of sync with the code or direction.
+- When writing code, match the style of the already existing code.
 - When writing code, NEVER ABBREVIATE variable names (except iterators). `err` should be `error`. Fix whenever you encounter abbreviations.
+- DO NOT IMPLEMENT unless clearly stated. When asking about an issue, do not immediately fix. Discuss first. Implement when asked.

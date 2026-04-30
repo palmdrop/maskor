@@ -18,7 +18,6 @@ export const ArcSchema = DomainArcSchema.extend({
 }).openapi("Arc");
 
 export const ArcCreateSchema = DomainArcCreateSchema.extend({
-  aspectKey: z.string().min(1).openapi({ example: "tone" }),
   points: z.array(ArcPointSchema).min(2),
 }).openapi("ArcCreate");
 

@@ -18,8 +18,8 @@ export type ProseEditorHandle = {
 
 type Props = {
   content: string;
-  // TODO: wire to a real settings/config system
   vimMode: boolean;
+  rawMarkdownMode: boolean;
   onSave?: () => void;
   onChange?: () => void;
 };
@@ -43,7 +43,7 @@ const vimEditorTheme = EditorView.theme({
 });
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, onSave, onChange },
+  { content, vimMode, rawMarkdownMode, onSave, onChange },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
@@ -81,23 +81,39 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     ref,
     () => ({
       getContent: () => {
-        if (vimMode) {
+        if (vimMode || rawMarkdownMode) {
           return viewRef.current?.state.doc.toString() ?? content;
         }
         return (editor?.storage as unknown as MarkdownStorage)?.markdown.getMarkdown() ?? content;
       },
     }),
-    [vimMode, editor, content],
+    [vimMode, rawMarkdownMode, editor, content],
   );
 
   if (vimMode) {
     return (
       <CodeMirror
         value={content}
-        extensions={[markdown(), vim(), vimEditorTheme]}
+        extensions={[markdown(), vim(), vimEditorTheme, EditorView.lineWrapping]}
         onCreateEditor={(view) => {
           viewRef.current = view;
           Vim.defineEx("w", "", () => onSave?.());
+        }}
+        onChange={() => onChangeRef.current?.()}
+        basicSetup={{ lineNumbers: false, foldGutter: false }}
+        className="h-full"
+      />
+    );
+  }
+
+  // TODO: can this and the case above get merged? only diff is vim plugin and Vim.defineEx
+  if (rawMarkdownMode) {
+    return (
+      <CodeMirror
+        value={content}
+        extensions={[markdown(), vimEditorTheme]}
+        onCreateEditor={(view) => {
+          viewRef.current = view;
         }}
         onChange={() => onChangeRef.current?.()}
         basicSetup={{ lineNumbers: false, foldGutter: false }}

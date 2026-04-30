@@ -5,6 +5,10 @@ export type ProjectRecord = {
   userUUID: string;
   name: string;
   vaultPath: string;
+  editor: {
+    vimMode: boolean;
+    rawMarkdownMode: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

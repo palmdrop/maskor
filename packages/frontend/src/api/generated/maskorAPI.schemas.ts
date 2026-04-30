@@ -4,9 +4,15 @@
  * Maskor API
  * OpenAPI spec version: 0.1.0
  */
+export type ProjectEditor = {
+  vimMode: boolean;
+  rawMarkdownMode: boolean;
+};
+
 export interface Project {
   name: string;
   vaultPath: string;
+  editor: ProjectEditor;
   projectUUID: string;
   userUUID: string;
   createdAt: string;
@@ -26,24 +32,28 @@ export interface ProjectCreate {
   vaultPath: string;
 }
 
+export type ProjectUpdateEditor = {
+  vimMode?: boolean;
+  rawMarkdownMode?: boolean;
+};
+
 export interface ProjectUpdate {
   /** @minLength 1 */
   name?: string;
+  editor?: ProjectUpdateEditor;
 }
 
-export type IndexedFragmentProperties = {
-  [key: string]: {
-    weight: number;
-  };
-};
+export type IndexedFragmentProperties = {[key: string]: {
+  weight: number;
+}};
 
 export interface IndexedFragment {
   uuid: string;
   title: string;
   /**
-   * @minimum 0
-   * @maximum 1
-   */
+     * @minimum 0
+     * @maximum 1
+     */
   readyStatus: number;
   contentHash: string;
   notes: string[];
@@ -54,20 +64,18 @@ export interface IndexedFragment {
   updatedAt: string;
 }
 
-export type FragmentProperties = {
-  [key: string]: {
-    weight: number;
-  };
-};
+export type FragmentProperties = {[key: string]: {
+  weight: number;
+}};
 
 export interface Fragment {
   uuid: string;
   title: string;
   content: string;
   /**
-   * @minimum 0
-   * @maximum 1
-   */
+     * @minimum 0
+     * @maximum 1
+     */
   readyStatus: number;
   contentHash: string;
   updatedAt: string;
@@ -84,20 +92,18 @@ export interface FragmentCreate {
   content: string;
 }
 
-export type FragmentUpdateProperties = {
-  [key: string]: {
-    weight: number;
-  };
-};
+export type FragmentUpdateProperties = {[key: string]: {
+  weight: number;
+}};
 
 export interface FragmentUpdate {
   /** @minLength 1 */
   title?: string;
   content?: string;
   /**
-   * @minimum 0
-   * @maximum 1
-   */
+     * @minimum 0
+     * @maximum 1
+     */
   readyStatus?: number;
   notes?: string[];
   references?: string[];
@@ -138,14 +144,14 @@ export interface AspectUpdate {
 
 export interface ArcPoint {
   /**
-   * @minimum 0
-   * @maximum 1
-   */
+     * @minimum 0
+     * @maximum 1
+     */
   x: number;
   /**
-   * @minimum 0
-   * @maximum 1
-   */
+     * @minimum 0
+     * @maximum 1
+     */
   y: number;
 }
 
@@ -157,8 +163,6 @@ export interface Arc {
 }
 
 export interface ArcCreate {
-  /** @minLength 1 */
-  aspectKey: string;
   /** @minItems 2 */
   points: ArcPoint[];
 }
@@ -211,11 +215,11 @@ export interface ReferenceUpdate {
   content?: string;
 }
 
-export type RebuildStatsWarningsItemKind =
-  (typeof RebuildStatsWarningsItemKind)[keyof typeof RebuildStatsWarningsItemKind];
+export type RebuildStatsWarningsItemKind = typeof RebuildStatsWarningsItemKind[keyof typeof RebuildStatsWarningsItemKind];
+
 
 export const RebuildStatsWarningsItemKind = {
-  UNKNOWN_ASPECT_KEY: "UNKNOWN_ASPECT_KEY",
+  UNKNOWN_ASPECT_KEY: 'UNKNOWN_ASPECT_KEY',
 } as const;
 
 export type RebuildStatsWarningsItem = {
@@ -232,3 +236,4 @@ export interface RebuildStats {
   durationMs: number;
   warnings: RebuildStatsWarningsItem[];
 }
+

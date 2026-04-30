@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, Link } from "@tanstack/react-router";
+import { useParams, useSearch, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
@@ -13,16 +13,19 @@ import { Heading } from "../components/heading";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
 import { useDelayedPending } from "../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
   referenceId: string;
+  fragmentId?: string;
 };
 
-const ReferenceEditor = ({ projectId, referenceId }: Props) => {
+const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetReference(projectId, referenceId);
   const { mutate: updateReference, isPending: isUpdatePending } = useUpdateReference();
+  const editorConfig = useProjectEditorConfig(projectId);
 
   const proseEditorRef = useRef<ProseEditorHandle>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -55,15 +58,26 @@ const ReferenceEditor = ({ projectId, referenceId }: Props) => {
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link
-            to="/projects/$projectId/config"
-            params={{ projectId }}
-            search={{ tab: "references" }}
-          >
-            <Button variant="ghost" size="icon-sm">
-              <ArrowLeftIcon />
-            </Button>
-          </Link>
+          {fragmentId ? (
+            <Link
+              to="/projects/$projectId/fragments/$fragmentId"
+              params={{ projectId, fragmentId }}
+            >
+              <Button variant="ghost" size="icon-sm">
+                <ArrowLeftIcon />
+              </Button>
+            </Link>
+          ) : (
+            <Link
+              to="/projects/$projectId/config"
+              params={{ projectId }}
+              search={{ tab: "references" }}
+            >
+              <Button variant="ghost" size="icon-sm">
+                <ArrowLeftIcon />
+              </Button>
+            </Link>
+          )}
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Reference</span>
             <Heading level={1}>{reference.name}</Heading>
@@ -80,11 +94,11 @@ const ReferenceEditor = ({ projectId, referenceId }: Props) => {
       </div>
       <Separator />
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* TODO: wire vimMode to a real settings/config system */}
         <ProseEditor
           ref={proseEditorRef}
           content={reference.content}
-          vimMode={false}
+          vimMode={editorConfig.vimMode}
+          rawMarkdownMode={editorConfig.rawMarkdownMode}
           onSave={handleSave}
           onChange={() => setIsDirty(true)}
         />
@@ -97,9 +111,12 @@ export const ReferenceEditorPage = () => {
   const { projectId, referenceId } = useParams({
     from: "/projects/$projectId/references/$referenceId",
   });
+  const { from: fragmentId } = useSearch({
+    from: "/projects/$projectId/references/$referenceId",
+  });
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <ReferenceEditor projectId={projectId} referenceId={referenceId} />
+      <ReferenceEditor projectId={projectId} referenceId={referenceId} fragmentId={fragmentId} />
     </div>
   );
 };

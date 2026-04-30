@@ -4,7 +4,10 @@
  * Maskor API
  * OpenAPI spec version: 0.1.0
  */
-import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery
+} from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -17,671 +20,575 @@ import type {
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
-  UseQueryResult,
-} from "@tanstack/react-query";
+  UseQueryResult
+} from '@tanstack/react-query';
 
 import type {
   ErrorResponse,
   IndexedReference,
   Reference,
   ReferenceCreate,
-  ReferenceUpdate,
-} from "../maskorAPI.schemas";
+  ReferenceUpdate
+} from '../maskorAPI.schemas';
 
-import { customFetch } from "../../fetch";
+import { customFetch } from '../../fetch';
+
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
 
 /**
  * @summary List all indexed references for a project
  */
 export type ListReferencesResponse200 = {
-  data: IndexedReference[];
-  status: 200;
-};
+  data: IndexedReference[]
+  status: 200
+}
 
 export type ListReferencesResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
-export type ListReferencesResponseSuccess = ListReferencesResponse200 & {
+export type ListReferencesResponseSuccess = (ListReferencesResponse200) & {
   headers: Headers;
 };
-export type ListReferencesResponseError = ListReferencesResponse500 & {
+export type ListReferencesResponseError = (ListReferencesResponse500) & {
   headers: Headers;
 };
 
-export type ListReferencesResponse = ListReferencesResponseSuccess | ListReferencesResponseError;
+export type ListReferencesResponse = (ListReferencesResponseSuccess | ListReferencesResponseError)
 
-export const getListReferencesUrl = (projectId: string) => {
-  return `/projects/${projectId}/references`;
-};
+export const getListReferencesUrl = (projectId: string,) => {
 
-export const ListReferences = async (
-  projectId: string,
-  options?: RequestInit,
-): Promise<ListReferencesResponse> => {
-  return customFetch<ListReferencesResponse>(getListReferencesUrl(projectId), {
+
+
+
+  return `/projects/${projectId}/references`
+}
+
+export const ListReferences = async (projectId: string, options?: RequestInit): Promise<ListReferencesResponse> => {
+
+  return customFetch<ListReferencesResponse>(getListReferencesUrl(projectId),
+  {
     ...options,
-    method: "GET",
-  });
-};
+    method: 'GET'
 
-export const getListReferencesQueryKey = (projectId: string) => {
-  return [`/projects/${projectId}/references`] as const;
-};
 
-export const getListReferencesQueryOptions = <
-  TData = Awaited<ReturnType<typeof ListReferences>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
+  }
+);}
+
+
+
+
+
+export const getListReferencesQueryKey = (projectId: string,) => {
+    return [
+    `/projects/${projectId}/references`
+    ] as const;
+    }
+
+
+export const getListReferencesQueryOptions = <TData = Awaited<ReturnType<typeof ListReferences>>, TError = ErrorResponse>(projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListReferencesQueryKey(projectId);
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof ListReferences>>> = ({ signal }) =>
-    ListReferences(projectId, { signal, ...requestOptions });
+  const queryKey =  queryOptions?.queryKey ?? getListReferencesQueryKey(projectId);
 
-  return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof ListReferences>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
 
-export type ListReferencesQueryResult = NonNullable<Awaited<ReturnType<typeof ListReferences>>>;
-export type ListReferencesQueryError = ErrorResponse;
 
-export function useListReferences<
-  TData = Awaited<ReturnType<typeof ListReferences>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>> &
-      Pick<
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ListReferences>>> = ({ signal }) => ListReferences(projectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListReferencesQueryResult = NonNullable<Awaited<ReturnType<typeof ListReferences>>>
+export type ListReferencesQueryError = ErrorResponse
+
+
+export function useListReferences<TData = Awaited<ReturnType<typeof ListReferences>>, TError = ErrorResponse>(
+ projectId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof ListReferences>>,
           TError,
           Awaited<ReturnType<typeof ListReferences>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListReferences<
-  TData = Awaited<ReturnType<typeof ListReferences>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>> &
-      Pick<
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListReferences<TData = Awaited<ReturnType<typeof ListReferences>>, TError = ErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof ListReferences>>,
           TError,
           Awaited<ReturnType<typeof ListReferences>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListReferences<
-  TData = Awaited<ReturnType<typeof ListReferences>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListReferences<TData = Awaited<ReturnType<typeof ListReferences>>, TError = ErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List all indexed references for a project
  */
 
-export function useListReferences<
-  TData = Awaited<ReturnType<typeof ListReferences>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListReferencesQueryOptions(projectId, options);
+export function useListReferences<TData = Awaited<ReturnType<typeof ListReferences>>, TError = ErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ListReferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
+  const queryOptions = getListReferencesQueryOptions(projectId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
 
 /**
  * @summary Create a new reference in the vault
  */
 export type CreateReferenceResponse201 = {
-  data: Reference;
-  status: 201;
-};
+  data: Reference
+  status: 201
+}
 
 export type CreateReferenceResponse400 = {
-  data: ErrorResponse;
-  status: 400;
-};
+  data: ErrorResponse
+  status: 400
+}
 
 export type CreateReferenceResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
-export type CreateReferenceResponseSuccess = CreateReferenceResponse201 & {
+export type CreateReferenceResponseSuccess = (CreateReferenceResponse201) & {
   headers: Headers;
 };
-export type CreateReferenceResponseError = (
-  | CreateReferenceResponse400
-  | CreateReferenceResponse500
-) & {
+export type CreateReferenceResponseError = (CreateReferenceResponse400 | CreateReferenceResponse500) & {
   headers: Headers;
 };
 
-export type CreateReferenceResponse = CreateReferenceResponseSuccess | CreateReferenceResponseError;
+export type CreateReferenceResponse = (CreateReferenceResponseSuccess | CreateReferenceResponseError)
 
-export const getCreateReferenceUrl = (projectId: string) => {
-  return `/projects/${projectId}/references`;
-};
+export const getCreateReferenceUrl = (projectId: string,) => {
 
-export const CreateReference = async (
-  projectId: string,
-  referenceCreate: ReferenceCreate,
-  options?: RequestInit,
-): Promise<CreateReferenceResponse> => {
-  return customFetch<CreateReferenceResponse>(getCreateReferenceUrl(projectId), {
+
+
+
+  return `/projects/${projectId}/references`
+}
+
+export const CreateReference = async (projectId: string,
+    referenceCreate: ReferenceCreate, options?: RequestInit): Promise<CreateReferenceResponse> => {
+
+  return customFetch<CreateReferenceResponse>(getCreateReferenceUrl(projectId),
+  {
     ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(referenceCreate),
-  });
-};
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      referenceCreate,)
+  }
+);}
 
-export const getCreateReferenceMutationOptions = <
-  TError = ErrorResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof CreateReference>>,
-    TError,
-    { projectId: string; data: ReferenceCreate },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof CreateReference>>,
-  TError,
-  { projectId: string; data: ReferenceCreate },
-  TContext
-> => {
-  const mutationKey = ["createReference"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
 
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof CreateReference>>,
-    { projectId: string; data: ReferenceCreate }
-  > = (props) => {
-    const { projectId, data } = props ?? {};
 
-    return CreateReference(projectId, data, requestOptions);
-  };
 
-  return { mutationFn, ...mutationOptions };
-};
+export const getCreateReferenceMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof CreateReference>>, TError,{projectId: string;data: ReferenceCreate}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof CreateReference>>, TError,{projectId: string;data: ReferenceCreate}, TContext> => {
 
-export type CreateReferenceMutationResult = NonNullable<
-  Awaited<ReturnType<typeof CreateReference>>
->;
-export type CreateReferenceMutationBody = ReferenceCreate;
-export type CreateReferenceMutationError = ErrorResponse;
+const mutationKey = ['createReference'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
-/**
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof CreateReference>>, {projectId: string;data: ReferenceCreate}> = (props) => {
+          const {projectId,data} = props ?? {};
+
+          return  CreateReference(projectId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReferenceMutationResult = NonNullable<Awaited<ReturnType<typeof CreateReference>>>
+    export type CreateReferenceMutationBody = ReferenceCreate
+    export type CreateReferenceMutationError = ErrorResponse
+
+    /**
  * @summary Create a new reference in the vault
  */
-export const useCreateReference = <TError = ErrorResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof CreateReference>>,
-      TError,
-      { projectId: string; data: ReferenceCreate },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof CreateReference>>,
-  TError,
-  { projectId: string; data: ReferenceCreate },
-  TContext
-> => {
-  return useMutation(getCreateReferenceMutationOptions(options), queryClient);
-};
-/**
+export const useCreateReference = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof CreateReference>>, TError,{projectId: string;data: ReferenceCreate}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof CreateReference>>,
+        TError,
+        {projectId: string;data: ReferenceCreate},
+        TContext
+      > => {
+      return useMutation(getCreateReferenceMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Get a single reference by UUID
  */
 export type GetReferenceResponse200 = {
-  data: Reference;
-  status: 200;
-};
+  data: Reference
+  status: 200
+}
 
 export type GetReferenceResponse404 = {
-  data: ErrorResponse;
-  status: 404;
-};
+  data: ErrorResponse
+  status: 404
+}
 
 export type GetReferenceResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
 export type GetReferenceResponse503 = {
-  data: ErrorResponse;
-  status: 503;
-};
+  data: ErrorResponse
+  status: 503
+}
 
-export type GetReferenceResponseSuccess = GetReferenceResponse200 & {
+export type GetReferenceResponseSuccess = (GetReferenceResponse200) & {
   headers: Headers;
 };
-export type GetReferenceResponseError = (
-  | GetReferenceResponse404
-  | GetReferenceResponse500
-  | GetReferenceResponse503
-) & {
+export type GetReferenceResponseError = (GetReferenceResponse404 | GetReferenceResponse500 | GetReferenceResponse503) & {
   headers: Headers;
 };
 
-export type GetReferenceResponse = GetReferenceResponseSuccess | GetReferenceResponseError;
+export type GetReferenceResponse = (GetReferenceResponseSuccess | GetReferenceResponseError)
 
-export const getGetReferenceUrl = (projectId: string, referenceId: string) => {
-  return `/projects/${projectId}/references/${referenceId}`;
-};
+export const getGetReferenceUrl = (projectId: string,
+    referenceId: string,) => {
 
-export const GetReference = async (
-  projectId: string,
-  referenceId: string,
-  options?: RequestInit,
-): Promise<GetReferenceResponse> => {
-  return customFetch<GetReferenceResponse>(getGetReferenceUrl(projectId, referenceId), {
+
+
+
+  return `/projects/${projectId}/references/${referenceId}`
+}
+
+export const GetReference = async (projectId: string,
+    referenceId: string, options?: RequestInit): Promise<GetReferenceResponse> => {
+
+  return customFetch<GetReferenceResponse>(getGetReferenceUrl(projectId,referenceId),
+  {
     ...options,
-    method: "GET",
-  });
-};
+    method: 'GET'
 
-export const getGetReferenceQueryKey = (projectId: string, referenceId: string) => {
-  return [`/projects/${projectId}/references/${referenceId}`] as const;
-};
 
-export const getGetReferenceQueryOptions = <
-  TData = Awaited<ReturnType<typeof GetReference>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  referenceId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
+  }
+);}
+
+
+
+
+
+export const getGetReferenceQueryKey = (projectId: string,
+    referenceId: string,) => {
+    return [
+    `/projects/${projectId}/references/${referenceId}`
+    ] as const;
+    }
+
+
+export const getGetReferenceQueryOptions = <TData = Awaited<ReturnType<typeof GetReference>>, TError = ErrorResponse>(projectId: string,
+    referenceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetReferenceQueryKey(projectId, referenceId);
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof GetReference>>> = ({ signal }) =>
-    GetReference(projectId, referenceId, { signal, ...requestOptions });
+  const queryKey =  queryOptions?.queryKey ?? getGetReferenceQueryKey(projectId,referenceId);
 
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!(projectId && referenceId),
-    ...queryOptions,
-  } as UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-};
 
-export type GetReferenceQueryResult = NonNullable<Awaited<ReturnType<typeof GetReference>>>;
-export type GetReferenceQueryError = ErrorResponse;
 
-export function useGetReference<
-  TData = Awaited<ReturnType<typeof GetReference>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  referenceId: string,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>> &
-      Pick<
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof GetReference>>> = ({ signal }) => GetReference(projectId,referenceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(projectId && referenceId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetReferenceQueryResult = NonNullable<Awaited<ReturnType<typeof GetReference>>>
+export type GetReferenceQueryError = ErrorResponse
+
+
+export function useGetReference<TData = Awaited<ReturnType<typeof GetReference>>, TError = ErrorResponse>(
+ projectId: string,
+    referenceId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof GetReference>>,
           TError,
           Awaited<ReturnType<typeof GetReference>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetReference<
-  TData = Awaited<ReturnType<typeof GetReference>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  referenceId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>> &
-      Pick<
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReference<TData = Awaited<ReturnType<typeof GetReference>>, TError = ErrorResponse>(
+ projectId: string,
+    referenceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof GetReference>>,
           TError,
           Awaited<ReturnType<typeof GetReference>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetReference<
-  TData = Awaited<ReturnType<typeof GetReference>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  referenceId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReference<TData = Awaited<ReturnType<typeof GetReference>>, TError = ErrorResponse>(
+ projectId: string,
+    referenceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Get a single reference by UUID
  */
 
-export function useGetReference<
-  TData = Awaited<ReturnType<typeof GetReference>>,
-  TError = ErrorResponse,
->(
-  projectId: string,
-  referenceId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getGetReferenceQueryOptions(projectId, referenceId, options);
+export function useGetReference<TData = Awaited<ReturnType<typeof GetReference>>, TError = ErrorResponse>(
+ projectId: string,
+    referenceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof GetReference>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
+  const queryOptions = getGetReferenceQueryOptions(projectId,referenceId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
 
 /**
  * @summary Update a reference in the vault
  */
 export type UpdateReferenceResponse200 = {
-  data: Reference;
-  status: 200;
-};
+  data: Reference
+  status: 200
+}
 
 export type UpdateReferenceResponse400 = {
-  data: ErrorResponse;
-  status: 400;
-};
+  data: ErrorResponse
+  status: 400
+}
 
 export type UpdateReferenceResponse404 = {
-  data: ErrorResponse;
-  status: 404;
-};
+  data: ErrorResponse
+  status: 404
+}
 
 export type UpdateReferenceResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
 export type UpdateReferenceResponse503 = {
-  data: ErrorResponse;
-  status: 503;
-};
+  data: ErrorResponse
+  status: 503
+}
 
-export type UpdateReferenceResponseSuccess = UpdateReferenceResponse200 & {
+export type UpdateReferenceResponseSuccess = (UpdateReferenceResponse200) & {
   headers: Headers;
 };
-export type UpdateReferenceResponseError = (
-  | UpdateReferenceResponse400
-  | UpdateReferenceResponse404
-  | UpdateReferenceResponse500
-  | UpdateReferenceResponse503
-) & {
+export type UpdateReferenceResponseError = (UpdateReferenceResponse400 | UpdateReferenceResponse404 | UpdateReferenceResponse500 | UpdateReferenceResponse503) & {
   headers: Headers;
 };
 
-export type UpdateReferenceResponse = UpdateReferenceResponseSuccess | UpdateReferenceResponseError;
+export type UpdateReferenceResponse = (UpdateReferenceResponseSuccess | UpdateReferenceResponseError)
 
-export const getUpdateReferenceUrl = (projectId: string, referenceId: string) => {
-  return `/projects/${projectId}/references/${referenceId}`;
-};
+export const getUpdateReferenceUrl = (projectId: string,
+    referenceId: string,) => {
 
-export const UpdateReference = async (
-  projectId: string,
-  referenceId: string,
-  referenceUpdate: ReferenceUpdate,
-  options?: RequestInit,
-): Promise<UpdateReferenceResponse> => {
-  return customFetch<UpdateReferenceResponse>(getUpdateReferenceUrl(projectId, referenceId), {
+
+
+
+  return `/projects/${projectId}/references/${referenceId}`
+}
+
+export const UpdateReference = async (projectId: string,
+    referenceId: string,
+    referenceUpdate: ReferenceUpdate, options?: RequestInit): Promise<UpdateReferenceResponse> => {
+
+  return customFetch<UpdateReferenceResponse>(getUpdateReferenceUrl(projectId,referenceId),
+  {
     ...options,
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(referenceUpdate),
-  });
-};
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      referenceUpdate,)
+  }
+);}
 
-export const getUpdateReferenceMutationOptions = <
-  TError = ErrorResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof UpdateReference>>,
-    TError,
-    { projectId: string; referenceId: string; data: ReferenceUpdate },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof UpdateReference>>,
-  TError,
-  { projectId: string; referenceId: string; data: ReferenceUpdate },
-  TContext
-> => {
-  const mutationKey = ["updateReference"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
 
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof UpdateReference>>,
-    { projectId: string; referenceId: string; data: ReferenceUpdate }
-  > = (props) => {
-    const { projectId, referenceId, data } = props ?? {};
 
-    return UpdateReference(projectId, referenceId, data, requestOptions);
-  };
 
-  return { mutationFn, ...mutationOptions };
-};
+export const getUpdateReferenceMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof UpdateReference>>, TError,{projectId: string;referenceId: string;data: ReferenceUpdate}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof UpdateReference>>, TError,{projectId: string;referenceId: string;data: ReferenceUpdate}, TContext> => {
 
-export type UpdateReferenceMutationResult = NonNullable<
-  Awaited<ReturnType<typeof UpdateReference>>
->;
-export type UpdateReferenceMutationBody = ReferenceUpdate;
-export type UpdateReferenceMutationError = ErrorResponse;
+const mutationKey = ['updateReference'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
-/**
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof UpdateReference>>, {projectId: string;referenceId: string;data: ReferenceUpdate}> = (props) => {
+          const {projectId,referenceId,data} = props ?? {};
+
+          return  UpdateReference(projectId,referenceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReferenceMutationResult = NonNullable<Awaited<ReturnType<typeof UpdateReference>>>
+    export type UpdateReferenceMutationBody = ReferenceUpdate
+    export type UpdateReferenceMutationError = ErrorResponse
+
+    /**
  * @summary Update a reference in the vault
  */
-export const useUpdateReference = <TError = ErrorResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof UpdateReference>>,
-      TError,
-      { projectId: string; referenceId: string; data: ReferenceUpdate },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof UpdateReference>>,
-  TError,
-  { projectId: string; referenceId: string; data: ReferenceUpdate },
-  TContext
-> => {
-  return useMutation(getUpdateReferenceMutationOptions(options), queryClient);
-};
-/**
+export const useUpdateReference = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof UpdateReference>>, TError,{projectId: string;referenceId: string;data: ReferenceUpdate}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof UpdateReference>>,
+        TError,
+        {projectId: string;referenceId: string;data: ReferenceUpdate},
+        TContext
+      > => {
+      return useMutation(getUpdateReferenceMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Delete a reference from the vault
  */
 export type DeleteReferenceResponse204 = {
-  data: void;
-  status: 204;
-};
+  data: void
+  status: 204
+}
 
 export type DeleteReferenceResponse404 = {
-  data: ErrorResponse;
-  status: 404;
-};
+  data: ErrorResponse
+  status: 404
+}
 
 export type DeleteReferenceResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
 export type DeleteReferenceResponse503 = {
-  data: ErrorResponse;
-  status: 503;
-};
+  data: ErrorResponse
+  status: 503
+}
 
-export type DeleteReferenceResponseSuccess = DeleteReferenceResponse204 & {
+export type DeleteReferenceResponseSuccess = (DeleteReferenceResponse204) & {
   headers: Headers;
 };
-export type DeleteReferenceResponseError = (
-  | DeleteReferenceResponse404
-  | DeleteReferenceResponse500
-  | DeleteReferenceResponse503
-) & {
+export type DeleteReferenceResponseError = (DeleteReferenceResponse404 | DeleteReferenceResponse500 | DeleteReferenceResponse503) & {
   headers: Headers;
 };
 
-export type DeleteReferenceResponse = DeleteReferenceResponseSuccess | DeleteReferenceResponseError;
+export type DeleteReferenceResponse = (DeleteReferenceResponseSuccess | DeleteReferenceResponseError)
 
-export const getDeleteReferenceUrl = (projectId: string, referenceId: string) => {
-  return `/projects/${projectId}/references/${referenceId}`;
-};
+export const getDeleteReferenceUrl = (projectId: string,
+    referenceId: string,) => {
 
-export const DeleteReference = async (
-  projectId: string,
-  referenceId: string,
-  options?: RequestInit,
-): Promise<DeleteReferenceResponse> => {
-  return customFetch<DeleteReferenceResponse>(getDeleteReferenceUrl(projectId, referenceId), {
+
+
+
+  return `/projects/${projectId}/references/${referenceId}`
+}
+
+export const DeleteReference = async (projectId: string,
+    referenceId: string, options?: RequestInit): Promise<DeleteReferenceResponse> => {
+
+  return customFetch<DeleteReferenceResponse>(getDeleteReferenceUrl(projectId,referenceId),
+  {
     ...options,
-    method: "DELETE",
-  });
-};
+    method: 'DELETE'
 
-export const getDeleteReferenceMutationOptions = <
-  TError = ErrorResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof DeleteReference>>,
-    TError,
-    { projectId: string; referenceId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof DeleteReference>>,
-  TError,
-  { projectId: string; referenceId: string },
-  TContext
-> => {
-  const mutationKey = ["deleteReference"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
 
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof DeleteReference>>,
-    { projectId: string; referenceId: string }
-  > = (props) => {
-    const { projectId, referenceId } = props ?? {};
+  }
+);}
 
-    return DeleteReference(projectId, referenceId, requestOptions);
-  };
 
-  return { mutationFn, ...mutationOptions };
-};
 
-export type DeleteReferenceMutationResult = NonNullable<
-  Awaited<ReturnType<typeof DeleteReference>>
->;
 
-export type DeleteReferenceMutationError = ErrorResponse;
+export const getDeleteReferenceMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof DeleteReference>>, TError,{projectId: string;referenceId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof DeleteReference>>, TError,{projectId: string;referenceId: string}, TContext> => {
 
-/**
+const mutationKey = ['deleteReference'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof DeleteReference>>, {projectId: string;referenceId: string}> = (props) => {
+          const {projectId,referenceId} = props ?? {};
+
+          return  DeleteReference(projectId,referenceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReferenceMutationResult = NonNullable<Awaited<ReturnType<typeof DeleteReference>>>
+
+    export type DeleteReferenceMutationError = ErrorResponse
+
+    /**
  * @summary Delete a reference from the vault
  */
-export const useDeleteReference = <TError = ErrorResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof DeleteReference>>,
-      TError,
-      { projectId: string; referenceId: string },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof DeleteReference>>,
-  TError,
-  { projectId: string; referenceId: string },
-  TContext
-> => {
-  return useMutation(getDeleteReferenceMutationOptions(options), queryClient);
-};
+export const useDeleteReference = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof DeleteReference>>, TError,{projectId: string;referenceId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof DeleteReference>>,
+        TError,
+        {projectId: string;referenceId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteReferenceMutationOptions(options), queryClient);
+    }

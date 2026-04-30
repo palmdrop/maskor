@@ -150,7 +150,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       log.info({ projectUUID }, "project removed");
     },
 
-    async updateProject(projectUUID: string, patch: { name?: string }): Promise<ProjectRecord> {
+    async updateProject(
+      projectUUID: string,
+      patch: { name?: string; editor?: { vimMode?: boolean; rawMarkdownMode?: boolean } },
+    ): Promise<ProjectRecord> {
       const record = await registry.updateProject(projectUUID, patch);
       log.info({ projectUUID, patch }, "project updated");
       return record;

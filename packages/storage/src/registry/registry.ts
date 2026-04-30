@@ -6,27 +6,70 @@ import { projectsTable } from "../db/registry/schema";
 import { ProjectNotFoundError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
-const toProjectRecord = (row: typeof projectsTable.$inferSelect): ProjectRecord => {
-  const { uuid, userUuid, ...rest } = row;
-  return {
-    ...rest,
-    projectUUID: uuid,
-    userUUID: userUuid,
+type ProjectManifest = {
+  projectUUID: string;
+  name: string;
+  registeredAt: string;
+  config?: {
+    editor?: {
+      vimMode?: boolean;
+      rawMarkdownMode?: boolean;
+    };
   };
+};
+
+const manifestPath = (vaultPath: string) => join(vaultPath, ".maskor", "project.json");
+
+const readVaultManifest = async (vaultPath: string): Promise<ProjectManifest | null> => {
+  const file = Bun.file(manifestPath(vaultPath));
+  if (!(await file.exists())) return null;
+  return file.json() as Promise<ProjectManifest>;
 };
 
 const writeVaultManifest = async (
   vaultPath: string,
-  projectUUID: string,
-  name: string,
+  patch: Partial<ProjectManifest> & { config?: Partial<ProjectManifest["config"]> },
 ): Promise<void> => {
   const maskorDirectory = join(vaultPath, ".maskor");
   await mkdir(maskorDirectory, { recursive: true });
-  await Bun.write(
-    join(maskorDirectory, "project.json"),
-    JSON.stringify({ projectUUID, name, registeredAt: new Date().toISOString() }, null, 2),
-  );
+
+  const existing = (await readVaultManifest(vaultPath)) ?? {
+    projectUUID: "",
+    name: "",
+    registeredAt: new Date().toISOString(),
+  };
+
+  const updated: ProjectManifest = {
+    ...existing,
+    ...patch,
+    config: {
+      ...existing.config,
+      ...patch.config,
+      editor: {
+        ...existing.config?.editor,
+        ...patch.config?.editor,
+      },
+    },
+  };
+
+  await Bun.write(manifestPath(vaultPath), JSON.stringify(updated, null, 2));
 };
+
+const toProjectRecord = (
+  row: typeof projectsTable.$inferSelect,
+  manifest: ProjectManifest | null,
+): ProjectRecord => ({
+  projectUUID: row.uuid,
+  userUUID: row.userUuid,
+  name: manifest?.name ?? "",
+  vaultPath: row.vaultPath,
+  editor: {
+    vimMode: manifest?.config?.editor?.vimMode ?? false,
+    rawMarkdownMode: manifest?.config?.editor?.rawMarkdownMode ?? false,
+  },
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+});
 
 // TODO: manifest-based DB recovery is not yet implemented — if the registry DB is lost,
 // the .maskor/project.json manifests cannot currently be used to re-register projects.
@@ -44,14 +87,21 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
 
       // Write manifest first: if DB insert fails after a successful manifest write, the worst case
       // is a stale manifest file — far less harmful than a ghost DB record with no manifest.
-      await writeVaultManifest(vaultPath, projectUUID, name);
+      // Only write default editor config when no config already exists — preserves config if the
+      // vault is being re-registered after a DB loss, but still initialises defaults on first use.
+      const existingManifest = await readVaultManifest(vaultPath);
+      await writeVaultManifest(vaultPath, {
+        projectUUID,
+        name,
+        registeredAt: now.toISOString(),
+        ...(existingManifest?.config ? {} : { config: { editor: { vimMode: false, rawMarkdownMode: false } } }),
+      });
 
       const [row] = await database
         .insert(projectsTable)
         .values({
           uuid: projectUUID,
           userUuid: LOCAL_USER_UUID,
-          name,
           vaultPath,
           createdAt: now,
           updatedAt: now,
@@ -62,12 +112,18 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         throw new Error(`Failed to register project "${name}" at "${vaultPath}"`);
       }
 
-      return toProjectRecord(row);
+      const manifest = await readVaultManifest(vaultPath);
+      return toProjectRecord(row, manifest);
     },
 
     async listProjects(): Promise<ProjectRecord[]> {
       const rows = await database.select().from(projectsTable);
-      return rows.map(toProjectRecord);
+      return Promise.all(
+        rows.map(async (row) => {
+          const manifest = await readVaultManifest(row.vaultPath);
+          return toProjectRecord(row, manifest);
+        }),
+      );
     },
 
     async findByUUID(projectUUID: string): Promise<ProjectRecord | null> {
@@ -77,33 +133,42 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         .where(eq(projectsTable.uuid, projectUUID))
         .limit(1);
 
-      return rows[0] ? toProjectRecord(rows[0]) : null;
+      if (!rows[0]) return null;
+
+      const manifest = await readVaultManifest(rows[0].vaultPath);
+      return toProjectRecord(rows[0], manifest);
     },
 
-    async updateProject(projectUUID: string, patch: { name?: string }): Promise<ProjectRecord> {
-      const updates: Partial<typeof projectsTable.$inferInsert> = {
-        updatedAt: new Date(),
-      };
-
-      if (patch.name !== undefined) {
-        updates.name = patch.name;
-      }
-
-      const [row] = await database
-        .update(projectsTable)
-        .set(updates)
+    async updateProject(
+      projectUUID: string,
+      patch: { name?: string; editor?: { vimMode?: boolean; rawMarkdownMode?: boolean } },
+    ): Promise<ProjectRecord> {
+      const rows = await database
+        .select()
+        .from(projectsTable)
         .where(eq(projectsTable.uuid, projectUUID))
-        .returning();
+        .limit(1);
 
-      if (!row) {
+      if (!rows[0]) {
         throw new ProjectNotFoundError(projectUUID);
       }
 
-      if (patch.name !== undefined) {
-        await writeVaultManifest(row.vaultPath, row.uuid, row.name);
-      }
+      const row = rows[0];
 
-      return toProjectRecord(row);
+      const manifestPatch: Partial<ProjectManifest> = {};
+      if (patch.name !== undefined) manifestPatch.name = patch.name;
+      if (patch.editor !== undefined) manifestPatch.config = { editor: patch.editor };
+
+      await writeVaultManifest(row.vaultPath, manifestPatch);
+
+      const [updatedRow] = await database
+        .update(projectsTable)
+        .set({ updatedAt: new Date() })
+        .where(eq(projectsTable.uuid, projectUUID))
+        .returning();
+
+      const manifest = await readVaultManifest(row.vaultPath);
+      return toProjectRecord(updatedRow ?? row, manifest);
     },
 
     async removeProject(projectUUID: string): Promise<void> {

@@ -9,6 +9,8 @@
 
 The ProjectConfigPage is fully implemented: project name is editable, aspects can be created/renamed/deleted, notes and references can be created/deleted, and arcs can be authored per aspect via a curve editor.
 
+Related plan(s): `specifications/project-config-vault-storage.md`
+
 ---
 
 ## Tasks
@@ -93,46 +95,8 @@ Rename is isolated to the storage and API layers. The frontend does not need to 
 
 Add important configuration options to project.
 
-- [ ] Add config for using vimMode in editors
-- [ ] Add config for using "raw markdown mode", i.e not tiptaps rich editing (vimMode enables this by default)
-
----
-
-## Phases
-
-### Phase 1: Layout
-
-- [x] Tabbed layout
-- [x] Load project data
-
-### Phase 2: General tab
-
-- [x] `PATCH /projects/:id` route + storage
-- [x] Project name inline-edit
-- [x] Vault path read-only display
-
-### Phase 3: Notes + References tabs (parallel)
-
-- [x] Notes: list, create, delete
-- [x] References: list, create, delete
-- [x] Shared `AttachableEntityPanel` component
-
-### Phase 4: Aspects tab
-
-- [x] Aspects: list, create, delete (key displayed as read-only)
-
-### Phase 5: Arc editor
-
-- [x] Arc vault methods
-- [x] Arc API routes
-- [x] Arc editor component (table + SVG preview)
-- [x] Save/remove arc flow
-
-### Phase 6: Aspect rename (backend only, deferrable)
-
-- [ ] `PATCH /aspects/:id` route + rename storage logic + orphaned-weight warnings
-- [ ] Regenerate orval client
-- [ ] Add rename UI to Aspects tab once route exists
+- [x] Add config for using vimMode in editors
+- [x] Add config for using "raw markdown mode", i.e not tiptaps rich editing (vimMode enables this by default)
 
 ---
 

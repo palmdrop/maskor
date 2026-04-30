@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, Link } from "@tanstack/react-router";
+import { useParams, useSearch, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
@@ -13,16 +13,19 @@ import { Heading } from "../components/heading";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
 import { useDelayedPending } from "../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
   noteId: string;
+  fragmentId?: string;
 };
 
-const NoteEditor = ({ projectId, noteId }: Props) => {
+const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
   const { mutate: updateNote, isPending: isUpdatePending } = useUpdateNote();
+  const editorConfig = useProjectEditorConfig(projectId);
 
   const proseEditorRef = useRef<ProseEditorHandle>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -53,11 +56,22 @@ const NoteEditor = ({ projectId, noteId }: Props) => {
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "notes" }}>
-            <Button variant="ghost" size="icon-sm">
-              <ArrowLeftIcon />
-            </Button>
-          </Link>
+          {fragmentId ? (
+            <Link
+              to="/projects/$projectId/fragments/$fragmentId"
+              params={{ projectId, fragmentId }}
+            >
+              <Button variant="ghost" size="icon-sm">
+                <ArrowLeftIcon />
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "notes" }}>
+              <Button variant="ghost" size="icon-sm">
+                <ArrowLeftIcon />
+              </Button>
+            </Link>
+          )}
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Note</span>
             <Heading level={1}>{note.title}</Heading>
@@ -74,11 +88,11 @@ const NoteEditor = ({ projectId, noteId }: Props) => {
       </div>
       <Separator />
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* TODO: wire vimMode to a real settings/config system */}
         <ProseEditor
           ref={proseEditorRef}
           content={note.content}
-          vimMode={false}
+          vimMode={editorConfig.vimMode}
+          rawMarkdownMode={editorConfig.rawMarkdownMode}
           onSave={handleSave}
           onChange={() => setIsDirty(true)}
         />
@@ -89,9 +103,10 @@ const NoteEditor = ({ projectId, noteId }: Props) => {
 
 export const NoteEditorPage = () => {
   const { projectId, noteId } = useParams({ from: "/projects/$projectId/notes/$noteId" });
+  const { from: fragmentId } = useSearch({ from: "/projects/$projectId/notes/$noteId" });
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <NoteEditor projectId={projectId} noteId={noteId} />
+      <NoteEditor projectId={projectId} noteId={noteId} fragmentId={fragmentId} />
     </div>
   );
 };

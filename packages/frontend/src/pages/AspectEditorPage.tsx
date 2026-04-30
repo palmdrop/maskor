@@ -13,6 +13,7 @@ import { Heading } from "../components/heading";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
 import { useDelayedPending } from "../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
@@ -23,6 +24,7 @@ const AspectEditor = ({ projectId, aspectId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
   const { mutate: updateAspect, isPending: isUpdatePending } = useUpdateAspect();
+  const editorConfig = useProjectEditorConfig(projectId);
 
   const proseEditorRef = useRef<ProseEditorHandle>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -74,11 +76,11 @@ const AspectEditor = ({ projectId, aspectId }: Props) => {
       </div>
       <Separator />
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* TODO: wire vimMode to a real settings/config system */}
         <ProseEditor
           ref={proseEditorRef}
           content={aspect.description ?? ""}
-          vimMode={false}
+          vimMode={editorConfig.vimMode}
+          rawMarkdownMode={editorConfig.rawMarkdownMode}
           onSave={handleSave}
           onChange={() => setIsDirty(true)}
         />

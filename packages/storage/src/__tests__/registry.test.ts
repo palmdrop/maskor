@@ -40,7 +40,7 @@ describe("registry.registerProject", () => {
     expect(record.updatedAt).toBeInstanceOf(Date);
   });
 
-  it("writes .maskor/project.json manifest into the vault", async () => {
+  it("writes .maskor/project.json with UUID, name, and default editor config", async () => {
     const registry = makeRegistry();
     const record = await registry.registerProject("My Project", vaultDir);
 
@@ -50,6 +50,17 @@ describe("registry.registerProject", () => {
     const manifest = await manifestFile.json();
     expect(manifest.projectUUID).toBe(record.projectUUID);
     expect(manifest.name).toBe("My Project");
+    expect(manifest.registeredAt).toBeTruthy();
+    expect(manifest.config.editor.vimMode).toBe(false);
+    expect(manifest.config.editor.rawMarkdownMode).toBe(false);
+  });
+
+  it("returns editor defaults from the manifest", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir);
+
+    expect(record.editor.vimMode).toBe(false);
+    expect(record.editor.rawMarkdownMode).toBe(false);
   });
 
   it("throws when vault path does not exist", async () => {
@@ -71,7 +82,7 @@ describe("registry.listProjects", () => {
     expect(projects).toEqual([]);
   });
 
-  it("returns all registered projects", async () => {
+  it("returns all registered projects with names from vault manifests", async () => {
     const registry = makeRegistry();
     await registry.registerProject("Project A", vaultDir);
 
@@ -87,7 +98,7 @@ describe("registry.listProjects", () => {
 });
 
 describe("registry.findByUUID", () => {
-  it("returns the project record for a known UUID", async () => {
+  it("returns the project record for a known UUID with data from vault manifest", async () => {
     const registry = makeRegistry();
     const registered = await registry.registerProject("My Project", vaultDir);
     const found = await registry.findByUUID(registered.projectUUID);
@@ -95,12 +106,54 @@ describe("registry.findByUUID", () => {
     expect(found).not.toBeNull();
     expect(found?.projectUUID).toBe(registered.projectUUID);
     expect(found?.name).toBe("My Project");
+    expect(found?.editor.vimMode).toBe(false);
+    expect(found?.editor.rawMarkdownMode).toBe(false);
   });
 
   it("returns null for an unknown UUID", async () => {
     const registry = makeRegistry();
     const result = await registry.findByUUID("00000000-0000-0000-0000-000000000000");
     expect(result).toBeNull();
+  });
+});
+
+describe("registry.updateProject", () => {
+  it("updates name in the manifest and preserves editor config", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir);
+    const updated = await registry.updateProject(record.projectUUID, { name: "Renamed" });
+
+    expect(updated.name).toBe("Renamed");
+    expect(updated.editor.vimMode).toBe(false);
+    expect(updated.editor.rawMarkdownMode).toBe(false);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.name).toBe("Renamed");
+    expect(manifest.config.editor.vimMode).toBe(false);
+  });
+
+  it("updates editor config in the manifest and preserves name", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir);
+    const updated = await registry.updateProject(record.projectUUID, {
+      editor: { vimMode: true },
+    });
+
+    expect(updated.name).toBe("My Project");
+    expect(updated.editor.vimMode).toBe(true);
+    expect(updated.editor.rawMarkdownMode).toBe(false);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.name).toBe("My Project");
+    expect(manifest.config.editor.vimMode).toBe(true);
+  });
+
+  it("throws ProjectNotFoundError for unknown UUID", async () => {
+    const registry = makeRegistry();
+    const { ProjectNotFoundError } = await import("../registry/errors");
+    await expect(
+      registry.updateProject("00000000-0000-0000-0000-000000000000", { name: "x" }),
+    ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
 });
 
@@ -122,5 +175,24 @@ describe("registry.removeProject", () => {
 
     const found = await registry.findByUUID(record.projectUUID);
     expect(found).toBeNull();
+  });
+});
+
+describe("registry re-registration (vault portability)", () => {
+  it("preserves existing manifest data when vault is re-registered", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("Original Name", vaultDir);
+
+    await registry.updateProject(record.projectUUID, { editor: { vimMode: true } });
+    await registry.removeProject(record.projectUUID);
+
+    const registry2 = makeRegistry();
+    const reregistered = await registry2.registerProject("Original Name", vaultDir);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.name).toBe("Original Name");
+    expect(manifest.config.editor.vimMode).toBe(true);
+    expect(reregistered.name).toBe("Original Name");
+    expect(reregistered.editor.vimMode).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useDelayedPending } from "../../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../../hooks/useProjectEditorConfig";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetFragment,
@@ -24,6 +25,7 @@ type Props = {
 export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
+  const editorConfig = useProjectEditorConfig(projectId);
   const { mutate: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
@@ -158,11 +160,11 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
           />
         </aside>
         <main className="flex-1 min-h-0">
-          {/* TODO: wire vimMode to a real settings/config system */}
           <ProseEditor
             ref={proseEditorRef}
             content={fragment.content}
-            vimMode={false}
+            vimMode={editorConfig.vimMode}
+            rawMarkdownMode={editorConfig.rawMarkdownMode}
             onSave={handleSave}
             onChange={markProseEdited}
           />
