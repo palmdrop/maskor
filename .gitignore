@@ -38,5 +38,5 @@ storybook-static
 # Maskor
 .maskor
 references/CODEBASE_SNAPSHOT.md
-
 packages/test-fixtures/user-vault
+generated
