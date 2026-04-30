@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, useSearch, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
@@ -7,13 +7,13 @@ import {
   useUpdateNote,
   getGetNoteQueryKey,
   getListNotesQueryKey,
-} from "../api/generated/notes/notes";
-import { ProseEditor, type ProseEditorHandle } from "../components/fragments/prose-editor";
-import { Heading } from "../components/heading";
-import { Button } from "../components/ui/button";
-import { Separator } from "../components/ui/separator";
-import { useDelayedPending } from "../hooks/useDelayedPending";
-import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
+} from "../../../api/generated/notes/notes";
+import { ProseEditor, type ProseEditorHandle } from "../../../components/fragments/prose-editor";
+import { Heading } from "../../../components/heading";
+import { Button } from "../../../components/ui/button";
+import { Separator } from "../../../components/ui/separator";
+import { useDelayedPending } from "../../../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../../../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
@@ -21,7 +21,7 @@ type Props = {
   fragmentId?: string;
 };
 
-const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
+export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
   const { mutate: updateNote, isPending: isUpdatePending } = useUpdateNote();
@@ -97,16 +97,6 @@ const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
           onChange={() => setIsDirty(true)}
         />
       </div>
-    </div>
-  );
-};
-
-export const NoteEditorPage = () => {
-  const { projectId, noteId } = useParams({ from: "/projects/$projectId/notes/$noteId" });
-  const { from: fragmentId } = useSearch({ from: "/projects/$projectId/notes/$noteId" });
-  return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <NoteEditor projectId={projectId} noteId={noteId} fragmentId={fragmentId} />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
@@ -7,20 +7,20 @@ import {
   useUpdateAspect,
   getGetAspectQueryKey,
   getListAspectsQueryKey,
-} from "../api/generated/aspects/aspects";
-import { ProseEditor, type ProseEditorHandle } from "../components/fragments/prose-editor";
-import { Heading } from "../components/heading";
-import { Button } from "../components/ui/button";
-import { Separator } from "../components/ui/separator";
-import { useDelayedPending } from "../hooks/useDelayedPending";
-import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
+} from "../../../api/generated/aspects/aspects";
+import { ProseEditor, type ProseEditorHandle } from "../../../components/fragments/prose-editor";
+import { Heading } from "../../../components/heading";
+import { Button } from "../../../components/ui/button";
+import { Separator } from "../../../components/ui/separator";
+import { useDelayedPending } from "../../../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../../../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
   aspectId: string;
 };
 
-const AspectEditor = ({ projectId, aspectId }: Props) => {
+export const AspectEditor = ({ projectId, aspectId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
   const { mutate: updateAspect, isPending: isUpdatePending } = useUpdateAspect();
@@ -85,15 +85,6 @@ const AspectEditor = ({ projectId, aspectId }: Props) => {
           onChange={() => setIsDirty(true)}
         />
       </div>
-    </div>
-  );
-};
-
-export const AspectEditorPage = () => {
-  const { projectId, aspectId } = useParams({ from: "/projects/$projectId/aspects/$aspectId" });
-  return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <AspectEditor projectId={projectId} aspectId={aspectId} />
     </div>
   );
 };

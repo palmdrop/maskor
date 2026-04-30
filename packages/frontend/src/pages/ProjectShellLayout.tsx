@@ -26,7 +26,6 @@ export const ProjectShellLayout = () => {
         <Link
           to="/projects/$projectId/fragments"
           params={{ projectId }}
-          activeOptions={{ includeChildren: true }}
           className="rounded px-3 py-1.5 text-sm hover:bg-muted [&.active]:bg-accent [&.active]:text-accent-foreground"
         >
           Fragments
@@ -42,6 +41,9 @@ export const ProjectShellLayout = () => {
           to="/projects/$projectId/config"
           params={{ projectId }}
           className="rounded px-3 py-1.5 text-sm hover:bg-muted [&.active]:bg-accent [&.active]:text-accent-foreground"
+          search={{
+            tab: "general",
+          }}
         >
           Config
         </Link>

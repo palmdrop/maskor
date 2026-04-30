@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, useSearch, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import {
@@ -7,13 +7,13 @@ import {
   useUpdateReference,
   getGetReferenceQueryKey,
   getListReferencesQueryKey,
-} from "../api/generated/references/references";
-import { ProseEditor, type ProseEditorHandle } from "../components/fragments/prose-editor";
-import { Heading } from "../components/heading";
-import { Button } from "../components/ui/button";
-import { Separator } from "../components/ui/separator";
-import { useDelayedPending } from "../hooks/useDelayedPending";
-import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
+} from "../../../api/generated/references/references";
+import { ProseEditor, type ProseEditorHandle } from "../../../components/fragments/prose-editor";
+import { Heading } from "../../../components/heading";
+import { Button } from "../../../components/ui/button";
+import { Separator } from "../../../components/ui/separator";
+import { useDelayedPending } from "../../../hooks/useDelayedPending";
+import { useProjectEditorConfig } from "../../../hooks/useProjectEditorConfig";
 
 type Props = {
   projectId: string;
@@ -21,7 +21,7 @@ type Props = {
   fragmentId?: string;
 };
 
-const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) => {
+export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetReference(projectId, referenceId);
   const { mutate: updateReference, isPending: isUpdatePending } = useUpdateReference();
@@ -103,20 +103,6 @@ const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) => {
           onChange={() => setIsDirty(true)}
         />
       </div>
-    </div>
-  );
-};
-
-export const ReferenceEditorPage = () => {
-  const { projectId, referenceId } = useParams({
-    from: "/projects/$projectId/references/$referenceId",
-  });
-  const { from: fragmentId } = useSearch({
-    from: "/projects/$projectId/references/$referenceId",
-  });
-  return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden p-6">
-      <ReferenceEditor projectId={projectId} referenceId={referenceId} fragmentId={fragmentId} />
     </div>
   );
 };
