@@ -6,10 +6,10 @@ import {
 } from "@maskor/shared";
 
 // List response — index layer fields
-export const IndexedReferenceSchema = DomainReferenceSchema.pick({ uuid: true, name: true })
+export const IndexedReferenceSchema = DomainReferenceSchema.pick({ uuid: true, key: true })
   .extend({
     uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
-    name: z.string().openapi({ example: "The Old Man and the Sea" }),
+    key: z.string().openapi({ example: "The Old Man and the Sea" }),
     filePath: z.string(),
   })
   .openapi("IndexedReference");
@@ -17,7 +17,7 @@ export const IndexedReferenceSchema = DomainReferenceSchema.pick({ uuid: true, n
 // Single-get response — vault type with content
 export const ReferenceSchema = DomainReferenceSchema.extend({
   uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
-  name: z.string().openapi({ example: "The Old Man and the Sea" }),
+  key: z.string().openapi({ example: "The Old Man and the Sea" }),
 }).openapi("Reference");
 
 export const ReferenceUUIDParamSchema = z.object({
@@ -26,11 +26,11 @@ export const ReferenceUUIDParamSchema = z.object({
 });
 
 export const ReferenceCreateSchema = DomainReferenceCreateSchema.extend({
-  name: z.string().min(1).openapi({ example: "The Old Man and the Sea" }),
+  key: z.string().min(1).openapi({ example: "The Old Man and the Sea" }),
   content: z.string().openapi({ example: "Hemingway. Santiago. Marlin." }),
 }).openapi("ReferenceCreate");
 
 export const ReferenceUpdateSchema = DomainReferenceUpdateSchema.extend({
-  name: z.string().min(1).optional().openapi({ example: "The Old Man and the Sea" }),
+  key: z.string().min(1).optional().openapi({ example: "The Old Man and the Sea" }),
   content: z.string().optional().openapi({ example: "Hemingway. Santiago. Marlin." }),
 }).openapi("ReferenceUpdate");

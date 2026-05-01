@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import type { Note } from "@maskor/shared";
+import { validateEntityKey } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -169,17 +170,19 @@ notesRouter.openapi(getNoteRoute, async (ctx) => {
 });
 
 notesRouter.openapi(createNoteRoute, async (ctx) => {
+  const { key: rawKey, content } = ctx.req.valid("json");
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { title, content } = ctx.req.valid("json");
-
-    const note: Note = {
-      uuid: randomUUID(),
-      title,
-      content,
-    };
-
+    const note: Note = { uuid: randomUUID(), key, content };
     await storageService.notes.write(projectContext, note);
     return ctx.json(note, 201);
   } catch (error) {
@@ -188,11 +191,21 @@ notesRouter.openapi(createNoteRoute, async (ctx) => {
 });
 
 notesRouter.openapi(updateNoteRoute, async (ctx) => {
+  const { noteId } = ctx.req.valid("param");
+  const rawPatch = ctx.req.valid("json");
+  let patch = rawPatch;
+  if (rawPatch.key !== undefined) {
+    try {
+      patch = { ...rawPatch, key: validateEntityKey(rawPatch.key) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid key";
+      return ctx.json({ error: "INVALID_KEY", message }, 400);
+    }
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { noteId } = ctx.req.valid("param");
-    const patch = ctx.req.valid("json");
     const updated = await storageService.notes.update(projectContext, noteId, patch);
     return ctx.json(updated, 200);
   } catch (error) {

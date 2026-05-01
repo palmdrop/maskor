@@ -3,7 +3,7 @@ import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 
-type EntityShape = { uuid: string; title?: string };
+type EntityShape = { uuid: string; key?: string };
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -24,7 +24,7 @@ describe("GET /projects/:projectId/notes", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as EntityShape[];
     expect(Array.isArray(body)).toBe(true);
-    expect(body.some((note) => note.title === "bridge observation")).toBe(true);
+    expect(body.some((note) => note.key === "bridge observation")).toBe(true);
   });
 });
 
@@ -55,19 +55,19 @@ describe("POST /projects/:projectId/notes", () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "A test note", content: "Some content here." }),
+      body: JSON.stringify({ key: "A test note", content: "Some content here." }),
     });
     expect(response.status).toBe(201);
-    const body = (await response.json()) as EntityShape & { title: string };
+    const body = (await response.json()) as EntityShape & { key: string };
     expect(body.uuid).toBeDefined();
-    expect(body.title).toBe("A test note");
+    expect(body.key).toBe("A test note");
   });
 
-  it("returns 400 when title is missing", async () => {
+  it("returns 400 when key is missing", async () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: "No title here." }),
+      body: JSON.stringify({ content: "No key here." }),
     });
     expect(response.status).toBe(400);
   });
@@ -78,7 +78,7 @@ describe("DELETE /projects/:projectId/notes/:noteId", () => {
     const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Note to delete", content: "Gone soon." }),
+      body: JSON.stringify({ key: "Note to delete", content: "Gone soon." }),
     });
     const created = (await createResponse.json()) as EntityShape;
 

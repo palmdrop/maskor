@@ -40,13 +40,13 @@ export type IndexedAspect = {
 
 export type IndexedNote = {
   uuid: string;
-  title: string;
+  key: string;
   filePath: string;
 };
 
 export type IndexedReference = {
   uuid: string;
-  name: string;
+  key: string;
   filePath: string;
 };
 
@@ -67,13 +67,13 @@ export interface VaultIndexer {
 
   notes: {
     findAll(): Promise<IndexedNote[]>;
-    findByTitle(title: string): Promise<IndexedNote | null>;
+    findByKey(key: string): Promise<IndexedNote | null>;
     findByUUID(uuid: string): Promise<IndexedNote | null>;
   };
 
   references: {
     findAll(): Promise<IndexedReference[]>;
-    findByName(name: string): Promise<IndexedReference | null>;
+    findByKey(key: string): Promise<IndexedReference | null>;
     findByUUID(uuid: string): Promise<IndexedReference | null>;
   };
 }

@@ -3,7 +3,7 @@ import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 
-type EntityShape = { uuid: string; name?: string };
+type EntityShape = { uuid: string; key?: string };
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -24,7 +24,7 @@ describe("GET /projects/:projectId/references", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as EntityShape[];
     expect(Array.isArray(body)).toBe(true);
-    expect(body.some((reference) => reference.name === "city research")).toBe(true);
+    expect(body.some((reference) => reference.key === "city research")).toBe(true);
   });
 });
 
@@ -57,19 +57,19 @@ describe("POST /projects/:projectId/references", () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/references`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Blood Meridian", content: "McCarthy. The Judge. Violence." }),
+      body: JSON.stringify({ key: "Blood Meridian", content: "McCarthy. The Judge. Violence." }),
     });
     expect(response.status).toBe(201);
-    const body = (await response.json()) as EntityShape & { name: string };
+    const body = (await response.json()) as EntityShape & { key: string };
     expect(body.uuid).toBeDefined();
-    expect(body.name).toBe("Blood Meridian");
+    expect(body.key).toBe("Blood Meridian");
   });
 
-  it("returns 400 when name is missing", async () => {
+  it("returns 400 when key is missing", async () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/references`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: "No name here." }),
+      body: JSON.stringify({ content: "No key here." }),
     });
     expect(response.status).toBe(400);
   });
@@ -82,7 +82,7 @@ describe("DELETE /projects/:projectId/references/:referenceId", () => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Reference to delete", content: "Gone soon." }),
+        body: JSON.stringify({ key: "Reference to delete", content: "Gone soon." }),
       },
     );
     const created = (await createResponse.json()) as EntityShape;

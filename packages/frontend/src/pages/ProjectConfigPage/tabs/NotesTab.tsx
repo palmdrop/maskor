@@ -17,13 +17,13 @@ export const NotesTab = ({ projectId }: { projectId: string }) => {
     envelope?.status === 200
       ? envelope.data.map((n) => ({
           uuid: n.uuid,
-          label: n.title,
+          label: n.key,
           editTo: `/projects/${projectId}/notes/${n.uuid}`,
         }))
       : [];
 
-  const handleCreate = async (title: string, content: string) => {
-    await createNote.mutateAsync({ projectId, data: { title, content } });
+  const handleCreate = async (key: string, content: string) => {
+    await createNote.mutateAsync({ projectId, data: { key, content } });
     queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
   };
 
@@ -36,7 +36,7 @@ export const NotesTab = ({ projectId }: { projectId: string }) => {
     <AttachableEntityPanel
       items={items}
       isLoading={isLoading}
-      labelField="Title"
+      labelField="Key"
       dialogTitle="New note"
       onConfirmCreate={handleCreate}
       onDelete={handleDelete}

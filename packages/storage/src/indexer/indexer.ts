@@ -294,27 +294,23 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .all()
           .map((row) => ({
             uuid: row.uuid,
-            title: row.title,
+            key: row.key,
             filePath: row.filePath,
           }));
       },
 
-      async findByTitle(title: string) {
-        const row = vaultDatabase
-          .select()
-          .from(notesTable)
-          .where(eq(notesTable.title, title))
-          .get();
+      async findByKey(key: string) {
+        const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.key, key)).get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid, title: row.title, filePath: row.filePath };
+        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
 
       async findByUUID(uuid: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid, title: row.title, filePath: row.filePath };
+        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
     },
 
@@ -327,20 +323,20 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .all()
           .map((row) => ({
             uuid: row.uuid,
-            name: row.name,
+            key: row.key,
             filePath: row.filePath,
           }));
       },
 
-      async findByName(name: string) {
+      async findByKey(key: string) {
         const row = vaultDatabase
           .select()
           .from(referencesTable)
-          .where(eq(referencesTable.name, name))
+          .where(eq(referencesTable.key, key))
           .get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid, name: row.name, filePath: row.filePath };
+        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
 
       async findByUUID(uuid: string) {
@@ -351,7 +347,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row || row.deletedAt !== null) return null;
-        return { uuid: row.uuid, name: row.name, filePath: row.filePath };
+        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
     },
   };

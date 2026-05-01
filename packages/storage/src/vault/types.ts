@@ -15,7 +15,8 @@ export type VaultErrorCode =
   | "ENTITY_NOT_FOUND"
   | "PIECE_CONSUME_FAILED"
   | "STALE_INDEX"
-  | "FRAGMENT_NOT_DISCARDED";
+  | "FRAGMENT_NOT_DISCARDED"
+  | "KEY_CONFLICT";
 
 export type VaultErrorContext = {
   filePath?: string;

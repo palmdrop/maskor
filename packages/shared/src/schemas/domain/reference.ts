@@ -2,21 +2,21 @@ import { z } from "zod";
 
 export const ReferenceSchema = z.object({
   uuid: z.uuid(),
-  name: z.string(),
+  key: z.string(),
   content: z.string(),
 });
 
 export type Reference = z.infer<typeof ReferenceSchema>;
 
 export const ReferenceCreateSchema = z.object({
-  name: z.string().min(1),
+  key: z.string().min(1),
   content: z.string(),
 });
 
 export type ReferenceCreate = z.infer<typeof ReferenceCreateSchema>;
 
 export const ReferenceUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
+  key: z.string().min(1).optional(),
   content: z.string().optional(),
 });
 

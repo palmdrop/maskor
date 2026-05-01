@@ -66,8 +66,8 @@ export const upsertAspect = (
     .run();
 
   tx.delete(aspectNotesTable).where(eq(aspectNotesTable.aspectUuid, aspect.uuid)).run();
-  for (const noteTitle of aspect.notes) {
-    tx.insert(aspectNotesTable).values({ aspectUuid: aspect.uuid, noteTitle }).run();
+  for (const noteKey of aspect.notes) {
+    tx.insert(aspectNotesTable).values({ aspectUuid: aspect.uuid, noteKey }).run();
   }
 };
 
@@ -83,7 +83,7 @@ export const upsertNote = (
   tx.insert(notesTable)
     .values({
       uuid: note.uuid,
-      title: note.title,
+      key: note.key,
       contentHash,
       filePath,
       deletedAt: null,
@@ -91,7 +91,7 @@ export const upsertNote = (
     })
     .onConflictDoUpdate({
       target: notesTable.uuid,
-      set: { title: note.title, contentHash, filePath, deletedAt: null, syncedAt },
+      set: { key: note.key, contentHash, filePath, deletedAt: null, syncedAt },
     })
     .run();
 };
@@ -108,7 +108,7 @@ export const upsertReference = (
   tx.insert(referencesTable)
     .values({
       uuid: reference.uuid,
-      name: reference.name,
+      key: reference.key,
       contentHash,
       filePath,
       deletedAt: null,
@@ -116,7 +116,7 @@ export const upsertReference = (
     })
     .onConflictDoUpdate({
       target: referencesTable.uuid,
-      set: { name: reference.name, contentHash, filePath, deletedAt: null, syncedAt },
+      set: { key: reference.key, contentHash, filePath, deletedAt: null, syncedAt },
     })
     .run();
 };
@@ -164,15 +164,15 @@ export const upsertFragment = (
     .run();
 
   tx.delete(fragmentNotesTable).where(eq(fragmentNotesTable.fragmentUuid, fragment.uuid)).run();
-  for (const noteTitle of fragment.notes) {
-    tx.insert(fragmentNotesTable).values({ fragmentUuid: fragment.uuid, noteTitle }).run();
+  for (const noteKey of fragment.notes) {
+    tx.insert(fragmentNotesTable).values({ fragmentUuid: fragment.uuid, noteKey }).run();
   }
 
   tx.delete(fragmentReferencesTable)
     .where(eq(fragmentReferencesTable.fragmentUuid, fragment.uuid))
     .run();
-  for (const referenceName of fragment.references) {
-    tx.insert(fragmentReferencesTable).values({ fragmentUuid: fragment.uuid, referenceName }).run();
+  for (const referenceKey of fragment.references) {
+    tx.insert(fragmentReferencesTable).values({ fragmentUuid: fragment.uuid, referenceKey }).run();
   }
 
   tx.delete(fragmentPropertiesTable)

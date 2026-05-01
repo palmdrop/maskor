@@ -217,7 +217,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(aspect: Aspect) {
         const { frontmatter, body } = aspectMapper.toFile(aspect);
-        const absoluteFilePath = toAbsoluteAspect(`${slugify(aspect.key)}.md`);
+        const absoluteFilePath = toAbsoluteAspect(`${aspect.key}.md`);
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "aspect written");
@@ -270,7 +270,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(note: Note) {
         const { frontmatter, body } = noteMapper.toFile(note);
-        const absoluteFilePath = toAbsoluteNote(`${slugify(note.title)}.md`);
+        const absoluteFilePath = toAbsoluteNote(`${note.key}.md`);
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "note written");
@@ -321,7 +321,7 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(reference: Reference) {
         const { frontmatter, body } = referenceMapper.toFile(reference);
-        const absoluteFilePath = toAbsoluteReference(`${slugify(reference.name)}.md`);
+        const absoluteFilePath = toAbsoluteReference(`${reference.key}.md`);
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "reference written");

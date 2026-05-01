@@ -80,7 +80,7 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
           )}
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Reference</span>
-            <Heading level={1}>{reference.name}</Heading>
+            <Heading level={1}>{reference.key}</Heading>
           </div>
         </div>
         <Button

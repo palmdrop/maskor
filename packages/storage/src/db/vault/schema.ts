@@ -27,9 +27,9 @@ export const fragmentNotesTable = sqliteTable(
     fragmentUuid: text("fragment_uuid")
       .notNull()
       .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
-    noteTitle: text("note_title").notNull(),
+    noteKey: text("note_key").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.fragmentUuid, table.noteTitle] })],
+  (table) => [primaryKey({ columns: [table.fragmentUuid, table.noteKey] })],
 );
 
 export const fragmentReferencesTable = sqliteTable(
@@ -38,9 +38,9 @@ export const fragmentReferencesTable = sqliteTable(
     fragmentUuid: text("fragment_uuid")
       .notNull()
       .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
-    referenceName: text("reference_name").notNull(),
+    referenceKey: text("reference_key").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.fragmentUuid, table.referenceName] })],
+  (table) => [primaryKey({ columns: [table.fragmentUuid, table.referenceKey] })],
 );
 
 export const fragmentPropertiesTable = sqliteTable(
@@ -75,16 +75,16 @@ export const aspectNotesTable = sqliteTable(
     aspectUuid: text("aspect_uuid")
       .notNull()
       .references(() => aspectsTable.uuid, { onDelete: "cascade" }),
-    noteTitle: text("note_title").notNull(),
+    noteKey: text("note_key").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.aspectUuid, table.noteTitle] })],
+  (table) => [primaryKey({ columns: [table.aspectUuid, table.noteKey] })],
 );
 
 export const notesTable = sqliteTable(
   "notes",
   {
     uuid: text("uuid").primaryKey(),
-    title: text("title").notNull().unique(),
+    key: text("key").notNull().unique(),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(),
     deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
@@ -97,7 +97,7 @@ export const referencesTable = sqliteTable(
   "project_references",
   {
     uuid: text("uuid").primaryKey(),
-    name: text("name").notNull().unique(),
+    key: text("key").notNull().unique(),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(),
     deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active

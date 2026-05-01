@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import type { Aspect, Arc } from "@maskor/shared";
+import { validateEntityKey } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -170,19 +171,19 @@ aspectsRouter.openapi(getAspectRoute, async (ctx) => {
 });
 
 aspectsRouter.openapi(createAspectRoute, async (ctx) => {
+  const { key: rawKey, category, description, notes } = ctx.req.valid("json");
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { key, category, description, notes } = ctx.req.valid("json");
-
-    const aspect: Aspect = {
-      uuid: randomUUID(),
-      key,
-      category,
-      description,
-      notes,
-    };
-
+    const aspect: Aspect = { uuid: randomUUID(), key, category, description, notes };
     await storageService.aspects.write(projectContext, aspect);
     return ctx.json(aspect, 201);
   } catch (error) {
@@ -204,12 +205,21 @@ aspectsRouter.openapi(deleteAspectRoute, async (ctx) => {
 });
 
 aspectsRouter.openapi(updateAspectRoute, async (ctx) => {
+  const { aspectId } = ctx.req.valid("param");
+  const rawPatch = ctx.req.valid("json");
+  let patch = rawPatch;
+  if (rawPatch.key !== undefined) {
+    try {
+      patch = { ...rawPatch, key: validateEntityKey(rawPatch.key) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid key";
+      return ctx.json({ error: "INVALID_KEY", message }, 400);
+    }
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { aspectId } = ctx.req.valid("param");
-    const patch = ctx.req.valid("json");
-
     const updated = await storageService.aspects.update(projectContext, aspectId, patch);
     return ctx.json(updated, 200);
   } catch (error) {

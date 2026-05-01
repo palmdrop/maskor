@@ -201,21 +201,21 @@ describe("notes.findAll", () => {
   });
 });
 
-describe("notes.findByTitle", () => {
-  it("returns the correct note by title", async () => {
+describe("notes.findByKey", () => {
+  it("returns the correct note by key", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const note = await indexer.notes.findByTitle("bridge observation");
+    const note = await indexer.notes.findByKey("bridge observation");
     expect(note).not.toBeNull();
     expect(note?.filePath).toContain("bridge-observation.md");
   });
 
-  it("returns null for unknown title", async () => {
+  it("returns null for unknown key", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    expect(await indexer.notes.findByTitle("nonexistent")).toBeNull();
+    expect(await indexer.notes.findByKey("nonexistent")).toBeNull();
   });
 });
 
@@ -228,16 +228,16 @@ describe("references.findAll", () => {
 
     const refs = await indexer.references.findAll();
     expect(refs.length).toBe(1);
-    expect(refs[0]?.name).toBe("city research");
+    expect(refs[0]?.key).toBe("city research");
   });
 });
 
-describe("references.findByName", () => {
-  it("returns the correct reference by name", async () => {
+describe("references.findByKey", () => {
+  it("returns the correct reference by key", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const cityResearch = await indexer.references.findByName("city research");
+    const cityResearch = await indexer.references.findByKey("city research");
     expect(cityResearch).not.toBeNull();
     expect(cityResearch?.filePath).toContain("city-research.md");
   });

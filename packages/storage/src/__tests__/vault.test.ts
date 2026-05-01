@@ -139,7 +139,7 @@ describe("vault.notes.readAll", () => {
   it("reads note content", async () => {
     const vault = createVault(config);
     const notes = await vault.notes.readAll();
-    const bridgeNote = notes.find((note) => note.title === "bridge observation");
+    const bridgeNote = notes.find((note) => note.key === "bridge observation");
     expect(bridgeNote?.content).toBeTruthy();
   });
 });
@@ -151,7 +151,7 @@ describe("vault.references.readAll", () => {
     const vault = createVault(config);
     const references = await vault.references.readAll();
     expect(references.length).toBe(1);
-    expect(references[0]?.name).toBe("city research");
+    expect(references[0]?.key).toBe("city research");
   });
 });
 

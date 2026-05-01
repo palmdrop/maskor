@@ -24,6 +24,10 @@ export const throwStorageError = (error: unknown): never => {
         throw new HTTPException(404, {
           res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
         });
+      case "KEY_CONFLICT":
+        throw new HTTPException(409, {
+          res: errorResponse({ error: "CONFLICT", message: error.message }, 409),
+        });
       case "STALE_INDEX":
         throw new HTTPException(503, {
           res: errorResponse(

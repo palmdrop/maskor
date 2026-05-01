@@ -412,10 +412,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, aspect: Aspect): Promise<void> {
+        const allAspects = await getVaultIndexer(context).aspects.findAll();
+        const lowerKey = aspect.key.toLowerCase();
+        if (allAspects.some((a) => a.uuid !== aspect.uuid && a.key.toLowerCase() === lowerKey)) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `An aspect with key "${aspect.key}" already exists`,
+            { reason: "key_conflict" },
+          );
+        }
+
         await getVault(context).aspects.write(aspect);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${slugify(aspect.key)}.md`;
+        const entityRelativePath = `${aspect.key}.md`;
         const absolutePath = join(context.vaultPath, "aspects", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
@@ -540,10 +550,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, note: Note): Promise<void> {
+        const allNotes = await getVaultIndexer(context).notes.findAll();
+        const lowerKey = note.key.toLowerCase();
+        if (allNotes.some((n) => n.uuid !== note.uuid && n.key.toLowerCase() === lowerKey)) {
+          throw new VaultError("KEY_CONFLICT", `A note with key "${note.key}" already exists`, {
+            reason: "key_conflict",
+          });
+        }
+
         await getVault(context).notes.write(note);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${slugify(note.title)}.md`;
+        const entityRelativePath = `${note.key}.md`;
         const absolutePath = join(context.vaultPath, "notes", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
@@ -568,13 +586,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const current = await getVault(context).notes.read(indexed.filePath);
           const updated: Note = {
             ...current,
-            ...(patch.title !== undefined && { title: patch.title }),
+            ...(patch.key !== undefined && { key: patch.key }),
             ...(patch.content !== undefined && { content: patch.content }),
           };
 
           await getVault(context).notes.write(updated);
 
-          const newFilePath = `${slugify(updated.title)}.md`;
+          const newFilePath = `${updated.key}.md`;
 
           if (indexed.filePath !== newFilePath) {
             const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
@@ -683,10 +701,22 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, reference: Reference): Promise<void> {
+        const allReferences = await getVaultIndexer(context).references.findAll();
+        const lowerKey = reference.key.toLowerCase();
+        if (
+          allReferences.some((r) => r.uuid !== reference.uuid && r.key.toLowerCase() === lowerKey)
+        ) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `A reference with key "${reference.key}" already exists`,
+            { reason: "key_conflict" },
+          );
+        }
+
         await getVault(context).references.write(reference);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${slugify(reference.name)}.md`;
+        const entityRelativePath = `${reference.key}.md`;
         const absolutePath = join(context.vaultPath, "references", entityRelativePath);
         const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
@@ -715,13 +745,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const current = await getVault(context).references.read(indexed.filePath);
           const updated: Reference = {
             ...current,
-            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.key !== undefined && { key: patch.key }),
             ...(patch.content !== undefined && { content: patch.content }),
           };
 
           await getVault(context).references.write(updated);
 
-          const newFilePath = `${slugify(updated.name)}.md`;
+          const newFilePath = `${updated.key}.md`;
 
           if (indexed.filePath !== newFilePath) {
             const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);

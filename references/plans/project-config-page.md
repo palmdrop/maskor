@@ -81,15 +81,131 @@ Arcs are vault-stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. They a
 - [x] If no arc exists for an aspect, show "Define arc" button to initialize with two default points `({x: 0, y: 0.5}, {x: 1, y: 0.5})`
 - [x] If arc exists, show "Remove arc" button with confirmation
 
-### Phase 6: Aspect rename (backend only, deferrable)
+### Phase 5b: Key schema unification
 
-Rename is isolated to the storage and API layers. The frontend does not need to be touched until this is done, and Phases 1–5 can ship without it.
+Unify `note.title` and `reference.name` to `key`, matching aspect terminology. Drop `slugify` for all three entity types — the key is used directly as the vault filename stem. This makes the stored key, the vault filename, and the frontmatter reference identical strings, which is required for Obsidian-compatible manual vault editing (`[[My Note]]` resolves correctly; frontmatter edits use the exact key string).
 
-- [ ] Add `PATCH /aspects/:aspectId` API route using existing `AspectUpdateSchema`
-- [ ] Implement rename in storage service: write new vault file with updated key + old UUID, delete old file, inline-update DB row
-- [ ] When the key changes, scan fragment DB rows for orphaned weights and include a `warnings` array in the response listing affected fragment UUIDs
-- [ ] Regenerate orval client after route addition
-- [ ] Once route exists, add inline rename to Aspects tab UI with key-drift warning surfaced from the response
+**This is a breaking schema change.** Storage, API, DB, and frontend are all affected.
+
+**Key validation rules (shared, all three entity types):**
+
+- Trim leading/trailing whitespace on input
+- Reject empty string after trim
+- Reject keys containing `::` (breaks inline field parsing for aspects; disallowed across all types for consistency)
+- Reject keys that case-insensitively match any existing key of the same entity type (prevents filesystem collisions on case-insensitive filesystems like macOS APFS)
+
+**Shared schemas:**
+
+- [x] `NoteSchema`, `NoteCreateSchema`, `NoteUpdateSchema`: rename `title` → `key`
+- [x] `ReferenceSchema`, `ReferenceCreateSchema`, `ReferenceUpdateSchema`: rename `name` → `key`
+- [x] Add `validateEntityKey(key: string): string` shared utility (trim + `::` check); used by all three create/update paths
+
+**Storage layer:**
+
+- [x] Remove `slugify()` from aspect, note, and reference write/update paths in `storage-service.ts` — use `key` directly as the filename stem
+- [x] Update note vault mapper: `title` → `key` in YAML frontmatter field name
+- [x] Update reference vault mapper: `name` → `key` in YAML frontmatter field name
+- [x] Add case-insensitive uniqueness check in `aspects.write`, `notes.write`, `references.write`; query all existing keys, compare lowercased, return a `KEY_CONFLICT` error if matched
+- [x] `slugify` is still used for fragment filenames — do not remove the import, just stop calling it for these three entity types
+
+**DB migration:**
+
+- [x] `notes` table: rename column `title` → `key`; update unique constraint
+- [x] `fragment_notes` table: rename column `note_title` → `note_key`
+- [x] `aspect_notes` table: rename column `note_title` → `note_key`
+- [x] `project_references` table: rename column `name` → `key`; update unique constraint
+- [x] `fragment_references` table: rename column `reference_name` → `reference_key`
+- [x] Make sure `key` is indexed for all types
+- [x] Write Drizzle migration covering all of the above
+
+**API schemas:**
+
+- [x] Update `packages/api/src/schemas/note.ts` and `reference.ts` to use `key`
+- [x] Regenerate orval client (generated types manually updated; run `bun run codegen` in packages/frontend with API running to regenerate fully)
+
+**Frontend:**
+
+- [x] Replace all `note.title` → `note.key` and `reference.name` → `reference.key` in components, pages, and hooks
+- [x] Update create dialogs: note label "Title" → "Key", reference label "Name" → "Key"
+
+---
+
+### Phase 6: Aspect rename
+
+Rename is isolated to the storage and API layers initially. The frontend tab work is the final step.
+
+**Why it's complex:** `aspect.key` is simultaneously the vault filename (`aspects/<key>.md`), the inline field key in every attached fragment (`key:: weight`), and the arc filename (`.maskor/config/arcs/<key>.yaml`). A single rename must cascade across all three. The current `aspects.update` in `storage-service.ts` explicitly strips `key` from the patch — this is the intentional deferral point.
+
+**Storage layer:**
+
+- [ ] Extend `aspects.update` to handle `key` changes. When `patch.key` differs from `current.key`:
+  1. Compute old and new vault paths: `aspects/<old-key>.md` → `aspects/<new-key>.md`
+  2. Write new vault file (same UUID, updated `key` field); delete old vault file
+  3. If arc file exists at `.maskor/config/arcs/<old-key>.yaml`: read it, update its `aspectKey` field to the new key, write to `.maskor/config/arcs/<new-key>.yaml`, delete old arc file
+  4. Query `fragment_properties WHERE aspect_key = old-key` to get all affected `fragmentUuid`s
+  5. For each affected fragment: read vault file, replace the old key with the new key in the `properties` frontmatter map (preserving the weight), write vault file, inline-update the `fragment_properties` row (delete old key row, insert new key row)
+  6. DB: update the `aspects` row — new `key`, new `filePath`, new `contentHash`
+  7. Return `{ aspect: Aspect; warnings: string[] }` where `warnings` lists the affected fragment UUIDs
+
+- [ ] Add a dedicated response type `AspectUpdateResponse` in shared schemas: `{ aspect: Aspect; warnings: string[] }`
+
+**API layer:**
+
+- [ ] Add `PATCH /projects/:projectId/aspects/:aspectId` route using `AspectUpdateSchema`; return `AspectUpdateResponse`
+- [ ] Regenerate orval client
+
+**Frontend:**
+
+- [ ] Add inline rename input to each aspect row in the Aspects tab (edit-in-place, same pattern as project name in General tab)
+- [ ] If `warnings` is non-empty in the response, show a dismissable banner listing affected fragment UUIDs (or titles if available from the index)
+
+### Phase 6b: Note and reference rename cascade
+
+Notes and references already have `update` methods and `PATCH` routes (from Phase 3). After Phase 5b, those methods handle the vault file rename when the key changes, but they do **not** cascade to dependent fragment or aspect files. This phase adds the cascade.
+
+**Why it matters:** `note.key` is stored verbatim in `fragment_notes.note_key` and in fragment frontmatter `notes: string[]`. Renaming a note's key without updating attached fragments leaves the frontmatter referencing a non-existent key. Same for `reference.key` → `fragment_references.reference_key`.
+
+Notes also appear in `aspect_notes.note_key` — aspects can reference notes by key too, so aspect vault files need the same cascade treatment.
+
+**Storage layer — extend `notes.update`:**
+
+When `patch.key` is provided and differs from `current.key`:
+
+1. Capture `oldKey` before the write (Phase 5b write logic handles the new file + old file deletion)
+2. Query `fragment_notes WHERE note_key = oldKey` → list of `fragmentUuid`s
+3. For each affected fragment: read vault file, replace `oldKey` with `newKey` in the `notes` frontmatter array, write vault file, inline-update `fragment_notes` row
+4. Query `aspect_notes WHERE note_key = oldKey` → list of `aspectUuid`s
+5. For each affected aspect: read vault file, replace `oldKey` with `newKey` in the aspect's `notes` array field, write vault file, inline-update `aspect_notes` row
+6. Return `{ note: Note; warnings: { fragments: string[]; aspects: string[] } }`
+
+- [ ] Add `NoteUpdateResponse` shared type: `{ note: Note; warnings: { fragments: string[]; aspects: string[] } }`
+- [ ] Extend `notes.update` with the cascade logic above
+- [ ] Update `PATCH /projects/:projectId/notes/:noteId` to return `NoteUpdateResponse`
+- [ ] Regenerate orval client
+
+**Storage layer — extend `references.update`:**
+
+When `patch.key` is provided and differs from `current.key`:
+
+1. Capture `oldKey` before the write (Phase 5b write logic handles the new file + old file deletion)
+2. Query `fragment_references WHERE reference_key = oldKey` → list of `fragmentUuid`s
+3. For each affected fragment: read vault file, replace `oldKey` with `newKey` in the `references` frontmatter array, write vault file, inline-update `fragment_references` row
+4. Return `{ reference: Reference; warnings: { fragments: string[] } }`
+
+- [ ] Add `ReferenceUpdateResponse` shared type: `{ reference: Reference; warnings: { fragments: string[] } }`
+- [ ] Extend `references.update` with the cascade logic above
+- [ ] Update `PATCH /projects/:projectId/references/:referenceId` to return `ReferenceUpdateResponse`
+- [ ] Regenerate orval client
+
+**Frontend:**
+
+Key editing is not yet exposed in `NoteEditorPage` or `ReferenceEditorPage` (only body content is editable there). Add a key rename field and surface warnings inline if the cascade affected other files.
+
+- [ ] Add key rename input to `NoteEditorPage` (edit-in-place, same pattern as project name)
+- [ ] Add key rename input to `ReferenceEditorPage`
+- [ ] If `warnings` is non-empty after save, show a dismissable banner listing affected fragment/aspect UUIDs
+
+---
 
 ### Phase 7: Extended project type
 
@@ -105,5 +221,4 @@ Add important configuration options to project.
 - Interleaving config — data model is unsettled (open question in spec); not built here
 - Body editing for notes/references — belongs in a dedicated editor, not the config page
 - Arc curve fitting from existing sequence — future feature noted in spec
-- Bulk rename of fragment properties after aspect key rename
 - Attaching notes/references to entities other than fragments

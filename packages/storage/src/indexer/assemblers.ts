@@ -5,8 +5,8 @@ import type { IndexedAspect, IndexedFragment } from "./types";
 
 export const assembleFragment = (
   row: typeof fragmentsTable.$inferSelect,
-  noteRows: Array<{ noteTitle: string }>,
-  referenceRows: Array<{ referenceName: string }>,
+  noteRows: Array<{ noteKey: string }>,
+  referenceRows: Array<{ referenceKey: string }>,
   propertyRows: Array<{
     aspectKey: string;
     weight: number;
@@ -19,8 +19,8 @@ export const assembleFragment = (
   contentHash: row.contentHash,
   filePath: row.filePath,
   updatedAt: row.updatedAt,
-  notes: noteRows.map((note) => note.noteTitle),
-  references: referenceRows.map((reference) => reference.referenceName),
+  notes: noteRows.map((note) => note.noteKey),
+  references: referenceRows.map((reference) => reference.referenceKey),
   properties: propertyRows.reduce(
     (acc, property) => {
       acc[property.aspectKey] = { weight: property.weight };
@@ -32,11 +32,11 @@ export const assembleFragment = (
 
 export const assembleAspect = (
   row: typeof aspectsTable.$inferSelect,
-  noteRows: Array<{ noteTitle: string }>,
+  noteRows: Array<{ noteKey: string }>,
 ): IndexedAspect => ({
   uuid: row.uuid,
   key: row.key,
   category: row.category ?? undefined,
   filePath: row.filePath,
-  notes: noteRows.map((note) => note.noteTitle),
+  notes: noteRows.map((note) => note.noteKey),
 });

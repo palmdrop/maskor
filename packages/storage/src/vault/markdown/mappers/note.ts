@@ -5,14 +5,14 @@ import { basename } from "node:path";
 export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
   const frontmatter = parsed.frontmatter;
 
-  const title =
-    typeof frontmatter.title === "string" && frontmatter.title.trim() !== ""
-      ? frontmatter.title.trim()
+  const key =
+    typeof frontmatter.key === "string" && frontmatter.key.trim() !== ""
+      ? frontmatter.key.trim()
       : basename(filePath).replace(/\.md$/, "");
 
   return {
     uuid: frontmatter.uuid as string,
-    title,
+    key,
     content: parsed.body,
   };
 };
@@ -20,7 +20,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
 export const toFile = (note: Note): { frontmatter: Record<string, unknown>; body: string } => ({
   frontmatter: {
     uuid: note.uuid,
-    title: note.title,
+    key: note.key,
   },
   body: note.content,
 });

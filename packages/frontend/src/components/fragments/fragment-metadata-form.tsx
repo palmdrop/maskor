@@ -85,14 +85,14 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       [aspectsEnvelope],
     );
 
-    const noteTitleToUuid = useMemo(() => {
+    const noteKeyToUuid = useMemo(() => {
       const notes = notesEnvelope?.status === 200 ? notesEnvelope.data : [];
-      return new Map(notes.map((note) => [note.title, note.uuid]));
+      return new Map(notes.map((note) => [note.key, note.uuid]));
     }, [notesEnvelope]);
 
-    const referenceNameToUuid = useMemo(() => {
+    const referenceKeyToUuid = useMemo(() => {
       const references = referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
-      return new Map(references.map((reference) => [reference.name, reference.uuid]));
+      return new Map(references.map((reference) => [reference.key, reference.uuid]));
     }, [referencesEnvelope]);
 
     const { register, control, handleSubmit, reset, formState } = useForm<FragmentFormValues>({
@@ -133,8 +133,8 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
     const availableNotes = useMemo(
       () =>
         (notesEnvelope?.status === 200 ? notesEnvelope.data : [])
-          .filter((note) => !noteFields.find((existing) => existing.value === note.title))
-          .map((note) => note.title),
+          .filter((note) => !noteFields.find((existing) => existing.value === note.key))
+          .map((note) => note.key),
       [notesEnvelope, noteFields],
     );
 
@@ -143,9 +143,9 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       () =>
         (referencesEnvelope?.status === 200 ? referencesEnvelope.data : [])
           .filter(
-            (reference) => !referenceFields.find((existing) => existing.value === reference.name),
+            (reference) => !referenceFields.find((existing) => existing.value === reference.key),
           )
-          .map((reference) => reference.name),
+          .map((reference) => reference.key),
       [referencesEnvelope, referenceFields],
     );
 
@@ -196,7 +196,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           <Label>Notes</Label>
           <div className="flex flex-wrap gap-1">
             {noteFields.map((noteField, index) => {
-              const noteUuid = noteTitleToUuid.get(noteField.value);
+              const noteUuid = noteKeyToUuid.get(noteField.value);
               const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
               const inner = (
                 <>
@@ -238,7 +238,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           <Label>References</Label>
           <div className="flex flex-wrap gap-1">
             {referenceFields.map((referenceField, index) => {
-              const referenceUuid = referenceNameToUuid.get(referenceField.value);
+              const referenceUuid = referenceKeyToUuid.get(referenceField.value);
               const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
               const inner = (
                 <>

@@ -4,7 +4,9 @@
   - tried `repomix` instead
   - or https://www.augmentcode.com/
 
-- [ ] Try grok pattern - put in CLAUDE.md
+- [x] Try caveman pattern - put in CLAUDE.md
+
+- [ ] Add way to rename aspects, notes, references
 
 - [ ] Find flow for using cheaper models for appropriate tasks
 

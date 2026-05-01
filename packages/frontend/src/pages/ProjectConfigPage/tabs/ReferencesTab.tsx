@@ -17,13 +17,13 @@ export const ReferencesTab = ({ projectId }: { projectId: string }) => {
     envelope?.status === 200
       ? envelope.data.map((r) => ({
           uuid: r.uuid,
-          label: r.name,
+          label: r.key,
           editTo: `/projects/${projectId}/references/${r.uuid}`,
         }))
       : [];
 
-  const handleCreate = async (name: string, content: string) => {
-    await createReference.mutateAsync({ projectId, data: { name, content } });
+  const handleCreate = async (key: string, content: string) => {
+    await createReference.mutateAsync({ projectId, data: { key, content } });
     queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
   };
 
@@ -36,7 +36,7 @@ export const ReferencesTab = ({ projectId }: { projectId: string }) => {
     <AttachableEntityPanel
       items={items}
       isLoading={isLoading}
-      labelField="Name"
+      labelField="Key"
       dialogTitle="New reference"
       onConfirmCreate={handleCreate}
       onDelete={handleDelete}

@@ -74,7 +74,7 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
           )}
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Note</span>
-            <Heading level={1}>{note.title}</Heading>
+            <Heading level={1}>{note.key}</Heading>
           </div>
         </div>
         <Button

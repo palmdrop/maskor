@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import type { Reference } from "@maskor/shared";
+import { validateEntityKey } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -169,17 +170,19 @@ referencesRouter.openapi(getReferenceRoute, async (ctx) => {
 });
 
 referencesRouter.openapi(createReferenceRoute, async (ctx) => {
+  const { key: rawKey, content } = ctx.req.valid("json");
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { name, content } = ctx.req.valid("json");
-
-    const reference: Reference = {
-      uuid: randomUUID(),
-      name,
-      content,
-    };
-
+    const reference: Reference = { uuid: randomUUID(), key, content };
     await storageService.references.write(projectContext, reference);
     return ctx.json(reference, 201);
   } catch (error) {
@@ -188,11 +191,21 @@ referencesRouter.openapi(createReferenceRoute, async (ctx) => {
 });
 
 referencesRouter.openapi(updateReferenceRoute, async (ctx) => {
+  const { referenceId } = ctx.req.valid("param");
+  const rawPatch = ctx.req.valid("json");
+  let patch = rawPatch;
+  if (rawPatch.key !== undefined) {
+    try {
+      patch = { ...rawPatch, key: validateEntityKey(rawPatch.key) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid key";
+      return ctx.json({ error: "INVALID_KEY", message }, 400);
+    }
+  }
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const { referenceId } = ctx.req.valid("param");
-    const patch = ctx.req.valid("json");
     const updated = await storageService.references.update(projectContext, referenceId, patch);
     return ctx.json(updated, 200);
   } catch (error) {

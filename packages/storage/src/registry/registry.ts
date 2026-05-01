@@ -94,7 +94,9 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         projectUUID,
         name,
         registeredAt: now.toISOString(),
-        ...(existingManifest?.config ? {} : { config: { editor: { vimMode: false, rawMarkdownMode: false } } }),
+        ...(existingManifest?.config
+          ? {}
+          : { config: { editor: { vimMode: false, rawMarkdownMode: false } } }),
       });
 
       const [row] = await database
