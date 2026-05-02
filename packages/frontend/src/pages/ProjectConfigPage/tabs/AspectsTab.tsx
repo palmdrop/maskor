@@ -59,8 +59,9 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
       setKeyValue("");
       setCategoryValue("");
       setDescriptionValue("");
-    } catch {
-      setCreateError("Failed to create aspect.");
+    } catch (error) {
+      // setCreateError("Failed to create aspect.");
+      setCreateError((error as { message?: string })?.message ?? "Failed to create aspect.");
     }
   };
 

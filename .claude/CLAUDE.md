@@ -13,4 +13,5 @@ KEEP IN MIND:
 - Make note of `specifications` that are out of sync with the code or direction.
 - When writing code, match the style of the already existing code.
 - When writing code, NEVER ABBREVIATE variable names (except iterators). `err` should be `error`. Fix whenever you encounter abbreviations.
+- Do not assume something is not implemented. Ask or check. Create re-usable functions. If you notice overlap, break out into a new function.
 - DO NOT IMPLEMENT unless clearly stated. When asking about an issue, do not immediately fix. Discuss first. Implement when asked.

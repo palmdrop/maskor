@@ -20,8 +20,8 @@ import {
   upsertReference,
   softDeleteFragmentByFilePath,
   softDeleteAspectByFilePath,
-  softDeleteNoteByFilePath,
-  softDeleteReferenceByFilePath,
+  deleteNoteByFilePath,
+  deleteReferenceByFilePath,
 } from "../indexer/upserts";
 import { eq } from "drizzle-orm";
 
@@ -420,18 +420,18 @@ export const createVaultWatcher = (
       } else if (vaultRelativePath.startsWith(NOTE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, NOTE_PREFIX);
         vaultDatabase.transaction((tx) => {
-          softDeleteNoteByFilePath(tx, entityRelativePath);
+          deleteNoteByFilePath(tx, entityRelativePath);
         });
         emit({ type: "note:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(REFERENCE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, REFERENCE_PREFIX);
         vaultDatabase.transaction((tx) => {
-          softDeleteReferenceByFilePath(tx, entityRelativePath);
+          deleteReferenceByFilePath(tx, entityRelativePath);
         });
         emit({ type: "reference:deleted", filePath: entityRelativePath });
       }
 
-      log.debug({ filePath: absolutePath }, "watcher: entity soft-deleted on unlink");
+      log.debug({ filePath: absolutePath }, "watcher: entity deleted on unlink");
     } catch (error) {
       log.error(
         {

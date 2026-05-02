@@ -9,10 +9,13 @@ import type { Project } from "../../../api/generated/maskorAPI.schemas";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Switch } from "../../../components/ui/switch";
+import { Button } from "../../../components/ui/button";
+import { useRebuildIndex } from "../../../api/generated/index";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
   const updateProject = useUpdateProject();
+  const rebuildIndex = useRebuildIndex();
 
   const [editing, setEditing] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
@@ -96,6 +99,19 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   return (
     <div className="flex flex-col gap-6 pt-4 max-w-md">
       <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              rebuildIndex.mutate({
+                projectId: project.projectUUID,
+              })
+            }
+          >
+            Rebuild index
+          </Button>
+        </div>
         <Label htmlFor="project-name">Name</Label>
         {editing ? (
           <Input

@@ -77,15 +77,9 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
       const activeNoteUuids = noteEntries.map(({ entity }) => entity.uuid as string);
       if (activeNoteUuids.length > 0) {
-        tx.update(notesTable)
-          .set({ deletedAt: syncedAt })
-          .where(and(isNull(notesTable.deletedAt), notInArray(notesTable.uuid, activeNoteUuids)))
-          .run();
+        tx.delete(notesTable).where(notInArray(notesTable.uuid, activeNoteUuids)).run();
       } else {
-        tx.update(notesTable)
-          .set({ deletedAt: syncedAt })
-          .where(isNull(notesTable.deletedAt))
-          .run();
+        tx.delete(notesTable).run();
       }
 
       // 3. Upsert references.
@@ -95,20 +89,11 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
       const activeReferenceUuids = referenceEntries.map(({ entity }) => entity.uuid as string);
       if (activeReferenceUuids.length > 0) {
-        tx.update(referencesTable)
-          .set({ deletedAt: syncedAt })
-          .where(
-            and(
-              isNull(referencesTable.deletedAt),
-              notInArray(referencesTable.uuid, activeReferenceUuids),
-            ),
-          )
+        tx.delete(referencesTable)
+          .where(notInArray(referencesTable.uuid, activeReferenceUuids))
           .run();
       } else {
-        tx.update(referencesTable)
-          .set({ deletedAt: syncedAt })
-          .where(isNull(referencesTable.deletedAt))
-          .run();
+        tx.delete(referencesTable).run();
       }
 
       // 4. Upsert fragments last — known aspect key set is ready for drift detection.
@@ -290,7 +275,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         return vaultDatabase
           .select()
           .from(notesTable)
-          .where(isNull(notesTable.deletedAt))
           .all()
           .map((row) => ({
             uuid: row.uuid,
@@ -302,14 +286,14 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       async findByKey(key: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.key, key)).get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
         return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
 
       async findByUUID(uuid: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
         return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
     },
@@ -319,7 +303,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         return vaultDatabase
           .select()
           .from(referencesTable)
-          .where(isNull(referencesTable.deletedAt))
           .all()
           .map((row) => ({
             uuid: row.uuid,
@@ -335,7 +318,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(referencesTable.key, key))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
         return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
 
@@ -346,7 +329,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(referencesTable.uuid, uuid))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
         return { uuid: row.uuid, key: row.key, filePath: row.filePath };
       },
     },

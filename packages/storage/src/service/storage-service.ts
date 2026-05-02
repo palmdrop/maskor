@@ -40,10 +40,10 @@ import {
   upsertAspect,
   upsertNote,
   upsertReference,
-  softDeleteFragmentByFilePath,
-  softDeleteAspectByFilePath,
-  softDeleteNoteByFilePath,
-  softDeleteReferenceByFilePath,
+  deleteReferenceByFilePath,
+  deleteFragmentByFilePath,
+  deleteAspectByFilePath,
+  deleteNoteByFilePath,
 } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { parseFile } from "../vault/markdown/parse";
@@ -280,7 +280,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           throw error;
         }
 
-        // Inline DB update: soft-delete old path, upsert at new discarded path.
         const absoluteDestination = join(
           context.vaultPath,
           "fragments",
@@ -298,7 +297,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
 
         vaultDatabase.transaction((tx) => {
-          softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          //softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          deleteFragmentByFilePath(tx, sourceEntityRelativePath);
           upsertFragment(
             tx,
             discardedFragment,
@@ -351,7 +351,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           throw error;
         }
 
-        // Inline DB update: soft-delete old discarded path, upsert at restored path.
         const absoluteDestination = join(
           context.vaultPath,
           "fragments",
@@ -367,7 +366,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
 
         vaultDatabase.transaction((tx) => {
-          softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          // softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
+          deleteFragmentByFilePath(tx, sourceEntityRelativePath);
           upsertFragment(
             tx,
             restoredFragment,
@@ -464,12 +464,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           throw error;
         }
 
-        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
-        // If the transaction fails after unlink, the DB row remains active with a dead file path.
-        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
         const vaultDatabase = getVaultDatabase(context);
         vaultDatabase.transaction((tx) => {
-          softDeleteAspectByFilePath(tx, indexed.filePath);
+          // softDeleteAspectByFilePath(tx, indexed.filePath);
+          deleteAspectByFilePath(tx, indexed.filePath);
         });
       },
 
@@ -658,12 +656,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           throw error;
         }
 
-        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
-        // If the transaction fails after unlink, the DB row remains active with a dead file path.
-        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
         const vaultDatabase = getVaultDatabase(context);
         vaultDatabase.transaction((tx) => {
-          softDeleteNoteByFilePath(tx, indexed.filePath);
+          deleteNoteByFilePath(tx, indexed.filePath);
         });
       },
     },
@@ -817,12 +812,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           throw error;
         }
 
-        // TODO: non-atomic two-step — file is unlinked before the DB row is soft-deleted.
-        // If the transaction fails after unlink, the DB row remains active with a dead file path.
-        // A subsequent full rebuild will clean it up, but until then the entity appears stale.
         const vaultDatabase = getVaultDatabase(context);
         vaultDatabase.transaction((tx) => {
-          softDeleteReferenceByFilePath(tx, indexed.filePath);
+          deleteReferenceByFilePath(tx, indexed.filePath);
         });
       },
     },

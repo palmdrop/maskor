@@ -51,8 +51,9 @@ export const AttachableEntityPanel = ({
       setOpen(false);
       setLabelValue("");
       setContentValue("");
-    } catch {
-      setError("Failed to create.");
+    } catch (error) {
+      // setError("Failed to create.");
+      setError((error as { message?: string })?.message ?? "Failed to create aspect.");
     }
   };
 

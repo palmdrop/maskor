@@ -6,7 +6,11 @@
 
 - [x] Try caveman pattern - put in CLAUDE.md
 
-- [ ] Add way to rename aspects, notes, references
+- [ ] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
+
+- [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
+
+- [x] Add way to rename notes, references
 
 - [ ] Find flow for using cheaper models for appropriate tasks
 

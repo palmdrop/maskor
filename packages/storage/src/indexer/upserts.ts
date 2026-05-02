@@ -227,3 +227,19 @@ export const softDeleteReferenceByFilePath = (tx: Transaction, filePath: string)
     .where(and(eq(referencesTable.filePath, filePath), isNull(referencesTable.deletedAt)))
     .run();
 };
+
+export const deleteFragmentByFilePath = (tx: Transaction, filePath: string): void => {
+  tx.delete(fragmentsTable).where(eq(fragmentsTable.filePath, filePath)).run();
+};
+
+export const deleteAspectByFilePath = (tx: Transaction, filePath: string): void => {
+  tx.delete(aspectsTable).where(eq(aspectsTable.filePath, filePath)).run();
+};
+
+export const deleteNoteByFilePath = (tx: Transaction, filePath: string): void => {
+  tx.delete(notesTable).where(eq(notesTable.filePath, filePath)).run();
+};
+
+export const deleteReferenceByFilePath = (tx: Transaction, filePath: string): void => {
+  tx.delete(referencesTable).where(eq(referencesTable.filePath, filePath)).run();
+};
