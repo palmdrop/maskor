@@ -21,3 +21,13 @@ export const NoteUpdateSchema = z.object({
 });
 
 export type NoteUpdate = z.infer<typeof NoteUpdateSchema>;
+
+export const NoteUpdateResponseSchema = z.object({
+  note: NoteSchema,
+  warnings: z.object({
+    fragments: z.array(z.string()),
+    aspects: z.array(z.string()),
+  }),
+});
+
+export type NoteUpdateResponse = z.infer<typeof NoteUpdateResponseSchema>;

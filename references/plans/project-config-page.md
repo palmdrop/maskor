@@ -178,10 +178,10 @@ When `patch.key` is provided and differs from `current.key`:
 5. For each affected aspect: read vault file, replace `oldKey` with `newKey` in the aspect's `notes` array field, write vault file, inline-update `aspect_notes` row
 6. Return `{ note: Note; warnings: { fragments: string[]; aspects: string[] } }`
 
-- [ ] Add `NoteUpdateResponse` shared type: `{ note: Note; warnings: { fragments: string[]; aspects: string[] } }`
-- [ ] Extend `notes.update` with the cascade logic above
-- [ ] Update `PATCH /projects/:projectId/notes/:noteId` to return `NoteUpdateResponse`
-- [ ] Regenerate orval client
+- [x] Add `NoteUpdateResponse` shared type: `{ note: Note; warnings: { fragments: string[]; aspects: string[] } }`
+- [x] Extend `notes.update` with the cascade logic above
+- [x] Update `PATCH /projects/:projectId/notes/:noteId` to return `NoteUpdateResponse`
+- [x] Regenerate orval client
 
 **Storage layer — extend `references.update`:**
 
@@ -192,18 +192,18 @@ When `patch.key` is provided and differs from `current.key`:
 3. For each affected fragment: read vault file, replace `oldKey` with `newKey` in the `references` frontmatter array, write vault file, inline-update `fragment_references` row
 4. Return `{ reference: Reference; warnings: { fragments: string[] } }`
 
-- [ ] Add `ReferenceUpdateResponse` shared type: `{ reference: Reference; warnings: { fragments: string[] } }`
-- [ ] Extend `references.update` with the cascade logic above
-- [ ] Update `PATCH /projects/:projectId/references/:referenceId` to return `ReferenceUpdateResponse`
-- [ ] Regenerate orval client
+- [x] Add `ReferenceUpdateResponse` shared type: `{ reference: Reference; warnings: { fragments: string[] } }`
+- [x] Extend `references.update` with the cascade logic above
+- [x] Update `PATCH /projects/:projectId/references/:referenceId` to return `ReferenceUpdateResponse`
+- [x] Regenerate orval client
 
 **Frontend:**
 
 Key editing is not yet exposed in `NoteEditorPage` or `ReferenceEditorPage` (only body content is editable there). Add a key rename field and surface warnings inline if the cascade affected other files.
 
-- [ ] Add key rename input to `NoteEditorPage` (edit-in-place, same pattern as project name)
-- [ ] Add key rename input to `ReferenceEditorPage`
-- [ ] If `warnings` is non-empty after save, show a dismissable banner listing affected fragment/aspect UUIDs
+- [x] Add key rename input to `NoteEditorPage` (edit-in-place, same pattern as project name)
+- [x] Add key rename input to `ReferenceEditorPage`
+- [x] If `warnings` is non-empty after save, show a dismissable banner listing affected fragment/aspect UUIDs
 
 ---
 
@@ -213,6 +213,90 @@ Add important configuration options to project.
 
 - [x] Add config for using vimMode in editors
 - [x] Add config for using "raw markdown mode", i.e not tiptaps rich editing (vimMode enables this by default)
+
+---
+
+### Phase 8: Filename as sole source of truth for entity keys
+
+Remove `key:` from note, reference, and aspect frontmatter. The filename stem becomes the only authoritative key. File renames in the vault propagate automatically via the watcher cascade.
+
+**Why aspects too:** aspect key is used for inline field syntax (`key:: weight`), but that's a format concern for fragment files — not a reason to store the key redundantly inside the aspect's own file. The filename is always visible in the vault.
+
+**Why this subsumes Phase 6:** Phase 6 (PATCH aspect rename via API) requires the same cascade logic as the watcher rename path. Both should call shared helpers rather than duplicating. Phase 8's cascade helpers make Phase 6 straightforward to complete.
+
+---
+
+#### Mapper changes
+
+- `noteMapper.fromFile`: `key = basename(filePath).replace(/\.md$/, "")` — drop frontmatter `key` lookup entirely
+- `noteMapper.toFile`: remove `key` from frontmatter output
+- `referenceMapper.fromFile` / `toFile`: same
+- `aspectMapper.fromFile`: `key = basename(filePath).replace(/\.md$/, "")` — drop frontmatter `key` lookup
+- `aspectMapper.toFile`: remove `key` from frontmatter output
+
+Existing vault files that have `key:` in frontmatter: ignored on read, stripped on next API-originated write. No migration needed.
+
+#### Shared cascade helpers (storage service)
+
+Extract reusable helpers that both the watcher and the storage service `update` methods can call. These replace the inline cascade code currently in Phase 6b's `notes.update` and `references.update`.
+
+- `cascadeNoteKeyRename(context, oldKey, newKey)`: updates fragment and aspect vault files (`notes:` array) + `fragment_notes` / `aspect_notes` DB rows; returns `{ fragments: string[], aspects: string[] }`
+- `cascadeReferenceKeyRename(context, oldKey, newKey)`: updates fragment vault files (`references:` array) + `fragment_references` DB rows; returns `{ fragments: string[] }`
+- `cascadeAspectKeyRename(context, oldKey, newKey)`: updates fragment vault files (inline field key) + arc file (rename + update `aspectKey`) + `fragment_properties` DB rows; returns `{ fragments: string[] }`
+
+The existing Phase 6b inline cascade in `notes.update` and `references.update` is refactored to call these helpers.
+
+#### Watcher rename cascade
+
+`syncNote`, `syncReference`, and `syncAspect` gain rename detection:
+
+1. Parse UUID from the incoming file
+2. Query the DB by UUID — if a row exists with a **different key** than the filename stem, this is a rename
+3. Call the appropriate cascade helper (`cascadeNoteKeyRename` / `cascadeReferenceKeyRename` / `cascadeAspectKeyRename`)
+4. Upsert the entity with the new key
+
+If the UUID has no existing DB row, it's a new file — no cascade needed, just upsert normally.
+
+**Watcher concern:** cascade helpers read and write vault files, which are normally managed by the watcher itself. Writing vault files during a watcher handler will re-trigger `change` events on those files. The hash-guard already handles this correctly (the watcher will re-read the fragment/aspect file, see the same content hash, and skip). Confirm this is the case before shipping.
+
+#### Phase 6 (aspect rename via API) — completes here
+
+With `cascadeAspectKeyRename` available:
+
+- [x] Add `PATCH /projects/:projectId/aspects/:aspectId` route using `AspectUpdateSchema`
+- [x] `aspects.update` calls cascade when key changes; returns `AspectUpdateResponse { aspect, warnings }`
+- [x] Add `AspectUpdateResponseSchema` to shared schemas and API schemas
+- [x] Regenerate orval client
+- [x] Frontend: inline rename input in Aspects tab (edit-in-place, same pattern as project name)
+- [x] Frontend: dismissable cascade banner if warnings non-empty
+
+#### Checklist
+
+**Mappers:**
+
+- [ ] `noteMapper.fromFile` / `toFile`: key from filename, drop frontmatter field
+- [ ] `referenceMapper.fromFile` / `toFile`: same
+- [ ] `aspectMapper.fromFile` / `toFile`: same
+
+**Shared cascade helpers:**
+
+- [ ] `cascadeNoteKeyRename` extracted and used by `notes.update`
+- [ ] `cascadeReferenceKeyRename` extracted and used by `references.update`
+- [ ] `cascadeAspectKeyRename` implemented
+
+**Watcher cascade:**
+
+- [ ] `syncNote`: rename detection + cascade
+- [ ] `syncReference`: rename detection + cascade
+- [ ] `syncAspect`: rename detection + cascade
+
+**Phase 6 completion (aspect rename via API):**
+
+- [ ] `aspects.update` key cascade using `cascadeAspectKeyRename`
+- [ ] `AspectUpdateResponse` shared type + API schema
+- [ ] `PATCH /aspects/:id` route
+- [ ] Orval client regenerated
+- [ ] Aspects tab inline rename + warnings banner
 
 ---
 

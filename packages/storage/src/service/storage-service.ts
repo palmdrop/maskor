@@ -2,12 +2,15 @@ import type {
   Arc,
   Aspect,
   AspectUpdate,
+  AspectUpdateResponse,
   Fragment,
   Logger,
   Note,
   NoteUpdate,
+  NoteUpdateResponse,
   Reference,
   ReferenceUpdate,
+  ReferenceUpdateResponse,
   VaultSyncEvent,
 } from "@maskor/shared";
 import { ArcSchema, slugify } from "@maskor/shared";
@@ -44,6 +47,10 @@ import {
   deleteFragmentByFilePath,
   deleteAspectByFilePath,
   deleteNoteByFilePath,
+  findFragmentUuidsByNoteKey,
+  findAspectUuidsByNoteKey,
+  findFragmentUuidsByReferenceKey,
+  findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { parseFile } from "../vault/markdown/parse";
@@ -116,6 +123,35 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const watcher = createVaultWatcher(vaultDatabase, vault, logger);
     vaultWatcherCache.set(context.projectUUID, watcher);
     return watcher;
+  };
+
+  const readArc = async (context: ProjectContext, aspectKey: string): Promise<Arc | null> => {
+    const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
+    const file = Bun.file(arcPath);
+    if (!(await file.exists())) return null;
+    const raw = await file.text();
+    const parsed = parseYaml(raw);
+    const result = ArcSchema.safeParse(parsed);
+    if (!result.success) {
+      log.warn({ aspectKey, arcPath }, "arc file failed validation, treating as missing");
+      return null;
+    }
+    return result.data;
+  };
+
+  const writeArc = async (context: ProjectContext, arc: Arc): Promise<void> => {
+    const arcsDir = join(context.vaultPath, ".maskor", "config", "arcs");
+    await mkdir(arcsDir, { recursive: true });
+    const arcPath = join(arcsDir, `${arc.aspectKey}.yaml`);
+    const raw = stringifyYaml({ uuid: arc.uuid, aspectKey: arc.aspectKey, points: arc.points });
+    await Bun.write(arcPath, raw);
+  };
+
+  const deleteArc = async (context: ProjectContext, aspectKey: string): Promise<void> => {
+    const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
+    await unlink(arcPath).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
   };
 
   // --- public API ---
@@ -297,7 +333,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
 
         vaultDatabase.transaction((tx) => {
-          //softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
           deleteFragmentByFilePath(tx, sourceEntityRelativePath);
           upsertFragment(
             tx,
@@ -366,7 +401,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         );
 
         vaultDatabase.transaction((tx) => {
-          // softDeleteFragmentByFilePath(tx, sourceEntityRelativePath);
           deleteFragmentByFilePath(tx, sourceEntityRelativePath);
           upsertFragment(
             tx,
@@ -466,12 +500,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         const vaultDatabase = getVaultDatabase(context);
         vaultDatabase.transaction((tx) => {
-          // softDeleteAspectByFilePath(tx, indexed.filePath);
           deleteAspectByFilePath(tx, indexed.filePath);
         });
       },
 
-      async update(context: ProjectContext, uuid: string, patch: AspectUpdate): Promise<Aspect> {
+      async update(
+        context: ProjectContext,
+        uuid: string,
+        patch: AspectUpdate,
+      ): Promise<AspectUpdateResponse> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.aspects.findByUUID(uuid);
 
@@ -484,8 +521,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         try {
           const current = await getVault(context).aspects.read(indexed.filePath);
+          const oldKey = current.key;
           const updated: Aspect = {
             ...current,
+            ...(patch.key !== undefined && { key: patch.key }),
             ...(patch.category !== undefined && { category: patch.category }),
             ...(patch.description !== undefined && { description: patch.description }),
             ...(patch.notes !== undefined && { notes: patch.notes }),
@@ -493,15 +532,86 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           await getVault(context).aspects.write(updated);
 
-          const absolutePath = join(context.vaultPath, "aspects", indexed.filePath);
+          const newFilePath = `${updated.key}.md`;
+
+          if (indexed.filePath !== newFilePath) {
+            const absoluteOldPath = join(context.vaultPath, "aspects", indexed.filePath);
+            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+              if (error.code === "ENOENT") {
+                log.warn(
+                  { filePath: indexed.filePath },
+                  "rename cleanup: old aspect file already gone",
+                );
+                return;
+              }
+              throw error;
+            });
+          }
+
+          const absolutePath = join(context.vaultPath, "aspects", newFilePath);
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          vaultDatabase.transaction((tx) => {
-            upsertAspect(tx, updated, indexed.filePath, rawContent);
-          });
+          const warningFragments: string[] = [];
 
-          return updated;
+          if (patch.key !== undefined && patch.key !== oldKey) {
+            // Cascade arc rename
+            const arc = await readArc(context, oldKey);
+            if (arc) {
+              await writeArc(context, { ...arc, aspectKey: updated.key });
+              await deleteArc(context, oldKey);
+            }
+
+            // Cascade fragment inline field rename
+            const affectedFragmentUuids = findFragmentUuidsByAspectKey(vaultDatabase, oldKey);
+
+            type CascadedFragment = {
+              fragment: Fragment;
+              filePath: string;
+              rawContent: string;
+            };
+
+            const cascadedFragments: CascadedFragment[] = [];
+
+            for (const fragmentUuid of affectedFragmentUuids) {
+              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
+              if (!fragmentFilePath) {
+                warningFragments.push(fragmentUuid);
+                continue;
+              }
+              const fragment = await getVault(context).fragments.read(fragmentFilePath);
+              const oldProperty = fragment.properties[oldKey];
+              const updatedProperties = { ...fragment.properties };
+              delete updatedProperties[oldKey];
+              if (oldProperty !== undefined) {
+                updatedProperties[updated.key] = oldProperty;
+              }
+              const updatedFragment: Fragment = { ...fragment, properties: updatedProperties };
+              await getVault(context).fragments.write(updatedFragment);
+              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
+              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
+              cascadedFragments.push({
+                fragment: updatedFragment,
+                filePath: fragmentFilePath,
+                rawContent: fragmentRawContent,
+              });
+              warningFragments.push(fragmentUuid);
+            }
+
+            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+            vaultDatabase.transaction((tx) => {
+              upsertAspect(tx, updated, newFilePath, rawContent);
+              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
+                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
+              }
+            });
+          } else {
+            vaultDatabase.transaction((tx) => {
+              upsertAspect(tx, updated, newFilePath, rawContent);
+            });
+          }
+
+          return { aspect: updated, warnings: warningFragments };
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
             throw new VaultError(
@@ -569,7 +679,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async update(context: ProjectContext, uuid: string, patch: NoteUpdate): Promise<Note> {
+      async update(
+        context: ProjectContext,
+        uuid: string,
+        patch: NoteUpdate,
+      ): Promise<NoteUpdateResponse> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.notes.findByUUID(uuid);
 
@@ -582,6 +696,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         try {
           const current = await getVault(context).notes.read(indexed.filePath);
+          const oldKey = current.key;
           const updated: Note = {
             ...current,
             ...(patch.key !== undefined && { key: patch.key }),
@@ -610,11 +725,95 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          vaultDatabase.transaction((tx) => {
-            upsertNote(tx, updated, newFilePath, rawContent);
-          });
+          const warningFragments: string[] = [];
+          const warningAspects: string[] = [];
 
-          return updated;
+          if (patch.key !== undefined && patch.key !== oldKey) {
+            const affectedFragmentUuids = findFragmentUuidsByNoteKey(vaultDatabase, oldKey);
+            const affectedAspectUuids = findAspectUuidsByNoteKey(vaultDatabase, oldKey);
+
+            type CascadedFragment = {
+              fragment: Fragment;
+              filePath: string;
+              rawContent: string;
+            };
+            type CascadedAspect = {
+              aspect: Aspect;
+              filePath: string;
+              rawContent: string;
+            };
+
+            const cascadedFragments: CascadedFragment[] = [];
+            const cascadedAspects: CascadedAspect[] = [];
+
+            for (const fragmentUuid of affectedFragmentUuids) {
+              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
+              if (!fragmentFilePath) {
+                warningFragments.push(fragmentUuid);
+                continue;
+              }
+              const fragment = await getVault(context).fragments.read(fragmentFilePath);
+              const updatedFragment: Fragment = {
+                ...fragment,
+                notes: fragment.notes.map((n) => (n === oldKey ? updated.key : n)),
+              };
+              await getVault(context).fragments.write(updatedFragment);
+              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
+              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
+              cascadedFragments.push({
+                fragment: updatedFragment,
+                filePath: fragmentFilePath,
+                rawContent: fragmentRawContent,
+              });
+              warningFragments.push(fragmentUuid);
+            }
+
+            for (const aspectUuid of affectedAspectUuids) {
+              const indexedAspect = await indexer.aspects.findByUUID(aspectUuid);
+              if (!indexedAspect) {
+                warningAspects.push(aspectUuid);
+                continue;
+              }
+              const aspect = await getVault(context).aspects.read(indexedAspect.filePath);
+              const updatedAspect: Aspect = {
+                ...aspect,
+                notes: aspect.notes.map((n) => (n === oldKey ? updated.key : n)),
+              };
+              await getVault(context).aspects.write(updatedAspect);
+              const aspectAbsolutePath = join(
+                context.vaultPath,
+                "aspects",
+                `${updatedAspect.key}.md`,
+              );
+              const aspectRawContent = await Bun.file(aspectAbsolutePath).text();
+              cascadedAspects.push({
+                aspect: updatedAspect,
+                filePath: indexedAspect.filePath,
+                rawContent: aspectRawContent,
+              });
+              warningAspects.push(aspectUuid);
+            }
+
+            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+            vaultDatabase.transaction((tx) => {
+              upsertNote(tx, updated, newFilePath, rawContent);
+              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
+                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
+              }
+              for (const { aspect, filePath, rawContent: aspectRaw } of cascadedAspects) {
+                upsertAspect(tx, aspect, filePath, aspectRaw);
+              }
+            });
+          } else {
+            vaultDatabase.transaction((tx) => {
+              upsertNote(tx, updated, newFilePath, rawContent);
+            });
+          }
+
+          return {
+            note: updated,
+            warnings: { fragments: warningFragments, aspects: warningAspects },
+          };
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
             throw new VaultError(
@@ -725,7 +924,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         context: ProjectContext,
         uuid: string,
         patch: ReferenceUpdate,
-      ): Promise<Reference> {
+      ): Promise<ReferenceUpdateResponse> {
         const indexer = getVaultIndexer(context);
         const indexed = await indexer.references.findByUUID(uuid);
 
@@ -738,6 +937,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         try {
           const current = await getVault(context).references.read(indexed.filePath);
+          const oldKey = current.key;
           const updated: Reference = {
             ...current,
             ...(patch.key !== undefined && { key: patch.key }),
@@ -766,11 +966,55 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          vaultDatabase.transaction((tx) => {
-            upsertReference(tx, updated, newFilePath, rawContent);
-          });
+          const warningFragments: string[] = [];
 
-          return updated;
+          if (patch.key !== undefined && patch.key !== oldKey) {
+            const affectedFragmentUuids = findFragmentUuidsByReferenceKey(vaultDatabase, oldKey);
+
+            type CascadedFragment = {
+              fragment: Fragment;
+              filePath: string;
+              rawContent: string;
+            };
+
+            const cascadedFragments: CascadedFragment[] = [];
+
+            for (const fragmentUuid of affectedFragmentUuids) {
+              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
+              if (!fragmentFilePath) {
+                warningFragments.push(fragmentUuid);
+                continue;
+              }
+              const fragment = await getVault(context).fragments.read(fragmentFilePath);
+              const updatedFragment: Fragment = {
+                ...fragment,
+                references: fragment.references.map((r) => (r === oldKey ? updated.key : r)),
+              };
+              await getVault(context).fragments.write(updatedFragment);
+              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
+              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
+              cascadedFragments.push({
+                fragment: updatedFragment,
+                filePath: fragmentFilePath,
+                rawContent: fragmentRawContent,
+              });
+              warningFragments.push(fragmentUuid);
+            }
+
+            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+            vaultDatabase.transaction((tx) => {
+              upsertReference(tx, updated, newFilePath, rawContent);
+              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
+                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
+              }
+            });
+          } else {
+            vaultDatabase.transaction((tx) => {
+              upsertReference(tx, updated, newFilePath, rawContent);
+            });
+          }
+
+          return { reference: updated, warnings: { fragments: warningFragments } };
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
             throw new VaultError(
@@ -822,35 +1066,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Arc operations (vault-stored, not DB-indexed)
 
     arcs: {
-      async read(context: ProjectContext, aspectKey: string): Promise<Arc | null> {
-        const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
-        const file = Bun.file(arcPath);
-        const exists = await file.exists();
-        if (!exists) return null;
-        const raw = await file.text();
-        const parsed = parseYaml(raw);
-        const result = ArcSchema.safeParse(parsed);
-        if (!result.success) {
-          log.warn({ aspectKey, arcPath }, "arc file failed validation, treating as missing");
-          return null;
-        }
-        return result.data;
-      },
-
-      async write(context: ProjectContext, arc: Arc): Promise<void> {
-        const arcsDir = join(context.vaultPath, ".maskor", "config", "arcs");
-        await mkdir(arcsDir, { recursive: true });
-        const arcPath = join(arcsDir, `${arc.aspectKey}.yaml`);
-        const raw = stringifyYaml({ uuid: arc.uuid, aspectKey: arc.aspectKey, points: arc.points });
-        await Bun.write(arcPath, raw);
-      },
-
-      async delete(context: ProjectContext, aspectKey: string): Promise<void> {
-        const arcPath = join(context.vaultPath, ".maskor", "config", "arcs", `${aspectKey}.yaml`);
-        await unlink(arcPath).catch((error: NodeJS.ErrnoException) => {
-          if (error.code !== "ENOENT") throw error;
-        });
-      },
+      read: readArc,
+      write: writeArc,
+      delete: deleteArc,
     },
 
     // Piece operations

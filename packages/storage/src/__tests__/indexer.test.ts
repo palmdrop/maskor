@@ -243,34 +243,29 @@ describe("references.findByKey", () => {
   });
 });
 
-// --- soft-delete invariant ---
+// --- hard-delete on rebuild ---
 
-describe("soft-delete on rebuild", () => {
-  it("sets deletedAt on a fragment that was removed from the vault between rebuilds", async () => {
+describe("hard-delete on rebuild", () => {
+  it("removes a fragment that was deleted from the vault between rebuilds", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    // Verify the bridge fragment is active after first rebuild
     const bridgeUuid = "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b";
     expect(await indexer.fragments.findByUUID(bridgeUuid)).not.toBeNull();
 
-    // Delete the bridge file from the temp vault
     unlinkSync(join(vaultDir, "fragments", "the-bridge.md"));
 
-    // Second rebuild — bridge is absent from vault now
     await indexer.rebuild();
 
-    // Bridge should now be invisible to queries (soft-deleted)
     expect(await indexer.fragments.findByUUID(bridgeUuid)).toBeNull();
     expect(await indexer.fragments.findFilePath(bridgeUuid)).toBeNull();
   });
 
-  it("sets deletedAt on an aspect that was removed from the vault between rebuilds", async () => {
+  it("removes an aspect that was deleted from the vault between rebuilds", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
-    const griefBefore = await indexer.aspects.findByKey("grief");
-    expect(griefBefore).not.toBeNull();
+    expect(await indexer.aspects.findByKey("grief")).not.toBeNull();
 
     unlinkSync(join(vaultDir, "aspects", "grief.md"));
     await indexer.rebuild();

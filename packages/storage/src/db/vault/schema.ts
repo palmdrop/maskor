@@ -10,15 +10,9 @@ export const fragmentsTable = sqliteTable(
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(), // relative to vault root
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
   },
-  (table) => [
-    // Covers findAll (deleted_at IS NULL) and the soft-delete sweep in rebuild().
-    index("fragments_deleted_at_idx").on(table.deletedAt),
-    // Covers isDiscarded queries (is_discarded = 1 AND deleted_at IS NULL).
-    index("fragments_is_discarded_deleted_at_idx").on(table.isDiscarded, table.deletedAt),
-  ],
+  (table) => [index("fragments_is_discarded_idx").on(table.isDiscarded)],
 );
 
 export const fragmentNotesTable = sqliteTable(
@@ -55,19 +49,14 @@ export const fragmentPropertiesTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.fragmentUuid, table.aspectKey] })],
 );
 
-export const aspectsTable = sqliteTable(
-  "aspects",
-  {
-    uuid: text("uuid").primaryKey(),
-    key: text("key").notNull().unique(),
-    category: text("category"),
-    contentHash: text("content_hash").notNull(),
-    filePath: text("file_path").notNull().unique(),
-    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-  },
-  (table) => [index("aspects_deleted_at_idx").on(table.deletedAt)],
-);
+export const aspectsTable = sqliteTable("aspects", {
+  uuid: text("uuid").primaryKey(),
+  key: text("key").notNull().unique(),
+  category: text("category"),
+  contentHash: text("content_hash").notNull(),
+  filePath: text("file_path").notNull().unique(),
+  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+});
 
 export const aspectNotesTable = sqliteTable(
   "aspect_notes",
@@ -80,28 +69,18 @@ export const aspectNotesTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.aspectUuid, table.noteKey] })],
 );
 
-export const notesTable = sqliteTable(
-  "notes",
-  {
-    uuid: text("uuid").primaryKey(),
-    key: text("key").notNull().unique(),
-    contentHash: text("content_hash").notNull(),
-    filePath: text("file_path").notNull().unique(),
-    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-  },
-  (table) => [index("notes_deleted_at_idx").on(table.deletedAt)],
-);
+export const notesTable = sqliteTable("notes", {
+  uuid: text("uuid").primaryKey(),
+  key: text("key").notNull().unique(),
+  contentHash: text("content_hash").notNull(),
+  filePath: text("file_path").notNull().unique(),
+  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+});
 
-export const referencesTable = sqliteTable(
-  "project_references",
-  {
-    uuid: text("uuid").primaryKey(),
-    key: text("key").notNull().unique(),
-    contentHash: text("content_hash").notNull(),
-    filePath: text("file_path").notNull().unique(),
-    deletedAt: integer("deleted_at", { mode: "timestamp" }), // NULL = active
-    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-  },
-  (table) => [index("references_deleted_at_idx").on(table.deletedAt)],
-);
+export const referencesTable = sqliteTable("project_references", {
+  uuid: text("uuid").primaryKey(),
+  key: text("key").notNull().unique(),
+  contentHash: text("content_hash").notNull(),
+  filePath: text("file_path").notNull().unique(),
+  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+});

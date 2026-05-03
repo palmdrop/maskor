@@ -3,6 +3,7 @@ import {
   ReferenceSchema as DomainReferenceSchema,
   ReferenceCreateSchema as DomainReferenceCreateSchema,
   ReferenceUpdateSchema as DomainReferenceUpdateSchema,
+  ReferenceUpdateResponseSchema as DomainReferenceUpdateResponseSchema,
 } from "@maskor/shared";
 
 // List response — index layer fields
@@ -34,3 +35,7 @@ export const ReferenceUpdateSchema = DomainReferenceUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "The Old Man and the Sea" }),
   content: z.string().optional().openapi({ example: "Hemingway. Santiago. Marlin." }),
 }).openapi("ReferenceUpdate");
+
+export const ReferenceUpdateResponseSchema = DomainReferenceUpdateResponseSchema.extend({
+  reference: ReferenceSchema,
+}).openapi("ReferenceUpdateResponse");

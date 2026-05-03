@@ -27,3 +27,10 @@ export const AspectUpdateSchema = z.object({
 });
 
 export type AspectUpdate = z.infer<typeof AspectUpdateSchema>;
+
+export const AspectUpdateResponseSchema = z.object({
+  aspect: AspectSchema,
+  warnings: z.array(z.string()),
+});
+
+export type AspectUpdateResponse = z.infer<typeof AspectUpdateResponseSchema>;

@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { SQLiteBunTransaction } from "drizzle-orm/bun-sqlite";
 import type { Aspect, Fragment, Note, Reference } from "@maskor/shared";
@@ -17,14 +17,10 @@ import type { VaultDatabase } from "../db/vault";
 import type { SyncWarning } from "./types";
 import { hashContent } from "../utils/hash";
 
-// Loads the set of active (non-deleted) aspect keys from the DB.
+// Loads all aspect keys from the DB.
 // Used for drift detection: a fragment property whose key is not in this set produces a SyncWarning.
 export const loadKnownAspectKeys = (vaultDatabase: VaultDatabase): Set<string> => {
-  const rows = vaultDatabase
-    .select({ key: aspectsTable.key })
-    .from(aspectsTable)
-    .where(isNull(aspectsTable.deletedAt))
-    .all();
+  const rows = vaultDatabase.select({ key: aspectsTable.key }).from(aspectsTable).all();
   return new Set(rows.map((row) => row.key));
 };
 
@@ -49,19 +45,11 @@ export const upsertAspect = (
       category: aspect.category ?? null,
       contentHash,
       filePath,
-      deletedAt: null,
       syncedAt,
     })
     .onConflictDoUpdate({
       target: aspectsTable.uuid,
-      set: {
-        key: aspect.key,
-        category: aspect.category ?? null,
-        contentHash,
-        filePath,
-        deletedAt: null,
-        syncedAt,
-      },
+      set: { key: aspect.key, category: aspect.category ?? null, contentHash, filePath, syncedAt },
     })
     .run();
 
@@ -81,17 +69,10 @@ export const upsertNote = (
   const contentHash = hashContent(rawContent);
 
   tx.insert(notesTable)
-    .values({
-      uuid: note.uuid,
-      key: note.key,
-      contentHash,
-      filePath,
-      deletedAt: null,
-      syncedAt,
-    })
+    .values({ uuid: note.uuid, key: note.key, contentHash, filePath, syncedAt })
     .onConflictDoUpdate({
       target: notesTable.uuid,
-      set: { key: note.key, contentHash, filePath, deletedAt: null, syncedAt },
+      set: { key: note.key, contentHash, filePath, syncedAt },
     })
     .run();
 };
@@ -106,17 +87,10 @@ export const upsertReference = (
   const contentHash = hashContent(rawContent);
 
   tx.insert(referencesTable)
-    .values({
-      uuid: reference.uuid,
-      key: reference.key,
-      contentHash,
-      filePath,
-      deletedAt: null,
-      syncedAt,
-    })
+    .values({ uuid: reference.uuid, key: reference.key, contentHash, filePath, syncedAt })
     .onConflictDoUpdate({
       target: referencesTable.uuid,
-      set: { key: reference.key, contentHash, filePath, deletedAt: null, syncedAt },
+      set: { key: reference.key, contentHash, filePath, syncedAt },
     })
     .run();
 };
@@ -145,7 +119,6 @@ export const upsertFragment = (
       contentHash,
       filePath,
       updatedAt: fragment.updatedAt,
-      deletedAt: null,
       syncedAt,
     })
     .onConflictDoUpdate({
@@ -157,7 +130,6 @@ export const upsertFragment = (
         contentHash,
         filePath,
         updatedAt: fragment.updatedAt,
-        deletedAt: null,
         syncedAt,
       },
     })
@@ -195,39 +167,6 @@ export const upsertFragment = (
   }, []);
 };
 
-// Soft-deletes a fragment by its entity-relative file path (e.g. "my-fragment.md" or
-// "discarded/my-fragment.md"). No-op if no active row matches.
-export const softDeleteFragmentByFilePath = (tx: Transaction, filePath: string): void => {
-  tx.update(fragmentsTable)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(fragmentsTable.filePath, filePath), isNull(fragmentsTable.deletedAt)))
-    .run();
-};
-
-// Soft-deletes an aspect by its entity-relative file path (e.g. "my-aspect.md").
-export const softDeleteAspectByFilePath = (tx: Transaction, filePath: string): void => {
-  tx.update(aspectsTable)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(aspectsTable.filePath, filePath), isNull(aspectsTable.deletedAt)))
-    .run();
-};
-
-// Soft-deletes a note by its entity-relative file path (e.g. "my-note.md").
-export const softDeleteNoteByFilePath = (tx: Transaction, filePath: string): void => {
-  tx.update(notesTable)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(notesTable.filePath, filePath), isNull(notesTable.deletedAt)))
-    .run();
-};
-
-// Soft-deletes a reference by its entity-relative file path (e.g. "my-reference.md").
-export const softDeleteReferenceByFilePath = (tx: Transaction, filePath: string): void => {
-  tx.update(referencesTable)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(referencesTable.filePath, filePath), isNull(referencesTable.deletedAt)))
-    .run();
-};
-
 export const deleteFragmentByFilePath = (tx: Transaction, filePath: string): void => {
   tx.delete(fragmentsTable).where(eq(fragmentsTable.filePath, filePath)).run();
 };
@@ -242,4 +181,43 @@ export const deleteNoteByFilePath = (tx: Transaction, filePath: string): void =>
 
 export const deleteReferenceByFilePath = (tx: Transaction, filePath: string): void => {
   tx.delete(referencesTable).where(eq(referencesTable.filePath, filePath)).run();
+};
+
+export const findFragmentUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {
+  return db
+    .select({ fragmentUuid: fragmentNotesTable.fragmentUuid })
+    .from(fragmentNotesTable)
+    .where(eq(fragmentNotesTable.noteKey, noteKey))
+    .all()
+    .map((row) => row.fragmentUuid);
+};
+
+export const findAspectUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {
+  return db
+    .select({ aspectUuid: aspectNotesTable.aspectUuid })
+    .from(aspectNotesTable)
+    .where(eq(aspectNotesTable.noteKey, noteKey))
+    .all()
+    .map((row) => row.aspectUuid);
+};
+
+export const findFragmentUuidsByReferenceKey = (
+  db: VaultDatabase,
+  referenceKey: string,
+): string[] => {
+  return db
+    .select({ fragmentUuid: fragmentReferencesTable.fragmentUuid })
+    .from(fragmentReferencesTable)
+    .where(eq(fragmentReferencesTable.referenceKey, referenceKey))
+    .all()
+    .map((row) => row.fragmentUuid);
+};
+
+export const findFragmentUuidsByAspectKey = (db: VaultDatabase, aspectKey: string): string[] => {
+  return db
+    .select({ fragmentUuid: fragmentPropertiesTable.fragmentUuid })
+    .from(fragmentPropertiesTable)
+    .where(eq(fragmentPropertiesTable.aspectKey, aspectKey))
+    .all()
+    .map((row) => row.fragmentUuid);
 };

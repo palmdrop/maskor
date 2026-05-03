@@ -6,6 +6,7 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
   AspectSchema,
+  AspectUpdateResponseSchema,
   IndexedAspectSchema,
   AspectUUIDParamSchema,
   AspectCreateSchema,
@@ -118,14 +119,14 @@ const updateAspectRoute = createRoute({
   method: "patch",
   path: "/{aspectId}",
   tags: ["Aspects"],
-  summary: "Update an aspect's description, category, or notes",
+  summary: "Update an aspect's key, description, category, or notes",
   request: {
     params: AspectUUIDParamSchema,
     body: { content: { "application/json": { schema: AspectUpdateSchema } }, required: true },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: AspectSchema } },
+      content: { "application/json": { schema: AspectUpdateResponseSchema } },
       description: "Aspect updated",
     },
     400: {

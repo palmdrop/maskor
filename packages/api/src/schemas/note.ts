@@ -3,6 +3,7 @@ import {
   NoteSchema as DomainNoteSchema,
   NoteCreateSchema as DomainNoteCreateSchema,
   NoteUpdateSchema as DomainNoteUpdateSchema,
+  NoteUpdateResponseSchema as DomainNoteUpdateResponseSchema,
 } from "@maskor/shared";
 
 // List response — index layer fields
@@ -34,3 +35,7 @@ export const NoteUpdateSchema = DomainNoteUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "On solitude" }),
   content: z.string().optional().openapi({ example: "A note body..." }),
 }).openapi("NoteUpdate");
+
+export const NoteUpdateResponseSchema = DomainNoteUpdateResponseSchema.extend({
+  note: NoteSchema,
+}).openapi("NoteUpdateResponse");

@@ -37,3 +37,10 @@ export const AspectUpdateSchema = DomainAspectUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "tone" }),
   category: z.string().optional().openapi({ example: "style" }),
 }).openapi("AspectUpdate");
+
+export const AspectUpdateResponseSchema = z
+  .object({
+    aspect: AspectSchema,
+    warnings: z.array(z.string()),
+  })
+  .openapi("AspectUpdateResponse");

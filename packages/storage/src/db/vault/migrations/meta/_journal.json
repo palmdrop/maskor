@@ -36,6 +36,13 @@
       "when": 1746057600000,
       "tag": "20260501_rename_note_title_reference_name_to_key",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1746144000000,
+      "tag": "20260502_drop_deleted_at_columns",
+      "breakpoints": true
     }
   ]
 }

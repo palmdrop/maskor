@@ -6,6 +6,7 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
   ReferenceSchema,
+  ReferenceUpdateResponseSchema,
   IndexedReferenceSchema,
   ReferenceUUIDParamSchema,
   ReferenceCreateSchema,
@@ -100,7 +101,7 @@ const updateReferenceRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ReferenceSchema } },
+      content: { "application/json": { schema: ReferenceUpdateResponseSchema } },
       description: "Reference updated",
     },
     400: {

@@ -6,6 +6,7 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
   NoteSchema,
+  NoteUpdateResponseSchema,
   IndexedNoteSchema,
   NoteUUIDParamSchema,
   NoteCreateSchema,
@@ -100,7 +101,7 @@ const updateNoteRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: NoteSchema } },
+      content: { "application/json": { schema: NoteUpdateResponseSchema } },
       description: "Note updated",
     },
     400: {

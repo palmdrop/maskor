@@ -17,6 +17,8 @@ type Props = {
   entityKey: string;
   content: string;
   isPending: boolean;
+  cascadeWarnings?: string[];
+  onDismissWarnings?: () => void;
   onKeySave: (key: string) => Promise<void>;
   onContentSave: (content: string) => Promise<void>;
 };
@@ -29,6 +31,8 @@ export const EntityEditorShell = ({
   entityKey,
   content,
   isPending,
+  cascadeWarnings,
+  onDismissWarnings,
   onKeySave,
   onContentSave,
 }: Props) => {
@@ -118,6 +122,20 @@ export const EntityEditorShell = ({
         </Button>
       </div>
       <Separator />
+      {cascadeWarnings && cascadeWarnings.length > 0 && (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">
+            {label} renamed in {cascadeWarnings.length} related file
+            {cascadeWarnings.length > 1 ? "s" : ""}.
+          </span>
+          <button
+            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            onClick={onDismissWarnings}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <ProseEditor
           ref={proseEditorRef}

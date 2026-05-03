@@ -6,7 +6,8 @@ export type ParsedFile = {
   body: string;
 };
 
-const INLINE_FIELD_REGEX = /^([\w-]+):: (.+)$/;
+// TODO: this should use the same regex as the one that is used to allow or reject file names
+const INLINE_FIELD_REGEX = /^([\w _-]+):: (.+)$/;
 
 export const parseFile = (rawFile: string): ParsedFile => {
   const parsed = matter(rawFile);

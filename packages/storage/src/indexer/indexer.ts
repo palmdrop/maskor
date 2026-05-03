@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
+import { eq, inArray, notInArray } from "drizzle-orm";
 import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
@@ -45,7 +45,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
     // rebuild is interrupted. It also batches all fsyncs for a significant performance win.
-    const syncedAt = new Date();
     const fragmentWarnings: SyncWarning[] = [];
 
     vaultDatabase.transaction((tx) => {
@@ -54,20 +53,12 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         upsertAspect(tx, aspect, filePath, rawContent);
       }
 
-      // Soft-delete aspects absent from vault.
+      // Hard-delete aspects absent from vault.
       const activeAspectUuids = aspectEntries.map(({ entity }) => entity.uuid as string);
       if (activeAspectUuids.length > 0) {
-        tx.update(aspectsTable)
-          .set({ deletedAt: syncedAt })
-          .where(
-            and(isNull(aspectsTable.deletedAt), notInArray(aspectsTable.uuid, activeAspectUuids)),
-          )
-          .run();
+        tx.delete(aspectsTable).where(notInArray(aspectsTable.uuid, activeAspectUuids)).run();
       } else {
-        tx.update(aspectsTable)
-          .set({ deletedAt: syncedAt })
-          .where(isNull(aspectsTable.deletedAt))
-          .run();
+        tx.delete(aspectsTable).run();
       }
 
       // 2. Upsert notes.
@@ -102,23 +93,12 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         fragmentWarnings.push(...warnings);
       }
 
-      // Soft-delete fragments absent from vault.
+      // Hard-delete fragments absent from vault.
       const activeFragmentUuids = fragmentEntries.map(({ entity }) => entity.uuid as string);
       if (activeFragmentUuids.length) {
-        tx.update(fragmentsTable)
-          .set({ deletedAt: syncedAt })
-          .where(
-            and(
-              isNull(fragmentsTable.deletedAt),
-              notInArray(fragmentsTable.uuid, activeFragmentUuids),
-            ),
-          )
-          .run();
+        tx.delete(fragmentsTable).where(notInArray(fragmentsTable.uuid, activeFragmentUuids)).run();
       } else {
-        tx.update(fragmentsTable)
-          .set({ deletedAt: syncedAt })
-          .where(isNull(fragmentsTable.deletedAt))
-          .run();
+        tx.delete(fragmentsTable).run();
       }
     });
 
@@ -200,11 +180,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     fragments: {
       async findAll() {
-        const rows = vaultDatabase
-          .select()
-          .from(fragmentsTable)
-          .where(isNull(fragmentsTable.deletedAt))
-          .all();
+        const rows = vaultDatabase.select().from(fragmentsTable).all();
         return loadFragmentRelations(rows);
       },
 
@@ -215,7 +191,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(fragmentsTable.uuid, uuid))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
 
         const results = await loadFragmentRelations([row]);
         return results[0] ?? null;
@@ -223,23 +199,19 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
       async findFilePath(uuid: string) {
         const row = vaultDatabase
-          .select({ filePath: fragmentsTable.filePath, deletedAt: fragmentsTable.deletedAt })
+          .select({ filePath: fragmentsTable.filePath })
           .from(fragmentsTable)
           .where(eq(fragmentsTable.uuid, uuid))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
         return row.filePath;
       },
     },
 
     aspects: {
       async findAll() {
-        const rows = vaultDatabase
-          .select()
-          .from(aspectsTable)
-          .where(isNull(aspectsTable.deletedAt))
-          .all();
+        const rows = vaultDatabase.select().from(aspectsTable).all();
         return loadAspectRelations(rows);
       },
 
@@ -250,7 +222,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(aspectsTable.key, key))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
 
         const results = await loadAspectRelations([row]);
         return results[0] ?? null;
@@ -263,7 +235,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(aspectsTable.uuid, uuid))
           .get();
 
-        if (!row || row.deletedAt !== null) return null;
+        if (!row) return null;
 
         const results = await loadAspectRelations([row]);
         return results[0] ?? null;

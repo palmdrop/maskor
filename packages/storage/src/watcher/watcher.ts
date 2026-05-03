@@ -18,8 +18,8 @@ import {
   upsertFragment,
   upsertNote,
   upsertReference,
-  softDeleteFragmentByFilePath,
-  softDeleteAspectByFilePath,
+  deleteFragmentByFilePath,
+  deleteAspectByFilePath,
   deleteNoteByFilePath,
   deleteReferenceByFilePath,
 } from "../indexer/upserts";
@@ -408,13 +408,13 @@ export const createVaultWatcher = (
       if (vaultRelativePath.startsWith(FRAGMENT_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, FRAGMENT_PREFIX);
         vaultDatabase.transaction((tx) => {
-          softDeleteFragmentByFilePath(tx, entityRelativePath);
+          deleteFragmentByFilePath(tx, entityRelativePath);
         });
         emit({ type: "fragment:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(ASPECT_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, ASPECT_PREFIX);
         vaultDatabase.transaction((tx) => {
-          softDeleteAspectByFilePath(tx, entityRelativePath);
+          deleteAspectByFilePath(tx, entityRelativePath);
         });
         emit({ type: "aspect:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(NOTE_PREFIX)) {

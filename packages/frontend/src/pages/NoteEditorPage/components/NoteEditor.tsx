@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetNote,
@@ -18,6 +18,7 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
   const { mutateAsync: updateNote, isPending } = useUpdateNote();
+  const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
 
   const note = envelope?.status === 200 ? envelope.data : null;
 
@@ -32,6 +33,8 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
       if (result.status !== 200) {
         throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
       }
+      const { warnings } = result.data;
+      setCascadeWarnings([...warnings.fragments, ...warnings.aspects]);
       invalidate();
     },
     [updateNote, projectId, noteId, invalidate],
@@ -61,6 +64,8 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
       entityKey={note.key}
       content={note.content}
       isPending={isPending}
+      cascadeWarnings={cascadeWarnings}
+      onDismissWarnings={() => setCascadeWarnings([])}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
     />
