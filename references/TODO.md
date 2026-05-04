@@ -6,7 +6,9 @@
 
 - [x] Try caveman pattern - put in CLAUDE.md
 
-- [ ] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
+- [x] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
+
+- [ ] renaming a note/ref from the filesystem is not properly picked up by the watcher... rename not propagated to maskor... fix
 
 - [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
 
