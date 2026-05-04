@@ -11,7 +11,6 @@ import type { Aspect } from "@maskor/shared";
 const PARSED_ASPECT: ParsedFile = {
   frontmatter: {
     uuid: "aspect-0001-0000-0000-000000000001",
-    key: "grief",
     category: "theme",
     notes: [],
   },
@@ -20,8 +19,8 @@ const PARSED_ASPECT: ParsedFile = {
 };
 
 describe("aspect.fromFile", () => {
-  it("maps all frontmatter fields", () => {
-    const aspect = fromFile(PARSED_ASPECT);
+  it("derives key from filename stem", () => {
+    const aspect = fromFile(PARSED_ASPECT, "grief.md");
     expect(aspect.uuid as string).toBe("aspect-0001-0000-0000-000000000001");
     expect(aspect.key).toBe("grief");
     expect(aspect.category).toBe("theme");
@@ -29,12 +28,12 @@ describe("aspect.fromFile", () => {
   });
 
   it("maps body to description", () => {
-    const aspect = fromFile(PARSED_ASPECT);
+    const aspect = fromFile(PARSED_ASPECT, "grief.md");
     expect(aspect.description).toBe("The presence of loss — ambient, not dramatic.");
   });
 
   it("sets description to undefined when body is empty", () => {
-    const aspect = fromFile({ ...PARSED_ASPECT, body: "" });
+    const aspect = fromFile({ ...PARSED_ASPECT, body: "" }, "grief.md");
     expect(aspect.description).toBeUndefined();
   });
 
@@ -43,7 +42,7 @@ describe("aspect.fromFile", () => {
       ...PARSED_ASPECT,
       frontmatter: { ...PARSED_ASPECT.frontmatter, category: undefined },
     };
-    const aspect = fromFile(parsed);
+    const aspect = fromFile(parsed, "grief.md");
     expect(aspect.category).toBeUndefined();
   });
 });
@@ -57,10 +56,9 @@ describe("aspect.toFile", () => {
     notes: [],
   };
 
-  it("writes uuid, key, notes to frontmatter", () => {
+  it("writes uuid and notes to frontmatter", () => {
     const { frontmatter } = toFile(aspect);
     expect(frontmatter.uuid).toBe(aspect.uuid);
-    expect(frontmatter.key).toBe("grief");
     expect(frontmatter.notes).toEqual([]);
   });
 

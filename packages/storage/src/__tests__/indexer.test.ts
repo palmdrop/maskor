@@ -208,7 +208,7 @@ describe("notes.findByKey", () => {
 
     const note = await indexer.notes.findByKey("bridge observation");
     expect(note).not.toBeNull();
-    expect(note?.filePath).toContain("bridge-observation.md");
+    expect(note?.filePath).toContain("bridge observation.md");
   });
 
   it("returns null for unknown key", async () => {
@@ -239,7 +239,7 @@ describe("references.findByKey", () => {
 
     const cityResearch = await indexer.references.findByKey("city research");
     expect(cityResearch).not.toBeNull();
-    expect(cityResearch?.filePath).toContain("city-research.md");
+    expect(cityResearch?.filePath).toContain("city research.md");
   });
 });
 

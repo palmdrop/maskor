@@ -10,9 +10,15 @@
 
 - [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
 
+- [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
+  - TODO: importing capabilities
+
 - [x] Add way to rename notes, references
 
+- [ ] Unify ref/note/aspect and even fragment editor... all should use the same editor with same capabilities, but diff metadata properties and handlers. A lot of duplicate code now.
+
 - [ ] Find flow for using cheaper models for appropriate tasks
+  - queue up tasks to a good but slow model on my home desktop! see if I can manage sufficiently good results
 
 - [ ] Rework note/reference/aspect management... uses UUIDs for nav but slug is unique (has to be). Makes it hard to link to, if only slug is available. See `packages/frontend/src/components/fragments/fragment-metadata-form.tsx` < link to reference page is wrong
 

@@ -22,12 +22,12 @@ The backend for Phase 6 (aspect key rename + cascade), Phase 6b (note/reference 
 
 The storage service (`storage-service.ts`) hard-deletes all four entity types. So:
 
-| Entity    | Rebuild sweep | Watcher delete | Service delete |
-|-----------|--------------|----------------|----------------|
-| Notes     | hard ✓       | hard ✓         | hard ✓         |
-| References| hard ✓       | hard ✓         | hard ✓         |
-| Aspects   | **soft ✗**   | **soft ✗**     | hard ✓         |
-| Fragments | **soft ✗**   | **soft ✗**     | hard ✓         |
+| Entity     | Rebuild sweep | Watcher delete | Service delete |
+| ---------- | ------------- | -------------- | -------------- |
+| Notes      | hard ✓        | hard ✓         | hard ✓         |
+| References | hard ✓        | hard ✓         | hard ✓         |
+| Aspects    | **soft ✗**    | **soft ✗**     | hard ✓         |
+| Fragments  | **soft ✗**    | **soft ✗**     | hard ✓         |
 
 Consequence: aspect and fragment rows accumulate stale `deletedAt` entries from watcher/rebuild paths. The `isNull(deletedAt)` guards in `findAll()` / `findByUUID()` keep queries correct for now, but the soft-delete machinery for aspects/fragments is now partially vestigial and the inconsistency will cause confusion.
 

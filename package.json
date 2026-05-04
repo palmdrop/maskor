@@ -7,15 +7,16 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "format": "eslint --fix . && prettier --write .",
+    "format": "eslint --quiet --fix . && prettier --log-level silent --write .",
     "lint": "eslint . && prettier --check .",
     "test": "bun run test:backend && bun run test:frontend",
-    "test:backend": "bun test packages/shared packages/api packages/storage packages/importer packages/sequencer",
+    "test:backend": "bun test packages/shared packages/api packages/storage packages/importer packages/sequencer --only-failures",
     "test:frontend": "bun run --cwd packages/frontend test",
     "test:coverage": "bun test --coverage packages/shared packages/api packages/storage packages/importer packages/sequencer && bun run --cwd packages/frontend test:coverage",
     "dev:api": "bun run --cwd packages/api dev",
     "dev:frontend": "bun run --cwd packages/frontend dev",
-    "snapshot": "bunx repomix --compress"
+    "snapshot": "bunx repomix --compress",
+    "verify": "bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

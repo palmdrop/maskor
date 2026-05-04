@@ -195,7 +195,7 @@ export const createVault = (config: VaultConfig): Vault => {
       async read(filePath) {
         const absolutePath = toAbsoluteAspect(filePath);
         const raw = await readMarkdown(absolutePath);
-        return aspectMapper.fromFile(parseFile(raw));
+        return aspectMapper.fromFile(parseFile(raw), filePath);
       },
 
       async readAll() {
@@ -209,7 +209,7 @@ export const createVault = (config: VaultConfig): Vault => {
           files.map(async (filePath) => {
             const absolutePath = toAbsoluteAspect(filePath);
             const rawContent = await readMarkdown(absolutePath);
-            const entity = aspectMapper.fromFile(parseFile(rawContent));
+            const entity = aspectMapper.fromFile(parseFile(rawContent), filePath);
             return { entity, filePath, rawContent };
           }),
         );

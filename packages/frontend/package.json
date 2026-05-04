@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --reporter=dot",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "codegen": "bunx orval --config orval.config.ts",

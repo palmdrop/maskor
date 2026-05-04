@@ -120,7 +120,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     const vault = getVault(context);
     const vaultDatabase = getVaultDatabase(context);
-    const watcher = createVaultWatcher(vaultDatabase, vault, logger);
+    const watcher = createVaultWatcher(vaultDatabase, vault, logger, {
+      onNoteRename: async (oldKey, newKey) => {
+        await cascadeNoteKeyRename(context, oldKey, newKey);
+      },
+      onReferenceRename: async (oldKey, newKey) => {
+        await cascadeReferenceKeyRename(context, oldKey, newKey);
+      },
+      onAspectRename: async (oldKey, newKey) => {
+        await cascadeAspectKeyRename(context, oldKey, newKey);
+      },
+    });
     vaultWatcherCache.set(context.projectUUID, watcher);
     return watcher;
   };
@@ -152,6 +162,139 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     await unlink(arcPath).catch((error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT") throw error;
     });
+  };
+
+  // --- cascade helpers ---
+
+  const cascadeFragments = async (
+    context: ProjectContext,
+    affectedUuids: string[],
+    updateFn: (fragment: Fragment) => Fragment,
+  ): Promise<string[]> => {
+    const vault = getVault(context);
+    const vaultDatabase = getVaultDatabase(context);
+    const indexer = getVaultIndexer(context);
+
+    type Cascaded = { fragment: Fragment; filePath: string; rawContent: string };
+    const touched: string[] = [];
+    const cascaded: Cascaded[] = [];
+
+    for (const uuid of affectedUuids) {
+      const filePath = await indexer.fragments.findFilePath(uuid);
+      if (!filePath) {
+        touched.push(uuid);
+        continue;
+      }
+      const updated = updateFn(await vault.fragments.read(filePath));
+      await vault.fragments.write(updated);
+      const rawContent = await Bun.file(join(context.vaultPath, "fragments", filePath)).text();
+      cascaded.push({ fragment: updated, filePath, rawContent });
+      touched.push(uuid);
+    }
+
+    const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+    vaultDatabase.transaction((tx) => {
+      for (const { fragment, filePath, rawContent } of cascaded) {
+        upsertFragment(tx, fragment, filePath, rawContent, knownAspectKeys);
+      }
+    });
+
+    return touched;
+  };
+
+  const cascadeAspects = async (
+    context: ProjectContext,
+    affectedUuids: string[],
+    updateFn: (aspect: Aspect) => Aspect,
+  ): Promise<string[]> => {
+    const vault = getVault(context);
+    const vaultDatabase = getVaultDatabase(context);
+    const indexer = getVaultIndexer(context);
+
+    type Cascaded = { aspect: Aspect; filePath: string; rawContent: string };
+    const touched: string[] = [];
+    const cascaded: Cascaded[] = [];
+
+    for (const uuid of affectedUuids) {
+      const indexed = await indexer.aspects.findByUUID(uuid);
+      if (!indexed) {
+        touched.push(uuid);
+        continue;
+      }
+      const updated = updateFn(await vault.aspects.read(indexed.filePath));
+      await vault.aspects.write(updated);
+      const rawContent = await Bun.file(
+        join(context.vaultPath, "aspects", `${updated.key}.md`),
+      ).text();
+      cascaded.push({ aspect: updated, filePath: indexed.filePath, rawContent });
+      touched.push(uuid);
+    }
+
+    vaultDatabase.transaction((tx) => {
+      for (const { aspect, filePath, rawContent } of cascaded) {
+        upsertAspect(tx, aspect, filePath, rawContent);
+      }
+    });
+
+    return touched;
+  };
+
+  const cascadeNoteKeyRename = async (
+    context: ProjectContext,
+    oldKey: string,
+    newKey: string,
+  ): Promise<{ fragments: string[]; aspects: string[] }> => {
+    const vaultDatabase = getVaultDatabase(context);
+    const fragments = await cascadeFragments(
+      context,
+      findFragmentUuidsByNoteKey(vaultDatabase, oldKey),
+      (f) => ({ ...f, notes: f.notes.map((n) => (n === oldKey ? newKey : n)) }),
+    );
+    const aspects = await cascadeAspects(
+      context,
+      findAspectUuidsByNoteKey(vaultDatabase, oldKey),
+      (a) => ({ ...a, notes: a.notes.map((n) => (n === oldKey ? newKey : n)) }),
+    );
+    return { fragments, aspects };
+  };
+
+  const cascadeReferenceKeyRename = async (
+    context: ProjectContext,
+    oldKey: string,
+    newKey: string,
+  ): Promise<{ fragments: string[] }> => {
+    const vaultDatabase = getVaultDatabase(context);
+    const fragments = await cascadeFragments(
+      context,
+      findFragmentUuidsByReferenceKey(vaultDatabase, oldKey),
+      (f) => ({ ...f, references: f.references.map((r) => (r === oldKey ? newKey : r)) }),
+    );
+    return { fragments };
+  };
+
+  const cascadeAspectKeyRename = async (
+    context: ProjectContext,
+    oldKey: string,
+    newKey: string,
+  ): Promise<{ fragments: string[] }> => {
+    const arc = await readArc(context, oldKey);
+    if (arc) {
+      await writeArc(context, { ...arc, aspectKey: newKey });
+      await deleteArc(context, oldKey);
+    }
+    const vaultDatabase = getVaultDatabase(context);
+    const fragments = await cascadeFragments(
+      context,
+      findFragmentUuidsByAspectKey(vaultDatabase, oldKey),
+      (f) => {
+        const oldProperty = f.properties[oldKey];
+        const updatedProperties = { ...f.properties };
+        delete updatedProperties[oldKey];
+        if (oldProperty !== undefined) updatedProperties[newKey] = oldProperty;
+        return { ...f, properties: updatedProperties };
+      },
+    );
+    return { fragments };
   };
 
   // --- public API ---
@@ -552,64 +695,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warningFragments: string[] = [];
+          const warningFragments =
+            patch.key !== undefined && patch.key !== oldKey
+              ? (await cascadeAspectKeyRename(context, oldKey, updated.key)).fragments
+              : [];
 
-          if (patch.key !== undefined && patch.key !== oldKey) {
-            // Cascade arc rename
-            const arc = await readArc(context, oldKey);
-            if (arc) {
-              await writeArc(context, { ...arc, aspectKey: updated.key });
-              await deleteArc(context, oldKey);
-            }
-
-            // Cascade fragment inline field rename
-            const affectedFragmentUuids = findFragmentUuidsByAspectKey(vaultDatabase, oldKey);
-
-            type CascadedFragment = {
-              fragment: Fragment;
-              filePath: string;
-              rawContent: string;
-            };
-
-            const cascadedFragments: CascadedFragment[] = [];
-
-            for (const fragmentUuid of affectedFragmentUuids) {
-              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
-              if (!fragmentFilePath) {
-                warningFragments.push(fragmentUuid);
-                continue;
-              }
-              const fragment = await getVault(context).fragments.read(fragmentFilePath);
-              const oldProperty = fragment.properties[oldKey];
-              const updatedProperties = { ...fragment.properties };
-              delete updatedProperties[oldKey];
-              if (oldProperty !== undefined) {
-                updatedProperties[updated.key] = oldProperty;
-              }
-              const updatedFragment: Fragment = { ...fragment, properties: updatedProperties };
-              await getVault(context).fragments.write(updatedFragment);
-              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
-              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
-              cascadedFragments.push({
-                fragment: updatedFragment,
-                filePath: fragmentFilePath,
-                rawContent: fragmentRawContent,
-              });
-              warningFragments.push(fragmentUuid);
-            }
-
-            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
-            vaultDatabase.transaction((tx) => {
-              upsertAspect(tx, updated, newFilePath, rawContent);
-              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
-                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
-              }
-            });
-          } else {
-            vaultDatabase.transaction((tx) => {
-              upsertAspect(tx, updated, newFilePath, rawContent);
-            });
-          }
+          vaultDatabase.transaction((tx) => {
+            upsertAspect(tx, updated, newFilePath, rawContent);
+          });
 
           return { aspect: updated, warnings: warningFragments };
         } catch (error) {
@@ -709,15 +802,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           if (indexed.filePath !== newFilePath) {
             const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
-            await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
-              if (err.code === "ENOENT") {
+            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+              if (error.code === "ENOENT") {
                 log.warn(
                   { filePath: indexed.filePath },
                   "rename cleanup: old note file already gone",
                 );
                 return;
               }
-              throw err;
+              throw error;
             });
           }
 
@@ -725,95 +818,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warningFragments: string[] = [];
-          const warningAspects: string[] = [];
+          const warnings =
+            patch.key !== undefined && patch.key !== oldKey
+              ? await cascadeNoteKeyRename(context, oldKey, updated.key)
+              : { fragments: [], aspects: [] };
 
-          if (patch.key !== undefined && patch.key !== oldKey) {
-            const affectedFragmentUuids = findFragmentUuidsByNoteKey(vaultDatabase, oldKey);
-            const affectedAspectUuids = findAspectUuidsByNoteKey(vaultDatabase, oldKey);
+          vaultDatabase.transaction((tx) => {
+            upsertNote(tx, updated, newFilePath, rawContent);
+          });
 
-            type CascadedFragment = {
-              fragment: Fragment;
-              filePath: string;
-              rawContent: string;
-            };
-            type CascadedAspect = {
-              aspect: Aspect;
-              filePath: string;
-              rawContent: string;
-            };
-
-            const cascadedFragments: CascadedFragment[] = [];
-            const cascadedAspects: CascadedAspect[] = [];
-
-            for (const fragmentUuid of affectedFragmentUuids) {
-              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
-              if (!fragmentFilePath) {
-                warningFragments.push(fragmentUuid);
-                continue;
-              }
-              const fragment = await getVault(context).fragments.read(fragmentFilePath);
-              const updatedFragment: Fragment = {
-                ...fragment,
-                notes: fragment.notes.map((n) => (n === oldKey ? updated.key : n)),
-              };
-              await getVault(context).fragments.write(updatedFragment);
-              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
-              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
-              cascadedFragments.push({
-                fragment: updatedFragment,
-                filePath: fragmentFilePath,
-                rawContent: fragmentRawContent,
-              });
-              warningFragments.push(fragmentUuid);
-            }
-
-            for (const aspectUuid of affectedAspectUuids) {
-              const indexedAspect = await indexer.aspects.findByUUID(aspectUuid);
-              if (!indexedAspect) {
-                warningAspects.push(aspectUuid);
-                continue;
-              }
-              const aspect = await getVault(context).aspects.read(indexedAspect.filePath);
-              const updatedAspect: Aspect = {
-                ...aspect,
-                notes: aspect.notes.map((n) => (n === oldKey ? updated.key : n)),
-              };
-              await getVault(context).aspects.write(updatedAspect);
-              const aspectAbsolutePath = join(
-                context.vaultPath,
-                "aspects",
-                `${updatedAspect.key}.md`,
-              );
-              const aspectRawContent = await Bun.file(aspectAbsolutePath).text();
-              cascadedAspects.push({
-                aspect: updatedAspect,
-                filePath: indexedAspect.filePath,
-                rawContent: aspectRawContent,
-              });
-              warningAspects.push(aspectUuid);
-            }
-
-            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
-            vaultDatabase.transaction((tx) => {
-              upsertNote(tx, updated, newFilePath, rawContent);
-              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
-                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
-              }
-              for (const { aspect, filePath, rawContent: aspectRaw } of cascadedAspects) {
-                upsertAspect(tx, aspect, filePath, aspectRaw);
-              }
-            });
-          } else {
-            vaultDatabase.transaction((tx) => {
-              upsertNote(tx, updated, newFilePath, rawContent);
-            });
-          }
-
-          return {
-            note: updated,
-            warnings: { fragments: warningFragments, aspects: warningAspects },
-          };
+          return { note: updated, warnings };
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
             throw new VaultError(
@@ -950,15 +964,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           if (indexed.filePath !== newFilePath) {
             const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
-            await unlink(absoluteOldPath).catch((err: NodeJS.ErrnoException) => {
-              if (err.code === "ENOENT") {
+            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+              if (error.code === "ENOENT") {
                 log.warn(
                   { filePath: indexed.filePath },
                   "rename cleanup: old reference file already gone",
                 );
                 return;
               }
-              throw err;
+              throw error;
             });
           }
 
@@ -966,55 +980,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warningFragments: string[] = [];
+          const warnings =
+            patch.key !== undefined && patch.key !== oldKey
+              ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
+              : { fragments: [] };
 
-          if (patch.key !== undefined && patch.key !== oldKey) {
-            const affectedFragmentUuids = findFragmentUuidsByReferenceKey(vaultDatabase, oldKey);
+          vaultDatabase.transaction((tx) => {
+            upsertReference(tx, updated, newFilePath, rawContent);
+          });
 
-            type CascadedFragment = {
-              fragment: Fragment;
-              filePath: string;
-              rawContent: string;
-            };
-
-            const cascadedFragments: CascadedFragment[] = [];
-
-            for (const fragmentUuid of affectedFragmentUuids) {
-              const fragmentFilePath = await indexer.fragments.findFilePath(fragmentUuid);
-              if (!fragmentFilePath) {
-                warningFragments.push(fragmentUuid);
-                continue;
-              }
-              const fragment = await getVault(context).fragments.read(fragmentFilePath);
-              const updatedFragment: Fragment = {
-                ...fragment,
-                references: fragment.references.map((r) => (r === oldKey ? updated.key : r)),
-              };
-              await getVault(context).fragments.write(updatedFragment);
-              const fragmentAbsolutePath = join(context.vaultPath, "fragments", fragmentFilePath);
-              const fragmentRawContent = await Bun.file(fragmentAbsolutePath).text();
-              cascadedFragments.push({
-                fragment: updatedFragment,
-                filePath: fragmentFilePath,
-                rawContent: fragmentRawContent,
-              });
-              warningFragments.push(fragmentUuid);
-            }
-
-            const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
-            vaultDatabase.transaction((tx) => {
-              upsertReference(tx, updated, newFilePath, rawContent);
-              for (const { fragment, filePath, rawContent: fragmentRaw } of cascadedFragments) {
-                upsertFragment(tx, fragment, filePath, fragmentRaw, knownAspectKeys);
-              }
-            });
-          } else {
-            vaultDatabase.transaction((tx) => {
-              upsertReference(tx, updated, newFilePath, rawContent);
-            });
-          }
-
-          return { reference: updated, warnings: { fragments: warningFragments } };
+          return { reference: updated, warnings };
         } catch (error) {
           if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
             throw new VaultError(

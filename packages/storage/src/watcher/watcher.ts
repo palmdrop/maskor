@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Logger, VaultSyncEvent } from "@maskor/shared";
 import { slugify } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
-import { aspectsTable, fragmentsTable } from "../db/vault/schema";
+import { aspectsTable, fragmentsTable, notesTable, referencesTable } from "../db/vault/schema";
 import type { Vault } from "../vault/types";
 import { parseFile } from "../vault/markdown/parse";
 import { serializeFile } from "../vault/markdown/serialize";
@@ -24,6 +24,12 @@ import {
   deleteReferenceByFilePath,
 } from "../indexer/upserts";
 import { eq } from "drizzle-orm";
+
+export type CascadeCallbacks = {
+  onNoteRename: (oldKey: string, newKey: string) => Promise<void>;
+  onReferenceRename: (oldKey: string, newKey: string) => Promise<void>;
+  onAspectRename: (oldKey: string, newKey: string) => Promise<void>;
+};
 
 export type VaultWatcher = {
   // Idempotent — calling start() when already running is a no-op.
@@ -66,6 +72,7 @@ export const createVaultWatcher = (
   vaultDatabase: VaultDatabase,
   vault: Vault,
   logger?: Logger,
+  cascadeCallbacks?: CascadeCallbacks,
 ): VaultWatcher => {
   const vaultRoot = vault.root;
 
@@ -203,13 +210,23 @@ export const createVaultWatcher = (
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to aspect");
     }
 
-    // Hash guard: skip if full-file content unchanged.
+    const filenameKey = path.basename(entityRelativePath, ".md");
+
     const storedRow = vaultDatabase
-      .select({ contentHash: aspectsTable.contentHash })
+      .select({ key: aspectsTable.key, contentHash: aspectsTable.contentHash })
       .from(aspectsTable)
       .where(eq(aspectsTable.uuid, uuid))
       .get();
-    if (storedRow?.contentHash === hashContent(rawContent)) {
+
+    const isRename = storedRow !== undefined && storedRow.key !== filenameKey;
+
+    if (isRename && cascadeCallbacks) {
+      await cascadeCallbacks.onAspectRename(storedRow.key, filenameKey);
+    }
+
+    // Hash guard: skip if content unchanged and this is not a rename.
+    // Renames bypass the guard because the key changed even if the file body didn't.
+    if (!isRename && storedRow?.contentHash === hashContent(rawContent)) {
       log.debug(
         { filePath: entityRelativePath },
         "watcher: aspect unchanged (hash match) — skipping",
@@ -217,7 +234,7 @@ export const createVaultWatcher = (
       return;
     }
 
-    const aspect = aspectMapper.fromFile(parsed);
+    const aspect = aspectMapper.fromFile(parsed, entityRelativePath);
 
     vaultDatabase.transaction((tx) => {
       upsertAspect(tx, aspect, entityRelativePath, rawContent);
@@ -252,9 +269,20 @@ export const createVaultWatcher = (
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to note");
     }
 
+    if (cascadeCallbacks) {
+      const filenameKey = path.basename(entityRelativePath, ".md");
+      const storedRow = vaultDatabase
+        .select({ key: notesTable.key })
+        .from(notesTable)
+        .where(eq(notesTable.uuid, uuid))
+        .get();
+      if (storedRow && storedRow.key !== filenameKey) {
+        await cascadeCallbacks.onNoteRename(storedRow.key, filenameKey);
+      }
+    }
+
     const note = noteMapper.fromFile(parsed, entityRelativePath);
 
-    // TODO: Again, unnecessary transaction?
     vaultDatabase.transaction((tx) => {
       upsertNote(tx, note, entityRelativePath, rawContent);
     });
@@ -291,9 +319,20 @@ export const createVaultWatcher = (
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to reference");
     }
 
+    if (cascadeCallbacks) {
+      const filenameKey = path.basename(entityRelativePath, ".md");
+      const storedRow = vaultDatabase
+        .select({ key: referencesTable.key })
+        .from(referencesTable)
+        .where(eq(referencesTable.uuid, uuid))
+        .get();
+      if (storedRow && storedRow.key !== filenameKey) {
+        await cascadeCallbacks.onReferenceRename(storedRow.key, filenameKey);
+      }
+    }
+
     const reference = referenceMapper.fromFile(parsed, entityRelativePath);
 
-    // TODO: Again, unnecessary transaction?
     vaultDatabase.transaction((tx) => {
       upsertReference(tx, reference, entityRelativePath, rawContent);
     });

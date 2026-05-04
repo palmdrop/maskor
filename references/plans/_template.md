@@ -37,6 +37,14 @@ Group tasks in numbered phases for larger plans and/or where implementation orde
 
 ---
 
+## Testing
+
+<!--
+Outstanding notes regarding testing. Always include the sentence below. Add more information only if necessary.
+-->
+
+ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests already exist.
+
 ## Notes
 
 <!--

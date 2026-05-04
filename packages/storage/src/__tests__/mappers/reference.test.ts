@@ -6,23 +6,21 @@ import type { Reference } from "@maskor/shared";
 const PARSED: ParsedFile = {
   frontmatter: {
     uuid: "ref-00001-0000-0000-000000000001",
-    key: "city research",
   },
   inlineFields: {},
   body: "Notes on urban waterways.",
 };
 
 describe("reference.fromFile", () => {
-  it("maps uuid, key, content", () => {
-    const ref = fromFile(PARSED, "references/city-research.md");
+  it("derives key from filename stem", () => {
+    const ref = fromFile(PARSED, "city research.md");
     expect(ref.uuid as string).toBe("ref-00001-0000-0000-000000000001");
     expect(ref.key).toBe("city research");
     expect(ref.content).toBe("Notes on urban waterways.");
   });
 
-  it("derives key from filename when missing", () => {
-    const parsed: ParsedFile = { ...PARSED, frontmatter: { uuid: "ref-0001" } };
-    const ref = fromFile(parsed, "references/city-research.md");
+  it("strips .md extension from key", () => {
+    const ref = fromFile(PARSED, "references/city-research.md");
     expect(ref.key).toBe("city-research");
   });
 });
@@ -34,10 +32,9 @@ describe("reference.toFile", () => {
     content: "Notes on urban waterways.",
   };
 
-  it("writes uuid and key to frontmatter", () => {
+  it("writes uuid to frontmatter", () => {
     const { frontmatter } = toFile(ref);
     expect(frontmatter.uuid as string).toBe(ref.uuid as string);
-    expect(frontmatter.key).toBe("city research");
   });
 
   it("writes content to body", () => {

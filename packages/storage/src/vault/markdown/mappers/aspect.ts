@@ -1,15 +1,17 @@
 import type { Aspect, FragmentProperties } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
+import { basename } from "node:path";
 
 // --- Aspect file mapper ---
 
-export const fromFile = (parsed: ParsedFile): Aspect => {
+export const fromFile = (parsed: ParsedFile, filePath: string): Aspect => {
   const frontmatter = parsed.frontmatter;
   const description = parsed.body?.trim() || undefined;
+  const key = basename(filePath).replace(/\.md$/, "");
 
   return {
     uuid: frontmatter.uuid as string,
-    key: (frontmatter.key as string) ?? "",
+    key,
     category: frontmatter.category as string | undefined,
     description,
     notes: (frontmatter.notes as string[]) ?? [],
@@ -19,7 +21,6 @@ export const fromFile = (parsed: ParsedFile): Aspect => {
 export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; body: string } => {
   const frontmatter: Record<string, unknown> = {
     uuid: aspect.uuid,
-    key: aspect.key,
     notes: aspect.notes,
   };
 
