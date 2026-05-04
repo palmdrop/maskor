@@ -214,6 +214,7 @@ describe("syncFragment — hash guard", () => {
     made.watcher.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
 
     const bridgePath = join(vaultDir, "fragments", "the-bridge.md");
     const originalContent = await Bun.file(bridgePath).text();
@@ -221,12 +222,14 @@ describe("syncFragment — hash guard", () => {
     // Write modified content — hash will differ
     await Bun.write(bridgePath, originalContent + "\nNew line added.");
 
-    await waitFor(() =>
-      events.some(
-        (event) =>
-          event.type === "fragment:synced" &&
-          event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
-      ),
+    await waitFor(
+      () =>
+        events.some(
+          (event) =>
+            event.type === "fragment:synced" &&
+            event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
+        ),
+      3000,
     );
 
     const bridgeSynced = events.filter(

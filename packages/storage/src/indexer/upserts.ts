@@ -24,7 +24,7 @@ export const loadKnownAspectKeys = (vaultDatabase: VaultDatabase): Set<string> =
   return new Set(rows.map((row) => row.key));
 };
 
-type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
+export type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
 // All helpers are synchronous — bun:sqlite is sync and callers wrap in a sync
 // transaction callback. Do not add async to these functions.

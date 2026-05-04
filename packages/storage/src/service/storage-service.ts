@@ -52,6 +52,7 @@ import {
   findFragmentUuidsByReferenceKey,
   findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
+import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
@@ -122,13 +123,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const vaultDatabase = getVaultDatabase(context);
     const watcher = createVaultWatcher(vaultDatabase, vault, logger, {
       onNoteRename: async (oldKey, newKey) => {
-        await cascadeNoteKeyRename(context, oldKey, newKey);
+        const payload = await cascadeNoteKeyRename(context, oldKey, newKey);
+        vaultDatabase.transaction((tx) => payload.commit(tx));
       },
       onReferenceRename: async (oldKey, newKey) => {
-        await cascadeReferenceKeyRename(context, oldKey, newKey);
+        const payload = await cascadeReferenceKeyRename(context, oldKey, newKey);
+        vaultDatabase.transaction((tx) => payload.commit(tx));
       },
       onAspectRename: async (oldKey, newKey) => {
-        await cascadeAspectKeyRename(context, oldKey, newKey);
+        const payload = await cascadeAspectKeyRename(context, oldKey, newKey);
+        vaultDatabase.transaction((tx) => payload.commit(tx));
       },
     });
     vaultWatcherCache.set(context.projectUUID, watcher);
@@ -166,11 +170,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
   // --- cascade helpers ---
 
+  // Each cascade helper writes updated entity files to disk and returns:
+  // - the UUIDs of all affected entities
+  // - a commit function that callers batch into a single DB transaction together
+  //   with the primary entity upsert, preserving atomicity.
+
   const cascadeFragments = async (
     context: ProjectContext,
     affectedUuids: string[],
     updateFn: (fragment: Fragment) => Fragment,
-  ): Promise<string[]> => {
+  ): Promise<{ touched: string[]; commit: (tx: Transaction) => void }> => {
     const vault = getVault(context);
     const vaultDatabase = getVaultDatabase(context);
     const indexer = getVaultIndexer(context);
@@ -193,22 +202,23 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     }
 
     const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
-    vaultDatabase.transaction((tx) => {
-      for (const { fragment, filePath, rawContent } of cascaded) {
-        upsertFragment(tx, fragment, filePath, rawContent, knownAspectKeys);
-      }
-    });
 
-    return touched;
+    return {
+      touched,
+      commit: (tx) => {
+        for (const { fragment, filePath, rawContent } of cascaded) {
+          upsertFragment(tx, fragment, filePath, rawContent, knownAspectKeys);
+        }
+      },
+    };
   };
 
   const cascadeAspects = async (
     context: ProjectContext,
     affectedUuids: string[],
     updateFn: (aspect: Aspect) => Aspect,
-  ): Promise<string[]> => {
+  ): Promise<{ touched: string[]; commit: (tx: Transaction) => void }> => {
     const vault = getVault(context);
-    const vaultDatabase = getVaultDatabase(context);
     const indexer = getVaultIndexer(context);
 
     type Cascaded = { aspect: Aspect; filePath: string; rawContent: string };
@@ -230,71 +240,98 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       touched.push(uuid);
     }
 
-    vaultDatabase.transaction((tx) => {
-      for (const { aspect, filePath, rawContent } of cascaded) {
-        upsertAspect(tx, aspect, filePath, rawContent);
-      }
-    });
-
-    return touched;
+    return {
+      touched,
+      commit: (tx) => {
+        for (const { aspect, filePath, rawContent } of cascaded) {
+          upsertAspect(tx, aspect, filePath, rawContent);
+        }
+      },
+    };
   };
 
   const cascadeNoteKeyRename = async (
     context: ProjectContext,
     oldKey: string,
     newKey: string,
-  ): Promise<{ fragments: string[]; aspects: string[] }> => {
+  ): Promise<{ fragments: string[]; aspects: string[]; commit: (tx: Transaction) => void }> => {
     const vaultDatabase = getVaultDatabase(context);
-    const fragments = await cascadeFragments(
+    const fragmentPayload = await cascadeFragments(
       context,
       findFragmentUuidsByNoteKey(vaultDatabase, oldKey),
-      (f) => ({ ...f, notes: f.notes.map((n) => (n === oldKey ? newKey : n)) }),
+      (fragment) => ({
+        ...fragment,
+        notes: fragment.notes.map((note) => (note === oldKey ? newKey : note)),
+      }),
     );
-    const aspects = await cascadeAspects(
+    const aspectPayload = await cascadeAspects(
       context,
       findAspectUuidsByNoteKey(vaultDatabase, oldKey),
-      (a) => ({ ...a, notes: a.notes.map((n) => (n === oldKey ? newKey : n)) }),
+      (aspect) => ({
+        ...aspect,
+        notes: aspect.notes.map((note) => (note === oldKey ? newKey : note)),
+      }),
     );
-    return { fragments, aspects };
+    return {
+      fragments: fragmentPayload.touched,
+      aspects: aspectPayload.touched,
+      commit: (tx) => {
+        fragmentPayload.commit(tx);
+        aspectPayload.commit(tx);
+      },
+    };
   };
 
   const cascadeReferenceKeyRename = async (
     context: ProjectContext,
     oldKey: string,
     newKey: string,
-  ): Promise<{ fragments: string[] }> => {
+  ): Promise<{ fragments: string[]; commit: (tx: Transaction) => void }> => {
     const vaultDatabase = getVaultDatabase(context);
-    const fragments = await cascadeFragments(
+    const fragmentPayload = await cascadeFragments(
       context,
       findFragmentUuidsByReferenceKey(vaultDatabase, oldKey),
-      (f) => ({ ...f, references: f.references.map((r) => (r === oldKey ? newKey : r)) }),
+      (fragment) => ({
+        ...fragment,
+        references: fragment.references.map((reference) =>
+          reference === oldKey ? newKey : reference,
+        ),
+      }),
     );
-    return { fragments };
+    return {
+      fragments: fragmentPayload.touched,
+      commit: fragmentPayload.commit,
+    };
   };
 
   const cascadeAspectKeyRename = async (
     context: ProjectContext,
     oldKey: string,
     newKey: string,
-  ): Promise<{ fragments: string[] }> => {
+  ): Promise<{ fragments: string[]; commit: (tx: Transaction) => void }> => {
     const arc = await readArc(context, oldKey);
     if (arc) {
       await writeArc(context, { ...arc, aspectKey: newKey });
       await deleteArc(context, oldKey);
     }
     const vaultDatabase = getVaultDatabase(context);
-    const fragments = await cascadeFragments(
+    const fragmentPayload = await cascadeFragments(
       context,
       findFragmentUuidsByAspectKey(vaultDatabase, oldKey),
-      (f) => {
-        const oldProperty = f.properties[oldKey];
-        const updatedProperties = { ...f.properties };
+      (fragment) => {
+        const oldProperty = fragment.properties[oldKey];
+        const updatedProperties = { ...fragment.properties };
         delete updatedProperties[oldKey];
-        if (oldProperty !== undefined) updatedProperties[newKey] = oldProperty;
-        return { ...f, properties: updatedProperties };
+        if (oldProperty !== undefined) {
+          updatedProperties[newKey] = oldProperty;
+        }
+        return { ...fragment, properties: updatedProperties };
       },
     );
-    return { fragments };
+    return {
+      fragments: fragmentPayload.touched,
+      commit: fragmentPayload.commit,
+    };
   };
 
   // --- public API ---
@@ -695,12 +732,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warningFragments =
+          const cascadePayload =
             patch.key !== undefined && patch.key !== oldKey
-              ? (await cascadeAspectKeyRename(context, oldKey, updated.key)).fragments
-              : [];
+              ? await cascadeAspectKeyRename(context, oldKey, updated.key)
+              : null;
+
+          const warningFragments = cascadePayload?.fragments ?? [];
 
           vaultDatabase.transaction((tx) => {
+            cascadePayload?.commit(tx);
             upsertAspect(tx, updated, newFilePath, rawContent);
           });
 
@@ -818,12 +858,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warnings =
+          const cascadePayload =
             patch.key !== undefined && patch.key !== oldKey
               ? await cascadeNoteKeyRename(context, oldKey, updated.key)
-              : { fragments: [], aspects: [] };
+              : null;
+
+          const warnings = cascadePayload
+            ? { fragments: cascadePayload.fragments, aspects: cascadePayload.aspects }
+            : { fragments: [], aspects: [] };
 
           vaultDatabase.transaction((tx) => {
+            cascadePayload?.commit(tx);
             upsertNote(tx, updated, newFilePath, rawContent);
           });
 
@@ -980,12 +1025,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
 
-          const warnings =
+          const cascadePayload =
             patch.key !== undefined && patch.key !== oldKey
               ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
-              : { fragments: [] };
+              : null;
+
+          const warnings = cascadePayload ? { fragments: cascadePayload.fragments } : { fragments: [] };
 
           vaultDatabase.transaction((tx) => {
+            cascadePayload?.commit(tx);
             upsertReference(tx, updated, newFilePath, rawContent);
           });
 
