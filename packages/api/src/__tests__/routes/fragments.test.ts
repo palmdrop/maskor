@@ -74,7 +74,7 @@ describe("GET /projects/:projectId/fragments/:fragmentId", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: "Stale Deletion Test",
+          key: "stale-deletion-test",
           content: "This file will be deleted.",
         }),
       },
@@ -103,7 +103,7 @@ describe("POST /projects/:projectId/fragments", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: "Test Fragment",
+        key: "test-fragment",
         content: "Some content here.",
       }),
     });
@@ -111,7 +111,7 @@ describe("POST /projects/:projectId/fragments", () => {
     expect(response.status).toBe(201);
     const body = (await response.json()) as IndexedFragment;
     expect(body.uuid).toBeDefined();
-    expect(body.title).toBe("Test Fragment");
+    expect(body.key).toBe("test-fragment");
     expect(body.isDiscarded).toBe(false);
   });
 
@@ -119,7 +119,7 @@ describe("POST /projects/:projectId/fragments", () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Missing content" }),
+      body: JSON.stringify({ key: "missing-content" }),
     });
     expect(response.status).toBe(400);
   });

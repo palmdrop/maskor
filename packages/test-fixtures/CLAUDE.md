@@ -1,0 +1,1 @@
+IT IS ALWAYS SAFE TO DELETE test databases. `@packages/test-fixtures/<vault>/.maskor/vault.db` can be removed instead of running migrations. The database can be re-generated from the vault and `project.json`. DELETING IS PREFERABLE since migrations for the test fixtures tend to be messy.

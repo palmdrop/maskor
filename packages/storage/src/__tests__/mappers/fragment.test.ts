@@ -6,7 +6,6 @@ import type { Fragment } from "@maskor/shared";
 const PARSED: ParsedFile = {
   frontmatter: {
     uuid: "frag-0001-0000-0000-000000000001",
-    title: "The Bridge",
     updatedAt: "2026-04-01T12:00:00.000Z",
     readyStatus: 0.8,
     notes: ["bridge observation"],
@@ -20,7 +19,7 @@ describe("fragment.fromFile", () => {
   it("maps all frontmatter fields", () => {
     const fragment = fromFile(PARSED, "the-bridge.md");
     expect(fragment.uuid as string).toBe("frag-0001-0000-0000-000000000001");
-    expect(fragment.title).toBe("The Bridge");
+    expect(fragment.key).toBe("the-bridge");
     expect(fragment.isDiscarded).toBe(false);
     expect(fragment.readyStatus).toBe(0.8);
     expect(fragment.notes).toEqual(["bridge observation"]);
@@ -60,15 +59,6 @@ describe("fragment.fromFile", () => {
     expect(fragment.isDiscarded).toBe(true);
   });
 
-  it("derives title from filename when missing", () => {
-    const parsed: ParsedFile = {
-      ...PARSED,
-      frontmatter: { ...PARSED.frontmatter, title: undefined },
-    };
-    const fragment = fromFile(parsed, "fragments/the-bridge.md");
-    expect(fragment.title).toBe("the-bridge");
-  });
-
   it("defaults readyStatus to 0 when missing", () => {
     const parsed: ParsedFile = {
       ...PARSED,
@@ -93,7 +83,7 @@ describe("fragment.toFile", () => {
   const updatedAt = new Date("2026-04-01T12:00:00.000Z");
   const fragment: Fragment = {
     uuid: "frag-0001-0000-0000-000000000001",
-    title: "The Bridge",
+    key: "the-bridge",
     isDiscarded: false,
     readyStatus: 0.8,
     notes: ["bridge observation"],
@@ -107,7 +97,6 @@ describe("fragment.toFile", () => {
   it("writes all frontmatter fields", () => {
     const { frontmatter } = toFile(fragment);
     expect(frontmatter.uuid).toBe(fragment.uuid);
-    expect(frontmatter.title).toBe("The Bridge");
     expect(frontmatter.updatedAt).toBe("2026-04-01T12:00:00.000Z");
     expect(frontmatter.readyStatus).toBe(0.8);
   });

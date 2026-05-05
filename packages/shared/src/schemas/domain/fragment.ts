@@ -4,7 +4,7 @@ export const FragmentPropertiesSchema = z.record(z.string(), z.object({ weight: 
 
 export const FragmentSchema = z.object({
   uuid: z.uuid(),
-  title: z.string(),
+  key: z.string(),
   content: z.string(),
   readyStatus: z.number().min(0).max(1),
   contentHash: z.string(),
@@ -19,12 +19,12 @@ export type FragmentProperties = z.infer<typeof FragmentPropertiesSchema>;
 export type Fragment = z.infer<typeof FragmentSchema>;
 
 export const FragmentCreateSchema = z.object({
-  title: z.string().min(1),
+  key: z.string().min(1),
   content: z.string().min(1),
 });
 
 export const FragmentUpdateSchema = z.object({
-  title: z.string().min(1).optional(),
+  key: z.string().min(1).optional(),
   content: z.string().optional(),
   readyStatus: z.number().min(0).max(1).optional(),
   notes: z.array(z.string()).optional(),
@@ -34,3 +34,10 @@ export const FragmentUpdateSchema = z.object({
 
 export type FragmentCreate = z.infer<typeof FragmentCreateSchema>;
 export type FragmentUpdate = z.infer<typeof FragmentUpdateSchema>;
+
+export const FragmentUpdateResponseSchema = z.object({
+  fragment: FragmentSchema,
+  warnings: z.array(z.string()),
+});
+
+export type FragmentUpdateResponse = z.infer<typeof FragmentUpdateResponseSchema>;

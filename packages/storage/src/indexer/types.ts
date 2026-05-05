@@ -19,7 +19,7 @@ export type IndexedFragmentProperty = {
 
 export type IndexedFragment = {
   uuid: string;
-  title: string;
+  key: string;
   isDiscarded: boolean;
   readyStatus: number;
   contentHash: string;

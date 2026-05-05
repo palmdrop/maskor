@@ -113,7 +113,7 @@ export const upsertFragment = (
   tx.insert(fragmentsTable)
     .values({
       uuid: fragment.uuid,
-      title: fragment.title,
+      key: fragment.key,
       isDiscarded,
       readyStatus: fragment.readyStatus,
       contentHash,
@@ -124,7 +124,7 @@ export const upsertFragment = (
     .onConflictDoUpdate({
       target: fragmentsTable.uuid,
       set: {
-        title: fragment.title,
+        key: fragment.key,
         isDiscarded,
         readyStatus: fragment.readyStatus,
         contentHash,

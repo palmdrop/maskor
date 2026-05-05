@@ -12,7 +12,7 @@ import {
   Strikethrough,
   Text,
 } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
 type Props = {

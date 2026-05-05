@@ -1,10 +1,19 @@
-import { sqliteTable, text, integer, real, primaryKey, index } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  primaryKey,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const fragmentsTable = sqliteTable(
   "fragments",
   {
     uuid: text("uuid").primaryKey(),
-    title: text("title").notNull(),
+    key: text("key").notNull(),
     isDiscarded: integer("is_discarded", { mode: "boolean" }).notNull().default(false),
     readyStatus: real("ready_status").notNull().default(0),
     contentHash: text("content_hash").notNull(),
@@ -12,7 +21,17 @@ export const fragmentsTable = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
   },
-  (table) => [index("fragments_is_discarded_idx").on(table.isDiscarded)],
+  (table) => [
+    index("fragments_is_discarded_idx").on(table.isDiscarded),
+    // Active and discarded fragments share a key namespace by directory:
+    // foo.md and discarded/foo.md may coexist, but two active fragments may not.
+    uniqueIndex("fragments_active_key_unique")
+      .on(table.key)
+      .where(sql`${table.isDiscarded} = 0`),
+    uniqueIndex("fragments_discarded_key_unique")
+      .on(table.key)
+      .where(sql`${table.isDiscarded} = 1`),
+  ],
 );
 
 export const fragmentNotesTable = sqliteTable(

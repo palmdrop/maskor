@@ -13,7 +13,7 @@ export const assembleFragment = (
   }>,
 ): IndexedFragment => ({
   uuid: row.uuid,
-  title: row.title,
+  key: row.key,
   isDiscarded: row.isDiscarded,
   readyStatus: row.readyStatus,
   contentHash: row.contentHash,

@@ -43,6 +43,27 @@
       "when": 1746144000000,
       "tag": "20260502_drop_deleted_at_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1746576000000,
+      "tag": "20260504_add_fragment_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1746662400000,
+      "tag": "20260505_fragment_key_unique_indices",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1746748800000,
+      "tag": "20260506_drop_fragment_title",
+      "breakpoints": true
     }
   ]
 }

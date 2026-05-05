@@ -35,7 +35,7 @@ export const FragmentListPage = () => {
 
   const fragments = envelope.status === 200 ? envelope.data : [];
   const filtered = filter
-    ? fragments.filter((f) => f.title.toLowerCase().includes(filter.toLowerCase()))
+    ? fragments.filter((f) => f.key.toLowerCase().includes(filter.toLowerCase()))
     : fragments;
 
   return (
@@ -69,7 +69,7 @@ export const FragmentListPage = () => {
                   className="flex-1 min-w-0 truncate"
                 >
                   <span className={fragment.isDiscarded ? "line-through" : undefined}>
-                    {fragment.title}
+                    {fragment.key}
                   </span>
                   <span className="ml-1.5 text-xs text-muted-foreground">
                     {Math.round(fragment.readyStatus * 100)}%

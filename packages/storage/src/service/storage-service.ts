@@ -13,7 +13,7 @@ import type {
   ReferenceUpdateResponse,
   VaultSyncEvent,
 } from "@maskor/shared";
-import { ArcSchema, slugify } from "@maskor/shared";
+import { ArcSchema } from "@maskor/shared";
 import { mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
@@ -435,13 +435,34 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         const indexer = getVaultIndexer(context);
         const oldFilePath = await indexer.fragments.findFilePath(fragment.uuid);
 
+        // Active and discarded fragments share a key namespace by directory; only conflict
+        // within the same namespace. Without this guard, vault.write would silently overwrite
+        // a sibling file and the inline upsert would fail on the unique file_path constraint
+        // — leaving both fragments unrecoverable.
+        const allFragments = await indexer.fragments.findAll();
+        const lowerKey = fragmentToWrite.key.toLowerCase();
+        if (
+          allFragments.some(
+            (other) =>
+              other.uuid !== fragmentToWrite.uuid &&
+              other.isDiscarded === fragmentToWrite.isDiscarded &&
+              other.key.toLowerCase() === lowerKey,
+          )
+        ) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `A fragment with key "${fragmentToWrite.key}" already exists`,
+            { reason: "key_conflict" },
+          );
+        }
+
         await getVault(context).fragments.write(fragmentToWrite);
 
         // Inline DB update — closes the stale-index window for API-originated writes.
         // The watcher will fire afterward and hash-guard to a no-op.
         const entityRelativePath = fragmentToWrite.isDiscarded
-          ? join("discarded", `${slugify(fragmentToWrite.title)}.md`)
-          : `${slugify(fragmentToWrite.title)}.md`;
+          ? join("discarded", `${fragmentToWrite.key}.md`)
+          : `${fragmentToWrite.key}.md`;
 
         // If the slug changed, delete the old file so it doesn't become orphaned.
         if (oldFilePath && oldFilePath !== entityRelativePath) {
@@ -477,7 +498,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         }
 
         const sourceEntityRelativePath = indexed.filePath;
-        const destinationEntityRelativePath = join("discarded", `${slugify(indexed.title)}.md`);
+        const destinationEntityRelativePath = join("discarded", `${indexed.key}.md`);
 
         try {
           await getVault(context).fragments.discard(sourceEntityRelativePath);
@@ -544,10 +565,25 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           );
         }
 
-        // TODO: restore-collision — if a fragment already exists at the destination slug,
-        // rename will overwrite it silently. Guard with an existence check or unique slug.
+        const allFragments = await indexer.fragments.findAll();
+        const lowerKey = indexed.key.toLowerCase();
+        if (
+          allFragments.some(
+            (other) =>
+              other.uuid !== uuid &&
+              !other.isDiscarded &&
+              other.key.toLowerCase() === lowerKey,
+          )
+        ) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `Cannot restore: an active fragment with key "${indexed.key}" already exists`,
+            { reason: "key_conflict" },
+          );
+        }
+
         const sourceEntityRelativePath = indexed.filePath;
-        const destinationEntityRelativePath = `${slugify(indexed.title)}.md`;
+        const destinationEntityRelativePath = `${indexed.key}.md`;
 
         try {
           await getVault(context).fragments.restore(sourceEntityRelativePath);

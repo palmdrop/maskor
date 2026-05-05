@@ -1,7 +1,6 @@
 import chokidar from "chokidar";
 import path from "node:path";
 import type { Logger, VaultSyncEvent } from "@maskor/shared";
-import { slugify } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import { aspectsTable, fragmentsTable, notesTable, referencesTable } from "../db/vault/schema";
 import type { Vault } from "../vault/types";
@@ -360,7 +359,7 @@ export const createVaultWatcher = (
 
     if (!fragment) return;
 
-    const entityRelativePath = `${slugify(fragment.title)}.md`;
+    const entityRelativePath = `${fragment.key}.md`;
     const absoluteFragmentPath = path.join(vaultRoot, "fragments", entityRelativePath);
     let rawContent: string;
     try {

@@ -38,7 +38,7 @@ describe("vault.fragments.readAll", () => {
   it("marks fragments not in discarded/ as isDiscarded=false", async () => {
     const vault = createVault(config);
     const fragments = await vault.fragments.readAll();
-    const theWindow = fragments.find((fragment) => fragment.title === "The Window");
+    const theWindow = fragments.find((fragment) => fragment.key === "the-window");
     // The Window is in discarded/ so should be isDiscarded=true
     expect(theWindow?.isDiscarded ?? null).toBe(true);
   });
@@ -48,7 +48,7 @@ describe("vault.fragments.read", () => {
   it("reads a fragment by filename", async () => {
     const vault = createVault(config);
     const fragment = await vault.fragments.read("the-bridge.md");
-    expect(fragment.title).toBe("The Bridge");
+    expect(fragment.key).toBe("the-bridge");
     expect(fragment.properties["grief"]).toEqual({ weight: 0.6 });
     expect(fragment.notes).toContain("bridge observation");
   });

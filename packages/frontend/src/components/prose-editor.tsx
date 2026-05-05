@@ -49,6 +49,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  // onSave is closed into Vim.defineEx at editor-create time, which only fires once.
+  // Without a ref the :w handler keeps the initial onSave whose closure sees a stale
+  // isDirty=false, and the save short-circuits.
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   const editor = useEditor({
     extensions: [
@@ -97,7 +102,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         extensions={[markdown(), vim(), vimEditorTheme, EditorView.lineWrapping]}
         onCreateEditor={(view) => {
           viewRef.current = view;
-          Vim.defineEx("w", "", () => onSave?.());
+          Vim.defineEx("w", "", () => onSaveRef.current?.());
         }}
         onChange={() => onChangeRef.current?.()}
         basicSetup={{ lineNumbers: false, foldGutter: false }}

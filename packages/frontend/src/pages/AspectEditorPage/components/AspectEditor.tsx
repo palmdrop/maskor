@@ -1,19 +1,15 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetAspect,
   useUpdateAspect,
   getGetAspectQueryKey,
   getListAspectsQueryKey,
 } from "../../../api/generated/aspects/aspects";
-import { ProseEditor, type ProseEditorHandle } from "../../../components/fragments/prose-editor";
-import { Heading } from "../../../components/heading";
 import { Button } from "../../../components/ui/button";
-import { Separator } from "../../../components/ui/separator";
-import { useDelayedPending } from "../../../hooks/useDelayedPending";
-import { useProjectEditorConfig } from "../../../hooks/useProjectEditorConfig";
+import { EntityEditorShell } from "../../../components/entity-editor-shell";
 
 type Props = {
   projectId: string;
@@ -23,68 +19,67 @@ type Props = {
 export const AspectEditor = ({ projectId, aspectId }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
-  const { mutate: updateAspect, isPending: isUpdatePending } = useUpdateAspect();
-  const editorConfig = useProjectEditorConfig(projectId);
-
-  const proseEditorRef = useRef<ProseEditorHandle>(null);
+  const { mutateAsync: updateAspect, isPending } = useUpdateAspect();
+  const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
-  const showSaving = useDelayedPending(isUpdatePending);
 
   const aspect = envelope?.status === 200 ? envelope.data : null;
 
-  const handleSave = useCallback(() => {
-    if (!aspect || !isDirty) return;
-    const description = proseEditorRef.current?.getContent() ?? aspect.description ?? "";
-    updateAspect(
-      { projectId, aspectId, data: { description } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetAspectQueryKey(projectId, aspectId) });
-          queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
-          setIsDirty(false);
-        },
-      },
-    );
-  }, [aspect, isDirty, projectId, aspectId, updateAspect, queryClient]);
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: getGetAspectQueryKey(projectId, aspectId) });
+    queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
+  }, [queryClient, projectId, aspectId]);
+
+  const onKeySave = useCallback(
+    async (key: string) => {
+      const result = await updateAspect({ projectId, aspectId, data: { key } });
+      if (result.status !== 200) {
+        throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
+      }
+      setCascadeWarnings(result.data.warnings);
+      invalidate();
+    },
+    [updateAspect, projectId, aspectId, invalidate],
+  );
+
+  const onContentSave = useCallback(
+    async (content: string) => {
+      const result = await updateAspect({ projectId, aspectId, data: { description: content } });
+      if (result.status !== 200) {
+        throw new Error((result.data as { message?: string }).message ?? "Save failed.");
+      }
+      invalidate();
+    },
+    [updateAspect, projectId, aspectId, invalidate],
+  );
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (isError || !aspect)
     return <p className="text-sm text-muted-foreground">Failed to load aspect.</p>;
 
+  const backNode = (
+    <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "aspects" }}>
+      <Button variant="ghost" size="icon-sm">
+        <ArrowLeftIcon />
+      </Button>
+    </Link>
+  );
+
   return (
-    <div className="flex flex-col h-full gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "aspects" }}>
-            <Button variant="ghost" size="icon-sm">
-              <ArrowLeftIcon />
-            </Button>
-          </Link>
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Aspect</span>
-            <Heading level={1}>{aspect.key}</Heading>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          disabled={isUpdatePending || !isDirty}
-          onClick={handleSave}
-          className="min-w-20"
-        >
-          {showSaving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-      <Separator />
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <ProseEditor
-          ref={proseEditorRef}
-          content={aspect.description ?? ""}
-          vimMode={editorConfig.vimMode}
-          rawMarkdownMode={editorConfig.rawMarkdownMode}
-          onSave={handleSave}
-          onChange={() => setIsDirty(true)}
-        />
-      </div>
-    </div>
+    <EntityEditorShell
+      label="Aspect"
+      projectId={projectId}
+      backNode={backNode}
+      entityKey={aspect.key}
+      content={aspect.description ?? ""}
+      isPending={isPending}
+      isDirty={isDirty}
+      cascadeWarnings={cascadeWarnings}
+      onDismissWarnings={() => setCascadeWarnings([])}
+      onProseChange={() => setIsDirty(true)}
+      onSaved={() => setIsDirty(false)}
+      onKeySave={onKeySave}
+      onContentSave={onContentSave}
+    />
   );
 };

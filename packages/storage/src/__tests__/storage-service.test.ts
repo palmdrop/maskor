@@ -177,12 +177,84 @@ describe("StorageService.fragments.write — rename cleanup", () => {
 
     const renamed = await service.fragments.write(context, {
       ...fragment,
-      title: "Completely New Title",
+      key: "completely-new-key",
     });
 
-    expect(renamed.title).toBe("Completely New Title");
-    expect(existsSync(join(vaultDir, "fragments", "completely-new-title.md"))).toBe(true);
+    expect(renamed.key).toBe("completely-new-key");
+    expect(existsSync(join(vaultDir, "fragments", "completely-new-key.md"))).toBe(true);
     expect(existsSync(oldAbsolutePath)).toBe(false);
+  });
+});
+
+describe("StorageService.fragments.write — key collision", () => {
+  it("rejects a rename onto another active fragment's key without touching files", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const active = allFragments.filter((fragment) => !fragment.isDiscarded);
+    const [first, second] = active;
+    if (!first || !second) throw new Error("expected at least two active fragments in fixtures");
+
+    const firstPath = join(vaultDir, "fragments", first.filePath);
+    const secondPath = join(vaultDir, "fragments", second.filePath);
+    const firstContentBefore = await Bun.file(firstPath).text();
+    const secondContentBefore = await Bun.file(secondPath).text();
+
+    const secondFragment = await service.fragments.read(context, second.uuid);
+
+    await expect(
+      service.fragments.write(context, { ...secondFragment, key: first.key }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+
+    expect(await Bun.file(firstPath).text()).toBe(firstContentBefore);
+    expect(await Bun.file(secondPath).text()).toBe(secondContentBefore);
+  });
+
+  it("collision check is case-insensitive", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const active = allFragments.filter((fragment) => !fragment.isDiscarded);
+    const [first, second] = active;
+    if (!first || !second) throw new Error("expected at least two active fragments in fixtures");
+
+    const secondFragment = await service.fragments.read(context, second.uuid);
+
+    await expect(
+      service.fragments.write(context, { ...secondFragment, key: first.key.toUpperCase() }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+  });
+
+  it("active and discarded fragments may share a key", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir);
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const active = allFragments.find((fragment) => !fragment.isDiscarded);
+    const discarded = allFragments.find((fragment) => fragment.isDiscarded);
+    if (!active || !discarded) {
+      throw new Error("expected at least one active and one discarded fragment in fixtures");
+    }
+
+    const activeFragment = await service.fragments.read(context, active.uuid);
+
+    const renamed = await service.fragments.write(context, {
+      ...activeFragment,
+      key: discarded.key,
+    });
+
+    expect(renamed.key).toBe(discarded.key);
   });
 });
 

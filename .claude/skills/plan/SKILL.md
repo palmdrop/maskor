@@ -15,24 +15,8 @@ This skill governs how plans are written in the maskor project.
 
 ## Output
 
-1. Write the full plan to `references/plans/<topic>.md` using the template below.
+1. Write the full plan to `references/plans/<topic>.md` using the template in `references/plans/_template.md`.
 2. Echo a short summary to stdout (bullet form, ≤5 lines): goal + phases only. No fluff.
-
-## Plan file format
-
-```markdown
-# <Title>
-
-**Date**: DD-MM-YYYY
-**Status**: Todo
-
----
-
-## Goal
-
-> One sentence: what this plan achieves and why.
-
----
 
 ## Naming the file
 
@@ -43,22 +27,8 @@ Use kebab-case derived from the topic. Examples:
 
 If a file with that name already exists, read it first and ask the user whether to overwrite or create a new versioned file (e.g. `fragment-editor-2.md`).
 
-## Phases
-
-Break work into logical, sequential phases. Each phase should be independently reviewable. Typical phase structure:
-
-- **Phase 1**: Schema / data model changes
-- **Phase 2**: Backend / API changes
-- **Phase 3**: Frontend changes
-- **Phase 4**: Tests and cleanup
-
-Adapt as needed — not every plan needs all four. A pure refactor might be two phases; a new feature might be five. Use judgment.
-
-Each phase should contain concrete steps and changes to be implemented.
-
 ## What NOT to include
 
 - Implementation code or pseudocode
 - Speculative futures ("could later be extended to...")
 - Anything that belongs in a spec (`specifications/`) — reference the spec instead
-```

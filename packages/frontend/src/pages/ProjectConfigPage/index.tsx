@@ -1,6 +1,5 @@
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { useGetProject } from "../../api/generated/projects/projects";
-import { Heading } from "../../components/heading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
@@ -21,14 +20,11 @@ export const ProjectConfigPage = () => {
   if (!project) return <p className="p-6 text-sm text-muted-foreground">Project not found.</p>;
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto p-6">
-      <Heading level={1} className="mb-4">
-        {project.name}
-      </Heading>
+    <div className="flex flex-col h-full min-h-0 overflow-auto p-2">
       <Tabs
         value={tab}
         onValueChange={(value) => navigate({ search: { tab: value as typeof tab } })}
-        className="flex-1"
+        className="flex-1 flex-col"
       >
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>

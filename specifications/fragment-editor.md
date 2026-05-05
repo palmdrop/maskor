@@ -16,7 +16,7 @@ The fragment editor is a focused, single-fragment view. It lets the user read an
 ### In scope
 
 - Prose content editing (body only — no frontmatter parsing on the client)
-- Metadata editing: title, `readyStatus`, linked notes, linked references, aspect weights
+- Metadata editing: `readyStatus`, linked notes, linked references, aspect weights. `key` (the fragment's display name) is editable via the rename control in `EntityEditorShell`, not the metadata form.
 - Save
 - Discard / restore lifecycle action
 - Reflecting vault-side changes via SSE events (live reload on external edit)

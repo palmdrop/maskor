@@ -1,6 +1,4 @@
-import { useCallback, useRef, useState } from "react";
-import { useDelayedPending } from "../../hooks/useDelayedPending";
-import { useProjectEditorConfig } from "../../hooks/useProjectEditorConfig";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetFragment,
@@ -10,11 +8,9 @@ import {
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
 } from "../../api/generated/fragments/fragments";
-import { ProseEditor, type ProseEditorHandle } from "./prose-editor";
 import { FragmentMetadataForm, type FragmentMetadataFormHandle } from "./fragment-metadata-form";
-import { Heading } from "../heading";
-import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
+import { EntityEditorShell } from "../entity-editor-shell";
 
 type Props = {
   projectId: string;
@@ -25,84 +21,60 @@ type Props = {
 export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
-  const editorConfig = useProjectEditorConfig(projectId);
-  const { mutate: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
+  const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
-  const proseEditorRef = useRef<ProseEditorHandle>(null);
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
 
-  const isProseEditedRef = useRef(false);
-  const isMetadataDirtyRef = useRef(false);
-  const isDirtyRef = useRef(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const [isProseDirty, setIsProseDirty] = useState(false);
+  const [isMetadataDirty, setIsMetadataDirty] = useState(false);
+  const isDirty = isProseDirty || isMetadataDirty;
+
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
-
-  const notifyDirtyChange = useCallback((next: boolean) => {
-    if (isDirtyRef.current !== next) {
-      isDirtyRef.current = next;
-      setIsDirty(next);
-      onDirtyChangeRef.current?.(next);
-    }
-  }, []);
-
-  const markProseEdited = useCallback(() => {
-    isProseEditedRef.current = true;
-    notifyDirtyChange(true);
-  }, [notifyDirtyChange]);
-
-  const handleMetadataDirtyChange = useCallback(
-    (dirty: boolean) => {
-      isMetadataDirtyRef.current = dirty;
-      notifyDirtyChange(isProseEditedRef.current || dirty);
-    },
-    [notifyDirtyChange],
-  );
-
-  const clearDirty = useCallback(() => {
-    isProseEditedRef.current = false;
-    isMetadataDirtyRef.current = false;
-    notifyDirtyChange(false);
-  }, [notifyDirtyChange]);
+  useEffect(() => {
+    onDirtyChangeRef.current?.(isDirty);
+  }, [isDirty]);
 
   const fragment = envelope?.status === 200 ? envelope.data : null;
 
   const isActionPending = isUpdatePending || isDiscardPending || isRestorePending;
-  const showSaving = useDelayedPending(isUpdatePending);
 
   const invalidateFragment = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: getGetFragmentQueryKey(projectId, fragmentId),
-    });
-    queryClient.invalidateQueries({
-      queryKey: getListFragmentsQueryKey(projectId),
-    });
+    queryClient.invalidateQueries({ queryKey: getGetFragmentQueryKey(projectId, fragmentId) });
+    queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
   }, [queryClient, projectId, fragmentId]);
 
-  const handleSave = useCallback(async () => {
-    if (!fragment || !isDirtyRef.current) {
-      return;
-    }
+  const onKeySave = useCallback(
+    async (key: string) => {
+      const result = await updateFragment({ projectId, fragmentId, data: { key } });
+      if (result.status !== 200) {
+        throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
+      }
+      invalidateFragment();
+    },
+    [updateFragment, projectId, fragmentId, invalidateFragment],
+  );
 
-    const metadataUpdate = await metadataFormRef.current?.getValidatedValues();
-    if (!metadataUpdate) {
-      return;
-    }
-
-    const content = proseEditorRef.current?.getContent() ?? fragment.content;
-
-    updateFragment(
-      { projectId, fragmentId, data: { ...metadataUpdate, content } },
-      {
-        onSuccess: () => {
-          invalidateFragment();
-          clearDirty();
-        },
-      },
-    );
-  }, [fragment, projectId, fragmentId, updateFragment, invalidateFragment, clearDirty]);
+  const onContentSave = useCallback(
+    async (content: string) => {
+      const metadataUpdate = await metadataFormRef.current?.getValidatedValues();
+      if (!metadataUpdate) {
+        throw new Error("Metadata validation failed.");
+      }
+      const result = await updateFragment({
+        projectId,
+        fragmentId,
+        data: { ...metadataUpdate, content },
+      });
+      if (result.status !== 200) {
+        throw new Error((result.data as { message?: string }).message ?? "Save failed.");
+      }
+      invalidateFragment();
+    },
+    [updateFragment, projectId, fragmentId, invalidateFragment],
+  );
 
   const handleDiscard = useCallback(() => {
     discardFragment({ projectId, fragmentId }, { onSuccess: invalidateFragment });
@@ -120,56 +92,44 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
     return <p>Failed to load fragment.</p>;
   }
 
-  return (
-    <div className="flex flex-col h-full gap-4">
-      {fragment.isDiscarded && (
-        <div className="rounded border border-muted bg-muted/30 px-4 py-2 text-sm text-muted-foreground">
-          This fragment is discarded.
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-4">
-        <Heading level={1}>{fragment.title}</Heading>
-        <div className="flex items-center gap-2">
-          {fragment.isDiscarded ? (
-            <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleRestore}>
-              {isRestorePending ? "Restoring…" : "Restore"}
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleDiscard}>
-              {isDiscardPending ? "Discarding…" : "Discard"}
-            </Button>
-          )}
-          <Button
-            size="sm"
-            disabled={isActionPending || !isDirty}
-            onClick={handleSave}
-            className="min-w-20"
-          >
-            {showSaving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
-      <Separator />
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 border border-border">
-        <aside className="lg:w-72 shrink-0 overflow-y-auto p-4">
-          <FragmentMetadataForm
-            ref={metadataFormRef}
-            fragment={fragment}
-            projectId={projectId}
-            onDirtyChange={handleMetadataDirtyChange}
-          />
-        </aside>
-        <main className="flex-1 min-h-0">
-          <ProseEditor
-            ref={proseEditorRef}
-            content={fragment.content}
-            vimMode={editorConfig.vimMode}
-            rawMarkdownMode={editorConfig.rawMarkdownMode}
-            onSave={handleSave}
-            onChange={markProseEdited}
-          />
-        </main>
-      </div>
+  const extraActions = fragment.isDiscarded ? (
+    <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleRestore}>
+      {isRestorePending ? "Restoring…" : "Restore"}
+    </Button>
+  ) : (
+    <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleDiscard}>
+      {isDiscardPending ? "Discarding…" : "Discard"}
+    </Button>
+  );
+
+  const discardedBanner = fragment.isDiscarded ? (
+    <div className="rounded border border-muted bg-muted/30 px-4 py-2 text-sm text-muted-foreground">
+      This fragment is discarded.
     </div>
+  ) : undefined;
+
+  return (
+    <EntityEditorShell
+      label="Fragment"
+      projectId={projectId}
+      entityKey={fragment.key}
+      content={fragment.content}
+      isPending={isActionPending}
+      isDirty={isDirty}
+      banner={discardedBanner}
+      extraActions={extraActions}
+      onProseChange={() => setIsProseDirty(true)}
+      onSaved={() => setIsProseDirty(false)}
+      onKeySave={onKeySave}
+      onContentSave={onContentSave}
+      sidebar={
+        <FragmentMetadataForm
+          ref={metadataFormRef}
+          fragment={fragment}
+          projectId={projectId}
+          onDirtyChange={setIsMetadataDirty}
+        />
+      }
+    />
   );
 };

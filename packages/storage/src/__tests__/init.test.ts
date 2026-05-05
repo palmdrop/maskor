@@ -26,14 +26,13 @@ afterEach(() => {
 
 describe("initFragment", () => {
   it("creates a fragment file with correct frontmatter", async () => {
-    const piece = { title: "The Bridge", content: "She crossed it every morning." };
+    const piece = { key: "the-bridge", content: "She crossed it every morning." };
     const fragment = await initFragment(config, piece);
 
     const file = Bun.file(join(tmpDir, "fragments", "the-bridge.md"));
     const raw = await file.text();
     const parsed = parseFile(raw);
 
-    expect(parsed.frontmatter.title).toBe("The Bridge");
     expect(parsed.frontmatter.readyStatus).toBe(0);
     expect(typeof parsed.frontmatter.updatedAt).toBe("string");
     expect(isValidDateString(parsed.frontmatter.updatedAt as string)).toBe(true);
@@ -41,7 +40,7 @@ describe("initFragment", () => {
   });
 
   it("writes content as body", async () => {
-    const piece = { title: "The Bridge", content: "She crossed it every morning." };
+    const piece = { key: "the-bridge", content: "She crossed it every morning." };
     await initFragment(config, piece);
 
     const file = Bun.file(join(tmpDir, "fragments", "the-bridge.md"));
@@ -51,40 +50,28 @@ describe("initFragment", () => {
     expect(parsed.body).toContain("She crossed it every morning.");
   });
 
-  it("returns the created Fragment", async () => {
-    const piece = { title: "Late Winter", content: "The cold had a particular quality." };
+  it("returns the created Fragment with key, uuid, and defaults", async () => {
+    const piece = { key: "late-winter", content: "The cold had a particular quality." };
     const fragment = await initFragment(config, piece);
 
-    expect(fragment.title).toBe("Late Winter");
+    expect(fragment.key).toBe("late-winter");
     expect(fragment.isDiscarded).toBe(false);
     expect(fragment.readyStatus).toBe(0);
     expect(typeof fragment.uuid).toBe("string");
   });
 
-  it("derives title from first line of content when title is missing", async () => {
-    const piece = { content: "A line that becomes the title.\n\nMore content." };
-    const fragment = await initFragment(config, piece);
-    expect(fragment.title).toBe("A line that becomes the title.");
-  });
-
-  it("falls back to fragment-<uuid> when content has no text", async () => {
-    const piece = { content: "" };
-    const fragment = await initFragment(config, piece);
-    expect(fragment.title).toBe(`fragment-${fragment.uuid}`);
-  });
-
-  it("throws VaultError when file already exists", async () => {
-    const piece = { title: "The Bridge", content: "First." };
-    await initFragment(config, piece);
-
-    expect(initFragment(config, { title: "The Bridge", content: "Second." })).rejects.toThrow();
-  });
-
-  it("slugifies the title for the filename", async () => {
-    const piece = { title: "Late Winter, 1987!", content: "Content." };
+  it("uses key as the filename without modification", async () => {
+    const piece = { key: "late-winter-1987", content: "Content." };
     await initFragment(config, piece);
 
     const file = Bun.file(join(tmpDir, "fragments", "late-winter-1987.md"));
     expect(await file.exists()).toBe(true);
+  });
+
+  it("throws VaultError when file already exists", async () => {
+    const piece = { key: "the-bridge", content: "First." };
+    await initFragment(config, piece);
+
+    expect(initFragment(config, { key: "the-bridge", content: "Second." })).rejects.toThrow();
   });
 });

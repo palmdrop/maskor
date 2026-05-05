@@ -1,5 +1,4 @@
 import type { Aspect, Fragment, Logger, Note, Reference } from "@maskor/shared";
-import { slugify } from "@maskor/shared";
 import type { Vault, VaultConfig } from "../types";
 import { VaultError } from "../types";
 import { parseFile } from "./parse";
@@ -127,10 +126,9 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(fragment) {
         const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
-        const slug = slugify(fragment.title);
         const absoluteFilePath = fragment.isDiscarded
-          ? toAbsoluteFragment(join("discarded", `${slug}.md`))
-          : toAbsoluteFragment(`${slug}.md`);
+          ? toAbsoluteFragment(join("discarded", `${fragment.key}.md`))
+          : toAbsoluteFragment(`${fragment.key}.md`);
 
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, inlineFields, body }));
         log.debug({ filePath: basename(absoluteFilePath) }, "fragment written");
@@ -138,15 +136,8 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async discard(filePath: string) {
         const absoluteSource = toAbsoluteFragment(filePath);
-        const raw = await readMarkdown(absoluteSource);
-        const parsed = parseFile(raw);
-
-        const slug = slugify(
-          typeof parsed.frontmatter.title === "string"
-            ? parsed.frontmatter.title
-            : basename(filePath).replace(/\.md$/, ""),
-        );
-        const relativeDestination = join("discarded", `${slug}.md`);
+        const key = basename(filePath).replace(/\.md$/, "");
+        const relativeDestination = join("discarded", `${key}.md`);
         const absoluteDestination = toAbsoluteFragment(relativeDestination);
 
         try {
@@ -165,15 +156,8 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async restore(filePath: string) {
         const absoluteSource = toAbsoluteFragment(filePath);
-        const raw = await readMarkdown(absoluteSource);
-        const parsed = parseFile(raw);
-
-        const slug = slugify(
-          typeof parsed.frontmatter.title === "string"
-            ? parsed.frontmatter.title
-            : basename(filePath).replace(/\.md$/, ""),
-        );
-        const relativeDestination = `${slug}.md`;
+        const key = basename(filePath).replace(/\.md$/, "");
+        const relativeDestination = `${key}.md`;
         const absoluteDestination = toAbsoluteFragment(relativeDestination);
 
         try {
@@ -354,11 +338,11 @@ export const createVault = (config: VaultConfig): Vault => {
         if (!(await Bun.file(absolutePath).exists())) return null;
 
         const content = await Bun.file(absolutePath).text();
-        const title = basename(filePath).replace(/\.md$/, "");
-        const fragment = await initFragment(config, { title, content });
+        const key = basename(filePath).replace(/\.md$/, "");
+        const fragment = await initFragment(config, { key, content });
 
         const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
-        const absoluteFragmentPath = toAbsoluteFragment(`${slugify(fragment.title)}.md`);
+        const absoluteFragmentPath = toAbsoluteFragment(`${fragment.key}.md`);
         await writeMarkdown(
           absoluteFragmentPath,
           serializeFile({ frontmatter, inlineFields, body }),
@@ -375,7 +359,7 @@ export const createVault = (config: VaultConfig): Vault => {
           );
         }
 
-        log.info({ filePath, fragmentTitle: fragment.title }, "piece consumed");
+        log.info({ filePath, fragmentKey: fragment.key }, "piece consumed");
         return fragment;
       },
 
@@ -387,12 +371,12 @@ export const createVault = (config: VaultConfig): Vault => {
           try {
             const absolutePath = toAbsolutePiece(fileName);
             const content = await Bun.file(absolutePath).text();
-            const title = fileName.replace(/\.md$/, "");
-            const fragment = await initFragment(config, { title, content });
+            const key = fileName.replace(/\.md$/, "");
+            const fragment = await initFragment(config, { key, content });
 
             // Write the fragment to fragments/ so the watcher can re-read it for hashing.
             const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
-            const absoluteFragmentPath = toAbsoluteFragment(`${slugify(fragment.title)}.md`);
+            const absoluteFragmentPath = toAbsoluteFragment(`${fragment.key}.md`);
             await writeMarkdown(
               absoluteFragmentPath,
               serializeFile({ frontmatter, inlineFields, body }),
@@ -411,7 +395,7 @@ export const createVault = (config: VaultConfig): Vault => {
               );
             }
 
-            log.info({ filePath: fileName, fragmentTitle: fragment.title }, "piece consumed");
+            log.info({ filePath: fileName, fragmentKey: fragment.key }, "piece consumed");
           } catch (error) {
             log.error(
               {

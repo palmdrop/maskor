@@ -40,10 +40,10 @@ A fragment is the atomic unit of a writing project. The user creates, enriches, 
 
 ### What a fragment is
 
-A fragment is a titled, UUID-identified piece of writing. It has:
+A fragment is a UUID-identified piece of writing. It has:
 
 - **Content** — the markdown body. The actual writing. Maskor never modifies this; only the user does (via the fragment editor or Obsidian directly).
-- **Title** — a display name. Also determines the filename slug.
+- **`key`** — the filename stem; the user-facing identity. Editable via rename. Consistent with notes, references, and aspects.
 - **`readyStatus`** — a float 0–1 the user sets to indicate how finished the fragment is. `1.0` means finished.
 - **Aspect properties** — a map of aspect keys to weights (0–1), indicating how strongly the fragment embodies each project aspect. Primary input to the fitting score.
 - **Notes** — a list of note titles attached to this fragment.
@@ -53,9 +53,9 @@ A fragment is a titled, UUID-identified piece of writing. It has:
 
 ### Lifecycle
 
-1. **Creation** — a fragment is created by the user via the UI (title + content required), or automatically from a Piece dropped into the vault's `pieces/` directory.
+1. **Creation** — a fragment is created by the user via the UI (key + content required), or automatically from a Piece dropped into the vault's `pieces/` directory.
 
-2. **Editing** — the user edits content in the fragment editor. Metadata (title, `readyStatus`, notes, references, aspect properties) is edited through the metadata panel.
+2. **Editing** — the user edits content in the fragment editor. Metadata (`readyStatus`, notes, references, aspect properties) is edited through the metadata panel. `key` is edited via rename.
 
 3. **Enrichment** — the user adds aspect weights, notes, and references over time. This is the primary way Maskor accumulates the data needed for sequencing.
 
@@ -103,7 +103,7 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 - Maskor never edits fragment content without explicit user edits through the fragment editor.
 - Maskor never auto-rewrites fragment files to fix aspect key drift.
 - Unknown aspect property keys must be preserved on save, not silently dropped.
-- Fragment identity is UUID-based. Filename and title may change; UUID cannot.
+- Fragment identity is UUID-based. Filename and `key` may change; UUID cannot.
 - Sequence positions, fitting scores, and arc positions are not part of the fragment model.
 - `readyStatus` must be in range 0–1.
 
@@ -118,6 +118,7 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 - **Piece is transient**: A piece has no UUID and no full metadata. On conversion, the piece file is deleted. There is no conversion back.
 - **Only existing notes/references can be attached**: Adding a note or reference that does not yet exist in the vault is not allowed from the fragment editor.
 - **`contentHash` computed at write time**: `storageService.fragments.write()` computes the hash from the serialized file and returns the fragment with the correct hash. Route handlers use the return value — no empty hashes are exposed to callers.
+- **`title` removed**: The `title` field was removed entirely. `key` (the filename stem) is the single identity field, consistent with notes, references, and aspects. The create flow now accepts `key` directly; no slugification step. See `references/plans/drop-fragment-title.md`.
 
 ---
 
@@ -131,13 +132,13 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 
 ## Acceptance criteria
 
-- A newly created fragment has a UUID, title, `readyStatus: 0`, empty notes and references, empty aspect properties, and `isDiscarded: false`.
+- A newly created fragment has a UUID, `key`, `readyStatus: 0`, empty notes and references, empty aspect properties, and `isDiscarded: false`.
 - Creating a fragment via the API returns a `Fragment` with a non-empty `contentHash`.
 - Updating a fragment's content via the API returns a `Fragment` with a `contentHash` that differs from the pre-update value.
 - Discarding a fragment moves its file to `fragments/discarded/` and subsequent reads reflect `isDiscarded: true`.
 - Restoring a discarded fragment moves its file back to `fragments/` and subsequent reads reflect `isDiscarded: false`.
 - Aspect property keys for deleted aspects are preserved across a save — not removed.
-- A fragment's UUID does not change on title rename.
+- A fragment's UUID does not change on rename.
 - `readyStatus` values outside 0–1 are rejected.
 - Notes and references can only reference titles/names that already exist in the vault.
 - A piece file dropped into `pieces/` is converted to a fragment and the piece file is deleted.

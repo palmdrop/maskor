@@ -8,16 +8,14 @@ import type {
   IndexedAspect,
 } from "../../api/generated/maskorAPI.schemas";
 import { useListAspects } from "../../api/generated/aspects/aspects";
-import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Slider } from "../ui/slider";
 import { TagCombobox } from "../ui/tag-combobox";
 import { useListNotes } from "../../api/generated/notes/notes";
 import { useListReferences } from "../../api/generated/references/references";
-import { Link } from "@tanstack/react-router";
+import { EntityTag } from "../entity-tag";
 
 const fragmentFormSchema = z.object({
-  title: z.string().min(1),
   readyStatus: z.number().min(0).max(100),
   notes: z.array(z.object({ value: z.string() })),
   references: z.array(z.object({ value: z.string() })),
@@ -28,7 +26,6 @@ type FragmentFormValues = z.infer<typeof fragmentFormSchema>;
 
 const buildDefaultValues = (fragment: Fragment, aspects: IndexedAspect[]): FragmentFormValues => {
   return {
-    title: fragment.title,
     readyStatus: Math.round(fragment.readyStatus * 100),
     notes: fragment.notes.map((value) => ({ value })),
     references: fragment.references.map((value) => ({ value })),
@@ -54,7 +51,6 @@ const buildUpdatePayload = (
   );
 
   return {
-    title: values.title,
     readyStatus: values.readyStatus / 100,
     notes: values.notes.map(({ value }) => value),
     references: values.references.map(({ value }) => value),
@@ -95,7 +91,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       return new Map(references.map((reference) => [reference.key, reference.uuid]));
     }, [referencesEnvelope]);
 
-    const { register, control, handleSubmit, reset, formState } = useForm<FragmentFormValues>({
+    const { control, handleSubmit, reset, formState } = useForm<FragmentFormValues>({
       resolver: zodResolver(fragmentFormSchema),
       defaultValues: buildDefaultValues(fragment, aspects),
     });
@@ -168,11 +164,6 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
 
     return (
       <form className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" {...register("title")} />
-        </div>
-
         <div className="flex flex-col gap-2">
           <Controller
             control={control}
@@ -197,33 +188,21 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           <div className="flex flex-wrap gap-1">
             {noteFields.map((noteField, index) => {
               const noteUuid = noteKeyToUuid.get(noteField.value);
-              const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
-              const inner = (
-                <>
-                  {noteField.value}
-                  <button
-                    type="button"
-                    onClick={() => removeNote(index)}
-                    className="ml-1 text-muted-foreground hover:text-foreground"
-                  >
-                    ×
-                  </button>
-                </>
-              );
-              return noteUuid ? (
-                <Link
-                  key={noteField.id}
-                  className={tagClass}
-                  to="/projects/$projectId/notes/$noteId"
-                  params={{ projectId, noteId: noteUuid }}
-                  search={{ from: fragment.uuid }}
-                >
-                  {inner}
-                </Link>
-              ) : (
-                <span key={noteField.id} className={tagClass}>
-                  {inner}
-                </span>
+              return (
+                <EntityTag
+                  key={noteUuid}
+                  value={noteField.value}
+                  linkArguments={
+                    noteUuid
+                      ? {
+                          to: "/projects/$projectId/notes/$noteId",
+                          params: { projectId, noteId: noteUuid },
+                          search: { from: fragment.uuid },
+                        }
+                      : undefined
+                  }
+                  onRemove={() => removeNote(index)}
+                />
               );
             })}
           </div>
@@ -239,33 +218,21 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           <div className="flex flex-wrap gap-1">
             {referenceFields.map((referenceField, index) => {
               const referenceUuid = referenceKeyToUuid.get(referenceField.value);
-              const tagClass = "flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm";
-              const inner = (
-                <>
-                  {referenceField.value}
-                  <button
-                    type="button"
-                    onClick={() => removeReference(index)}
-                    className="ml-1 text-muted-foreground hover:text-foreground"
-                  >
-                    ×
-                  </button>
-                </>
-              );
-              return referenceUuid ? (
-                <Link
-                  key={referenceField.id}
-                  className={tagClass}
-                  to="/projects/$projectId/references/$referenceId"
-                  params={{ projectId, referenceId: referenceUuid }}
-                  search={{ from: fragment.uuid }}
-                >
-                  {inner}
-                </Link>
-              ) : (
-                <span key={referenceField.id} className={tagClass}>
-                  {inner}
-                </span>
+              return (
+                <EntityTag
+                  key={referenceUuid}
+                  value={referenceField.value}
+                  linkArguments={
+                    referenceUuid
+                      ? {
+                          to: "/projects/$projectId/references/$referenceId",
+                          params: { projectId, referenceId: referenceUuid },
+                          search: { from: fragment.uuid },
+                        }
+                      : undefined
+                  }
+                  onRemove={() => removeReference(index)}
+                />
               );
             })}
           </div>

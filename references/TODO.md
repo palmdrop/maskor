@@ -8,6 +8,19 @@
 
 - [x] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
 
+- [ ] refactor fragments to use the key as title like aspects and notes does... check the filename as key plan for this
+
+- [ ] fragments now have both key-based naming AND titles, displayed a bit differently in different locations. Fix
+
+- [ ] consider mermaid for exporting/rendering graphs, visualizations, in obsidian
+  - one idea is to port maskor to a obsidian plugin... but I also want it as a standalone app?
+
+- [ ] add links -- same as obsidian, compatible format! but enhanced, perhaps tiptap has a slash syntax for commands?
+
+- [x] saving with :w in vim mode no longer works, why?
+
+- [ ] add comment concept: it is important to be able to add comments... perhaps this could be solved using notes? or a new concept entirely?
+
 - [ ] renaming a note/ref from the filesystem is not properly picked up by the watcher... rename not propagated to maskor... fix
 
 - [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
@@ -17,12 +30,12 @@
 
 - [x] Add way to rename notes, references
 
-- [ ] Unify ref/note/aspect and even fragment editor... all should use the same editor with same capabilities, but diff metadata properties and handlers. A lot of duplicate code now.
+- [x] Unify ref/note/aspect and even fragment editor... all should use the same editor with same capabilities, but diff metadata properties and handlers. A lot of duplicate code now.
 
 - [ ] Find flow for using cheaper models for appropriate tasks
   - queue up tasks to a good but slow model on my home desktop! see if I can manage sufficiently good results
 
-- [ ] Rework note/reference/aspect management... uses UUIDs for nav but slug is unique (has to be). Makes it hard to link to, if only slug is available. See `packages/frontend/src/components/fragments/fragment-metadata-form.tsx` < link to reference page is wrong
+- [x] Rework note/reference/aspect management... uses UUIDs for nav but slug is unique (has to be). Makes it hard to link to, if only slug is available. See `packages/frontend/src/components/fragments/fragment-metadata-form.tsx` < link to reference page is wrong
 
 - [ ] Check if eslint has a config for disallowing one-letter variables... but how to exclude iterators from this?
 
@@ -50,7 +63,7 @@
 - [ ] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
   - a sequence collection which holds sequence position data? same for sequence itself, sections, etc
 
-- [ ] Investigate if orval can be used to generate zod schemas for the frontend as well... needed for fragment editor?
+- [x] Investigate if orval can be used to generate zod schemas for the frontend as well... needed for fragment editor?
 
 - [x] Saving a discarded fragment that is not in the discarded pool accidentally creates a duplicate fragment?
 
@@ -60,6 +73,6 @@
 
 - [x] Only keep one save button for both metadata and fragment content
 
-- [ ] Add simple project selection page
+- [x] Add simple project selection page
 
-- [ ] Create project configuration backend and frontend
+- [x] Create project configuration backend and frontend

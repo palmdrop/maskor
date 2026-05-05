@@ -62,7 +62,7 @@ describe("rebuild", () => {
     // Write a fragment that references an aspect key that doesn't exist in aspects/
     const vault = createVault({ root: vaultDir });
     const fragments = await vault.fragments.readAll();
-    const bridge = fragments.find((fragment) => fragment.title === "The Bridge")!;
+    const bridge = fragments.find((fragment) => fragment.key === "the-bridge")!;
 
     const modified = {
       ...bridge,
@@ -101,7 +101,7 @@ describe("fragments.findAll", () => {
     await indexer.rebuild();
 
     const fragments = await indexer.fragments.findAll();
-    const bridge = fragments.find((fragment) => fragment.title === "The Bridge");
+    const bridge = fragments.find((fragment) => fragment.key === "the-bridge");
 
     expect(bridge).toBeDefined();
     expect(bridge?.notes).toContain("bridge observation");
@@ -121,7 +121,7 @@ describe("fragments.findByUUID", () => {
     const bridge = await indexer.fragments.findByUUID("f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b");
 
     expect(bridge).not.toBeNull();
-    expect(bridge?.title).toBe("The Bridge");
+    expect(bridge?.key).toBe("the-bridge");
     expect(bridge?.isDiscarded).toBe(false);
     expect(bridge?.readyStatus).toBe(0.58);
   });
@@ -282,8 +282,8 @@ describe("fragments.findAll relation isolation", () => {
     await indexer.rebuild();
 
     const fragments = await indexer.fragments.findAll();
-    const bridge = fragments.find((fragment) => fragment.title === "The Bridge")!;
-    const otherFragments = fragments.filter((fragment) => fragment.title !== "The Bridge");
+    const bridge = fragments.find((fragment) => fragment.key === "the-bridge")!;
+    const otherFragments = fragments.filter((fragment) => fragment.key !== "the-bridge");
 
     // Notes listed on bridge should not appear on any other fragment
     for (const note of bridge.notes) {
