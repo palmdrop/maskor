@@ -60,10 +60,7 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
     return <p className="text-sm text-muted-foreground">Failed to load note.</p>;
 
   const backNode = fragmentId ? (
-    <Link
-      to="/projects/$projectId/fragments/$fragmentId"
-      params={{ projectId, fragmentId }}
-    >
+    <Link to="/projects/$projectId/fragments/$fragmentId" params={{ projectId, fragmentId }}>
       <Button variant="ghost" size="icon-sm">
         <ArrowLeftIcon />
       </Button>

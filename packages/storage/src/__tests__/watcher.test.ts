@@ -124,9 +124,7 @@ describe("syncNote — rename detection", () => {
     });
 
     // Re-write "bridge observation.md" with the same UUID and same filename stem
-    const existingContent = await Bun.file(
-      join(vaultDir, "notes", "bridge observation.md"),
-    ).text();
+    const existingContent = await Bun.file(join(vaultDir, "notes", "bridge observation.md")).text();
     await Bun.write(join(vaultDir, "notes", "bridge observation.md"), existingContent + " ");
 
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -200,7 +198,8 @@ describe("syncFragment — hash guard", () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
 
     const bridgeSynced = events.filter(
-      (event) => event.type === "fragment:synced" && event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
+      (event) =>
+        event.type === "fragment:synced" && event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
     );
     expect(bridgeSynced).toHaveLength(0);
   });
@@ -234,8 +233,7 @@ describe("syncFragment — hash guard", () => {
 
     const bridgeSynced = events.filter(
       (event) =>
-        event.type === "fragment:synced" &&
-        event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
+        event.type === "fragment:synced" && event.uuid === "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
     );
     expect(bridgeSynced.length).toBeGreaterThanOrEqual(1);
   });

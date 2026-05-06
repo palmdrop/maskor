@@ -24,7 +24,10 @@ export const loadKnownAspectKeys = (vaultDatabase: VaultDatabase): Set<string> =
   return new Set(rows.map((row) => row.key));
 };
 
-export type Transaction = SQLiteBunTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
+export type Transaction = SQLiteBunTransaction<
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 // All helpers are synchronous — bun:sqlite is sync and callers wrap in a sync
 // transaction callback. Do not add async to these functions.
@@ -147,9 +150,7 @@ export const upsertFragment = (
     tx.insert(fragmentReferencesTable).values({ fragmentUuid: fragment.uuid, referenceKey }).run();
   }
 
-  tx.delete(fragmentAspectsTable)
-    .where(eq(fragmentAspectsTable.fragmentUuid, fragment.uuid))
-    .run();
+  tx.delete(fragmentAspectsTable).where(eq(fragmentAspectsTable.fragmentUuid, fragment.uuid)).run();
 
   const aspectEntries = Object.entries(fragment.aspects);
 

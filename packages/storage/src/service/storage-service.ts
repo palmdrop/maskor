@@ -570,9 +570,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         if (
           allFragments.some(
             (other) =>
-              other.uuid !== uuid &&
-              !other.isDiscarded &&
-              other.key.toLowerCase() === lowerKey,
+              other.uuid !== uuid && !other.isDiscarded && other.key.toLowerCase() === lowerKey,
           )
         ) {
           throw new VaultError(
@@ -1066,7 +1064,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
               : null;
 
-          const warnings = cascadePayload ? { fragments: cascadePayload.fragments } : { fragments: [] };
+          const warnings = cascadePayload
+            ? { fragments: cascadePayload.fragments }
+            : { fragments: [] };
 
           vaultDatabase.transaction((tx) => {
             cascadePayload?.commit(tx);

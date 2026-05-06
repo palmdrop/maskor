@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-export const AspectWeightsSchema = z.record(z.string(), z.object({ weight: z.number().default(0) }));
+export const AspectWeightsSchema = z.record(
+  z.string(),
+  z.object({ weight: z.number().default(0) }),
+);
 
 export const FragmentSchema = z.object({
   uuid: z.uuid(),

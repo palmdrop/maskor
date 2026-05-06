@@ -60,20 +60,13 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
     return <p className="text-sm text-muted-foreground">Failed to load reference.</p>;
 
   const backNode = fragmentId ? (
-    <Link
-      to="/projects/$projectId/fragments/$fragmentId"
-      params={{ projectId, fragmentId }}
-    >
+    <Link to="/projects/$projectId/fragments/$fragmentId" params={{ projectId, fragmentId }}>
       <Button variant="ghost" size="icon-sm">
         <ArrowLeftIcon />
       </Button>
     </Link>
   ) : (
-    <Link
-      to="/projects/$projectId/config"
-      params={{ projectId }}
-      search={{ tab: "references" }}
-    >
+    <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "references" }}>
       <Button variant="ghost" size="icon-sm">
         <ArrowLeftIcon />
       </Button>

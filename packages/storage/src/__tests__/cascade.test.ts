@@ -249,6 +249,8 @@ describe("cascadeAspectKeyRename — via aspects.update", () => {
     const grief = aspects.find((aspect) => aspect.key === "grief")!;
 
     // No arc file created — rename should succeed silently
-    await expect(service.aspects.update(context, grief.uuid, { key: "sorrow" })).resolves.toBeDefined();
+    await expect(
+      service.aspects.update(context, grief.uuid, { key: "sorrow" }),
+    ).resolves.toBeDefined();
   });
 });

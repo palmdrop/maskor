@@ -66,7 +66,7 @@ const fragment = await storageService.fragments.write(projectContext, {
 
 `packages/frontend/src/components/fragments/fragment-editor.tsx:32-57` and `packages/frontend/src/components/entity-editor-shell.tsx:48`
 
-The shell owns a `useDirtyState(["prose"])` whose `isDirty` drives the Save button (combined with `additionalDirty`). `FragmentEditor` *also* runs `useDirtyState(["prose", "metadata"])`, but only consumes `setSourceDirty` from it — its `isDirty` is never read locally; it exists solely to fire the parent's `onDirtyChange`. Meanwhile `isMetadataDirty` is held in a *third* place (a plain `useState`) so the shell can receive it via `additionalDirty`.
+The shell owns a `useDirtyState(["prose"])` whose `isDirty` drives the Save button (combined with `additionalDirty`). `FragmentEditor` _also_ runs `useDirtyState(["prose", "metadata"])`, but only consumes `setSourceDirty` from it — its `isDirty` is never read locally; it exists solely to fire the parent's `onDirtyChange`. Meanwhile `isMetadataDirty` is held in a _third_ place (a plain `useState`) so the shell can receive it via `additionalDirty`.
 
 Net result: the metadata dirty bit lives in two places, and the shell's prose dirty round-trips through three callbacks (`shell.onChange → shell.setSourceDirty("prose") → shell.onDirtyChange → FragmentEditor.handleShellDirtyChange → FragmentEditor.setSourceDirty("prose")`) just to be re-derived inside `FragmentEditor`. This is the kind of indirection the hook was supposed to eliminate.
 
