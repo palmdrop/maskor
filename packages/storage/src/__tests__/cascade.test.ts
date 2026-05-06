@@ -173,8 +173,8 @@ describe("cascadeAspectKeyRename — via aspects.update", () => {
     await service.aspects.update(context, grief.uuid, { key: "sorrow" });
 
     const bridge = await vault.fragments.read("the-bridge.md");
-    expect(bridge.properties["sorrow"]).toEqual({ weight: 0.6 });
-    expect(bridge.properties["grief"]).toBeUndefined();
+    expect(bridge.aspects["sorrow"]).toEqual({ weight: 0.6 });
+    expect(bridge.aspects["grief"]).toBeUndefined();
   });
 
   it("returns affected fragment UUIDs in warnings", async () => {

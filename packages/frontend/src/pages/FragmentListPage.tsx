@@ -109,7 +109,7 @@ export const FragmentListPage = () => {
           </ul>
         )}
       </aside>
-      <main className="flex-1 min-h-0 overflow-auto p-6">
+      <main className="flex-1 min-h-0 overflow-auto p-4">
         {activeFragmentId ? (
           <Outlet />
         ) : (

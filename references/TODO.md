@@ -8,9 +8,11 @@
 
 - [x] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
 
-- [ ] refactor fragments to use the key as title like aspects and notes does... check the filename as key plan for this
+- [x] refactor fragments to use the key as title like aspects and notes does... check the filename as key plan for this
 
-- [ ] fragments now have both key-based naming AND titles, displayed a bit differently in different locations. Fix
+- [x] fragments now have both key-based naming AND titles, displayed a bit differently in different locations. Fix
+
+- [x] fragments store aspects in "properties", however, this is vague... properties are always aspects. Rename?
 
 - [ ] consider mermaid for exporting/rendering graphs, visualizations, in obsidian
   - one idea is to port maskor to a obsidian plugin... but I also want it as a standalone app?
@@ -63,13 +65,17 @@
 - [ ] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
   - a sequence collection which holds sequence position data? same for sequence itself, sections, etc
 
+- [ ] fix `useBlocker` in `FragmentPage`: blocker fires even when no changes have been done. Commented-out now for development purposes.
+
+- [ ] Skip the blocker entirely and commit the edits to local storage temporarily. This could cause issues with server and frontend being out of sync. Detect using hash check. Add conflict resolution page.
+
 - [x] Investigate if orval can be used to generate zod schemas for the frontend as well... needed for fragment editor?
 
 - [x] Saving a discarded fragment that is not in the discarded pool accidentally creates a duplicate fragment?
 
 - [x] Only allow adding notes/references that already exist on the fragment editor
 
-- [ ] Allow adding new aspects on the fragment editor page
+- [x] Allow adding new aspects on the fragment editor page
 
 - [x] Only keep one save button for both metadata and fragment content
 

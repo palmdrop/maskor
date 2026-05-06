@@ -73,9 +73,9 @@ export const EntityEditorShell = ({
   }, [isDirty, isPending, content, onContentSave, onSaved]);
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col h-full gap-2">
       {banner}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {backNode}
           <div className="flex flex-col gap-0.5">
@@ -131,7 +131,7 @@ export const EntityEditorShell = ({
         </div>
       )}
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-        {sidebar && <aside className="lg:w-72 shrink-0 overflow-y-auto p-4">{sidebar}</aside>}
+        {sidebar && <aside className="lg:w-72 shrink-0 overflow-y-auto p-1">{sidebar}</aside>}
         <main className="flex-1 min-h-0 overflow-y-auto">
           <ProseEditor
             ref={proseEditorRef}

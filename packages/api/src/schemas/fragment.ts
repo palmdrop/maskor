@@ -3,10 +3,10 @@ import {
   FragmentSchema as DomainFragmentSchema,
   FragmentCreateSchema as DomainFragmentCreateSchema,
   FragmentUpdateSchema as DomainFragmentUpdateSchema,
-  FragmentPropertiesSchema,
+  AspectWeightsSchema,
 } from "@maskor/shared";
 
-const IndexedFragmentPropertySchema = z.object({
+const IndexedFragmentAspectSchema = z.object({
   weight: z.number(),
 });
 
@@ -19,7 +19,7 @@ export const IndexedFragmentSchema = DomainFragmentSchema.omit({
     key: z.string().openapi({ example: "harbour-lights" }),
     filePath: z.string(),
     updatedAt: z.string().openapi({ example: "2026-01-01T00:00:00.000Z" }),
-    properties: z.record(z.string(), IndexedFragmentPropertySchema),
+    aspects: z.record(z.string(), IndexedFragmentAspectSchema),
   })
   .openapi("IndexedFragment");
 
@@ -43,7 +43,7 @@ export const FragmentCreateSchema = DomainFragmentCreateSchema.extend({
 export const FragmentUpdateSchema = DomainFragmentUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "harbour-lights" }),
   content: z.string().optional().openapi({ example: "The lights flickered at dusk..." }),
-  properties: FragmentPropertiesSchema.optional(),
+  aspects: AspectWeightsSchema.optional(),
 }).openapi("FragmentUpdate");
 
 export const FragmentUpdateResponseSchema = z

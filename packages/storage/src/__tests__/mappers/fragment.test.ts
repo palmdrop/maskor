@@ -43,10 +43,10 @@ describe("fragment.fromFile", () => {
     expect(fragment.updatedAt.getTime()).toBeLessThanOrEqual(after.getTime());
   });
 
-  it("maps inline fields to properties", () => {
+  it("maps inline fields to aspects", () => {
     const fragment = fromFile(PARSED, "the-bridge.md");
-    expect(fragment.properties["grief"]).toEqual({ weight: 0.6 });
-    expect(fragment.properties["city"]).toEqual({ weight: 0.9 });
+    expect(fragment.aspects["grief"]).toEqual({ weight: 0.6 });
+    expect(fragment.aspects["city"]).toEqual({ weight: 0.9 });
   });
 
   it("maps body to content", () => {
@@ -88,7 +88,7 @@ describe("fragment.toFile", () => {
     readyStatus: 0.8,
     notes: ["bridge observation"],
     references: ["city research"],
-    properties: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
+    aspects: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
     content: "She crossed it every morning.",
     contentHash: "abc123",
     updatedAt,
@@ -107,7 +107,7 @@ describe("fragment.toFile", () => {
     expect("isDiscarded" in frontmatter).toBe(false);
   });
 
-  it("writes properties as inline fields", () => {
+  it("writes aspects as inline fields", () => {
     const { inlineFields } = toFile(fragment);
     expect(inlineFields["grief"]).toBe(0.6);
     expect(inlineFields["city"]).toBe(0.9);

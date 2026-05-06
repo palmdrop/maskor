@@ -66,8 +66,8 @@ describe("rebuild", () => {
 
     const modified = {
       ...bridge,
-      properties: {
-        ...bridge.properties,
+      aspects: {
+        ...bridge.aspects,
         "nonexistent-aspect": { weight: 0.5 },
       },
     };
@@ -96,7 +96,7 @@ describe("fragments.findAll", () => {
     expect(fragments.length).toBe(5);
   });
 
-  it("includes notes, references and properties on each fragment", async () => {
+  it("includes notes, references and aspects on each fragment", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
@@ -106,8 +106,8 @@ describe("fragments.findAll", () => {
     expect(bridge).toBeDefined();
     expect(bridge?.notes).toContain("bridge observation");
     expect(bridge?.references).toContain("city research");
-    expect(bridge?.properties["grief"]).toBeDefined();
-    expect(bridge?.properties["grief"]?.weight).toBe(0.6);
+    expect(bridge?.aspects["grief"]).toBeDefined();
+    expect(bridge?.aspects["grief"]?.weight).toBe(0.6);
   });
 });
 

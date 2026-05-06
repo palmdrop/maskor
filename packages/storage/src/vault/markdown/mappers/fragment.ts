@@ -1,6 +1,6 @@
 import type { Fragment } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
-import { inlineFieldsToProperties, propertiesToInlineFields } from "./aspect";
+import { inlineFieldsToAspects, aspectsToInlineFields } from "./aspect";
 import { basename } from "node:path";
 
 export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
@@ -19,7 +19,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
     readyStatus: typeof frontmatter.readyStatus === "number" ? frontmatter.readyStatus : 0,
     notes: (frontmatter.notes as string[]) ?? [],
     references: (frontmatter.references as string[]) ?? [],
-    properties: inlineFieldsToProperties(parsed.inlineFields),
+    aspects: inlineFieldsToAspects(parsed.inlineFields),
     content: parsed.body,
     contentHash: "",
     updatedAt,
@@ -41,7 +41,7 @@ export const toFile = (
       notes: fragment.notes,
       references: fragment.references,
     },
-    inlineFields: propertiesToInlineFields(fragment.properties),
+    inlineFields: aspectsToInlineFields(fragment.aspects),
     body: fragment.content,
   };
 };

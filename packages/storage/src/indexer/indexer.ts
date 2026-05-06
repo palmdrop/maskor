@@ -3,8 +3,8 @@ import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
   aspectsTable,
+  fragmentAspectsTable,
   fragmentNotesTable,
-  fragmentPropertiesTable,
   fragmentReferencesTable,
   fragmentsTable,
   notesTable,
@@ -138,8 +138,8 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     const allProperties = vaultDatabase
       .select()
-      .from(fragmentPropertiesTable)
-      .where(inArray(fragmentPropertiesTable.fragmentUuid, uuids))
+      .from(fragmentAspectsTable)
+      .where(inArray(fragmentAspectsTable.fragmentUuid, uuids))
       .all();
 
     return fragmentRows.map((row) =>

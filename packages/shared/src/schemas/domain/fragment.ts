@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const FragmentPropertiesSchema = z.record(z.string(), z.object({ weight: z.number() }));
+export const AspectWeightsSchema = z.record(z.string(), z.object({ weight: z.number().default(0) }));
 
 export const FragmentSchema = z.object({
   uuid: z.uuid(),
@@ -12,10 +12,10 @@ export const FragmentSchema = z.object({
   notes: z.array(z.string()),
   references: z.array(z.string()),
   isDiscarded: z.boolean(),
-  properties: FragmentPropertiesSchema,
+  aspects: AspectWeightsSchema,
 });
 
-export type FragmentProperties = z.infer<typeof FragmentPropertiesSchema>;
+export type AspectWeights = z.infer<typeof AspectWeightsSchema>;
 export type Fragment = z.infer<typeof FragmentSchema>;
 
 export const FragmentCreateSchema = z.object({
@@ -29,7 +29,7 @@ export const FragmentUpdateSchema = z.object({
   readyStatus: z.number().min(0).max(1).optional(),
   notes: z.array(z.string()).optional(),
   references: z.array(z.string()).optional(),
-  properties: FragmentPropertiesSchema.optional(),
+  aspects: AspectWeightsSchema.optional(),
 });
 
 export type FragmentCreate = z.infer<typeof FragmentCreateSchema>;

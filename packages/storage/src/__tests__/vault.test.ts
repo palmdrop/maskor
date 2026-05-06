@@ -49,7 +49,7 @@ describe("vault.fragments.read", () => {
     const vault = createVault(config);
     const fragment = await vault.fragments.read("the-bridge.md");
     expect(fragment.key).toBe("the-bridge");
-    expect(fragment.properties["grief"]).toEqual({ weight: 0.6 });
+    expect(fragment.aspects["grief"]).toEqual({ weight: 0.6 });
     expect(fragment.notes).toContain("bridge observation");
   });
 

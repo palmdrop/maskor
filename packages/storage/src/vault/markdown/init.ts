@@ -22,7 +22,7 @@ export const initFragment = async (config: VaultConfig, piece: Piece): Promise<F
     key: piece.key,
     isDiscarded: false,
     readyStatus: 0,
-    properties: {},
+    aspects: {},
     notes: [],
     references: [],
     content: piece.content,

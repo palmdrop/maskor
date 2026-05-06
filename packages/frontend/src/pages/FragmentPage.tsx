@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useParams, useBlocker } from "@tanstack/react-router";
+import { useParams /*, useBlocker */ } from "@tanstack/react-router";
 import { FragmentEditor } from "../components/fragments/fragment-editor";
 import {
   Dialog,
@@ -18,19 +18,31 @@ export const FragmentPage = () => {
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
 
+  /*
   const blocker = useBlocker({
     shouldBlockFn: () => isDirtyRef.current,
     withResolver: true,
   });
+  */
 
-  const handleDiscard = useCallback(() => {
-    setIsDirty(false);
-    blocker.proceed?.();
-  }, [blocker]);
+  const handleDiscard = useCallback(
+    () => {
+      setIsDirty(false);
+      // blocker.proceed?.();
+    },
+    [
+      /* blocker */
+    ],
+  );
 
-  const handleCancel = useCallback(() => {
-    blocker.reset?.();
-  }, [blocker]);
+  const handleCancel = useCallback(
+    () => {
+      // blocker.reset?.();
+    },
+    [
+      /* blocker */
+    ],
+  );
 
   return (
     <>
@@ -40,7 +52,7 @@ export const FragmentPage = () => {
         fragmentId={fragmentId}
         onDirtyChange={setIsDirty}
       />
-      <Dialog open={blocker.status === "blocked"}>
+      <Dialog open={/*blocker.status === "blocked"*/ false}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Unsaved changes</DialogTitle>

@@ -231,7 +231,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       readyStatus: 0,
       notes: [],
       references: [],
-      properties: {},
+      aspects: {},
       contentHash: "",
       updatedAt: new Date(),
     };

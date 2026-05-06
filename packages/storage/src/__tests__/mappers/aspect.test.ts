@@ -2,8 +2,8 @@ import { describe, it, expect } from "bun:test";
 import {
   fromFile,
   toFile,
-  inlineFieldsToProperties,
-  propertiesToInlineFields,
+  inlineFieldsToAspects,
+  aspectsToInlineFields,
 } from "../../vault/markdown/mappers/aspect";
 import type { ParsedFile } from "../../vault/markdown/parse";
 import type { Aspect } from "@maskor/shared";
@@ -83,32 +83,32 @@ describe("aspect.toFile", () => {
   });
 });
 
-describe("inlineFieldsToProperties", () => {
-  it("converts inline fields to FragmentProperties", () => {
-    const props = inlineFieldsToProperties({ grief: "0.6", city: "0.9" });
-    expect(props["grief"]).toEqual({ weight: 0.6 });
-    expect(props["city"]).toEqual({ weight: 0.9 });
+describe("inlineFieldsToAspects", () => {
+  it("converts inline fields to AspectWeights", () => {
+    const aspects = inlineFieldsToAspects({ grief: "0.6", city: "0.9" });
+    expect(aspects["grief"]).toEqual({ weight: 0.6 });
+    expect(aspects["city"]).toEqual({ weight: 0.9 });
   });
 
   it("skips non-numeric values", () => {
-    const props = inlineFieldsToProperties({ grief: "0.6", bad: "notanumber" });
-    expect(props["grief"]).toEqual({ weight: 0.6 });
-    expect(props["bad"]).toBeUndefined();
+    const aspects = inlineFieldsToAspects({ grief: "0.6", bad: "notanumber" });
+    expect(aspects["grief"]).toEqual({ weight: 0.6 });
+    expect(aspects["bad"]).toBeUndefined();
   });
 
   it("returns empty object for empty input", () => {
-    expect(inlineFieldsToProperties({})).toEqual({});
+    expect(inlineFieldsToAspects({})).toEqual({});
   });
 });
 
-describe("propertiesToInlineFields", () => {
-  it("converts FragmentProperties to inline fields", () => {
-    const fields = propertiesToInlineFields({ grief: { weight: 0.6 }, city: { weight: 0.9 } });
+describe("aspectsToInlineFields", () => {
+  it("converts AspectWeights to inline fields", () => {
+    const fields = aspectsToInlineFields({ grief: { weight: 0.6 }, city: { weight: 0.9 } });
     expect(fields["grief"]).toBe(0.6);
     expect(fields["city"]).toBe(0.9);
   });
 
-  it("returns empty object for empty properties", () => {
-    expect(propertiesToInlineFields({})).toEqual({});
+  it("returns empty object for empty aspects", () => {
+    expect(aspectsToInlineFields({})).toEqual({});
   });
 });

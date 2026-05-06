@@ -13,7 +13,7 @@ export type RebuildStats = {
   warnings: SyncWarning[];
 };
 
-export type IndexedFragmentProperty = {
+export type IndexedFragmentAspect = {
   weight: number;
 };
 
@@ -27,7 +27,7 @@ export type IndexedFragment = {
   updatedAt: Date;
   notes: string[];
   references: string[];
-  properties: Record<string, IndexedFragmentProperty>;
+  aspects: Record<string, IndexedFragmentAspect>;
 };
 
 export type IndexedAspect = {

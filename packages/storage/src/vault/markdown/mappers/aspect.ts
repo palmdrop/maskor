@@ -1,4 +1,4 @@
-import type { Aspect, FragmentProperties } from "@maskor/shared";
+import type { Aspect, AspectWeights } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { basename } from "node:path";
 
@@ -34,19 +34,19 @@ export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; 
   };
 };
 
-// --- Inline field helpers for FragmentProperties ---
+// --- Inline field helpers for AspectWeights ---
 
-export const inlineFieldsToProperties = (fields: Record<string, string>): FragmentProperties =>
+export const inlineFieldsToAspects = (fields: Record<string, string>): AspectWeights =>
   Object.entries(fields).reduce((acc, [key, value]) => {
     const weight = parseFloat(value);
     if (!isNaN(weight)) {
       acc[key] = { weight };
     }
     return acc;
-  }, {} as FragmentProperties);
+  }, {} as AspectWeights);
 
-export const propertiesToInlineFields = (properties: FragmentProperties): Record<string, number> =>
-  Object.entries(properties).reduce(
+export const aspectsToInlineFields = (aspects: AspectWeights): Record<string, number> =>
+  Object.entries(aspects).reduce(
     (acc, [key, value]) => {
       if (value === undefined) return acc;
       acc[key] = value.weight;

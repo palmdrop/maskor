@@ -48,7 +48,7 @@ ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests alrea
 ## Notes
 
 <!--
-Always include the statement below at the bottom of the plan. Add additional notes if necessary.
+Always include the statements below at the bottom of the plan. Add additional notes if necessary.
 -->
 
 DO NOT IMPLEMENT until clearly stated by the developer.

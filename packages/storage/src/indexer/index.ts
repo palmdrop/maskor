@@ -2,7 +2,7 @@ export { createVaultIndexer } from "./indexer";
 export type {
   VaultIndexer,
   IndexedFragment,
-  IndexedFragmentProperty,
+  IndexedFragmentAspect,
   IndexedAspect,
   IndexedNote,
   IndexedReference,

@@ -319,13 +319,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       context,
       findFragmentUuidsByAspectKey(vaultDatabase, oldKey),
       (fragment) => {
-        const oldProperty = fragment.properties[oldKey];
-        const updatedProperties = { ...fragment.properties };
-        delete updatedProperties[oldKey];
-        if (oldProperty !== undefined) {
-          updatedProperties[newKey] = oldProperty;
+        const oldAspect = fragment.aspects[oldKey];
+        const updatedAspects = { ...fragment.aspects };
+        delete updatedAspects[oldKey];
+        if (oldAspect !== undefined) {
+          updatedAspects[newKey] = oldAspect;
         }
-        return { ...fragment, properties: updatedProperties };
+        return { ...fragment, aspects: updatedAspects };
       },
     );
     return {

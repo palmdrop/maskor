@@ -21,12 +21,12 @@ export const assembleFragment = (
   updatedAt: row.updatedAt,
   notes: noteRows.map((note) => note.noteKey),
   references: referenceRows.map((reference) => reference.referenceKey),
-  properties: propertyRows.reduce(
+  aspects: propertyRows.reduce(
     (acc, property) => {
       acc[property.aspectKey] = { weight: property.weight };
       return acc;
     },
-    {} as IndexedFragment["properties"],
+    {} as IndexedFragment["aspects"],
   ),
 });
 

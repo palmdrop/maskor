@@ -19,43 +19,49 @@ const fragmentFormSchema = z.object({
   readyStatus: z.number().min(0).max(100),
   notes: z.array(z.object({ value: z.string() })),
   references: z.array(z.object({ value: z.string() })),
-  properties: z.record(z.string(), z.object({ weight: z.number() })),
+  aspects: z.array(z.object({ key: z.string(), weight: z.number().min(0).max(100) })),
 });
 
 type FragmentFormValues = z.infer<typeof fragmentFormSchema>;
 
-const buildDefaultValues = (fragment: Fragment, aspects: IndexedAspect[]): FragmentFormValues => {
+const buildDefaultValues = (
+  fragment: Fragment,
+  projectAspects: IndexedAspect[],
+): FragmentFormValues => {
+  const attachedAspectKeys = new Set(Object.keys(fragment.aspects));
   return {
     readyStatus: Math.round(fragment.readyStatus * 100),
     notes: fragment.notes.map((value) => ({ value })),
     references: fragment.references.map((value) => ({ value })),
-    properties: Object.fromEntries(
-      aspects.map((aspect) => [
-        aspect.key,
-        { weight: Math.round((fragment.properties[aspect.key]?.weight ?? 0) * 100) },
-      ]),
-    ),
+    aspects: projectAspects
+      .filter((aspect) => attachedAspectKeys.has(aspect.key))
+      .map((aspect) => ({
+        key: aspect.key,
+        weight: Math.round((fragment.aspects[aspect.key]?.weight ?? 0) * 100),
+      })),
   };
 };
 
 const buildUpdatePayload = (
   values: FragmentFormValues,
-  aspects: IndexedAspect[],
-  originalProperties: Fragment["properties"],
+  originalAspects: Fragment["aspects"],
+  knownAspectKeys: Set<string>,
 ): FragmentUpdate => {
-  const renderedProperties = Object.fromEntries(
-    aspects.map((aspect) => [
-      aspect.key,
-      { weight: (values.properties[aspect.key]?.weight ?? 0) / 100 },
-    ]),
+  const renderedAspects = Object.fromEntries(
+    values.aspects.map(({ key, weight }) => [key, { weight: weight / 100 }]),
+  );
+
+  // Preserve orphaned keys — present in the fragment but no longer a known project aspect.
+  // Keys that are known but absent from values.aspects were explicitly removed by the user.
+  const orphanedAspects = Object.fromEntries(
+    Object.entries(originalAspects).filter(([key]) => !knownAspectKeys.has(key)),
   );
 
   return {
     readyStatus: values.readyStatus / 100,
     notes: values.notes.map(({ value }) => value),
     references: values.references.map(({ value }) => value),
-    // Preserve unknown aspect keys from the original fragment
-    properties: { ...originalProperties, ...renderedProperties },
+    aspects: { ...orphanedAspects, ...renderedAspects },
   };
 };
 
@@ -76,7 +82,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
     const { data: notesEnvelope } = useListNotes(projectId);
     const { data: referencesEnvelope } = useListReferences(projectId);
 
-    const aspects = useMemo(
+    const projectAspects = useMemo(
       () => (aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : []),
       [aspectsEnvelope],
     );
@@ -93,7 +99,7 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
 
     const { control, handleSubmit, reset, formState } = useForm<FragmentFormValues>({
       resolver: zodResolver(fragmentFormSchema),
-      defaultValues: buildDefaultValues(fragment, aspects),
+      defaultValues: buildDefaultValues(fragment, projectAspects),
     });
 
     // Ref so the effect below can read the latest isDirty without re-triggering on dirty-state changes
@@ -104,8 +110,8 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       if (isDirtyRef.current) {
         return;
       }
-      reset(buildDefaultValues(fragment, aspects));
-    }, [fragment, aspects, reset]);
+      reset(buildDefaultValues(fragment, projectAspects));
+    }, [fragment, projectAspects, reset]);
 
     const onDirtyChangeRef = useRef(onDirtyChange);
     onDirtyChangeRef.current = onDirtyChange;
@@ -125,7 +131,12 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       remove: removeReference,
     } = useFieldArray({ control, name: "references" });
 
-    // TODO: use api query for this?
+    const {
+      fields: aspectFields,
+      append: appendAspect,
+      remove: removeAspect,
+    } = useFieldArray({ control, name: "aspects" });
+
     const availableNotes = useMemo(
       () =>
         (notesEnvelope?.status === 200 ? notesEnvelope.data : [])
@@ -134,7 +145,6 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       [notesEnvelope, noteFields],
     );
 
-    // TODO: use api query for this?
     const availableReferences = useMemo(
       () =>
         (referencesEnvelope?.status === 200 ? referencesEnvelope.data : [])
@@ -145,6 +155,14 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
       [referencesEnvelope, referenceFields],
     );
 
+    const availableAspects = useMemo(
+      () =>
+        projectAspects
+          .filter((aspect) => !aspectFields.find((existing) => existing.key === aspect.key))
+          .map((aspect) => aspect.key),
+      [projectAspects, aspectFields],
+    );
+
     useImperativeHandle(
       ref,
       () => ({
@@ -153,13 +171,14 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
             handleSubmit(
               (formValues) => {
                 reset(formValues);
-                resolve(buildUpdatePayload(formValues, aspects, fragment.properties));
+                const knownAspectKeys = new Set(projectAspects.map((aspect) => aspect.key));
+                resolve(buildUpdatePayload(formValues, fragment.aspects, knownAspectKeys));
               },
               () => resolve(null),
             )();
           }),
       }),
-      [handleSubmit, reset, aspects, fragment.properties],
+      [handleSubmit, reset, fragment.aspects, projectAspects],
     );
 
     return (
@@ -243,32 +262,43 @@ export const FragmentMetadataForm = forwardRef<FragmentMetadataFormHandle, Props
           />
         </div>
 
-        {aspects.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <Label>Aspects</Label>
-            {aspects.map((aspect) => (
-              <Controller
-                key={aspect.key}
-                control={control}
-                name={`properties.${aspect.key}.weight`}
-                render={({ field }) => (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm text-muted-foreground">
-                      {aspect.key} — {field.value ?? 0}%
+        <div className="flex flex-col gap-3">
+          <Label>Aspects</Label>
+          {aspectFields.map((aspectField, index) => (
+            <Controller
+              key={aspectField.id}
+              control={control}
+              name={`aspects.${index}.weight`}
+              render={({ field }) => (
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm text-muted-foreground flex justify-between">
+                    <span>
+                      {aspectField.key} — {field.value ?? 0}%
                     </span>
-                    <Slider
-                      value={[field.value ?? 0]}
-                      onValueChange={([value]) => field.onChange(value)}
-                      min={0}
-                      max={100}
-                      step={1}
-                    />
-                  </div>
-                )}
-              />
-            ))}
-          </div>
-        )}
+                    <button
+                      onClick={() => removeAspect(index)}
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </span>
+                  <Slider
+                    value={[field.value ?? 0]}
+                    onValueChange={([value]) => field.onChange(value)}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                </div>
+              )}
+            />
+          ))}
+          <TagCombobox
+            availableOptions={availableAspects}
+            placeholder="Add aspect — type to filter"
+            onSelect={(key) => appendAspect({ key, weight: 0 })}
+          />
+        </div>
       </form>
     );
   },

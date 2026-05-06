@@ -64,6 +64,13 @@
       "when": 1746748800000,
       "tag": "20260506_drop_fragment_title",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1746835200000,
+      "tag": "20260506_rename_fragment_properties_to_aspects",
+      "breakpoints": true
     }
   ]
 }

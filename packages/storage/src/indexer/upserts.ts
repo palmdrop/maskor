@@ -5,8 +5,8 @@ import type { Aspect, Fragment, Note, Reference } from "@maskor/shared";
 import {
   aspectNotesTable,
   aspectsTable,
+  fragmentAspectsTable,
   fragmentNotesTable,
-  fragmentPropertiesTable,
   fragmentReferencesTable,
   fragmentsTable,
   notesTable,
@@ -147,19 +147,19 @@ export const upsertFragment = (
     tx.insert(fragmentReferencesTable).values({ fragmentUuid: fragment.uuid, referenceKey }).run();
   }
 
-  tx.delete(fragmentPropertiesTable)
-    .where(eq(fragmentPropertiesTable.fragmentUuid, fragment.uuid))
+  tx.delete(fragmentAspectsTable)
+    .where(eq(fragmentAspectsTable.fragmentUuid, fragment.uuid))
     .run();
 
-  const properties = Object.entries(fragment.properties);
+  const aspectEntries = Object.entries(fragment.aspects);
 
-  for (const [aspectKey, { weight }] of properties) {
-    tx.insert(fragmentPropertiesTable)
+  for (const [aspectKey, { weight }] of aspectEntries) {
+    tx.insert(fragmentAspectsTable)
       .values({ fragmentUuid: fragment.uuid, aspectKey, weight })
       .run();
   }
 
-  return properties.reduce<SyncWarning[]>((acc, [aspectKey]) => {
+  return aspectEntries.reduce<SyncWarning[]>((acc, [aspectKey]) => {
     if (knownAspectKeys.has(aspectKey)) {
       return acc;
     }
@@ -215,9 +215,9 @@ export const findFragmentUuidsByReferenceKey = (
 
 export const findFragmentUuidsByAspectKey = (db: VaultDatabase, aspectKey: string): string[] => {
   return db
-    .select({ fragmentUuid: fragmentPropertiesTable.fragmentUuid })
-    .from(fragmentPropertiesTable)
-    .where(eq(fragmentPropertiesTable.aspectKey, aspectKey))
+    .select({ fragmentUuid: fragmentAspectsTable.fragmentUuid })
+    .from(fragmentAspectsTable)
+    .where(eq(fragmentAspectsTable.aspectKey, aspectKey))
     .all()
     .map((row) => row.fragmentUuid);
 };

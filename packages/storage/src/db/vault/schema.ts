@@ -56,14 +56,14 @@ export const fragmentReferencesTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.fragmentUuid, table.referenceKey] })],
 );
 
-export const fragmentPropertiesTable = sqliteTable(
-  "fragment_properties",
+export const fragmentAspectsTable = sqliteTable(
+  "fragment_aspects",
   {
     fragmentUuid: text("fragment_uuid")
       .notNull()
       .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
     aspectKey: text("aspect_key").notNull(), // drift detected via Set<aspectKey> membership check
-    weight: real("weight").notNull(),
+    weight: real("weight").notNull().default(0),
   },
   (table) => [primaryKey({ columns: [table.fragmentUuid, table.aspectKey] })],
 );
