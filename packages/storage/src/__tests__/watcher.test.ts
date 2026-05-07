@@ -369,3 +369,125 @@ describe("syncFragment — hash guard", () => {
     expect(bridgeSynced.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("syncNote — hash guard", () => {
+  it("emits no note:synced event when file content is unchanged on re-sync", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.watcher.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+
+    const notePath = join(vaultDir, "notes", "bridge observation.md");
+    const originalContent = await Bun.file(notePath).text();
+
+    // Write identical content — hash will match what's in DB from rebuild
+    await Bun.write(notePath, originalContent);
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const noteSynced = events.filter(
+      (event) =>
+        event.type === "note:synced" && event.uuid === "2c562d55-4f9b-4246-a2bd-89de4a860bd9",
+    );
+    expect(noteSynced).toHaveLength(0);
+  });
+
+  it("emits note:synced when file content changes", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.watcher.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const notePath = join(vaultDir, "notes", "bridge observation.md");
+    const originalContent = await Bun.file(notePath).text();
+
+    await Bun.write(notePath, originalContent + "\nNew line added.");
+
+    await waitFor(
+      () =>
+        events.some(
+          (event) =>
+            event.type === "note:synced" &&
+            event.uuid === "2c562d55-4f9b-4246-a2bd-89de4a860bd9",
+        ),
+      3000,
+    );
+
+    const noteSynced = events.filter(
+      (event) =>
+        event.type === "note:synced" && event.uuid === "2c562d55-4f9b-4246-a2bd-89de4a860bd9",
+    );
+    expect(noteSynced.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("syncReference — hash guard", () => {
+  it("emits no reference:synced event when file content is unchanged on re-sync", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.watcher.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+
+    const referencePath = join(vaultDir, "references", "city research.md");
+    const originalContent = await Bun.file(referencePath).text();
+
+    // Write identical content — hash will match what's in DB from rebuild
+    await Bun.write(referencePath, originalContent);
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const referenceSynced = events.filter(
+      (event) =>
+        event.type === "reference:synced" &&
+        event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
+    );
+    expect(referenceSynced).toHaveLength(0);
+  });
+
+  it("emits reference:synced when file content changes", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.watcher.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const referencePath = join(vaultDir, "references", "city research.md");
+    const originalContent = await Bun.file(referencePath).text();
+
+    await Bun.write(referencePath, originalContent + "\nNew line added.");
+
+    await waitFor(
+      () =>
+        events.some(
+          (event) =>
+            event.type === "reference:synced" &&
+            event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
+        ),
+      3000,
+    );
+
+    const referenceSynced = events.filter(
+      (event) =>
+        event.type === "reference:synced" &&
+        event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
+    );
+    expect(referenceSynced.length).toBeGreaterThanOrEqual(1);
+  });
+});
