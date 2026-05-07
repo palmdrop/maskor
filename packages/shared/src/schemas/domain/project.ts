@@ -12,6 +12,9 @@ export const ProjectSchema = z.object({
     vimMode: z.boolean(),
     rawMarkdownMode: z.boolean(),
   }),
+  suggestion: z.object({
+    readyStatusThreshold: z.number().min(0).max(1),
+  }),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -31,6 +34,11 @@ export const ProjectUpdateSchema = z.object({
     .object({
       vimMode: z.boolean().optional(),
       rawMarkdownMode: z.boolean().optional(),
+    })
+    .optional(),
+  suggestion: z
+    .object({
+      readyStatusThreshold: z.number().min(0).max(1).optional(),
     })
     .optional(),
 });

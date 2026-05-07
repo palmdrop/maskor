@@ -15,6 +15,9 @@ type ProjectManifest = {
       vimMode?: boolean;
       rawMarkdownMode?: boolean;
     };
+    suggestion?: {
+      readyStatusThreshold?: number;
+    };
   };
 };
 
@@ -49,11 +52,17 @@ const writeVaultManifest = async (
         ...existing.config?.editor,
         ...patch.config?.editor,
       },
+      suggestion: {
+        ...existing.config?.suggestion,
+        ...patch.config?.suggestion,
+      },
     },
   };
 
   await Bun.write(manifestPath(vaultPath), JSON.stringify(updated, null, 2));
 };
+
+const SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT = 0.95;
 
 const toProjectRecord = (
   row: typeof projectsTable.$inferSelect,
@@ -66,6 +75,11 @@ const toProjectRecord = (
   editor: {
     vimMode: manifest?.config?.editor?.vimMode ?? false,
     rawMarkdownMode: manifest?.config?.editor?.rawMarkdownMode ?? false,
+  },
+  suggestion: {
+    readyStatusThreshold:
+      manifest?.config?.suggestion?.readyStatusThreshold ??
+      SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
   },
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -96,7 +110,12 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         registeredAt: now.toISOString(),
         ...(existingManifest?.config
           ? {}
-          : { config: { editor: { vimMode: false, rawMarkdownMode: false } } }),
+          : {
+              config: {
+                editor: { vimMode: false, rawMarkdownMode: false },
+                suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+              },
+            }),
       });
 
       const [row] = await database
@@ -143,7 +162,11 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
 
     async updateProject(
       projectUUID: string,
-      patch: { name?: string; editor?: { vimMode?: boolean; rawMarkdownMode?: boolean } },
+      patch: {
+        name?: string;
+        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
+        suggestion?: { readyStatusThreshold?: number };
+      },
     ): Promise<ProjectRecord> {
       const rows = await database
         .select()
@@ -159,7 +182,12 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
 
       const manifestPatch: Partial<ProjectManifest> = {};
       if (patch.name !== undefined) manifestPatch.name = patch.name;
-      if (patch.editor !== undefined) manifestPatch.config = { editor: patch.editor };
+      if (patch.editor !== undefined || patch.suggestion !== undefined) {
+        manifestPatch.config = {
+          ...(patch.editor !== undefined ? { editor: patch.editor } : {}),
+          ...(patch.suggestion !== undefined ? { suggestion: patch.suggestion } : {}),
+        };
+      }
 
       await writeVaultManifest(row.vaultPath, manifestPatch);
 

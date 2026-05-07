@@ -71,6 +71,13 @@
       "when": 1746835200000,
       "tag": "20260506_rename_fragment_properties_to_aspects",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1746921600000,
+      "tag": "20260507_add_fragment_stats",
+      "breakpoints": true
     }
   ]
 }

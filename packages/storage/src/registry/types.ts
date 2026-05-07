@@ -9,6 +9,9 @@ export type ProjectRecord = {
     vimMode: boolean;
     rawMarkdownMode: boolean;
   };
+  suggestion: {
+    readyStatusThreshold: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

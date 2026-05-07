@@ -9,6 +9,7 @@ import type { Project } from "../../../api/generated/maskorAPI.schemas";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Switch } from "../../../components/ui/switch";
+import { Slider } from "../../../components/ui/slider";
 import { Button } from "../../../components/ui/button";
 import { useRebuildIndex } from "../../../api/generated/index";
 
@@ -81,6 +82,18 @@ export const GeneralTab = ({ project }: { project: Project }) => {
       await updateProject.mutateAsync({
         projectId: project.projectUUID,
         data: { editor: { rawMarkdownMode: checked } },
+      });
+      invalidateProject();
+    } catch {
+      setError("Update failed.");
+    }
+  };
+
+  const handleReadyStatusThresholdChange = async (value: number) => {
+    try {
+      await updateProject.mutateAsync({
+        projectId: project.projectUUID,
+        data: { suggestion: { readyStatusThreshold: value / 100 } },
       });
       invalidateProject();
     } catch {
@@ -168,6 +181,30 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             onCheckedChange={handleToggleRawMarkdownMode}
             disabled={updateProject.isPending || project.editor.vimMode}
           />
+        </div>
+      </div>
+      <div className="flex flex-col gap-4">
+        <Label className="text-base">Suggestion</Label>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ready-status-threshold">Ready status threshold</Label>
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {Math.round(project.suggestion.readyStatusThreshold * 100)}%
+            </span>
+          </div>
+          <Slider
+            id="ready-status-threshold"
+            min={0}
+            max={100}
+            step={1}
+            value={[Math.round(project.suggestion.readyStatusThreshold * 100)]}
+            onValueCommit={([value]) => void handleReadyStatusThresholdChange(value!)}
+            disabled={updateProject.isPending}
+          />
+          <p className="text-xs text-muted-foreground">
+            Fragments with a ready status at or above this threshold are excluded from suggestion
+            mode.
+          </p>
         </div>
       </div>
     </div>

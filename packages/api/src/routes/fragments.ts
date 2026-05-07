@@ -257,6 +257,13 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
     }
   }
 
+  const hasContentOrMetadataChange =
+    update.content !== undefined ||
+    update.readyStatus !== undefined ||
+    update.notes !== undefined ||
+    update.references !== undefined ||
+    update.aspects !== undefined;
+
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
@@ -266,6 +273,11 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
       ...existing,
       ...update,
     });
+
+    if (hasContentOrMetadataChange) {
+      storageService.suggestion.recordEditSaved(projectContext, fragmentId);
+    }
+
     return ctx.json({ fragment, warnings: [] }, 200);
   } catch (error) {
     return throwStorageError(error);

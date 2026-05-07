@@ -103,3 +103,18 @@ export const referencesTable = sqliteTable("project_references", {
   filePath: text("file_path").notNull().unique(),
   syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
 });
+
+export const fragmentStatsTable = sqliteTable(
+  "fragment_stats",
+  {
+    fragmentUuid: text("fragment_uuid")
+      .primaryKey()
+      .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
+    voluntaryOpenCount: integer("voluntary_open_count").notNull().default(0),
+    promptAcceptCount: integer("prompt_accept_count").notNull().default(0),
+    avoidanceCount: integer("avoidance_count").notNull().default(0),
+    editCount: integer("edit_count").notNull().default(0),
+    lastSurfacedAt: integer("last_surfaced_at", { mode: "timestamp" }),
+  },
+  (table) => [index("fragment_stats_last_surfaced_at_idx").on(table.lastSurfacedAt)],
+);

@@ -56,6 +56,17 @@ import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
+import { CooldownSet } from "../suggestion/cooldown";
+import { selectNextSuggestion } from "../suggestion/selector";
+import {
+  getStats,
+  getStatsBatch,
+  incrementVoluntaryOpen,
+  incrementPromptAccept,
+  incrementEdit,
+  incrementAvoidance,
+} from "../suggestion/stats-repo";
+import type { FragmentStats } from "../suggestion/stats-repo";
 
 export type StorageServiceConfig = {
   logger?: Logger;
@@ -83,6 +94,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const vaultDatabaseCache = new Map<string, VaultDatabase>();
   const vaultIndexerCache = new Map<string, VaultIndexer>();
   const vaultWatcherCache = new Map<string, VaultWatcher>();
+  const suggestionCooldownCache = new Map<string, CooldownSet>();
 
   // --- private helpers ---
 
@@ -113,6 +125,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const indexer = createVaultIndexer(vaultDatabase, vault);
     vaultIndexerCache.set(context.projectUUID, indexer);
     return indexer;
+  };
+
+  const getSuggestionCooldown = (context: ProjectContext): CooldownSet => {
+    const cached = suggestionCooldownCache.get(context.projectUUID);
+    if (cached) return cached;
+    const cooldown = new CooldownSet();
+    suggestionCooldownCache.set(context.projectUUID, cooldown);
+    return cooldown;
   };
 
   const getVaultWatcher = (context: ProjectContext): VaultWatcher => {
@@ -363,12 +383,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       vaultCache.delete(projectUUID);
       vaultDatabaseCache.delete(projectUUID);
       vaultIndexerCache.delete(projectUUID);
+      suggestionCooldownCache.delete(projectUUID);
       log.info({ projectUUID }, "project removed");
     },
 
     async updateProject(
       projectUUID: string,
-      patch: { name?: string; editor?: { vimMode?: boolean; rawMarkdownMode?: boolean } },
+      patch: {
+        name?: string;
+        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
+        suggestion?: { readyStatusThreshold?: number };
+      },
     ): Promise<ProjectRecord> {
       const record = await registry.updateProject(projectUUID, patch);
       log.info({ projectUUID, patch }, "project updated");
@@ -1135,6 +1160,87 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     pieces: {
       async consumeAll(context: ProjectContext): Promise<Fragment[]> {
         return getVault(context).pieces.consumeAll();
+      },
+    },
+
+    // Suggestion operations
+
+    suggestion: {
+      // Returns the next suggested fragment UUID and its avoidance count, or null if the pool
+      // is empty. If excludeUuid is provided and was surfaced in this session without being
+      // edited, its avoidance_count is incremented before selection.
+      // readyStatusThreshold: fragments at or above this value are excluded (default 0.95).
+      async getNext(
+        context: ProjectContext,
+        excludeUuid?: string,
+        readyStatusThreshold = 0.95,
+      ): Promise<{ fragmentUuid: string | null; avoidanceCount: number }> {
+        const vaultDatabase = getVaultDatabase(context);
+        const indexer = getVaultIndexer(context);
+        const cooldown = getSuggestionCooldown(context);
+
+        if (excludeUuid && cooldown.has(excludeUuid) && !cooldown.wasEditedWhileSurfaced(excludeUuid)) {
+          incrementAvoidance(vaultDatabase, excludeUuid);
+        }
+
+        const allFragments = await indexer.fragments.findAll();
+        const preFilter = allFragments.filter(
+          (fragment) => !fragment.isDiscarded && fragment.readyStatus < readyStatusThreshold,
+        );
+
+        if (preFilter.length === 0) {
+          return { fragmentUuid: null, avoidanceCount: 0 };
+        }
+
+        const eligibleUuids = cooldown.getEligible(preFilter.map((fragment) => fragment.uuid));
+        const eligibleSet = new Set(eligibleUuids);
+        const eligible = preFilter.filter((fragment) => eligibleSet.has(fragment.uuid));
+
+        // Exclude the current fragment from selection when alternatives exist, so Next never
+        // returns the same fragment that was just on screen.
+        const selectionPool =
+          excludeUuid && eligible.length > 1
+            ? eligible.filter((fragment) => fragment.uuid !== excludeUuid)
+            : eligible;
+
+        const statsMap = getStatsBatch(vaultDatabase, selectionPool.map((fragment) => fragment.uuid));
+
+        const selectedUuid = selectNextSuggestion({
+          eligibleFragments: selectionPool.map((fragment) => ({
+            uuid: fragment.uuid,
+            readyStatus: fragment.readyStatus,
+          })),
+          stats: statsMap,
+          rng: Math.random,
+        });
+
+        if (!selectedUuid) {
+          return { fragmentUuid: null, avoidanceCount: 0 };
+        }
+
+        const surfacedAt = new Date();
+        cooldown.add(selectedUuid);
+        incrementPromptAccept(vaultDatabase, selectedUuid, surfacedAt);
+
+        const fragmentStats = getStats(vaultDatabase, selectedUuid);
+        return { fragmentUuid: selectedUuid, avoidanceCount: fragmentStats.avoidanceCount };
+      },
+
+      recordVisit(context: ProjectContext, fragmentUuid: string): void {
+        const vaultDatabase = getVaultDatabase(context);
+        incrementVoluntaryOpen(vaultDatabase, fragmentUuid);
+      },
+
+      recordEditSaved(context: ProjectContext, fragmentUuid: string): void {
+        const vaultDatabase = getVaultDatabase(context);
+        const cooldown = getSuggestionCooldown(context);
+        incrementEdit(vaultDatabase, fragmentUuid);
+        cooldown.markEdited(fragmentUuid);
+      },
+
+      getFragmentStats(context: ProjectContext, fragmentUuid: string): FragmentStats {
+        const vaultDatabase = getVaultDatabase(context);
+        return getStats(vaultDatabase, fragmentUuid);
       },
     },
 

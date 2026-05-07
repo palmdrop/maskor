@@ -23,14 +23,14 @@
 
 - [ ] add comment concept: it is important to be able to add comments... perhaps this could be solved using notes? or a new concept entirely?
 
-- [ ] renaming a note/ref from the filesystem is not properly picked up by the watcher... rename not propagated to maskor... fix
+- [x] renaming a note/ref from the filesystem is not properly picked up by the watcher... rename not propagated to maskor... fix
   - NOTE: this is hard to fix since I decided to use the filename as the key... fragments have no way of mapping back to the aspect. Need to go back to UUIDs for storing fragment->aspect relations, OR accept this, and encourage renaming through maskor?
 
 - [ ] make sure orphaned aspects are still visible in the metadata editor. Should probably have an indicator for this.
 
 - [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
 
-- [ ] Refactor watcher code, lots of code duplication and huge file size
+- [x] Refactor watcher code, lots of code duplication and huge file size
 
 - [ ] Investigate logger... is the pattern good? where to see logs? how to write intentional logs for me to read?
 

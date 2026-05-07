@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetFragment,
@@ -10,15 +10,24 @@ import {
 } from "../../api/generated/fragments/fragments";
 import { FragmentMetadataForm, type FragmentMetadataFormHandle } from "./fragment-metadata-form";
 import { Button } from "../ui/button";
-import { EntityEditorShell } from "../entity-editor-shell";
+import { EntityEditorShell, type EntityEditorShellHandle } from "../entity-editor-shell";
+
+export type FragmentEditorHandle = {
+  save: () => Promise<void>;
+};
 
 type Props = {
   projectId: string;
   fragmentId: string;
+  sidebarCollapsible?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  onSaved?: () => void;
 };
 
-export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) => {
+export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function FragmentEditor(
+  { projectId, fragmentId, sidebarCollapsible, onDirtyChange, onSaved },
+  ref,
+) {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
   const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
@@ -26,6 +35,7 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
+  const shellRef = useRef<EntityEditorShellHandle>(null);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
   const [isMetadataDirty, setIsMetadataDirty] = useState(false);
@@ -36,6 +46,14 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
   useEffect(() => {
     onDirtyChangeRef.current?.(isDirty);
   }, [isDirty]);
+
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (shellRef.current) {
+        await shellRef.current.save();
+      }
+    },
+  }), []);
 
   const fragment = envelope?.status === 200 ? envelope.data : null;
 
@@ -110,6 +128,7 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
 
   return (
     <EntityEditorShell
+      ref={shellRef}
       label="Fragment"
       projectId={projectId}
       entityKey={fragment.key}
@@ -118,8 +137,12 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
       isDirty={isDirty}
       banner={discardedBanner}
       extraActions={extraActions}
+      sidebarCollapsible={sidebarCollapsible}
       onProseChange={() => setIsProseDirty(true)}
-      onSaved={() => setIsProseDirty(false)}
+      onSaved={() => {
+        setIsProseDirty(false);
+        onSaved?.();
+      }}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
       sidebar={
@@ -132,4 +155,4 @@ export const FragmentEditor = ({ projectId, fragmentId, onDirtyChange }: Props) 
       }
     />
   );
-};
+});
