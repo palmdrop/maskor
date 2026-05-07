@@ -2,9 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { cpSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { eq } from "drizzle-orm";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
+import { upsertAspect, upsertNote, upsertReference } from "../indexer/upserts";
+import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
+import type { Aspect, Note, Reference } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -291,6 +295,77 @@ describe("fragments.findAll relation isolation", () => {
         expect(other.notes).not.toContain(note);
       }
     }
+  });
+});
+
+// --- upsert self-sufficiency (key/filePath collision without watcher pre-deletion) ---
+
+describe("upsertNote — key collision without watcher pre-deletion", () => {
+  it("replaces an existing note when a new note with a different UUID uses the same key", async () => {
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, createVault({ root: vaultDir }));
+    await indexer.rebuild();
+
+    const newUuid = crypto.randomUUID();
+    const note: Note = { uuid: newUuid, key: "bridge observation", content: "replacement" };
+
+    vaultDatabase.transaction((tx) => {
+      upsertNote(tx, note, "bridge observation.md", "replacement");
+    });
+
+    const row = vaultDatabase
+      .select({ uuid: notesTable.uuid })
+      .from(notesTable)
+      .where(eq(notesTable.key, "bridge observation"))
+      .get();
+
+    expect(row?.uuid).toBe(newUuid);
+  });
+});
+
+describe("upsertReference — key collision without watcher pre-deletion", () => {
+  it("replaces an existing reference when a new reference with a different UUID uses the same key", async () => {
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, createVault({ root: vaultDir }));
+    await indexer.rebuild();
+
+    const newUuid = crypto.randomUUID();
+    const reference: Reference = { uuid: newUuid, key: "city research", content: "replacement" };
+
+    vaultDatabase.transaction((tx) => {
+      upsertReference(tx, reference, "city research.md", "replacement");
+    });
+
+    const row = vaultDatabase
+      .select({ uuid: referencesTable.uuid })
+      .from(referencesTable)
+      .where(eq(referencesTable.key, "city research"))
+      .get();
+
+    expect(row?.uuid).toBe(newUuid);
+  });
+});
+
+describe("upsertAspect — key collision without watcher pre-deletion", () => {
+  it("replaces an existing aspect when a new aspect with a different UUID uses the same key", async () => {
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, createVault({ root: vaultDir }));
+    await indexer.rebuild();
+
+    const newUuid = crypto.randomUUID();
+    const aspect: Aspect = { uuid: newUuid, key: "grief", notes: [] };
+
+    vaultDatabase.transaction((tx) => {
+      upsertAspect(tx, aspect, "grief.md", "replacement");
+    });
+
+    const row = vaultDatabase
+      .select({ uuid: aspectsTable.uuid })
+      .from(aspectsTable)
+      .where(eq(aspectsTable.key, "grief"))
+      .get();
+
+    expect(row?.uuid).toBe(newUuid);
   });
 });
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, not, or } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { SQLiteBunTransaction } from "drizzle-orm/bun-sqlite";
 import type { Aspect, Fragment, Note, Reference } from "@maskor/shared";
@@ -41,6 +41,17 @@ export const upsertAspect = (
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
 
+  // key and filePath are UNIQUE but not conflict targets — pre-delete any row that
+  // would collide on either so the insert below doesn't throw a constraint error.
+  tx.delete(aspectsTable)
+    .where(
+      and(
+        not(eq(aspectsTable.uuid, aspect.uuid)),
+        or(eq(aspectsTable.key, aspect.key), eq(aspectsTable.filePath, filePath)),
+      ),
+    )
+    .run();
+
   tx.insert(aspectsTable)
     .values({
       uuid: aspect.uuid,
@@ -71,6 +82,17 @@ export const upsertNote = (
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
 
+  // key and filePath are UNIQUE but not conflict targets — pre-delete any row that
+  // would collide on either so the insert below doesn't throw a constraint error.
+  tx.delete(notesTable)
+    .where(
+      and(
+        not(eq(notesTable.uuid, note.uuid)),
+        or(eq(notesTable.key, note.key), eq(notesTable.filePath, filePath)),
+      ),
+    )
+    .run();
+
   tx.insert(notesTable)
     .values({ uuid: note.uuid, key: note.key, contentHash, filePath, syncedAt })
     .onConflictDoUpdate({
@@ -88,6 +110,17 @@ export const upsertReference = (
 ): void => {
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
+
+  // key and filePath are UNIQUE but not conflict targets — pre-delete any row that
+  // would collide on either so the insert below doesn't throw a constraint error.
+  tx.delete(referencesTable)
+    .where(
+      and(
+        not(eq(referencesTable.uuid, reference.uuid)),
+        or(eq(referencesTable.key, reference.key), eq(referencesTable.filePath, filePath)),
+      ),
+    )
+    .run();
 
   tx.insert(referencesTable)
     .values({ uuid: reference.uuid, key: reference.key, contentHash, filePath, syncedAt })

@@ -23,49 +23,10 @@ import {
   deleteReferenceByFilePath,
 } from "../indexer/upserts";
 import { eq } from "drizzle-orm";
-
-export type CascadeCallbacks = {
-  onNoteRename: (oldKey: string, newKey: string) => Promise<void>;
-  onReferenceRename: (oldKey: string, newKey: string) => Promise<void>;
-  onAspectRename: (oldKey: string, newKey: string) => Promise<void>;
-};
-
-export type VaultWatcher = {
-  // Idempotent — calling start() when already running is a no-op.
-  start(): void;
-  // Safe to call before start(). Resolves immediately if never started.
-  stop(): Promise<void>;
-  // Pause event processing. Events that arrive while paused are dropped.
-  // Use during rebuild() to avoid the watcher/rebuild race condition.
-  pause(): void;
-  resume(): void;
-  // Subscribe to vault sync events. Returns an unsubscribe function.
-  subscribe(callback: (event: VaultSyncEvent) => void): () => void;
-};
-
-// Checks whether a UUID already exists in the fragments table at a different file path.
-// Returns the colliding entity-relative filePath if a collision exists, null otherwise.
-const findFragmentUuidCollision = (
-  vaultDatabase: VaultDatabase,
-  uuid: string,
-  currentEntityRelativePath: string,
-): string | null => {
-  const row = vaultDatabase
-    .select({ filePath: fragmentsTable.filePath })
-    .from(fragmentsTable)
-    .where(eq(fragmentsTable.uuid, uuid))
-    .get();
-
-  if (!row || row.filePath === currentEntityRelativePath) return null;
-  return row.filePath;
-};
-
-// Converts a vault-root-relative path to entity-relative by stripping the entity prefix.
-// e.g. "fragments/the-bridge.md" → "the-bridge.md"
-//      "fragments/discarded/the-bridge.md" → "discarded/the-bridge.md"
-const toEntityRelativePath = (vaultRelativePath: string, entityPrefix: string): string => {
-  return vaultRelativePath.slice(entityPrefix.length);
-};
+import { findFragmentUuidCollision } from "./utils/fragments";
+import { createRenameBuffer } from "./utils/rename-buffer";
+import type { CascadeCallbacks, VaultWatcher } from "./types";
+import { toEntityRelativePath } from "./utils/paths";
 
 export const createVaultWatcher = (
   vaultDatabase: VaultDatabase,
@@ -89,6 +50,10 @@ export const createVaultWatcher = (
   let isPaused = false;
 
   const subscribers = new Set<(event: VaultSyncEvent) => void>();
+
+  const noteRenameBuffer = createRenameBuffer();
+  const referenceRenameBuffer = createRenameBuffer();
+  const aspectRenameBuffer = createRenameBuffer();
 
   const emit = (event: VaultSyncEvent): void => {
     for (const callback of subscribers) {
@@ -210,27 +175,43 @@ export const createVaultWatcher = (
     }
 
     const filenameKey = path.basename(entityRelativePath, ".md");
+    const renameCheck = aspectRenameBuffer.check(uuid, filenameKey);
 
-    const storedRow = vaultDatabase
-      .select({ key: aspectsTable.key, contentHash: aspectsTable.contentHash })
-      .from(aspectsTable)
-      .where(eq(aspectsTable.uuid, uuid))
-      .get();
-
-    const isRename = storedRow !== undefined && storedRow.key !== filenameKey;
-
-    if (isRename && cascadeCallbacks) {
-      await cascadeCallbacks.onAspectRename(storedRow.key, filenameKey);
+    if (renameCheck?.kind === "collision") {
+      vaultDatabase.transaction((tx) => {
+        deleteAspectByFilePath(tx, renameCheck.filePath);
+      });
+      emit({ type: "aspect:deleted", filePath: renameCheck.filePath });
     }
 
-    // Hash guard: skip if content unchanged and this is not a rename.
-    // Renames bypass the guard because the key changed even if the file body didn't.
-    if (!isRename && storedRow?.contentHash === hashContent(rawContent)) {
-      log.debug(
-        { filePath: entityRelativePath },
-        "watcher: aspect unchanged (hash match) — skipping",
-      );
-      return;
+    const bufferRename = renameCheck?.kind === "rename" ? renameCheck : null;
+
+    if (bufferRename && cascadeCallbacks) {
+      await cascadeCallbacks.onAspectRename(bufferRename.oldKey, filenameKey);
+    }
+
+    // DB lookup only when no buffer rename was detected — needed for hash guard and
+    // as a fallback for edge cases (e.g. Maskor-internal rename after a rebuild).
+    if (!bufferRename) {
+      const storedRow = vaultDatabase
+        .select({ key: aspectsTable.key, contentHash: aspectsTable.contentHash })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.uuid, uuid))
+        .get();
+
+      const isDbRename = storedRow !== undefined && storedRow.key !== filenameKey;
+
+      if (isDbRename && cascadeCallbacks) {
+        await cascadeCallbacks.onAspectRename(storedRow.key, filenameKey);
+      }
+
+      if (!isDbRename && storedRow?.contentHash === hashContent(rawContent)) {
+        log.debug(
+          { filePath: entityRelativePath },
+          "watcher: aspect unchanged (hash match) — skipping",
+        );
+        return;
+      }
     }
 
     const aspect = aspectMapper.fromFile(parsed, entityRelativePath);
@@ -268,15 +249,30 @@ export const createVaultWatcher = (
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to note");
     }
 
-    if (cascadeCallbacks) {
-      const filenameKey = path.basename(entityRelativePath, ".md");
-      const storedRow = vaultDatabase
-        .select({ key: notesTable.key })
-        .from(notesTable)
-        .where(eq(notesTable.uuid, uuid))
-        .get();
-      if (storedRow && storedRow.key !== filenameKey) {
-        await cascadeCallbacks.onNoteRename(storedRow.key, filenameKey);
+    const filenameKey = path.basename(entityRelativePath, ".md");
+    const renameCheck = noteRenameBuffer.check(uuid, filenameKey);
+
+    if (renameCheck?.kind === "collision") {
+      vaultDatabase.transaction((tx) => {
+        deleteNoteByFilePath(tx, renameCheck.filePath);
+      });
+      emit({ type: "note:deleted", filePath: renameCheck.filePath });
+    } else if (cascadeCallbacks) {
+      let oldKey: string | null = null;
+      if (renameCheck?.kind === "rename") {
+        oldKey = renameCheck.oldKey;
+      } else {
+        const storedRow = vaultDatabase
+          .select({ key: notesTable.key })
+          .from(notesTable)
+          .where(eq(notesTable.uuid, uuid))
+          .get();
+        if (storedRow && storedRow.key !== filenameKey) {
+          oldKey = storedRow.key;
+        }
+      }
+      if (oldKey !== null) {
+        await cascadeCallbacks.onNoteRename(oldKey, filenameKey);
       }
     }
 
@@ -318,15 +314,30 @@ export const createVaultWatcher = (
       log.debug({ filePath: entityRelativePath, uuid }, "watcher: UUID written back to reference");
     }
 
-    if (cascadeCallbacks) {
-      const filenameKey = path.basename(entityRelativePath, ".md");
-      const storedRow = vaultDatabase
-        .select({ key: referencesTable.key })
-        .from(referencesTable)
-        .where(eq(referencesTable.uuid, uuid))
-        .get();
-      if (storedRow && storedRow.key !== filenameKey) {
-        await cascadeCallbacks.onReferenceRename(storedRow.key, filenameKey);
+    const filenameKey = path.basename(entityRelativePath, ".md");
+    const renameCheck = referenceRenameBuffer.check(uuid, filenameKey);
+
+    if (renameCheck?.kind === "collision") {
+      vaultDatabase.transaction((tx) => {
+        deleteReferenceByFilePath(tx, renameCheck.filePath);
+      });
+      emit({ type: "reference:deleted", filePath: renameCheck.filePath });
+    } else if (cascadeCallbacks) {
+      let oldKey: string | null = null;
+      if (renameCheck?.kind === "rename") {
+        oldKey = renameCheck.oldKey;
+      } else {
+        const storedRow = vaultDatabase
+          .select({ key: referencesTable.key })
+          .from(referencesTable)
+          .where(eq(referencesTable.uuid, uuid))
+          .get();
+        if (storedRow && storedRow.key !== filenameKey) {
+          oldKey = storedRow.key;
+        }
+      }
+      if (oldKey !== null) {
+        await cascadeCallbacks.onReferenceRename(oldKey, filenameKey);
       }
     }
 
@@ -392,6 +403,7 @@ export const createVaultWatcher = (
 
   // --- event routing ---
 
+  // TODO: refactor this to global storage constants
   const FRAGMENT_PREFIX = "fragments" + path.sep;
   const ASPECT_PREFIX = "aspects" + path.sep;
   const NOTE_PREFIX = "notes" + path.sep;
@@ -407,6 +419,8 @@ export const createVaultWatcher = (
 
     // TODO: This is ugly. Lots of code duplication with only prefix and sync function differences
     // Aspects are checked before fragments to match documented event processing order.
+
+    // TODO: should be able to use path to strip the first part, no need to use toEntityRelativePath everywhere... or just once. The vital thing is that it does not mistake a fragment starting with "aspect" in the filename, for example
     try {
       if (vaultRelativePath.startsWith(ASPECT_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, ASPECT_PREFIX);
@@ -451,25 +465,52 @@ export const createVaultWatcher = (
         emit({ type: "fragment:deleted", filePath: entityRelativePath });
       } else if (vaultRelativePath.startsWith(ASPECT_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, ASPECT_PREFIX);
-        vaultDatabase.transaction((tx) => {
-          deleteAspectByFilePath(tx, entityRelativePath);
-        });
-        emit({ type: "aspect:deleted", filePath: entityRelativePath });
+        const storedRow = vaultDatabase
+          .select({ uuid: aspectsTable.uuid, key: aspectsTable.key })
+          .from(aspectsTable)
+          .where(eq(aspectsTable.filePath, entityRelativePath))
+          .get();
+        if (storedRow) {
+          aspectRenameBuffer.add(storedRow.uuid, storedRow.key, entityRelativePath, () => {
+            vaultDatabase.transaction((tx) => {
+              deleteAspectByFilePath(tx, entityRelativePath);
+            });
+            emit({ type: "aspect:deleted", filePath: entityRelativePath });
+          });
+        }
       } else if (vaultRelativePath.startsWith(NOTE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, NOTE_PREFIX);
-        vaultDatabase.transaction((tx) => {
-          deleteNoteByFilePath(tx, entityRelativePath);
-        });
-        emit({ type: "note:deleted", filePath: entityRelativePath });
+        const storedRow = vaultDatabase
+          .select({ uuid: notesTable.uuid, key: notesTable.key })
+          .from(notesTable)
+          .where(eq(notesTable.filePath, entityRelativePath))
+          .get();
+        if (storedRow) {
+          noteRenameBuffer.add(storedRow.uuid, storedRow.key, entityRelativePath, () => {
+            vaultDatabase.transaction((tx) => {
+              deleteNoteByFilePath(tx, entityRelativePath);
+            });
+            emit({ type: "note:deleted", filePath: entityRelativePath });
+          });
+        }
       } else if (vaultRelativePath.startsWith(REFERENCE_PREFIX)) {
         const entityRelativePath = toEntityRelativePath(vaultRelativePath, REFERENCE_PREFIX);
-        vaultDatabase.transaction((tx) => {
-          deleteReferenceByFilePath(tx, entityRelativePath);
-        });
-        emit({ type: "reference:deleted", filePath: entityRelativePath });
+        const storedRow = vaultDatabase
+          .select({ uuid: referencesTable.uuid, key: referencesTable.key })
+          .from(referencesTable)
+          .where(eq(referencesTable.filePath, entityRelativePath))
+          .get();
+        if (storedRow) {
+          referenceRenameBuffer.add(storedRow.uuid, storedRow.key, entityRelativePath, () => {
+            vaultDatabase.transaction((tx) => {
+              deleteReferenceByFilePath(tx, entityRelativePath);
+            });
+            emit({ type: "reference:deleted", filePath: entityRelativePath });
+          });
+        }
       }
 
-      log.debug({ filePath: absolutePath }, "watcher: entity deleted on unlink");
+      log.debug({ filePath: absolutePath }, "watcher: entity unlink handled");
     } catch (error) {
       log.error(
         {
@@ -514,6 +555,9 @@ export const createVaultWatcher = (
 
     async stop() {
       if (!watcher) return;
+      noteRenameBuffer.drainAll();
+      referenceRenameBuffer.drainAll();
+      aspectRenameBuffer.drainAll();
       await watcher.close();
       watcher = null;
       log.info({ vaultRoot }, "watcher: stopped");

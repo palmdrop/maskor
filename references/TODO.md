@@ -24,8 +24,15 @@
 - [ ] add comment concept: it is important to be able to add comments... perhaps this could be solved using notes? or a new concept entirely?
 
 - [ ] renaming a note/ref from the filesystem is not properly picked up by the watcher... rename not propagated to maskor... fix
+  - NOTE: this is hard to fix since I decided to use the filename as the key... fragments have no way of mapping back to the aspect. Need to go back to UUIDs for storing fragment->aspect relations, OR accept this, and encourage renaming through maskor?
+
+- [ ] make sure orphaned aspects are still visible in the metadata editor. Should probably have an indicator for this.
 
 - [ ] Move aspects, notes, etc to a trash folder instead of hard-deleting
+
+- [ ] Refactor watcher code, lots of code duplication and huge file size
+
+- [ ] Investigate logger... is the pattern good? where to see logs? how to write intentional logs for me to read?
 
 - [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
   - TODO: importing capabilities
@@ -65,7 +72,7 @@
 - [ ] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
   - a sequence collection which holds sequence position data? same for sequence itself, sections, etc
 
-- [ ] fix `useBlocker` in `FragmentPage`: blocker fires even when no changes have been done. Commented-out now for development purposes.
+- [-] fix `useBlocker` in `FragmentPage`: blocker fires even when no changes have been done. Commented-out now for development purposes.
 
 - [ ] Skip the blocker entirely and commit the edits to local storage temporarily. This could cause issues with server and frontend being out of sync. Detect using hash check. Add conflict resolution page.
 

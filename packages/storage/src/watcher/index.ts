@@ -1,2 +1,2 @@
 export { createVaultWatcher } from "./watcher";
-export type { VaultWatcher } from "./watcher";
+export type { VaultWatcher } from "./types";

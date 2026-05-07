@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, renameSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import { createVaultWatcher } from "../watcher/watcher";
-import type { VaultWatcher } from "../watcher/watcher";
+import type { VaultWatcher } from "../watcher/types";
 import type { VaultSyncEvent } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
+import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
+import { eq } from "drizzle-orm";
 
 // Chokidar awaitWriteFinish.stabilityThreshold is 200ms; poll until callback fires
 // or time out after 2s.
@@ -173,6 +175,135 @@ describe("syncAspect — rename detection", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]).toEqual(["grief", "sorrow"]);
+  });
+});
+
+// --- External rename detection (unlink + add via rename buffer) ---
+
+describe("rename buffer — note external rename", () => {
+  it("fires onNoteRename when a note file is renamed on disk", async () => {
+    const calls: [string, string][] = [];
+    await rebuildAndWatch({
+      onNoteRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    renameSync(
+      join(vaultDir, "notes", "bridge observation.md"),
+      join(vaultDir, "notes", "bridge notes.md"),
+    );
+
+    await waitFor(() => calls.length > 0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(["bridge observation", "bridge notes"]);
+  });
+});
+
+describe("rename buffer — reference external rename", () => {
+  it("fires onReferenceRename when a reference file is renamed on disk", async () => {
+    const calls: [string, string][] = [];
+    await rebuildAndWatch({
+      onReferenceRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    renameSync(
+      join(vaultDir, "references", "city research.md"),
+      join(vaultDir, "references", "city notes.md"),
+    );
+
+    await waitFor(() => calls.length > 0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(["city research", "city notes"]);
+  });
+});
+
+describe("rename buffer — aspect external rename", () => {
+  it("fires onAspectRename when an aspect file is renamed on disk", async () => {
+    const calls: [string, string][] = [];
+    await rebuildAndWatch({
+      onAspectRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    renameSync(
+      join(vaultDir, "aspects", "grief.md"),
+      join(vaultDir, "aspects", "sorrow.md"),
+    );
+
+    await waitFor(() => calls.length > 0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(["grief", "sorrow"]);
+  });
+});
+
+describe("rename buffer — true deletion", () => {
+  it("removes a note from the DB after the buffer window with no rename callback", async () => {
+    const calls: [string, string][] = [];
+    const { vaultDatabase } = await rebuildAndWatch({
+      onNoteRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    unlinkSync(join(vaultDir, "notes", "bridge observation.md"));
+
+    // Wait longer than the 500ms rename buffer window
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const row = vaultDatabase
+      .select({ uuid: notesTable.uuid })
+      .from(notesTable)
+      .where(eq(notesTable.key, "bridge observation"))
+      .get();
+
+    expect(row).toBeUndefined();
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("rename buffer — key collision", () => {
+  it("allows a new note with the same key as a just-deleted note to be indexed", async () => {
+    const calls: [string, string][] = [];
+    const { vaultDatabase } = await rebuildAndWatch({
+      onNoteRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    const newUuid = crypto.randomUUID();
+    unlinkSync(join(vaultDir, "notes", "bridge observation.md"));
+
+    // Short delay so chokidar processes the unlink and the buffer entry is set
+    // before the replacement file write triggers an add event.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Write a different file to the same key slot during the buffer window
+    await Bun.write(
+      join(vaultDir, "notes", "bridge observation.md"),
+      `---\nuuid: "${newUuid}"\n---\n\nReplacement note.\n`,
+    );
+
+    await waitFor(() => {
+      const row = vaultDatabase
+        .select({ uuid: notesTable.uuid })
+        .from(notesTable)
+        .where(eq(notesTable.key, "bridge observation"))
+        .get();
+      return row?.uuid === newUuid;
+    });
+
+    const row = vaultDatabase
+      .select({ uuid: notesTable.uuid })
+      .from(notesTable)
+      .where(eq(notesTable.key, "bridge observation"))
+      .get();
+
+    expect(row?.uuid).toBe(newUuid);
+    expect(calls).toHaveLength(0);
   });
 });
 

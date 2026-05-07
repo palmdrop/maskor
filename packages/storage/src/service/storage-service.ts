@@ -36,7 +36,7 @@ import { createProjectRegistry } from "../registry/registry";
 import { ProjectNotFoundError } from "../registry/errors";
 import type { ProjectContext, ProjectRecord } from "../registry/types";
 import { createVaultWatcher } from "../watcher/watcher";
-import type { VaultWatcher } from "../watcher/watcher";
+import type { VaultWatcher } from "../watcher/types";
 import {
   loadKnownAspectKeys,
   upsertFragment,
