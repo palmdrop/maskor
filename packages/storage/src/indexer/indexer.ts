@@ -20,6 +20,8 @@ import type {
 } from "./types";
 import { assembleAspect, assembleFragment } from "./assemblers";
 import { upsertAspect, upsertFragment, upsertNote, upsertReference } from "./upserts";
+import { setWordCount } from "../suggestion/stats-repo";
+import { computeWordCount } from "../suggestion/word-count";
 
 // --- indexer factory ---
 
@@ -101,6 +103,13 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         tx.delete(fragmentsTable).run();
       }
     });
+
+    // Backfill word counts for all fragments. Runs outside the main transaction because
+    // fragment_stats is intentionally not co-transacted with vault entity writes.
+    // Idempotent: overwrites any existing value with the recomputed one.
+    for (const { entity: fragment } of fragmentEntries) {
+      setWordCount(vaultDatabase, fragment.uuid as string, computeWordCount(fragment.content));
+    }
 
     return {
       fragments: fragmentEntries.length,

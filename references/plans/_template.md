@@ -52,3 +52,5 @@ Always include the statements below at the bottom of the plan. Add additional no
 -->
 
 DO NOT IMPLEMENT until clearly stated by the developer.
+
+When the plan is implemented, fully or partially, check off the relevant tasks and set the plan status to `Done`, or `In Progress` if partially implemented.

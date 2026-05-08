@@ -1,15 +1,17 @@
 # Current focus
 
-Discuss the draft of a new feature, based on the specified spec and the previous plan (already implemented, see `Active plan(s)`). The new feature should flesh-out two things related to observability. 1. A way for the developer to inspect the fragment_stats in the frontend UI. This could be a toggleable setting in the project config page, under a headline called "Developer settings". 2. A simple statistic panel/view that shows basic data about how many fragments the project has, how complete they are, when they were edited. This should be both global stats, like an averaged sum of ready statuses, but also a compressed per-fragment statistic page that shows how long the fragments are, when they were last edited, how ready they are, etc. This is like a "fragment overview". Fragments should be sorted alphabetically.
+Review the specified plan. Check the current changes. Some issues I've already found:
 
-If you think a spec is missing for this, or a spec has to be changed, discuss with me before implementing.
+1. Voluntary-opens is shaky. Every time I refresh the the page with a fragment, it increments by 2.
+2. Existing fragments get a word count of 0.
+3. Stats are not updated live, sometimes I need to save before anything happens.
 
 ## Active spec
 
-`@specifications/prompting.md`
+`@specifications/project-statistics.md`
 
 ## Active plan(s)
 
-`@references/plans/suggestion-mode.md`
+`@references/plans/project-statistics.md`
 
 ## Key context

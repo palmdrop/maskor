@@ -12,6 +12,9 @@ export type ProjectRecord = {
   suggestion: {
     readyStatusThreshold: number;
   };
+  advanced: {
+    showFragmentStats: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

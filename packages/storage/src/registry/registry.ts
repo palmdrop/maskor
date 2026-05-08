@@ -18,6 +18,9 @@ type ProjectManifest = {
     suggestion?: {
       readyStatusThreshold?: number;
     };
+    advanced?: {
+      showFragmentStats?: boolean;
+    };
   };
 };
 
@@ -56,6 +59,10 @@ const writeVaultManifest = async (
         ...existing.config?.suggestion,
         ...patch.config?.suggestion,
       },
+      advanced: {
+        ...existing.config?.advanced,
+        ...patch.config?.advanced,
+      },
     },
   };
 
@@ -80,6 +87,9 @@ const toProjectRecord = (
     readyStatusThreshold:
       manifest?.config?.suggestion?.readyStatusThreshold ??
       SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
+  },
+  advanced: {
+    showFragmentStats: manifest?.config?.advanced?.showFragmentStats ?? false,
   },
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -166,6 +176,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         name?: string;
         editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
         suggestion?: { readyStatusThreshold?: number };
+        advanced?: { showFragmentStats?: boolean };
       },
     ): Promise<ProjectRecord> {
       const rows = await database
@@ -182,10 +193,15 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
 
       const manifestPatch: Partial<ProjectManifest> = {};
       if (patch.name !== undefined) manifestPatch.name = patch.name;
-      if (patch.editor !== undefined || patch.suggestion !== undefined) {
+      if (
+        patch.editor !== undefined ||
+        patch.suggestion !== undefined ||
+        patch.advanced !== undefined
+      ) {
         manifestPatch.config = {
           ...(patch.editor !== undefined ? { editor: patch.editor } : {}),
           ...(patch.suggestion !== undefined ? { suggestion: patch.suggestion } : {}),
+          ...(patch.advanced !== undefined ? { advanced: patch.advanced } : {}),
         };
       }
 

@@ -101,6 +101,18 @@ export const GeneralTab = ({ project }: { project: Project }) => {
     }
   };
 
+  const handleToggleShowFragmentStats = async (checked: boolean) => {
+    try {
+      await updateProject.mutateAsync({
+        projectId: project.projectUUID,
+        data: { advanced: { showFragmentStats: checked } },
+      });
+      invalidateProject();
+    } catch {
+      setError("Update failed.");
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSave();
     if (e.key === "Escape") {
@@ -205,6 +217,23 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             Fragments with a ready status at or above this threshold are excluded from suggestion
             mode.
           </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-4">
+        <Label className="text-base">Advanced</Label>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="show-fragment-stats">Show fragment stats panel in editor</Label>
+            <p className="text-xs text-muted-foreground">
+              Displays a read-only stats inspector in the fragment editor sidebar.
+            </p>
+          </div>
+          <Switch
+            id="show-fragment-stats"
+            checked={project.advanced.showFragmentStats}
+            onCheckedChange={handleToggleShowFragmentStats}
+            disabled={updateProject.isPending}
+          />
         </div>
       </div>
     </div>

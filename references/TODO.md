@@ -17,6 +17,8 @@
 - [ ] consider mermaid for exporting/rendering graphs, visualizations, in obsidian
   - one idea is to port maskor to a obsidian plugin... but I also want it as a standalone app?
 
+- [ ] The new project statistics fragment table should have a toggle for including discarded fragments
+
 - [ ] add links -- same as obsidian, compatible format! but enhanced, perhaps tiptap has a slash syntax for commands?
 
 - [x] saving with :w in vim mode no longer works, why?

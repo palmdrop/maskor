@@ -9,6 +9,8 @@ import { eq } from "drizzle-orm";
 import { findFragmentUuidCollision } from "../utils/fragments";
 import { readFileWithEnoentGuard } from "../utils/file";
 import { ensureUuid, assignNewUuid } from "../utils/uuid";
+import { setWordCount } from "../../suggestion/stats-repo";
+import { computeWordCount } from "../../suggestion/word-count";
 
 export const syncFragment = async (
   vaultDatabase: VaultDatabase,
@@ -71,6 +73,8 @@ export const syncFragment = async (
   const warnings = vaultDatabase.transaction((tx) => {
     return upsertFragment(tx, fragment, entityRelativePath, resolvedRawContent, knownAspectKeys);
   });
+
+  setWordCount(vaultDatabase, resolvedUuid, computeWordCount(fragment.content));
 
   emit({ type: "fragment:synced", uuid: resolvedUuid });
 

@@ -11,8 +11,11 @@ export const FragmentPage = () => {
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
 
-  // Fire-and-forget — record voluntary open outside suggestion mode.
+  // StrictMode double-invokes effects; guard so the visit is recorded exactly once per mount.
+  const hasRecordedVisitRef = useRef(false);
   useEffect(() => {
+    if (hasRecordedVisitRef.current) return;
+    hasRecordedVisitRef.current = true;
     void recordFragmentVisit(projectId, fragmentId).catch(() => {
       // Non-critical; ignore failures.
     });

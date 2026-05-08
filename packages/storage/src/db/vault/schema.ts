@@ -114,6 +114,7 @@ export const fragmentStatsTable = sqliteTable(
     promptAcceptCount: integer("prompt_accept_count").notNull().default(0),
     avoidanceCount: integer("avoidance_count").notNull().default(0),
     editCount: integer("edit_count").notNull().default(0),
+    wordCount: integer("word_count").notNull().default(0),
     lastSurfacedAt: integer("last_surfaced_at", { mode: "timestamp" }),
   },
   (table) => [index("fragment_stats_last_surfaced_at_idx").on(table.lastSurfacedAt)],

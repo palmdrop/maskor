@@ -8,6 +8,7 @@ import {
   fragmentAspectsTable,
   fragmentNotesTable,
   fragmentReferencesTable,
+  fragmentStatsTable,
   fragmentsTable,
   notesTable,
   referencesTable,
@@ -192,6 +193,12 @@ export const upsertFragment = (
       .values({ fragmentUuid: fragment.uuid, aspectKey, weight })
       .run();
   }
+
+  // Eager stats row creation — every fragment gets a row on first index/upsert.
+  tx.insert(fragmentStatsTable)
+    .values({ fragmentUuid: fragment.uuid })
+    .onConflictDoNothing()
+    .run();
 
   return aspectEntries.reduce<SyncWarning[]>((acc, [aspectKey]) => {
     if (knownAspectKeys.has(aspectKey)) {

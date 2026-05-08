@@ -61,12 +61,15 @@ import { selectNextSuggestion } from "../suggestion/selector";
 import {
   getStats,
   getStatsBatch,
+  getStatsForProject,
+  setWordCount,
   incrementVoluntaryOpen,
   incrementPromptAccept,
   incrementEdit,
   incrementAvoidance,
 } from "../suggestion/stats-repo";
-import type { FragmentStats } from "../suggestion/stats-repo";
+import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
+import { computeWordCount } from "../suggestion/word-count";
 
 export type StorageServiceConfig = {
   logger?: Logger;
@@ -393,6 +396,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         name?: string;
         editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
         suggestion?: { readyStatusThreshold?: number };
+        advanced?: { showFragmentStats?: boolean };
       },
     ): Promise<ProjectRecord> {
       const record = await registry.updateProject(projectUUID, patch);
@@ -506,6 +510,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         vaultDatabase.transaction((tx) => {
           upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
         });
+
+        setWordCount(vaultDatabase, fragmentToWrite.uuid, computeWordCount(fragmentToWrite.content));
 
         return { ...fragmentToWrite, contentHash };
       },
@@ -1241,6 +1247,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       getFragmentStats(context: ProjectContext, fragmentUuid: string): FragmentStats {
         const vaultDatabase = getVaultDatabase(context);
         return getStats(vaultDatabase, fragmentUuid);
+      },
+    },
+
+    // Stats operations
+
+    stats: {
+      getForFragment(context: ProjectContext, fragmentUuid: string): FragmentStats {
+        const vaultDatabase = getVaultDatabase(context);
+        return getStats(vaultDatabase, fragmentUuid);
+      },
+
+      getForProject(context: ProjectContext): ProjectStats {
+        const vaultDatabase = getVaultDatabase(context);
+        return getStatsForProject(vaultDatabase);
       },
     },
 

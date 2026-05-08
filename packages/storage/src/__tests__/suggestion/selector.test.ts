@@ -18,6 +18,7 @@ const makeStats = (overrides: Partial<FragmentStats> & { fragmentUuid: string })
   promptAcceptCount: 0,
   avoidanceCount: 0,
   editCount: 0,
+  wordCount: 0,
   lastSurfacedAt: null,
   ...overrides,
 });

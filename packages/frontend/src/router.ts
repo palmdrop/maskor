@@ -15,6 +15,7 @@ import { NoteEditorPage } from "./pages/NoteEditorPage";
 import { ReferenceEditorPage } from "./pages/ReferenceEditorPage";
 import { AspectEditorPage } from "./pages/AspectEditorPage";
 import { SuggestionModePage } from "./pages/SuggestionModePage";
+import { ProjectStatsPage } from "./pages/ProjectStatsPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -106,6 +107,12 @@ const suggestionModeRoute = createRoute({
   component: SuggestionModePage,
 });
 
+const projectStatsRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/stats",
+  component: ProjectStatsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectShellLayoutRoute.addChildren([
@@ -117,6 +124,7 @@ const routeTree = rootRoute.addChildren([
     referenceEditorRoute,
     aspectEditorRoute,
     suggestionModeRoute,
+    projectStatsRoute,
   ]),
 ]);
 

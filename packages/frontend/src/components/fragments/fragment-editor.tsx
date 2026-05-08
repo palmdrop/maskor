@@ -8,9 +8,13 @@ import {
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
 } from "../../api/generated/fragments/fragments";
+import { useGetProject } from "../../api/generated/projects/projects";
+import { getGetFragmentStatsQueryKey } from "../../api/generated/stats/stats";
 import { FragmentMetadataForm, type FragmentMetadataFormHandle } from "./fragment-metadata-form";
+import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { Button } from "../ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "../entity-editor-shell";
+import { Separator } from "../ui/separator";
 
 export type FragmentEditorHandle = {
   save: () => Promise<void>;
@@ -30,9 +34,15 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 ) {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
+  const { data: projectEnvelope } = useGetProject(projectId);
   const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
+
+  const showFragmentStats =
+    projectEnvelope?.status === 200
+      ? projectEnvelope.data.advanced.showFragmentStats
+      : false;
 
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
   const shellRef = useRef<EntityEditorShellHandle>(null);
@@ -64,6 +74,12 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
   }, [queryClient, projectId, fragmentId]);
 
+  const invalidateFragmentStats = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: getGetFragmentStatsQueryKey(projectId, fragmentId),
+    });
+  }, [queryClient, projectId, fragmentId]);
+
   const onKeySave = useCallback(
     async (key: string) => {
       const result = await updateFragment({ projectId, fragmentId, data: { key } });
@@ -90,8 +106,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         throw new Error((result.data as { message?: string }).message ?? "Save failed.");
       }
       invalidateFragment();
+      invalidateFragmentStats();
     },
-    [updateFragment, projectId, fragmentId, invalidateFragment],
+    [updateFragment, projectId, fragmentId, invalidateFragment, invalidateFragmentStats],
   );
 
   const handleDiscard = useCallback(() => {
@@ -146,12 +163,20 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       onKeySave={onKeySave}
       onContentSave={onContentSave}
       sidebar={
-        <FragmentMetadataForm
-          ref={metadataFormRef}
-          fragment={fragment}
-          projectId={projectId}
-          onDirtyChange={setIsMetadataDirty}
-        />
+        <div className="flex flex-col gap-4">
+          <FragmentMetadataForm
+            ref={metadataFormRef}
+            fragment={fragment}
+            projectId={projectId}
+            onDirtyChange={setIsMetadataDirty}
+          />
+          {showFragmentStats && (
+            <>
+              <Separator />
+              <FragmentStatsInspector projectId={projectId} fragmentId={fragmentId} />
+            </>
+          )}
+        </div>
       }
     />
   );

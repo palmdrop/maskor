@@ -15,6 +15,9 @@ export const ProjectSchema = z.object({
   suggestion: z.object({
     readyStatusThreshold: z.number().min(0).max(1),
   }),
+  advanced: z.object({
+    showFragmentStats: z.boolean(),
+  }),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -39,6 +42,11 @@ export const ProjectUpdateSchema = z.object({
   suggestion: z
     .object({
       readyStatusThreshold: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
+  advanced: z
+    .object({
+      showFragmentStats: z.boolean().optional(),
     })
     .optional(),
 });

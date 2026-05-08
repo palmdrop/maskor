@@ -6,19 +6,16 @@ export type SuggestionNextResponse = {
   avoidanceCount: number;
 };
 
-type SuggestionNextEnvelope =
-  | { data: SuggestionNextResponse; status: 200 }
-  | { data: unknown; status: number };
+type SuggestionNextEnvelope = { data: SuggestionNextResponse; status: 200 };
 
 export const getNextSuggestion = (
   projectId: string,
   excludeUuid?: string,
 ): Promise<SuggestionNextEnvelope> => {
   const query = excludeUuid ? `?exclude=${encodeURIComponent(excludeUuid)}` : "";
-  return customFetch<SuggestionNextEnvelope>(
-    `/projects/${projectId}/suggestion/next${query}`,
-    { method: "GET" },
-  );
+  return customFetch<SuggestionNextEnvelope>(`/projects/${projectId}/suggestion/next${query}`, {
+    method: "GET",
+  });
 };
 
 export const recordFragmentVisit = (

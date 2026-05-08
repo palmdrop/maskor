@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { FragmentEditor, type FragmentEditorHandle } from "../../components/fragments/fragment-editor";
+import {
+  FragmentEditor,
+  type FragmentEditorHandle,
+} from "../../components/fragments/fragment-editor";
 import { Button } from "../../components/ui/button";
 import { getNextSuggestion } from "../../api/suggestion";
 
@@ -43,7 +46,6 @@ export const SuggestionModePage = () => {
   useEffect(() => {
     void loadNext();
     // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleNext = useCallback(async () => {
@@ -68,10 +70,13 @@ export const SuggestionModePage = () => {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      /*
+      // TODO: need to replace this with a better keybind... in vim mode it is very easy to hit by accident
       if (event.key === "Escape") {
         handleExit();
         return;
       }
+      */
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
         void handleNext();
@@ -105,8 +110,7 @@ export const SuggestionModePage = () => {
     );
   }
 
-  const showNudge =
-    avoidanceCount >= AVOIDANCE_NUDGE_THRESHOLD && !dismissedNudges.has(fragmentId);
+  const showNudge = avoidanceCount >= AVOIDANCE_NUDGE_THRESHOLD && !dismissedNudges.has(fragmentId);
 
   return (
     <div className="flex h-full flex-col">
@@ -138,9 +142,7 @@ export const SuggestionModePage = () => {
           </span>
           <button
             className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() =>
-              setDismissedNudges((previous) => new Set([...previous, fragmentId]))
-            }
+            onClick={() => setDismissedNudges((previous) => new Set([...previous, fragmentId]))}
           >
             Dismiss
           </button>

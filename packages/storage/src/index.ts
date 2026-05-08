@@ -30,4 +30,4 @@ export type {
 export { createVaultWatcher } from "./watcher";
 export type { VaultWatcher } from "./watcher";
 
-export type { FragmentStats } from "./suggestion/stats-repo";
+export type { FragmentStats, ProjectStats, FragmentStatsSummary } from "./suggestion/stats-repo";

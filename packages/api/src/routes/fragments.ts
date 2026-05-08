@@ -12,6 +12,7 @@ import {
   FragmentUpdateSchema,
   FragmentUUIDParamSchema,
 } from "../schemas/fragment";
+import { FragmentStatsSchema } from "../schemas/stats";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
 
@@ -185,6 +186,25 @@ const restoreFragmentRoute = createRoute({
   },
 });
 
+const getFragmentStatsRoute = createRoute({
+  operationId: "getFragmentStats",
+  method: "get",
+  path: "/{fragmentId}/stats",
+  tags: ["Stats"],
+  summary: "Get stats for a single fragment",
+  request: { params: FragmentUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: FragmentStatsSchema } },
+      description: "Fragment stats",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 fragmentsRouter.openapi(listFragmentsRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
@@ -306,6 +326,31 @@ fragmentsRouter.openapi(restoreFragmentRoute, async (ctx) => {
 
     await storageService.fragments.restore(projectContext, fragmentId);
     return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(getFragmentStatsRoute, (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("param");
+
+    const stats = storageService.stats.getForFragment(projectContext, fragmentId);
+
+    return ctx.json(
+      {
+        fragmentUuid: stats.fragmentUuid,
+        wordCount: stats.wordCount,
+        editCount: stats.editCount,
+        voluntaryOpenCount: stats.voluntaryOpenCount,
+        promptAcceptCount: stats.promptAcceptCount,
+        avoidanceCount: stats.avoidanceCount,
+        lastSurfacedAt: stats.lastSurfacedAt?.toISOString() ?? null,
+      },
+      200,
+    );
   } catch (error) {
     return throwStorageError(error);
   }
