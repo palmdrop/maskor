@@ -40,9 +40,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
   const showFragmentStats =
-    projectEnvelope?.status === 200
-      ? projectEnvelope.data.advanced.showFragmentStats
-      : false;
+    projectEnvelope?.status === 200 ? projectEnvelope.data.advanced.showFragmentStats : false;
 
   const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
   const shellRef = useRef<EntityEditorShellHandle>(null);
@@ -57,13 +55,17 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     onDirtyChangeRef.current?.(isDirty);
   }, [isDirty]);
 
-  useImperativeHandle(ref, () => ({
-    save: async () => {
-      if (shellRef.current) {
-        await shellRef.current.save();
-      }
-    },
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      save: async () => {
+        if (shellRef.current) {
+          await shellRef.current.save();
+        }
+      },
+    }),
+    [],
+  );
 
   const fragment = envelope?.status === 200 ? envelope.data : null;
 

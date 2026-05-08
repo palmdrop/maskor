@@ -5,7 +5,6 @@ export type ActionType = `${Domain}:${"created" | "updated" | "deleted"}`;
 export type Action = {
   date: Date;
   type: ActionType;
-  undoType: ActionType;
   projectUUID: string;
   data: unknown;
 };

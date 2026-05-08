@@ -20,7 +20,7 @@ Maskor exposes a dedicated **suggestion mode** — a top-nav-accessible page whe
 - When a suggestion is surfaced (trigger conditions)
 - The eligibility pool: which fragments are candidates
 - The selection algorithm: how a suggestion is chosen
-- The suggestion-mode UI surface and its user controls (Edit, Next, Exit, nudge banner)
+- The suggestion-mode UI surface and its user controls (Edit, Next, nudge banner)
 - The cooldown mechanism, including the fallback when every fragment is cooled
 - Fragment stat persistence and the action sites that update it
 
@@ -60,12 +60,12 @@ A fragment is eligible for prompting if all of the following are true:
 
 The prompting engine reads per-fragment statistics from the DB. These stats are Maskor-owned, updated incrementally as the user interacts with the app, and are not derived from the action log at query time. They live in a `fragment_stats` table keyed by `fragment_uuid`.
 
-| Stat                   | Description                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `voluntary_open_count` | How many times the user opened this fragment outside suggestion mode (via fragment list or overview tile).                              |
-| `prompt_accept_count`  | How many times this fragment was loaded as a suggestion in suggestion mode.                                                             |
+| Stat                   | Description                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `voluntary_open_count` | How many times the user opened this fragment outside suggestion mode (via fragment list or overview tile).                                       |
+| `prompt_accept_count`  | How many times this fragment was loaded as a suggestion in suggestion mode.                                                                      |
 | `avoidance_count`      | How many times this fragment was loaded in suggestion mode and the user pressed Next without saving any edit (`FRAGMENT_UPDATE` did not follow). |
-| `edit_count`           | Total number of saves that included a content or metadata change.                                                                    |
+| `edit_count`           | Total number of saves that included a content or metadata change.                                                                                |
 
 Stats are updated synchronously as the relevant events occur (fragment opened, prompt accepted, edit saved, etc.). They are Maskor-internal — not written to vault files, not exposed in the fragment API response.
 
@@ -111,9 +111,8 @@ Suggestion mode loads the suggested fragment directly into the editor. There is 
 
 - **Edit**: edit the loaded fragment as in any normal fragment editor. Saves use the same path as the regular editor.
 - **Next** (button or `Cmd/Ctrl+Enter`): if the loaded fragment has unsaved changes, save them first. Then load another suggestion. If saving fails, Next does not advance and the error is surfaced inline. The previously loaded fragment enters cooldown either way; if it was skipped without any edit save during its time on screen, its `avoidance_count` is incremented.
-- **Exit** (button or `Esc`): leave suggestion mode and return to the previous view (typically the fragment list). Same dirty-state handling as a normal editor exit.
 
-There is no "dismiss" control distinct from Exit; suggestion mode is always either showing a suggestion or the empty state, never a separately-dismissable overlay. The mode is never forced — the user can leave at any time, and they retain full access to the regular fragment editor for working on a specific chosen fragment.
+Suggestion mode is always either showing a suggestion or the empty state, never a separately-dismissable overlay. The mode is never forced — the user can leave at any time, and they retain full access to the regular fragment editor for working on a specific chosen fragment.
 
 ---
 
@@ -169,7 +168,6 @@ There is no "dismiss" control distinct from Exit; suggestion mode is always eith
 - Entering suggestion mode loads a suggested fragment if the eligible pool is non-empty.
 - The suggested fragment has `readyStatus < 1.0` and `isDiscarded === false`.
 - Pressing Next while a fragment is loaded saves any unsaved edits, then surfaces a different suggestion. The previously loaded fragment enters cooldown and is not the next selection (unless every fragment is cooled — see fallback).
-- Pressing Exit (or `Esc`) leaves suggestion mode without forcing a save beyond the editor's normal dirty-state handling.
 - If all non-discarded fragments have `readyStatus === 1.0`, suggestion mode shows the empty state.
 - A fragment that the user frequently opens voluntarily (outside suggestion mode) is surfaced less often than one that is rarely visited.
 - A fragment loaded in suggestion mode and skipped via Next without saving any edit has its `avoidance_count` incremented.

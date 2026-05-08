@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import {
   FragmentEditor,
   type FragmentEditorHandle,
@@ -7,11 +7,11 @@ import {
 import { Button } from "../../components/ui/button";
 import { getNextSuggestion } from "../../api/suggestion";
 
+// TODO: this should be configured globally and not in a random FE-component
 const AVOIDANCE_NUDGE_THRESHOLD = 3;
 
 export const SuggestionModePage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/suggestion" });
-  const navigate = useNavigate();
   const editorRef = useRef<FragmentEditorHandle>(null);
 
   const [fragmentId, setFragmentId] = useState<string | null | undefined>(undefined);
@@ -44,6 +44,7 @@ export const SuggestionModePage = () => {
   );
 
   useEffect(() => {
+    // NOTE: this will cause a double load-next call when strict mode is enabled...? make abortable?
     void loadNext();
     // Only run on mount
   }, []);
@@ -64,19 +65,8 @@ export const SuggestionModePage = () => {
     await loadNext(currentFragmentId ?? undefined);
   }, [isLoadingNext, fragmentId, loadNext]);
 
-  const handleExit = useCallback(() => {
-    void navigate({ to: "/projects/$projectId/fragments", params: { projectId } });
-  }, [navigate, projectId]);
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      /*
-      // TODO: need to replace this with a better keybind... in vim mode it is very easy to hit by accident
-      if (event.key === "Escape") {
-        handleExit();
-        return;
-      }
-      */
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
         void handleNext();
@@ -84,7 +74,7 @@ export const SuggestionModePage = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleExit, handleNext]);
+  }, [handleNext]);
 
   // fragmentId === undefined means initial load
   if (fragmentId === undefined) {
@@ -103,9 +93,9 @@ export const SuggestionModePage = () => {
           No fragments need work right now. Mark fragments as unfinished or lower their readyStatus
           to add them back to the pool.
         </p>
-        <Button variant="outline" onClick={handleExit}>
+        <Link to="/projects/$projectId/fragments" params={{ projectId }}>
           Back to fragments
-        </Button>
+        </Link>
       </div>
     );
   }
@@ -126,9 +116,6 @@ export const SuggestionModePage = () => {
         </div>
       )}
       <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border px-4 py-2">
-        <Button variant="ghost" size="sm" onClick={handleExit}>
-          Exit
-        </Button>
         <Button size="sm" disabled={isLoadingNext} onClick={() => void handleNext()}>
           {isLoadingNext ? "Loading…" : "Next"}
           <span className="ml-1 text-xs opacity-60">⌘↵</span>
