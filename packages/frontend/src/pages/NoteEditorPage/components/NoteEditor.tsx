@@ -8,6 +8,7 @@ import {
   getGetNoteQueryKey,
   getListNotesQueryKey,
 } from "../../../api/generated/notes/notes";
+import { useInvalidateActionLog } from "../../../api/action-log";
 import { Button } from "../../../components/ui/button";
 import { EntityEditorShell } from "../../../components/entity-editor-shell";
 
@@ -31,6 +32,8 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
     queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
   }, [queryClient, projectId, noteId]);
 
+  const invalidateActionLog = useInvalidateActionLog(projectId);
+
   const onKeySave = useCallback(
     async (key: string) => {
       const result = await updateNote({ projectId, noteId, data: { key } });
@@ -40,8 +43,9 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
       const { warnings } = result.data;
       setCascadeWarnings([...warnings.fragments, ...warnings.aspects]);
       invalidate();
+      invalidateActionLog();
     },
-    [updateNote, projectId, noteId, invalidate],
+    [updateNote, projectId, noteId, invalidate, invalidateActionLog],
   );
 
   const onContentSave = useCallback(
@@ -51,8 +55,9 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
         throw new Error((result.data as { message?: string }).message ?? "Save failed.");
       }
       invalidate();
+      invalidateActionLog();
     },
-    [updateNote, projectId, noteId, invalidate],
+    [updateNote, projectId, noteId, invalidate, invalidateActionLog],
   );
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;

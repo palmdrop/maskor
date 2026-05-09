@@ -15,6 +15,13 @@ import {
 import { ArcSchema, ArcCreateSchema, ArcAspectParamSchema } from "../schemas/arc";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
+import {
+  executeCommand,
+  createAspectCommand,
+  updateAspectCommand,
+  deleteAspectCommand,
+} from "../commands";
+import type { CommandContext } from "../commands";
 
 export const aspectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -182,11 +189,15 @@ aspectsRouter.openapi(createAspectRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
-    const aspect: Aspect = { uuid: randomUUID(), key, category, description, notes };
-    await storageService.aspects.write(projectContext, aspect);
-    return ctx.json(aspect, 201);
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const aspect: Aspect = { uuid: randomUUID(), key, category, description, notes: notes ?? [] };
+    const result = await executeCommand(createAspectCommand, commandContext, aspect);
+    return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -198,7 +209,18 @@ aspectsRouter.openapi(deleteAspectRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { aspectId } = ctx.req.valid("param");
 
-    await storageService.aspects.delete(projectContext, aspectId);
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const aspect = await storageService.aspects.read(projectContext, aspectId);
+    await executeCommand(deleteAspectCommand, commandContext, {
+      aspectId,
+      aspectKey: aspect.key,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);
@@ -219,9 +241,13 @@ aspectsRouter.openapi(updateAspectRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
-    const updated = await storageService.aspects.update(projectContext, aspectId, patch);
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const updated = await executeCommand(updateAspectCommand, commandContext, { aspectId, patch });
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);

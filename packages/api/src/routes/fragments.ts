@@ -15,6 +15,14 @@ import {
 import { FragmentStatsSchema } from "../schemas/stats";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
+import {
+  executeCommand,
+  createFragmentCommand,
+  updateFragmentCommand,
+  discardFragmentCommand,
+  restoreFragmentCommand,
+} from "../commands";
+import type { CommandContext } from "../commands";
 
 export const fragmentsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -240,8 +248,12 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
 
     const draft: Fragment = {
       uuid: randomUUID(),
@@ -256,7 +268,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       updatedAt: new Date(),
     };
 
-    const fragment = await storageService.fragments.write(projectContext, draft);
+    const fragment = await executeCommand(createFragmentCommand, commandContext, draft);
     return ctx.json(fragment, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -277,26 +289,21 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
     }
   }
 
-  const hasContentOrMetadataChange =
-    update.content !== undefined ||
-    update.readyStatus !== undefined ||
-    update.notes !== undefined ||
-    update.references !== undefined ||
-    update.aspects !== undefined;
-
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
 
     const existing = await storageService.fragments.read(projectContext, fragmentId);
-    const fragment = await storageService.fragments.write(projectContext, {
-      ...existing,
-      ...update,
+    const fragment = await executeCommand(updateFragmentCommand, commandContext, {
+      existing,
+      patch: update,
     });
-
-    if (hasContentOrMetadataChange) {
-      storageService.suggestion.recordEditSaved(projectContext, fragmentId);
-    }
 
     return ctx.json({ fragment, warnings: [] }, 200);
   } catch (error) {
@@ -310,8 +317,19 @@ fragmentsRouter.openapi(discardFragmentRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { fragmentId } = ctx.req.valid("param");
 
-    // NOTE: After discard the index is stale until the next rebuild.
-    await storageService.fragments.discard(projectContext, fragmentId);
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    // Read the fragment key before discard for the log entry.
+    const indexed = await storageService.fragments.read(projectContext, fragmentId);
+    await executeCommand(discardFragmentCommand, commandContext, {
+      fragmentId,
+      fragmentKey: indexed.key,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);
@@ -324,7 +342,18 @@ fragmentsRouter.openapi(restoreFragmentRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { fragmentId } = ctx.req.valid("param");
 
-    await storageService.fragments.restore(projectContext, fragmentId);
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const indexed = await storageService.fragments.read(projectContext, fragmentId);
+    await executeCommand(restoreFragmentCommand, commandContext, {
+      fragmentId,
+      fragmentKey: indexed.key,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

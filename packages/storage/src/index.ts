@@ -31,3 +31,6 @@ export { createVaultWatcher } from "./watcher";
 export type { VaultWatcher } from "./watcher";
 
 export type { FragmentStats, ProjectStats, FragmentStatsSummary } from "./suggestion/stats-repo";
+
+export { readRecentEntries } from "./action-log";
+export type { ActionLogWriter, ActionLogConfig } from "./action-log";

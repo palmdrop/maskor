@@ -14,6 +14,13 @@ import {
 } from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
+import {
+  executeCommand,
+  createReferenceCommand,
+  updateReferenceCommand,
+  deleteReferenceCommand,
+} from "../commands";
+import type { CommandContext } from "../commands";
 
 export const referencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -181,11 +188,15 @@ referencesRouter.openapi(createReferenceRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
     const reference: Reference = { uuid: randomUUID(), key, content };
-    await storageService.references.write(projectContext, reference);
-    return ctx.json(reference, 201);
+    const result = await executeCommand(createReferenceCommand, commandContext, reference);
+    return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -205,9 +216,16 @@ referencesRouter.openapi(updateReferenceRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
-    const updated = await storageService.references.update(projectContext, referenceId, patch);
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const updated = await executeCommand(updateReferenceCommand, commandContext, {
+      referenceId,
+      patch,
+    });
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -220,7 +238,18 @@ referencesRouter.openapi(deleteReferenceRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { referenceId } = ctx.req.valid("param");
 
-    await storageService.references.delete(projectContext, referenceId);
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const reference = await storageService.references.read(projectContext, referenceId);
+    await executeCommand(deleteReferenceCommand, commandContext, {
+      referenceId,
+      referenceKey: reference.key,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

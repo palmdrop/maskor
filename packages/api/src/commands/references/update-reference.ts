@@ -1,0 +1,50 @@
+import type { LogEntry, ReferenceUpdate, ReferenceUpdateResponse } from "@maskor/shared";
+import type { Command } from "../types";
+
+type UpdateReferenceInput = { referenceId: string; patch: ReferenceUpdate };
+
+export const updateReferenceCommand: Command<UpdateReferenceInput, ReferenceUpdateResponse> = {
+  async execute(ctx, { referenceId, patch }) {
+    const existing = await ctx.storageService.references.read(ctx.projectContext, referenceId);
+
+    const keyChanged = patch.key !== undefined && patch.key !== existing.key;
+    const contentChanged = patch.content !== undefined && patch.content !== existing.content;
+
+    if (!keyChanged && !contentChanged) {
+      return {
+        result: { reference: existing, warnings: { fragments: [] } },
+        logEntries: [],
+      };
+    }
+
+    const updateResult = await ctx.storageService.references.update(
+      ctx.projectContext,
+      referenceId,
+      patch,
+    );
+
+    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [];
+
+    if (keyChanged && patch.key) {
+      logEntries.push({
+        type: "reference:renamed",
+        actor: ctx.actor,
+        target: { type: "reference", uuid: referenceId, key: existing.key },
+        payload: { oldKey: existing.key, newKey: patch.key },
+        undoable: true,
+      });
+    }
+
+    if (contentChanged) {
+      logEntries.push({
+        type: "reference:updated",
+        actor: ctx.actor,
+        target: { type: "reference", uuid: referenceId, key: updateResult.reference.key },
+        payload: { changedFields: ["content"] },
+        undoable: true,
+      });
+    }
+
+    return { result: updateResult, logEntries };
+  },
+};

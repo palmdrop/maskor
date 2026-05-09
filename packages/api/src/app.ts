@@ -13,11 +13,13 @@ import { vaultIndexRouter } from "./routes/vault-index-routes";
 import { eventsRouter } from "./routes/events";
 import { suggestionRouter } from "./routes/suggestion";
 import { statsRouter } from "./routes/stats";
+import { actionLogRouter } from "./routes/action-log";
 import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
   storageService: StorageService;
   projectContext?: ProjectContext;
+  logger: Logger;
 };
 
 export const createApp = (
@@ -57,6 +59,7 @@ export const createApp = (
 
   app.use("*", (ctx, next) => {
     ctx.set("storageService", storageService);
+    ctx.set("logger", log);
     return next();
   });
 
@@ -73,6 +76,7 @@ export const createApp = (
   projectScopedApp.route("/events", eventsRouter);
   projectScopedApp.route("/suggestion", suggestionRouter);
   projectScopedApp.route("/stats", statsRouter);
+  projectScopedApp.route("/action-log", actionLogRouter);
 
   // Note: use app.route(), not app.mount(). app.route() propagates parent context variables
   // (including storageService) to the sub-app. app.mount() creates an isolated sub-application

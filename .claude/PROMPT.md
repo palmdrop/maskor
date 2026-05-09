@@ -1,17 +1,22 @@
 # Current focus
 
-Review the specified plan. Check the current changes. Some issues I've already found:
+Review the plan specified plan below. Consider in relation to the specified spec.
 
-1. Voluntary-opens is shaky. Every time I refresh the the page with a fragment, it increments by 2.
-2. Existing fragments get a word count of 0.
-3. Stats are not updated live, sometimes I need to save before anything happens.
+Issues already found:
+
+1. Editing a fragment shows a list of properties changed, but this list includes everything, not just the property changed.
+
+Other feedback:
+
+1. Domain should be clear, before the body of the action. For example, `[FRAGMENTS] Fragment <title> edited...`
+2. Include links to relevant entities when possible, for example, if a fragment was edited, the history entry should link to that entity. If the entity no longer exists, provide no link. In the future, items should be restorable from this view, but that can be deferred.
 
 ## Active spec
 
-`@specifications/project-statistics.md`
+`@specifications/action-log.md`
 
 ## Active plan(s)
 
-`@references/plans/project-statistics.md`
+`@references/plans/action-log.md`
 
 ## Key context

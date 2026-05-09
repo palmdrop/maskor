@@ -70,6 +70,9 @@ import {
 } from "../suggestion/stats-repo";
 import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
+import { createActionLogWriter, readRecentEntries } from "../action-log";
+import type { ActionLogWriter } from "../action-log";
+import type { LogEntry } from "@maskor/shared";
 
 export type StorageServiceConfig = {
   logger?: Logger;
@@ -98,8 +101,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const vaultIndexerCache = new Map<string, VaultIndexer>();
   const vaultWatcherCache = new Map<string, VaultWatcher>();
   const suggestionCooldownCache = new Map<string, CooldownSet>();
+  const actionLogWriterCache = new Map<string, Promise<ActionLogWriter>>();
 
   // --- private helpers ---
+
+  const getActionLogWriter = (context: ProjectContext): Promise<ActionLogWriter> => {
+    const cached = actionLogWriterCache.get(context.projectUUID);
+    if (cached) return cached;
+    const writerPromise = createActionLogWriter({ vaultPath: context.vaultPath, logger });
+    actionLogWriterCache.set(context.projectUUID, writerPromise);
+    return writerPromise;
+  };
 
   const getVault = (context: ProjectContext): Vault => {
     const cached = vaultCache.get(context.projectUUID);
@@ -1247,6 +1259,19 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       getFragmentStats(context: ProjectContext, fragmentUuid: string): FragmentStats {
         const vaultDatabase = getVaultDatabase(context);
         return getStats(vaultDatabase, fragmentUuid);
+      },
+    },
+
+    // Action log operations
+
+    actionLog: {
+      async append(context: ProjectContext, entry: LogEntry): Promise<void> {
+        const writer = await getActionLogWriter(context);
+        await writer.append(entry);
+      },
+
+      async readRecent(context: ProjectContext, limit: number): Promise<LogEntry[]> {
+        return readRecentEntries(context.vaultPath, limit, logger);
       },
     },
 

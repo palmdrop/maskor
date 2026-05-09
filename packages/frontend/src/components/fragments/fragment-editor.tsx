@@ -10,6 +10,7 @@ import {
 } from "../../api/generated/fragments/fragments";
 import { useGetProject } from "../../api/generated/projects/projects";
 import { getGetFragmentStatsQueryKey } from "../../api/generated/stats/stats";
+import { useInvalidateActionLog } from "../../api/action-log";
 import { FragmentMetadataForm, type FragmentMetadataFormHandle } from "./fragment-metadata-form";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { Button } from "../ui/button";
@@ -76,6 +77,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
   }, [queryClient, projectId, fragmentId]);
 
+  const invalidateActionLog = useInvalidateActionLog(projectId);
+
   const invalidateFragmentStats = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: getGetFragmentStatsQueryKey(projectId, fragmentId),
@@ -89,8 +92,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
       }
       invalidateFragment();
+      invalidateActionLog();
     },
-    [updateFragment, projectId, fragmentId, invalidateFragment],
+    [updateFragment, projectId, fragmentId, invalidateFragment, invalidateActionLog],
   );
 
   const onContentSave = useCallback(
@@ -109,17 +113,41 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       }
       invalidateFragment();
       invalidateFragmentStats();
+      invalidateActionLog();
     },
-    [updateFragment, projectId, fragmentId, invalidateFragment, invalidateFragmentStats],
+    [
+      updateFragment,
+      projectId,
+      fragmentId,
+      invalidateFragment,
+      invalidateFragmentStats,
+      invalidateActionLog,
+    ],
   );
 
   const handleDiscard = useCallback(() => {
-    discardFragment({ projectId, fragmentId }, { onSuccess: invalidateFragment });
-  }, [projectId, fragmentId, discardFragment, invalidateFragment]);
+    discardFragment(
+      { projectId, fragmentId },
+      {
+        onSuccess: () => {
+          invalidateFragment();
+          invalidateActionLog();
+        },
+      },
+    );
+  }, [projectId, fragmentId, discardFragment, invalidateFragment, invalidateActionLog]);
 
   const handleRestore = useCallback(() => {
-    restoreFragment({ projectId, fragmentId }, { onSuccess: invalidateFragment });
-  }, [projectId, fragmentId, restoreFragment, invalidateFragment]);
+    restoreFragment(
+      { projectId, fragmentId },
+      {
+        onSuccess: () => {
+          invalidateFragment();
+          invalidateActionLog();
+        },
+      },
+    );
+  }, [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog]);
 
   if (isLoading) {
     return <p>Loading fragment…</p>;

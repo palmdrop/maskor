@@ -4,6 +4,10 @@
   - tried `repomix` instead
   - or https://www.augmentcode.com/
 
+- [ ] Feature to create new fragment from within Maskor
+
+- [ ] In the suggestion page, merge the top bar for saving, discarding and hitting next... no need for two top bars
+
 - [x] Try caveman pattern - put in CLAUDE.md
 
 - [x] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.
@@ -38,6 +42,8 @@
 
 - [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
   - TODO: importing capabilities
+
+- [ ] File import flow: import an entire file that gets split into multiple fragments. Distinct from the current piece-conversion path (1 file → 1 fragment) — needs a splitter (by heading, by paragraph, by length, by user-selected delimiter) and a confirmation UI. When implemented, log as a `fragment:imported` (or similar) action in the action log; payload includes `sourceFileName` and `fragmentCount`. See `specifications/action-log.md`.
 
 - [x] Add way to rename notes, references
 

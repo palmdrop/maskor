@@ -14,6 +14,13 @@ import {
 } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
+import {
+  executeCommand,
+  createNoteCommand,
+  updateNoteCommand,
+  deleteNoteCommand,
+} from "../commands";
+import type { CommandContext } from "../commands";
 
 export const notesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -181,11 +188,15 @@ notesRouter.openapi(createNoteRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
     const note: Note = { uuid: randomUUID(), key, content };
-    await storageService.notes.write(projectContext, note);
-    return ctx.json(note, 201);
+    const result = await executeCommand(createNoteCommand, commandContext, note);
+    return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -205,9 +216,13 @@ notesRouter.openapi(updateNoteRoute, async (ctx) => {
   }
 
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
-    const updated = await storageService.notes.update(projectContext, noteId, patch);
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const updated = await executeCommand(updateNoteCommand, commandContext, { noteId, patch });
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -220,7 +235,15 @@ notesRouter.openapi(deleteNoteRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { noteId } = ctx.req.valid("param");
 
-    await storageService.notes.delete(projectContext, noteId);
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const note = await storageService.notes.read(projectContext, noteId);
+    await executeCommand(deleteNoteCommand, commandContext, { noteId, noteKey: note.key });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

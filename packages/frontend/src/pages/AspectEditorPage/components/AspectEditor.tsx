@@ -8,6 +8,7 @@ import {
   getGetAspectQueryKey,
   getListAspectsQueryKey,
 } from "../../../api/generated/aspects/aspects";
+import { useInvalidateActionLog } from "../../../api/action-log";
 import { Button } from "../../../components/ui/button";
 import { EntityEditorShell } from "../../../components/entity-editor-shell";
 
@@ -30,6 +31,8 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
   }, [queryClient, projectId, aspectId]);
 
+  const invalidateActionLog = useInvalidateActionLog(projectId);
+
   const onKeySave = useCallback(
     async (key: string) => {
       const result = await updateAspect({ projectId, aspectId, data: { key } });
@@ -38,8 +41,9 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
       }
       setCascadeWarnings(result.data.warnings);
       invalidate();
+      invalidateActionLog();
     },
-    [updateAspect, projectId, aspectId, invalidate],
+    [updateAspect, projectId, aspectId, invalidate, invalidateActionLog],
   );
 
   const onContentSave = useCallback(
@@ -49,8 +53,9 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
         throw new Error((result.data as { message?: string }).message ?? "Save failed.");
       }
       invalidate();
+      invalidateActionLog();
     },
-    [updateAspect, projectId, aspectId, invalidate],
+    [updateAspect, projectId, aspectId, invalidate, invalidateActionLog],
   );
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;

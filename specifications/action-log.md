@@ -1,7 +1,7 @@
 # Spec: Action Log
 
 **Status**: Stable
-**Last updated**: 2026-04-27
+**Last updated**: 2026-05-08
 
 ---
 
@@ -40,37 +40,59 @@ Every significant user action in Maskor is recorded in a human-readable log. The
 
 Each log entry records:
 
-- **Action type** — what kind of operation was performed (e.g. `FRAGMENT_CREATE`, `FRAGMENT_UPDATE`, `ASPECT_DELETE`).
-- **Timestamp** — when the action occurred.
-- **Actor** — the source of the action: `user` (UI-triggered) or `system` (watcher-triggered, e.g. piece auto-conversion).
-- **Target** — the entity affected: type + UUID (e.g. `fragment:<uuid>`).
-- **Payload** — a snapshot of the relevant before/after state needed to reverse or describe the action. Exact shape is action-type-specific.
-- **Undoable** — boolean flag indicating whether this entry can be reversed by Maskor.
+- **id** — uuid identifying the entry itself (used for deduping and future undo references).
+- **type** — what kind of operation was performed, in `domain:verb` form (e.g. `fragment:created`, `aspect:renamed`).
+- **timestamp** — ISO 8601 string, when the action occurred.
+- **actor** — the source of the action: `user` (UI-triggered) or `system` (e.g. cascade side-effects, future automated maintenance).
+- **target** — the entity affected: `{ type, uuid, key?, title? }`. The optional fields are denormalized snapshots for human-readable rendering — they may go stale after later renames, which is acceptable for an observability log.
+- **payload** — descriptive metadata specific to the action type (no before/after state in v1; see _Payload depth_).
+- **undoable** — boolean flag indicating whether this entry can in principle be reversed by Maskor. Recorded for future undo work; v1 has no undo path.
 
 ### Action types
 
-At minimum, the following action types must be recorded:
+The naming convention is `domain:verb`. The full v1 set:
 
-| Type                      | Undoable | Notes                                                                                                                                |
-| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `FRAGMENT_CREATE`         | No       | Creation undo is not supported — undoing a create by moving the fragment to discarded is surprising and easy to trigger accidentally |
-| `FRAGMENT_UPDATE`         | Yes      | Undo restores previous title, readyStatus, aspect weights, notes, references                                                         |
-| `FRAGMENT_DISCARD`        | Yes      | Undo restores the fragment to active                                                                                                 |
-| `FRAGMENT_RESTORE`        | Yes      | Undo discards the fragment again                                                                                                     |
-| `ASPECT_CREATE`           | Yes      | Undo removes the aspect                                                                                                              |
-| `ASPECT_RENAME`           | Yes      | Undo restores previous key/name                                                                                                      |
-| `ASPECT_DELETE`           | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                                                  |
-| `SEQUENCE_FRAGMENT_PLACE` | Yes      | Undo removes the fragment from its placed position                                                                                   |
-| `SEQUENCE_FRAGMENT_MOVE`  | Yes      | Undo returns the fragment to its previous position                                                                                   |
-| `PIECE_CONVERTED`         | No       | System action; source file is gone, reversal not possible                                                                            |
-| `PROJECT_REGISTER`        | No       | Registration is not reversible via undo                                                                                              |
-| `FRAGMENT_OPENED`         | No       | User navigated to a fragment in the editor; read event, not a mutation                                                               |
-| `PROMPT_SURFACED`         | No       | A fragment was suggested by the prompting engine                                                                                     |
-| `PROMPT_ACCEPTED`         | No       | User accepted a prompt and opened the suggested fragment                                                                             |
-| `PROMPT_SKIPPED`          | No       | User clicked "next" — saw the suggestion but asked for a different one                                                               |
-| `PROMPT_DISMISSED`        | No       | User dismissed the prompt without accepting any suggestion                                                                           |
+| Type                       | Undoable | Notes                                                                                                  |
+| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `fragment:created`         | No       | Undoing a create by moving the fragment to discarded is surprising; users discard explicitly           |
+| `fragment:updated`         | Yes      | Content / readyStatus / aspect weights / notes / references edits                                      |
+| `fragment:renamed`         | Yes      | Key change                                                                                             |
+| `fragment:discarded`       | Yes      | Undo restores the fragment to active                                                                   |
+| `fragment:restored`        | Yes      | Undo discards the fragment again                                                                       |
+| `aspect:created`           | Yes      | Undo removes the aspect                                                                                |
+| `aspect:updated`           | Yes      | Description / category / notes edits (non-key)                                                         |
+| `aspect:renamed`           | Yes      | Key change; cascades through fragments are implicit (one log entry per rename, not per touched fragment) |
+| `aspect:deleted`           | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                    |
+| `note:created`             | Yes      |                                                                                                        |
+| `note:updated`             | Yes      | Content edits                                                                                          |
+| `note:renamed`             | Yes      | Key change; cascades through fragments and aspects are implicit                                        |
+| `note:deleted`             | Yes      |                                                                                                        |
+| `reference:created`        | Yes      |                                                                                                        |
+| `reference:updated`        | Yes      | Content edits                                                                                          |
+| `reference:renamed`        | Yes      | Key change; cascades through fragments are implicit                                                    |
+| `reference:deleted`        | Yes      |                                                                                                        |
+| `sequence:fragment-placed` | Yes      | Defined for spec parity — sequencing API does not exist in v1                                          |
+| `sequence:fragment-moved`  | Yes      | Defined for spec parity — sequencing API does not exist in v1                                          |
 
-Additional action types are added as features are built. The list above is not exhaustive.
+#### Cascade behavior
+
+A rename cascades through related entities (e.g. renaming an aspect updates every fragment that uses it). The cascade produces **one** log entry — the originating `*:renamed` action — not one entry per touched fragment. This keeps the log readable and reflects user intent rather than mechanical side effects.
+
+#### Out of scope for v1
+
+- **System actions** (no entries): piece auto-conversion, prompt surfacing/acceptance/dismissal, project registration, fragment-opened reads. These may be added later under `actor: "system"`; not logged in v1.
+- **External vault edits** are never logged. The action log only covers actions taken through the Maskor API.
+- **File-import action** (importing an entire file that splits into multiple fragments) is deferred until the import flow itself exists. See `references/TODO.md`.
+
+### Payload depth (v1)
+
+Payloads are descriptive metadata only. No before/after snapshots. Examples:
+
+- `fragment:updated`: `{ changedFields: ["content", "readyStatus", "aspects"] }`
+- `aspect:renamed`: `{ oldKey, newKey }`
+- `fragment:discarded`: `{}` (target carries the identifying info)
+
+Adding before/after snapshots is a future migration tied to undo/redo work.
 
 ### Undo / redo
 
@@ -88,9 +110,34 @@ The undo/redo system covers common editing actions where users expect it: fragme
 
 - The action log is written to a persistent, human-readable file: `<vault>/.maskor/action-log.jsonl` (newline-delimited JSON).
 - Each line is a self-contained JSON object representing one log entry.
-- The log is append-only. Maskor never deletes or modifies past entries.
+- The log is append-only. Maskor never modifies or removes past entries.
 - The log is owned by Maskor. Users should not edit it directly, but they can read it.
 - On rebuild or DB wipe, the log file is preserved — it is not re-derivable from vault files.
+
+### Rotation
+
+- The live `action-log.jsonl` is capped at `5000` entries.
+- When the cap is reached the live file is renamed to `action-log.<ISO_timestamp>.jsonl` in the same directory and a new empty `action-log.jsonl` is started.
+- Archives are not surfaced in the v1 UI but remain inspectable on disk.
+
+### Frontend delivery
+
+- The history page reads from a `GET /projects/:projectId/action-log?limit=N` endpoint that tail-reads the live file.
+- After a successful state-changing API call, the frontend invalidates the action log query and re-fetches. No SSE channel is needed for action log entries in v1 — every entry originates from a Maskor-initiated mutation, so the client already knows when to refresh.
+- External vault changes do not produce log entries, so the existing watcher SSE stream remains scoped to vault sync events as today.
+
+### Failure handling
+
+When a mutation succeeds but the subsequent log append fails, the entry must not be silently lost and the user's primary action must not be blocked.
+
+The intended approach:
+
+- The mutation response is **not** failed — the vault is canonical, the user's work is durable, and a logging hiccup should never produce a user-visible save error.
+- The unwritten entry is preserved in a sidecar file `<vault>/.maskor/action-log.failed.jsonl` so it can be inspected and reconciled later.
+- A low-key UI signal (e.g. a banner on the history page) informs the user that one or more recent actions could not be recorded.
+- The structured logger emits an error-level event with full context.
+
+**v1 ships a simpler stand-in**: the failure is logged via the structured logger only. No sidecar file, no UI surfacing. This is a knowing deviation from the spec for an initial implementation; closing the gap is tracked as a resilience suggestion in `references/suggestions.md`.
 
 ### Log display in UI
 
@@ -106,7 +153,7 @@ The undo/redo system covers common editing actions where users expect it: fragme
 - Undo and redo are session-local in the first iteration — the undo stack is in memory and is lost on server restart. Persistence across restarts is a future concern.
 - Maskor never undoes external Obsidian edits. The log only covers actions taken through the Maskor API.
 - Log entries must be serializable. No function fields, no circular references.
-- The action log must not grow unboundedly in production. A rotation or truncation strategy is needed — this is an open question.
+- Every state-changing API operation must go through the command-pattern handler (see `packages/api/src/commands/`). The handler performs the mutation and appends the log entry as one unit.
 
 ---
 
@@ -127,18 +174,18 @@ The undo/redo system covers common editing actions where users expect it: fragme
 - [ ] 2026-04-27 — Should the undo stack survive server restarts in a future iteration? This requires persisting the stack to a file, which adds conflict risk if vault content changes while Maskor is offline.
 - [ ] 2026-04-27 — How is the conflict case handled when an undo target was externally edited? Abort with warning? Apply partially? Let the user choose?
 - [ ] 2026-04-27 — Should sequence rearrangements (drag-and-drop in the overview) be undoable as a batch ("undo last move") or individually per fragment?
-- [ ] 2026-04-27 — Log rotation: should old entries be trimmed after N lines, after a time window, or never (rely on the user to manage vault size)?
-- [ ] 2026-04-27 — Should the UI action panel show log-only entries (e.g. piece conversions) alongside undoable ones, or filter them out by default?
+- [ ] 2026-05-08 — Rotation threshold of 5000 entries is a starting guess. Revisit once usage data exists; consider time-based rotation as an alternative.
+- [ ] 2026-05-08 — Log-append failure currently logs to the service logger only (v1 stand-in). When does the sidecar + UI banner approach land?
 
 ---
 
 ## Acceptance criteria
 
-- Every user-initiated fragment create, update, discard, and restore action produces a log entry in `<vault>/.maskor/action-log.jsonl`.
-- Undoing a `FRAGMENT_UPDATE` restores the fragment's previous title, readyStatus, aspect weights, notes, and references.
-- Undoing a `FRAGMENT_DISCARD` moves the fragment back to the active set.
-- Redo re-applies the most recently undone action. A new user action after an undo clears the redo stack.
-- The log file is append-only: past entries are never deleted or modified by Maskor.
-- A server restart clears the in-memory undo/redo stack. The log file is preserved.
-- Watcher-triggered actions (e.g. piece conversion) are logged with `actor: "system"` and `undoable: false`.
-- Attempting to undo an action whose target was subsequently modified externally does not silently overwrite the external edit.
+- Every user-initiated state-changing API operation produces exactly one log entry in `<vault>/.maskor/action-log.jsonl`. Cascade side-effects (e.g. fragments updated by an aspect rename) do not produce additional entries.
+- Each entry uses the `domain:verb` action type naming and includes `id`, `timestamp`, `actor`, `target`, `payload`, `undoable`.
+- The history page lists entries most-recent-first, grouped by day, with per-action human-readable rendering.
+- After a successful mutation, the frontend invalidates the action log query and the new entry appears.
+- The live log file rotates at 5000 entries; the rotated archive is named `action-log.<ISO_timestamp>.jsonl`.
+- A failed log append after a successful mutation does not fail the API response; the failure is recorded via the structured logger. (v1 stand-in for the spec's sidecar + UI banner behavior — see `references/suggestions.md`.)
+- The log file is append-only: past entries are never modified or removed by Maskor.
+- Future undo work — when added — will only operate on entries marked `undoable: true`. (Out of scope for v1.)

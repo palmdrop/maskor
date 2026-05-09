@@ -32,15 +32,30 @@ DELETE /projects/:projectId/fragments/:fragmentId            — discard a fragm
 POST   /projects/:projectId/fragments/:fragmentId/restore    — restore a discarded fragment
 ```
 
-### Aspects / Notes / References (read-only)
+### Aspects / Notes / References
 
 ```
 GET    /projects/:projectId/aspects
 GET    /projects/:projectId/aspects/:aspectId
+POST   /projects/:projectId/aspects                        — create aspect
+PATCH  /projects/:projectId/aspects/:aspectId             — update/rename aspect
+DELETE /projects/:projectId/aspects/:aspectId             — delete aspect
 GET    /projects/:projectId/notes
 GET    /projects/:projectId/notes/:noteId
+POST   /projects/:projectId/notes                         — create note
+PATCH  /projects/:projectId/notes/:noteId                 — update/rename note
+DELETE /projects/:projectId/notes/:noteId                 — delete note
 GET    /projects/:projectId/references
 GET    /projects/:projectId/references/:referenceId
+POST   /projects/:projectId/references                    — create reference
+PATCH  /projects/:projectId/references/:referenceId       — update/rename reference
+DELETE /projects/:projectId/references/:referenceId       — delete reference
+```
+
+### Action Log
+
+```
+GET    /projects/:projectId/action-log?limit=N            — list recent entries, most-recent-first (default 50, max 500)
 ```
 
 ### Index
@@ -71,4 +86,15 @@ Tests use `app.request()` (in-process, no port) with a real `StorageService` poi
 - `src/errors.ts` — `handleStorageError`: maps `VaultError` / `ProjectNotFoundError` to HTTP
 - `src/middleware/resolve-project.ts` — resolves `:projectId` param to `ProjectContext` before project-scoped handlers
 - `src/routes/` — one file per resource
+- `src/commands/` — command pattern for state-changing mutations (see below)
 - `src/index.ts` — creates `StorageService`, calls `createApp`, starts `Bun.serve`
+
+## Command pattern
+
+Every state-changing API route **must** delegate to a command in `src/commands/`. Direct storage calls in route handlers are not allowed for mutations.
+
+Commands live in `src/commands/<domain>/`. Each command:
+1. Performs the storage mutation.
+2. Returns the mutation result and a list of `LogEntry` objects to append.
+
+`executeCommand(command, ctx, input)` orchestrates this: it runs the command, then appends each returned log entry via `storageService.actionLog.append`. If the mutation fails, the error propagates normally (no log entry). If the mutation succeeds but a log append fails, the failure is swallowed and logged at `error` level — the API response always returns the mutation result.

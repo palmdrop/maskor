@@ -8,6 +8,7 @@ import {
   getGetReferenceQueryKey,
   getListReferencesQueryKey,
 } from "../../../api/generated/references/references";
+import { useInvalidateActionLog } from "../../../api/action-log";
 import { Button } from "../../../components/ui/button";
 import { EntityEditorShell } from "../../../components/entity-editor-shell";
 
@@ -31,6 +32,8 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
     queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
   }, [queryClient, projectId, referenceId]);
 
+  const invalidateActionLog = useInvalidateActionLog(projectId);
+
   const onKeySave = useCallback(
     async (key: string) => {
       const result = await updateReference({ projectId, referenceId, data: { key } });
@@ -40,8 +43,9 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
       const { warnings } = result.data;
       setCascadeWarnings(warnings.fragments);
       invalidate();
+      invalidateActionLog();
     },
-    [updateReference, projectId, referenceId, invalidate],
+    [updateReference, projectId, referenceId, invalidate, invalidateActionLog],
   );
 
   const onContentSave = useCallback(
@@ -51,8 +55,9 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
         throw new Error((result.data as { message?: string }).message ?? "Save failed.");
       }
       invalidate();
+      invalidateActionLog();
     },
-    [updateReference, projectId, referenceId, invalidate],
+    [updateReference, projectId, referenceId, invalidate, invalidateActionLog],
   );
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
