@@ -22,6 +22,19 @@ import {
   deleteAspectCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
+import type { UpdateSource } from "../commands/fragments/update-fragment";
+
+const classifyAspectSource = (patch: {
+  description?: unknown;
+  category?: unknown;
+  notes?: unknown;
+}): UpdateSource => {
+  const hasDescription = patch.description !== undefined;
+  const hasMetadata = patch.category !== undefined || patch.notes !== undefined;
+  if (hasDescription && !hasMetadata) return "user-content-save";
+  if (!hasDescription && hasMetadata) return "user-metadata";
+  return "programmatic";
+};
 
 export const aspectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -247,7 +260,12 @@ aspectsRouter.openapi(updateAspectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const updated = await executeCommand(updateAspectCommand, commandContext, { aspectId, patch });
+    const source = classifyAspectSource(patch);
+    const updated = await executeCommand(updateAspectCommand, commandContext, {
+      aspectId,
+      patch,
+      source,
+    });
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);

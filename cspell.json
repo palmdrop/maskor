@@ -15,6 +15,7 @@
     "shadcn",
     "slugify",
     "tauri",
-    "upserts"
+    "upserts",
+    "changedfields"
   ]
 }

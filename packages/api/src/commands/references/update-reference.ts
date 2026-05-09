@@ -1,10 +1,11 @@
 import type { LogEntry, ReferenceUpdate, ReferenceUpdateResponse } from "@maskor/shared";
 import type { Command } from "../types";
+import type { UpdateSource } from "../fragments/update-fragment";
 
-type UpdateReferenceInput = { referenceId: string; patch: ReferenceUpdate };
+type UpdateReferenceInput = { referenceId: string; patch: ReferenceUpdate; source?: UpdateSource };
 
 export const updateReferenceCommand: Command<UpdateReferenceInput, ReferenceUpdateResponse> = {
-  async execute(ctx, { referenceId, patch }) {
+  async execute(ctx, { referenceId, patch, source = "programmatic" }) {
     const existing = await ctx.storageService.references.read(ctx.projectContext, referenceId);
 
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
@@ -36,13 +37,23 @@ export const updateReferenceCommand: Command<UpdateReferenceInput, ReferenceUpda
     }
 
     if (contentChanged) {
-      logEntries.push({
-        type: "reference:updated",
-        actor: ctx.actor,
-        target: { type: "reference", uuid: referenceId, key: updateResult.reference.key },
-        payload: { changedFields: ["content"] },
-        undoable: true,
-      });
+      if (source === "user-content-save") {
+        logEntries.push({
+          type: "reference:edited",
+          actor: ctx.actor,
+          target: { type: "reference", uuid: referenceId, key: updateResult.reference.key },
+          payload: {},
+          undoable: true,
+        });
+      } else {
+        logEntries.push({
+          type: "reference:updated",
+          actor: ctx.actor,
+          target: { type: "reference", uuid: referenceId, key: updateResult.reference.key },
+          payload: { changedFields: ["content"] },
+          undoable: true,
+        });
+      }
     }
 
     return { result: updateResult, logEntries };

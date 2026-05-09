@@ -11,7 +11,7 @@ import {
 import { useGetProject } from "../../api/generated/projects/projects";
 import { getGetFragmentStatsQueryKey } from "../../api/generated/stats/stats";
 import { useInvalidateActionLog } from "../../api/action-log";
-import { FragmentMetadataForm, type FragmentMetadataFormHandle } from "./fragment-metadata-form";
+import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { Button } from "../ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "../entity-editor-shell";
@@ -43,12 +43,10 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const showFragmentStats =
     projectEnvelope?.status === 200 ? projectEnvelope.data.advanced.showFragmentStats : false;
 
-  const metadataFormRef = useRef<FragmentMetadataFormHandle>(null);
   const shellRef = useRef<EntityEditorShellHandle>(null);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
-  const [isMetadataDirty, setIsMetadataDirty] = useState(false);
-  const isDirty = isProseDirty || isMetadataDirty;
+  const isDirty = isProseDirty;
 
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
@@ -99,14 +97,10 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   const onContentSave = useCallback(
     async (content: string) => {
-      const metadataUpdate = await metadataFormRef.current?.getValidatedValues();
-      if (!metadataUpdate) {
-        throw new Error("Metadata validation failed.");
-      }
       const result = await updateFragment({
         projectId,
         fragmentId,
-        data: { ...metadataUpdate, content },
+        data: { content },
       });
       if (result.status !== 200) {
         throw new Error((result.data as { message?: string }).message ?? "Save failed.");
@@ -194,12 +188,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       onContentSave={onContentSave}
       sidebar={
         <div className="flex flex-col gap-4">
-          <FragmentMetadataForm
-            ref={metadataFormRef}
-            fragment={fragment}
-            projectId={projectId}
-            onDirtyChange={setIsMetadataDirty}
-          />
+          <FragmentMetadataForm fragment={fragment} projectId={projectId} />
           {showFragmentStats && (
             <>
               <Separator />

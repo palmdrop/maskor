@@ -6,6 +6,8 @@ export const renderReferenceEntryText = (entry: LogEntry): string => {
   switch (entry.type) {
     case "reference:created":
       return `Reference "${key(entry)}" created`;
+    case "reference:edited":
+      return `Reference "${key(entry)}" edited`;
     case "reference:updated":
       return `Reference "${key(entry)}" edited`;
     case "reference:renamed":

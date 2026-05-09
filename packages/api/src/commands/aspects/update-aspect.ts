@@ -1,33 +1,24 @@
 import type { AspectUpdate, AspectUpdateResponse, LogEntry } from "@maskor/shared";
 import type { Command } from "../types";
-import { stringArraysEqual } from "../split-update";
+import type { UpdateSource } from "../fragments/update-fragment";
+import { diffStringSet, stringArraysEqual } from "../split-update";
 
-type UpdateAspectInput = { aspectId: string; patch: AspectUpdate };
-
-type AspectChangedField = "description" | "category" | "notes";
-
-const diffAspectFields = (
-  patch: AspectUpdate,
-  existing: { description?: string; category?: string; notes: string[] },
-): AspectChangedField[] => {
-  const changed: AspectChangedField[] = [];
-  if (patch.description !== undefined && patch.description !== existing.description)
-    changed.push("description");
-  if (patch.category !== undefined && patch.category !== existing.category)
-    changed.push("category");
-  if (patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes))
-    changed.push("notes");
-  return changed;
-};
+type UpdateAspectInput = { aspectId: string; patch: AspectUpdate; source?: UpdateSource };
 
 export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateResponse> = {
-  async execute(ctx, { aspectId, patch }) {
+  async execute(ctx, { aspectId, patch, source = "programmatic" }) {
     const existing = await ctx.storageService.aspects.read(ctx.projectContext, aspectId);
 
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
-    const changedFields = diffAspectFields(patch, existing);
+    const descriptionChanged =
+      patch.description !== undefined && patch.description !== existing.description;
+    const categoryChanged = patch.category !== undefined && patch.category !== existing.category;
+    const notesChanged =
+      patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
 
-    if (!keyChanged && changedFields.length === 0) {
+    const anyNonKeyChanged = descriptionChanged || categoryChanged || notesChanged;
+
+    if (!keyChanged && !anyNonKeyChanged) {
       return { result: { aspect: existing, warnings: [] }, logEntries: [] };
     }
 
@@ -49,14 +40,59 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
       });
     }
 
-    if (changedFields.length > 0) {
+    if (descriptionChanged) {
+      if (source === "user-content-save") {
+        logEntries.push({
+          type: "aspect:description-edited",
+          actor: ctx.actor,
+          target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+          payload: {},
+          undoable: true,
+        });
+      } else {
+        // Description has no programmatic single-intent type, so it routes to
+        // the *:updated catch-all. Other fields with single-intent types
+        // (category, notes) emit their own entries alongside.
+        logEntries.push({
+          type: "aspect:updated",
+          actor: ctx.actor,
+          target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+          payload: { changedFields: ["description"] },
+          undoable: true,
+        });
+      }
+    }
+
+    if (categoryChanged) {
       logEntries.push({
-        type: "aspect:updated",
+        type: "aspect:category-changed",
         actor: ctx.actor,
         target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
-        payload: { changedFields },
+        payload: { from: existing.category, to: patch.category },
         undoable: true,
       });
+    }
+
+    if (notesChanged) {
+      const { added, removed } = diffStringSet(existing.notes, patch.notes!);
+      for (const noteKey of added) {
+        logEntries.push({
+          type: "aspect:note-attached",
+          actor: ctx.actor,
+          target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+          payload: { noteKey },
+          undoable: true,
+        });
+      }
+      for (const noteKey of removed) {
+        logEntries.push({
+          type: "aspect:note-detached",
+          actor: ctx.actor,
+          target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+          payload: { noteKey },
+          undoable: true,
+        });
+      }
     }
 
     return { result: updateResult, logEntries };

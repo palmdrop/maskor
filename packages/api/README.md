@@ -10,76 +10,6 @@ bun src/index.ts
 PORT=3001 bun src/index.ts
 ```
 
-## Routes
-
-### Projects (no project context required)
-
-```
-GET    /projects                         — list all registered projects
-GET    /projects/:projectId              — get project context by UUID
-POST   /projects                         — register { name, vaultPath } → 201
-DELETE /projects/:projectId              — remove a project
-```
-
-### Fragments (project-scoped)
-
-```
-GET    /projects/:projectId/fragments                        — list all indexed fragments
-GET    /projects/:projectId/fragments/:fragmentId            — read one fragment
-POST   /projects/:projectId/fragments                        — write { title, content } → 201
-PATCH  /projects/:projectId/fragments/:fragmentId            — update fragment fields
-DELETE /projects/:projectId/fragments/:fragmentId            — discard a fragment (move to discarded/)
-POST   /projects/:projectId/fragments/:fragmentId/restore    — restore a discarded fragment
-```
-
-### Aspects / Notes / References
-
-```
-GET    /projects/:projectId/aspects
-GET    /projects/:projectId/aspects/:aspectId
-POST   /projects/:projectId/aspects                        — create aspect
-PATCH  /projects/:projectId/aspects/:aspectId             — update/rename aspect
-DELETE /projects/:projectId/aspects/:aspectId             — delete aspect
-GET    /projects/:projectId/notes
-GET    /projects/:projectId/notes/:noteId
-POST   /projects/:projectId/notes                         — create note
-PATCH  /projects/:projectId/notes/:noteId                 — update/rename note
-DELETE /projects/:projectId/notes/:noteId                 — delete note
-GET    /projects/:projectId/references
-GET    /projects/:projectId/references/:referenceId
-POST   /projects/:projectId/references                    — create reference
-PATCH  /projects/:projectId/references/:referenceId       — update/rename reference
-DELETE /projects/:projectId/references/:referenceId       — delete reference
-```
-
-### Action Log
-
-```
-GET    /projects/:projectId/action-log?limit=N            — list recent entries, most-recent-first (default 50, max 500)
-```
-
-### Index
-
-```
-POST   /projects/:projectId/index/rebuild  — triggers a full index rebuild, returns RebuildStats
-```
-
-## Error shape
-
-```json
-{ "error": "NOT_FOUND", "message": "Fragment not found: <uuid>" }
-{ "error": "NOT_FOUND", "message": "...", "hint": "index_may_be_stale" }
-{ "error": "INTERNAL_ERROR", "message": "..." }
-```
-
-## Testing
-
-```bash
-bun test
-```
-
-Tests use `app.request()` (in-process, no port) with a real `StorageService` pointed at a temp directory seeded from `@packages/text-fixtures/vault`.
-
 ## Architecture
 
 - `src/app.ts` — `createApp(storageService)`: registers CORS, injects service, mounts routes
@@ -94,6 +24,7 @@ Tests use `app.request()` (in-process, no port) with a real `StorageService` poi
 Every state-changing API route **must** delegate to a command in `src/commands/`. Direct storage calls in route handlers are not allowed for mutations.
 
 Commands live in `src/commands/<domain>/`. Each command:
+
 1. Performs the storage mutation.
 2. Returns the mutation result and a list of `LogEntry` objects to append.
 

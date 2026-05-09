@@ -6,6 +6,8 @@ export const renderNoteEntryText = (entry: LogEntry): string => {
   switch (entry.type) {
     case "note:created":
       return `Note "${key(entry)}" created`;
+    case "note:edited":
+      return `Note "${key(entry)}" edited`;
     case "note:updated":
       return `Note "${key(entry)}" edited`;
     case "note:renamed":

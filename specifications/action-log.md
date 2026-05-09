@@ -52,27 +52,42 @@ Each log entry records:
 
 The naming convention is `domain:verb`. The full v1 set:
 
-| Type                       | Undoable | Notes                                                                                                  |
-| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
-| `fragment:created`         | No       | Undoing a create by moving the fragment to discarded is surprising; users discard explicitly           |
-| `fragment:updated`         | Yes      | Content / readyStatus / aspect weights / notes / references edits                                      |
-| `fragment:renamed`         | Yes      | Key change                                                                                             |
-| `fragment:discarded`       | Yes      | Undo restores the fragment to active                                                                   |
-| `fragment:restored`        | Yes      | Undo discards the fragment again                                                                       |
-| `aspect:created`           | Yes      | Undo removes the aspect                                                                                |
-| `aspect:updated`           | Yes      | Description / category / notes edits (non-key)                                                         |
-| `aspect:renamed`           | Yes      | Key change; cascades through fragments are implicit (one log entry per rename, not per touched fragment) |
-| `aspect:deleted`           | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                    |
-| `note:created`             | Yes      |                                                                                                        |
-| `note:updated`             | Yes      | Content edits                                                                                          |
-| `note:renamed`             | Yes      | Key change; cascades through fragments and aspects are implicit                                        |
-| `note:deleted`             | Yes      |                                                                                                        |
-| `reference:created`        | Yes      |                                                                                                        |
-| `reference:updated`        | Yes      | Content edits                                                                                          |
-| `reference:renamed`        | Yes      | Key change; cascades through fragments are implicit                                                    |
-| `reference:deleted`        | Yes      |                                                                                                        |
-| `sequence:fragment-placed` | Yes      | Defined for spec parity — sequencing API does not exist in v1                                          |
-| `sequence:fragment-moved`  | Yes      | Defined for spec parity — sequencing API does not exist in v1                                          |
+| Type                              | Undoable | Notes                                                                                                                             |
+| --------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `fragment:created`                | No       | Undoing a create by moving the fragment to discarded is surprising; users discard explicitly                                      |
+| `fragment:edited`                 | Yes      | User-initiated content-only save via the editor                                                                                   |
+| `fragment:updated`                | Yes      | Catch-all: multi-field or programmatic patch that doesn't fit a single-intent type. Payload: `{ changedFields }`.                 |
+| `fragment:renamed`                | Yes      | Key change                                                                                                                        |
+| `fragment:discarded`              | Yes      | Undo restores the fragment to active                                                                                              |
+| `fragment:restored`               | Yes      | Undo discards the fragment again                                                                                                  |
+| `fragment:ready-status-changed`   | Yes      | Payload: `{ from: number, to: number }`                                                                                           |
+| `fragment:note-attached`          | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
+| `fragment:note-detached`          | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
+| `fragment:reference-attached`     | Yes      | Payload: `{ referenceKey: string }`                                                                                               |
+| `fragment:reference-detached`     | Yes      | Payload: `{ referenceKey: string }`                                                                                               |
+| `fragment:aspect-attached`        | Yes      | Payload: `{ aspectKey: string, weight: number }`                                                                                  |
+| `fragment:aspect-detached`        | Yes      | Payload: `{ aspectKey: string }`                                                                                                  |
+| `fragment:aspect-weight-changed`  | Yes      | Payload: `{ aspectKey: string, from: number, to: number }`                                                                        |
+| `aspect:created`                  | Yes      | Undo removes the aspect                                                                                                           |
+| `aspect:description-edited`       | Yes      | User-initiated description-only save via the editor                                                                               |
+| `aspect:updated`                  | Yes      | Catch-all: multi-field or programmatic patch. Payload: `{ changedFields }`.                                                       |
+| `aspect:renamed`                  | Yes      | Key change; cascades through fragments are implicit (one log entry per rename, not per touched fragment)                          |
+| `aspect:deleted`                  | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                                               |
+| `aspect:category-changed`         | Yes      | Payload: `{ from?: string, to?: string }` (optional because category is optional)                                                 |
+| `aspect:note-attached`            | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
+| `aspect:note-detached`            | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
+| `note:created`                    | Yes      |                                                                                                                                   |
+| `note:edited`                     | Yes      | User-initiated content-only save                                                                                                  |
+| `note:updated`                    | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                                         |
+| `note:renamed`                    | Yes      | Key change; cascades through fragments and aspects are implicit                                                                   |
+| `note:deleted`                    | Yes      |                                                                                                                                   |
+| `reference:created`               | Yes      |                                                                                                                                   |
+| `reference:edited`                | Yes      | User-initiated content-only save                                                                                                  |
+| `reference:updated`               | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                                         |
+| `reference:renamed`               | Yes      | Key change; cascades through fragments are implicit                                                                               |
+| `reference:deleted`               | Yes      |                                                                                                                                   |
+| `sequence:fragment-placed`        | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                                     |
+| `sequence:fragment-moved`         | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                                     |
 
 #### Cascade behavior
 
@@ -86,13 +101,18 @@ A rename cascades through related entities (e.g. renaming an aspect updates ever
 
 ### Payload depth (v1)
 
-Payloads are descriptive metadata only. No before/after snapshots. Examples:
+Payloads are descriptive metadata only. No before/after content snapshots. Examples:
 
-- `fragment:updated`: `{ changedFields: ["content", "readyStatus", "aspects"] }`
+- `fragment:updated`: `{ changedFields: ["content"] }` (catch-all path)
 - `aspect:renamed`: `{ oldKey, newKey }`
 - `fragment:discarded`: `{}` (target carries the identifying info)
+- `fragment:ready-status-changed`: `{ from: 0.2, to: 0.5 }` (scalar delta — see below)
 
-Adding before/after snapshots is a future migration tied to undo/redo work.
+**Scalar deltas exception**: the "no before/after" principle applies to content blobs. Scalar before/after values (`from`/`to`) are permitted on single-intent types where they are load-bearing for human-readable rendering and carry no risk of large payloads: `fragment:ready-status-changed`, `fragment:aspect-weight-changed`, `aspect:category-changed`. This is a deliberate small departure, not a slippery slope toward full snapshots.
+
+**Cascade principle**: for relational changes (notes, references, aspects attached/detached), one log entry is emitted per element changed — e.g. attaching three aspects in one PATCH produces three `fragment:aspect-attached` entries. Rename cascades still produce one entry for the originating `*:renamed` action.
+
+Adding full content before/after snapshots remains a future migration tied to undo/redo work.
 
 ### Undo / redo
 

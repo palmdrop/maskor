@@ -31,3 +31,42 @@ export const aspectWeightsEqual = (
   }
   return true;
 };
+
+export const diffStringSet = (
+  before: string[],
+  after: string[],
+): { added: string[]; removed: string[] } => {
+  const beforeSet = new Set(before);
+  const afterSet = new Set(after);
+  const added = after.filter((item) => !beforeSet.has(item));
+  const removed = before.filter((item) => !afterSet.has(item));
+  return { added, removed };
+};
+
+export const diffAspectWeights = (
+  before: Record<string, { weight: number }>,
+  after: Record<string, { weight: number }>,
+): {
+  added: { key: string; weight: number }[];
+  removed: string[];
+  weightChanged: { key: string; from: number; to: number }[];
+} => {
+  const beforeKeys = new Set(Object.keys(before));
+  const afterKeys = new Set(Object.keys(after));
+  const added: { key: string; weight: number }[] = [];
+  const removed: string[] = [];
+  const weightChanged: { key: string; from: number; to: number }[] = [];
+  for (const key of afterKeys) {
+    if (!beforeKeys.has(key)) {
+      added.push({ key, weight: after[key]!.weight });
+    } else if (before[key]!.weight !== after[key]!.weight) {
+      weightChanged.push({ key, from: before[key]!.weight, to: after[key]!.weight });
+    }
+  }
+  for (const key of beforeKeys) {
+    if (!afterKeys.has(key)) {
+      removed.push(key);
+    }
+  }
+  return { added, removed, weightChanged };
+};

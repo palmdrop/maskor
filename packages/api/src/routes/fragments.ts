@@ -23,6 +23,25 @@ import {
   restoreFragmentCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
+import type { UpdateSource } from "../commands/fragments/update-fragment";
+
+const classifyFragmentSource = (patch: {
+  content?: unknown;
+  readyStatus?: unknown;
+  notes?: unknown;
+  references?: unknown;
+  aspects?: unknown;
+}): UpdateSource => {
+  const hasContent = patch.content !== undefined;
+  const hasMetadata =
+    patch.readyStatus !== undefined ||
+    patch.notes !== undefined ||
+    patch.references !== undefined ||
+    patch.aspects !== undefined;
+  if (hasContent && !hasMetadata) return "user-content-save";
+  if (!hasContent && hasMetadata) return "user-metadata";
+  return "programmatic";
+};
 
 export const fragmentsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -300,9 +319,11 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
     };
 
     const existing = await storageService.fragments.read(projectContext, fragmentId);
+    const source = classifyFragmentSource(update);
     const fragment = await executeCommand(updateFragmentCommand, commandContext, {
       existing,
       patch: update,
+      source,
     });
 
     return ctx.json({ fragment, warnings: [] }, 200);

@@ -21,6 +21,7 @@ import {
   deleteReferenceCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
+import type { UpdateSource } from "../commands/fragments/update-fragment";
 
 export const referencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -222,9 +223,11 @@ referencesRouter.openapi(updateReferenceRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
+    const source: UpdateSource = patch.content !== undefined ? "user-content-save" : "programmatic";
     const updated = await executeCommand(updateReferenceCommand, commandContext, {
       referenceId,
       patch,
+      source,
     });
     return ctx.json(updated, 200);
   } catch (error) {

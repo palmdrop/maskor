@@ -6,6 +6,8 @@ export const renderAspectEntryText = (entry: LogEntry): string => {
   switch (entry.type) {
     case "aspect:created":
       return `Aspect "${key(entry)}" created`;
+    case "aspect:description-edited":
+      return `Aspect "${key(entry)}" description edited`;
     case "aspect:updated": {
       const fields = entry.payload.changedFields.join(", ");
       return `Aspect "${key(entry)}" edited — ${fields}`;
@@ -14,6 +16,15 @@ export const renderAspectEntryText = (entry: LogEntry): string => {
       return `Aspect renamed: "${entry.payload.oldKey}" → "${entry.payload.newKey}"`;
     case "aspect:deleted":
       return `Aspect "${key(entry)}" deleted`;
+    case "aspect:category-changed": {
+      const from = entry.payload.from ?? "none";
+      const to = entry.payload.to ?? "none";
+      return `Aspect "${key(entry)}" category: "${from}" → "${to}"`;
+    }
+    case "aspect:note-attached":
+      return `Note "${entry.payload.noteKey}" attached to aspect "${key(entry)}"`;
+    case "aspect:note-detached":
+      return `Note "${entry.payload.noteKey}" detached from aspect "${key(entry)}"`;
     default:
       return `Aspect action on "${key(entry)}"`;
   }

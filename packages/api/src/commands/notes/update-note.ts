@@ -1,10 +1,11 @@
 import type { LogEntry, NoteUpdate, NoteUpdateResponse } from "@maskor/shared";
 import type { Command } from "../types";
+import type { UpdateSource } from "../fragments/update-fragment";
 
-type UpdateNoteInput = { noteId: string; patch: NoteUpdate };
+type UpdateNoteInput = { noteId: string; patch: NoteUpdate; source?: UpdateSource };
 
 export const updateNoteCommand: Command<UpdateNoteInput, NoteUpdateResponse> = {
-  async execute(ctx, { noteId, patch }) {
+  async execute(ctx, { noteId, patch, source = "programmatic" }) {
     const existing = await ctx.storageService.notes.read(ctx.projectContext, noteId);
 
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
@@ -32,13 +33,23 @@ export const updateNoteCommand: Command<UpdateNoteInput, NoteUpdateResponse> = {
     }
 
     if (contentChanged) {
-      logEntries.push({
-        type: "note:updated",
-        actor: ctx.actor,
-        target: { type: "note", uuid: noteId, key: updateResult.note.key },
-        payload: { changedFields: ["content"] },
-        undoable: true,
-      });
+      if (source === "user-content-save") {
+        logEntries.push({
+          type: "note:edited",
+          actor: ctx.actor,
+          target: { type: "note", uuid: noteId, key: updateResult.note.key },
+          payload: {},
+          undoable: true,
+        });
+      } else {
+        logEntries.push({
+          type: "note:updated",
+          actor: ctx.actor,
+          target: { type: "note", uuid: noteId, key: updateResult.note.key },
+          payload: { changedFields: ["content"] },
+          undoable: true,
+        });
+      }
     }
 
     return { result: updateResult, logEntries };

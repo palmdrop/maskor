@@ -21,6 +21,7 @@ import {
   deleteNoteCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
+import type { UpdateSource } from "../commands/fragments/update-fragment";
 
 export const notesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -222,7 +223,12 @@ notesRouter.openapi(updateNoteRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const updated = await executeCommand(updateNoteCommand, commandContext, { noteId, patch });
+    const source: UpdateSource = patch.content !== undefined ? "user-content-save" : "programmatic";
+    const updated = await executeCommand(updateNoteCommand, commandContext, {
+      noteId,
+      patch,
+      source,
+    });
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
