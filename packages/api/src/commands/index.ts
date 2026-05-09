@@ -5,6 +5,7 @@ export { createFragmentCommand } from "./fragments/create-fragment";
 export { updateFragmentCommand } from "./fragments/update-fragment";
 export { discardFragmentCommand } from "./fragments/discard-fragment";
 export { restoreFragmentCommand } from "./fragments/restore-fragment";
+export { deleteFragmentCommand } from "./fragments/delete-fragment";
 
 export { createAspectCommand } from "./aspects/create-aspect";
 export { updateAspectCommand } from "./aspects/update-aspect";

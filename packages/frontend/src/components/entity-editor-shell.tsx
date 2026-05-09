@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  type ReactNode,
-  useCallback,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, type ReactNode, useCallback, useImperativeHandle, useRef } from "react";
 import { ProseEditor, type ProseEditorHandle } from "./prose-editor";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,6 +6,7 @@ import { Separator } from "./ui/separator";
 import { useDelayedPending } from "../hooks/useDelayedPending";
 import { useKeyEdit } from "../hooks/useKeyEdit";
 import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
+import { usePersistedBoolean } from "../hooks/usePersistedBoolean";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -65,27 +59,10 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
 
-    const storageKey = `entityEditorSidebar_${label}`;
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-      if (!sidebarCollapsible) return false;
-      try {
-        return localStorage.getItem(storageKey) === "collapsed";
-      } catch {
-        return false;
-      }
-    });
-
-    const toggleSidebar = () => {
-      setIsSidebarCollapsed((previous) => {
-        const next = !previous;
-        try {
-          localStorage.setItem(storageKey, next ? "collapsed" : "open");
-        } catch {
-          // ignore
-        }
-        return next;
-      });
-    };
+    const [isSidebarCollapsed, , toggleSidebar] = usePersistedBoolean(
+      `entityEditorSidebar_${label}`,
+      false,
+    );
 
     const {
       keyEditing,

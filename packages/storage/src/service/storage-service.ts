@@ -668,6 +668,49 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           );
         });
       },
+
+      async delete(context: ProjectContext, uuid: string): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.fragments.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "FRAGMENT_NOT_FOUND",
+            `Cannot delete: fragment "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        if (!indexed.isDiscarded) {
+          throw new VaultError(
+            "FRAGMENT_NOT_DISCARDED",
+            `Cannot delete: fragment "${uuid}" must be discarded before permanent deletion`,
+            { uuid },
+          );
+        }
+
+        try {
+          await getVault(context).fragments.delete(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: indexed.filePath },
+              "stale index: fragment file missing on delete",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot delete: fragment "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+
+        const vaultDatabase = getVaultDatabase(context);
+        vaultDatabase.transaction((tx) => {
+          deleteFragmentByFilePath(tx, indexed.filePath);
+        });
+      },
     },
 
     // Aspect operations

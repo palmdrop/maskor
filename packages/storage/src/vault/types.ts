@@ -52,6 +52,7 @@ export type Vault = {
     write(fragment: Fragment): Promise<void>;
     discard(filePath: string): Promise<void>;
     restore(filePath: string): Promise<void>;
+    delete(filePath: string): Promise<void>;
   };
   aspects: {
     readAll(): Promise<Aspect[]>;

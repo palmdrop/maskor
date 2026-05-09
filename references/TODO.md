@@ -8,6 +8,8 @@
 
 - [ ] In the suggestion page, merge the top bar for saving, discarding and hitting next... no need for two top bars
 
+- [ ] Place frontend components in appropriate subfolders -- right now, everything is on root level
+
 - [x] Try caveman pattern - put in CLAUDE.md
 
 - [x] notes/references/aspects and maybe also fragments are softdeleted intentionally in db... this causes file to get removed when deleted, but db entry remains... this has no purpose. File is important, db is not. Hard-delete everything. Put the physical file in a trash dir if keeping it is important.

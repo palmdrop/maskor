@@ -21,6 +21,7 @@ import {
   updateFragmentCommand,
   discardFragmentCommand,
   restoreFragmentCommand,
+  deleteFragmentCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
@@ -173,6 +174,34 @@ const discardFragmentRoute = createRoute({
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const deleteFragmentRoute = createRoute({
+  operationId: "deleteFragment",
+  method: "delete",
+  path: "/{fragmentId}/permanent",
+  tags: ["Fragments"],
+  summary: "Permanently delete a discarded fragment (removes the file)",
+  request: { params: FragmentUUIDParamSchema },
+  responses: {
+    204: { description: "Fragment permanently deleted" },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment is not discarded",
     },
     503: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -348,6 +377,30 @@ fragmentsRouter.openapi(discardFragmentRoute, async (ctx) => {
     // Read the fragment key before discard for the log entry.
     const indexed = await storageService.fragments.read(projectContext, fragmentId);
     await executeCommand(discardFragmentCommand, commandContext, {
+      fragmentId,
+      fragmentKey: indexed.key,
+    });
+    return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(deleteFragmentRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("param");
+
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const indexed = await storageService.fragments.read(projectContext, fragmentId);
+    await executeCommand(deleteFragmentCommand, commandContext, {
       fragmentId,
       fragmentKey: indexed.key,
     });

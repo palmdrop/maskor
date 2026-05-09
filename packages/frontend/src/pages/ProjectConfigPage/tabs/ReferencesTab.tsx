@@ -38,6 +38,7 @@ export const ReferencesTab = ({ projectId }: { projectId: string }) => {
       isLoading={isLoading}
       labelField="Key"
       dialogTitle="New reference"
+      entityName="reference"
       onConfirmCreate={handleCreate}
       onDelete={handleDelete}
       isCreating={createReference.isPending}

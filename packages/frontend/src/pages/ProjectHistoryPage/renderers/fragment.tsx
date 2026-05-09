@@ -18,6 +18,8 @@ export const renderFragmentEntryText = (entry: LogEntry): string => {
       return `Fragment "${key(entry)}" discarded`;
     case "fragment:restored":
       return `Fragment "${key(entry)}" restored`;
+    case "fragment:deleted":
+      return `Fragment "${key(entry)}" permanently deleted`;
     case "fragment:ready-status-changed":
       return `Ready status on fragment "${key(entry)}": ${Math.round(entry.payload.from * 100)}% → ${Math.round(entry.payload.to * 100)}%`;
     case "fragment:note-attached":

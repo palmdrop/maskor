@@ -1,17 +1,7 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { PenLineIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PenLineIcon, Trash2Icon } from "lucide-react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
+import { CreateEntityDialog } from "./create-entity-dialog";
 
 type Item = { uuid: string; label: string; editTo?: string };
 
@@ -20,6 +10,7 @@ type AttachableEntityPanelProps = {
   isLoading: boolean;
   labelField: string;
   dialogTitle: string;
+  entityName: string;
   onConfirmCreate: (label: string, content: string) => Promise<void>;
   onDelete: (uuid: string) => Promise<void>;
   isCreating: boolean;
@@ -30,87 +21,22 @@ export const AttachableEntityPanel = ({
   isLoading,
   labelField,
   dialogTitle,
+  entityName,
   onConfirmCreate,
   onDelete,
   isCreating,
 }: AttachableEntityPanelProps) => {
-  const [open, setOpen] = useState(false);
-  const [labelValue, setLabelValue] = useState("");
-  const [contentValue, setContentValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCreate = async () => {
-    const trimmed = labelValue.trim();
-    if (!trimmed) {
-      setError(`${labelField} is required.`);
-      return;
-    }
-    setError(null);
-    try {
-      await onConfirmCreate(trimmed, contentValue);
-      setOpen(false);
-      setLabelValue("");
-      setContentValue("");
-    } catch (error) {
-      // setError("Failed to create.");
-      setError((error as { message?: string })?.message ?? "Failed to create aspect.");
-    }
-  };
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setLabelValue("");
-      setContentValue("");
-      setError(null);
-    }
-    setOpen(next);
-  };
-
   return (
     <div className="flex flex-col gap-4 pt-4 max-w-lg">
       <div className="flex items-center justify-between">
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <PlusIcon />
-              {dialogTitle}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{dialogTitle}</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="entity-label">{labelField}</Label>
-                <Input
-                  id="entity-label"
-                  value={labelValue}
-                  onChange={(e) => setLabelValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreate();
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="entity-content">Content (optional)</Label>
-                <textarea
-                  id="entity-content"
-                  rows={4}
-                  value={contentValue}
-                  onChange={(e) => setContentValue(e.target.value)}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
-                />
-              </div>
-              {error && <p className="text-xs text-destructive">{error}</p>}
-            </div>
-            <DialogFooter>
-              <Button onClick={handleCreate} disabled={isCreating}>
-                Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CreateEntityDialog
+          triggerLabel={dialogTitle}
+          dialogTitle={dialogTitle}
+          entityName={entityName}
+          labelField={labelField}
+          isPending={isCreating}
+          onCreate={onConfirmCreate}
+        />
       </div>
 
       {isLoading ? (

@@ -25,6 +25,7 @@ export const throwStorageError = (error: unknown): never => {
           res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
         });
       case "KEY_CONFLICT":
+      case "FRAGMENT_NOT_DISCARDED":
         throw new HTTPException(409, {
           res: errorResponse({ error: "CONFLICT", message: error.message }, 409),
         });

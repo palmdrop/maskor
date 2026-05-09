@@ -38,6 +38,7 @@ export const NotesTab = ({ projectId }: { projectId: string }) => {
       isLoading={isLoading}
       labelField="Key"
       dialogTitle="New note"
+      entityName="note"
       onConfirmCreate={handleCreate}
       onDelete={handleDelete}
       isCreating={createNote.isPending}

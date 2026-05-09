@@ -173,6 +173,24 @@ export const createVault = (config: VaultConfig): Vault => {
 
         log.info({ filePath, destination: relativeDestination }, "fragment restored");
       },
+
+      async delete(filePath: string) {
+        const absolutePath = toAbsoluteFragment(filePath);
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") {
+            throw new VaultError(
+              "FILE_NOT_FOUND",
+              `Fragment file not found: ${filePath}`,
+              { filePath },
+              { cause },
+            );
+          }
+          throw cause;
+        }
+        log.debug({ filePath }, "fragment deleted");
+      },
     },
 
     aspects: {
