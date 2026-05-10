@@ -23,6 +23,26 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [localReadyStatusThreshold, setLocalReadyStatusThreshold] = useState(
+    Math.round(project.suggestion.readyStatusThreshold * 100),
+  );
+  const [localFontSize, setLocalFontSize] = useState(project.editor.fontSize);
+  const [localMaxParagraphWidth, setLocalMaxParagraphWidth] = useState(
+    project.editor.maxParagraphWidth,
+  );
+
+  useEffect(() => {
+    setLocalReadyStatusThreshold(Math.round(project.suggestion.readyStatusThreshold * 100));
+  }, [project.suggestion.readyStatusThreshold]);
+
+  useEffect(() => {
+    setLocalFontSize(project.editor.fontSize);
+  }, [project.editor.fontSize]);
+
+  useEffect(() => {
+    setLocalMaxParagraphWidth(project.editor.maxParagraphWidth);
+  }, [project.editor.maxParagraphWidth]);
+
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
@@ -82,6 +102,30 @@ export const GeneralTab = ({ project }: { project: Project }) => {
       await updateProject.mutateAsync({
         projectId: project.projectUUID,
         data: { editor: { rawMarkdownMode: checked } },
+      });
+      invalidateProject();
+    } catch {
+      setError("Update failed.");
+    }
+  };
+
+  const handleFontSizeChange = async (value: number) => {
+    try {
+      await updateProject.mutateAsync({
+        projectId: project.projectUUID,
+        data: { editor: { fontSize: value } },
+      });
+      invalidateProject();
+    } catch {
+      setError("Update failed.");
+    }
+  };
+
+  const handleMaxParagraphWidthChange = async (value: number) => {
+    try {
+      await updateProject.mutateAsync({
+        projectId: project.projectUUID,
+        data: { editor: { maxParagraphWidth: value } },
       });
       invalidateProject();
     } catch {
@@ -194,6 +238,45 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             disabled={updateProject.isPending || project.editor.vimMode}
           />
         </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="font-size">Font size</Label>
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {localFontSize}px
+            </span>
+          </div>
+          <Slider
+            id="font-size"
+            min={12}
+            max={24}
+            step={1}
+            value={[localFontSize]}
+            onValueChange={([value]) => setLocalFontSize(value!)}
+            onValueCommit={([value]) => void handleFontSizeChange(value!)}
+            disabled={updateProject.isPending}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="max-paragraph-width">Paragraph width</Label>
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {localMaxParagraphWidth}ch
+            </span>
+          </div>
+          <Slider
+            id="max-paragraph-width"
+            min={40}
+            max={120}
+            step={4}
+            value={[localMaxParagraphWidth]}
+            onValueChange={([value]) => setLocalMaxParagraphWidth(value!)}
+            onValueCommit={([value]) => void handleMaxParagraphWidthChange(value!)}
+            disabled={updateProject.isPending}
+          />
+          <p className="text-xs text-muted-foreground">
+            Maximum line length in character units. 60–80ch is optimal for reading.
+          </p>
+        </div>
       </div>
       <div className="flex flex-col gap-4">
         <Label className="text-base">Suggestion</Label>
@@ -201,7 +284,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
           <div className="flex items-center justify-between">
             <Label htmlFor="ready-status-threshold">Ready status threshold</Label>
             <span className="text-sm text-muted-foreground tabular-nums">
-              {Math.round(project.suggestion.readyStatusThreshold * 100)}%
+              {localReadyStatusThreshold}%
             </span>
           </div>
           <Slider
@@ -209,7 +292,8 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             min={0}
             max={100}
             step={1}
-            value={[Math.round(project.suggestion.readyStatusThreshold * 100)]}
+            value={[localReadyStatusThreshold]}
+            onValueChange={([value]) => setLocalReadyStatusThreshold(value!)}
             onValueCommit={([value]) => void handleReadyStatusThresholdChange(value!)}
             disabled={updateProject.isPending}
           />

@@ -181,6 +181,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               content={content}
               vimMode={editorConfig.vimMode}
               rawMarkdownMode={editorConfig.rawMarkdownMode}
+              fontSize={editorConfig.fontSize}
+              maxParagraphWidth={editorConfig.maxParagraphWidth}
               onSave={handleContentSave}
               onChange={onProseChange}
             />

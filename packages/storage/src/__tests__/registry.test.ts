@@ -53,6 +53,8 @@ describe("registry.registerProject", () => {
     expect(manifest.registeredAt).toBeTruthy();
     expect(manifest.config.editor.vimMode).toBe(false);
     expect(manifest.config.editor.rawMarkdownMode).toBe(false);
+    expect(manifest.config.editor.fontSize).toBe(16);
+    expect(manifest.config.editor.maxParagraphWidth).toBe(72);
   });
 
   it("returns editor defaults from the manifest", async () => {
@@ -61,6 +63,8 @@ describe("registry.registerProject", () => {
 
     expect(record.editor.vimMode).toBe(false);
     expect(record.editor.rawMarkdownMode).toBe(false);
+    expect(record.editor.fontSize).toBe(16);
+    expect(record.editor.maxParagraphWidth).toBe(72);
   });
 
   it("throws when vault path does not exist", async () => {
@@ -108,6 +112,8 @@ describe("registry.findByUUID", () => {
     expect(found?.name).toBe("My Project");
     expect(found?.editor.vimMode).toBe(false);
     expect(found?.editor.rawMarkdownMode).toBe(false);
+    expect(found?.editor.fontSize).toBe(16);
+    expect(found?.editor.maxParagraphWidth).toBe(72);
   });
 
   it("returns null for an unknown UUID", async () => {
@@ -126,6 +132,8 @@ describe("registry.updateProject", () => {
     expect(updated.name).toBe("Renamed");
     expect(updated.editor.vimMode).toBe(false);
     expect(updated.editor.rawMarkdownMode).toBe(false);
+    expect(updated.editor.fontSize).toBe(16);
+    expect(updated.editor.maxParagraphWidth).toBe(72);
 
     const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
     expect(manifest.name).toBe("Renamed");
@@ -142,10 +150,41 @@ describe("registry.updateProject", () => {
     expect(updated.name).toBe("My Project");
     expect(updated.editor.vimMode).toBe(true);
     expect(updated.editor.rawMarkdownMode).toBe(false);
+    expect(updated.editor.fontSize).toBe(16);
+    expect(updated.editor.maxParagraphWidth).toBe(72);
 
     const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
     expect(manifest.name).toBe("My Project");
     expect(manifest.config.editor.vimMode).toBe(true);
+  });
+
+  it("updates fontSize and maxParagraphWidth in the manifest", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir);
+    const updated = await registry.updateProject(record.projectUUID, {
+      editor: { fontSize: 20, maxParagraphWidth: 80 },
+    });
+
+    expect(updated.editor.fontSize).toBe(20);
+    expect(updated.editor.maxParagraphWidth).toBe(80);
+    expect(updated.editor.vimMode).toBe(false);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.config.editor.fontSize).toBe(20);
+    expect(manifest.config.editor.maxParagraphWidth).toBe(80);
+  });
+
+  it("updates fontSize independently without affecting other editor fields", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir);
+    await registry.updateProject(record.projectUUID, { editor: { vimMode: true } });
+    const updated = await registry.updateProject(record.projectUUID, {
+      editor: { fontSize: 18 },
+    });
+
+    expect(updated.editor.vimMode).toBe(true);
+    expect(updated.editor.fontSize).toBe(18);
+    expect(updated.editor.maxParagraphWidth).toBe(72);
   });
 
   it("throws ProjectNotFoundError for unknown UUID", async () => {

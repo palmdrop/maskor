@@ -14,6 +14,8 @@ type ProjectManifest = {
     editor?: {
       vimMode?: boolean;
       rawMarkdownMode?: boolean;
+      fontSize?: number;
+      maxParagraphWidth?: number;
     };
     suggestion?: {
       readyStatusThreshold?: number;
@@ -82,6 +84,8 @@ const toProjectRecord = (
   editor: {
     vimMode: manifest?.config?.editor?.vimMode ?? false,
     rawMarkdownMode: manifest?.config?.editor?.rawMarkdownMode ?? false,
+    fontSize: manifest?.config?.editor?.fontSize ?? 16,
+    maxParagraphWidth: manifest?.config?.editor?.maxParagraphWidth ?? 72,
   },
   suggestion: {
     readyStatusThreshold:
@@ -122,7 +126,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           ? {}
           : {
               config: {
-                editor: { vimMode: false, rawMarkdownMode: false },
+                editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
                 suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
               },
             }),
@@ -174,7 +178,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       projectUUID: string,
       patch: {
         name?: string;
-        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
+        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean; fontSize?: number; maxParagraphWidth?: number };
         suggestion?: { readyStatusThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
       },

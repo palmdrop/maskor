@@ -1,4 +1,4 @@
-import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
@@ -20,30 +20,14 @@ type Props = {
   content: string;
   vimMode: boolean;
   rawMarkdownMode: boolean;
+  fontSize: number;
+  maxParagraphWidth: number;
   onSave?: () => void;
   onChange?: () => void;
 };
 
-const vimEditorTheme = EditorView.theme({
-  "&": {
-    fontFamily: "var(--font-mono)",
-    fontSize: "0.9rem",
-    height: "100%",
-  },
-  ".cm-content": {
-    padding: "1rem",
-  },
-  ".cm-focused": {
-    outline: "none",
-  },
-  ".cm-scroller": {
-    overflow: "auto",
-    height: "100%",
-  },
-});
-
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, rawMarkdownMode, onSave, onChange },
+  { content, vimMode, rawMarkdownMode, fontSize, maxParagraphWidth, onSave, onChange },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
@@ -54,6 +38,28 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // isDirty=false, and the save short-circuits.
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+
+  const cmTheme = useMemo(
+    () =>
+      EditorView.theme({
+        "&": {
+          fontFamily: "var(--font-mono)",
+          fontSize: `${fontSize}px`,
+          height: "100%",
+        },
+        ".cm-content": {
+          padding: "1rem",
+        },
+        ".cm-focused": {
+          outline: "none",
+        },
+        ".cm-scroller": {
+          overflow: "auto",
+          height: "100%",
+        },
+      }),
+    [fontSize],
+  );
 
   const editor = useEditor({
     extensions: [
@@ -95,36 +101,41 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [vimMode, rawMarkdownMode, editor, content],
   );
 
+  const widthStyle = { maxWidth: `${maxParagraphWidth}ch` };
+
   if (vimMode) {
     return (
-      <CodeMirror
-        value={content}
-        extensions={[markdown(), vim(), vimEditorTheme, EditorView.lineWrapping]}
-        onCreateEditor={(view) => {
-          viewRef.current = view;
-          Vim.defineEx("w", "", () => onSaveRef.current?.());
-        }}
-        onChange={() => onChangeRef.current?.()}
-        basicSetup={{ lineNumbers: false, foldGutter: false }}
-        className="h-full"
-      />
+      <div className="h-full mx-auto w-full" style={widthStyle}>
+        <CodeMirror
+          value={content}
+          extensions={[markdown(), vim(), cmTheme, EditorView.lineWrapping]}
+          onCreateEditor={(view) => {
+            viewRef.current = view;
+            Vim.defineEx("w", "", () => onSaveRef.current?.());
+          }}
+          onChange={() => onChangeRef.current?.()}
+          basicSetup={{ lineNumbers: false, foldGutter: false }}
+          className="h-full"
+        />
+      </div>
     );
   }
 
   // TODO: can this and the case above get merged? only diff is vim plugin and Vim.defineEx
   if (rawMarkdownMode) {
     return (
-      <CodeMirror
-        value={content}
-        extensions={[markdown(), vimEditorTheme]}
-        onCreateEditor={(view) => {
-          viewRef.current = view;
-        }}
-        onChange={() => onChangeRef.current?.()}
-        basicSetup={{ lineNumbers: false, foldGutter: false }}
-        className="h-full"
-        maxWidth="100%"
-      />
+      <div className="h-full mx-auto w-full" style={widthStyle}>
+        <CodeMirror
+          value={content}
+          extensions={[markdown(), cmTheme]}
+          onCreateEditor={(view) => {
+            viewRef.current = view;
+          }}
+          onChange={() => onChangeRef.current?.()}
+          basicSetup={{ lineNumbers: false, foldGutter: false }}
+          className="h-full"
+        />
+      </div>
     );
   }
 
@@ -132,7 +143,12 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     <div className="flex flex-col h-full gap-2 w-full">
       <ProseToolbar editor={editor} />
       <div className="flex-1 overflow-y-auto">
-        <EditorContent editor={editor} />
+        <div
+          className="mx-auto w-full"
+          style={{ fontSize: `${fontSize}px`, maxWidth: `${maxParagraphWidth}ch` }}
+        >
+          <EditorContent editor={editor} />
+        </div>
       </div>
     </div>
   );

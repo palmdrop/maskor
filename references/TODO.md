@@ -63,6 +63,7 @@
   - for example, favor arrow functions over "function" declarations
 
 - [ ] Add spec for command palette, similar to the one obsidian or vscode has. Could be nice for power users of maskor (me)
+  - merge this with keyboard shortcut implementation > a way to execute commands AND map keyboard shortcuts in a sensible, global way
 
 - [x] Have conversation with Claude about specs, check obsidian vault, check files in the project
   - create a map of all that is implemented and needs to be done

@@ -1,4 +1,13 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetFragment,
@@ -27,10 +36,11 @@ type Props = {
   sidebarCollapsible?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: () => void;
+  customizeExtraActions?: (defaultExtraActions?: ReactNode) => ReactNode;
 };
 
 export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function FragmentEditor(
-  { projectId, fragmentId, sidebarCollapsible, onDirtyChange, onSaved },
+  { projectId, fragmentId, sidebarCollapsible, onDirtyChange, onSaved, customizeExtraActions },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -143,6 +153,27 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     );
   }, [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog]);
 
+  const extraActions = useMemo(() => {
+    const discardButton = (
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={isActionPending}
+        onClick={fragment?.isDiscarded ? handleRestore : handleDiscard}
+      >
+        {fragment?.isDiscarded
+          ? isRestorePending
+            ? "Restoring…"
+            : "Restore"
+          : isDiscardPending
+            ? "Discarding…"
+            : "Discard"}
+      </Button>
+    );
+
+    return customizeExtraActions ? customizeExtraActions(discardButton) : discardButton;
+  }, [isUpdatePending, isDiscardPending, isRestorePending, fragment?.isDiscarded, handleRestore, handleDiscard, customizeExtraActions]);
+
   if (isLoading) {
     return <p>Loading fragment…</p>;
   }
@@ -150,16 +181,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   if (isError || !fragment) {
     return <p>Failed to load fragment.</p>;
   }
-
-  const extraActions = fragment.isDiscarded ? (
-    <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleRestore}>
-      {isRestorePending ? "Restoring…" : "Restore"}
-    </Button>
-  ) : (
-    <Button size="sm" variant="outline" disabled={isActionPending} onClick={handleDiscard}>
-      {isDiscardPending ? "Discarding…" : "Discard"}
-    </Button>
-  );
 
   const discardedBanner = fragment.isDiscarded ? (
     <div className="rounded border border-muted bg-muted/30 px-4 py-2 text-sm text-muted-foreground">

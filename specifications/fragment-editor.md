@@ -20,7 +20,7 @@ The fragment editor is a focused, single-fragment view. It lets the user read an
 - Save
 - Discard / restore lifecycle action
 - Reflecting vault-side changes via SSE events (live reload on external edit)
-- Vim mode as an opt-in prose editor variant (hardcoded prop for now)
+- Vim mode as an opt-in prose editor variant
 
 ### Out of scope
 

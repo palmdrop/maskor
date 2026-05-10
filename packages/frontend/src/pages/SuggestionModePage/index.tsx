@@ -102,8 +102,8 @@ export const SuggestionModePage = () => {
 
   const showNudge = avoidanceCount >= AVOIDANCE_NUDGE_THRESHOLD && !dismissedNudges.has(fragmentId);
 
-  return (
-    <div className="flex h-full flex-col">
+  const extraActions = (
+    <>
       {saveError && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm">
           <span className="text-destructive">{saveError}</span>
@@ -115,12 +115,16 @@ export const SuggestionModePage = () => {
           </button>
         </div>
       )}
-      <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border px-4 py-2">
+      <div className="flex shrink-0 items-center justify-end gap-2 border-border">
         <Button size="sm" disabled={isLoadingNext} onClick={() => void handleNext()}>
           {isLoadingNext ? "Loading…" : "Next"}
-          <span className="ml-1 text-xs opacity-60">⌘↵</span>
         </Button>
       </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-full flex-col">
       {showNudge && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2 text-sm">
           <span className="text-muted-foreground">
@@ -142,6 +146,12 @@ export const SuggestionModePage = () => {
           projectId={projectId}
           fragmentId={fragmentId}
           sidebarCollapsible
+          customizeExtraActions={(defaultExtraActions) => (
+            <>
+              {extraActions}
+              {defaultExtraActions}
+            </>
+          )}
         />
       </div>
     </div>

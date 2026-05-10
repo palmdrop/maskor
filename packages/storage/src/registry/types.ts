@@ -8,6 +8,8 @@ export type ProjectRecord = {
   editor: {
     vimMode: boolean;
     rawMarkdownMode: boolean;
+    fontSize: number;
+    maxParagraphWidth: number;
   };
   suggestion: {
     readyStatusThreshold: number;
