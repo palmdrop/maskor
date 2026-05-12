@@ -1,6 +1,6 @@
 # Spec: Project Statistics
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-05-07
 
 ---

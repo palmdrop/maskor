@@ -1,6 +1,6 @@
 # Spec: Fragment Prompting
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-05-08
 
 ---
