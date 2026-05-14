@@ -4,8 +4,8 @@ import {
   useCreateReference,
   useDeleteReference,
   getListReferencesQueryKey,
-} from "../../../api/generated/references/references";
-import { AttachableEntityPanel } from "../../../components/attachable-entity-panel";
+} from "@api/generated/references/references";
+import { AttachableEntityPanel } from "@components/attachable-entity-panel";
 
 export const ReferencesTab = ({ projectId }: { projectId: string }) => {
   const queryClient = useQueryClient();

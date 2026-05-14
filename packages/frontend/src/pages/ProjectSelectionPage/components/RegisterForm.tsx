@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useCreateProject,
-  getListProjectsQueryKey,
-} from "../../../api/generated/projects/projects";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
+import { useCreateProject, getListProjectsQueryKey } from "@api/generated/projects/projects";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
 
 export const RegisterForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const queryClient = useQueryClient();

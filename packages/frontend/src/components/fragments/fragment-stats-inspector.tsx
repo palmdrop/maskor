@@ -1,5 +1,5 @@
-import { useGetFragmentStats } from "../../api/generated/stats/stats";
-import { Label } from "../ui/label";
+import { useGetFragmentStats } from "@api/generated/stats/stats";
+import { Label } from "@components/ui/label";
 
 type Props = {
   projectId: string;

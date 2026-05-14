@@ -16,15 +16,15 @@ import {
   useRestoreFragment,
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
-} from "../../api/generated/fragments/fragments";
-import { useGetProject } from "../../api/generated/projects/projects";
-import { getGetFragmentStatsQueryKey } from "../../api/generated/stats/stats";
-import { useInvalidateActionLog } from "../../api/action-log";
+} from "@api/generated/fragments/fragments";
+import { useGetProject } from "@api/generated/projects/projects";
+import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
+import { useInvalidateActionLog } from "@api/action-log";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
-import { Button } from "../ui/button";
-import { EntityEditorShell, type EntityEditorShellHandle } from "../entity-editor-shell";
-import { Separator } from "../ui/separator";
+import { Button } from "@components/ui/button";
+import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
+import { Separator } from "@components/ui/separator";
 
 export type FragmentEditorHandle = {
   save: () => Promise<void>;

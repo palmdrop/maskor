@@ -7,17 +7,17 @@ import {
   useUpdateAspect,
   getGetAspectQueryKey,
   getListAspectsQueryKey,
-} from "../../../api/generated/aspects/aspects";
-import { useListNotes } from "../../../api/generated/notes/notes";
-import { useInvalidateActionLog } from "../../../api/action-log";
-import { useLiveFieldSave } from "../../../hooks/useLiveFieldSave";
-import type { Aspect, AspectUpdate } from "../../../api/generated/maskorAPI.schemas";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { EntityTag } from "../../../components/entity-tag";
-import { TagCombobox } from "../../../components/ui/tag-combobox";
-import { EntityEditorShell } from "../../../components/entity-editor-shell";
+} from "@api/generated/aspects/aspects";
+import { useListNotes } from "@api/generated/notes/notes";
+import { useInvalidateActionLog } from "@api/action-log";
+import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
+import type { Aspect, AspectUpdate } from "@api/generated/maskorAPI.schemas";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { EntityTag } from "@components/entity-tag";
+import { TagCombobox } from "@components/ui/tag-combobox";
+import { EntityEditorShell } from "@components/entity-editor-shell";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;

@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useGetProjectStats } from "../../api/generated/stats/stats";
-import type { FragmentStatsSummary } from "../../api/generated/maskorAPI.schemas";
+import { useGetProjectStats } from "@api/generated/stats/stats";
+import type { FragmentStatsSummary } from "@api/generated/maskorAPI.schemas";
 
 const HISTOGRAM_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"] as const;
 

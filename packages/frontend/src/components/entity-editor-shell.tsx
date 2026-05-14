@@ -3,10 +3,10 @@ import { ProseEditor, type ProseEditorHandle } from "./prose-editor";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
-import { useDelayedPending } from "../hooks/useDelayedPending";
-import { useKeyEdit } from "../hooks/useKeyEdit";
-import { useProjectEditorConfig } from "../hooks/useProjectEditorConfig";
-import { usePersistedBoolean } from "../hooks/usePersistedBoolean";
+import { useDelayedPending } from "@hooks/useDelayedPending";
+import { useKeyEdit } from "@hooks/useKeyEdit";
+import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;

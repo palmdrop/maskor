@@ -1,7 +1,7 @@
 import { Link, Outlet, useParams } from "@tanstack/react-router";
-import { useGetProject } from "../api/generated/projects/projects";
-import { useVaultEvents } from "../hooks/useVaultEvents";
-import { useKeyboardNav } from "../hooks/useKeyboardNav";
+import { useGetProject } from "@api/generated/projects/projects";
+import { useVaultEvents } from "@hooks/useVaultEvents";
+import { useKeyboardNav } from "@hooks/useKeyboardNav";
 
 export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });

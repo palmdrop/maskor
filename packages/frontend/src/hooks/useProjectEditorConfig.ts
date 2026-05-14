@@ -1,4 +1,4 @@
-import { useGetProject } from "../api/generated/projects/projects";
+import { useGetProject } from "@api/generated/projects/projects";
 
 export type ProjectEditorConfig = {
   vimMode: boolean;

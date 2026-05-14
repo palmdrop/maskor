@@ -2,9 +2,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Typography from "@tiptap/extension-typography";
-import { useGetFragment } from "../../api/generated/fragments/fragments";
-import { Heading } from "../heading";
-import { Separator } from "../ui/separator";
+import { useGetFragment } from "@api/generated/fragments/fragments";
+import { Heading } from "@components/heading";
+import { Separator } from "@components/ui/separator";
 import { FragmentMetadata } from "./fragment-metadata";
 
 type Props = {

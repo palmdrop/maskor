@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useDeleteProject,
-  getListProjectsQueryKey,
-} from "../../../api/generated/projects/projects";
-import type { Project } from "../../../api/generated/maskorAPI.schemas";
-import { Button } from "../../../components/ui/button";
+import { useDeleteProject, getListProjectsQueryKey } from "@api/generated/projects/projects";
+import type { Project } from "@api/generated/maskorAPI.schemas";
+import { Button } from "@components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../components/ui/dialog";
+} from "@components/ui/dialog";
 
 export const DeregisterDialog = ({
   project,

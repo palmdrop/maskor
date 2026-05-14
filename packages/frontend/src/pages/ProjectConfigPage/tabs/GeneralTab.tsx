@@ -4,14 +4,14 @@ import {
   useUpdateProject,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
-} from "../../../api/generated/projects/projects";
-import type { Project } from "../../../api/generated/maskorAPI.schemas";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { Switch } from "../../../components/ui/switch";
-import { Slider } from "../../../components/ui/slider";
-import { Button } from "../../../components/ui/button";
-import { useRebuildIndex } from "../../../api/generated/index";
+} from "@api/generated/projects/projects";
+import type { Project } from "@api/generated/maskorAPI.schemas";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { Switch } from "@components/ui/switch";
+import { Slider } from "@components/ui/slider";
+import { Button } from "@components/ui/button";
+import { useRebuildIndex } from "@api/generated/index";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();

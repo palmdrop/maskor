@@ -1,5 +1,5 @@
-import type { IndexedFragment } from "../../api/generated/maskorAPI.schemas";
-import { Button } from "../ui/button";
+import type { IndexedFragment } from "@api/generated/maskorAPI.schemas";
+import { Button } from "@components/ui/button";
 
 type Props = {
   fragments: IndexedFragment[];

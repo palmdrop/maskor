@@ -4,8 +4,8 @@ import {
   useCreateNote,
   useDeleteNote,
   getListNotesQueryKey,
-} from "../../../api/generated/notes/notes";
-import { AttachableEntityPanel } from "../../../components/attachable-entity-panel";
+} from "@api/generated/notes/notes";
+import { AttachableEntityPanel } from "@components/attachable-entity-panel";
 
 export const NotesTab = ({ projectId }: { projectId: string }) => {
   const queryClient = useQueryClient();

@@ -11,11 +11,11 @@ import { FragmentMetadataForm } from "./fragment-metadata-form";
 import {
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
-} from "../../api/generated/fragments/fragments";
-import { getListAspectsQueryKey } from "../../api/generated/aspects/aspects";
-import { getListNotesQueryKey } from "../../api/generated/notes/notes";
-import { getListReferencesQueryKey } from "../../api/generated/references/references";
-import type { Fragment } from "../../api/generated/maskorAPI.schemas";
+} from "@api/generated/fragments/fragments";
+import { getListAspectsQueryKey } from "@api/generated/aspects/aspects";
+import { getListNotesQueryKey } from "@api/generated/notes/notes";
+import { getListReferencesQueryKey } from "@api/generated/references/references";
+import type { Fragment } from "@api/generated/maskorAPI.schemas";
 
 const projectId = "project-1";
 

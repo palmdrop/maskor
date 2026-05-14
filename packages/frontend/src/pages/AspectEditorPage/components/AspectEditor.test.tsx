@@ -34,9 +34,9 @@ import { AspectEditor } from "./AspectEditor";
 import {
   getGetAspectQueryKey,
   getListAspectsQueryKey,
-} from "../../../api/generated/aspects/aspects";
-import { getListNotesQueryKey } from "../../../api/generated/notes/notes";
-import type { Aspect } from "../../../api/generated/maskorAPI.schemas";
+} from "@api/generated/aspects/aspects";
+import { getListNotesQueryKey } from "@api/generated/notes/notes";
+import type { Aspect } from "@api/generated/maskorAPI.schemas";
 
 const projectId = "project-1";
 const aspectId = "aspect-1";

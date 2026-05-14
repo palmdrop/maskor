@@ -1,4 +1,4 @@
-import type { FragmentSummary } from "../../../api/generated/maskorAPI.schemas";
+import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 
 interface TileContentProps {
   fragment: FragmentSummary;

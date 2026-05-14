@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useListProjects } from "../../api/generated/projects/projects";
-import { Button } from "../../components/ui/button";
+import { useListProjects } from "@api/generated/projects/projects";
+import { Button } from "@components/ui/button";
 import { RegisterForm } from "./components/RegisterForm";
 import { DeregisterDialog } from "./components/DeregisterDialog";
 

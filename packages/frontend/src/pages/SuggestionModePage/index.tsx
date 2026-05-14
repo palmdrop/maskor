@@ -3,9 +3,9 @@ import { Link, useParams } from "@tanstack/react-router";
 import {
   FragmentEditor,
   type FragmentEditorHandle,
-} from "../../components/fragments/fragment-editor";
-import { Button } from "../../components/ui/button";
-import { getNextSuggestion } from "../../api/suggestion";
+} from "@components/fragments/fragment-editor";
+import { Button } from "@components/ui/button";
+import { getNextSuggestion } from "@api/suggestion";
 
 // TODO: this should be configured globally and not in a random FE-component
 const AVOIDANCE_NUDGE_THRESHOLD = 3;

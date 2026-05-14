@@ -1,6 +1,6 @@
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
-import { useGetProject } from "../../api/generated/projects/projects";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { useGetProject } from "@api/generated/projects/projects";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ReferencesTab } from "./tabs/ReferencesTab";

@@ -7,10 +7,10 @@ import {
   useUpdateReference,
   getGetReferenceQueryKey,
   getListReferencesQueryKey,
-} from "../../../api/generated/references/references";
-import { useInvalidateActionLog } from "../../../api/action-log";
-import { Button } from "../../../components/ui/button";
-import { EntityEditorShell } from "../../../components/entity-editor-shell";
+} from "@api/generated/references/references";
+import { useInvalidateActionLog } from "@api/action-log";
+import { Button } from "@components/ui/button";
+import { EntityEditorShell } from "@components/entity-editor-shell";
 
 type Props = {
   projectId: string;

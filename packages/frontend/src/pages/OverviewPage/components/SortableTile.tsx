@@ -1,6 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import type { FragmentSummary } from "../../../api/generated/maskorAPI.schemas";
+import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import { TileContent } from "./TileContent";
 
 interface TileContentProps {

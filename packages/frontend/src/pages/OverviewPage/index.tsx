@@ -28,10 +28,10 @@ import {
   useUnplaceFragment,
   getGetMainSequenceQueryKey,
   type GetMainSequenceResponse,
-} from "../../api/generated/sequences/sequences";
-import { useListFragmentSummaries } from "../../api/generated/fragments/fragments";
-import type { Sequence } from "../../api/generated/maskorAPI.schemas";
-import { Heading } from "../../components/heading";
+} from "@api/generated/sequences/sequences";
+import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
+import type { Sequence } from "@api/generated/maskorAPI.schemas";
+import { Heading } from "@components/heading";
 import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
 import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";

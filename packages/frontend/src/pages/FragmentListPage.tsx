@@ -8,13 +8,13 @@ import {
   useCreateFragment,
   useDeleteFragment,
   getListFragmentsQueryKey,
-} from "../api/generated/fragments/fragments";
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
-import { Label } from "../components/ui/label";
-import { Switch } from "../components/ui/switch";
-import { CreateEntityDialog } from "../components/create-entity-dialog";
-import { usePersistedBoolean } from "../hooks/usePersistedBoolean";
+} from "@api/generated/fragments/fragments";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Label } from "@components/ui/label";
+import { Switch } from "@components/ui/switch";
+import { CreateEntityDialog } from "@components/create-entity-dialog";
+import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 
 export const FragmentListPage = () => {
   const from = "/projects/$projectId/fragments" as const;

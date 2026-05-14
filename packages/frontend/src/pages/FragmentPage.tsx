@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { FragmentEditor } from "../components/fragments/fragment-editor";
-import { recordFragmentVisit } from "../api/suggestion";
+import { FragmentEditor } from "@components/fragments/fragment-editor";
+import { recordFragmentVisit } from "@api/suggestion";
 
 export const FragmentPage = () => {
   const from = "/projects/$projectId/fragments/$fragmentId" as const;

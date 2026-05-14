@@ -1,5 +1,5 @@
-import type { Fragment } from "../../api/generated/maskorAPI.schemas";
-import { MetadataList, MetadataProperty } from "../metadata-property";
+import type { Fragment } from "@api/generated/maskorAPI.schemas";
+import { MetadataList, MetadataProperty } from "@components/metadata-property";
 
 type Props = {
   fragment: Fragment;

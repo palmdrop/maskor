@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useActionLog } from "../../api/action-log";
-import { useListFragments } from "../../api/generated/fragments/fragments";
-import { useListAspects } from "../../api/generated/aspects/aspects";
-import { useListNotes } from "../../api/generated/notes/notes";
-import { useListReferences } from "../../api/generated/references/references";
+import { useActionLog } from "@api/action-log";
+import { useListFragments } from "@api/generated/fragments/fragments";
+import { useListAspects } from "@api/generated/aspects/aspects";
+import { useListNotes } from "@api/generated/notes/notes";
+import { useListReferences } from "@api/generated/references/references";
 import { ActionLogList, type ExistenceMaps } from "./ActionLogList";
 
 const buildExistenceSet = <T extends { status: number; data: unknown } | undefined>(

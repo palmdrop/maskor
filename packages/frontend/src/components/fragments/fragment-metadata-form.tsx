@@ -1,20 +1,20 @@
 import { useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Fragment, FragmentUpdate } from "../../api/generated/maskorAPI.schemas";
+import type { Fragment, FragmentUpdate } from "@api/generated/maskorAPI.schemas";
 import {
   useUpdateFragment,
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
-} from "../../api/generated/fragments/fragments";
-import { useListAspects } from "../../api/generated/aspects/aspects";
-import { useListNotes } from "../../api/generated/notes/notes";
-import { useListReferences } from "../../api/generated/references/references";
-import { useInvalidateActionLog } from "../../api/action-log";
-import { useLiveFieldSave } from "../../hooks/useLiveFieldSave";
-import { Label } from "../ui/label";
-import { Slider } from "../ui/slider";
-import { TagCombobox } from "../ui/tag-combobox";
-import { EntityTag } from "../entity-tag";
+} from "@api/generated/fragments/fragments";
+import { useListAspects } from "@api/generated/aspects/aspects";
+import { useListNotes } from "@api/generated/notes/notes";
+import { useListReferences } from "@api/generated/references/references";
+import { useInvalidateActionLog } from "@api/action-log";
+import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
+import { Label } from "@components/ui/label";
+import { Slider } from "@components/ui/slider";
+import { TagCombobox } from "@components/ui/tag-combobox";
+import { EntityTag } from "@components/entity-tag";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;

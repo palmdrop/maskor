@@ -5,17 +5,17 @@ import {
   usePutArc,
   useDeleteArc,
   getGetArcQueryKey,
-} from "../../../api/generated/aspects/aspects";
-import type { ArcPoint } from "../../../api/generated/maskorAPI.schemas";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
+} from "@api/generated/aspects/aspects";
+import type { ArcPoint } from "@api/generated/maskorAPI.schemas";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../../components/ui/dialog";
+} from "@components/ui/dialog";
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 const DEFAULT_POINTS: ArcPoint[] = [
