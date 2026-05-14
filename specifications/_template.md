@@ -2,6 +2,11 @@
 
 **Status**: Draft | Stable | Implemented
 **Last updated**: YYYY-MM-DD
+**Shipped**:
+
+- YYYY-MM-DD — Short description of what has been shipped. (plan: `scripts/ralph/archive/YYYY-MM-DD-<feature-name>/`)
+
+> `Shipped` is the running log of work already done against this spec. One bullet per slice, newest at the bottom. The `plan` reference points to the archived Ralph run that produced the slice. Remove this line and leave the list empty if nothing has shipped yet.
 
 ---
 

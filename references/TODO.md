@@ -26,11 +26,15 @@
 
 - [ ] add import aliases in frontend - all import paths are ugly
 
+- [ ]
+
 - [ ] try a ralph-like workflow, inspo https://www.youtube.com/watch?v=_IK18goX4X8
   - progress file
+  - IMPLEMENT FROM THIS: https://github.com/snarktank/ralph/tree/main
   - PIN! i.e short summary of project setup, see https://www.youtube.com/watch?v=4Nna09dG_c0
     - used to give initial context, for example, before discussing specs
     - TODO: try with spec for adding links/comments
+    - use specifications/vision.md
   - pool of tasks or user stories to complete
   - derive from specs somehow?
   - TODO: go over all the plans and specs, figure out what is already done, and figure out what's left to do.
