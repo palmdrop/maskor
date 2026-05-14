@@ -20,9 +20,11 @@ export type {
   VaultIndexer,
   IndexedFragment,
   IndexedFragmentAspect,
+  IndexedFragmentSummary,
   IndexedAspect,
   IndexedNote,
   IndexedReference,
+  IndexedSequence,
   RebuildStats,
   SyncWarning,
 } from "./indexer/types";

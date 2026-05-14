@@ -1,17 +1,20 @@
 import { and, eq, not, or } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { SQLiteBunTransaction } from "drizzle-orm/bun-sqlite";
-import type { Aspect, Fragment, Note, Reference } from "@maskor/shared";
+import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
 import {
   aspectNotesTable,
   aspectsTable,
   fragmentAspectsTable,
   fragmentNotesTable,
+  fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentStatsTable,
   fragmentsTable,
   notesTable,
   referencesTable,
+  sectionsTable,
+  sequencesTable,
 } from "../db/vault/schema";
 import type * as schema from "../db/vault/schema";
 import type { VaultDatabase } from "../db/vault";
@@ -132,6 +135,11 @@ export const upsertReference = (
     .run();
 };
 
+const buildExcerpt = (content: string, maxLength = 200): string => {
+  const stripped = content.replace(/[#*_`[\]>]/g, "").replace(/\n+/g, " ").trim();
+  return stripped.length > maxLength ? stripped.slice(0, maxLength) + "…" : stripped;
+};
+
 // Returns any SyncWarnings generated (only fragments can produce UNKNOWN_ASPECT_KEY).
 // rawContent must be the full file string (frontmatter + body) so the stored hash covers
 // the entire file — ensuring watcher hash-guards fire correctly on frontmatter-only edits.
@@ -147,12 +155,15 @@ export const upsertFragment = (
 
   const isDiscarded = filePath.startsWith("discarded/");
 
+  const excerpt = buildExcerpt(fragment.content);
+
   tx.insert(fragmentsTable)
     .values({
       uuid: fragment.uuid,
       key: fragment.key,
       isDiscarded,
       readyStatus: fragment.readyStatus,
+      excerpt,
       contentHash,
       filePath,
       updatedAt: fragment.updatedAt,
@@ -164,6 +175,7 @@ export const upsertFragment = (
         key: fragment.key,
         isDiscarded,
         readyStatus: fragment.readyStatus,
+        excerpt,
         contentHash,
         filePath,
         updatedAt: fragment.updatedAt,
@@ -222,6 +234,92 @@ export const deleteNoteByFilePath = (tx: Transaction, filePath: string): void =>
 
 export const deleteReferenceByFilePath = (tx: Transaction, filePath: string): void => {
   tx.delete(referencesTable).where(eq(referencesTable.filePath, filePath)).run();
+};
+
+export const upsertSequence = (
+  tx: Transaction,
+  sequence: Sequence,
+  filePath: string,
+  rawContent: string,
+): void => {
+  const syncedAt = new Date();
+  const contentHash = hashContent(rawContent);
+
+  // Pre-delete any row colliding on filePath with a different uuid.
+  tx.delete(sequencesTable)
+    .where(
+      and(
+        not(eq(sequencesTable.uuid, sequence.uuid)),
+        eq(sequencesTable.filePath, filePath),
+      ),
+    )
+    .run();
+
+  // If this sequence is main, clear the main flag on all others in the same project
+  // to preserve the one-main-per-project invariant.
+  if (sequence.isMain) {
+    tx.update(sequencesTable)
+      .set({ isMain: false })
+      .where(
+        and(
+          eq(sequencesTable.projectUuid, sequence.projectUuid),
+          not(eq(sequencesTable.uuid, sequence.uuid)),
+        ),
+      )
+      .run();
+  }
+
+  tx.insert(sequencesTable)
+    .values({
+      uuid: sequence.uuid,
+      name: sequence.name,
+      projectUuid: sequence.projectUuid,
+      isMain: sequence.isMain,
+      filePath,
+      contentHash,
+      syncedAt,
+    })
+    .onConflictDoUpdate({
+      target: sequencesTable.uuid,
+      set: {
+        name: sequence.name,
+        projectUuid: sequence.projectUuid,
+        isMain: sequence.isMain,
+        filePath,
+        contentHash,
+        syncedAt,
+      },
+    })
+    .run();
+
+  // Replace sections and their fragment_positions (sections cascade-delete positions).
+  tx.delete(sectionsTable).where(eq(sectionsTable.sequenceUuid, sequence.uuid)).run();
+
+  sequence.sections.forEach((section, sectionIndex) => {
+    tx.insert(sectionsTable)
+      .values({
+        uuid: section.uuid,
+        name: section.name,
+        sequenceUuid: sequence.uuid,
+        position: sectionIndex,
+      })
+      .run();
+
+    for (const fragmentPosition of section.fragments) {
+      tx.insert(fragmentPositionsTable)
+        .values({
+          uuid: fragmentPosition.uuid,
+          fragmentUuid: fragmentPosition.fragmentUuid,
+          sectionUuid: section.uuid,
+          position: fragmentPosition.position,
+        })
+        .run();
+    }
+  });
+};
+
+export const deleteSequenceByFilePath = (tx: Transaction, filePath: string): void => {
+  tx.delete(sequencesTable).where(eq(sequencesTable.filePath, filePath)).run();
 };
 
 export const findFragmentUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {

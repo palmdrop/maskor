@@ -18,6 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@maskor/sequencer": "workspace:*",
     "@maskor/shared": "workspace:*",
     "@maskor/storage": "workspace:*",
     "hono": "^4.7.10",

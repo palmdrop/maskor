@@ -1,7 +1,7 @@
 # Spec: Overview
 
 **Status**: Stable
-**Last updated**: 2026-04-27
+**Last updated**: 2026-05-12
 
 ---
 
@@ -104,6 +104,21 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 ---
 
+## Implementation status
+
+**First slice shipped (2026-05-12):** `/overview` route now renders a live sequencer surface. Sequence zone (horizontal sortable row) + unassigned pool (wrappable grid). Drag-and-drop with `@dnd-kit/core` + `@dnd-kit/sortable`. Optimistic updates with React Query rollback.
+
+**Deferred to follow-up plans:**
+- Arc overlays (require arc data model and API endpoint — see `aspect-arc-model.md`)
+- Sections UI (data model and storage are ready; UI labels and reordering are deferred)
+- Secondary sequences picker
+- Zoom and pan
+- Arrow-key rearrangement
+- Aspect color-coding and filter panel
+- Fitting score visualisation on tiles
+
+---
+
 ## Prior decisions
 
 - **HTML/CSS over canvas**: Explicitly chosen to preserve text selection, link following, and browser accessibility. Canvas-like zoom and pan behavior must be achieved within HTML/CSS constraints.
@@ -113,10 +128,10 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 ## Open questions
 
 - [ ] 2026-04-27 — Should fitting scores be visualised in the overview (e.g. tile border color or a score badge)?
-- [ ] 2026-04-27 — Where does the unassigned pool appear? A sidebar, a separate row above/below the sequence, or is the overview only for placed fragments?
+- [x] 2026-04-27 — Where does the unassigned pool appear? A sidebar, a separate row above/below the sequence, or is the overview only for placed fragments? **Resolved 2026-05-12**: Pool appears as a separate zone below the sequence row, rendered as a wrappable grid of tiles. Pool is implicit (all non-discarded fragments not in any section of the main sequence) — no server-side pool entity.
 - [ ] 2026-04-27 — Are secondary sequences viewable in the overview, or only the main sequence? Secondary sequences are defined in `sequencer.md`.
 - [ ] 2026-04-27 — How is aspect color-coding resolved when a fragment has high weights for multiple aspects (most-dominant wins, blend, or user picks which aspect to highlight)?
-- [ ] 2026-04-27 — Does the overview serve as the entry point for placing unassigned fragments, or only for rearranging already-placed ones?
+- [x] 2026-04-27 — Does the overview serve as the entry point for placing unassigned fragments, or only for rearranging already-placed ones? **Resolved 2026-05-12**: Both. The pool zone is a drag source; dragging a pool tile into the sequence zone places it. The overview is the primary placement surface.
 - [ ] 2026-04-27 — Where are arc curves fetched from in the frontend? Arc data is vault-stored in `<vault>/.maskor/config/arcs/` (see `aspect-arc-model.md`) and served via the API. An arc endpoint needs to be defined before arc overlays can be implemented.
 
 ---

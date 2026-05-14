@@ -85,6 +85,20 @@
       "when": 1747008000000,
       "tag": "20260508_add_word_count_to_fragment_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1747094400000,
+      "tag": "20260512_add_sequences",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1747180800000,
+      "tag": "20260512_add_fragment_excerpt",
+      "breakpoints": true
     }
   ]
 }

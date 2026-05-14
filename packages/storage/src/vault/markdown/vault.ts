@@ -1,4 +1,4 @@
-import type { Aspect, Fragment, Logger, Note, Reference } from "@maskor/shared";
+import type { Aspect, Fragment, Logger, Note, Reference, Sequence } from "@maskor/shared";
 import type { Vault, VaultConfig } from "../types";
 import { VaultError } from "../types";
 import { parseFile } from "./parse";
@@ -7,8 +7,9 @@ import * as fragmentMapper from "./mappers/fragment";
 import * as aspectMapper from "./mappers/aspect";
 import * as noteMapper from "./mappers/note";
 import * as referenceMapper from "./mappers/reference";
+import * as sequenceMapper from "./mappers/sequence";
 import { initFragment } from "./init";
-import { rename, unlink } from "node:fs/promises";
+import { rename, unlink, mkdir } from "node:fs/promises";
 import { join, basename, sep, resolve } from "node:path";
 
 // --- helpers ---
@@ -25,6 +26,21 @@ const readMarkdown = async (absolutePath: string): Promise<string> => {
 };
 
 const writeMarkdown = async (absolutePath: string, content: string): Promise<void> => {
+  await Bun.write(absolutePath, content);
+};
+
+const readYaml = async (absolutePath: string): Promise<string> => {
+  const file = Bun.file(absolutePath);
+  if (!(await file.exists())) {
+    throw new VaultError("FILE_NOT_FOUND", `File not found: "${absolutePath}"`, {
+      filePath: absolutePath,
+      reason: "File does not exist or was removed before read",
+    });
+  }
+  return file.text();
+};
+
+const writeYaml = async (absolutePath: string, content: string): Promise<void> => {
   await Bun.write(absolutePath, content);
 };
 
@@ -54,6 +70,8 @@ export const createVault = (config: VaultConfig): Vault => {
   const toAbsoluteNote = makeToAbsolute(resolve(vaultPath("notes")));
   const toAbsoluteReference = makeToAbsolute(resolve(vaultPath("references")));
   const toAbsolutePiece = makeToAbsolute(resolve(vaultPath("pieces")));
+  const sequencesDir = resolve(vaultPath(".maskor", "sequences"));
+  const toAbsoluteSequence = makeToAbsolute(sequencesDir);
 
   const log: Logger =
     config.logger?.child({ module: "vault" }) ??
@@ -81,6 +99,29 @@ export const createVault = (config: VaultConfig): Vault => {
           errorMessage: error instanceof Error ? error.message : String(error),
         },
         "failed to list markdown files in directory",
+      );
+      return [];
+    }
+
+    return entries;
+  };
+
+  // Returns filenames relative to absoluteDirectory (e.g. "<uuid>.yaml", not a full path).
+  const listYamlFiles = async (absoluteDirectory: string): Promise<string[]> => {
+    const glob = new Bun.Glob("*.yaml");
+    const entries: string[] = [];
+
+    try {
+      for await (const fileName of glob.scan({ cwd: absoluteDirectory, onlyFiles: true })) {
+        entries.push(fileName);
+      }
+    } catch (error) {
+      log.error(
+        {
+          directory: absoluteDirectory,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+        "failed to list yaml files in directory",
       );
       return [];
     }
@@ -347,6 +388,66 @@ export const createVault = (config: VaultConfig): Vault => {
           throw cause;
         }
         log.debug({ filePath }, "reference deleted");
+      },
+    },
+
+    sequences: {
+      async read(filename) {
+        const absolutePath = toAbsoluteSequence(filename);
+        const raw = await readYaml(absolutePath);
+        try {
+          return sequenceMapper.fromFile(raw, config.projectUuid ?? "");
+        } catch (cause) {
+          throw new VaultError(
+            "SEQUENCE_NOT_FOUND",
+            `Failed to parse sequence file: "${filename}"`,
+            { filePath: filename, reason: "YAML parse or mapping failed" },
+            { cause },
+          );
+        }
+      },
+
+      async readAll() {
+        const files = await listYamlFiles(sequencesDir);
+        return Promise.all(files.map((file) => this.read(file)));
+      },
+
+      async readAllWithFilePaths() {
+        const files = await listYamlFiles(sequencesDir);
+        return Promise.all(
+          files.map(async (filename) => {
+            const absolutePath = toAbsoluteSequence(filename);
+            const rawContent = await readYaml(absolutePath);
+            const entity = sequenceMapper.fromFile(rawContent, config.projectUuid ?? "");
+            return { entity, filePath: filename, rawContent };
+          }),
+        );
+      },
+
+      async write(sequence: Sequence) {
+        await mkdir(sequencesDir, { recursive: true });
+        const filename = `${sequence.uuid}.yaml`;
+        const absolutePath = toAbsoluteSequence(filename);
+        await writeYaml(absolutePath, sequenceMapper.toFile(sequence));
+        log.debug({ filename }, "sequence written");
+      },
+
+      async delete(filename: string) {
+        const absolutePath = toAbsoluteSequence(filename);
+        try {
+          await unlink(absolutePath);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") {
+            throw new VaultError(
+              "SEQUENCE_NOT_FOUND",
+              `Sequence file not found: ${filename}`,
+              { filePath: filename },
+              { cause },
+            );
+          }
+          throw cause;
+        }
+        log.debug({ filename }, "sequence deleted");
       },
     },
 

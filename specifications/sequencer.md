@@ -1,7 +1,15 @@
 # Spec: Sequencer
 
 **Status**: Draft
-**Last updated**: 2026-04-27
+**Last updated**: 2026-05-12
+
+---
+
+## Implementation status
+
+**First slice shipped (2026-05-12):** Manual placement only. Single implicit main sequence, single default section ("Main"). Full data model is spec-shaped from day one (sections present in vault files and DB) so adding sections UI, secondary sequences, and scoring later is purely additive — no vault-file migration required.
+
+Out of the first slice: fitting scores, key fragments, semi-random and automatic modes, secondary sequences, noise, deadlock detection, arc overlays, multiple-sequence UI, section reordering UI, and arrow-key rearrangement.
 
 ---
 
@@ -151,7 +159,7 @@ Vault files in `<vault>/.maskor/sequences/` are the source of truth for sequence
 - [ ] 2026-04-27 — What is the cool-down mechanism for rejected fragments in semi-random mode? Fixed number of proposals, or time/position-based?
 - [x] 2026-04-27 — What are "secondary sequences"? **Resolved**: A secondary sequence is a partial ordering — a chain of fragments that must appear in a specific relative order (A → B → C), or must appear within a specific section. Secondary sequences are the mechanism for fragment-level ordering constraints. The interleaving config then defines how these sequence-streams are woven into the main sequence. They do not need to cover all fragments. See `interleaving.md`.
 - [ ] 2026-04-27 — How is deadlock resolution surfaced to the user? Error message, visual highlight, or a conflict resolution UI?
-- [ ] 2026-04-27 — DB schema for sequences/sections/fragment positions is not yet defined. What tables and columns are needed?
+- [x] 2026-04-27 — DB schema for sequences/sections/fragment positions is not yet defined. What tables and columns are needed? **Resolved 2026-05-12**: `sequences`, `sections`, `fragment_positions` tables added in `20260512_add_sequences.sql`. `fitting_scores` and `key_fragments` deferred to a later slice.
 - [ ] 2026-04-27 — Does the sequencer operate on a whole sequence at once, or can it place fragments into an arbitrary subset of positions (partial run)?
 - [ ] 2026-04-27 — Arc and Interleaving types are stubs. The sequencer spec cannot be finalized until these inputs are defined.
 

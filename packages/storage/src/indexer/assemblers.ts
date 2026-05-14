@@ -1,7 +1,13 @@
 // --- assembly helpers ---
 
-import type { aspectsTable, fragmentsTable } from "../db/vault/schema";
-import type { IndexedAspect, IndexedFragment } from "./types";
+import type {
+  aspectsTable,
+  fragmentPositionsTable,
+  fragmentsTable,
+  sectionsTable,
+  sequencesTable,
+} from "../db/vault/schema";
+import type { IndexedAspect, IndexedFragment, IndexedSequence } from "./types";
 
 export const assembleFragment = (
   row: typeof fragmentsTable.$inferSelect,
@@ -39,4 +45,31 @@ export const assembleAspect = (
   category: row.category ?? undefined,
   filePath: row.filePath,
   notes: noteRows.map((note) => note.noteKey),
+});
+
+export const assembleSequence = (
+  row: typeof sequencesTable.$inferSelect,
+  sectionRows: Array<typeof sectionsTable.$inferSelect>,
+  fragmentPositionRows: Array<typeof fragmentPositionsTable.$inferSelect>,
+): IndexedSequence => ({
+  uuid: row.uuid,
+  name: row.name,
+  isMain: row.isMain,
+  projectUuid: row.projectUuid,
+  filePath: row.filePath,
+  contentHash: row.contentHash,
+  sections: [...sectionRows]
+    .sort((a, b) => a.position - b.position)
+    .map((section) => ({
+      uuid: section.uuid,
+      name: section.name,
+      fragments: fragmentPositionRows
+        .filter((fp) => fp.sectionUuid === section.uuid)
+        .sort((a, b) => a.position - b.position)
+        .map((fp) => ({
+          uuid: fp.uuid,
+          fragmentUuid: fp.fragmentUuid,
+          position: fp.position,
+        })),
+    })),
 });

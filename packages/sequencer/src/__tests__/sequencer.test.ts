@@ -1,0 +1,312 @@
+import { describe, it, expect } from "bun:test";
+import type { Sequence } from "@maskor/shared";
+import {
+  createDefaultSequence,
+  placeFragment,
+  moveFragment,
+  unplaceFragment,
+  getUnassignedFragmentUuids,
+  validateSequenceInvariants,
+} from "../index";
+
+const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
+
+function makeSequence(): Sequence {
+  return createDefaultSequence(PROJECT_UUID, "Test Sequence");
+}
+
+function mainSectionUuid(sequence: Sequence): string {
+  return sequence.sections[0]!.uuid;
+}
+
+function fragmentUuids(sequence: Sequence, sectionIndex = 0): string[] {
+  return sequence.sections[sectionIndex]!.fragments
+    .sort((a, b) => a.position - b.position)
+    .map((f) => f.fragmentUuid);
+}
+
+const FA = "aaaaaaaa-0000-0000-0000-000000000001";
+const FB = "bbbbbbbb-0000-0000-0000-000000000001";
+const FC = "cccccccc-0000-0000-0000-000000000001";
+const FD = "dddddddd-0000-0000-0000-000000000001";
+
+describe("createDefaultSequence", () => {
+  it("returns a sequence with isMain=true", () => {
+    const sequence = makeSequence();
+    expect(sequence.isMain).toBe(true);
+  });
+
+  it("has one section named Main with no fragments", () => {
+    const sequence = makeSequence();
+    expect(sequence.sections).toHaveLength(1);
+    expect(sequence.sections[0]!.name).toBe("Main");
+    expect(sequence.sections[0]!.fragments).toHaveLength(0);
+  });
+
+  it("assigns the provided projectUuid", () => {
+    const sequence = makeSequence();
+    expect(sequence.projectUuid).toBe(PROJECT_UUID);
+  });
+});
+
+describe("placeFragment", () => {
+  it("inserts at head (position 0)", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 0);
+    expect(fragmentUuids(sequence)).toEqual([FB, FA]);
+  });
+
+  it("inserts at tail", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    expect(fragmentUuids(sequence)).toEqual([FA, FB]);
+  });
+
+  it("inserts in the middle and shifts", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = placeFragment(sequence, FC, sectionUuid, 1);
+    expect(fragmentUuids(sequence)).toEqual([FA, FC, FB]);
+  });
+
+  it("clamps out-of-range position to tail", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 999);
+    expect(fragmentUuids(sequence)).toEqual([FA, FB]);
+  });
+
+  it("positions are always dense and 0-based after placement", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 0);
+    sequence = placeFragment(sequence, FC, sectionUuid, 1);
+    validateSequenceInvariants(sequence);
+  });
+
+  it("throws when fragment is already placed", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    expect(() => placeFragment(sequence, FA, sectionUuid, 1)).toThrow();
+  });
+
+  it("throws when section is not found", () => {
+    const sequence = makeSequence();
+    expect(() =>
+      placeFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0),
+    ).toThrow();
+  });
+});
+
+describe("moveFragment", () => {
+  it("moves backward within a section", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = placeFragment(sequence, FC, sectionUuid, 2);
+    // Move C (position 2) to position 0
+    sequence = moveFragment(sequence, FC, sectionUuid, 0);
+    expect(fragmentUuids(sequence)).toEqual([FC, FA, FB]);
+  });
+
+  it("moves forward within a section", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = placeFragment(sequence, FC, sectionUuid, 2);
+    // Move A (position 0) to position 2
+    sequence = moveFragment(sequence, FA, sectionUuid, 2);
+    expect(fragmentUuids(sequence)).toEqual([FB, FC, FA]);
+  });
+
+  it("moves to the same position (no-op in terms of order)", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = moveFragment(sequence, FA, sectionUuid, 0);
+    expect(fragmentUuids(sequence)).toEqual([FA, FB]);
+  });
+
+  it("moves across sections", () => {
+    let sequence = makeSequence();
+    sequence = {
+      ...sequence,
+      sections: [
+        ...sequence.sections,
+        { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] },
+      ],
+    };
+    const sectionA = sequence.sections[0]!.uuid;
+    const sectionB = sequence.sections[1]!.uuid;
+
+    sequence = placeFragment(sequence, FA, sectionA, 0);
+    sequence = placeFragment(sequence, FB, sectionA, 1);
+    sequence = placeFragment(sequence, FC, sectionB, 0);
+
+    // Move FB from section A to section B at position 0
+    sequence = moveFragment(sequence, FB, sectionB, 0);
+
+    expect(fragmentUuids(sequence, 0)).toEqual([FA]);
+    expect(fragmentUuids(sequence, 1)).toEqual([FB, FC]);
+  });
+
+  it("positions are dense and 0-based after cross-section move", () => {
+    let sequence = makeSequence();
+    sequence = {
+      ...sequence,
+      sections: [
+        ...sequence.sections,
+        { uuid: "22222222-0000-0000-0000-000000000002", name: "Act 2", fragments: [] },
+      ],
+    };
+    const sectionA = sequence.sections[0]!.uuid;
+    const sectionB = sequence.sections[1]!.uuid;
+
+    sequence = placeFragment(sequence, FA, sectionA, 0);
+    sequence = placeFragment(sequence, FB, sectionA, 1);
+    sequence = placeFragment(sequence, FC, sectionA, 2);
+    sequence = placeFragment(sequence, FD, sectionB, 0);
+
+    sequence = moveFragment(sequence, FB, sectionB, 0);
+    validateSequenceInvariants(sequence);
+  });
+
+  it("throws when fragment is not placed", () => {
+    const sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    expect(() => moveFragment(sequence, FA, sectionUuid, 0)).toThrow();
+  });
+
+  it("throws when target section is not found", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    expect(() =>
+      moveFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0),
+    ).toThrow();
+  });
+});
+
+describe("unplaceFragment", () => {
+  it("removes the fragment and re-compacts", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = placeFragment(sequence, FC, sectionUuid, 2);
+    sequence = unplaceFragment(sequence, FB);
+    expect(fragmentUuids(sequence)).toEqual([FA, FC]);
+    validateSequenceInvariants(sequence);
+  });
+
+  it("removes the only fragment, leaving an empty section", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = unplaceFragment(sequence, FA);
+    expect(sequence.sections[0]!.fragments).toHaveLength(0);
+  });
+
+  it("throws when fragment is not placed", () => {
+    const sequence = makeSequence();
+    expect(() => unplaceFragment(sequence, FA)).toThrow();
+  });
+});
+
+describe("getUnassignedFragmentUuids", () => {
+  it("returns all fragments when none are placed", () => {
+    const sequence = makeSequence();
+    const all = [FA, FB, FC];
+    expect(getUnassignedFragmentUuids(sequence, all)).toEqual(all);
+  });
+
+  it("excludes placed fragments", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    expect(getUnassignedFragmentUuids(sequence, [FA, FB, FC])).toEqual([FC]);
+  });
+
+  it("returns empty array when all fragments are placed", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    expect(getUnassignedFragmentUuids(sequence, [FA, FB])).toEqual([]);
+  });
+
+  it("excludes fragments across multiple sections", () => {
+    let sequence = makeSequence();
+    sequence = {
+      ...sequence,
+      sections: [
+        ...sequence.sections,
+        { uuid: "33333333-0000-0000-0000-000000000001", name: "Act 2", fragments: [] },
+      ],
+    };
+    const sectionA = sequence.sections[0]!.uuid;
+    const sectionB = sequence.sections[1]!.uuid;
+    sequence = placeFragment(sequence, FA, sectionA, 0);
+    sequence = placeFragment(sequence, FC, sectionB, 0);
+    expect(getUnassignedFragmentUuids(sequence, [FA, FB, FC, FD])).toEqual([FB, FD]);
+  });
+});
+
+describe("validateSequenceInvariants", () => {
+  it("passes for a valid sequence", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    expect(() => validateSequenceInvariants(sequence)).not.toThrow();
+  });
+
+  it("throws when positions are not dense", () => {
+    const sequence = makeSequence();
+    const badSequence: Sequence = {
+      ...sequence,
+      sections: [
+        {
+          ...sequence.sections[0]!,
+          fragments: [
+            { uuid: crypto.randomUUID(), fragmentUuid: FA, position: 0 },
+            { uuid: crypto.randomUUID(), fragmentUuid: FB, position: 2 },
+          ],
+        },
+      ],
+    };
+    expect(() => validateSequenceInvariants(badSequence)).toThrow();
+  });
+
+  it("throws when a fragment appears in two sections", () => {
+    const sequence = makeSequence();
+    const duplicateSequence: Sequence = {
+      ...sequence,
+      sections: [
+        {
+          ...sequence.sections[0]!,
+          fragments: [{ uuid: crypto.randomUUID(), fragmentUuid: FA, position: 0 }],
+        },
+        {
+          uuid: "44444444-0000-0000-0000-000000000001",
+          name: "Act 2",
+          fragments: [{ uuid: crypto.randomUUID(), fragmentUuid: FA, position: 0 }],
+        },
+      ],
+    };
+    expect(() => validateSequenceInvariants(duplicateSequence)).toThrow();
+  });
+});

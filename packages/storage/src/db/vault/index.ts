@@ -12,6 +12,7 @@ export const createVaultDatabase = (vaultRoot: string) => {
   mkdirSync(maskorDirectory, { recursive: true });
 
   const database = new Database(join(maskorDirectory, "vault.db"));
+  database.exec("PRAGMA foreign_keys = ON");
   const vaultDatabase = drizzle(database, { schema });
 
   migrate(vaultDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });

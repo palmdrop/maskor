@@ -53,6 +53,15 @@ export const FragmentUpdateResponseSchema = z
   })
   .openapi("FragmentUpdateResponse");
 
+export const FragmentSummarySchema = z
+  .object({
+    uuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    key: z.string().openapi({ example: "harbour-lights" }),
+    isDiscarded: z.boolean(),
+    excerpt: z.string().nullable().openapi({ example: "The lights flickered at dusk…" }),
+  })
+  .openapi("FragmentSummary");
+
 export const FragmentUUIDParamSchema = z.object({
   projectId: z.uuid(),
   fragmentId: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),

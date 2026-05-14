@@ -4,11 +4,42 @@
   - tried `repomix` instead
   - or https://www.augmentcode.com/
 
-- [ ] Feature to create new fragment from within Maskor
+- [x] Feature to create new fragment from within Maskor
 
-- [ ] In the suggestion page, merge the top bar for saving, discarding and hitting next... no need for two top bars
+- [x] In the suggestion page, merge the top bar for saving, discarding and hitting next... no need for two top bars
 
 - [ ] Place frontend components in appropriate subfolders -- right now, everything is on root level
+
+- [ ] Create system for tracking todos, future ideas, etc... stub fragments for things that should be written, etc
+
+- [ ] process specs, vision and plans and create 1) timeline (maybe not though?), 2) a set of features, implemented and not implemented
+  - and also, make sure to mark the status of each spec - complete? implemented? no?
+  - idea is to be able to extract a set of user stories, or tasks, todos, whatever, for the ralph-like workflow below to consume
+  - also important that I wire in automatic git commits here, to make the log clear (making it easier for me and the agent)
+  - AND plan up a process file, see below
+
+- [ ] arcs probably need a way to have a name that is different from the aspect?
+  - or discuss this with the agent > how to handle this? an arc pertaining to an aspect, for example character development - however, that character could have multiple related arcs? should all these get aspects of their own? yes?
+  - implicit link between arcs and aspects? a 1-to-1 relationship?
+
+- [ ] when doing things with sequences, the action log shows UUIDs instead of titles
+
+- [ ] add import aliases in frontend - all import paths are ugly
+
+- [ ] try a ralph-like workflow, inspo https://www.youtube.com/watch?v=_IK18goX4X8
+  - progress file
+  - PIN! i.e short summary of project setup, see https://www.youtube.com/watch?v=4Nna09dG_c0
+    - used to give initial context, for example, before discussing specs
+    - TODO: try with spec for adding links/comments
+  - pool of tasks or user stories to complete
+  - derive from specs somehow?
+  - TODO: go over all the plans and specs, figure out what is already done, and figure out what's left to do.
+  - https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents
+  - TRANSITION from multi-phase-planning to prd.json, small tasks pool
+  - use notifying utility to send a push notification to my phone when done...
+
+- [ ] a system for pinning a fragment for continuous writing, until done
+  - useful for when just starting a fragment, but not ready to release it into the remaining pool yet
 
 - [x] Try caveman pattern - put in CLAUDE.md
 

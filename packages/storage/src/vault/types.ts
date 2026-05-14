@@ -1,7 +1,8 @@
-import type { Aspect, Fragment, Logger, Note, Reference } from "@maskor/shared";
+import type { Aspect, Fragment, Logger, Note, Reference, Sequence } from "@maskor/shared";
 
 export type VaultConfig = {
   root: string;
+  projectUuid?: string;
   logger?: Logger;
 };
 
@@ -16,7 +17,8 @@ export type VaultErrorCode =
   | "PIECE_CONSUME_FAILED"
   | "STALE_INDEX"
   | "FRAGMENT_NOT_DISCARDED"
-  | "KEY_CONFLICT";
+  | "KEY_CONFLICT"
+  | "SEQUENCE_NOT_FOUND";
 
 export type VaultErrorContext = {
   filePath?: string;
@@ -78,5 +80,12 @@ export type Vault = {
   pieces: {
     consumeAll(): Promise<Fragment[]>;
     consume(filePath: string): Promise<Fragment | null>;
+  };
+  sequences: {
+    readAll(): Promise<Sequence[]>;
+    readAllWithFilePaths(): Promise<Array<WithFilePath<Sequence>>>;
+    read(filename: string): Promise<Sequence>;
+    write(sequence: Sequence): Promise<void>;
+    delete(filename: string): Promise<void>;
   };
 };

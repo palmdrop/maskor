@@ -155,6 +155,99 @@ describe("vault.references.readAll", () => {
   });
 });
 
+// --- sequences ---
+
+const TEST_PROJECT_UUID = "11111111-1111-1111-1111-111111111111";
+const TEST_SEQUENCE_UUID = "22222222-2222-2222-2222-222222222222";
+const TEST_SECTION_UUID = "33333333-3333-3333-3333-333333333333";
+const TEST_FRAGMENT_UUID = "44444444-4444-4444-4444-444444444444";
+const TEST_POSITION_UUID = "55555555-5555-5555-5555-555555555555";
+
+const makeTestSequence = () => ({
+  uuid: TEST_SEQUENCE_UUID,
+  name: "Main",
+  isMain: true,
+  projectUuid: TEST_PROJECT_UUID,
+  sections: [
+    {
+      uuid: TEST_SECTION_UUID,
+      name: "Main",
+      fragments: [
+        {
+          uuid: TEST_POSITION_UUID,
+          fragmentUuid: TEST_FRAGMENT_UUID,
+          position: 0,
+        },
+      ],
+    },
+  ],
+});
+
+describe("vault.sequences.readAll", () => {
+  it("returns empty array when no sequences exist", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    const sequences = await vault.sequences.readAll();
+    expect(sequences).toEqual([]);
+  });
+});
+
+describe("vault.sequences.write + read (round-trip)", () => {
+  it("write then read yields identical sequence", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    const original = makeTestSequence();
+
+    await vault.sequences.write(original);
+    const loaded = await vault.sequences.read(`${TEST_SEQUENCE_UUID}.yaml`);
+
+    expect(loaded.uuid).toBe(original.uuid);
+    expect(loaded.name).toBe(original.name);
+    expect(loaded.isMain).toBe(original.isMain);
+    expect(loaded.projectUuid).toBe(TEST_PROJECT_UUID);
+    expect(loaded.sections).toHaveLength(1);
+    expect(loaded.sections[0]?.uuid).toBe(TEST_SECTION_UUID);
+    expect(loaded.sections[0]?.fragments[0]?.fragmentUuid).toBe(TEST_FRAGMENT_UUID);
+    expect(loaded.sections[0]?.fragments[0]?.position).toBe(0);
+  });
+
+  it("write then readAll includes the written sequence", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    await vault.sequences.write(makeTestSequence());
+
+    const sequences = await vault.sequences.readAll();
+    expect(sequences).toHaveLength(1);
+    expect(sequences[0]?.uuid).toBe(TEST_SEQUENCE_UUID);
+  });
+
+  it("readAllWithFilePaths returns filePath and rawContent alongside entity", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    await vault.sequences.write(makeTestSequence());
+
+    const results = await vault.sequences.readAllWithFilePaths();
+    expect(results).toHaveLength(1);
+    expect(results[0]?.filePath).toBe(`${TEST_SEQUENCE_UUID}.yaml`);
+    expect(results[0]?.entity.uuid).toBe(TEST_SEQUENCE_UUID);
+    expect(typeof results[0]?.rawContent).toBe("string");
+  });
+});
+
+describe("vault.sequences.delete", () => {
+  it("removes the sequence file", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    await vault.sequences.write(makeTestSequence());
+    await vault.sequences.delete(`${TEST_SEQUENCE_UUID}.yaml`);
+
+    const sequences = await vault.sequences.readAll();
+    expect(sequences).toHaveLength(0);
+  });
+
+  it("throws SEQUENCE_NOT_FOUND when file does not exist", async () => {
+    const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
+    const { VaultError } = await import("../vault/types");
+
+    await expect(vault.sequences.delete("nonexistent.yaml")).rejects.toThrow(VaultError);
+  });
+});
+
 // --- pieces ---
 
 describe("vault.pieces.consumeAll", () => {

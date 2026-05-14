@@ -11,6 +11,7 @@ import type {
   Reference,
   ReferenceUpdate,
   ReferenceUpdateResponse,
+  Sequence,
   VaultSyncEvent,
 } from "@maskor/shared";
 import { ArcSchema } from "@maskor/shared";
@@ -28,8 +29,10 @@ import type { VaultIndexer } from "../indexer/types";
 import type {
   IndexedAspect,
   IndexedFragment,
+  IndexedFragmentSummary,
   IndexedNote,
   IndexedReference,
+  IndexedSequence,
   RebuildStats,
 } from "../indexer/types";
 import { createProjectRegistry } from "../registry/registry";
@@ -43,10 +46,12 @@ import {
   upsertAspect,
   upsertNote,
   upsertReference,
+  upsertSequence,
   deleteReferenceByFilePath,
   deleteFragmentByFilePath,
   deleteAspectByFilePath,
   deleteNoteByFilePath,
+  deleteSequenceByFilePath,
   findFragmentUuidsByNoteKey,
   findAspectUuidsByNoteKey,
   findFragmentUuidsByReferenceKey,
@@ -117,7 +122,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const cached = vaultCache.get(context.projectUUID);
     if (cached) return cached;
 
-    const vault = createVault({ root: context.vaultPath, logger });
+    const vault = createVault({ root: context.vaultPath, projectUuid: context.projectUUID, logger });
     vaultCache.set(context.projectUUID, vault);
     return vault;
   };
@@ -467,6 +472,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async readAll(context: ProjectContext): Promise<IndexedFragment[]> {
         return getVaultIndexer(context).fragments.findAll();
+      },
+
+      async readAllSummaries(context: ProjectContext): Promise<IndexedFragmentSummary[]> {
+        return getVaultIndexer(context).fragments.findAllSummaries();
       },
 
       async write(context: ProjectContext, fragment: Fragment): Promise<Fragment> {
@@ -1302,6 +1311,157 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       getFragmentStats(context: ProjectContext, fragmentUuid: string): FragmentStats {
         const vaultDatabase = getVaultDatabase(context);
         return getStats(vaultDatabase, fragmentUuid);
+      },
+    },
+
+    // Sequence operations
+
+    sequences: {
+      async read(context: ProjectContext, uuid: string): Promise<IndexedSequence> {
+        const indexed = await getVaultIndexer(context).sequences.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError("SEQUENCE_NOT_FOUND", `Sequence "${uuid}" not found in index`, {
+            uuid,
+            reason: "UUID not present in vault index",
+          });
+        }
+
+        return indexed;
+      },
+
+      async readAll(context: ProjectContext): Promise<IndexedSequence[]> {
+        return getVaultIndexer(context).sequences.findAll();
+      },
+
+      async getMain(context: ProjectContext): Promise<IndexedSequence | null> {
+        return getVaultIndexer(context).sequences.findMain();
+      },
+
+      async write(context: ProjectContext, sequence: Sequence): Promise<void> {
+        const allSequences = await getVaultIndexer(context).sequences.findAll();
+
+        const lowerName = sequence.name.toLowerCase();
+        if (
+          allSequences.some((s) => s.uuid !== sequence.uuid && s.name.toLowerCase() === lowerName)
+        ) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `A sequence named "${sequence.name}" already exists in this project`,
+            { reason: "name_conflict" },
+          );
+        }
+
+        if (sequence.isMain && allSequences.some((s) => s.uuid !== sequence.uuid && s.isMain)) {
+          throw new VaultError(
+            "KEY_CONFLICT",
+            `Another main sequence already exists. Use setMain to promote a sequence.`,
+            { reason: "main_conflict" },
+          );
+        }
+
+        await getVault(context).sequences.write(sequence);
+
+        const filename = `${sequence.uuid}.yaml`;
+        const absolutePath = join(
+          context.vaultPath,
+          ".maskor",
+          "sequences",
+          filename,
+        );
+        const rawContent = await Bun.file(absolutePath).text();
+        const vaultDatabase = getVaultDatabase(context);
+
+        vaultDatabase.transaction((tx) => {
+          upsertSequence(tx, sequence, filename, rawContent);
+        });
+      },
+
+      async delete(context: ProjectContext, uuid: string): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.sequences.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "SEQUENCE_NOT_FOUND",
+            `Cannot delete: sequence "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        try {
+          await getVault(context).sequences.delete(indexed.filePath);
+        } catch (error) {
+          if (error instanceof VaultError && error.code === "SEQUENCE_NOT_FOUND") {
+            log.warn(
+              { uuid, filePath: indexed.filePath },
+              "stale index: sequence file missing on delete",
+            );
+            throw new VaultError(
+              "STALE_INDEX",
+              `Cannot delete: sequence "${uuid}" file missing — index may be stale`,
+              { uuid, filePath: indexed.filePath },
+            );
+          }
+          throw error;
+        }
+
+        const vaultDatabase = getVaultDatabase(context);
+        vaultDatabase.transaction((tx) => {
+          deleteSequenceByFilePath(tx, indexed.filePath);
+        });
+      },
+
+      async setMain(context: ProjectContext, uuid: string): Promise<void> {
+        const indexer = getVaultIndexer(context);
+        const indexed = await indexer.sequences.findByUUID(uuid);
+
+        if (!indexed) {
+          throw new VaultError(
+            "SEQUENCE_NOT_FOUND",
+            `Cannot set main: sequence "${uuid}" not found in index`,
+            { uuid, reason: "UUID not present in vault index" },
+          );
+        }
+
+        if (indexed.isMain) return;
+
+        const vault = getVault(context);
+        const vaultDatabase = getVaultDatabase(context);
+        const currentMain = await indexer.sequences.findMain();
+
+        const sequenceToPromote = await vault.sequences.read(indexed.filePath);
+        const promoted = { ...sequenceToPromote, isMain: true };
+        await vault.sequences.write(promoted);
+        const promotedAbsolutePath = join(
+          context.vaultPath,
+          ".maskor",
+          "sequences",
+          indexed.filePath,
+        );
+        const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
+
+        if (currentMain) {
+          const currentMainSequence = await vault.sequences.read(currentMain.filePath);
+          const demoted = { ...currentMainSequence, isMain: false };
+          await vault.sequences.write(demoted);
+          const demotedAbsolutePath = join(
+            context.vaultPath,
+            ".maskor",
+            "sequences",
+            currentMain.filePath,
+          );
+          const demotedRawContent = await Bun.file(demotedAbsolutePath).text();
+
+          vaultDatabase.transaction((tx) => {
+            upsertSequence(tx, demoted, currentMain.filePath, demotedRawContent);
+            upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
+          });
+        } else {
+          vaultDatabase.transaction((tx) => {
+            upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
+          });
+        }
       },
     },
 

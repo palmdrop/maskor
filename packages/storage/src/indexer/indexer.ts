@@ -5,21 +5,31 @@ import {
   aspectsTable,
   fragmentAspectsTable,
   fragmentNotesTable,
+  fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentsTable,
   notesTable,
   referencesTable,
+  sectionsTable,
+  sequencesTable,
 } from "../db/vault/schema";
 import type { Vault } from "../vault/types";
 import type {
   IndexedAspect,
   IndexedFragment,
+  IndexedSequence,
   RebuildStats,
   SyncWarning,
   VaultIndexer,
 } from "./types";
-import { assembleAspect, assembleFragment } from "./assemblers";
-import { upsertAspect, upsertFragment, upsertNote, upsertReference } from "./upserts";
+import { assembleAspect, assembleFragment, assembleSequence } from "./assemblers";
+import {
+  upsertAspect,
+  upsertFragment,
+  upsertNote,
+  upsertReference,
+  upsertSequence,
+} from "./upserts";
 import { setWordCount } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 
@@ -34,12 +44,14 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Phase 1: Read all vault data (async).
     // TODO: This loads all vault entities into memory before writing. For very large vaults
     // this may become a concern. Consider chunked writes if needed (see suggestions.md).
-    const [aspectEntries, noteEntries, referenceEntries, fragmentEntries] = await Promise.all([
-      vault.aspects.readAllWithFilePaths(),
-      vault.notes.readAllWithFilePaths(),
-      vault.references.readAllWithFilePaths(),
-      vault.fragments.readAllWithFilePaths(),
-    ]);
+    const [aspectEntries, noteEntries, referenceEntries, fragmentEntries, sequenceEntries] =
+      await Promise.all([
+        vault.aspects.readAllWithFilePaths(),
+        vault.notes.readAllWithFilePaths(),
+        vault.references.readAllWithFilePaths(),
+        vault.fragments.readAllWithFilePaths(),
+        vault.sequences.readAllWithFilePaths(),
+      ]);
 
     // Build known aspect key set (used for drift detection during the fragments pass).
     const knownAspectKeys = new Set(aspectEntries.map(({ entity: aspect }) => aspect.key));
@@ -102,6 +114,20 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       } else {
         tx.delete(fragmentsTable).run();
       }
+
+      // 5. Upsert sequences (sections and fragment_positions cascade from each upsert).
+      for (const { entity: sequence, filePath, rawContent } of sequenceEntries) {
+        upsertSequence(tx, sequence, filePath, rawContent);
+      }
+
+      const activeSequenceUuids = sequenceEntries.map(({ entity }) => entity.uuid as string);
+      if (activeSequenceUuids.length > 0) {
+        tx.delete(sequencesTable)
+          .where(notInArray(sequencesTable.uuid, activeSequenceUuids))
+          .run();
+      } else {
+        tx.delete(sequencesTable).run();
+      }
     });
 
     // Backfill word counts for all fragments. Runs outside the main transaction because
@@ -116,6 +142,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       aspects: aspectEntries.length,
       notes: noteEntries.length,
       references: referenceEntries.length,
+      sequences: sequenceEntries.length,
       durationMs: performance.now() - startTime,
       warnings: fragmentWarnings,
     };
@@ -182,6 +209,38 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     );
   };
 
+  const loadSequenceRelations = async (
+    sequenceRows: Array<typeof sequencesTable.$inferSelect>,
+  ): Promise<IndexedSequence[]> => {
+    if (sequenceRows.length === 0) return [];
+
+    const uuids = sequenceRows.map((row) => row.uuid);
+
+    const allSections = vaultDatabase
+      .select()
+      .from(sectionsTable)
+      .where(inArray(sectionsTable.sequenceUuid, uuids))
+      .all();
+
+    const sectionUuids = allSections.map((section) => section.uuid);
+    const allFragmentPositions =
+      sectionUuids.length > 0
+        ? vaultDatabase
+            .select()
+            .from(fragmentPositionsTable)
+            .where(inArray(fragmentPositionsTable.sectionUuid, sectionUuids))
+            .all()
+        : [];
+
+    return sequenceRows.map((row) =>
+      assembleSequence(
+        row,
+        allSections.filter((section) => section.sequenceUuid === row.uuid),
+        allFragmentPositions,
+      ),
+    );
+  };
+
   // --- public interface ---
 
   return {
@@ -191,6 +250,18 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       async findAll() {
         const rows = vaultDatabase.select().from(fragmentsTable).all();
         return loadFragmentRelations(rows);
+      },
+
+      async findAllSummaries() {
+        return vaultDatabase
+          .select({
+            uuid: fragmentsTable.uuid,
+            key: fragmentsTable.key,
+            isDiscarded: fragmentsTable.isDiscarded,
+            excerpt: fragmentsTable.excerpt,
+          })
+          .from(fragmentsTable)
+          .all();
       },
 
       async findByUUID(uuid: string) {
@@ -312,6 +383,48 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
         if (!row) return null;
         return { uuid: row.uuid, key: row.key, filePath: row.filePath };
+      },
+    },
+
+    sequences: {
+      async findAll() {
+        const rows = vaultDatabase.select().from(sequencesTable).all();
+        return loadSequenceRelations(rows);
+      },
+
+      async findByUUID(uuid: string) {
+        const row = vaultDatabase
+          .select()
+          .from(sequencesTable)
+          .where(eq(sequencesTable.uuid, uuid))
+          .get();
+
+        if (!row) return null;
+        const results = await loadSequenceRelations([row]);
+        return results[0] ?? null;
+      },
+
+      async findMain() {
+        const row = vaultDatabase
+          .select()
+          .from(sequencesTable)
+          .where(eq(sequencesTable.isMain, true))
+          .get();
+
+        if (!row) return null;
+        const results = await loadSequenceRelations([row]);
+        return results[0] ?? null;
+      },
+
+      async findFilePath(uuid: string) {
+        const row = vaultDatabase
+          .select({ filePath: sequencesTable.filePath })
+          .from(sequencesTable)
+          .where(eq(sequencesTable.uuid, uuid))
+          .get();
+
+        if (!row) return null;
+        return row.filePath;
       },
     },
   };

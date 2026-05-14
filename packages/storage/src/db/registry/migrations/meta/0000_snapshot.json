@@ -22,13 +22,6 @@
           "autoincrement": false,
           "default": "'local'"
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "vault_path": {
           "name": "vault_path",
           "type": "text",
@@ -54,7 +47,9 @@
       "indexes": {
         "projects_vault_path_unique": {
           "name": "projects_vault_path_unique",
-          "columns": ["vault_path"],
+          "columns": [
+            "vault_path"
+          ],
           "isUnique": true
         }
       },

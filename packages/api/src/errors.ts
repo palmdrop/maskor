@@ -21,6 +21,7 @@ export const throwStorageError = (error: unknown): never => {
     switch (error.code) {
       case "FRAGMENT_NOT_FOUND":
       case "ENTITY_NOT_FOUND":
+      case "SEQUENCE_NOT_FOUND":
         throw new HTTPException(404, {
           res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
         });

@@ -36,6 +36,11 @@ export const ActionTypeSchema = z.enum([
   "reference:deleted",
   "sequence:fragment-placed",
   "sequence:fragment-moved",
+  "sequence:fragment-unplaced",
+  "sequence:created",
+  "sequence:renamed",
+  "sequence:deleted",
+  "sequence:set-main",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
@@ -113,6 +118,11 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("reference:deleted", empty),
   entry("sequence:fragment-placed", empty),
   entry("sequence:fragment-moved", empty),
+  entry("sequence:fragment-unplaced", empty),
+  entry("sequence:created", empty),
+  entry("sequence:renamed", renamed),
+  entry("sequence:deleted", empty),
+  entry("sequence:set-main", empty),
 ]);
 
 export type LogEntry = z.infer<typeof LogEntrySchema>;

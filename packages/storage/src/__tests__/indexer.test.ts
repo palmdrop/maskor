@@ -8,7 +8,7 @@ import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import { upsertAspect, upsertNote, upsertReference } from "../indexer/upserts";
 import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
-import type { Aspect, Note, Reference } from "@maskor/shared";
+import type { Aspect, Note, Reference, Sequence } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -366,6 +366,133 @@ describe("upsertAspect — key collision without watcher pre-deletion", () => {
       .get();
 
     expect(row?.uuid).toBe(newUuid);
+  });
+});
+
+// --- sequences ---
+
+const PROJECT_UUID = "aaaaaaaa-0000-0000-0000-000000000000";
+
+// UUIDs from BASIC_VAULT fixture
+const BRIDGE_UUID = "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b";
+const LATE_WINTER_UUID = "cfa3e92f-422a-4916-963f-999a85a96e62";
+
+const makeSequence = (overrides: Partial<Sequence> = {}): Sequence => ({
+  uuid: "bbbbbbbb-0000-0000-0000-000000000000",
+  name: "Main",
+  isMain: true,
+  projectUuid: PROJECT_UUID,
+  sections: [
+    {
+      uuid: "cccccccc-0000-0000-0000-000000000000",
+      name: "Main",
+      fragments: [
+        { uuid: "dddddddd-0000-0000-0000-000000000000", fragmentUuid: BRIDGE_UUID, position: 0 },
+        { uuid: "eeeeeeee-0000-0000-0000-000000000000", fragmentUuid: LATE_WINTER_UUID, position: 1 },
+      ],
+    },
+  ],
+  ...overrides,
+});
+
+describe("sequences rebuild — vault round-trip into DB", () => {
+  it("rebuild indexes a written sequence into the DB", async () => {
+    const vault = createVault({ root: vaultDir });
+    const sequence = makeSequence();
+    await vault.sequences.write(sequence);
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    const stats = await indexer.rebuild();
+
+    expect(stats.sequences).toBe(1);
+  });
+
+  it("sequences.findAll returns the indexed sequence", async () => {
+    const vault = createVault({ root: vaultDir });
+    await vault.sequences.write(makeSequence());
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    await indexer.rebuild();
+
+    const sequences = await indexer.sequences.findAll();
+    expect(sequences).toHaveLength(1);
+    expect(sequences[0]?.uuid).toBe("bbbbbbbb-0000-0000-0000-000000000000");
+    expect(sequences[0]?.isMain).toBe(true);
+  });
+
+  it("sequences.findByUUID returns full sequence with sections and positions", async () => {
+    const vault = createVault({ root: vaultDir });
+    await vault.sequences.write(makeSequence());
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    await indexer.rebuild();
+
+    const found = await indexer.sequences.findByUUID("bbbbbbbb-0000-0000-0000-000000000000");
+    expect(found).not.toBeNull();
+    expect(found?.sections).toHaveLength(1);
+    expect(found?.sections[0]?.fragments).toHaveLength(2);
+    expect(found?.sections[0]?.fragments[0]?.position).toBe(0);
+    expect(found?.sections[0]?.fragments[1]?.position).toBe(1);
+  });
+
+  it("sequences.findMain returns the main sequence", async () => {
+    const vault = createVault({ root: vaultDir });
+    await vault.sequences.write(makeSequence());
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    await indexer.rebuild();
+
+    const main = await indexer.sequences.findMain();
+    expect(main?.uuid).toBe("bbbbbbbb-0000-0000-0000-000000000000");
+  });
+
+  it("sequences.findMain returns null when no main sequence exists", async () => {
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, createVault({ root: vaultDir }));
+    await indexer.rebuild();
+
+    const main = await indexer.sequences.findMain();
+    expect(main).toBeNull();
+  });
+
+  it("sequences.findFilePath returns the file path for an indexed sequence", async () => {
+    const vault = createVault({ root: vaultDir });
+    const sequence = makeSequence();
+    await vault.sequences.write(sequence);
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    await indexer.rebuild();
+
+    const filePath = await indexer.sequences.findFilePath("bbbbbbbb-0000-0000-0000-000000000000");
+    expect(filePath).not.toBeNull();
+    expect(filePath).toContain("bbbbbbbb-0000-0000-0000-000000000000");
+  });
+
+  it("rebuild stat sequences count is 0 for fixture vault with no sequences", async () => {
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, createVault({ root: vaultDir }));
+    const stats = await indexer.rebuild();
+
+    expect(stats.sequences).toBe(0);
+  });
+
+  it("second rebuild is idempotent for sequences", async () => {
+    const vault = createVault({ root: vaultDir });
+    await vault.sequences.write(makeSequence());
+
+    const vaultDatabase = createVaultDatabase(vaultDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+    await indexer.rebuild();
+    const stats = await indexer.rebuild();
+
+    expect(stats.sequences).toBe(1);
+    const sequences = await indexer.sequences.findAll();
+    expect(sequences).toHaveLength(1);
   });
 });
 

@@ -3,8 +3,10 @@ import { cpSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
+import { VaultError } from "../vault/types";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
+import type { Sequence } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -272,5 +274,166 @@ describe("StorageService.listProjects", () => {
     expect(projects.length).toBe(2);
     expect(projects.map((project) => project.name)).toContain("Alpha");
     expect(projects.map((project) => project.name)).toContain("Beta");
+  });
+});
+
+// --- sequences ---
+
+const makeSequence = (projectUuid: string, overrides: Partial<Sequence> = {}): Sequence => ({
+  uuid: "bbbbbbbb-0000-0000-0000-000000000000",
+  name: "Main",
+  isMain: true,
+  projectUuid,
+  sections: [],
+  ...overrides,
+});
+
+const setupSequenceContext = async () => {
+  const service = makeService();
+  const record = await service.registerProject("Test", vaultDir);
+  const context = await service.resolveProject(record.projectUUID);
+  await service.index.rebuild(context);
+  return { service, context };
+};
+
+describe("StorageService.sequences.write + read", () => {
+  it("writes a sequence and reads it back by UUID", async () => {
+    const { service, context } = await setupSequenceContext();
+    const sequence = makeSequence(context.projectUUID);
+
+    await service.sequences.write(context, sequence);
+    const found = await service.sequences.read(context, sequence.uuid);
+
+    expect(found.uuid).toBe(sequence.uuid);
+    expect(found.name).toBe("Main");
+    expect(found.isMain).toBe(true);
+  });
+
+  it("throws SEQUENCE_NOT_FOUND for an unknown UUID", async () => {
+    const { service, context } = await setupSequenceContext();
+    const unknownUuid = "00000000-0000-0000-0000-000000000000";
+
+    await expect(service.sequences.read(context, unknownUuid)).rejects.toMatchObject({
+      code: "SEQUENCE_NOT_FOUND",
+    });
+  });
+
+  it("throws KEY_CONFLICT when a second sequence uses the same name", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const duplicate = makeSequence(context.projectUUID, {
+      uuid: "cccccccc-0000-0000-0000-000000000000",
+      name: "Main",
+      isMain: false,
+    });
+
+    await expect(service.sequences.write(context, duplicate)).rejects.toMatchObject({
+      code: "KEY_CONFLICT",
+    });
+  });
+
+  it("throws KEY_CONFLICT when a second isMain=true sequence is written while one already exists", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const secondMain = makeSequence(context.projectUUID, {
+      uuid: "cccccccc-0000-0000-0000-000000000000",
+      name: "Secondary",
+      isMain: true,
+    });
+
+    await expect(service.sequences.write(context, secondMain)).rejects.toMatchObject({
+      code: "KEY_CONFLICT",
+    });
+  });
+});
+
+describe("StorageService.sequences.readAll + getMain", () => {
+  it("readAll returns all sequences", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const all = await service.sequences.readAll(context);
+    expect(all).toHaveLength(1);
+  });
+
+  it("getMain returns the main sequence", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const main = await service.sequences.getMain(context);
+    expect(main?.uuid).toBe("bbbbbbbb-0000-0000-0000-000000000000");
+  });
+
+  it("getMain returns null when no main exists", async () => {
+    const { service, context } = await setupSequenceContext();
+
+    const main = await service.sequences.getMain(context);
+    expect(main).toBeNull();
+  });
+});
+
+describe("StorageService.sequences.delete", () => {
+  it("deletes a sequence and it is no longer findable", async () => {
+    const { service, context } = await setupSequenceContext();
+    const sequence = makeSequence(context.projectUUID);
+    await service.sequences.write(context, sequence);
+
+    await service.sequences.delete(context, sequence.uuid);
+
+    const all = await service.sequences.readAll(context);
+    expect(all).toHaveLength(0);
+  });
+
+  it("throws SEQUENCE_NOT_FOUND when deleting an unknown UUID", async () => {
+    const { service, context } = await setupSequenceContext();
+
+    await expect(
+      service.sequences.delete(context, "00000000-0000-0000-0000-000000000000"),
+    ).rejects.toMatchObject({ code: "SEQUENCE_NOT_FOUND" });
+  });
+});
+
+describe("StorageService.sequences.setMain", () => {
+  it("promotes a non-main sequence to main and demotes the old main", async () => {
+    const { service, context } = await setupSequenceContext();
+
+    const firstMain = makeSequence(context.projectUUID);
+    await service.sequences.write(context, firstMain);
+
+    const second = makeSequence(context.projectUUID, {
+      uuid: "cccccccc-0000-0000-0000-000000000000",
+      name: "Secondary",
+      isMain: false,
+    });
+    await service.sequences.write(context, second);
+
+    await service.sequences.setMain(context, second.uuid);
+
+    const newMain = await service.sequences.getMain(context);
+    expect(newMain?.uuid).toBe(second.uuid);
+
+    const oldMain = await service.sequences.read(context, firstMain.uuid);
+    expect(oldMain.isMain).toBe(false);
+  });
+
+  it("is a no-op when the sequence is already main", async () => {
+    const { service, context } = await setupSequenceContext();
+    const sequence = makeSequence(context.projectUUID);
+    await service.sequences.write(context, sequence);
+
+    await service.sequences.setMain(context, sequence.uuid);
+
+    const main = await service.sequences.getMain(context);
+    expect(main?.uuid).toBe(sequence.uuid);
+  });
+
+  it("throws SEQUENCE_NOT_FOUND for an unknown UUID", async () => {
+    const { service, context } = await setupSequenceContext();
+
+    await expect(
+      service.sequences.setMain(context, "00000000-0000-0000-0000-000000000000"),
+    ).rejects.toMatchObject({ code: "SEQUENCE_NOT_FOUND" });
   });
 });

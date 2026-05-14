@@ -6,6 +6,7 @@ import { throwStorageError } from "../errors";
 import { validateEntityKey } from "@maskor/shared";
 import {
   FragmentSchema,
+  FragmentSummarySchema,
   FragmentUpdateResponseSchema,
   IndexedFragmentSchema,
   FragmentCreateSchema,
@@ -45,6 +46,27 @@ const classifyFragmentSource = (patch: {
 };
 
 export const fragmentsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+const listFragmentSummariesRoute = createRoute({
+  operationId: "listFragmentSummaries",
+  method: "get",
+  path: "/summaries",
+  tags: ["Fragments"],
+  summary: "List minimal fragment data (uuid, key, isDiscarded, excerpt) for all fragments",
+  request: {
+    params: projectIdParamSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: z.array(FragmentSummarySchema) } },
+      description: "List of fragment summaries",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
 
 const listFragmentsRoute = createRoute({
   operationId: "listFragments",
@@ -259,6 +281,17 @@ const getFragmentStatsRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+fragmentsRouter.openapi(listFragmentSummariesRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const summaries = await storageService.fragments.readAllSummaries(projectContext);
+    return ctx.json(summaries, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
 });
 
 fragmentsRouter.openapi(listFragmentsRoute, async (ctx) => {

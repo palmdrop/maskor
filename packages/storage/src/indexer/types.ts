@@ -9,6 +9,7 @@ export type RebuildStats = {
   aspects: number;
   notes: number;
   references: number;
+  sequences: number;
   durationMs: number;
   warnings: SyncWarning[];
 };
@@ -28,6 +29,13 @@ export type IndexedFragment = {
   notes: string[];
   references: string[];
   aspects: Record<string, IndexedFragmentAspect>;
+};
+
+export type IndexedFragmentSummary = {
+  uuid: string;
+  key: string;
+  isDiscarded: boolean;
+  excerpt: string | null;
 };
 
 export type IndexedAspect = {
@@ -50,11 +58,30 @@ export type IndexedReference = {
   filePath: string;
 };
 
+export type IndexedSequence = {
+  uuid: string;
+  name: string;
+  isMain: boolean;
+  projectUuid: string;
+  filePath: string;
+  contentHash: string;
+  sections: Array<{
+    uuid: string;
+    name: string;
+    fragments: Array<{
+      uuid: string;
+      fragmentUuid: string;
+      position: number;
+    }>;
+  }>;
+};
+
 export interface VaultIndexer {
   rebuild(): Promise<RebuildStats>;
 
   fragments: {
     findAll(): Promise<IndexedFragment[]>;
+    findAllSummaries(): Promise<IndexedFragmentSummary[]>;
     findByUUID(uuid: string): Promise<IndexedFragment | null>;
     findFilePath(uuid: string): Promise<string | null>;
   };
@@ -75,5 +102,12 @@ export interface VaultIndexer {
     findAll(): Promise<IndexedReference[]>;
     findByKey(key: string): Promise<IndexedReference | null>;
     findByUUID(uuid: string): Promise<IndexedReference | null>;
+  };
+
+  sequences: {
+    findAll(): Promise<IndexedSequence[]>;
+    findByUUID(uuid: string): Promise<IndexedSequence | null>;
+    findMain(): Promise<IndexedSequence | null>;
+    findFilePath(uuid: string): Promise<string | null>;
   };
 }

@@ -18,3 +18,11 @@ export { deleteNoteCommand } from "./notes/delete-note";
 export { createReferenceCommand } from "./references/create-reference";
 export { updateReferenceCommand } from "./references/update-reference";
 export { deleteReferenceCommand } from "./references/delete-reference";
+
+export { ensureMainSequenceCommand } from "./sequences/ensure-main-sequence";
+export { createSequenceCommand } from "./sequences/create-sequence";
+export { updateSequenceCommand } from "./sequences/update-sequence";
+export { deleteSequenceCommand } from "./sequences/delete-sequence";
+export { placeFragmentCommand } from "./sequences/place-fragment";
+export { moveFragmentCommand } from "./sequences/move-fragment";
+export { unplaceFragmentCommand } from "./sequences/unplace-fragment";
