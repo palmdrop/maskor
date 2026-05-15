@@ -31,6 +31,20 @@ Started: Fri May 15 23:23:59 CEST 2026
   - For splitPlainText: `content.split(delimiter).filter(p => p.trim()).map(p => ({ content: p }))` — do NOT trim the piece content itself, only check for emptiness
 ---
 
+## 2026-05-15 - US-003
+- Implemented `deriveKey(piece: RawPiece, existingKeys: Set<string>): string` and `RawPiece` type in `packages/importer/src/index.ts`
+- Priority order: heading text -> first non-empty line of content -> `fragment-<uuid>`
+- Sanitization: strips chars outside `[a-zA-Z0-9 _-]`, collapses whitespace, trims; falls through if empty
+- Collision detection is case-insensitive; appends `_1`, `_2`, ... until unique; mutates `existingKeys`
+- Added `sanitizeKey` private helper function
+- Wrote 14 tests in `packages/importer/src/__tests__/derive-key.test.ts`
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/derive-key.test.ts`
+- **Learnings for future iterations:**
+  - TypeScript can't narrow array index access via `length > 0` check — use `as string` cast or `candidates.at(0) ?? fallback` pattern
+  - `crypto.randomUUID()` is available globally in Bun without any import
+  - Case-insensitive collision detection: `existingKeys` stores lowercased keys; returned key preserves original casing
+---
+
 ## 2026-05-15 - US-002
 - Added `DocumentConverter` interface and `MammothConverter` class to `packages/importer/src/index.ts`
 - Added `mammoth@1.12.0` and `turndown@7.2.4` to importer dependencies; `@types/turndown@5.0.6` to devDependencies
