@@ -1,3 +1,5 @@
+import mammoth from "mammoth";
+import TurndownService from "turndown";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import type { PhrasingContent, RootContent } from "mdast";
 
@@ -54,6 +56,23 @@ export function splitMarkdown(
   }
 
   return pieces;
+}
+
+export interface DocumentConverter {
+  toMarkdown(input: Uint8Array): Promise<string>;
+}
+
+export class MammothConverter implements DocumentConverter {
+  async toMarkdown(input: Uint8Array): Promise<string> {
+    const buffer = Buffer.from(input);
+    const result = await mammoth.convertToHtml({ buffer });
+    const td = new TurndownService({ headingStyle: "atx" });
+    td.addRule("stripImages", {
+      filter: "img",
+      replacement: () => "",
+    });
+    return td.turndown(result.value);
+  }
 }
 
 export function splitPlainText(content: string, delimiter: string): Piece[] {
