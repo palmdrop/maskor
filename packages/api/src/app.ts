@@ -15,6 +15,7 @@ import { suggestionRouter } from "./routes/suggestion";
 import { statsRouter } from "./routes/stats";
 import { actionLogRouter } from "./routes/action-log";
 import { sequencesRouter } from "./routes/sequences";
+import { importRouter } from "./routes/import";
 import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
@@ -79,6 +80,7 @@ export const createApp = (
   projectScopedApp.route("/stats", statsRouter);
   projectScopedApp.route("/action-log", actionLogRouter);
   projectScopedApp.route("/sequences", sequencesRouter);
+  projectScopedApp.route("/import", importRouter);
 
   // Note: use app.route(), not app.mount(). app.route() propagates parent context variables
   // (including storageService) to the sub-app. app.mount() creates an isolated sub-application
