@@ -1,0 +1,46 @@
+## Codebase Patterns
+- importer package uses mdast-util-from-markdown for AST parsing; `fromMarkdown` returns `Root` with positions on all nodes
+- Bun workspace deps: add to package-specific package.json via `bun add` run from project root (Bun handles hoisting)
+- `bun run verify` = typecheck + backend tests + frontend tests; run after every story
+- `@types/mdast` must be added explicitly to the importer devDependencies; it is not auto-hoisted
+- Heading `depth` from mdast is `1|2|3|4|5|6` and maps directly to `HeadingLevel` type
+- To extract plain text from mdast heading children: recurse checking `"value" in node` (Text/InlineCode) vs `"children" in node` (Strong, Emphasis, etc.)
+- `node.position?.start.offset` gives 0-based byte offset; use `content.indexOf('\n', startOffset)` to find end of heading line
+- mammoth has no bundled types and no `@types/mammoth` on npm; it imports fine as-is under Bun (TypeScript uses implicit `any`)
+- turndown requires `@types/turndown` as a devDependency; use `{ headingStyle: "atx" }` option for ATX-style headings
+- mammoth accepts `{ buffer: Buffer }` input; convert `Uint8Array` with `Buffer.from(input)`
+- To strip images in turndown: `td.addRule("stripImages", { filter: "img", replacement: () => "" })`
+- `.docx` test fixtures can be generated programmatically with the `docx` npm package (already in workspace)
+
+---
+
+# Ralph Progress Log
+Started: Fri May 15 23:23:59 CEST 2026
+---
+
+## 2026-05-15 - US-001
+- Implemented `splitMarkdown` and `splitPlainText` in `packages/importer/src/index.ts`
+- Defined `HeadingLevel = 1|2|3|4|5|6` and `Piece = { title?: string; content: string }` locally in the package
+- Added `mdast-util-from-markdown@2.0.3` + `@types/mdast@4.0.4` to importer dependencies
+- Wrote 20 tests in `packages/importer/src/__tests__/splitting.test.ts` covering all AC scenarios
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/splitting.test.ts`, `packages/importer/package.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - `fromMarkdown` positions are reliable; `node.position.start.offset` is 0-based character index into the source string
+  - For splitMarkdown, slice `content[prevEnd..headingStart]` for pre-heading content, then advance `prevEnd` past the heading line via `indexOf('\n', headingStart) + 1`
+  - Fenced and indented code block `#` lines are automatically excluded since they don't appear as `heading` nodes in the mdast AST
+  - For splitPlainText: `content.split(delimiter).filter(p => p.trim()).map(p => ({ content: p }))` — do NOT trim the piece content itself, only check for emptiness
+---
+
+## 2026-05-15 - US-002
+- Added `DocumentConverter` interface and `MammothConverter` class to `packages/importer/src/index.ts`
+- Added `mammoth@1.12.0` and `turndown@7.2.4` to importer dependencies; `@types/turndown@5.0.6` to devDependencies
+- Created `packages/importer/src/__tests__/fixtures/sample.docx` with two heading levels and body text
+- Wrote 3 tests in `packages/importer/src/__tests__/converter.test.ts` covering ATX headings, body text preservation, interface contract
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/converter.test.ts`, `packages/importer/src/__tests__/fixtures/sample.docx`, `packages/importer/package.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - Bun compatibility smoke test confirmed: mammoth and turndown both work without issues under Bun
+  - turndown headingStyle `"atx"` produces `#`-prefixed headings as required; default is Setext (underline) style
+  - mammoth automatically maps Word "Heading 1-6" styles to `<h1>`-`<h6>` HTML elements; no style map needed
+  - Images stripped via turndown rule, not mammoth option — simpler and works reliably
+  - `docx` package (already in workspace) is useful for generating minimal `.docx` test fixtures programmatically
+---

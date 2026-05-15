@@ -1,0 +1,130 @@
+{
+  "project": "Maskor",
+  "branchName": "ralph/import-pipeline-stage-1",
+  "description": "Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step.",
+  "specs": ["specifications/import-pipeline.md"],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Core splitting logic in importer package",
+      "description": "As a developer, I need pure splitting functions in the `importer` package so that all format-specific parsing is isolated and testable independently of the API.",
+      "acceptanceCriteria": [
+        "`packages/importer/src/index.ts` exports `splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): Piece[]`",
+        "`splitMarkdown` splits at any heading whose level is <= maxHeadingLevel (level 3 -> split on H1, H2, H3; ignore H4-H6)",
+        "`splitMarkdown` uses a real markdown tokenizer (mdast-util-from-markdown or micromark) - `#` lines inside fenced or indented code blocks are NOT treated as headings",
+        "A piece contains the heading's body plus all sub-headings below the split level, verbatim as markdown",
+        "Content before the first heading becomes a piece if non-empty (no title)",
+        "`packages/importer/src/index.ts` exports `splitPlainText(content: string, delimiter: string): Piece[]`",
+        "`splitPlainText` splits content at every occurrence of the exact delimiter string",
+        "`Piece` type is `{ title?: string; content: string }` - `title` is the raw heading text when present (markdown/docx); undefined for plaintext",
+        "Markdown piece content excludes the heading line that introduced it",
+        "For plaintext, the first non-empty line is NOT stripped from content even if later used to derive the key",
+        "Empty pieces (no content after stripping delimiter/heading) are not emitted by the splitter",
+        "`type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6` is defined locally in the importer package",
+        "Unit tests cover: single heading level, mixed heading levels, heading inside fenced code block (must not split), pre-first-heading content, delimiter at start/end, delimiter not present, empty input",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "DocumentConverter interface and MammothConverter (DOCX -> markdown)",
+      "description": "As a developer, I need a `DocumentConverter` interface and a mammoth+turndown implementation so that the DOCX conversion backend can be swapped without changing the splitting or API layer.",
+      "acceptanceCriteria": [
+        "FIRST: Bun compatibility smoke test for mammoth + turndown - install both, run a minimal .docx through them under bun, confirm output. If turndown's DOM dependency breaks under Bun, escalate before continuing",
+        "`packages/importer/src/index.ts` exports a `DocumentConverter` interface: `{ toMarkdown(input: Uint8Array): Promise<string> }`",
+        "`packages/importer/src/index.ts` exports a `MammothConverter` class implementing `DocumentConverter` using mammoth + turndown",
+        "`MammothConverter.toMarkdown` converts Word heading styles (Heading 1-6) to ATX markdown headings (#-######)",
+        "Body text is preserved as plain markdown paragraphs",
+        "Images are stripped in Stage 1 - configure mammoth to ignore inline images",
+        "The importer package does NOT import from `@maskor/api` or `@maskor/storage`",
+        "Unit tests cover a minimal `.docx` fixture with at least two heading levels and body text",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Key derivation and deduplication in importer package",
+      "description": "As a developer, I need a canonical key-derivation function so that every imported piece always gets a valid, non-conflicting Fragment key matching `validateEntityKey` rules.",
+      "acceptanceCriteria": [
+        "`packages/importer/src/index.ts` exports `deriveKey(piece: RawPiece, existingKeys: Set<string>): string` where `RawPiece` is `{ headingText?: string; content: string }`",
+        "Priority order: heading text -> first non-empty line of content -> `fragment-<uuid>`",
+        "Each candidate is sanitized through `validateEntityKey` rules: strip characters outside `[a-zA-Z0-9 _-]`, collapse whitespace, trim. If sanitized result is empty, fall through to the next priority",
+        "Collision detection is case-insensitive - `existingKeys` stores lowercased keys; function returns key with original casing preserved",
+        "On case-insensitive collision with `existingKeys`, append `_1`, `_2`, ... until unique",
+        "The returned key's lowercased form is added to `existingKeys` before returning (mutates caller-managed set)",
+        "Unit tests cover: all three fallback levels, sanitization (punctuation, unicode, leading/trailing whitespace), case-insensitive collisions, collision chains up to `_3`",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "importCommand composite command in packages/api",
+      "description": "As a developer, I need an `importCommand` that orchestrates conversion, splitting, key derivation, and per-piece fragment creation so the route handler stays thin and all mutations go through a single command.",
+      "acceptanceCriteria": [
+        "New file `packages/api/src/commands/import.ts` (or equivalent) exports an `importCommand` of type `Command<ImportInput, ImportResult>`",
+        "`ImportInput` is a discriminated union on `format`: `{ projectId: ProjectUUID; file: Uint8Array; format: \"markdown\"; headingLevel: 1|2|3|4|5|6 }`, `{ ...; format: \"docx\"; headingLevel: 1|2|3|4|5|6 }`, `{ ...; format: \"plaintext\"; delimiter: string }`",
+        "`ImportResult` is `{ created: FragmentUUID[]; errors: { pieceIndex: number; pieceKey?: string; error: string }[] }` - `pieceIndex` is 1-based; `pieceKey` is included when key derivation succeeded before failure",
+        "`importCommand` accepts a `DocumentConverter` instance via dependency injection - it does NOT instantiate `MammothConverter` itself",
+        "Execution flow: (1) fetch existing fragment summaries and seed case-insensitive `existingKeys` with non-discarded keys only; (2) if `format === \"docx\"` call `converter.toMarkdown(file)`, else decode file as UTF-8 text; (3) call `splitMarkdown` or `splitPlainText` per format; (4) for each piece derive key via `deriveKey`, build a Fragment draft, call `createFragmentCommand.execute(ctx, draft)`; (5) catch per-piece errors including storage `KEY_CONFLICT` and append to `errors[]`",
+        "Empty pieces are reported in `errors[]` with reason `\"empty piece\"` and are not written",
+        "A piece that fails to create is logged and added to `errors`; remaining pieces proceed (no abort)",
+        "Per-fragment `fragment:created` log entries are emitted by `createFragmentCommand` as normal; no separate batch event is introduced",
+        "Unit tests cover: markdown happy path, plaintext happy path, docx happy path (with a stub `DocumentConverter`), key collision against existing fragment, partial failure (one piece fails, others succeed), empty piece reporting, KEY_CONFLICT race from createFragmentCommand surfaced in `errors[]`",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "POST /projects/:projectId/import route + OpenAPI + Orval client",
+      "description": "As a developer, I need the HTTP route that wires `importCommand` to the API server, validates the multipart payload, and is reflected in the generated client so the frontend can call it.",
+      "acceptanceCriteria": [
+        "Route `POST /projects/:projectId/import` accepts `multipart/form-data` with a `file` field (binary) and an `options` field validated by a zod `discriminatedUnion(\"format\", ...)`: `{ format: \"markdown\"; headingLevel: 1|2|3|4|5|6 }`, `{ format: \"docx\"; headingLevel: 1|2|3|4|5|6 }`, `{ format: \"plaintext\"; delimiter: string }`",
+        "Route handler does no direct storage calls - it parses the multipart body, validates options with zod, instantiates/injects `MammothConverter`, and invokes `importCommand.execute(ctx, input)`",
+        "Hono body parser is configured so the route accepts `multipart/form-data` (not JSON-only)",
+        "Endpoint is registered in the OpenAPI spec with request and response schemas matching `ImportInput` (multipart) and `ImportResult`",
+        "Orval client is regenerated and includes the new endpoint",
+        "Route-level integration tests cover: markdown import end-to-end, plaintext import end-to-end, docx import end-to-end, key collision against existing fragment, partial failure (one piece fails, others succeed), empty piece reporting, invalid options payload (400)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Frontend import dialog on FragmentListPage",
+      "description": "As a user, I want an \"Import\" action on the fragment list so I can bring external `.md`, `.txt`, and `.docx` documents into my project without leaving the app.",
+      "acceptanceCriteria": [
+        "An \"Import\" button is added to `FragmentListPage`, placed next to the existing create-fragment action in the page header",
+        "Clicking it opens a modal/dialog with a single-file picker accepting `.md`, `.txt`, `.docx`",
+        "Format-specific options: heading-level selector (H1-H6, default H1) for `.md`/`.docx`; delimiter text input for `.txt`",
+        "Selecting a `.md` or `.docx` file auto-selects the heading-level UI; selecting `.txt` auto-selects the delimiter UI",
+        "On submit: disable submit button, show spinner, dialog stays open until the response arrives",
+        "On success: close dialog, invalidate the fragment-list query so new fragments appear, show toast/inline summary of how many fragments were created (and how many failed, if any)",
+        "On network or validation error: re-enable submit, show inline error message, dialog stays open",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
