@@ -19,7 +19,8 @@
 
 - plan: drop-fragment-title.md
   status: implemented
-  related_specs: []
+  related_specs:
+    - specifications/fragment-model.md
   shipped_what: Fragment title field removed; key (filename stem) is now the sole identity field, consistent with notes, references, and aspects.
   date: 2026-05-05
 
@@ -27,12 +28,14 @@
   status: implemented
   related_specs:
     - specifications/fragment-editor.md
+    - specifications/project-config.md
   shipped_what: Users configure fontSize (12-24px) and maxParagraphWidth (40-120ch) per project in General tab of Project Config; settings applied live across all editor modes.
   date: 2026-05-10
 
 - plan: entity-editor-unification.md
   status: in-progress
-  related_specs: []
+  related_specs:
+    - specifications/fragment-editor.md
   shipped_what: Reusable EntityEditorShell with shared key-editing pattern, optional metadata sidebar slot, and dirty-state tracking. Phases 1-5 complete; Phase 6 (tests, codegen) remaining.
   date: 2026-05-05
 
@@ -66,7 +69,8 @@
 
 - plan: fragment-editor.md
   status: implemented
-  related_specs: []
+  related_specs:
+    - specifications/fragment-editor.md
   shipped_what: Dedicated single-fragment editing view with prose editor (CodeMirror 6 + vim mode + remark/rehype preview) and schema-constrained metadata form via react-hook-form.
   date: 2026-04-20
 
@@ -118,8 +122,9 @@
   status: implemented
   related_specs:
     - specifications/project-statistics.md
+    - specifications/project-config.md
   shipped_what: Stats page with global aggregates and per-fragment table. Fragment word counts persisted to database. Advanced subsection in config with fragment-stats inspector in editor sidebar.
-  date: 2026-04-28
+  date: 2026-05-08
 
 - plan: project-switching-view.md
   status: implemented
@@ -129,7 +134,8 @@
 
 - plan: prose-editor-tiptap.md
   status: implemented
-  related_specs: []
+  related_specs:
+    - specifications/fragment-editor.md
   shipped_what: TipTap WYSIWYG replaces the default mode of ProseEditor (remark/rehype preview + edit toggle). User edits rendered prose directly; underlying content remains raw markdown.
   date: 2026-04-08
 
@@ -141,7 +147,8 @@
 
 - plan: remove-pool-concept.md
   status: implemented
-  related_specs: []
+  related_specs:
+    - specifications/fragment-model.md
   shipped_what: Pool field removed entirely from fragment model. Discarded functionality driven exclusively by filesystem location (fragments/discarded/), not property state.
   date: 2026-05-14
 
@@ -151,7 +158,7 @@
     - specifications/sequencer.md
     - specifications/overview.md
   shipped_what: Manual fragment placement in draggable tile UI. Two zones (sequence + unassigned pool). Drag to reorder/place/unplace; changes persist round-trip to vault file.
-  date: 2026-04-05
+  date: 2026-05-12
 
 - plan: sessions-and-projects.md
   status: implemented
@@ -205,8 +212,9 @@
   status: implemented
   related_specs:
     - specifications/prompting.md
-  shipped_what: Dedicated Edit page for prompted fragment suggestions. Non-deterministic selection from eligible pool weighted by stats. Metadata sidebar retractable; Next auto-saves and loads next suggestion.
-  date: 2026-04-04
+    - specifications/project-config.md
+  shipped_what: Dedicated Edit page for prompted fragment suggestions. Non-deterministic selection from eligible pool weighted by stats. Metadata sidebar retractable; Next auto-saves and loads next suggestion. Ready status threshold configurable per project.
+  date: 2026-05-07
 
 - plan: testing-framework.md
   status: implemented

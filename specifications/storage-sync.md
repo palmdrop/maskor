@@ -1,7 +1,18 @@
 # Spec: Storage Sync
 
 **Status**: Stable
-**Last updated**: 22-04-2026
+**Last updated**: 2026-05-15
+
+**Shipped**:
+- 2026-04-04 — Vault change events are emitted over SSE after each watcher transaction; the frontend invalidates its cache automatically without polling. (plan: references/plans/sse-vault-events.md)
+- 2026-04-05 — Fragments, aspects, notes, and references are stored as vault markdown files; Maskor reads and writes frontmatter without modifying body content. (plan: references/plans/storage-markdown-reader.md)
+- 2026-04-10 — All vault entities are indexed in a per-vault SQLite database; full rebuilds run as a single atomic transaction and soft-delete entities no longer present in the vault. (plan: references/plans/vault-content-index.md)
+- 2026-04-15 — Piece files dropped into `pieces/` are consumed individually as they arrive; `updatedAt` is recorded in frontmatter across all vault entities. (plan: references/plans/storage-sync-spec-fixes.md)
+- 2026-04-24 — Storage uses two separate databases: a global project registry and a per-vault database that travels with the vault and can be fully rebuilt from vault files at any time. (plan: references/plans/sessions-and-projects.md)
+- 2026-04-24 — StorageService exposes only UUID-based operations; internal file-path routing is opaque to callers. (plan: references/plans/storage-service-encapsulation.md)
+- 2026-05-04 — Filename stem is the sole authoritative key for all vault entities; the `key:` frontmatter field is removed. Watcher cascades rename propagation automatically. (plan: references/plans/filename-as-key-source-of-truth.md)
+- 2026-05-07 — The watcher syncs individual vault files immediately after each change; a full-file hash guard makes all events idempotent, including API-originated writes. (plan: references/plans/vault-watcher.md)
+- 2026-05-14 — Fragment discard state is derived entirely from filesystem location (`fragments/discarded/`); no frontmatter flag can drift out of sync. (plan: references/plans/remove-pool-concept.md)
 
 ---
 

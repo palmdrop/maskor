@@ -1,7 +1,14 @@
 # Spec: Navigation
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-04-27
+
+**Shipped**:
+
+- 2026-04-20 — Project selection screen at `/`; the project shell requires an active project — no view is accessible without one. (plan: references/plans/project-switching-view.md)
+- 2026-04-27 — Application shell renders a persistent navigation bar scoped to the active project, with links to Fragment list, Overview, and Project config. (plan: references/plans/frontend-navigation.md)
+- 2026-04-27 — Fragment list view is available: users can browse, search, and open any fragment into the editor from a dedicated route. (plan: references/plans/frontend-navigation.md)
+- 2026-04-27 — Navigating away from the Fragment editor with unsaved changes triggers a save/discard prompt. (plan: references/plans/frontend-navigation.md)
 
 ---
 

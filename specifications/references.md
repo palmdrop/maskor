@@ -1,7 +1,11 @@
 # Spec: References
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-04-27
+
+**Shipped**:
+- 2026-04-30 — References can be created and deleted from the project config page. (plan: references/plans/project-config-page.md)
+- 2026-05-09 — Reference field edits are committed immediately with optimistic UI and recorded in the action log. (plan: references/plans/entity-live-metadata-save.md)
 
 ---
 

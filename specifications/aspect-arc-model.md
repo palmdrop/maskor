@@ -3,6 +3,11 @@
 **Status**: Stable
 **Last updated**: 2026-04-26
 
+**Shipped**:
+- 2026-04-15 — Aspects can be created and deleted within a project. (plan: references/plans/aspects-notes-references-crud.md)
+- 2026-05-06 — Fragments can be assigned aspect weights; the weight interface supports adding, removing, and editing values. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
+- 2026-05-09 — Aspect weight changes on fragments save immediately without a manual save step. (plan: references/plans/entity-live-metadata-save.md)
+
 ---
 
 ## Outcome

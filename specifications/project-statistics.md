@@ -3,6 +3,11 @@
 **Status**: Stable
 **Last updated**: 2026-05-07
 
+**Shipped**:
+- 2026-05-08 — User can view a dedicated Stats page per project with global aggregates (fragment counts, readyStatus histogram, total and average word counts) and an alphabetical per-fragment overview table. (plan: references/plans/project-statistics.md)
+- 2026-05-08 — Fragment word counts are persisted to the database and recomputed automatically on save or watcher-detected content change. (plan: references/plans/project-statistics.md)
+- 2026-05-08 — A read-only fragment stats inspector panel (prompting counters) is available in the editor sidebar, toggled per project from the Advanced section of the General tab. (plan: references/plans/project-statistics.md)
+
 ---
 
 ## Outcome

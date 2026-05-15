@@ -1,7 +1,14 @@
 # Spec: Fragment Editor
 
 **Status**: Stable
-**Last updated**: 2026-04-26
+**Last updated**: 2026-05-15
+
+**Shipped**:
+- 2026-04-08 — Default prose editor uses WYSIWYG editing; content is stored as raw markdown. (plan: references/plans/prose-editor-tiptap.md)
+- 2026-04-20 — Dedicated single-fragment editing view with prose editor (supporting vim mode) and metadata form (readiness, notes, references, aspect weights). (plan: references/plans/fragment-editor.md)
+- 2026-05-05 — Fragment editor gained inline key (filename stem) editing with the same rename pattern as notes, references, and aspects; discard/restore and metadata sidebar wired as shell slots. (plan: references/plans/entity-editor-unification.md)
+- 2026-05-09 — Metadata fields (notes, references, aspect weights, ready status) save instantly as the user edits each field; no explicit save action required for metadata. (plan: references/plans/entity-live-metadata-save.md)
+- 2026-05-10 — Users can configure font size and paragraph width per project; settings apply live across all editor modes. (plan: references/plans/editor-typography-settings.md)
 
 ---
 
@@ -48,9 +55,10 @@ Two modes, regular or vim mode.
 
 ### Save contract
 
-A single Save button collects both the prose editor content and the validated metadata form values, then saves the entire fragment all at once. Saves are explicit — no auto-save.
+Two-tier save model:
 
-If metadata validation fails (e.g. empty title), the save is aborted and no request is sent.
+- **Prose content** — explicit Save button only. No auto-save.
+- **Metadata fields** (notes, references, aspect weights, ready status) — save instantly, per field, as the user edits (400 ms debounce, optimistic UI). No Save button required.
 
 ### Live updates
 
@@ -61,7 +69,7 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 ## Constraints
 
 - **Notes and references are read-only in terms of creation.** The editor can only link existing vault notes/references. It cannot create new ones.
-- **No concurrent auto-save.** Auto-save is blocked until the API exposes `version`-based optimistic locking (409 on stale writes).
+- **No auto-save for prose content.** Prose auto-save is blocked until the API exposes `version`-based optimistic locking (409 on stale writes). Metadata fields are not subject to this constraint — they are small, idempotent writes with no version-collision risk.
 
 ---
 
@@ -71,8 +79,8 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | TipTap for default prose mode (not CM6 + remark/rehype as originally planned)                      | Implementation diverged from `references/plans/fragment-editor.md` Phase 2; TipTap WYSIWYG was chosen in practice |
 | CM6 + `@replit/codemirror-vim` for vim mode                                                        | `references/plans/fragment-editor.md`                                                                             |
-| Single save button for both prose and metadata                                                     | TODO.md (`[x] Only keep one save button`)                                                                         |
-| Explicit save only; no auto-save                                                                   | `references/plans/fragment-editor.md` — concurrent save risk, needs `version` lock first                          |
+| Save button applies to prose content only; metadata fields save instantly per field (debounced)    | `references/plans/entity-live-metadata-save.md`; earlier plan assumed unified save — implementation diverged      |
+| Prose auto-save deferred; metadata instant-save is safe without version locking                   | `references/plans/fragment-editor.md` — version lock needed for prose; metadata writes are idempotent             |
 | Unknown aspect keys preserved on save                                                              | `references/plans/fragment-editor.md`                                                                             |
 | Notes/references restricted to existing vault entries                                              | TODO.md (`[x] Only allow adding notes/references that already exist`)                                             |
 | Discard button on editor                                                                           | TODO.md (`[x] Fragment editor needs a discard button`)                                                            |

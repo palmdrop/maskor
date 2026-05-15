@@ -12,7 +12,7 @@
 
 - [ ] Create system for tracking todos, future ideas, etc... stub fragments for things that should be written, etc
 
-- [ ] process specs, vision and plans and create 1) timeline (maybe not though?), 2) a set of features, implemented and not implemented
+- [x] process specs, vision and plans and create 1) timeline (maybe not though?), 2) a set of features, implemented and not implemented
   - and also, make sure to mark the status of each spec - complete? implemented? no?
   - idea is to be able to extract a set of user stories, or tasks, todos, whatever, for the ralph-like workflow below to consume
   - also important that I wire in automatic git commits here, to make the log clear (making it easier for me and the agent)

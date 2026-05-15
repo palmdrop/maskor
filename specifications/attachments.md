@@ -3,6 +3,13 @@
 **Status**: Stable
 **Last updated**: 2026-04-27
 
+**Shipped**:
+- 2026-04-05 — Notes and references are stored as vault markdown files; Maskor reads and writes their frontmatter (UUID, title/name, createdAt, updatedAt) without touching body content. (plan: references/plans/storage-markdown-reader.md)
+- 2026-04-10 — Notes and references are indexed in a per-vault SQLite database; the index is rebuilt on demand and kept live by the file watcher. (plan: references/plans/vault-content-index.md)
+- 2026-04-15 — Notes and references can be created and deleted via API; deletion hard-removes both the vault file and the DB row. (plan: references/plans/aspects-notes-references-crud.md)
+- 2026-04-30 — Renaming a note or reference through Maskor atomically renames the vault file and propagates the key change to all referencing fragment frontmatter; no orphan warnings are produced. (plan: references/plans/project-config-page.md)
+- 2026-05-09 — Attaching or detaching a note/reference from a fragment is committed immediately (optimistic UI, 400ms debounce) and recorded in the action log. (plan: references/plans/entity-live-metadata-save.md)
+
 ---
 
 ## Outcome
@@ -38,7 +45,7 @@ Users can create named, free-text vault documents — notes and references — a
 
 A note or reference is a named, free-text document. It has:
 
-- A **title** (notes) or **name** (references) — the display label, also used as the filename slug.
+- A **title** (notes) or **name** (references) — the display label. The title/name equals the filename stem and is the canonical key; there is no separate key field in frontmatter.
 - A **UUID** — assigned on first detection, stable across renames.
 - **`createdAt`** and **`updatedAt`** timestamps — managed by Maskor.
 - **Body content** — free-form markdown. No schema.
@@ -75,7 +82,7 @@ Frontmatter schema: UUID, title/name, `createdAt`, `updatedAt`. Body is free-for
 ## Constraints
 
 - Notes are in `<vault>/notes/`. References are in `<vault>/references/`. File names must be unique within each directory.
-- Title/name (and thus filename) is the join key between a fragment's frontmatter and the document. There is no UUID-based join.
+- The filename stem is the canonical key and the join between a fragment's frontmatter and the document. There is no UUID-based join and no separate key field in frontmatter.
 - Body content is never modified by Maskor.
 - The DB holds a derived index; the vault file is always authoritative.
 
@@ -84,7 +91,7 @@ Frontmatter schema: UUID, title/name, `createdAt`, `updatedAt`. Body is free-for
 ## Prior decisions
 
 - **Fragment owns the relationship**: Fragment frontmatter lists titles/names; documents carry no back-reference. The fragment is the structured entity; notes and references are attachments.
-- **Title/name as join key, not UUID**: Human-readable strings in fragment frontmatter keep vault files legible in Obsidian without Maskor.
+- **Filename stem as join key, not UUID**: The filename stem is the canonical key; fragment frontmatter stores it directly. Human-readable keys keep vault files legible in Obsidian without Maskor.
 - **Maskor-initiated renames propagate automatically**: When the user renames a note or reference through Maskor, all fragment frontmatter references are updated atomically. No orphan warnings.
 - **External renames produce orphan warnings**: Maskor cannot detect a filesystem rename as such. External renames result in the old entity becoming orphaned. The user must re-attach. This is the cost of editing outside Maskor while it is not running.
 - **Notes and references are distinct types at the product level**: Despite identical structure, the semantic distinction (internal thought vs. external source) is preserved in naming and UI placement. The shared implementation does not merge the two into a single entity type.

@@ -1,7 +1,10 @@
 # Spec: Sequencer
 
-**Status**: Draft
-**Last updated**: 2026-05-12
+**Status**: In Progress
+**Last updated**: 2026-05-15
+
+**Shipped**:
+- 2026-05-12 — Users can manually arrange fragments into an ordered main sequence. Non-discarded fragments not yet placed appear in an unassigned pool. Fragments can be dragged from the pool into the sequence, reordered within it, or dragged back out to unplace them; the arrangement survives a reload. (plan: references/plans/sequencer-manual-placement.md)
 
 ---
 

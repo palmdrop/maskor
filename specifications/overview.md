@@ -3,6 +3,9 @@
 **Status**: Stable
 **Last updated**: 2026-05-12
 
+**Shipped**:
+- 2026-05-12 — Users can arrange fragments on the overview: all non-discarded fragments appear as draggable tiles in two zones (sequence + unassigned pool); dragging between zones places or unplaces a fragment; dragging within the sequence reorders it; all changes survive a reload. (plan: references/plans/sequencer-manual-placement.md)
+
 ---
 
 ## Outcome
