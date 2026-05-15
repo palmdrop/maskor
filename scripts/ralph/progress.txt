@@ -1,6 +1,9 @@
 ## Codebase Patterns
 - importer package uses mdast-util-from-markdown for AST parsing; `fromMarkdown` returns `Root` with positions on all nodes
 - Bun workspace deps: add to package-specific package.json via `bun add` run from project root (Bun handles hoisting)
+- Adding a new workspace package dep: edit target package.json directly (`"@maskor/importer": "workspace:*"`), then add path alias to both `packages/<pkg>/tsconfig.json` AND root `tsconfig.json`
+- `splitPlainText` and `splitMarkdown` already filter empty pieces; the "empty piece" check in importCommand is purely defensive and won't trigger in normal flow
+- `Command<TInput, TOutput>.execute` returns `{ result, logEntries }`; composite commands collect logEntries from inner commands and bubble them up
 - `bun run verify` = typecheck + backend tests + frontend tests; run after every story
 - `@types/mdast` must be added explicitly to the importer devDependencies; it is not auto-hoisted
 - Heading `depth` from mdast is `1|2|3|4|5|6` and maps directly to `HeadingLevel` type
@@ -43,6 +46,22 @@ Started: Fri May 15 23:23:59 CEST 2026
   - TypeScript can't narrow array index access via `length > 0` check — use `as string` cast or `candidates.at(0) ?? fallback` pattern
   - `crypto.randomUUID()` is available globally in Bun without any import
   - Case-insensitive collision detection: `existingKeys` stores lowercased keys; returned key preserves original casing
+---
+
+## 2026-05-16 - US-004
+- Created `packages/api/src/commands/fragments/import.ts` exporting `createImportCommand(converter: DocumentConverter): Command<ImportInput, ImportResult>`
+- `ImportInput` is a discriminated union on `format` ("markdown" | "docx" | "plaintext")
+- `ImportResult` is `{ created: string[]; errors: ImportError[] }` where `ImportError` has `pieceIndex`, optional `pieceKey`, and `error`
+- Flow: read summaries → seed `existingKeys` → decode/convert → split → per-piece key derivation + createFragmentCommand
+- Exported `createImportCommand`, `ImportInput`, `ImportResult`, `ImportError` from `packages/api/src/commands/index.ts`
+- Added `@maskor/importer` to `packages/api/package.json` deps and path aliases in both `packages/api/tsconfig.json` and root `tsconfig.json`
+- Wrote 10 tests in `packages/api/src/__tests__/commands/import.test.ts` covering markdown, plaintext, docx happy paths, spy converter, key collisions, partial failure, and KEY_CONFLICT surfacing
+- Files changed: `packages/api/src/commands/fragments/import.ts`, `packages/api/src/__tests__/commands/import.test.ts`, `packages/api/src/commands/index.ts`, `packages/api/package.json`, `packages/api/tsconfig.json`, `tsconfig.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - Adding workspace package as dependency: edit package.json directly + add path alias to both package-local tsconfig AND root tsconfig
+  - `splitPlainText`/`splitMarkdown` already filter empty pieces; "empty piece" check in importCommand is pure defense
+  - Composite commands call inner `.execute()` directly (not via `executeCommand`) and collect/bubble logEntries
+  - `Uint8Array` comparison in bun tests: use `Array.from(a).toEqual(Array.from(b))` — direct `.toEqual` has type mismatch with null overload
 ---
 
 ## 2026-05-15 - US-002
