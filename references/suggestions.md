@@ -1,5 +1,7 @@
 # Suggestions
 
+- **`scripts/ralph` was stored as an orphan gitlink** (`scripts/ralph`): The directory was committed with mode `160000` (submodule) but with no `.gitmodules` entry and no nested `.git`. This made it impossible to track individual file changes. Fixed during import-pipeline-stage-1 by removing the gitlink and re-adding the directory as regular tracked files. If `ralph.sh` creates a new git repo inside `scripts/ralph/` in the future, the parent `.gitmodules` should be updated too.
+
 - **Add GFM table support to TipTap editor** (`packages/frontend/src/components/fragments/prose-editor.tsx`): Tables are not in scope for the initial TipTap implementation. Install `@tiptap/extension-table` and add to the extensions array if fragments start containing markdown tables.
 - **`Vim.defineEx("w", ...)` is global and persists after unmount** (`packages/frontend/src/components/fragments/prose-editor.tsx`): Calling `Vim.defineEx` in `onCreateEditor` registers the command globally on the vim state machine — it won't be cleaned up when the component unmounts. In practice this is harmless (no editor = no `:w`), but if multiple `ProseEditor` instances exist simultaneously they'd overwrite each other's `:w` binding. Revisit if supporting multi-pane editing.
 - **Storybook CSS imports missing from `tsconfig`** (`.storybook/preview.ts`): `tsc -b` reports `Cannot find module '../src/styles/reset.css'` in `preview.ts`. Add `"moduleResolution": "bundler"` or a `.d.ts` shim for `.css` files to the storybook tsconfig so the full build passes clean.
