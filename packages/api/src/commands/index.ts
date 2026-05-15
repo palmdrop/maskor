@@ -2,6 +2,8 @@ export { executeCommand } from "./types";
 export type { Command, CommandContext } from "./types";
 
 export { createFragmentCommand } from "./fragments/create-fragment";
+export { createImportCommand } from "./fragments/import";
+export type { ImportInput, ImportResult, ImportError } from "./fragments/import";
 export { updateFragmentCommand } from "./fragments/update-fragment";
 export { discardFragmentCommand } from "./fragments/discard-fragment";
 export { restoreFragmentCommand } from "./fragments/restore-fragment";
