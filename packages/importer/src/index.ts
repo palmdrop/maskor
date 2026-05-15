@@ -10,6 +10,50 @@ export type Piece = {
   content: string;
 };
 
+export type RawPiece = {
+  headingText?: string;
+  content: string;
+};
+
+function sanitizeKey(candidate: string): string {
+  return candidate
+    .replace(/[^a-zA-Z0-9 _-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function deriveKey(piece: RawPiece, existingKeys: Set<string>): string {
+  const candidates: string[] = [];
+
+  if (piece.headingText) {
+    const sanitized = sanitizeKey(piece.headingText);
+    if (sanitized) candidates.push(sanitized);
+  }
+
+  const firstNonEmptyLine = piece.content
+    .split("\n")
+    .find((line) => line.trim().length > 0);
+  if (firstNonEmptyLine) {
+    const sanitized = sanitizeKey(firstNonEmptyLine);
+    if (sanitized) candidates.push(sanitized);
+  }
+
+  const baseKey: string =
+    candidates.length > 0
+      ? (candidates[0] as string)
+      : `fragment-${crypto.randomUUID()}`;
+
+  let key = baseKey;
+  let counter = 1;
+  while (existingKeys.has(key.toLowerCase())) {
+    key = `${baseKey}_${counter}`;
+    counter++;
+  }
+
+  existingKeys.add(key.toLowerCase());
+  return key;
+}
+
 function extractText(node: PhrasingContent | RootContent): string {
   if ("value" in node && typeof node.value === "string") return node.value;
   if ("children" in node && Array.isArray(node.children)) {
