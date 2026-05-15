@@ -64,6 +64,23 @@ Started: Fri May 15 23:23:59 CEST 2026
   - `Uint8Array` comparison in bun tests: use `Array.from(a).toEqual(Array.from(b))` — direct `.toEqual` has type mismatch with null overload
 ---
 
+## 2026-05-16 - US-005
+- Created `packages/api/src/schemas/import.ts` with `ImportOptionsSchema`, `ImportResultSchema`, `ImportBodySchema`
+- Created `packages/api/src/routes/import.ts` with `importRouter` mounted at `/import` on the project-scoped app
+- Route accepts `multipart/form-data` with `file` (binary) and `options` (JSON string) fields
+- Handler uses `ctx.req.valid("form")` for file access; parses `options` as JSON and validates with `ImportOptionsSchema.safeParse()`
+- Registered `importRouter` on `projectScopedApp` in `packages/api/src/app.ts`
+- Orval client regenerated: `packages/frontend/src/api/generated/fragments/fragments.ts` now includes `ImportFragments`, `useImportFragmentsMutation`, `ImportFragmentsBody`, `ImportResult` types
+- Wrote 11 tests in `packages/api/src/__tests__/routes/import.test.ts` covering all AC scenarios
+- Files changed: `packages/api/src/schemas/import.ts`, `packages/api/src/routes/import.ts`, `packages/api/src/app.ts`, `packages/api/src/__tests__/routes/import.test.ts` (generated files are gitignored)
+- **Learnings for future iterations:**
+  - Orval generated files are gitignored (root `.gitignore` has `generated`); regenerate on dev machine but do not commit
+  - For Orval codegen, start the API on an alternate port if 3001 is taken: `PORT=3009 bun run start` then update `orval.config.ts` temporarily
+  - `@hono/zod-openapi` handles `multipart/form-data` via `ctx.req.valid("form")`; use `z.any().openapi({ type: "string", format: "binary" })` for file fields
+  - Hono app's `request()` method returns `Response | Promise<Response>`; wrap in `Promise.resolve()` when declaring return type as `Promise<Response>`
+  - Docx fixture for API route tests: use path `join(import.meta.dir, "../../../../importer/src/__tests__/fixtures/sample.docx")`
+---
+
 ## 2026-05-15 - US-002
 - Added `DocumentConverter` interface and `MammothConverter` class to `packages/importer/src/index.ts`
 - Added `mammoth@1.12.0` and `turndown@7.2.4` to importer dependencies; `@types/turndown@5.0.6` to devDependencies
