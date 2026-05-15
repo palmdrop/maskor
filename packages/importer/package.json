@@ -4,13 +4,15 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/mdast": "^4.0.4"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@maskor/shared": "workspace:*"
+    "@maskor/shared": "workspace:*",
+    "mdast-util-from-markdown": "^2.0.3"
   },
   "scripts": {
     "test": "bun test",
