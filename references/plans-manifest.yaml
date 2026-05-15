@@ -57,7 +57,7 @@
   status: implemented
   related_specs:
     - specifications/storage-sync.md
-  shipped_what: Filename stem is authoritative key for notes, references, and aspects; frontmatter `key:` removed entirely. Vault file renames propagate automatically through watcher cascade.
+  shipped_what: "Filename stem is authoritative key for notes, references, and aspects; frontmatter `key:` removed entirely. Vault file renames propagate automatically through watcher cascade."
   date: 2026-05-04
 
 - plan: fragment-aspects-rename-and-dynamic-form.md
@@ -108,7 +108,7 @@
   status: implemented
   related_specs:
     - specifications/project-config.md
-  shipped_what: Fully functional project management with tabbed config page: project name editing, aspect CRUD, notes/references CRUD, arc authoring via curve editor.
+  shipped_what: "Fully functional project management with tabbed config page: project name editing, aspect CRUD, notes/references CRUD, arc authoring via curve editor."
   date: 2026-04-30
 
 - plan: project-config-vault-storage.md
@@ -219,7 +219,7 @@
 - plan: testing-framework.md
   status: implemented
   related_specs: []
-  shipped_what: Two-runner strategy: bun test for backend/shared, vitest + @testing-library/react for frontend. E2E via Playwright (Phase 2 deferred).
+  shipped_what: "Two-runner strategy: bun test for backend/shared, vitest + @testing-library/react for frontend. E2E via Playwright (Phase 2 deferred)."
   date: 2026-04-05
 
 - plan: vault-content-index.md
@@ -245,7 +245,6 @@
   related_specs: []
   shipped_what: Zod schemas are single source of truth for domain types via z.infer<>. API layer adds .openapi() and API-specific overrides. Prevents domain/schema drift.
   date: 2026-04-05
-
 # Orphans
 # - plans-manifest-and-shipped-backfill.md
 # - spec-extraction.md

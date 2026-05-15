@@ -4,6 +4,7 @@
 **Last updated**: 2026-05-08
 
 **Shipped**:
+
 - 2026-05-07 — Suggestion mode is accessible from the top nav. A fragment from the eligible pool loads directly into the editor; pressing Next auto-saves and surfaces the next suggestion. Recently surfaced fragments enter a cooldown window and are not immediately re-selected. (plan: references/plans/suggestion-mode.md)
 - 2026-05-07 — Selection is non-deterministic and weighted: lower readyStatus, low edit count, and infrequently-visited fragments are favored; high-avoidance and frequently-opened fragments are deprioritized. (plan: references/plans/suggestion-mode.md)
 - 2026-05-07 — Per-fragment behavioral stats (voluntary open count, prompt accept count, avoidance count, edit count) are persisted in the DB and feed the selection weights. (plan: references/plans/suggestion-mode.md)

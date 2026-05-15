@@ -31,10 +31,7 @@ vi.mock("../../../components/entity-editor-shell", () => ({
 }));
 
 import { AspectEditor } from "./AspectEditor";
-import {
-  getGetAspectQueryKey,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { getGetAspectQueryKey, getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import { getListNotesQueryKey } from "@api/generated/notes/notes";
 import type { Aspect } from "@api/generated/maskorAPI.schemas";
 
@@ -50,9 +47,10 @@ const baseAspect: Aspect = {
 };
 
 const wrap = (queryClient: QueryClient) => {
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  return Wrapper;
 };
 
 const seedQueries = (queryClient: QueryClient, aspect: Aspect) => {

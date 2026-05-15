@@ -20,9 +20,9 @@ function mainSectionUuid(sequence: Sequence): string {
 }
 
 function fragmentUuids(sequence: Sequence, sectionIndex = 0): string[] {
-  return sequence.sections[sectionIndex]!.fragments
-    .sort((a, b) => a.position - b.position)
-    .map((f) => f.fragmentUuid);
+  return sequence.sections[sectionIndex]!.fragments.sort((a, b) => a.position - b.position).map(
+    (f) => f.fragmentUuid,
+  );
 }
 
 const FA = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -101,9 +101,7 @@ describe("placeFragment", () => {
 
   it("throws when section is not found", () => {
     const sequence = makeSequence();
-    expect(() =>
-      placeFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0),
-    ).toThrow();
+    expect(() => placeFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0)).toThrow();
   });
 });
 
@@ -193,9 +191,7 @@ describe("moveFragment", () => {
     let sequence = makeSequence();
     const sectionUuid = mainSectionUuid(sequence);
     sequence = placeFragment(sequence, FA, sectionUuid, 0);
-    expect(() =>
-      moveFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0),
-    ).toThrow();
+    expect(() => moveFragment(sequence, FA, "00000000-0000-0000-0000-000000000000", 0)).toThrow();
   });
 });
 

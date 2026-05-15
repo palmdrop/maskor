@@ -45,13 +45,13 @@ The plan's "Optimistic + invalidation flow" is:
 > 2. PATCH fires. `onError` — restore snapshot; surface a toast.
 > 3. `onSettled` — invalidate the entity's query (refetch authoritative value)…
 
-…but the intent of the optimistic write only holds if step 3 doesn't *replace* the optimistic value with a re-read for the common success path. The fragment endpoint already returns the updated `Fragment` in `result.data.fragment`; write that into the cache with `setQueryData` and skip the invalidation on success. Only invalidate the action-log query (which is a separate cache key) for refresh.
+…but the intent of the optimistic write only holds if step 3 doesn't _replace_ the optimistic value with a re-read for the common success path. The fragment endpoint already returns the updated `Fragment` in `result.data.fragment`; write that into the cache with `setQueryData` and skip the invalidation on success. Only invalidate the action-log query (which is a separate cache key) for refresh.
 
 ### 3. Concurrent saves race when the user keeps editing during an in-flight save
 
 `packages/frontend/src/hooks/useLiveFieldSave.ts:52-86`
 
-The hook sets `isFlushingRef = true` while `await saveRef.current(...)` is in flight, but `onChange` does not check that flag. A keystroke during the in-flight save schedules a new timer; when it fires, `flush` runs concurrently with the previous save. With HTTP/2 (or any parallel sockets) the responses can arrive out of order; whichever PATCH the server processed first determines storage. After both settle, `invalidate()` triggers a refetch and the cache (and shortly after, the local value via the `serverValue` sync `useEffect`) snaps to whichever value won the race — which can be the *older* one.
+The hook sets `isFlushingRef = true` while `await saveRef.current(...)` is in flight, but `onChange` does not check that flag. A keystroke during the in-flight save schedules a new timer; when it fires, `flush` runs concurrently with the previous save. With HTTP/2 (or any parallel sockets) the responses can arrive out of order; whichever PATCH the server processed first determines storage. After both settle, `invalidate()` triggers a refetch and the cache (and shortly after, the local value via the `serverValue` sync `useEffect`) snaps to whichever value won the race — which can be the _older_ one.
 
 Reproducer sketch:
 
@@ -81,9 +81,9 @@ Fix: queue/coalesce while `isFlushingRef` is true (run the latest pending value 
 
 `packages/api/src/commands/aspects/update-aspect.ts:43-72`, `packages/api/src/commands/fragments/update-fragment.ts:66-85`
 
-When `source === "programmatic"` and the patch contains both a content field and a single-intent-eligible field (e.g. `{description, category}` for an aspect), the command emits `aspect:updated` *and* `aspect:category-changed` for the same patch. The `aspect:updated` payload's `changedFields: ["description"]` doesn't even include the category — which is technically correct (category has its own entry) but reads strangely against the spec's framing of `*:updated` as "catch-all when the diff doesn't fit the single-intent set."
+When `source === "programmatic"` and the patch contains both a content field and a single-intent-eligible field (e.g. `{description, category}` for an aspect), the command emits `aspect:updated` _and_ `aspect:category-changed` for the same patch. The `aspect:updated` payload's `changedFields: ["description"]` doesn't even include the category — which is technically correct (category has its own entry) but reads strangely against the spec's framing of `*:updated` as "catch-all when the diff doesn't fit the single-intent set."
 
-The plan's diff-classification rule (Stage 1 § "Diff classification rule" point 3) says the catch-all fires only when "a non-key change doesn't map to a single-intent type." A cleaner mapping: in programmatic mode, content-field changes that have no single-intent type *route* to `*:updated`; relational/scalar fields that *do* have a single-intent type continue to use it. That preserves the catch-all semantics and avoids "two entries from one patch where one half is a single-intent and the other half is a catch-all listing only itself."
+The plan's diff-classification rule (Stage 1 § "Diff classification rule" point 3) says the catch-all fires only when "a non-key change doesn't map to a single-intent type." A cleaner mapping: in programmatic mode, content-field changes that have no single-intent type _route_ to `*:updated`; relational/scalar fields that _do_ have a single-intent type continue to use it. That preserves the catch-all semantics and avoids "two entries from one patch where one half is a single-intent and the other half is a catch-all listing only itself."
 
 This may be intentional (reads as: "here's the catch-all explaining content changed via a programmatic actor; here's the structural change"), but it's worth resolving explicitly.
 
@@ -137,6 +137,7 @@ Cleanup calls `void flushRef.current(pending)`. If the navigation-triggered flus
 ### 11. Test description outdated after Stage 2
 
 <!-- cspell:disable-next-line -->
+
 `packages/api/src/__tests__/routes/fragment-update-changedfields.test.ts:44-72`
 
 The test "logs only 'content' when the user edits prose but re-sends unchanged metadata" still passes, but the framing ("the user edits prose…") is misleading post-Stage 2 — the live form no longer bundles unchanged metadata into a content save. The test now exercises the programmatic catch-all path, which is fine, but the description should be reworded.
@@ -151,7 +152,7 @@ The test "logs only 'content' when the user edits prose but re-sends unchanged m
 
 `packages/api/src/commands/fragments/update-fragment.ts:50-52`
 
-`anyNonKeyChanged` is the trigger, so attaching a single note bumps suggestion stats the same as a content edit. This was already the case before this PR (the diff classification only changed the *log* path, not the suggestion path), but it's worth double-checking against the suggestion spec — with live metadata saves, the rate of `recordEditSaved` calls per session goes up significantly.
+`anyNonKeyChanged` is the trigger, so attaching a single note bumps suggestion stats the same as a content edit. This was already the case before this PR (the diff classification only changed the _log_ path, not the suggestion path), but it's worth double-checking against the suggestion spec — with live metadata saves, the rate of `recordEditSaved` calls per session goes up significantly.
 
 ---
 

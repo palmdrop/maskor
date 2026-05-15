@@ -31,7 +31,13 @@ export const ProjectStatsSchema = z
       readyCount: z.number().int().openapi({ example: 10 }),
       averageReadyStatus: z.number().openapi({ example: 0.65 }),
       readyStatusHistogram: z
-        .tuple([z.number().int(), z.number().int(), z.number().int(), z.number().int(), z.number().int()])
+        .tuple([
+          z.number().int(),
+          z.number().int(),
+          z.number().int(),
+          z.number().int(),
+          z.number().int(),
+        ])
         .openapi({ example: [10, 8, 12, 7, 5] }),
       totalWordCount: z.number().int().openapi({ example: 5040 }),
       averageWordCount: z.number().openapi({ example: 120 }),

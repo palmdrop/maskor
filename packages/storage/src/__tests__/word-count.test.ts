@@ -72,8 +72,7 @@ describe("computeWordCount — combined", () => {
   it("strips code and links before counting", () => {
     // Link becomes "the docs"; inline code is stripped leaving a trailing "."
     // tokens: Hello, world., See, the, docs, or, run, . → 8
-    const content =
-      "Hello world. See [the docs](https://docs.example.com) or run `npm install`.";
+    const content = "Hello world. See [the docs](https://docs.example.com) or run `npm install`.";
     expect(computeWordCount(content)).toBe(8);
   });
 });

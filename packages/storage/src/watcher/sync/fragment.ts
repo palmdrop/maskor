@@ -4,7 +4,11 @@ import { fragmentsTable } from "../../db/vault/schema";
 import { parseFile } from "../../vault/markdown/parse";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
 import { hashContent } from "../../utils/hash";
-import { loadKnownAspectKeys, upsertFragment, deleteFragmentByFilePath } from "../../indexer/upserts";
+import {
+  loadKnownAspectKeys,
+  upsertFragment,
+  deleteFragmentByFilePath,
+} from "../../indexer/upserts";
 import { eq } from "drizzle-orm";
 import { findFragmentUuidCollision } from "../utils/fragments";
 import { readFileWithEnoentGuard } from "../utils/file";

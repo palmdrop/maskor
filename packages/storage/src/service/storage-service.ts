@@ -122,7 +122,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const cached = vaultCache.get(context.projectUUID);
     if (cached) return cached;
 
-    const vault = createVault({ root: context.vaultPath, projectUuid: context.projectUUID, logger });
+    const vault = createVault({
+      root: context.vaultPath,
+      projectUuid: context.projectUUID,
+      logger,
+    });
     vaultCache.set(context.projectUUID, vault);
     return vault;
   };
@@ -532,7 +536,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
         });
 
-        setWordCount(vaultDatabase, fragmentToWrite.uuid, computeWordCount(fragmentToWrite.content));
+        setWordCount(
+          vaultDatabase,
+          fragmentToWrite.uuid,
+          computeWordCount(fragmentToWrite.content),
+        );
 
         return { ...fragmentToWrite, contentHash };
       },
@@ -1249,7 +1257,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         const indexer = getVaultIndexer(context);
         const cooldown = getSuggestionCooldown(context);
 
-        if (excludeUuid && cooldown.has(excludeUuid) && !cooldown.wasEditedWhileSurfaced(excludeUuid)) {
+        if (
+          excludeUuid &&
+          cooldown.has(excludeUuid) &&
+          !cooldown.wasEditedWhileSurfaced(excludeUuid)
+        ) {
           incrementAvoidance(vaultDatabase, excludeUuid);
         }
 
@@ -1273,7 +1285,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             ? eligible.filter((fragment) => fragment.uuid !== excludeUuid)
             : eligible;
 
-        const statsMap = getStatsBatch(vaultDatabase, selectionPool.map((fragment) => fragment.uuid));
+        const statsMap = getStatsBatch(
+          vaultDatabase,
+          selectionPool.map((fragment) => fragment.uuid),
+        );
 
         const selectedUuid = selectNextSuggestion({
           eligibleFragments: selectionPool.map((fragment) => ({
@@ -1363,12 +1378,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         await getVault(context).sequences.write(sequence);
 
         const filename = `${sequence.uuid}.yaml`;
-        const absolutePath = join(
-          context.vaultPath,
-          ".maskor",
-          "sequences",
-          filename,
-        );
+        const absolutePath = join(context.vaultPath, ".maskor", "sequences", filename);
         const rawContent = await Bun.file(absolutePath).text();
         const vaultDatabase = getVaultDatabase(context);
 

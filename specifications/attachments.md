@@ -4,6 +4,7 @@
 **Last updated**: 2026-04-27
 
 **Shipped**:
+
 - 2026-04-05 — Notes and references are stored as vault markdown files; Maskor reads and writes their frontmatter (UUID, title/name, createdAt, updatedAt) without touching body content. (plan: references/plans/storage-markdown-reader.md)
 - 2026-04-10 — Notes and references are indexed in a per-vault SQLite database; the index is rebuilt on demand and kept live by the file watcher. (plan: references/plans/vault-content-index.md)
 - 2026-04-15 — Notes and references can be created and deleted via API; deletion hard-removes both the vault file and the DB row. (plan: references/plans/aspects-notes-references-crud.md)

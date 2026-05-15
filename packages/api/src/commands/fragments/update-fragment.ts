@@ -1,6 +1,11 @@
 import type { Fragment, LogEntry } from "@maskor/shared";
 import type { Command } from "../types";
-import { diffAspectWeights, diffStringSet, stringArraysEqual, aspectWeightsEqual } from "../split-update";
+import {
+  diffAspectWeights,
+  diffStringSet,
+  stringArraysEqual,
+  aspectWeightsEqual,
+} from "../split-update";
 
 export type UpdateSource = "user-content-save" | "user-metadata" | "programmatic";
 
@@ -32,11 +37,7 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       patch.aspects !== undefined && !aspectWeightsEqual(patch.aspects, existing.aspects);
 
     const anyNonKeyChanged =
-      contentChanged ||
-      readyStatusChanged ||
-      notesChanged ||
-      referencesChanged ||
-      aspectsChanged;
+      contentChanged || readyStatusChanged || notesChanged || referencesChanged || aspectsChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: existing, logEntries: [] };
@@ -141,10 +142,7 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
     }
 
     if (aspectsChanged) {
-      const { added, removed, weightChanged } = diffAspectWeights(
-        existing.aspects,
-        patch.aspects!,
-      );
+      const { added, removed, weightChanged } = diffAspectWeights(existing.aspects, patch.aspects!);
       for (const { key: aspectKey, weight } of added) {
         logEntries.push({
           type: "fragment:aspect-attached",

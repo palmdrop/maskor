@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
+import type { LogEntry as SharedLogEntry } from "@maskor/shared";
 
 type LogEntry = { id: string; type: string; timestamp: string };
 
@@ -20,9 +21,7 @@ afterAll(() => {
 
 describe("GET /projects/:projectId/action-log", () => {
   it("returns 200 with an empty array on a fresh vault", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/action-log`,
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/action-log`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as LogEntry[];
     expect(Array.isArray(body)).toBe(true);
@@ -41,7 +40,7 @@ describe("GET /projects/:projectId/action-log", () => {
         target: { type: "fragment", uuid: `uuid-${index}`, key: `fragment-${index}` },
         payload: {},
         undoable: false,
-      } as import("@maskor/shared").LogEntry);
+      } as SharedLogEntry);
     }
 
     const response = await testContext.app.request(

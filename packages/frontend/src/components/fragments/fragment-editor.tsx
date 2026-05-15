@@ -172,7 +172,15 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     );
 
     return customizeExtraActions ? customizeExtraActions(discardButton) : discardButton;
-  }, [isUpdatePending, isDiscardPending, isRestorePending, fragment?.isDiscarded, handleRestore, handleDiscard, customizeExtraActions]);
+  }, [
+    isUpdatePending,
+    isDiscardPending,
+    isRestorePending,
+    fragment?.isDiscarded,
+    handleRestore,
+    handleDiscard,
+    customizeExtraActions,
+  ]);
 
   if (isLoading) {
     return <p>Loading fragment…</p>;

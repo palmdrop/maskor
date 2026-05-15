@@ -4,6 +4,7 @@
 **Last updated**: 2026-05-12
 
 **Shipped**:
+
 - 2026-05-12 — Users can arrange fragments on the overview: all non-discarded fragments appear as draggable tiles in two zones (sequence + unassigned pool); dragging between zones places or unplaces a fragment; dragging within the sequence reorders it; all changes survive a reload. (plan: references/plans/sequencer-manual-placement.md)
 
 ---
@@ -112,6 +113,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 **First slice shipped (2026-05-12):** `/overview` route now renders a live sequencer surface. Sequence zone (horizontal sortable row) + unassigned pool (wrappable grid). Drag-and-drop with `@dnd-kit/core` + `@dnd-kit/sortable`. Optimistic updates with React Query rollback.
 
 **Deferred to follow-up plans:**
+
 - Arc overlays (require arc data model and API endpoint — see `aspect-arc-model.md`)
 - Sections UI (data model and storage are ready; UI labels and reordering are deferred)
 - Secondary sequences picker

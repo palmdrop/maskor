@@ -13,7 +13,9 @@ const weights: SuggestionWeights = {
 
 const noStats = (): Map<string, FragmentStats> => new Map();
 
-const makeStats = (overrides: Partial<FragmentStats> & { fragmentUuid: string }): FragmentStats => ({
+const makeStats = (
+  overrides: Partial<FragmentStats> & { fragmentUuid: string },
+): FragmentStats => ({
   voluntaryOpenCount: 0,
   promptAcceptCount: 0,
   avoidanceCount: 0,

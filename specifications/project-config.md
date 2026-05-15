@@ -4,6 +4,7 @@
 **Last updated**: 2026-04-27
 
 **Shipped**:
+
 - 2026-04-04 — The suggestion eligibility cutoff ("Ready status threshold") is configurable per project, controlling which fragments are eligible for suggestion mode. (plan: references/plans/suggestion-mode.md)
 - 2026-04-30 — User can manage project configuration from a dedicated tabbed UI: edit project name, create/rename/delete aspects and their intensity arcs, manage notes and references. (plan: references/plans/project-config-page.md)
 - 2026-05-08 — Project configuration is stored in the vault, making vaults portable — moving a vault preserves all configuration without registry dependency. (plan: references/plans/project-config-vault-storage.md)

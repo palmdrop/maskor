@@ -126,7 +126,12 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           ? {}
           : {
               config: {
-                editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
+                editor: {
+                  vimMode: false,
+                  rawMarkdownMode: false,
+                  fontSize: 16,
+                  maxParagraphWidth: 72,
+                },
                 suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
               },
             }),
@@ -178,7 +183,12 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       projectUUID: string,
       patch: {
         name?: string;
-        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean; fontSize?: number; maxParagraphWidth?: number };
+        editor?: {
+          vimMode?: boolean;
+          rawMarkdownMode?: boolean;
+          fontSize?: number;
+          maxParagraphWidth?: number;
+        };
         suggestion?: { readyStatusThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
       },

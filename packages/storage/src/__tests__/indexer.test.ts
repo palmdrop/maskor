@@ -388,7 +388,11 @@ const makeSequence = (overrides: Partial<Sequence> = {}): Sequence => ({
       name: "Main",
       fragments: [
         { uuid: "dddddddd-0000-0000-0000-000000000000", fragmentUuid: BRIDGE_UUID, position: 0 },
-        { uuid: "eeeeeeee-0000-0000-0000-000000000000", fragmentUuid: LATE_WINTER_UUID, position: 1 },
+        {
+          uuid: "eeeeeeee-0000-0000-0000-000000000000",
+          fragmentUuid: LATE_WINTER_UUID,
+          position: 1,
+        },
       ],
     },
   ],

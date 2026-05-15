@@ -136,7 +136,10 @@ export const upsertReference = (
 };
 
 const buildExcerpt = (content: string, maxLength = 200): string => {
-  const stripped = content.replace(/[#*_`[\]>]/g, "").replace(/\n+/g, " ").trim();
+  const stripped = content
+    .replace(/[#*_`[\]>]/g, "")
+    .replace(/\n+/g, " ")
+    .trim();
   return stripped.length > maxLength ? stripped.slice(0, maxLength) + "…" : stripped;
 };
 
@@ -207,10 +210,7 @@ export const upsertFragment = (
   }
 
   // Eager stats row creation — every fragment gets a row on first index/upsert.
-  tx.insert(fragmentStatsTable)
-    .values({ fragmentUuid: fragment.uuid })
-    .onConflictDoNothing()
-    .run();
+  tx.insert(fragmentStatsTable).values({ fragmentUuid: fragment.uuid }).onConflictDoNothing().run();
 
   return aspectEntries.reduce<SyncWarning[]>((acc, [aspectKey]) => {
     if (knownAspectKeys.has(aspectKey)) {
@@ -247,12 +247,7 @@ export const upsertSequence = (
 
   // Pre-delete any row colliding on filePath with a different uuid.
   tx.delete(sequencesTable)
-    .where(
-      and(
-        not(eq(sequencesTable.uuid, sequence.uuid)),
-        eq(sequencesTable.filePath, filePath),
-      ),
-    )
+    .where(and(not(eq(sequencesTable.uuid, sequence.uuid)), eq(sequencesTable.filePath, filePath)))
     .run();
 
   // If this sequence is main, clear the main flag on all others in the same project

@@ -17,7 +17,5 @@ export const SuggestionNextQuerySchema = z.object({
 
 export const SuggestionVisitParamSchema = z.object({
   projectId: z.uuid(),
-  fragmentId: z
-    .uuid()
-    .openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+  fragmentId: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
 });

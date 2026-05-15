@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
-import type { ProjectStats, FragmentStats } from "@maskor/storage";
 
 type ApiProjectStats = {
   global: {
@@ -49,9 +48,7 @@ afterAll(() => {
 
 describe("GET /projects/:projectId/stats", () => {
   it("returns 200 with global and fragments fields", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/stats`,
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as ApiProjectStats;
     expect(typeof body.global).toBe("object");
@@ -65,30 +62,21 @@ describe("GET /projects/:projectId/stats", () => {
     const fragments = (await fragmentsResponse.json()) as Array<{ isDiscarded: boolean }>;
     const nonDiscarded = fragments.filter((fragment) => !fragment.isDiscarded);
 
-    const statsResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/stats`,
-    );
+    const statsResponse = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await statsResponse.json()) as ApiProjectStats;
 
     expect(body.global.totalCount).toBe(nonDiscarded.length);
   });
 
   it("readyStatusHistogram buckets sum to totalCount", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/stats`,
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await response.json()) as ApiProjectStats;
-    const histogramSum = body.global.readyStatusHistogram.reduce(
-      (acc, count) => acc + count,
-      0,
-    );
+    const histogramSum = body.global.readyStatusHistogram.reduce((acc, count) => acc + count, 0);
     expect(histogramSum).toBe(body.global.totalCount);
   });
 
   it("fragments are sorted alphabetically by key", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/stats`,
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await response.json()) as ApiProjectStats;
 
     const keys = body.fragments.map((fragment) => fragment.key);
@@ -97,9 +85,7 @@ describe("GET /projects/:projectId/stats", () => {
   });
 
   it("fragments list excludes discarded fragments", async () => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/stats`,
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await response.json()) as ApiProjectStats;
     expect(body.fragments.every((fragment) => !fragment.isDiscarded)).toBe(true);
   });
@@ -138,14 +124,11 @@ describe("GET /projects/:projectId/fragments/:fragmentId/stats", () => {
     expect(createResponse.status).toBe(201);
     const created = (await createResponse.json()) as { uuid: string };
 
-    await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments/${created.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "alpha beta gamma delta epsilon" }),
-      },
-    );
+    await testContext.app.request(`/projects/${project.projectUUID}/fragments/${created.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "alpha beta gamma delta epsilon" }),
+    });
 
     const statsResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments/${created.uuid}/stats`,
@@ -167,9 +150,7 @@ describe("GET /projects/:projectId/stats — empty project", () => {
       emptyVaultDirectory,
     );
 
-    const response = await testContext.app.request(
-      `/projects/${emptyProject.projectUUID}/stats`,
-    );
+    const response = await testContext.app.request(`/projects/${emptyProject.projectUUID}/stats`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as ApiProjectStats;
     expect(body.fragments).toHaveLength(0);

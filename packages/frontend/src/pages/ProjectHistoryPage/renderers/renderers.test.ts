@@ -91,7 +91,9 @@ describe("renderFragmentEntryText", () => {
       type: "fragment:aspect-detached",
       payload: { aspectKey: "tone" },
     };
-    expect(renderFragmentEntryText(entry)).toBe('Aspect "tone" detached from fragment "late-winter"');
+    expect(renderFragmentEntryText(entry)).toBe(
+      'Aspect "tone" detached from fragment "late-winter"',
+    );
   });
 
   it("renders fragment:aspect-weight-changed", () => {
@@ -100,9 +102,7 @@ describe("renderFragmentEntryText", () => {
       type: "fragment:aspect-weight-changed",
       payload: { aspectKey: "tone", from: 0.5, to: 0.7 },
     };
-    expect(renderFragmentEntryText(entry)).toBe(
-      'tone weight on fragment "late-winter": 50% → 70%',
-    );
+    expect(renderFragmentEntryText(entry)).toBe('tone weight on fragment "late-winter": 50% → 70%');
   });
 
   it("renders fragment:renamed", () => {

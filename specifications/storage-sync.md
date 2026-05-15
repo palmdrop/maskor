@@ -4,6 +4,7 @@
 **Last updated**: 2026-05-15
 
 **Shipped**:
+
 - 2026-04-04 — Vault change events are emitted over SSE after each watcher transaction; the frontend invalidates its cache automatically without polling. (plan: references/plans/sse-vault-events.md)
 - 2026-04-05 — Fragments, aspects, notes, and references are stored as vault markdown files; Maskor reads and writes frontmatter without modifying body content. (plan: references/plans/storage-markdown-reader.md)
 - 2026-04-10 — All vault entities are indexed in a per-vault SQLite database; full rebuilds run as a single atomic transaction and soft-delete entities no longer present in the vault. (plan: references/plans/vault-content-index.md)

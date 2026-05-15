@@ -91,10 +91,7 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
 
   const readyCount = nonDiscarded.filter((fragment) => fragment.readyStatus === 1.0).length;
 
-  const totalReadyStatus = nonDiscarded.reduce(
-    (acc, fragment) => acc + fragment.readyStatus,
-    0,
-  );
+  const totalReadyStatus = nonDiscarded.reduce((acc, fragment) => acc + fragment.readyStatus, 0);
   const averageReadyStatus = nonDiscarded.length > 0 ? totalReadyStatus / nonDiscarded.length : 0;
 
   const histogram: [number, number, number, number, number] = [0, 0, 0, 0, 0];
@@ -118,8 +115,7 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
     return acc + (stats?.wordCount ?? 0);
   }, 0);
 
-  const averageWordCount =
-    nonDiscarded.length > 0 ? totalWordCount / nonDiscarded.length : 0;
+  const averageWordCount = nonDiscarded.length > 0 ? totalWordCount / nonDiscarded.length : 0;
 
   const fragmentSummaries: FragmentStatsSummary[] = nonDiscarded
     .map((fragment) => {

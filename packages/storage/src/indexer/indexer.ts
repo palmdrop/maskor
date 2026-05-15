@@ -122,9 +122,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
       const activeSequenceUuids = sequenceEntries.map(({ entity }) => entity.uuid as string);
       if (activeSequenceUuids.length > 0) {
-        tx.delete(sequencesTable)
-          .where(notInArray(sequencesTable.uuid, activeSequenceUuids))
-          .run();
+        tx.delete(sequencesTable).where(notInArray(sequencesTable.uuid, activeSequenceUuids)).run();
       } else {
         tx.delete(sequencesTable).run();
       }

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import {
-  FragmentEditor,
-  type FragmentEditorHandle,
-} from "@components/fragments/fragment-editor";
+import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
 

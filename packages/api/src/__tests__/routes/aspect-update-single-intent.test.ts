@@ -3,6 +3,7 @@ import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 import type { IndexedAspect } from "@maskor/storage";
+import type { Aspect } from "@maskor/shared";
 
 type LogEntry = {
   id: string;
@@ -21,6 +22,11 @@ const findAspectByKey = async (key: string): Promise<IndexedAspect> => {
   const match = all.find((aspect) => aspect.key === key);
   if (!match) throw new Error(`Aspect "${key}" not found`);
   return match;
+};
+
+const readFullAspect = async (indexed: IndexedAspect): Promise<Aspect> => {
+  const context = await testContext.storageService.resolveProject(project.projectUUID);
+  return testContext.storageService.aspects.read(context, indexed.uuid);
 };
 
 const tailEntries = async (limit = 20): Promise<LogEntry[]> => {
@@ -124,5 +130,56 @@ describe("PATCH /aspects/:aspectId — single-intent action types", () => {
     );
     expect(entry).toBeTruthy();
     expect(entry?.payload.noteKey).toBe("bridge observation");
+  });
+});
+
+describe("PATCH /aspects/:aspectId — no-op and rename split", () => {
+  it("emits no log entry for a no-op patch", async () => {
+    const indexed = await findAspectByKey("grief");
+    const aspect = await readFullAspect(indexed);
+    const before = await tailEntries(50);
+    const beforeIds = new Set(before.map((e) => e.id));
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${indexed.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: aspect.description,
+          category: aspect.category,
+          notes: aspect.notes,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const after = await tailEntries(50);
+    const newEntries = after.filter((e) => !beforeIds.has(e.id));
+    expect(newEntries).toEqual([]);
+  });
+
+  it("emits 'aspect:renamed' and 'aspect:description-edited' when key and description both change", async () => {
+    const indexed = await findAspectByKey("memory");
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${indexed.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "memory-v2", description: "Revised description." }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const entries = await tailEntries(20);
+    const renamed = entries.find(
+      (e) => e.type === "aspect:renamed" && e.target.uuid === indexed.uuid,
+    );
+    const descEdited = entries.find(
+      (e) => e.type === "aspect:description-edited" && e.target.uuid === indexed.uuid,
+    );
+    expect(renamed).toBeTruthy();
+    expect(descEdited).toBeTruthy();
   });
 });

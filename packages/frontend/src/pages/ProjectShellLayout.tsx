@@ -37,11 +37,7 @@ export const ProjectShellLayout = () => {
         <Link to="/projects/$projectId/overview" params={{ projectId }} className={linkClassName}>
           Overview
         </Link>
-        <Link
-          to="/projects/$projectId/suggestion"
-          params={{ projectId }}
-          className={linkClassName}
-        >
+        <Link to="/projects/$projectId/suggestion" params={{ projectId }} className={linkClassName}>
           Edit
         </Link>
         <Link to="/projects/$projectId/stats" params={{ projectId }} className={linkClassName}>

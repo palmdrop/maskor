@@ -4,6 +4,7 @@
 **Last updated**: 2026-05-08
 
 **Shipped**:
+
 - 2026-05-09 — Every state-changing user action is recorded in a persistent action log; a history page shows recent entries most-recent-first with human-readable descriptions and entity links. (plan: references/plans/action-log.md)
 - 2026-05-09 — Fragment metadata changes (ready status, aspect weights, note and reference attachments) are individually logged as single-intent entries. (plan: references/plans/entity-live-metadata-save.md)
 
@@ -56,42 +57,42 @@ Each log entry records:
 
 The naming convention is `domain:verb`. The full v1 set:
 
-| Type                              | Undoable | Notes                                                                                                                             |
-| --------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `fragment:created`                | No       | Undoing a create by moving the fragment to discarded is surprising; users discard explicitly                                      |
-| `fragment:edited`                 | Yes      | User-initiated content-only save via the editor                                                                                   |
-| `fragment:updated`                | Yes      | Catch-all: multi-field or programmatic patch that doesn't fit a single-intent type. Payload: `{ changedFields }`.                 |
-| `fragment:renamed`                | Yes      | Key change                                                                                                                        |
-| `fragment:discarded`              | Yes      | Undo restores the fragment to active                                                                                              |
-| `fragment:restored`               | Yes      | Undo discards the fragment again                                                                                                  |
-| `fragment:ready-status-changed`   | Yes      | Payload: `{ from: number, to: number }`                                                                                           |
-| `fragment:note-attached`          | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
-| `fragment:note-detached`          | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
-| `fragment:reference-attached`     | Yes      | Payload: `{ referenceKey: string }`                                                                                               |
-| `fragment:reference-detached`     | Yes      | Payload: `{ referenceKey: string }`                                                                                               |
-| `fragment:aspect-attached`        | Yes      | Payload: `{ aspectKey: string, weight: number }`                                                                                  |
-| `fragment:aspect-detached`        | Yes      | Payload: `{ aspectKey: string }`                                                                                                  |
-| `fragment:aspect-weight-changed`  | Yes      | Payload: `{ aspectKey: string, from: number, to: number }`                                                                        |
-| `aspect:created`                  | Yes      | Undo removes the aspect                                                                                                           |
-| `aspect:description-edited`       | Yes      | User-initiated description-only save via the editor                                                                               |
-| `aspect:updated`                  | Yes      | Catch-all: multi-field or programmatic patch. Payload: `{ changedFields }`.                                                       |
-| `aspect:renamed`                  | Yes      | Key change; cascades through fragments are implicit (one log entry per rename, not per touched fragment)                          |
-| `aspect:deleted`                  | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                                               |
-| `aspect:category-changed`         | Yes      | Payload: `{ from?: string, to?: string }` (optional because category is optional)                                                 |
-| `aspect:note-attached`            | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
-| `aspect:note-detached`            | Yes      | Payload: `{ noteKey: string }`                                                                                                    |
-| `note:created`                    | Yes      |                                                                                                                                   |
-| `note:edited`                     | Yes      | User-initiated content-only save                                                                                                  |
-| `note:updated`                    | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                                         |
-| `note:renamed`                    | Yes      | Key change; cascades through fragments and aspects are implicit                                                                   |
-| `note:deleted`                    | Yes      |                                                                                                                                   |
-| `reference:created`               | Yes      |                                                                                                                                   |
-| `reference:edited`                | Yes      | User-initiated content-only save                                                                                                  |
-| `reference:updated`               | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                                         |
-| `reference:renamed`               | Yes      | Key change; cascades through fragments are implicit                                                                               |
-| `reference:deleted`               | Yes      |                                                                                                                                   |
-| `sequence:fragment-placed`        | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                                     |
-| `sequence:fragment-moved`         | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                                     |
+| Type                             | Undoable | Notes                                                                                                             |
+| -------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `fragment:created`               | No       | Undoing a create by moving the fragment to discarded is surprising; users discard explicitly                      |
+| `fragment:edited`                | Yes      | User-initiated content-only save via the editor                                                                   |
+| `fragment:updated`               | Yes      | Catch-all: multi-field or programmatic patch that doesn't fit a single-intent type. Payload: `{ changedFields }`. |
+| `fragment:renamed`               | Yes      | Key change                                                                                                        |
+| `fragment:discarded`             | Yes      | Undo restores the fragment to active                                                                              |
+| `fragment:restored`              | Yes      | Undo discards the fragment again                                                                                  |
+| `fragment:ready-status-changed`  | Yes      | Payload: `{ from: number, to: number }`                                                                           |
+| `fragment:note-attached`         | Yes      | Payload: `{ noteKey: string }`                                                                                    |
+| `fragment:note-detached`         | Yes      | Payload: `{ noteKey: string }`                                                                                    |
+| `fragment:reference-attached`    | Yes      | Payload: `{ referenceKey: string }`                                                                               |
+| `fragment:reference-detached`    | Yes      | Payload: `{ referenceKey: string }`                                                                               |
+| `fragment:aspect-attached`       | Yes      | Payload: `{ aspectKey: string, weight: number }`                                                                  |
+| `fragment:aspect-detached`       | Yes      | Payload: `{ aspectKey: string }`                                                                                  |
+| `fragment:aspect-weight-changed` | Yes      | Payload: `{ aspectKey: string, from: number, to: number }`                                                        |
+| `aspect:created`                 | Yes      | Undo removes the aspect                                                                                           |
+| `aspect:description-edited`      | Yes      | User-initiated description-only save via the editor                                                               |
+| `aspect:updated`                 | Yes      | Catch-all: multi-field or programmatic patch. Payload: `{ changedFields }`.                                       |
+| `aspect:renamed`                 | Yes      | Key change; cascades through fragments are implicit (one log entry per rename, not per touched fragment)          |
+| `aspect:deleted`                 | Yes      | Undo restores the aspect; orphaned fragment weights remain warnings                                               |
+| `aspect:category-changed`        | Yes      | Payload: `{ from?: string, to?: string }` (optional because category is optional)                                 |
+| `aspect:note-attached`           | Yes      | Payload: `{ noteKey: string }`                                                                                    |
+| `aspect:note-detached`           | Yes      | Payload: `{ noteKey: string }`                                                                                    |
+| `note:created`                   | Yes      |                                                                                                                   |
+| `note:edited`                    | Yes      | User-initiated content-only save                                                                                  |
+| `note:updated`                   | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                         |
+| `note:renamed`                   | Yes      | Key change; cascades through fragments and aspects are implicit                                                   |
+| `note:deleted`                   | Yes      |                                                                                                                   |
+| `reference:created`              | Yes      |                                                                                                                   |
+| `reference:edited`               | Yes      | User-initiated content-only save                                                                                  |
+| `reference:updated`              | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                         |
+| `reference:renamed`              | Yes      | Key change; cascades through fragments are implicit                                                               |
+| `reference:deleted`              | Yes      |                                                                                                                   |
+| `sequence:fragment-placed`       | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                     |
+| `sequence:fragment-moved`        | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                     |
 
 #### Cascade behavior
 

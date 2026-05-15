@@ -3,6 +3,8 @@ import { render, screen, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
+import type * as DndKitCore from "@dnd-kit/core";
+import type * as DndKitSortable from "@dnd-kit/sortable";
 
 // --- router mock ---
 
@@ -15,7 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
 let capturedOnDragEnd: ((event: DragEndEvent) => void) | undefined;
 
 vi.mock("@dnd-kit/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  const actual = await importOriginal<typeof DndKitCore>();
   return {
     ...actual,
     DndContext: ({
@@ -42,7 +44,7 @@ vi.mock("@dnd-kit/core", async (importOriginal) => {
 });
 
 vi.mock("@dnd-kit/sortable", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@dnd-kit/sortable")>();
+  const actual = await importOriginal<typeof DndKitSortable>();
   return {
     ...actual,
     SortableContext: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -140,17 +142,27 @@ const mockFragments = (fragments: ReturnType<typeof makeFragment>[]) => {
 
 const wrap = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  return Wrapper;
 };
 
 // Trigger a drag-end event as if a tile was dragged
 function triggerDragEnd(activeId: string, overId: string) {
   act(() => {
     capturedOnDragEnd?.({
-      active: { id: activeId, rect: { current: { initial: null, translated: null } }, data: { current: {} } },
-      over: { id: overId, rect: { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }, data: { current: {} }, disabled: false },
+      active: {
+        id: activeId,
+        rect: { current: { initial: null, translated: null } },
+        data: { current: {} },
+      },
+      over: {
+        id: overId,
+        rect: { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 },
+        data: { current: {} },
+        disabled: false,
+      },
       delta: { x: 0, y: 0 },
       activatorEvent: new PointerEvent("pointerdown"),
       collisions: [],

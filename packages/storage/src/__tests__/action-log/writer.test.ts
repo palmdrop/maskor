@@ -66,14 +66,19 @@ describe("createActionLogWriter", () => {
   });
 
   it("rotates at the threshold and starts a fresh file", async () => {
-    const writer = await createActionLogWriter({ vaultPath: temporaryDirectory, rotationThreshold: 3 });
+    const writer = await createActionLogWriter({
+      vaultPath: temporaryDirectory,
+      rotationThreshold: 3,
+    });
     for (let index = 0; index < 3; index++) {
       await writer.append(makeEntry({ id: `entry-${index}` }));
     }
 
     const maskorDir = join(temporaryDirectory, ".maskor");
     const files = (await import("node:fs")).readdirSync(maskorDir);
-    const archives = files.filter((file) => file.startsWith("action-log.") && file !== "action-log.jsonl");
+    const archives = files.filter(
+      (file) => file.startsWith("action-log.") && file !== "action-log.jsonl",
+    );
     expect(archives).toHaveLength(1);
 
     const currentContent = readFileSync(join(maskorDir, "action-log.jsonl"), "utf8");
@@ -82,19 +87,27 @@ describe("createActionLogWriter", () => {
 
   it("initializes counter from existing file on construction", async () => {
     const maskorDir = join(temporaryDirectory, ".maskor");
-    await import("node:fs/promises").then((module_) => module_.mkdir(maskorDir, { recursive: true }));
+    await import("node:fs/promises").then((module_) =>
+      module_.mkdir(maskorDir, { recursive: true }),
+    );
 
-    const existingLines = [
-      JSON.stringify(makeEntry({ id: "existing-1" })),
-      JSON.stringify(makeEntry({ id: "existing-2" })),
-    ].join("\n") + "\n";
+    const existingLines =
+      [
+        JSON.stringify(makeEntry({ id: "existing-1" })),
+        JSON.stringify(makeEntry({ id: "existing-2" })),
+      ].join("\n") + "\n";
     writeFileSync(join(maskorDir, "action-log.jsonl"), existingLines);
 
-    const writer = await createActionLogWriter({ vaultPath: temporaryDirectory, rotationThreshold: 3 });
+    const writer = await createActionLogWriter({
+      vaultPath: temporaryDirectory,
+      rotationThreshold: 3,
+    });
     await writer.append(makeEntry({ id: "new-entry" }));
 
     const files = (await import("node:fs")).readdirSync(maskorDir);
-    const archives = files.filter((file) => file.startsWith("action-log.") && file !== "action-log.jsonl");
+    const archives = files.filter(
+      (file) => file.startsWith("action-log.") && file !== "action-log.jsonl",
+    );
     expect(archives).toHaveLength(1);
   });
 

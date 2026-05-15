@@ -9,7 +9,7 @@ import { createVaultWatcher } from "../watcher/watcher";
 import type { VaultWatcher } from "../watcher/types";
 import type { VaultSyncEvent } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
-import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
+import { notesTable } from "../db/vault/schema";
 import { eq } from "drizzle-orm";
 
 // Chokidar awaitWriteFinish.stabilityThreshold is 200ms; poll until callback fires
@@ -229,10 +229,7 @@ describe("rename buffer — aspect external rename", () => {
       },
     });
 
-    renameSync(
-      join(vaultDir, "aspects", "grief.md"),
-      join(vaultDir, "aspects", "sorrow.md"),
-    );
+    renameSync(join(vaultDir, "aspects", "grief.md"), join(vaultDir, "aspects", "sorrow.md"));
 
     await waitFor(() => calls.length > 0);
     expect(calls).toHaveLength(1);
@@ -416,8 +413,7 @@ describe("syncNote — hash guard", () => {
       () =>
         events.some(
           (event) =>
-            event.type === "note:synced" &&
-            event.uuid === "2c562d55-4f9b-4246-a2bd-89de4a860bd9",
+            event.type === "note:synced" && event.uuid === "2c562d55-4f9b-4246-a2bd-89de4a860bd9",
         ),
       3000,
     );
@@ -451,8 +447,7 @@ describe("syncReference — hash guard", () => {
 
     const referenceSynced = events.filter(
       (event) =>
-        event.type === "reference:synced" &&
-        event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
+        event.type === "reference:synced" && event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
     );
     expect(referenceSynced).toHaveLength(0);
   });
@@ -485,8 +480,7 @@ describe("syncReference — hash guard", () => {
 
     const referenceSynced = events.filter(
       (event) =>
-        event.type === "reference:synced" &&
-        event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
+        event.type === "reference:synced" && event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
     );
     expect(referenceSynced.length).toBeGreaterThanOrEqual(1);
   });

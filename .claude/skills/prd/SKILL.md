@@ -176,6 +176,7 @@ The PRD reader may be a junior developer or AI agent. Therefore:
 Add priority levels to tasks so users can focus on what matters most. Tasks can be marked as high, medium, or low priority, with visual indicators and filtering to help users manage their workload effectively.
 
 **Source Specifications:**
+
 - `specifications/tasks.md`
 
 ## Goals

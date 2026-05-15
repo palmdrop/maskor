@@ -9,7 +9,11 @@ type Section = {
   name: string;
   fragments: { uuid: string; fragmentUuid: string; position: number }[];
 };
-type SequenceFull = SequenceSummary & { projectUuid: string; contentHash: string; sections: Section[] };
+type SequenceFull = SequenceSummary & {
+  projectUuid: string;
+  contentHash: string;
+  sections: Section[];
+};
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -45,8 +49,12 @@ describe("GET /projects/:projectId/sequences/main", () => {
   });
 
   it("returns the same sequence on subsequent calls", async () => {
-    const first = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
-    const second = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const first = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const second = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     expect(first.uuid).toBe(second.uuid);
   });
 });
@@ -56,7 +64,11 @@ describe("POST /projects/:projectId/sequences", () => {
     const response = await testContext.app.request(baseUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Draft Order", isMain: false, projectUuid: project.projectUUID }),
+      body: JSON.stringify({
+        name: "Draft Order",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
     });
     expect(response.status).toBe(201);
     const body = (await response.json()) as SequenceFull;
@@ -68,12 +80,20 @@ describe("POST /projects/:projectId/sequences", () => {
     await testContext.app.request(baseUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Unique Name", isMain: false, projectUuid: project.projectUUID }),
+      body: JSON.stringify({
+        name: "Unique Name",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
     });
     const conflict = await testContext.app.request(baseUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Unique Name", isMain: false, projectUuid: project.projectUUID }),
+      body: JSON.stringify({
+        name: "Unique Name",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
     });
     expect(conflict.status).toBe(409);
   });
@@ -81,7 +101,9 @@ describe("POST /projects/:projectId/sequences", () => {
 
 describe("GET /projects/:projectId/sequences/:sequenceId", () => {
   it("returns a sequence by UUID", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const response = await testContext.app.request(`${baseUrl()}/${main.uuid}`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as SequenceFull;
@@ -102,7 +124,11 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "To Be Renamed", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "To Be Renamed",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceFull;
 
@@ -121,7 +147,11 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Promote Me", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Promote Me",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceFull;
 
@@ -157,7 +187,9 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
   });
 
   it("returns 409 when deleting the main sequence", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const response = await testContext.app.request(`${baseUrl()}/${main.uuid}`, {
       method: "DELETE",
     });
@@ -167,7 +199,9 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
 
 describe("POST /projects/:projectId/sequences/:sequenceId/positions", () => {
   it("places a fragment and returns the updated sequence", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const sectionUuid = main.sections[0]!.uuid;
 
     const fragmentsResponse = await testContext.app.request(
@@ -188,7 +222,9 @@ describe("POST /projects/:projectId/sequences/:sequenceId/positions", () => {
   });
 
   it("returns 409 when placing an already-placed fragment", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const alreadyPlaced = main.sections[0]!.fragments[0];
     if (!alreadyPlaced) return;
 
@@ -207,7 +243,9 @@ describe("POST /projects/:projectId/sequences/:sequenceId/positions", () => {
 
 describe("PATCH /projects/:projectId/sequences/:sequenceId/positions/:fragmentUuid", () => {
   it("moves a placed fragment to a new position", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const sectionUuid = main.sections[0]!.uuid;
 
     const fragmentsResponse = await testContext.app.request(
@@ -239,7 +277,9 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId/positions/:fragmentUu
 
 describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentUuid", () => {
   it("unplaces a fragment and returns the updated sequence", async () => {
-    const main = (await (await testContext.app.request(`${baseUrl()}/main`)).json()) as SequenceFull;
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
     const placed = main.sections[0]!.fragments[0];
     if (!placed) return;
 

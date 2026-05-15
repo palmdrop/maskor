@@ -33,9 +33,10 @@ const baseFragment: Fragment = {
 };
 
 const wrap = (queryClient: QueryClient) => {
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  return Wrapper;
 };
 
 const seedQueries = (queryClient: QueryClient, fragment: Fragment) => {

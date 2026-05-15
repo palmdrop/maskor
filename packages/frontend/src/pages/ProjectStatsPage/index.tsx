@@ -11,10 +11,7 @@ const HistogramBar = ({ count, max }: { count: number; max: number }) => {
     <div className="flex flex-col items-center gap-1 flex-1">
       <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
       <div className="w-full bg-muted rounded-sm overflow-hidden h-16 flex items-end">
-        <div
-          className="w-full bg-primary/60 rounded-sm"
-          style={{ height: `${heightPercent}%` }}
-        />
+        <div className="w-full bg-primary/60 rounded-sm" style={{ height: `${heightPercent}%` }} />
       </div>
     </div>
   );
@@ -140,7 +137,11 @@ export const ProjectStatsPage = () => {
             </thead>
             <tbody>
               {fragments.map((fragment) => (
-                <FragmentRow key={fragment.fragmentUuid} fragment={fragment} projectId={projectId} />
+                <FragmentRow
+                  key={fragment.fragmentUuid}
+                  fragment={fragment}
+                  projectId={projectId}
+                />
               ))}
             </tbody>
           </table>

@@ -241,9 +241,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="font-size">Font size</Label>
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {localFontSize}px
-            </span>
+            <span className="text-sm text-muted-foreground tabular-nums">{localFontSize}px</span>
           </div>
           <Slider
             id="font-size"

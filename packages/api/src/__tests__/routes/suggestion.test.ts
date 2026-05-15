@@ -55,14 +55,11 @@ describe("GET /projects/:projectId/suggestion/next", () => {
     // Set all but one to readyStatus 1.0
     const toFinish = active.slice(0, active.length - 1);
     for (const fragment of toFinish) {
-      await testContext.app.request(
-        `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ readyStatus: 1.0 }),
-        },
-      );
+      await testContext.app.request(`/projects/${project.projectUUID}/fragments/${fragment.uuid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ readyStatus: 1.0 }),
+      });
     }
 
     const nextResponse = await testContext.app.request(
@@ -131,7 +128,9 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     const freshContext = createTestApp();
     const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
     const freshProject = seeded.project;
-    const projectContext = await freshContext.storageService.resolveProject(freshProject.projectUUID);
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
 
     // Get the first suggestion
     const firstResponse = await freshContext.app.request(
@@ -149,7 +148,10 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     expect(secondResponse.status).toBe(200);
 
     // Verify the avoidance_count was actually incremented in storage.
-    const stats = freshContext.storageService.suggestion.getFragmentStats(projectContext, firstUuid);
+    const stats = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      firstUuid,
+    );
     expect(stats.avoidanceCount).toBe(1);
 
     freshContext.cleanup();
@@ -159,7 +161,9 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     const freshContext = createTestApp();
     const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
     const freshProject = seeded.project;
-    const projectContext = await freshContext.storageService.resolveProject(freshProject.projectUUID);
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
 
     // Get the first suggestion
     const firstResponse = await freshContext.app.request(
@@ -169,14 +173,11 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     const firstUuid = first.fragment!.uuid;
 
     // Edit the fragment (this calls PATCH which increments edit_count and marks edited in cooldown)
-    await freshContext.app.request(
-      `/projects/${freshProject.projectUUID}/fragments/${firstUuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "Updated content to mark as edited." }),
-      },
-    );
+    await freshContext.app.request(`/projects/${freshProject.projectUUID}/fragments/${firstUuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Updated content to mark as edited." }),
+    });
 
     // Call next with exclude — avoidance should NOT be incremented because it was edited
     const secondResponse = await freshContext.app.request(
@@ -185,7 +186,10 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     expect(secondResponse.status).toBe(200);
 
     // Verify avoidance_count remains 0 in storage.
-    const stats = freshContext.storageService.suggestion.getFragmentStats(projectContext, firstUuid);
+    const stats = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      firstUuid,
+    );
     expect(stats.avoidanceCount).toBe(0);
 
     freshContext.cleanup();

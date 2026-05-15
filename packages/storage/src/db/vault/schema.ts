@@ -168,10 +168,7 @@ export const fragmentPositionsTable = sqliteTable(
     position: integer("position").notNull(),
   },
   (table) => [
-    uniqueIndex("fragment_positions_section_position_unique").on(
-      table.sectionUuid,
-      table.position,
-    ),
+    uniqueIndex("fragment_positions_section_position_unique").on(table.sectionUuid, table.position),
     index("fragment_positions_fragment_uuid_idx").on(table.fragmentUuid),
   ],
 );

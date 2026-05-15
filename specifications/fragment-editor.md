@@ -4,6 +4,7 @@
 **Last updated**: 2026-05-15
 
 **Shipped**:
+
 - 2026-04-08 — Default prose editor uses WYSIWYG editing; content is stored as raw markdown. (plan: references/plans/prose-editor-tiptap.md)
 - 2026-04-20 — Dedicated single-fragment editing view with prose editor (supporting vim mode) and metadata form (readiness, notes, references, aspect weights). (plan: references/plans/fragment-editor.md)
 - 2026-05-05 — Fragment editor gained inline key (filename stem) editing with the same rename pattern as notes, references, and aspects; discard/restore and metadata sidebar wired as shell slots. (plan: references/plans/entity-editor-unification.md)
@@ -80,7 +81,7 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 | TipTap for default prose mode (not CM6 + remark/rehype as originally planned)                      | Implementation diverged from `references/plans/fragment-editor.md` Phase 2; TipTap WYSIWYG was chosen in practice |
 | CM6 + `@replit/codemirror-vim` for vim mode                                                        | `references/plans/fragment-editor.md`                                                                             |
 | Save button applies to prose content only; metadata fields save instantly per field (debounced)    | `references/plans/entity-live-metadata-save.md`; earlier plan assumed unified save — implementation diverged      |
-| Prose auto-save deferred; metadata instant-save is safe without version locking                   | `references/plans/fragment-editor.md` — version lock needed for prose; metadata writes are idempotent             |
+| Prose auto-save deferred; metadata instant-save is safe without version locking                    | `references/plans/fragment-editor.md` — version lock needed for prose; metadata writes are idempotent             |
 | Unknown aspect keys preserved on save                                                              | `references/plans/fragment-editor.md`                                                                             |
 | Notes/references restricted to existing vault entries                                              | TODO.md (`[x] Only allow adding notes/references that already exist`)                                             |
 | Discard button on editor                                                                           | TODO.md (`[x] Fragment editor needs a discard button`)                                                            |

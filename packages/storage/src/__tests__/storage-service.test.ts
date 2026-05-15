@@ -3,7 +3,6 @@ import { cpSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
-import { VaultError } from "../vault/types";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
 import type { Sequence } from "@maskor/shared";

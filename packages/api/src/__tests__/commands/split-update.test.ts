@@ -45,26 +45,28 @@ describe("stringArraysEqual", () => {
 
 describe("aspectWeightsEqual", () => {
   it("treats maps with the same keys and weights as equal", () => {
-    expect(
-      aspectWeightsEqual({ tone: { weight: 0.5 } }, { tone: { weight: 0.5 } }),
-    ).toBe(true);
+    expect(aspectWeightsEqual({ tone: { weight: 0.5 } }, { tone: { weight: 0.5 } })).toBe(true);
   });
 
   it("detects a weight change", () => {
-    expect(
-      aspectWeightsEqual({ tone: { weight: 0.5 } }, { tone: { weight: 0.6 } }),
-    ).toBe(false);
+    expect(aspectWeightsEqual({ tone: { weight: 0.5 } }, { tone: { weight: 0.6 } })).toBe(false);
   });
 
   it("detects a key added", () => {
     expect(
-      aspectWeightsEqual({ tone: { weight: 0.5 } }, { tone: { weight: 0.5 }, mood: { weight: 0.2 } }),
+      aspectWeightsEqual(
+        { tone: { weight: 0.5 } },
+        { tone: { weight: 0.5 }, mood: { weight: 0.2 } },
+      ),
     ).toBe(false);
   });
 
   it("detects a key removed", () => {
     expect(
-      aspectWeightsEqual({ tone: { weight: 0.5 }, mood: { weight: 0.2 } }, { tone: { weight: 0.5 } }),
+      aspectWeightsEqual(
+        { tone: { weight: 0.5 }, mood: { weight: 0.2 } },
+        { tone: { weight: 0.5 } },
+      ),
     ).toBe(false);
   });
 
