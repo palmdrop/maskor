@@ -78,3 +78,18 @@ Started: 2026-05-16
   - For the hard-delete fallback test, use a real temp directory and verify `existsSync` returns false — avoids needing to mock `node:fs/promises` (which would require re-exporting all its exports)
   - `trash` package export is the default export: `import trash from "trash"`
 ---
+
+## 2026-05-16 - US-006
+- Route `PATCH /projects/:projectId` was already implemented in `packages/api/src/routes/projects.ts`
+- `updateProject` in `storage-service.ts` delegates to `registry.updateProject` which writes both the registry row (updatedAt) and `.maskor/project.json` (name field) — no folder movement
+- `throwStorageError` already maps `ProjectNotFoundError` → 404
+- Added three integration tests to `packages/api/src/__tests__/routes/projects.test.ts`:
+  - success: name updated in registry response and on-disk manifest (reads `.maskor/project.json` directly via `readFileSync`)
+  - missing project UUID returns 404 (use nil UUID `00000000-0000-0000-0000-000000000000`, not `...001` which fails zod UUID validation → 400)
+  - vault folder unchanged: `existsSync(vaultDirectory)` still true and `GET` still returns original `vaultPath`
+- Files changed: `packages/api/src/__tests__/routes/projects.test.ts`
+- **Learnings for future iterations:**
+  - Zod `z.uuid()` rejects UUIDs where the version nibble or variant nibble don't conform (e.g. `...000000000001`). Use the nil UUID `00000000-0000-0000-0000-000000000000` for "not found" tests — it passes the validator and returns 404 because no project is registered with it.
+  - Before adding implementation, check whether the route + storage layer already exist; US-006 needed only tests.
+  - `registry.updateProject` writes the manifest via `writeVaultManifest` which merges patches into the existing manifest — the folder is never touched.
+---
