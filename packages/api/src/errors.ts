@@ -1,5 +1,5 @@
 import { HTTPException } from "hono/http-exception";
-import { ProjectNotFoundError } from "@maskor/storage";
+import { ProjectNotFoundError, ProjectConflictError } from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
 
 const errorResponse = (body: Record<string, unknown>, status: number): Response =>
@@ -14,6 +14,12 @@ export const throwStorageError = (error: unknown): never => {
   if (error instanceof ProjectNotFoundError) {
     throw new HTTPException(404, {
       res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
+    });
+  }
+
+  if (error instanceof ProjectConflictError) {
+    throw new HTTPException(409, {
+      res: errorResponse({ error: "CONFLICT", message: error.message }, 409),
     });
   }
 

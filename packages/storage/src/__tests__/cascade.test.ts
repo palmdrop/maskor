@@ -28,7 +28,7 @@ afterEach(() => {
 
 const setup = async () => {
   const service = createStorageService({ configDirectory: configDir });
-  const record = await service.registerProject("Test", vaultDir);
+  const record = await service.registerProject("Test", vaultDir, "adopt");
   const context = await service.resolveProject(record.projectUUID);
   await service.index.rebuild(context);
   return { service, context, vault: createVault({ root: vaultDir }) };

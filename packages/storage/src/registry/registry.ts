@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
-import { ProjectNotFoundError } from "./errors";
+import { ProjectNotFoundError, ProjectConflictError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
 type ProjectManifest = {
@@ -99,54 +99,94 @@ const toProjectRecord = (
   updatedAt: row.updatedAt,
 });
 
-// TODO: manifest-based DB recovery is not yet implemented — if the registry DB is lost,
-// the .maskor/project.json manifests cannot currently be used to re-register projects.
 export const createProjectRegistry = (database: RegistryDatabase) => {
   return {
-    async registerProject(name: string, vaultPath: string): Promise<ProjectRecord> {
-      // TODO: Bun.file().exists() cannot distinguish file vs directory — keeping node:fs/promises stat
-      const vaultStat = await stat(vaultPath).catch(() => null);
-      if (!vaultStat?.isDirectory()) {
-        throw new Error(`Vault path does not exist or is not a directory: "${vaultPath}"`);
+    async registerProject(
+      name: string,
+      vaultPath: string,
+      mode: "adopt" | "create",
+    ): Promise<ProjectRecord> {
+      const now = new Date();
+      let projectUUID: string;
+
+      if (mode === "adopt") {
+        // Bun.file().exists() cannot distinguish file vs directory — keeping node:fs/promises stat
+        const vaultStat = await stat(vaultPath).catch(() => null);
+        if (!vaultStat?.isDirectory()) {
+          throw new Error(`Vault path does not exist or is not a directory: "${vaultPath}"`);
+        }
+
+        const existingManifest = await readVaultManifest(vaultPath);
+        projectUUID = existingManifest?.projectUUID ?? crypto.randomUUID();
+
+        const effectiveName = name || existingManifest?.name || "";
+
+        // Write manifest first: if DB insert fails after a successful manifest write, the worst
+        // case is a stale manifest file — far less harmful than a ghost DB record with no manifest.
+        // Only write default editor config when no config already exists — preserves config on
+        // re-adopt after DB loss, but initialises defaults on first use.
+        await writeVaultManifest(vaultPath, {
+          projectUUID,
+          name: effectiveName,
+          registeredAt: now.toISOString(),
+          ...(existingManifest?.config
+            ? {}
+            : {
+                config: {
+                  editor: {
+                    vimMode: false,
+                    rawMarkdownMode: false,
+                    fontSize: 16,
+                    maxParagraphWidth: 72,
+                  },
+                  suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+                },
+              }),
+        });
+      } else {
+        // create: mkdir -p, new UUID, write manifest
+        await mkdir(vaultPath, { recursive: true });
+
+        projectUUID = crypto.randomUUID();
+
+        await writeVaultManifest(vaultPath, {
+          projectUUID,
+          name,
+          registeredAt: now.toISOString(),
+          config: {
+            editor: {
+              vimMode: false,
+              rawMarkdownMode: false,
+              fontSize: 16,
+              maxParagraphWidth: 72,
+            },
+            suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+          },
+        });
       }
 
-      const now = new Date();
-      const projectUUID = crypto.randomUUID();
-
-      // Write manifest first: if DB insert fails after a successful manifest write, the worst case
-      // is a stale manifest file — far less harmful than a ghost DB record with no manifest.
-      // Only write default editor config when no config already exists — preserves config if the
-      // vault is being re-registered after a DB loss, but still initialises defaults on first use.
-      const existingManifest = await readVaultManifest(vaultPath);
-      await writeVaultManifest(vaultPath, {
-        projectUUID,
-        name,
-        registeredAt: now.toISOString(),
-        ...(existingManifest?.config
-          ? {}
-          : {
-              config: {
-                editor: {
-                  vimMode: false,
-                  rawMarkdownMode: false,
-                  fontSize: 16,
-                  maxParagraphWidth: 72,
-                },
-                suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
-              },
-            }),
-      });
-
-      const [row] = await database
-        .insert(projectsTable)
-        .values({
-          uuid: projectUUID,
-          userUuid: LOCAL_USER_UUID,
-          vaultPath,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
+      let row: typeof projectsTable.$inferSelect | undefined;
+      try {
+        const rows = await database
+          .insert(projectsTable)
+          .values({
+            uuid: projectUUID,
+            userUuid: LOCAL_USER_UUID,
+            vaultPath,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        row = rows[0];
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("UNIQUE constraint failed: projects.vault_path")
+        ) {
+          throw new ProjectConflictError(vaultPath);
+        }
+        throw error;
+      }
 
       if (!row) {
         throw new Error(`Failed to register project "${name}" at "${vaultPath}"`);

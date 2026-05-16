@@ -383,9 +383,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   return {
     // Registry operations (no context required)
 
-    async registerProject(name: string, vaultPath: string): Promise<ProjectRecord> {
-      const record = await registry.registerProject(name, vaultPath);
-      log.info({ projectUUID: record.projectUUID, name, vaultPath }, "project registered");
+    async registerProject(
+      name: string,
+      vaultPath: string,
+      mode: "adopt" | "create",
+    ): Promise<ProjectRecord> {
+      const record = await registry.registerProject(name, vaultPath, mode);
+      log.info({ projectUUID: record.projectUUID, name, vaultPath, mode }, "project registered");
       return record;
     },
 

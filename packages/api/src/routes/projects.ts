@@ -71,6 +71,10 @@ const createProjectRoute = createRoute({
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Invalid request body",
     },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "A project is already registered at this vault path",
+    },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Internal error",
@@ -152,13 +156,13 @@ projectsRouter.openapi(getProjectRoute, async (ctx) => {
 projectsRouter.openapi(createProjectRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
-    const { name, vaultPath } = ctx.req.valid("json");
+    const { name, vaultPath, mode } = ctx.req.valid("json");
 
     if (!isAbsolute(vaultPath)) {
       return ctx.json({ error: "BAD_REQUEST", message: "vaultPath must be an absolute path" }, 400);
     }
 
-    const project = await storageService.registerProject(name, vaultPath);
+    const project = await storageService.registerProject(name, vaultPath, mode);
     return ctx.json(project, 201);
   } catch (error) {
     return throwStorageError(error);

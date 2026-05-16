@@ -1,16 +1,28 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { cpSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createTestApp } from "../helpers/create-test-app";
-import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let testContext: ReturnType<typeof createTestApp>;
 let vaultCounter = 0;
 
+// Plain empty directory — each registration gets a fresh UUID with no manifest conflict.
 const makeVaultDirectory = (): string => {
   vaultCounter += 1;
   const directory = join(testContext.temporaryDirectory, `vault-${vaultCounter}`);
-  cpSync(BASIC_VAULT, directory, { recursive: true });
+  mkdirSync(directory, { recursive: true });
+  return directory;
+};
+
+// Directory with an explicit project.json, for UUID-reuse tests.
+const makeVaultDirectoryWithManifest = (projectUUID: string): string => {
+  vaultCounter += 1;
+  const directory = join(testContext.temporaryDirectory, `vault-${vaultCounter}`);
+  mkdirSync(join(directory, ".maskor"), { recursive: true });
+  writeFileSync(
+    join(directory, ".maskor", "project.json"),
+    JSON.stringify({ projectUUID, name: "Manifest Project", registeredAt: new Date().toISOString() }),
+  );
   return directory;
 };
 
@@ -37,7 +49,7 @@ describe("POST /projects", () => {
     const response = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "My Project", vaultPath: vaultDirectory }),
+      body: JSON.stringify({ name: "My Project", vaultPath: vaultDirectory, mode: "adopt" }),
     });
 
     expect(response.status).toBe(201);
@@ -51,12 +63,52 @@ describe("POST /projects", () => {
     expect(body.projectUUID).toBeDefined();
   });
 
+  it("reuses manifest UUID when adopting a vault with existing project.json", async () => {
+    const knownUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const vaultDirectory = makeVaultDirectoryWithManifest(knownUUID);
+    const response = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Adopted Project", vaultPath: vaultDirectory, mode: "adopt" }),
+    });
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { projectUUID: string };
+    expect(body.projectUUID).toBe(knownUUID);
+  });
+
+  it("returns 409 when vaultPath is already registered", async () => {
+    const vaultDirectory = makeVaultDirectory();
+    await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "First", vaultPath: vaultDirectory, mode: "adopt" }),
+    });
+
+    const response = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Second", vaultPath: vaultDirectory, mode: "adopt" }),
+    });
+    expect(response.status).toBe(409);
+  });
+
+  it("returns 400 when mode is missing", async () => {
+    const vaultDirectory = makeVaultDirectory();
+    const response = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "No Mode Project", vaultPath: vaultDirectory }),
+    });
+    expect(response.status).toBe(400);
+  });
+
   it("returns 400 when name is missing", async () => {
     const vaultDirectory = makeVaultDirectory();
     const response = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vaultPath: vaultDirectory }),
+      body: JSON.stringify({ vaultPath: vaultDirectory, mode: "adopt" }),
     });
     expect(response.status).toBe(400);
   });
@@ -65,7 +117,7 @@ describe("POST /projects", () => {
     const response = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Missing vault" }),
+      body: JSON.stringify({ name: "Missing vault", mode: "adopt" }),
     });
     expect(response.status).toBe(400);
   });
@@ -74,7 +126,7 @@ describe("POST /projects", () => {
     const response = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Relative Path Project", vaultPath: "relative/path/to/vault" }),
+      body: JSON.stringify({ name: "Relative Path Project", vaultPath: "relative/path/to/vault", mode: "adopt" }),
     });
     expect(response.status).toBe(400);
   });
@@ -93,7 +145,7 @@ describe("GET /projects/:projectId", () => {
     const createResponse = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Lookup Project", vaultPath: vaultDirectory }),
+      body: JSON.stringify({ name: "Lookup Project", vaultPath: vaultDirectory, mode: "adopt" }),
     });
     const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
 
@@ -116,7 +168,7 @@ describe("DELETE /projects/:projectId", () => {
     const createResponse = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Temp Project", vaultPath: vaultDirectory }),
+      body: JSON.stringify({ name: "Temp Project", vaultPath: vaultDirectory, mode: "adopt" }),
     });
     const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
 

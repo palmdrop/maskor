@@ -7,3 +7,13 @@ export class ProjectNotFoundError extends Error {
     this.projectUUID = projectUUID;
   }
 }
+
+export class ProjectConflictError extends Error {
+  readonly vaultPath: string;
+
+  constructor(vaultPath: string) {
+    super(`A project is already registered at: "${vaultPath}"`);
+    this.name = "ProjectConflictError";
+    this.vaultPath = vaultPath;
+  }
+}

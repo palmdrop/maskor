@@ -31,6 +31,7 @@ export const ProjectSchema = DomainProjectSchema.omit({
 export const ProjectCreateSchema = DomainProjectCreateSchema.extend({
   name: z.string().min(1).openapi({ example: "My Writing Project" }),
   vaultPath: z.string().min(1).openapi({ example: "/Users/me/Documents/my-vault" }),
+  mode: z.enum(["adopt", "create"]).openapi({ example: "adopt" }),
 }).openapi("ProjectCreate");
 
 export const ProjectUpdateSchema = DomainProjectUpdateSchema.extend({}).openapi("ProjectUpdate");

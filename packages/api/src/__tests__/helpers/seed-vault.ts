@@ -17,7 +17,7 @@ export const seedVault = async (
   const vaultDirectory = `${temporaryDirectory}/vault`;
   cpSync(BASIC_VAULT, vaultDirectory, { recursive: true });
 
-  const project = await storageService.registerProject("Test Project", vaultDirectory);
+  const project = await storageService.registerProject("Test Project", vaultDirectory, "adopt");
   const context = await storageService.resolveProject(project.projectUUID);
   await storageService.index.rebuild(context);
 

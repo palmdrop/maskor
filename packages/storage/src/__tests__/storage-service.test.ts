@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
@@ -28,7 +28,7 @@ const makeService = () => createStorageService({ configDirectory: configDir });
 describe("StorageService.registerProject + resolveProject", () => {
   it("registers a project and resolves a context with correct fields", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
 
     const context = await service.resolveProject(record.projectUUID);
     expect(context.projectUUID).toBe(record.projectUUID);
@@ -38,7 +38,7 @@ describe("StorageService.registerProject + resolveProject", () => {
 
   it("can read fragments after rebuild", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -59,7 +59,7 @@ describe("StorageService.resolveProject", () => {
 describe("StorageService.removeProject", () => {
   it("removes the project from the registry", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     // populate internal caches
@@ -79,7 +79,7 @@ describe("StorageService.removeProject", () => {
 describe("StorageService.fragments.discard", () => {
   it("moves a fragment to discarded/ using UUID lookup from the index", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -100,7 +100,7 @@ describe("StorageService.fragments.discard", () => {
 
   it("throws FRAGMENT_NOT_FOUND when UUID is not in the index", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -115,7 +115,7 @@ describe("StorageService.fragments.discard", () => {
 describe("StorageService.fragments.restore", () => {
   it("moves a discarded fragment back to fragments/ and marks it active", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -133,7 +133,7 @@ describe("StorageService.fragments.restore", () => {
 
   it("throws FRAGMENT_NOT_FOUND when UUID is not in the index", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -146,7 +146,7 @@ describe("StorageService.fragments.restore", () => {
 
   it("throws FRAGMENT_NOT_DISCARDED when fragment is not discarded", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -164,7 +164,7 @@ describe("StorageService.fragments.restore", () => {
 describe("StorageService.fragments.write — rename cleanup", () => {
   it("deletes the old file when a fragment is renamed", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -190,7 +190,7 @@ describe("StorageService.fragments.write — rename cleanup", () => {
 describe("StorageService.fragments.write — key collision", () => {
   it("rejects a rename onto another active fragment's key without touching files", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -217,7 +217,7 @@ describe("StorageService.fragments.write — key collision", () => {
 
   it("collision check is case-insensitive", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -236,7 +236,7 @@ describe("StorageService.fragments.write — key collision", () => {
 
   it("active and discarded fragments may share a key", async () => {
     const service = makeService();
-    const record = await service.registerProject("Test Project", vaultDir);
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     await service.index.rebuild(context);
@@ -263,11 +263,13 @@ describe("StorageService.listProjects", () => {
   it("returns all registered projects", async () => {
     const service = makeService();
 
+    // Use a fresh empty directory for the second vault — both copies of BASIC_VAULT share the
+    // same manifest UUID, so registering two copies causes a UUID primary key conflict.
     const secondVaultDir = join(tmpDir, "vault2");
-    cpSync(BASIC_VAULT, secondVaultDir, { recursive: true });
+    mkdirSync(secondVaultDir, { recursive: true });
 
-    await service.registerProject("Alpha", vaultDir);
-    await service.registerProject("Beta", secondVaultDir);
+    await service.registerProject("Alpha", vaultDir, "adopt");
+    await service.registerProject("Beta", secondVaultDir, "adopt");
 
     const projects = await service.listProjects();
     expect(projects.length).toBe(2);
@@ -289,7 +291,7 @@ const makeSequence = (projectUuid: string, overrides: Partial<Sequence> = {}): S
 
 const setupSequenceContext = async () => {
   const service = makeService();
-  const record = await service.registerProject("Test", vaultDir);
+  const record = await service.registerProject("Test", vaultDir, "adopt");
   const context = await service.resolveProject(record.projectUUID);
   await service.index.rebuild(context);
   return { service, context };

@@ -509,7 +509,7 @@ describe("StorageService integration", () => {
     const configDir = join(tmpDir, "config");
     const service = createStorageService({ configDirectory: configDir });
 
-    const record = await service.registerProject("Test", vaultDir);
+    const record = await service.registerProject("Test", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     const stats = await service.index.rebuild(context);
@@ -526,7 +526,7 @@ describe("StorageService integration", () => {
     const configDir = join(tmpDir, "config");
     const service = createStorageService({ configDirectory: configDir });
 
-    const record = await service.registerProject("Test", vaultDir);
+    const record = await service.registerProject("Test", vaultDir, "adopt");
     const context = await service.resolveProject(record.projectUUID);
 
     const firstStats = await service.index.rebuild(context);

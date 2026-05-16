@@ -148,6 +148,7 @@ describe("GET /projects/:projectId/stats — empty project", () => {
     const emptyProject = await testContext.storageService.registerProject(
       "Empty Project",
       emptyVaultDirectory,
+      "adopt",
     );
 
     const response = await testContext.app.request(`/projects/${emptyProject.projectUUID}/stats`);
