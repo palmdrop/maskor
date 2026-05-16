@@ -4,8 +4,11 @@
 **Last updated**: 2026-05-15
 **Shipped**:
 - 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
+- 2026-05-16 — Import Pipeline Stage 2 - Read-only preview-and-review step: convert + split on backend without committing, render document with split markers, commit via existing /import endpoint. (plan: `tasks/prd-import-pipeline-stage-2.md`)
 
 > **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, folder import is out of Stage 1, and source files are not archived.
+
+> **Stage 2 scope note (2026-05-16):** The second implementation pass ships a **read-only preview**: after picking a file, the user sees a full-page preview of how the document will be split into pieces (with derived keys), can adjust the heading level (md/docx) or delimiter (txt), and then presses Import to commit via the existing `/import` endpoint. The preview is read-only — per-piece edit operations (merge, discard individual pieces, retitle, adjustable split points) remain deferred to a future stage.
 
 ---
 
@@ -102,9 +105,9 @@ If a fragment with the derived title already exists, a numeric suffix is appende
 
 ## Acceptance criteria
 
-- A `.docx` file imported via the importer produces one piece per chosen delimiter, shown in a user-reviewable preview before any fragment is created _(preview deferred — Stage 1 creates fragments immediately)_
-- A folder import produces one piece per file in the folder, shown in preview before any fragment is created _(folder import deferred — out of Stage 1 entirely)_
-- Confirming the preview creates a Fragment for each piece; no intermediate files are written _(Stage 1: creation is immediate, no confirmation step; no intermediate files)_
+- A `.docx` file imported via the importer produces one piece per chosen delimiter, shown in a user-reviewable preview before any fragment is created _(Stage 2: read-only preview shipped; per-piece edits — merge, discard individual pieces, retitle, adjustable split points — remain deferred)_
+- A folder import produces one piece per file in the folder, shown in preview before any fragment is created _(folder import deferred — out of Stage 1 and Stage 2 entirely)_
+- Confirming the preview creates a Fragment for each piece; no intermediate files are written _(Stage 2: user reviews preview then presses Import to commit; no intermediate files)_
 - A title that conflicts with an existing fragment gets a numeric suffix — `fragment_1`, `fragment_2`, etc. — and is not rejected
 - Creation failures are logged per-piece; the remaining pieces in the batch still proceed
 - No fragment metadata is set during import; all aspect weights, notes, and references default to empty
