@@ -1,5 +1,11 @@
 import { z } from "@hono/zod-openapi";
 
+export const FsHomeResponseSchema = z
+  .object({
+    homedir: z.string().openapi({ example: "/Users/me" }),
+  })
+  .openapi("FsHomeResponse");
+
 export const FsEntrySchema = z
   .object({
     name: z.string().openapi({ example: "my-folder" }),

@@ -1,11 +1,30 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { isAbsolute, join, dirname } from "node:path";
 import { readdir, access } from "node:fs/promises";
+import { homedir } from "node:os";
 import type { AppVariables } from "../app";
-import { FsListResponseSchema } from "../schemas/fs";
+import { FsHomeResponseSchema, FsListResponseSchema } from "../schemas/fs";
 import { ErrorResponseSchema } from "../schemas/error";
 
 export const fsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+const homeRoute = createRoute({
+  operationId: "getHomeDirectory",
+  method: "get",
+  path: "/home",
+  tags: ["Filesystem"],
+  summary: "Get the current user's home directory",
+  responses: {
+    200: {
+      content: { "application/json": { schema: FsHomeResponseSchema } },
+      description: "Home directory path",
+    },
+  },
+});
+
+fsRouter.openapi(homeRoute, (ctx) => {
+  return ctx.json({ homedir: homedir() }, 200);
+});
 
 const listDirectoryRoute = createRoute({
   operationId: "listDirectory",
