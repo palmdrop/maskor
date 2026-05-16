@@ -4,7 +4,7 @@
 **Last updated**: 2026-05-15
 **Shipped**:
 - 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
-- 2026-05-16 — Import Pipeline Stage 2 - Read-only preview-and-review step: convert + split on backend without committing, render document with split markers, commit via existing /import endpoint. (plan: `tasks/prd-import-pipeline-stage-2.md`)
+- 2026-05-16 — Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-2/`)
 
 > **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, folder import is out of Stage 1, and source files are not archived.
 
