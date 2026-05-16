@@ -1,0 +1,184 @@
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { createTestApp } from "../helpers/create-test-app";
+import { seedVault } from "../helpers/seed-vault";
+import type { ProjectRecord } from "@maskor/storage";
+import type { CommandContext } from "../../commands/types";
+import { createPreviewImportCommand } from "../../commands/fragments/preview-import";
+import type { DocumentConverter } from "@maskor/importer";
+import type { Logger } from "@maskor/shared";
+
+const makeLogger = (): Logger => {
+  const noOp = () => {};
+  return {
+    info: noOp,
+    warn: noOp,
+    debug: noOp,
+    error: noOp,
+    child: () => makeLogger(),
+  } as unknown as Logger;
+};
+
+const makeStubConverter = (output: string): DocumentConverter => ({
+  toMarkdown: async () => output,
+});
+
+const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
+
+let testContext: ReturnType<typeof createTestApp>;
+let project: ProjectRecord;
+
+beforeAll(async () => {
+  testContext = createTestApp();
+  const seeded = await seedVault(testContext.storageService, testContext.temporaryDirectory);
+  project = seeded.project;
+});
+
+afterAll(() => {
+  testContext.cleanup();
+});
+
+const makeCommandContext = async (): Promise<CommandContext> => {
+  const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+  return {
+    storageService: testContext.storageService,
+    projectContext,
+    actor: "user",
+    logger: makeLogger(),
+  };
+};
+
+describe("createPreviewImportCommand - markdown", () => {
+  it("happy path: returns pieces and convertedMarkdown without creating fragments", async () => {
+    const ctx = await makeCommandContext();
+    const markdownContent = `# First Section\n\nFirst body.\n\n# Second Section\n\nSecond body.`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result, logEntries } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(markdownContent),
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.pieces.length).toBe(2);
+    expect(result.format).toBe("markdown");
+    expect(result.convertedMarkdown).toBe(markdownContent);
+    expect(logEntries).toHaveLength(0);
+  });
+
+  it("returns 1-based pieceIndex", async () => {
+    const ctx = await makeCommandContext();
+    const markdownContent = `# A\n\nContent A.\n\n# B\n\nContent B.\n\n# C\n\nContent C.`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(markdownContent),
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.pieces.map((p) => p.pieceIndex)).toEqual([1, 2, 3]);
+  });
+
+  it("returns title from heading", async () => {
+    const ctx = await makeCommandContext();
+    const markdownContent = `# My Heading\n\nContent here.`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(markdownContent),
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.pieces[0]?.title).toBe("My Heading");
+    expect(result.pieces[0]?.derivedKey).toBe("My Heading");
+  });
+});
+
+describe("createPreviewImportCommand - plaintext", () => {
+  it("happy path: splits on delimiter and returns preview pieces", async () => {
+    const ctx = await makeCommandContext();
+    const content = `First piece content\n---\nSecond piece content\n---\nThird piece content`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result, logEntries } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(content),
+      format: "plaintext",
+      delimiter: "---",
+    });
+
+    expect(result.pieces.length).toBe(3);
+    expect(result.format).toBe("plaintext");
+    expect(logEntries).toHaveLength(0);
+  });
+});
+
+describe("createPreviewImportCommand - docx", () => {
+  it("happy path: uses converter and returns preview pieces", async () => {
+    const ctx = await makeCommandContext();
+    const converterOutput = `# Doc Heading\n\nDoc body text.\n\n## Sub Heading\n\nSub body.`;
+    const command = createPreviewImportCommand(makeStubConverter(converterOutput));
+
+    const { result, logEntries } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: new Uint8Array([1, 2, 3]),
+      format: "docx",
+      headingLevel: 2,
+    });
+
+    expect(result.pieces.length).toBe(2);
+    expect(result.format).toBe("docx");
+    expect(result.convertedMarkdown).toBe(converterOutput);
+    expect(logEntries).toHaveLength(0);
+  });
+});
+
+describe("createPreviewImportCommand - key collision", () => {
+  it("returns suffixed key when collision with existing fragment", async () => {
+    const ctx = await makeCommandContext();
+
+    const uniqueHeading = `Preview Collision Test ${Date.now()}`;
+    // First create a real fragment to seed a collision
+    await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: uniqueHeading, content: "existing" }),
+    });
+
+    const content = `# ${uniqueHeading}\n\nNew content here.`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(content),
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.pieces.length).toBe(1);
+    expect(result.pieces[0]?.derivedKey).toMatch(/_1$/);
+  });
+});
+
+describe("createPreviewImportCommand - zero-piece case", () => {
+  it("returns empty pieces array when H1 heading has no body content", async () => {
+    const ctx = await makeCommandContext();
+    // H1 heading with no body: splitMarkdown filters the empty section
+    const content = `# Heading Only\n\n`;
+    const command = createPreviewImportCommand(makeStubConverter(""));
+
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(content),
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.pieces).toHaveLength(0);
+    expect(result.convertedMarkdown).toBe(content);
+  });
+});
