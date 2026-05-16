@@ -123,3 +123,20 @@ Started: 2026-05-16
   - Per-row hooks require a wrapper component (can't call hooks in a `.map()` callback directly)
   - Manual browser verification is needed (no dev-browser MCP available)
 ---
+
+## 2026-05-17 - US-009
+- Created `packages/frontend/src/pages/ProjectManagementPage/components/AdoptProjectDialog.tsx` with a two-step modal flow: FolderPicker step → confirmation step
+- Confirmation step detects folder kind (Maskor project, Obsidian vault, writing folder, empty, other) by inspecting entries from `useFsList(pickedPath)` for `.maskor`/`.obsidian` directory entries and markdown file presence
+- Shows non-markdown file count warning when files unrelated to writing are present
+- Submits via `customFetch` POST `/projects` with `mode: "adopt"`, `name`, `vaultPath`; invalidates project list query on success via `getListProjectsQueryKey()`
+- Updated `ProjectManagementPage/index.tsx` to add `useState(false)` for `adoptOpen` before early returns, render `<AdoptProjectDialog>` in a fragment wrapper, and wire "Adopt existing folder" card to `setAdoptOpen(true)`
+- All 576 tests pass; typecheck clean
+- Files changed: `packages/frontend/src/pages/ProjectManagementPage/components/AdoptProjectDialog.tsx` (new), `packages/frontend/src/pages/ProjectManagementPage/index.tsx`
+- **Learnings for future iterations:**
+  - `useFsList(pickedPath)` in the confirmation step reuses cached data from FolderPicker's previous fetch — no extra network round-trip needed
+  - Generated `ProjectCreate` type in `maskorAPI.schemas.ts` does NOT include `mode` (schema changed after orval codegen). Use `customFetch` directly with a typed body rather than the generated `useCreateProject` hook
+  - `useState` hooks for dialog open state must be declared BEFORE early returns in a component — place them at the top of the function body
+  - Folder kind detection: inspect `useFsList` entries for `.maskor` and `.obsidian` directory entries (hidden entries ARE included in the response, just flagged with `hidden: true`)
+  - `mutation.reset()` in `handleBack` clears error state; call it in `handlePick` too to handle reuse after a failed adoption
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
