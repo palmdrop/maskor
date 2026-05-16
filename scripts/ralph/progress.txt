@@ -53,3 +53,14 @@ Started: 2026-05-16
   - For API tests that share a single test app (beforeAll/afterAll), use unique UUIDs per test — either empty dirs (no manifest → fresh UUID) or explicit manifests with distinct UUIDs.
   - `mode` is now required on `POST /projects`; any caller omitting it gets 400.
 ---
+
+## 2026-05-16 - US-004
+- Added `aspects/` directory creation to `mode: "create"` branch in `registry.ts`
+- Made manifest write idempotent: if `.maskor/project.json` already exists, reuse its UUID instead of overwriting
+- Added four new tests to `packages/storage/src/__tests__/registry.test.ts` covering: creates `.maskor/` and `aspects/` on empty folder, writes correct manifest contents, does not overwrite existing manifest (idempotent)
+- Files changed: `packages/storage/src/registry/registry.ts`, `packages/storage/src/__tests__/registry.test.ts`
+- **Learnings for future iterations:**
+  - `mode: "create"` idempotency: check `readVaultManifest` before writing; if manifest exists, reuse its UUID and skip the write. This also handles re-registration after DB loss.
+  - `aspects/` is the only directory created eagerly at registration; all other vault structure (fragments/, notes/, references/, .maskor/sequences/, .maskor/config/arcs/) remains lazy.
+  - For "existing-skeleton is a no-op" tests, register → removeProject → re-register is the pattern; vault files persist across removeProject.
+---
