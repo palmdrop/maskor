@@ -30,15 +30,6 @@
 }
 
 @layer base {
-  .prose {
-    --tw-prose-body: var(--color-foreground);
-    --tw-prose-headings: var(--color-foreground);
-    --tw-prose-links: var(--color-foreground);
-    --tw-prose-bold: var(--color-foreground);
-    --tw-prose-code: var(--color-foreground);
-    --tw-prose-quotes: var(--color-muted-foreground);
-    font-family: var(--font-serif);
-  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -47,6 +38,22 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* @tailwindcss/typography emits `.prose` into the `utilities` layer, which wins over
+   `base`. Override here in the same layer so our rules apply. */
+@layer utilities {
+  .prose {
+    --tw-prose-body: var(--color-foreground);
+    --tw-prose-headings: var(--color-foreground);
+    --tw-prose-links: var(--color-foreground);
+    --tw-prose-bold: var(--color-foreground);
+    --tw-prose-code: var(--color-foreground);
+    --tw-prose-quotes: var(--color-muted-foreground);
+    font-family: var(--font-serif);
+    /* Inherit so parent wrappers can set font-size; prose children use em() and scale. */
+    font-size: inherit;
   }
 }
 

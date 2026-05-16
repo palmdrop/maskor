@@ -43,7 +43,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     () =>
       EditorView.theme({
         "&": {
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-serif)",
           fontSize: `${fontSize}px`,
           height: "100%",
         },
@@ -56,6 +56,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         ".cm-scroller": {
           overflow: "auto",
           height: "100%",
+          fontFamily: "var(--font-serif)",
         },
       }),
     [fontSize],
@@ -101,7 +102,10 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [vimMode, rawMarkdownMode, editor, content],
   );
 
-  const widthStyle = { maxWidth: `${maxParagraphWidth}ch` };
+  // fontSize is set on the same element as maxWidth so `ch` resolves against the
+  // rendered text size — otherwise `ch` falls back to the browser default (16px)
+  // and the container width detaches from the actual line length.
+  const widthStyle = { maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` };
 
   if (vimMode) {
     return (
