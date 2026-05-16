@@ -1,3 +1,24 @@
+## Codebase Patterns
+- Settings service lives in `packages/storage/src/settings/`; exported from storage package index
+- Bun file I/O: use `Bun.file(path).exists()` to check file existence; `node:fs/promises` for read/write
+- Test pattern: `mkdtempSync` for temp dirs, clean up in `afterEach` with `rmSync(dir, { recursive: true, force: true })`
+- `DEFAULT_CONFIG_DIRECTORY` in `packages/storage/src/db/registry/index.ts` sets the base config path (`~/.config/maskor`); settings service uses same base path
+- All packages use `bun test` for tests; run `bun run verify` for full typecheck + tests
+
 # Ralph Progress Log
-Started: [pending]
+Started: 2026-05-16
+---
+
+## 2026-05-16 - US-001
+- Implemented `createSettingsService` in `packages/storage/src/settings/settings-service.ts`
+- Exports `Settings`, `SettingsService`, `SettingsReadResult` types
+- `readSettings()` returns defaults if file missing; returns warning + defaults if unparsable; fills missing keys with defaults
+- `writeSettings(patch)` merges patch with current settings and writes; creates directories on first write; never writes on read
+- OS-aware default for `maskorManagedRoot`: `~/Documents/Maskor` on macOS/Linux, `%USERPROFILE%\Documents\Maskor` on Windows
+- Files changed: `packages/storage/src/settings/settings-service.ts`, `packages/storage/src/settings/index.ts`, `packages/storage/src/index.ts`, `packages/storage/src/__tests__/settings.test.ts`
+- **Learnings for future iterations:**
+  - The config directory is `~/.config/maskor` (same as registry DB); use `DEFAULT_CONFIG_DIRECTORY` from `packages/storage/src/db/registry/index.ts` as the base
+  - Settings file path: `<configDir>/settings.json`
+  - Use `node:fs/promises` `readFile`/`writeFile` (not `Bun.file`) for settings to allow easy mocking in tests
+  - Bun tests run with `bun test`; the `verify` script runs full suite across all packages
 ---
