@@ -18,13 +18,14 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-openapi": "^1.2.4",
     "@maskor/importer": "workspace:*",
     "@maskor/sequencer": "workspace:*",
     "@maskor/shared": "workspace:*",
     "@maskor/storage": "workspace:*",
     "hono": "^4.7.10",
-    "@hono/zod-openapi": "^1.2.4",
-    "@hono/swagger-ui": "^0.6.1",
+    "trash": "^10.1.1",
     "zod": "^4.3.6"
   }
 }
