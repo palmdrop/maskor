@@ -94,3 +94,20 @@ Started: Fri May 15 23:23:59 CEST 2026
   - Images stripped via turndown rule, not mammoth option — simpler and works reliably
   - `docx` package (already in workspace) is useful for generating minimal `.docx` test fixtures programmatically
 ---
+
+## 2026-05-16 - US-006
+- Created `packages/frontend/src/components/fragments/import-dialog.tsx` with `ImportDialog` component
+- Added "Import" button next to "New fragment" in `FragmentListPage` sidebar header
+- Dialog accepts `.md`, `.txt`, `.docx` via file picker; auto-detects format from extension
+- Markdown/docx: heading-level Select (H1-H6, default H1); plaintext: delimiter Input (default "---")
+- On submit: disables button + shows spinner, dialog stays open during request
+- On 200 success: calls `onImported()` (invalidates fragment list query), closes dialog (if no errors); shows inline count summary if partial errors occurred
+- On error: re-enables submit, shows inline error message, dialog stays open
+- Files changed: `packages/frontend/src/components/fragments/import-dialog.tsx`, `packages/frontend/src/pages/FragmentListPage.tsx`
+- **Learnings for future iterations:**
+  - No toast system exists in this project — use inline messages in the dialog for success/error feedback
+  - File input styling: use native `<input type="file">` with Tailwind `file:` prefix classes to match the design system
+  - `useImportFragments` from generated API returns `{ status, data }` — check `response.status === 200` to distinguish success from error
+  - Format detection via file extension: `.md` → "markdown", `.docx` → "docx", `.txt` → "plaintext"; other extensions return null (shown as unsupported)
+  - `headingLevel` must be serialized as a number in the JSON options string, not a string; use `Number(headingLevel)` before `JSON.stringify`
+---

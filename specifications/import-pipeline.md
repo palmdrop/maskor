@@ -1,8 +1,11 @@
 # Spec: Import Pipeline
 
 **Status**: Stable
-**Last updated**: 2026-04-26
+**Last updated**: 2026-05-15
 **Shipped**:
+- 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
+
+> **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, folder import is out of Stage 1, and source files are not archived.
 
 ---
 
@@ -42,9 +45,9 @@ A user can take an existing document — a Word file, a markdown file, or a fold
 1. User selects a file and picks a delimiter (e.g. heading level)
 2. Importer converts the file to markdown if needed
 3. Importer splits the markdown into pieces at each delimiter occurrence
-4. User sees a preview: proposed pieces with titles and content, adjustable split points
-5. User can merge, discard, or retitle individual pieces before confirming
-6. On confirm — importer creates a Fragment for each piece via the API
+4. User sees a preview: proposed pieces with titles and content, adjustable split points _(deferred — not in Stage 1)_
+5. User can merge, discard, or retitle individual pieces before confirming _(deferred — not in Stage 1)_
+6. On confirm — importer creates a Fragment for each piece via the API _(Stage 1: creation is immediate after step 3, no confirmation)_
 
 ### Folder import
 
@@ -90,18 +93,18 @@ If a fragment with the derived title already exists, a numeric suffix is appende
 
 ## Open questions
 
-- [ ] 2026-04-26 — What file formats does the importer support at launch? `.docx` confirmed, `.md` confirmed. Plain `.txt`? `.rtf`?
-- [ ] 2026-04-26 — What delimiter options are available? H1 only? Any heading level? Custom separator string? All of the above?
-- [ ] 2026-04-26 — For folder import: are subdirectories traversed, or is it a flat folder only?
-- [ ] 2026-04-26 — Should the original source file be archived somewhere in the vault after import, or silently discarded?
+- [x] 2026-04-26 — What file formats does the importer support at launch? **Resolved 2026-05-15:** `.md`, `.txt`, `.docx`. `.rtf` and `.pdf` remain out of scope.
+- [x] 2026-04-26 — What delimiter options are available? **Resolved 2026-05-15:** any heading level (H1–H6) for `.md` and `.docx`; arbitrary custom string for `.txt`.
+- [x] 2026-04-26 — For folder import: are subdirectories traversed, or is it a flat folder only? **Resolved 2026-05-15:** Folder import is deferred entirely; not in Stage 1.
+- [x] 2026-04-26 — Should the original source file be archived somewhere in the vault after import, or silently discarded? **Resolved 2026-05-15:** Discarded. Archival is not in Stage 1.
 
 ---
 
 ## Acceptance criteria
 
-- A `.docx` file imported via the importer produces one piece per chosen delimiter, shown in a user-reviewable preview before any fragment is created
-- A folder import produces one piece per file in the folder, shown in preview before any fragment is created
-- Confirming the preview creates a Fragment for each piece; no intermediate files are written
+- A `.docx` file imported via the importer produces one piece per chosen delimiter, shown in a user-reviewable preview before any fragment is created _(preview deferred — Stage 1 creates fragments immediately)_
+- A folder import produces one piece per file in the folder, shown in preview before any fragment is created _(folder import deferred — out of Stage 1 entirely)_
+- Confirming the preview creates a Fragment for each piece; no intermediate files are written _(Stage 1: creation is immediate, no confirmation step; no intermediate files)_
 - A title that conflicts with an existing fragment gets a numeric suffix — `fragment_1`, `fragment_2`, etc. — and is not rejected
 - Creation failures are logged per-piece; the remaining pieces in the batch still proceed
 - No fragment metadata is set during import; all aspect weights, notes, and references default to empty
