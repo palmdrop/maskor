@@ -4,6 +4,8 @@ You are an autonomous coding agent working on a software project.
 
 ## Your Task
 
+> **SCOPE: You implement exactly ONE user story per run. After committing and updating the PRD, your run ends. Do NOT return to step 4 to pick up another story.**
+
 1. Read the PRD at `prd.json` (in the same directory as this file)
 2. Read the progress log at `progress.txt` (check Codebase Patterns section first)
 3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create from main.
@@ -13,7 +15,7 @@ You are an autonomous coding agent working on a software project.
 7. Update CLAUDE.md files if you discover reusable patterns (see below)
 8. If checks pass, commit ALL changes with message: `feat: [Story ID] - [Story Title]`
 9. Update the PRD to set `passes: true` for the completed story. If the story could not be completed, just update `progress.txt` with your findings.
-10. Append your progress to `progress.txt`
+10. Append your progress to `progress.txt`. After this step, your work for this run is COMPLETE. Do not loop back to step 4.
 
 ## Progress Report Format
 
@@ -109,7 +111,7 @@ If ALL stories are complete and passing:
 3. Reply with:
    <promise>COMPLETE</promise>
 
-If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story). Do not touch the specs until all stories pass.
+If any stories still have `passes: false`: **STOP. Your run is complete.** Do not implement another story. The harness will spawn a new agent instance for the next story. Implementing more than one story in a single run is incorrect behavior. Do not touch the specs until all stories pass.
 
 ## Important
 
