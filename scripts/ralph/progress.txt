@@ -93,3 +93,19 @@ Started: 2026-05-16
   - Before adding implementation, check whether the route + storage layer already exist; US-006 needed only tests.
   - `registry.updateProject` writes the manifest via `writeVaultManifest` which merges patches into the existing manifest — the folder is never touched.
 ---
+
+## 2026-05-16 - US-007
+- Added `GET /fs/home` endpoint to `packages/api/src/routes/fs.ts` (returns `{ homedir: string }` via `os.homedir()`)
+- Added `FsHomeResponseSchema` to `packages/api/src/schemas/fs.ts`
+- Created `packages/frontend/src/api/fs.ts` with `useFsHome` and `useFsList` hooks (manual API client, not generated, because `/fs` routes were added after orval codegen)
+- Created `packages/frontend/src/components/FolderPicker.tsx` with full navigation: up button, directory click, address bar (editable + Enter to navigate), show-hidden toggle, .maskor/.obsidian badges, loading/error/empty states, "Choose this folder" callback
+- All 576 tests pass; typecheck clean
+- Files changed: `packages/api/src/routes/fs.ts`, `packages/api/src/schemas/fs.ts`, `packages/frontend/src/api/fs.ts`, `packages/frontend/src/components/FolderPicker.tsx`
+- **Learnings for future iterations:**
+  - `/fs` routes are NOT in the orval-generated API client (`src/api/generated/`). Create manual hooks in `src/api/fs.ts` following the pattern from `src/api/action-log.ts`.
+  - `customFetch` throws `ApiRequestError` on non-2xx; check `error instanceof ApiRequestError && error.statusCode === 403` for permission-denied detection in react-query's `error` field.
+  - `useFsList` uses `enabled: path !== null` and `retry: false` to avoid retrying 403/404.
+  - Home dir initialization: use `useEffect` with `currentPath === null` guard so it runs only once when the home query resolves.
+  - The `noUnusedLocals` / `noUnusedParameters` tsconfig flags are strict — every declared variable must be used.
+  - Manual browser verification is needed for this story (no dev-browser MCP available).
+---
