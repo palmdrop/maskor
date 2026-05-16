@@ -14,6 +14,7 @@ import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
+import { ImportDialog } from "@components/fragments/import-dialog";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 
 export const FragmentListPage = () => {
@@ -70,14 +71,17 @@ export const FragmentListPage = () => {
   return (
     <div className="flex h-full min-h-0">
       <aside className="flex flex-col gap-3 w-72 shrink-0 border-r border-border p-4 overflow-y-auto">
-        <CreateEntityDialog
-          triggerLabel="New fragment"
-          dialogTitle="New fragment"
-          entityName="fragment"
-          contentRequired
-          isPending={createFragment.isPending}
-          onCreate={handleCreateFragment}
-        />
+        <div className="flex gap-2">
+          <CreateEntityDialog
+            triggerLabel="New fragment"
+            dialogTitle="New fragment"
+            entityName="fragment"
+            contentRequired
+            isPending={createFragment.isPending}
+            onCreate={handleCreateFragment}
+          />
+          <ImportDialog projectId={projectId} onImported={invalidateList} />
+        </div>
         <Input
           placeholder="Filter fragments…"
           value={filter}
