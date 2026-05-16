@@ -144,25 +144,31 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
               }),
         });
       } else {
-        // create: mkdir -p, new UUID, write manifest
+        // create: mkdir -p vault + aspects/, write manifest only when not already initialized
         await mkdir(vaultPath, { recursive: true });
+        await mkdir(join(vaultPath, "aspects"), { recursive: true });
 
-        projectUUID = crypto.randomUUID();
-
-        await writeVaultManifest(vaultPath, {
-          projectUUID,
-          name,
-          registeredAt: now.toISOString(),
-          config: {
-            editor: {
-              vimMode: false,
-              rawMarkdownMode: false,
-              fontSize: 16,
-              maxParagraphWidth: 72,
+        const existingManifest = await readVaultManifest(vaultPath);
+        if (existingManifest) {
+          // Already initialized — reuse existing UUID, don't overwrite manifest
+          projectUUID = existingManifest.projectUUID;
+        } else {
+          projectUUID = crypto.randomUUID();
+          await writeVaultManifest(vaultPath, {
+            projectUUID,
+            name,
+            registeredAt: now.toISOString(),
+            config: {
+              editor: {
+                vimMode: false,
+                rawMarkdownMode: false,
+                fontSize: 16,
+                maxParagraphWidth: 72,
+              },
+              suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
             },
-            suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
-          },
-        });
+          });
+        }
       }
 
       let row: typeof projectsTable.$inferSelect | undefined;

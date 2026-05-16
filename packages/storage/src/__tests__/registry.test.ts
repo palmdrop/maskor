@@ -106,6 +106,53 @@ describe("registry.registerProject", () => {
     expect(record.projectUUID).toBeTruthy();
   });
 
+  it("mode create writes .maskor/ and aspects/ directories on empty folder", async () => {
+    const registry = makeRegistry();
+    const newPath = join(tmpDir, "skeleton-project");
+    await registry.registerProject("Skeleton Project", newPath, "create");
+    expect(existsSync(join(newPath, ".maskor"))).toBe(true);
+    expect(existsSync(join(newPath, "aspects"))).toBe(true);
+  });
+
+  it("mode create writes .maskor/project.json with correct contents", async () => {
+    const registry = makeRegistry();
+    const newPath = join(tmpDir, "manifest-project");
+    const record = await registry.registerProject("Manifest Project", newPath, "create");
+
+    const manifestFile = Bun.file(join(newPath, ".maskor", "project.json"));
+    expect(await manifestFile.exists()).toBe(true);
+
+    const manifest = await manifestFile.json();
+    expect(manifest.projectUUID).toBe(record.projectUUID);
+    expect(manifest.name).toBe("Manifest Project");
+    expect(manifest.registeredAt).toBeTruthy();
+    expect(manifest.config.editor.vimMode).toBe(false);
+    expect(manifest.config.editor.rawMarkdownMode).toBe(false);
+    expect(manifest.config.editor.fontSize).toBe(16);
+    expect(manifest.config.editor.maxParagraphWidth).toBe(72);
+    expect(manifest.config.suggestion.readyStatusThreshold).toBe(0.95);
+  });
+
+  it("mode create on already-initialized folder does not overwrite manifest", async () => {
+    const registry = makeRegistry();
+    const newPath = join(tmpDir, "idempotent-project");
+    const record = await registry.registerProject("Original Name", newPath, "create");
+    const manifestBefore = await Bun.file(join(newPath, ".maskor", "project.json")).json();
+
+    // Deregister — vault files remain
+    await registry.removeProject(record.projectUUID);
+
+    // Re-init with mode create on same path — should not overwrite manifest
+    const record2 = await registry.registerProject("Different Name", newPath, "create");
+    const manifestAfter = await Bun.file(join(newPath, ".maskor", "project.json")).json();
+
+    // UUID and name must be unchanged
+    expect(manifestAfter.projectUUID).toBe(manifestBefore.projectUUID);
+    expect(manifestAfter.name).toBe(manifestBefore.name);
+    // Registry record reuses the existing manifest UUID
+    expect(record2.projectUUID).toBe(record.projectUUID);
+  });
+
   it("throws ProjectConflictError when vaultPath already registered", async () => {
     const registry = makeRegistry();
     await registry.registerProject("First", vaultDir, "adopt");
