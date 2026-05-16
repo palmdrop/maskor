@@ -5,7 +5,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { ProjectSelectionPage } from "./pages/ProjectSelectionPage";
+import { ProjectManagementPage } from "./pages/ProjectManagementPage";
 import { ProjectShellLayout } from "./pages/ProjectShellLayout";
 import { FragmentListPage } from "./pages/FragmentListPage";
 import { FragmentPage } from "./pages/FragmentPage";
@@ -29,7 +29,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({});
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: ProjectSelectionPage,
+  component: ProjectManagementPage,
 });
 
 const projectShellLayoutRoute = createRoute({
