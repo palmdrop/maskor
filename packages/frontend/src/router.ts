@@ -17,6 +17,7 @@ import { AspectEditorPage } from "./pages/AspectEditorPage";
 import { SuggestionModePage } from "./pages/SuggestionModePage";
 import { ProjectStatsPage } from "./pages/ProjectStatsPage";
 import { ProjectHistoryPage } from "./pages/ProjectHistoryPage";
+import { FragmentImportPage } from "./pages/FragmentImportPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -120,11 +121,18 @@ const historyRoute = createRoute({
   component: ProjectHistoryPage,
 });
 
+const fragmentImportRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/fragments/import",
+  component: FragmentImportPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectShellLayoutRoute.addChildren([
     projectShellIndexRoute,
     fragmentListRoute.addChildren([fragmentRoute]),
+    fragmentImportRoute,
     overviewRoute,
     projectConfigRoute,
     noteEditorRoute,
