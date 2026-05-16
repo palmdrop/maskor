@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Typography from "@tiptap/extension-typography";
 import { Loader2Icon } from "lucide-react";
-import { usePreviewImportFragments } from "@api/generated/fragments/fragments";
-import type { PreviewImportResult, PreviewPiece } from "@api/generated/maskorAPI.schemas";
+import {
+  usePreviewImportFragments,
+  useImportFragments,
+  getListFragmentsQueryKey,
+} from "@api/generated/fragments/fragments";
+import type { PreviewImportResult, PreviewPiece, ImportResult } from "@api/generated/maskorAPI.schemas";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -77,6 +82,7 @@ const ReadonlyEditor = ({ content }: ReadonlyEditorProps) => {
 export const FragmentImportPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/fragments/import" });
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const routerState = useRouterState({ select: (s) => s.location.state as RouterState });
   const file = routerState?.file ?? null;
 
@@ -84,12 +90,15 @@ export const FragmentImportPage = () => {
   const [delimiter, setDelimiter] = useState("---");
   const [previewResult, setPreviewResult] = useState<PreviewImportResult | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [partialFailureResult, setPartialFailureResult] = useState<ImportResult | null>(null);
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const format: Format | null = file ? formatFromExtension(file.name) : null;
 
   const { mutateAsync: previewImport, isPending: isPreviewPending } = usePreviewImportFragments();
+  const { mutateAsync: importFragments, isPending: isCommitPending } = useImportFragments();
 
   // Redirect if no file in state or unsupported extension
   useEffect(() => {
@@ -152,6 +161,36 @@ export const FragmentImportPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headingLevel, delimiter]);
 
+  const handleImport = async () => {
+    if (!file || !format) return;
+    setCommitError(null);
+
+    let options: string;
+    if (format === "plaintext") {
+      options = JSON.stringify({ format, delimiter });
+    } else {
+      options = JSON.stringify({ format, headingLevel: Number(headingLevel) });
+    }
+
+    try {
+      const response = await importFragments({ projectId, data: { file, options } });
+
+      if (response.status === 200) {
+        await queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
+
+        if (response.data.errors.length === 0) {
+          void navigate({ to: "/projects/$projectId/fragments", params: { projectId } });
+        } else {
+          setPartialFailureResult(response.data);
+        }
+      } else {
+        setCommitError("Import failed. Please try again.");
+      }
+    } catch {
+      setCommitError("Network error. Please try again.");
+    }
+  };
+
   const scrollToPiece = (pieceIndex: number) => {
     if (!mainAreaRef.current) return;
     const elements = mainAreaRef.current.querySelectorAll("strong");
@@ -165,11 +204,48 @@ export const FragmentImportPage = () => {
 
   if (!file || !format) return null;
 
+  // Partial failure state — replace page body
+  if (partialFailureResult) {
+    return (
+      <div className="flex flex-col h-full min-h-0 items-center justify-center p-8">
+        <div className="max-w-lg w-full border border-border rounded-lg p-6 flex flex-col gap-4">
+          <h2 className="text-base font-medium">
+            Created {partialFailureResult.created.length}, Failed {partialFailureResult.errors.length}
+          </h2>
+          <ul className="flex flex-col gap-2 text-sm">
+            {partialFailureResult.errors.map((err) => (
+              <li key={err.pieceIndex} className="text-destructive">
+                <span className="font-medium">Piece {err.pieceIndex}</span>
+                {err.pieceKey && <span className="text-muted-foreground ml-1">({err.pieceKey})</span>}
+                <span className="ml-1">— {err.error}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => void navigate({ to: "/projects/$projectId/fragments", params: { projectId } })}
+            >
+              Return to fragment list
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => void navigate({ to: "/projects/$projectId/fragments", params: { projectId } })}
+            >
+              Discard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const pieces = previewResult?.pieces ?? [];
   const pieceCount = pieces.length;
   const showHeadingLevel = format === "markdown" || format === "docx";
   const showDelimiter = format === "plaintext";
   const previewMarkdown = buildPreviewMarkdown(pieces);
+  const isInFlight = isPreviewPending || isCommitPending;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -186,6 +262,7 @@ export const FragmentImportPage = () => {
               <Select
                 value={headingLevel}
                 onValueChange={(value) => setHeadingLevel(value as HeadingLevel)}
+                disabled={isCommitPending}
               >
                 <SelectTrigger className="h-7 text-xs w-32">
                   <SelectValue />
@@ -209,6 +286,7 @@ export const FragmentImportPage = () => {
                 onChange={(e) => setDelimiter(e.target.value)}
                 className="h-7 text-xs w-24"
                 placeholder="e.g. ---"
+                disabled={isCommitPending}
               />
             </div>
           )}
@@ -266,11 +344,14 @@ export const FragmentImportPage = () => {
       </div>
 
       {/* Sticky footer */}
-      <footer className="sticky bottom-0 shrink-0 border-t border-border bg-background px-4 py-3 flex justify-end gap-2">
+      <footer className="sticky bottom-0 shrink-0 border-t border-border bg-background px-4 py-3 flex items-center justify-end gap-2">
+        {commitError && (
+          <p className="text-xs text-destructive mr-auto">{commitError}</p>
+        )}
         <Button
           variant="outline"
           onClick={() =>
-            navigate({
+            void navigate({
               to: "/projects/$projectId/fragments",
               params: { projectId },
             })
@@ -278,8 +359,16 @@ export const FragmentImportPage = () => {
         >
           Cancel
         </Button>
-        <Button disabled={pieceCount === 0 || isPreviewPending}>
-          {isPreviewPending ? (
+        <Button
+          disabled={pieceCount === 0 || isInFlight}
+          onClick={() => void handleImport()}
+        >
+          {isCommitPending ? (
+            <>
+              <Loader2Icon className="animate-spin" />
+              Importing…
+            </>
+          ) : isPreviewPending ? (
             <>
               <Loader2Icon className="animate-spin" />
               Loading…

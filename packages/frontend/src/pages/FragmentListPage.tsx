@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import { Link, Outlet, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,14 +14,15 @@ import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
-import { ImportDialog } from "@components/fragments/import-dialog";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { UploadIcon } from "lucide-react";
 
 export const FragmentListPage = () => {
   const from = "/projects/$projectId/fragments" as const;
   const { projectId } = useParams({ from });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
   const { mutate: discardFragment } = useDiscardFragment();
@@ -43,6 +44,17 @@ export const FragmentListPage = () => {
     () => queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
     [queryClient, projectId],
   );
+
+  const handleImportFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+    if (importFileInputRef.current) importFileInputRef.current.value = "";
+    void navigate({
+      to: "/projects/$projectId/fragments/import",
+      params: { projectId },
+      state: { file: selectedFile },
+    });
+  };
 
   const handleCreateFragment = async (key: string, content: string) => {
     const response = await createFragment.mutateAsync({
@@ -80,7 +92,22 @@ export const FragmentListPage = () => {
             isPending={createFragment.isPending}
             onCreate={handleCreateFragment}
           />
-          <ImportDialog projectId={projectId} onImported={invalidateList} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => importFileInputRef.current?.click()}
+          >
+            <UploadIcon />
+            Import
+          </Button>
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".md,.txt,.docx"
+            className="hidden"
+            onChange={handleImportFileChange}
+          />
         </div>
         <Input
           placeholder="Filter fragments…"
