@@ -64,3 +64,17 @@ Started: 2026-05-16
   - `aspects/` is the only directory created eagerly at registration; all other vault structure (fragments/, notes/, references/, .maskor/sequences/, .maskor/config/arcs/) remains lazy.
   - For "existing-skeleton is a no-op" tests, register → removeProject → re-register is the pattern; vault files persist across removeProject.
 ---
+
+## 2026-05-16 - US-005
+- Added `trash@10.1.1` as a dependency to `packages/api`
+- Created `packages/api/src/helpers/trash.ts` with `moveToTrashOrDelete(absolutePath)` helper
+- Helper tries `trash(path)` first; on any error falls back to `rm(path, { recursive: true, force: true })`
+- Returns `{ method: "trash" }` or `{ method: "hard-delete" }` accordingly
+- Created `packages/api/src/__tests__/helpers/trash.test.ts` with two unit tests using `mock.module("trash", ...)`
+- Files changed: `packages/api/src/helpers/trash.ts`, `packages/api/src/__tests__/helpers/trash.test.ts`, `packages/api/package.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - Bun supports `mock.module("pkg", () => ({ default: mockFn }))` + `await import("../../module")` pattern for mocking ESM packages in tests
+  - `mock.module()` must be called before the dynamic import of the module under test
+  - For the hard-delete fallback test, use a real temp directory and verify `existsSync` returns false — avoids needing to mock `node:fs/promises` (which would require re-exporting all its exports)
+  - `trash` package export is the default export: `import trash from "trash"`
+---
