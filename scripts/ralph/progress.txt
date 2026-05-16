@@ -4,6 +4,10 @@
 - Test pattern: `mkdtempSync` for temp dirs, clean up in `afterEach` with `rmSync(dir, { recursive: true, force: true })`
 - `DEFAULT_CONFIG_DIRECTORY` in `packages/storage/src/db/registry/index.ts` sets the base config path (`~/.config/maskor`); settings service uses same base path
 - All packages use `bun test` for tests; run `bun run verify` for full typecheck + tests
+- Routes go in `packages/api/src/routes/`, schemas in `packages/api/src/schemas/`; register routes in `app.ts`
+- Read-only routes can call filesystem/storage directly; mutations must go through `src/commands/` (per api/CLAUDE.md)
+- For 403 tests: create empty dir, `chmodSync(dir, 0o000)`, restore with `chmodSync(dir, 0o755)` in afterAll before rmSync
+- Query params use `createRoute({ request: { query: z.object({...}) } })`; access via `ctx.req.valid("query")`
 
 # Ralph Progress Log
 Started: 2026-05-16
@@ -21,4 +25,19 @@ Started: 2026-05-16
   - Settings file path: `<configDir>/settings.json`
   - Use `node:fs/promises` `readFile`/`writeFile` (not `Bun.file`) for settings to allow easy mocking in tests
   - Bun tests run with `bun test`; the `verify` script runs full suite across all packages
+---
+
+## 2026-05-16 - US-002
+- Created `GET /fs/list` route in `packages/api/src/routes/fs.ts`
+- Created schema in `packages/api/src/schemas/fs.ts` (FsEntrySchema, FsListResponseSchema)
+- Registered route in `app.ts` as `app.route("/fs", fsRouter)`
+- Updated `index.ts` to bind to `hostname: "127.0.0.1"` (localhost-only)
+- Tests in `packages/api/src/__tests__/routes/fs.test.ts` cover all AC scenarios
+- Files changed: `packages/api/src/routes/fs.ts`, `packages/api/src/schemas/fs.ts`, `packages/api/src/app.ts`, `packages/api/src/index.ts`, `packages/api/src/__tests__/routes/fs.test.ts`
+- **Learnings for future iterations:**
+  - `readdir(path, { withFileTypes: true })` returns `Dirent[]`; use `entry.isDirectory()` to classify
+  - Error codes from filesystem: `ENOENT` → 404, `EACCES`/`EPERM` → 403
+  - `dirname(path) === path` when at filesystem root (`/` on Unix); use this to return `null` for parent
+  - `hasMaskorManifest` and `hasObsidianDir` are always present in the response (false for files); use a helper `pathExists` with try/catch around `access()`
+  - `isAbsolute` from `node:path` for path validation
 ---
