@@ -1,4 +1,8 @@
-export const ENTITY_KEY_REGEX = /^[a-zA-Z0-9 _-]+$/;
+const ENTITY_KEY_CHAR_CLASS = "\\p{L}\\p{N} _-";
+
+export const ENTITY_KEY_REGEX = new RegExp(`^[${ENTITY_KEY_CHAR_CLASS}]+$`, "u");
+
+const ENTITY_KEY_STRIP_REGEX = new RegExp(`[^${ENTITY_KEY_CHAR_CLASS}]`, "gu");
 
 export const validateEntityKey = (key: string): string => {
   const trimmed = key.trim();
@@ -10,3 +14,6 @@ export const validateEntityKey = (key: string): string => {
   }
   return trimmed;
 };
+
+export const sanitizeEntityKey = (candidate: string): string =>
+  candidate.replace(ENTITY_KEY_STRIP_REGEX, "").replace(/\s+/g, " ").trim();

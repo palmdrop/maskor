@@ -2,6 +2,7 @@ import mammoth from "mammoth";
 import TurndownService from "turndown";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import type { PhrasingContent, RootContent } from "mdast";
+import { sanitizeEntityKey } from "@maskor/shared";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -15,33 +16,22 @@ export type RawPiece = {
   content: string;
 };
 
-function sanitizeKey(candidate: string): string {
-  return candidate
-    .replace(/[^a-zA-Z0-9 _-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export function deriveKey(piece: RawPiece, existingKeys: Set<string>): string {
   const candidates: string[] = [];
 
   if (piece.headingText) {
-    const sanitized = sanitizeKey(piece.headingText);
+    const sanitized = sanitizeEntityKey(piece.headingText);
     if (sanitized) candidates.push(sanitized);
   }
 
-  const firstNonEmptyLine = piece.content
-    .split("\n")
-    .find((line) => line.trim().length > 0);
+  const firstNonEmptyLine = piece.content.split("\n").find((line) => line.trim().length > 0);
   if (firstNonEmptyLine) {
-    const sanitized = sanitizeKey(firstNonEmptyLine);
+    const sanitized = sanitizeEntityKey(firstNonEmptyLine);
     if (sanitized) candidates.push(sanitized);
   }
 
   const baseKey: string =
-    candidates.length > 0
-      ? (candidates[0] as string)
-      : `fragment-${crypto.randomUUID()}`;
+    candidates.length > 0 ? (candidates[0] as string) : `fragment-${crypto.randomUUID()}`;
 
   let key = baseKey;
   let counter = 1;
@@ -57,17 +47,12 @@ export function deriveKey(piece: RawPiece, existingKeys: Set<string>): string {
 function extractText(node: PhrasingContent | RootContent): string {
   if ("value" in node && typeof node.value === "string") return node.value;
   if ("children" in node && Array.isArray(node.children)) {
-    return (node.children as (PhrasingContent | RootContent)[])
-      .map(extractText)
-      .join("");
+    return (node.children as (PhrasingContent | RootContent)[]).map(extractText).join("");
   }
   return "";
 }
 
-export function splitMarkdown(
-  content: string,
-  maxHeadingLevel: HeadingLevel,
-): Piece[] {
+export function splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): Piece[] {
   const tree = fromMarkdown(content);
   const pieces: Piece[] = [];
 

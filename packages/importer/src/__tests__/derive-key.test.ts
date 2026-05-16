@@ -27,10 +27,10 @@ describe("deriveKey", () => {
     expect(key).toBe("Hello World 2024");
   });
 
-  it("strips unicode characters from heading text", () => {
+  it("preserves unicode letters in heading text", () => {
     const existing = new Set<string>();
-    const key = deriveKey({ headingText: "Héllo Wörld", content: "x" }, existing);
-    expect(key).toBe("Hllo Wrld");
+    const key = deriveKey({ headingText: "Héllo Wörld ÅÄÖ", content: "x" }, existing);
+    expect(key).toBe("Héllo Wörld ÅÄÖ");
   });
 
   it("collapses multiple whitespace into single space and trims", () => {
