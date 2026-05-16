@@ -42,7 +42,7 @@ function formatFromExtension(filename: string): Format | null {
 function buildPreviewMarkdown(pieces: PreviewPiece[]): string {
   if (pieces.length === 0) return "";
   return pieces
-    .map((piece) => `**Piece ${piece.pieceIndex} · ${piece.derivedKey}**\n\n${piece.content}`)
+    .map((piece) => `**${piece.pieceIndex}. ${piece.derivedKey}**\n\n${piece.content}`)
     .join("\n\n---\n\n");
 }
 
@@ -50,6 +50,10 @@ function formatContextLabel(format: Format, headingLevel: HeadingLevel, delimite
   if (format === "markdown") return `Format: markdown · split on H${headingLevel}`;
   if (format === "docx") return `Format: docx · split on H${headingLevel}`;
   return `Format: plaintext · split on \`${delimiter}\``;
+}
+
+function getPieceAnchor(piece: PreviewPiece) {
+  return `${piece.pieceIndex}. ${piece.derivedKey}`;
 }
 
 type RouterState = {
@@ -214,12 +218,13 @@ export const FragmentImportPage = () => {
     }
   };
 
-  const scrollToPiece = (pieceIndex: number) => {
+  // TODO: I do not like this at all. Use proper anchor tags instead
+  const scrollToPiece = (piece: PreviewPiece) => {
     if (!mainAreaRef.current) return;
     const elements = mainAreaRef.current.querySelectorAll("strong");
     for (const element of elements) {
-      if (element.textContent?.startsWith(`Piece ${pieceIndex} ·`)) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (element.textContent?.startsWith(getPieceAnchor(piece))) {
+        element.scrollIntoView({ behavior: "instant", block: "start" });
         return;
       }
     }
@@ -239,7 +244,7 @@ export const FragmentImportPage = () => {
           <ul className="flex flex-col gap-2 text-sm">
             {partialFailureResult.errors.map((err) => (
               <li key={err.pieceIndex} className="text-destructive">
-                <span className="font-medium">Piece {err.pieceIndex}</span>
+                <span className="font-medium">{err.pieceIndex}.</span>
                 {err.pieceKey && (
                   <span className="text-muted-foreground ml-1">({err.pieceKey})</span>
                 )}
@@ -332,8 +337,8 @@ export const FragmentImportPage = () => {
         <aside className="flex flex-col gap-3 w-72 shrink-0 border-r border-border p-4 overflow-y-auto">
           <div className="text-sm font-medium">
             {pieceCount === 0
-              ? "No pieces"
-              : `${pieceCount} piece${pieceCount !== 1 ? "s" : ""} will be created`}
+              ? "No fragments"
+              : `${pieceCount} fragment${pieceCount !== 1 ? "s" : ""} will be created`}
           </div>
           {pieceCount > 0 && (
             <ul className="flex flex-col gap-1">
@@ -342,9 +347,9 @@ export const FragmentImportPage = () => {
                   <button
                     type="button"
                     className="text-left w-full text-sm px-2 py-1 rounded hover:bg-muted truncate"
-                    onClick={() => scrollToPiece(piece.pieceIndex)}
+                    onClick={() => scrollToPiece(piece)}
                   >
-                    {piece.pieceIndex}. {piece.derivedKey}
+                    {getPieceAnchor(piece)}
                   </button>
                 </li>
               ))}
@@ -373,7 +378,7 @@ export const FragmentImportPage = () => {
             <p className="text-sm text-muted-foreground">
               {format === "plaintext"
                 ? "Delimiter not found in the file."
-                : "No pieces matched. Try a different heading level."}
+                : "No fragments matched. Try a different heading level."}
             </p>
           ) : (
             <ReadonlyEditor
