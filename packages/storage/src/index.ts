@@ -36,3 +36,6 @@ export type { FragmentStats, ProjectStats, FragmentStatsSummary } from "./sugges
 
 export { readRecentEntries } from "./action-log";
 export type { ActionLogWriter, ActionLogConfig } from "./action-log";
+
+export { createSettingsService } from "./settings";
+export type { Settings, SettingsService, SettingsReadResult } from "./settings";
