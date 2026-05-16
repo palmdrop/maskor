@@ -41,3 +41,15 @@ Started: 2026-05-16
   - `hasMaskorManifest` and `hasObsidianDir` are always present in the response (false for files); use a helper `pathExists` with try/catch around `access()`
   - `isAbsolute` from `node:path` for path validation
 ---
+
+## 2026-05-16 - US-003
+- Registry already implemented mode-based logic (adopt/create) from previous sessions; implementation was complete
+- Added missing tests: adopt-with-manifest reuses UUID, adopt-without-manifest assigns new UUID, create-when-missing creates dir, vaultPath conflict returns 409
+- Updated all existing callers that were missing the `mode` argument: seed-vault.ts, stats.test.ts, cascade.test.ts, indexer.test.ts
+- Fixed UUID collision issue: BASIC_VAULT fixture has a fixed UUID in project.json; tests registering two copies of BASIC_VAULT into the same registry DB will conflict. Fixed by using empty directories for the "second vault" in list tests. For API tests, changed `makeVaultDirectory` to create plain empty dirs; the UUID-reuse test uses `makeVaultDirectoryWithManifest` with an explicit UUID.
+- Files changed: packages/api/src/__tests__/routes/projects.test.ts, packages/api/src/__tests__/helpers/seed-vault.ts, packages/api/src/__tests__/routes/stats.test.ts, packages/storage/src/__tests__/registry.test.ts, packages/storage/src/__tests__/storage-service.test.ts, packages/storage/src/__tests__/cascade.test.ts, packages/storage/src/__tests__/indexer.test.ts
+- **Learnings for future iterations:**
+  - BASIC_VAULT fixture has a fixed UUID (`19a2045a-5902-435b-9a8b-adff93e6eef2`) in `.maskor/project.json`. Never register two BASIC_VAULT copies in the same registry DB — they collide on the UUID primary key.
+  - For API tests that share a single test app (beforeAll/afterAll), use unique UUIDs per test — either empty dirs (no manifest → fresh UUID) or explicit manifests with distinct UUIDs.
+  - `mode` is now required on `POST /projects`; any caller omitting it gets 400.
+---
