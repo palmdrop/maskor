@@ -109,3 +109,17 @@ Started: 2026-05-16
   - The `noUnusedLocals` / `noUnusedParameters` tsconfig flags are strict — every declared variable must be used.
   - Manual browser verification is needed for this story (no dev-browser MCP available).
 ---
+
+## 2026-05-16 - US-008
+- Renamed `ProjectSelectionPage` to `ProjectManagementPage`; deleted old page and its child components (`RegisterForm`, `DeregisterDialog`)
+- Created `packages/frontend/src/pages/ProjectManagementPage/index.tsx` with three-section layout: project list (top), "Register project" with 3 placeholder cards (middle), "Settings" placeholder (bottom)
+- Created `packages/frontend/src/pages/ProjectManagementPage/components/ProjectRow.tsx` — per-row component that calls `useFsList(project.vaultPath)` to detect missing vaults; shows "Open" (navigates to project) when path exists or is still loading (optimistic), switches to "Locate vault…" placeholder when 404 confirmed; Rename and Deregister are console.log placeholders
+- Updated `packages/frontend/src/router.ts` to import and use `ProjectManagementPage`
+- All 576 tests pass; typecheck clean
+- Files changed: `packages/frontend/src/router.ts`, `packages/frontend/src/pages/ProjectManagementPage/index.tsx`, `packages/frontend/src/pages/ProjectManagementPage/components/ProjectRow.tsx` (+ deleted old ProjectSelectionPage files)
+- **Learnings for future iterations:**
+  - Vault path existence check: call `useFsList(project.vaultPath)` in a `ProjectRow` component; `isError && error instanceof ApiRequestError && error.statusCode === 404` means path is missing
+  - Optimistic default: show Open while `isPending` (treat unknown as exists); only switch to "Locate vault…" when 404 is confirmed
+  - Per-row hooks require a wrapper component (can't call hooks in a `.map()` callback directly)
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
