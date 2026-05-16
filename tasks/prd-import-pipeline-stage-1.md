@@ -5,6 +5,7 @@
 Enable users to import external documents into a Maskor project as fragments. Stage 1 covers three source formats: Markdown (split on headings), plain text (split on a custom delimiter), and Word documents (.docx, split on headings). The importer splits the document into pieces and immediately creates one Fragment per piece — no intermediate review step.
 
 **Source Specifications:**
+
 - `specifications/import-pipeline.md`
 
 > **Stage 1 scope cut:** The source spec mandates a user review step between split and commit. Stage 1 intentionally skips it and ships fire-and-forget. The review step is deferred to a later stage. The spec is currently out of sync with this decision and should be annotated or updated as a follow-up.
@@ -188,3 +189,10 @@ _All previously open questions resolved during the grilling pass on 2026-05-15:_
 - ~~Heading-level default in the UI~~ → Default to **H1** on `.md`/`.docx` selection.
 - ~~Max file size~~ → No Stage 1 cap; inherit Hono/runtime defaults (FR-9).
 - ~~Spec out-of-sync (review step)~~ → Acknowledged at top of PRD as a Stage 1 scope cut; follow-up task to update `specifications/import-pipeline.md`.
+
+---
+
+## Issues found
+
+- Import does not show action log events
+-

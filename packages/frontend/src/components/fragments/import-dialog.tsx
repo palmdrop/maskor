@@ -155,12 +155,12 @@ export const ImportDialog = ({ projectId, onImported }: ImportDialogProps) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">H1 and above</SelectItem>
-                  <SelectItem value="2">H2 and above</SelectItem>
-                  <SelectItem value="3">H3 and above</SelectItem>
-                  <SelectItem value="4">H4 and above</SelectItem>
-                  <SelectItem value="5">H5 and above</SelectItem>
-                  <SelectItem value="6">H6 and above</SelectItem>
+                  <SelectItem value="1">H1 only</SelectItem>
+                  <SelectItem value="2">H1 and H2</SelectItem>
+                  <SelectItem value="3">H1 through H3</SelectItem>
+                  <SelectItem value="4">H1 through H4</SelectItem>
+                  <SelectItem value="5">H1 through H5</SelectItem>
+                  <SelectItem value="6">H1 through H6</SelectItem>
                 </SelectContent>
               </Select>
             </div>

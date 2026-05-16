@@ -6,7 +6,7 @@ import { projectIdParamSchema } from "../schemas/shared";
 import { ErrorResponseSchema } from "../schemas/error";
 import { ImportBodySchema, ImportOptionsSchema, ImportResultSchema } from "../schemas/import";
 import type { ImportOptions } from "../schemas/import";
-import { createImportCommand, type ImportInput } from "../commands";
+import { createImportCommand, executeCommand, type ImportInput } from "../commands";
 import type { CommandContext } from "../commands";
 
 const importRoute = createRoute({
@@ -100,7 +100,7 @@ importRouter.openapi(importRoute, async (ctx) => {
   }
 
   try {
-    const { result } = await command.execute(commandContext, input);
+    const result = await executeCommand(command, commandContext, input);
     return ctx.json(result, 200);
   } catch (error) {
     return throwStorageError(error);

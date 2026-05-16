@@ -1,5 +1,7 @@
 # Suggestions
 
+- **Import Pipeline PRD has contradictory empty-piece ACs** (`tasks/prd-import-pipeline-stage-1.md`): US-001 says empty pieces "are not emitted by the splitter; the importCommand records them in errors[]" — those two clauses contradict. US-004 then explicitly requires reporting them in errors[]. Current implementation honors clause 1 (splitters filter, importCommand has no empty path). To honor the API contract literally, splitters would need to emit empties (or return a count) so importCommand can report them. Either tighten splitter contract or relax US-004. Flagged in `references/reviews/import-pipeline-stage-1-2026-05-16.md` (issue #3).
+
 - **`scripts/ralph` was stored as an orphan gitlink** (`scripts/ralph`): The directory was committed with mode `160000` (submodule) but with no `.gitmodules` entry and no nested `.git`. This made it impossible to track individual file changes. Fixed during import-pipeline-stage-1 by removing the gitlink and re-adding the directory as regular tracked files. If `ralph.sh` creates a new git repo inside `scripts/ralph/` in the future, the parent `.gitmodules` should be updated too.
 
 - **Add GFM table support to TipTap editor** (`packages/frontend/src/components/fragments/prose-editor.tsx`): Tables are not in scope for the initial TipTap implementation. Install `@tiptap/extension-table` and add to the extensions array if fragments start containing markdown tables.

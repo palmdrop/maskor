@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Fragment, LogEntry } from "@maskor/shared";
-import type { DocumentConverter } from "@maskor/importer";
+import type { DocumentConverter, HeadingLevel } from "@maskor/importer";
 import { splitMarkdown, splitPlainText, deriveKey } from "@maskor/importer";
 import type { Command } from "../types";
 import { createFragmentCommand } from "./create-fragment";
@@ -10,13 +10,13 @@ export type ImportInput =
       projectId: string;
       file: Uint8Array;
       format: "markdown";
-      headingLevel: 1 | 2 | 3 | 4 | 5 | 6;
+      headingLevel: HeadingLevel;
     }
   | {
       projectId: string;
       file: Uint8Array;
       format: "docx";
-      headingLevel: 1 | 2 | 3 | 4 | 5 | 6;
+      headingLevel: HeadingLevel;
     }
   | {
       projectId: string;
@@ -64,11 +64,6 @@ export const createImportCommand = (
     for (let index = 0; index < pieces.length; index++) {
       const piece = pieces[index]!;
       const pieceIndex = index + 1;
-
-      if (!piece.content.trim()) {
-        errors.push({ pieceIndex, error: "empty piece" });
-        continue;
-      }
 
       const rawPiece = { headingText: piece.title, content: piece.content };
       const key = deriveKey(rawPiece, existingKeys);
