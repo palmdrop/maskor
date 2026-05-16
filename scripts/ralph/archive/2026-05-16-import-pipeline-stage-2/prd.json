@@ -1,0 +1,110 @@
+{
+  "project": "Maskor",
+  "branchName": "ralph/import-pipeline-stage-2",
+  "description": "Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred.",
+  "specs": ["specifications/import-pipeline.md"],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Preview command in packages/api",
+      "description": "As a developer, I need a dedicated `createPreviewImportCommand` so that conversion + splitting + key derivation can run without writing fragments, and the existing `createImportCommand` stays single-purpose.",
+      "acceptanceCriteria": [
+        "New file `packages/api/src/commands/fragments/preview-import.ts` exports `createPreviewImportCommand(converter: DocumentConverter): Command<ImportInput, PreviewImportResult>`",
+        "`ImportInput` is reused verbatim from `createImportCommand` in `packages/api/src/commands/fragments/import.ts` - same discriminated union on `format`",
+        "`PreviewImportResult` is `{ pieces: PreviewPiece[]; format: \"markdown\" | \"docx\" | \"plaintext\"; convertedMarkdown: string }` where `PreviewPiece = { pieceIndex: number; title?: string; derivedKey: string; content: string }`",
+        "`pieceIndex` is 1-based and matches the index `createImportCommand` would assign to the same piece",
+        "Flow: (1) fetch existing fragment summaries, seed case-insensitive `existingKeys` from non-discarded keys only - identical seeding to `createImportCommand`; (2) if `format === \"docx\"` call `converter.toMarkdown(file)` else decode file as UTF-8 text - store the result as `convertedMarkdown`; (3) call `splitMarkdown` or `splitPlainText` on `convertedMarkdown`; (4) for each piece derive a key via `deriveKey` against the (mutating) `existingKeys` set; (5) return the full result - no fragments created, no log entries emitted",
+        "No log entries are emitted (`logEntries` returned as `[]`)",
+        "Command does NOT instantiate `MammothConverter` itself - it accepts a `DocumentConverter` via injection",
+        "Empty pieces are filtered by the splitter; not surfaced as preview errors",
+        "`createPreviewImportCommand`, `PreviewImportResult`, and `PreviewPiece` exported from `packages/api/src/commands/index.ts`",
+        "Unit tests cover: markdown happy path, plaintext happy path, docx happy path (stub `DocumentConverter`), key collision against an existing fragment (preview returns the suffixed key), zero-piece case (e.g. .md with no H1 + level 1 → empty `pieces` array, `convertedMarkdown` still returned)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "POST /projects/:projectId/import/preview route + OpenAPI + Orval client",
+      "description": "As a developer, I need the HTTP route that wires `createPreviewImportCommand` to the API server and is reflected in the generated client so the frontend can call it.",
+      "acceptanceCriteria": [
+        "New route `POST /projects/:projectId/import/preview` accepts the same `multipart/form-data` shape as `/import`: `file` (binary) + `options` (JSON string validated by the existing `ImportOptionsSchema` zod discriminated union)",
+        "Implemented in a new file `packages/api/src/routes/import-preview.ts` (or co-located in `packages/api/src/routes/import.ts` if the diff is small) exporting an `importPreviewRouter` mounted at `/import/preview` on the project-scoped app",
+        "Route handler does no direct storage calls - it parses the multipart body, validates options, instantiates/injects `MammothConverter`, and invokes `createPreviewImportCommand.execute(ctx, input)` via `executeCommand`",
+        "`PreviewImportResultSchema` added to `packages/api/src/schemas/import.ts` and shapes the 200 body to match `PreviewImportResult` from US-001",
+        "Endpoint registered in the OpenAPI spec with request (multipart) and response schemas; distinct `operationId` (e.g. `previewImportFragments`)",
+        "400 response for invalid options payload uses the existing `ErrorResponseSchema`",
+        "Hono body parser configured for `multipart/form-data` (already in place for `/import`)",
+        "`importPreviewRouter` registered on `projectScopedApp` in `packages/api/src/app.ts`",
+        "Orval client regenerated; generated hook + types present in `packages/frontend/src/api/generated/`",
+        "Route-level integration tests cover: markdown preview end-to-end, plaintext preview end-to-end, docx preview end-to-end, key collision against existing fragment, zero-piece case, invalid options payload (400), corrupt docx surfaces as a 500 with a usable error message",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Frontend preview page - routing, layout, and tiptap rendering",
+      "description": "As a user, I want a dedicated full-page preview that shows my document split into pieces so I can verify the result before committing.",
+      "acceptanceCriteria": [
+        "New page `packages/frontend/src/pages/FragmentImportPage.tsx` is created",
+        "New route `/projects/$projectId/fragments/import` registered in `packages/frontend/src/router.ts`, nested under `projectShellLayoutRoute` (NOT under `fragmentListRoute` - the page is full-screen)",
+        "Page reads the `File` to preview from router state (e.g. `useRouterState({ select: s => s.location.state })`); on reload or direct navigation with no file in state, redirects to `/projects/$projectId/fragments`",
+        "Format derived from file extension on mount (`.md` → markdown, `.docx` → docx, `.txt` → plaintext); other extensions redirect to fragment list",
+        "Top bar (sticky): filename · format-context label (e.g. `Format: markdown · split on H1`, `Format: plaintext · split on \\`---\\``) · options selectors - heading-level Select (H1-H6, default H1) for markdown/docx; delimiter Input (default `---`) for plaintext",
+        "Sidebar (left, `w-72 shrink-0 border-r border-border` to match FragmentListPage): stats header `{N} pieces will be created` (or `No pieces` when N=0) + scrollable list of `{N}. {derived_key}` rows; clicking a row scrolls main area to that piece (anchor or `scrollIntoView`)",
+        "Main area: one read-only tiptap instance configured with `StarterKit + tiptap-markdown (Markdown) + Typography` (matching `prose-editor.tsx`), `editable: false`; renders the `convertedMarkdown` returned by the preview endpoint with synthetic separators injected between pieces - each piece preceded by an inline banner marker showing `Piece N · derived_key` (distinct visual treatment, not confusable with document content), followed by piece content, followed by `<hr>` (markdown `---`)",
+        "Sticky footer: `[Cancel] [Import N fragments]` cluster, right-aligned; Import button label includes the live piece count and is disabled when N=0 or while a preview/commit request is in flight",
+        "Options change → debounce 300ms → call the Orval preview hook; while in flight, prior preview stays on screen with a subtle loading indicator (opacity dim or top-bar spinner)",
+        "Empty/zero-piece state: when preview returns `pieces: []`, main area shows explicit empty state with hint - e.g. `No pieces matched. Try a different heading level.` (markdown/docx) or `Delimiter not found in the file.` (plaintext); Import button disabled; sidebar shows `No pieces`",
+        "Preview error state: if preview request fails (4xx/5xx, network error), show inline error in main area; options + file picker remain editable for retry; Import disabled",
+        "Cancel button navigates back to `/projects/$projectId/fragments`",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Commit flow + ImportDialog deletion + Import button wiring",
+      "description": "As a user, when I press the Import button on the fragment list, I land on the preview page; when I commit from preview, fragments are created and I land back on the fragment list with the new fragments visible.",
+      "acceptanceCriteria": [
+        "`packages/frontend/src/components/fragments/import-dialog.tsx` is deleted",
+        "The `<ImportDialog>` usage in `packages/frontend/src/pages/FragmentListPage.tsx` is replaced with an `<Button>` that opens a hidden `<input type=\"file\" accept=\".md,.txt,.docx\">`; on file selection, the page navigates to `/projects/$projectId/fragments/import` and passes the `File` via router state (e.g. `navigate({ to: \"...\", state: { file } })`)",
+        "On the preview page, pressing Import submits the same multipart payload to the existing `POST /projects/:projectId/import` endpoint via the existing `useImportFragments` hook (Stage 1 endpoint and command unchanged)",
+        "Full success (`response.status === 200 && data.errors.length === 0`): invalidate `getListFragmentsQueryKey(projectId)`, navigate to `/projects/$projectId/fragments`",
+        "Partial failure (`response.status === 200 && data.errors.length > 0`): invalidate `getListFragmentsQueryKey(projectId)`, replace page body with an error report card showing `Created {created.length}, Failed {errors.length}` + per-piece error list (`pieceIndex`, `pieceKey` if present, `error`); buttons: `Return to fragment list` / `Discard` (both navigate back)",
+        "Commit error (response.status !== 200, network error, etc.): stay on preview page with inline error; Import button re-enables; preview content remains intact",
+        "While commit request is in flight: Import button shows spinner and is disabled; options selectors and Cancel remain enabled",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Spec + SUGGESTIONS.md updates",
+      "description": "As a developer, I need the import-pipeline spec to reflect that preview-and-review shipped (read-only) and per-piece editing is still deferred; and I want a SUGGESTIONS.md note for the future backend-session optimization.",
+      "acceptanceCriteria": [
+        "`specifications/import-pipeline.md` `**Shipped**:` list at top gains an entry: `YYYY-MM-DD — Import Pipeline Stage 2 - Read-only preview-and-review step: convert + split on backend without committing, render document with split markers, commit via existing /import endpoint. (plan: tasks/prd-import-pipeline-stage-2.md)`",
+        "A `**Stage 2 scope note**` is added (mirroring the existing Stage 1 scope note) clarifying that preview is read-only and that per-piece edit operations (merge, discard individual pieces, retitle, adjustable split points) remain deferred",
+        "The `## Acceptance criteria` lines that previously said `(preview deferred — Stage 1 creates fragments immediately)` are updated to reflect that the preview now exists, with edit-pieces still noted as deferred",
+        "`references/SUGGESTIONS.md` gains an entry describing the future backend session cache: preview re-uploads and re-converts the file on every options change; for larger .docx files this is wasteful; consider a backend session cache (keyed by content hash, short TTL e.g. 10 min) that stores the converted markdown so subsequent preview requests with different options skip mammoth+turndown; triggers when preview latency becomes user-visible",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

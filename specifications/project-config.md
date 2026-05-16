@@ -47,10 +47,12 @@ The user can create a project (pointing at a vault on disk), give it a name and 
 
 ### Project registration
 
+Project registration, adoption, creation, deregistration, rename, vault relocation, and the configurable maskor-managed root are owned by `project-management.md`. The behavior summarized below is preserved for context but the authoritative spec is the project management one.
+
 - A project is created with a name and an absolute vault path.
 - On registration, a UUID is assigned and a manifest is written to `<vault>/.maskor/project.json`
 - The registry DB (`~/.config/maskor/registry.db`) stores the UUID → vault path mapping.
-- A project can be deleted (deregistered). Deletion removes the registry entry; vault files are not touched.
+- A project can be deleted (deregistered). Deletion removes the registry entry; vault files are not touched (unless the user opts in to file deletion — see `project-management.md`).
 - Project name can be updated after creation.
 
 ### Aspects
@@ -109,7 +111,7 @@ See `interleaving.md`
 - **Vault manifest on registration**: `project.json` is written to `<vault>/.maskor/` on `registerProject`. Intended to support DB recovery, though recovery logic is not yet implemented.
 - **Arc schema defined, not yet implemented**: `arc.ts` in shared defines `ArcPoint`, `Arc`, `ArcCreate`, `ArcUpdate`. No Arc storage, API routes, or UI exist yet.
 - **Interleaving schema is unbuilt**: `interleaving.ts` in shared is a `// TODO`. No design has been settled.
-- **Project update route not yet exposed**: The API has `ProjectUpdateSchema` (name only) but no PUT/PATCH route for updating a project.
+- **Project update route**: `PATCH /projects/:projectId` is wired end to end (route handler, `storageService.updateProject`, `registry.updateProject`), exposing the `ProjectUpdateSchema` fields. Project rename and editor-config updates flow through it. Owned by `project-management.md`.
 
 ---
 
