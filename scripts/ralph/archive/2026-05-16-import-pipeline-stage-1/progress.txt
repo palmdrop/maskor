@@ -1,0 +1,113 @@
+## Codebase Patterns
+- importer package uses mdast-util-from-markdown for AST parsing; `fromMarkdown` returns `Root` with positions on all nodes
+- Bun workspace deps: add to package-specific package.json via `bun add` run from project root (Bun handles hoisting)
+- Adding a new workspace package dep: edit target package.json directly (`"@maskor/importer": "workspace:*"`), then add path alias to both `packages/<pkg>/tsconfig.json` AND root `tsconfig.json`
+- `splitPlainText` and `splitMarkdown` already filter empty pieces; the "empty piece" check in importCommand is purely defensive and won't trigger in normal flow
+- `Command<TInput, TOutput>.execute` returns `{ result, logEntries }`; composite commands collect logEntries from inner commands and bubble them up
+- `bun run verify` = typecheck + backend tests + frontend tests; run after every story
+- `@types/mdast` must be added explicitly to the importer devDependencies; it is not auto-hoisted
+- Heading `depth` from mdast is `1|2|3|4|5|6` and maps directly to `HeadingLevel` type
+- To extract plain text from mdast heading children: recurse checking `"value" in node` (Text/InlineCode) vs `"children" in node` (Strong, Emphasis, etc.)
+- `node.position?.start.offset` gives 0-based byte offset; use `content.indexOf('\n', startOffset)` to find end of heading line
+- mammoth has no bundled types and no `@types/mammoth` on npm; it imports fine as-is under Bun (TypeScript uses implicit `any`)
+- turndown requires `@types/turndown` as a devDependency; use `{ headingStyle: "atx" }` option for ATX-style headings
+- mammoth accepts `{ buffer: Buffer }` input; convert `Uint8Array` with `Buffer.from(input)`
+- To strip images in turndown: `td.addRule("stripImages", { filter: "img", replacement: () => "" })`
+- `.docx` test fixtures can be generated programmatically with the `docx` npm package (already in workspace)
+
+---
+
+# Ralph Progress Log
+Started: Fri May 15 23:23:59 CEST 2026
+---
+
+## 2026-05-15 - US-001
+- Implemented `splitMarkdown` and `splitPlainText` in `packages/importer/src/index.ts`
+- Defined `HeadingLevel = 1|2|3|4|5|6` and `Piece = { title?: string; content: string }` locally in the package
+- Added `mdast-util-from-markdown@2.0.3` + `@types/mdast@4.0.4` to importer dependencies
+- Wrote 20 tests in `packages/importer/src/__tests__/splitting.test.ts` covering all AC scenarios
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/splitting.test.ts`, `packages/importer/package.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - `fromMarkdown` positions are reliable; `node.position.start.offset` is 0-based character index into the source string
+  - For splitMarkdown, slice `content[prevEnd..headingStart]` for pre-heading content, then advance `prevEnd` past the heading line via `indexOf('\n', headingStart) + 1`
+  - Fenced and indented code block `#` lines are automatically excluded since they don't appear as `heading` nodes in the mdast AST
+  - For splitPlainText: `content.split(delimiter).filter(p => p.trim()).map(p => ({ content: p }))` — do NOT trim the piece content itself, only check for emptiness
+---
+
+## 2026-05-15 - US-003
+- Implemented `deriveKey(piece: RawPiece, existingKeys: Set<string>): string` and `RawPiece` type in `packages/importer/src/index.ts`
+- Priority order: heading text -> first non-empty line of content -> `fragment-<uuid>`
+- Sanitization: strips chars outside `[a-zA-Z0-9 _-]`, collapses whitespace, trims; falls through if empty
+- Collision detection is case-insensitive; appends `_1`, `_2`, ... until unique; mutates `existingKeys`
+- Added `sanitizeKey` private helper function
+- Wrote 14 tests in `packages/importer/src/__tests__/derive-key.test.ts`
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/derive-key.test.ts`
+- **Learnings for future iterations:**
+  - TypeScript can't narrow array index access via `length > 0` check — use `as string` cast or `candidates.at(0) ?? fallback` pattern
+  - `crypto.randomUUID()` is available globally in Bun without any import
+  - Case-insensitive collision detection: `existingKeys` stores lowercased keys; returned key preserves original casing
+---
+
+## 2026-05-16 - US-004
+- Created `packages/api/src/commands/fragments/import.ts` exporting `createImportCommand(converter: DocumentConverter): Command<ImportInput, ImportResult>`
+- `ImportInput` is a discriminated union on `format` ("markdown" | "docx" | "plaintext")
+- `ImportResult` is `{ created: string[]; errors: ImportError[] }` where `ImportError` has `pieceIndex`, optional `pieceKey`, and `error`
+- Flow: read summaries → seed `existingKeys` → decode/convert → split → per-piece key derivation + createFragmentCommand
+- Exported `createImportCommand`, `ImportInput`, `ImportResult`, `ImportError` from `packages/api/src/commands/index.ts`
+- Added `@maskor/importer` to `packages/api/package.json` deps and path aliases in both `packages/api/tsconfig.json` and root `tsconfig.json`
+- Wrote 10 tests in `packages/api/src/__tests__/commands/import.test.ts` covering markdown, plaintext, docx happy paths, spy converter, key collisions, partial failure, and KEY_CONFLICT surfacing
+- Files changed: `packages/api/src/commands/fragments/import.ts`, `packages/api/src/__tests__/commands/import.test.ts`, `packages/api/src/commands/index.ts`, `packages/api/package.json`, `packages/api/tsconfig.json`, `tsconfig.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - Adding workspace package as dependency: edit package.json directly + add path alias to both package-local tsconfig AND root tsconfig
+  - `splitPlainText`/`splitMarkdown` already filter empty pieces; "empty piece" check in importCommand is pure defense
+  - Composite commands call inner `.execute()` directly (not via `executeCommand`) and collect/bubble logEntries
+  - `Uint8Array` comparison in bun tests: use `Array.from(a).toEqual(Array.from(b))` — direct `.toEqual` has type mismatch with null overload
+---
+
+## 2026-05-16 - US-005
+- Created `packages/api/src/schemas/import.ts` with `ImportOptionsSchema`, `ImportResultSchema`, `ImportBodySchema`
+- Created `packages/api/src/routes/import.ts` with `importRouter` mounted at `/import` on the project-scoped app
+- Route accepts `multipart/form-data` with `file` (binary) and `options` (JSON string) fields
+- Handler uses `ctx.req.valid("form")` for file access; parses `options` as JSON and validates with `ImportOptionsSchema.safeParse()`
+- Registered `importRouter` on `projectScopedApp` in `packages/api/src/app.ts`
+- Orval client regenerated: `packages/frontend/src/api/generated/fragments/fragments.ts` now includes `ImportFragments`, `useImportFragmentsMutation`, `ImportFragmentsBody`, `ImportResult` types
+- Wrote 11 tests in `packages/api/src/__tests__/routes/import.test.ts` covering all AC scenarios
+- Files changed: `packages/api/src/schemas/import.ts`, `packages/api/src/routes/import.ts`, `packages/api/src/app.ts`, `packages/api/src/__tests__/routes/import.test.ts` (generated files are gitignored)
+- **Learnings for future iterations:**
+  - Orval generated files are gitignored (root `.gitignore` has `generated`); regenerate on dev machine but do not commit
+  - For Orval codegen, start the API on an alternate port if 3001 is taken: `PORT=3009 bun run start` then update `orval.config.ts` temporarily
+  - `@hono/zod-openapi` handles `multipart/form-data` via `ctx.req.valid("form")`; use `z.any().openapi({ type: "string", format: "binary" })` for file fields
+  - Hono app's `request()` method returns `Response | Promise<Response>`; wrap in `Promise.resolve()` when declaring return type as `Promise<Response>`
+  - Docx fixture for API route tests: use path `join(import.meta.dir, "../../../../importer/src/__tests__/fixtures/sample.docx")`
+---
+
+## 2026-05-15 - US-002
+- Added `DocumentConverter` interface and `MammothConverter` class to `packages/importer/src/index.ts`
+- Added `mammoth@1.12.0` and `turndown@7.2.4` to importer dependencies; `@types/turndown@5.0.6` to devDependencies
+- Created `packages/importer/src/__tests__/fixtures/sample.docx` with two heading levels and body text
+- Wrote 3 tests in `packages/importer/src/__tests__/converter.test.ts` covering ATX headings, body text preservation, interface contract
+- Files changed: `packages/importer/src/index.ts`, `packages/importer/src/__tests__/converter.test.ts`, `packages/importer/src/__tests__/fixtures/sample.docx`, `packages/importer/package.json`, `bun.lock`
+- **Learnings for future iterations:**
+  - Bun compatibility smoke test confirmed: mammoth and turndown both work without issues under Bun
+  - turndown headingStyle `"atx"` produces `#`-prefixed headings as required; default is Setext (underline) style
+  - mammoth automatically maps Word "Heading 1-6" styles to `<h1>`-`<h6>` HTML elements; no style map needed
+  - Images stripped via turndown rule, not mammoth option — simpler and works reliably
+  - `docx` package (already in workspace) is useful for generating minimal `.docx` test fixtures programmatically
+---
+
+## 2026-05-16 - US-006
+- Created `packages/frontend/src/components/fragments/import-dialog.tsx` with `ImportDialog` component
+- Added "Import" button next to "New fragment" in `FragmentListPage` sidebar header
+- Dialog accepts `.md`, `.txt`, `.docx` via file picker; auto-detects format from extension
+- Markdown/docx: heading-level Select (H1-H6, default H1); plaintext: delimiter Input (default "---")
+- On submit: disables button + shows spinner, dialog stays open during request
+- On 200 success: calls `onImported()` (invalidates fragment list query), closes dialog (if no errors); shows inline count summary if partial errors occurred
+- On error: re-enables submit, shows inline error message, dialog stays open
+- Files changed: `packages/frontend/src/components/fragments/import-dialog.tsx`, `packages/frontend/src/pages/FragmentListPage.tsx`
+- **Learnings for future iterations:**
+  - No toast system exists in this project — use inline messages in the dialog for success/error feedback
+  - File input styling: use native `<input type="file">` with Tailwind `file:` prefix classes to match the design system
+  - `useImportFragments` from generated API returns `{ status, data }` — check `response.status === 200` to distinguish success from error
+  - Format detection via file extension: `.md` → "markdown", `.docx` → "docx", `.txt` → "plaintext"; other extensions return null (shown as unsupported)
+  - `headingLevel` must be serialized as a number in the JSON options string, not a string; use `Number(headingLevel)` before `JSON.stringify`
+---

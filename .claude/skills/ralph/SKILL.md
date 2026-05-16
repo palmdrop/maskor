@@ -250,11 +250,20 @@ Add ability to mark tasks with different statuses.
 1. Read the current `prd.json` if it exists
 2. Check if `branchName` differs from the new feature's branch name
 3. If different AND `progress.txt` has content beyond the header:
-   - Create archive folder: `archive/YYYY-MM-DD-feature-name/`
+   - Create archive folder: `archive/YYYY-MM-DD-feature-name/` (use today's date; `feature-name` is the OLD `branchName` with the `ralph/` prefix stripped)
    - Copy current `prd.json` and `progress.txt` to archive
-   - Reset `progress.txt` with fresh header
+   - Reset `progress.txt` with a fresh header (`# Ralph Progress Log\nStarted: [pending]\n---\n`)
+4. **After writing the new `prd.json`, also write the new `branchName` to `<ralph-dir>/.last-branch`** (single line, trailing newline).
 
-**The ralph.sh script handles this automatically** when you run it, but if you are manually updating prd.json between runs, archive first.
+### Why `.last-branch` matters
+
+`ralph.sh` has its own auto-archive logic. It reads `.last-branch`, compares to `prd.json`'s `branchName`, and if they differ it archives — copying *whatever is currently in* `prd.json` and `progress.txt` into `archive/YYYY-MM-DD-<old-branch>/`.
+
+If this skill archives manually but leaves `.last-branch` pointing at the OLD branch, the script's next run sees a mismatch and "re-archives" — but at that point `prd.json` already holds the NEW content. The script overwrites the correct archive with the new prd.json + the empty progress.txt. Stage-N archive content is lost.
+
+Updating `.last-branch` to the new `branchName` keeps the script's view consistent with reality: archive already done, nothing to do on next run.
+
+**The ralph.sh script handles archive automatically** when you run it for an unconverted prd.json, but if this skill (or any manual step) updates `prd.json` between runs, the skill **must** archive AND sync `.last-branch`.
 
 ---
 
@@ -263,6 +272,8 @@ Add ability to mark tasks with different statuses.
 Before writing prd.json, verify:
 
 - [ ] **Previous run archived** (if prd.json exists with different branchName, archive it first)
+- [ ] **`.last-branch` updated** to the new `branchName` after writing the new `prd.json` — otherwise `ralph.sh` will re-archive on next run and clobber the archive you just made
+- [ ] **`progress.txt` reset** with a fresh header
 - [ ] Each story is completable in one iteration (small enough)
 - [ ] Stories are ordered by dependency (schema to backend to UI)
 - [ ] Every story has "Typecheck passes" as criterion
