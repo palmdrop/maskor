@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createTestApp } from "../helpers/create-test-app";
 
@@ -158,6 +158,68 @@ describe("GET /projects/:projectId", () => {
     };
     expect(body.projectUUID).toBe(projectUUID);
     expect(body.name).toBe("Lookup Project");
+    expect(body.vaultPath).toBe(vaultDirectory);
+  });
+});
+
+describe("PATCH /projects/:projectId", () => {
+  it("updates name in registry response and on-disk manifest", async () => {
+    const vaultDirectory = makeVaultDirectory();
+    const createResponse = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Original Name", vaultPath: vaultDirectory, mode: "adopt" }),
+    });
+    const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
+
+    const patchResponse = await testContext.app.request(`/projects/${projectUUID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Renamed Project" }),
+    });
+
+    expect(patchResponse.status).toBe(200);
+    const body = (await patchResponse.json()) as { name: string; vaultPath: string };
+    expect(body.name).toBe("Renamed Project");
+    expect(body.vaultPath).toBe(vaultDirectory);
+
+    const manifest = JSON.parse(
+      readFileSync(join(vaultDirectory, ".maskor", "project.json"), "utf-8"),
+    ) as { name: string };
+    expect(manifest.name).toBe("Renamed Project");
+  });
+
+  it("returns 404 for an unknown project UUID", async () => {
+    const response = await testContext.app.request(
+      "/projects/00000000-0000-0000-0000-000000000000",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ghost" }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("does not rename or move the on-disk vault folder", async () => {
+    const vaultDirectory = makeVaultDirectory();
+    const createResponse = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Before Rename", vaultPath: vaultDirectory, mode: "adopt" }),
+    });
+    const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
+
+    await testContext.app.request(`/projects/${projectUUID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "After Rename" }),
+    });
+
+    expect(existsSync(vaultDirectory)).toBe(true);
+
+    const getResponse = await testContext.app.request(`/projects/${projectUUID}`);
+    const body = (await getResponse.json()) as { vaultPath: string };
     expect(body.vaultPath).toBe(vaultDirectory);
   });
 });
