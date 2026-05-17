@@ -18,6 +18,7 @@ import { sequencesRouter } from "./routes/sequences";
 import { importRouter } from "./routes/import";
 import { importPreviewRouter } from "./routes/import-preview";
 import { fsRouter } from "./routes/fs";
+import { settingsRouter } from "./routes/settings";
 import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
@@ -69,6 +70,7 @@ export const createApp = (
 
   app.route("/projects", projectsRouter);
   app.route("/fs", fsRouter);
+  app.route("/settings", settingsRouter);
 
   // Project-scoped sub-app with resolveProject middleware
   const projectScopedApp = new OpenAPIHono<{ Variables: AppVariables }>();
