@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ChevronUpIcon, FolderIcon, FileIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronUpIcon, FolderIcon, FileIcon, FolderPlusIcon } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Switch } from "@components/ui/switch";
@@ -13,10 +13,18 @@ type FolderPickerProps = {
   allowNonExistent?: boolean;
 };
 
+const joinPath = (base: string, name: string) => {
+  const sep = base.includes("\\") ? "\\" : "/";
+  return base.endsWith(sep) ? `${base}${name}` : `${base}${sep}${name}`;
+};
+
 export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPickerProps) => {
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [addressBarValue, setAddressBarValue] = useState("");
   const [showHidden, setShowHidden] = useState(false);
+  const [newFolderMode, setNewFolderMode] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
 
   const homeQuery = useFsHome();
   const listQuery = useFsList(currentPath);
@@ -29,9 +37,17 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
     }
   }, [currentPath, homeQuery.data]);
 
+  useEffect(() => {
+    if (newFolderMode) {
+      newFolderInputRef.current?.focus();
+    }
+  }, [newFolderMode]);
+
   const navigate = (path: string) => {
     setCurrentPath(path);
     setAddressBarValue(path);
+    setNewFolderMode(false);
+    setNewFolderName("");
   };
 
   const handleAddressBarSubmit = (e: React.FormEvent) => {
@@ -39,6 +55,13 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
     if (addressBarValue) {
       navigate(addressBarValue);
     }
+  };
+
+  const handleNewFolderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newFolderName.trim();
+    if (!trimmed || !currentPath) return;
+    navigate(joinPath(currentPath, trimmed));
   };
 
   const fsData = listQuery.data?.data;
@@ -54,9 +77,6 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
   const visibleEntries = showHidden ? entries : entries.filter((entry) => !entry.hidden);
   const isEmpty =
     !isLoading && listError === null && fsData !== undefined && visibleEntries.length === 0;
-
-  const joinPath = (base: string, name: string) =>
-    base.endsWith("/") ? `${base}${name}` : `${base}/${name}`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,7 +97,50 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
           placeholder="/path/to/folder"
           className="flex-1"
         />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={currentPath === null}
+          onClick={() => setNewFolderMode((prev) => !prev)}
+          aria-label="New folder"
+          title="New folder"
+        >
+          <FolderPlusIcon />
+        </Button>
       </form>
+
+      {newFolderMode && (
+        <form onSubmit={handleNewFolderSubmit} className="flex gap-2">
+          <Input
+            ref={newFolderInputRef}
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="New folder name"
+            className="flex-1"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setNewFolderMode(false);
+                setNewFolderName("");
+              }
+            }}
+          />
+          <Button type="submit" size="sm" disabled={!newFolderName.trim()}>
+            Create
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setNewFolderMode(false);
+              setNewFolderName("");
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      )}
 
       <div className="flex items-center gap-2">
         <Switch id="folder-picker-show-hidden" checked={showHidden} onCheckedChange={setShowHidden} />

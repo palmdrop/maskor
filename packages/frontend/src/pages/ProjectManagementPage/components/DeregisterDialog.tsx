@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { customFetch } from "@api/fetch";
-import { getListProjectsQueryKey } from "@api/generated/projects/projects";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDeleteProject, getListProjectsQueryKey } from "@api/generated/projects/projects";
 import {
   Dialog,
   DialogContent,
@@ -47,30 +46,23 @@ export const DeregisterDialog = ({
     onOpenChange(nextOpen);
   };
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      customFetch<
-        | { data: { method: "trash" | "hard-delete" }; status: 200; headers: Headers }
-        | { data: undefined; status: 204; headers: Headers }
-      >(`/projects/${projectId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deleteFiles }),
-      }),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      if (response.status === 200) {
-        setDeletionMethod(response.data.method);
-        setStep("result");
-      } else {
-        handleOpenChange(false);
-      }
+  const mutation = useDeleteProject({
+    mutation: {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        if (response.status === 200) {
+          setDeletionMethod(response.data.method);
+          setStep("result");
+        } else {
+          handleOpenChange(false);
+        }
+      },
     },
   });
 
   const handleConfirm = () => {
     if (!canConfirm) return;
-    mutation.mutate();
+    mutation.mutate({ projectId, data: { deleteFiles } });
   };
 
   return (

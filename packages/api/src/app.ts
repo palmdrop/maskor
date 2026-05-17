@@ -3,7 +3,7 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { createSettingsService, DEFAULT_CONFIG_DIRECTORY } from "@maskor/storage";
-import type { StorageService, ProjectContext } from "@maskor/storage";
+import type { StorageService, ProjectContext, SettingsService } from "@maskor/storage";
 import { resolveProject } from "./middleware/resolve-project";
 import { projectsRouter } from "./routes/projects";
 import { fragmentsRouter } from "./routes/fragments";
@@ -24,6 +24,7 @@ import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
   storageService: StorageService;
+  settingsService: SettingsService;
   projectContext?: ProjectContext;
   logger: Logger;
 };
@@ -64,13 +65,14 @@ export const createApp = (
     );
   });
 
+  const settingsService = createSettingsService(configDirectory);
+
   app.use("*", (ctx, next) => {
     ctx.set("storageService", storageService);
+    ctx.set("settingsService", settingsService);
     ctx.set("logger", log);
     return next();
   });
-
-  const settingsService = createSettingsService(configDirectory);
 
   app.route("/projects", projectsRouter);
   app.route("/fs", fsRouter);

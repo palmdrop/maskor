@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
-import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError } from "./errors";
+import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError, ExistingVaultManifestError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
 type ProjectManifest = {
@@ -144,31 +144,46 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
               }),
         });
       } else {
-        // create: mkdir -p vault + aspects/, write manifest only when not already initialized
+        // Pre-check DB uniqueness before touching the filesystem: avoids leaving orphan dirs and
+        // manifests if the insert would fail with a UNIQUE constraint on vault_path.
+        const conflictingRow = await database
+          .select({ uuid: projectsTable.uuid })
+          .from(projectsTable)
+          .where(eq(projectsTable.vaultPath, vaultPath))
+          .limit(1);
+        if (conflictingRow[0]) {
+          throw new ProjectConflictError(vaultPath);
+        }
+
+        // create: mkdir -p vault + aspects/, then write manifest
         await mkdir(vaultPath, { recursive: true });
+
+        // TODO: create helper function for creating entire repo structure... not just aspects
         await mkdir(join(vaultPath, "aspects"), { recursive: true });
 
         const existingManifest = await readVaultManifest(vaultPath);
         if (existingManifest) {
-          // Already initialized — reuse existing UUID, don't overwrite manifest
-          projectUUID = existingManifest.projectUUID;
-        } else {
-          projectUUID = crypto.randomUUID();
-          await writeVaultManifest(vaultPath, {
-            projectUUID,
-            name,
-            registeredAt: now.toISOString(),
-            config: {
-              editor: {
-                vimMode: false,
-                rawMarkdownMode: false,
-                fontSize: 16,
-                maxParagraphWidth: 72,
-              },
-              suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
-            },
-          });
+          // An existing manifest means this folder was already initialized as a Maskor project.
+          // The caller should use mode: "adopt" instead.
+          throw new ExistingVaultManifestError(vaultPath);
         }
+
+        projectUUID = crypto.randomUUID();
+        await writeVaultManifest(vaultPath, {
+          projectUUID,
+          name,
+          registeredAt: now.toISOString(),
+          config: {
+            // TODO: store default settings somewhere...
+            editor: {
+              vimMode: false,
+              rawMarkdownMode: false,
+              fontSize: 16,
+              maxParagraphWidth: 72,
+            },
+            suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+          },
+        });
       }
 
       let row: typeof projectsTable.$inferSelect | undefined;

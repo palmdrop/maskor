@@ -28,9 +28,11 @@ export const ProjectSchema = DomainProjectSchema.omit({
   })
   .openapi("Project");
 
-export const ProjectCreateSchema = DomainProjectCreateSchema.extend({
+// vaultPath is optional: when omitted with mode:"create", the backend creates
+// the project under the configured managed root with a slug derived from name.
+export const ProjectCreateSchema = z.object({
   name: z.string().min(1).openapi({ example: "My Writing Project" }),
-  vaultPath: z.string().min(1).openapi({ example: "/Users/me/Documents/my-vault" }),
+  vaultPath: z.string().min(1).optional().openapi({ example: "/Users/me/Documents/my-vault" }),
   mode: z.enum(["adopt", "create"]).openapi({ example: "adopt" }),
 }).openapi("ProjectCreate");
 
@@ -48,3 +50,9 @@ export const ProjectDeleteResultSchema = z
     method: z.enum(["trash", "hard-delete"]).openapi({ example: "trash" }),
   })
   .openapi("ProjectDeleteResult");
+
+export const ProjectDeleteInputSchema = z
+  .object({
+    deleteFiles: z.boolean().optional().openapi({ example: false }),
+  })
+  .openapi("ProjectDeleteInput");

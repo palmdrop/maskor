@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { FolderPicker } from "@components/FolderPicker";
-import { customFetch } from "@api/fetch";
-import { getListProjectsQueryKey } from "@api/generated/projects/projects";
-import type { Project } from "@api/generated/maskorAPI.schemas";
+import { useUpdateProjectVaultPath, getListProjectsQueryKey } from "@api/generated/projects/projects";
 import { ApiRequestError } from "@api/errors";
 import {
   Dialog,
@@ -36,36 +34,29 @@ export const LocateVaultDialog = ({ open, onOpenChange, projectId }: LocateVault
     onOpenChange(nextOpen);
   };
 
-  const mutation = useMutation({
-    mutationFn: ({ newPath, forceOverride }: { newPath: string; forceOverride?: boolean }) =>
-      customFetch<{ data: Project; status: 200; headers: Headers }>(
-        `/projects/${projectId}/vault-path`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newPath, forceOverride }),
-        },
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      handleOpenChange(false);
-    },
-    onError: (error) => {
-      if (error instanceof ApiRequestError && error.body.error === "UUID_CONFLICT") {
-        setStep("uuid-conflict");
-      }
+  const mutation = useUpdateProjectVaultPath({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        handleOpenChange(false);
+      },
+      onError: (error) => {
+        if (error instanceof ApiRequestError && error.body.error === "UUID_CONFLICT") {
+          setStep("uuid-conflict");
+        }
+      },
     },
   });
 
   const handlePick = (path: string) => {
     mutation.reset();
     setPickedPath(path);
-    mutation.mutate({ newPath: path });
+    mutation.mutate({ projectId, data: { newPath: path } });
   };
 
   const handleForceOverride = () => {
     if (!pickedPath) return;
-    mutation.mutate({ newPath: pickedPath, forceOverride: true });
+    mutation.mutate({ projectId, data: { newPath: pickedPath, forceOverride: true } });
   };
 
   const handleBack = () => {

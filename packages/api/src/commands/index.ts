@@ -1,5 +1,5 @@
-export { executeCommand } from "./types";
-export type { Command, CommandContext } from "./types";
+export { executeCommand, executeGlobalCommand } from "./types";
+export type { Command, CommandContext, GlobalCommand, GlobalCommandContext } from "./types";
 
 export { createFragmentCommand } from "./fragments/create-fragment";
 export { createImportCommand } from "./fragments/import";
@@ -30,3 +30,10 @@ export { deleteSequenceCommand } from "./sequences/delete-sequence";
 export { placeFragmentCommand } from "./sequences/place-fragment";
 export { moveFragmentCommand } from "./sequences/move-fragment";
 export { unplaceFragmentCommand } from "./sequences/unplace-fragment";
+
+export { registerProjectCommand } from "./projects/register-project";
+export { updateProjectCommand } from "./projects/update-project";
+export { updateProjectVaultPathCommand } from "./projects/update-project-vault-path";
+export { removeProjectCommand } from "./projects/remove-project";
+
+export { createPatchSettingsCommand } from "./settings/patch-settings";

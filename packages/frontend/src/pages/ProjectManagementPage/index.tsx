@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { useListProjects } from "@api/generated/projects/projects";
-import { AdoptProjectDialog } from "./components/AdoptProjectDialog";
-import { CreateProjectDialog } from "./components/CreateProjectDialog";
-import { MaskorManagedDialog } from "./components/MaskorManagedDialog";
+import { RegisterProjectDialog } from "./components/RegisterProjectDialog";
 import { ProjectRow } from "./components/ProjectRow";
 import { SettingsSection } from "./components/SettingsSection";
+import { Button } from "@components/ui/button";
 
 export const ProjectManagementPage = () => {
-  const [adoptOpen, setAdoptOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [maskorManagedOpen, setMaskorManagedOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const { data: envelope, isLoading, isError } = useListProjects();
 
   if (isLoading) {
@@ -24,16 +21,19 @@ export const ProjectManagementPage = () => {
 
   return (
     <>
-      <AdoptProjectDialog open={adoptOpen} onOpenChange={setAdoptOpen} />
-      <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <MaskorManagedDialog open={maskorManagedOpen} onOpenChange={setMaskorManagedOpen} />
+      <RegisterProjectDialog open={registerOpen} onOpenChange={setRegisterOpen} />
 
       <div className="mx-auto max-w-2xl p-8 flex flex-col gap-10">
         <section className="flex flex-col gap-4">
-          <h1 className="text-lg font-medium">Projects</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-medium">Projects</h1>
+            <Button size="sm" onClick={() => setRegisterOpen(true)}>
+              Register project
+            </Button>
+          </div>
           {projects.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No projects registered. Use one of the cards below to get started.
+              No projects registered yet.
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -42,44 +42,6 @@ export const ProjectManagementPage = () => {
               ))}
             </ul>
           )}
-        </section>
-
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Register project
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <button
-              type="button"
-              className="flex flex-col gap-2 rounded-lg border border-border px-4 py-4 text-left hover:bg-muted/50"
-              onClick={() => setAdoptOpen(true)}
-            >
-              <span className="text-sm font-medium">Adopt existing folder</span>
-              <span className="text-xs text-muted-foreground">
-                Point Maskor at an existing vault or folder.
-              </span>
-            </button>
-            <button
-              type="button"
-              className="flex flex-col gap-2 rounded-lg border border-border px-4 py-4 text-left hover:bg-muted/50"
-              onClick={() => setCreateOpen(true)}
-            >
-              <span className="text-sm font-medium">Create new project</span>
-              <span className="text-xs text-muted-foreground">
-                Pick any path and Maskor creates it.
-              </span>
-            </button>
-            <button
-              type="button"
-              className="flex flex-col gap-2 rounded-lg border border-border px-4 py-4 text-left hover:bg-muted/50"
-              onClick={() => setMaskorManagedOpen(true)}
-            >
-              <span className="text-sm font-medium">Use Maskor-managed folder</span>
-              <span className="text-xs text-muted-foreground">
-                Just type a name; Maskor handles the rest.
-              </span>
-            </button>
-          </div>
         </section>
 
         <section className="flex flex-col gap-4">

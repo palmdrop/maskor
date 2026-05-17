@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useSettings, usePatchSettings } from "@api/settings";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSettings, usePatchSettings, SETTINGS_QUERY_KEY_FN } from "@api/settings";
 import { FolderPicker } from "@components/FolderPicker";
 import {
   Dialog,
@@ -12,8 +13,15 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 
 export const SettingsSection = () => {
+  const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useSettings();
-  const patchMutation = usePatchSettings();
+  const patchMutation = usePatchSettings({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY_FN() });
+      },
+    },
+  });
 
   const [managedRootInput, setManagedRootInput] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -31,7 +39,7 @@ export const SettingsSection = () => {
     if (!managedRootInput.trim()) return;
     setSaved(false);
     patchMutation.mutate(
-      { maskorManagedRoot: managedRootInput.trim() },
+      { data: { maskorManagedRoot: managedRootInput.trim() } },
       {
         onSuccess: () => {
           setSaved(true);

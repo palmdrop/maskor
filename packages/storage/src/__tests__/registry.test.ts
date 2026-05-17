@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { createRegistryDatabase } from "../db/registry";
 import { createProjectRegistry } from "../registry/registry";
 import { LOCAL_USER_UUID } from "../registry/types";
-import { ProjectConflictError } from "../registry/errors";
+import { ProjectConflictError, ExistingVaultManifestError } from "../registry/errors";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 let tmpDir: string;
@@ -133,24 +133,18 @@ describe("registry.registerProject", () => {
     expect(manifest.config.suggestion.readyStatusThreshold).toBe(0.95);
   });
 
-  it("mode create on already-initialized folder does not overwrite manifest", async () => {
+  it("mode create on already-initialized folder throws ExistingVaultManifestError", async () => {
     const registry = makeRegistry();
     const newPath = join(tmpDir, "idempotent-project");
     const record = await registry.registerProject("Original Name", newPath, "create");
-    const manifestBefore = await Bun.file(join(newPath, ".maskor", "project.json")).json();
 
-    // Deregister — vault files remain
+    // Deregister — vault files remain on disk
     await registry.removeProject(record.projectUUID);
 
-    // Re-init with mode create on same path — should not overwrite manifest
-    const record2 = await registry.registerProject("Different Name", newPath, "create");
-    const manifestAfter = await Bun.file(join(newPath, ".maskor", "project.json")).json();
-
-    // UUID and name must be unchanged
-    expect(manifestAfter.projectUUID).toBe(manifestBefore.projectUUID);
-    expect(manifestAfter.name).toBe(manifestBefore.name);
-    // Registry record reuses the existing manifest UUID
-    expect(record2.projectUUID).toBe(record.projectUUID);
+    // Attempting mode: "create" again must reject — caller should use mode: "adopt" instead
+    await expect(
+      registry.registerProject("Different Name", newPath, "create"),
+    ).rejects.toBeInstanceOf(ExistingVaultManifestError);
   });
 
   it("throws ProjectConflictError when vaultPath already registered", async () => {
@@ -158,6 +152,17 @@ describe("registry.registerProject", () => {
     await registry.registerProject("First", vaultDir, "adopt");
     await expect(
       registry.registerProject("Second", vaultDir, "adopt"),
+    ).rejects.toBeInstanceOf(ProjectConflictError);
+  });
+
+  it("mode create pre-checks DB uniqueness before writing to filesystem", async () => {
+    const registry = makeRegistry();
+    const newPath = join(tmpDir, "duplicate-path-test");
+    await registry.registerProject("First", newPath, "create");
+
+    // Attempting mode: "create" on the same registered path must throw before FS writes
+    await expect(
+      registry.registerProject("Second", newPath, "create"),
     ).rejects.toBeInstanceOf(ProjectConflictError);
   });
 });

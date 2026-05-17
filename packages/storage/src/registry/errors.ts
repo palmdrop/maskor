@@ -29,3 +29,13 @@ export class VaultUUIDConflictError extends Error {
     this.conflictingUUID = conflictingUUID;
   }
 }
+
+export class ExistingVaultManifestError extends Error {
+  readonly vaultPath: string;
+
+  constructor(vaultPath: string) {
+    super(`"${vaultPath}" already contains a Maskor project manifest; use adopt mode instead`);
+    this.name = "ExistingVaultManifestError";
+    this.vaultPath = vaultPath;
+  }
+}

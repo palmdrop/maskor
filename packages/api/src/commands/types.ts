@@ -43,3 +43,23 @@ export const executeCommand = async <TInput, TOutput>(
 
   return result;
 };
+
+// Global commands run outside a project context (e.g. project lifecycle operations).
+// They do not emit action log entries.
+export type GlobalCommandContext = {
+  storageService: StorageService;
+  actor: "user";
+  logger: Logger;
+};
+
+export type GlobalCommand<TInput, TOutput> = {
+  execute(ctx: GlobalCommandContext, input: TInput): Promise<TOutput>;
+};
+
+export const executeGlobalCommand = async <TInput, TOutput>(
+  command: GlobalCommand<TInput, TOutput>,
+  ctx: GlobalCommandContext,
+  input: TInput,
+): Promise<TOutput> => {
+  return command.execute(ctx, input);
+};

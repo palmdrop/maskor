@@ -3,6 +3,8 @@ import type { SettingsService } from "@maskor/storage";
 import type { AppVariables } from "../app";
 import { SettingsResponseSchema, SettingsPatchSchema } from "../schemas/settings";
 import { ErrorResponseSchema } from "../schemas/error";
+import { executeGlobalCommand, createPatchSettingsCommand } from "../commands";
+import type { GlobalCommandContext } from "../commands";
 
 const getSettingsRoute = createRoute({
   operationId: "getSettings",
@@ -49,9 +51,13 @@ export const createSettingsRouter = (settingsService: SettingsService) => {
 
   router.openapi(patchSettingsRoute, async (ctx) => {
     const patch = ctx.req.valid("json");
-    await settingsService.writeSettings(patch);
-    const { settings, warning } = await settingsService.readSettings();
-    return ctx.json({ ...settings, ...(warning !== undefined ? { warning } : {}) }, 200);
+    const commandCtx: GlobalCommandContext = {
+      storageService: ctx.get("storageService"),
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const result = await executeGlobalCommand(createPatchSettingsCommand(settingsService), commandCtx, patch);
+    return ctx.json(result, 200);
   });
 
   return router;

@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { isAbsolute } from "node:path";
+import { isAbsolute, join } from "node:path";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -8,10 +8,19 @@ import {
   ProjectUpdateSchema,
   ProjectVaultPathUpdateSchema,
   ProjectDeleteResultSchema,
+  ProjectDeleteInputSchema,
   ProjectUUIDParamSchema,
 } from "../schemas/project";
 import { ErrorResponseSchema } from "../schemas/error";
-import { moveToTrashOrDelete } from "../helpers/trash";
+import {
+  executeGlobalCommand,
+  registerProjectCommand,
+  updateProjectCommand,
+  updateProjectVaultPathCommand,
+  removeProjectCommand,
+} from "../commands";
+import type { GlobalCommandContext } from "../commands";
+import { deriveSlug, resolveSlugOnDisk } from "../helpers/slug";
 
 export const projectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -76,7 +85,7 @@ const createProjectRoute = createRoute({
     },
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
-      description: "A project is already registered at this vault path",
+      description: "Conflict: path already registered or existing manifest found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -158,7 +167,13 @@ const deleteProjectRoute = createRoute({
   path: "/{projectId}",
   tags: ["Projects"],
   summary: "Remove a registered project",
-  request: { params: ProjectUUIDParamSchema },
+  request: {
+    params: ProjectUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: ProjectDeleteInputSchema } },
+      required: false,
+    },
+  },
   responses: {
     200: {
       content: { "application/json": { schema: ProjectDeleteResultSchema } },
@@ -199,14 +214,32 @@ projectsRouter.openapi(getProjectRoute, async (ctx) => {
 
 projectsRouter.openapi(createProjectRoute, async (ctx) => {
   try {
-    const storageService = ctx.get("storageService");
     const { name, vaultPath, mode } = ctx.req.valid("json");
 
-    if (!isAbsolute(vaultPath)) {
-      return ctx.json({ error: "BAD_REQUEST", message: "vaultPath must be an absolute path" }, 400);
+    let resolvedPath: string;
+
+    if (!vaultPath) {
+      if (mode !== "create") {
+        return ctx.json({ error: "BAD_REQUEST", message: "vaultPath is required for mode: adopt" }, 400);
+      }
+      const settingsService = ctx.get("settingsService");
+      const { settings } = await settingsService.readSettings();
+      const slug = deriveSlug(name);
+      const resolvedSlug = await resolveSlugOnDisk(slug, settings.maskorManagedRoot);
+      resolvedPath = join(settings.maskorManagedRoot, resolvedSlug);
+    } else {
+      if (!isAbsolute(vaultPath)) {
+        return ctx.json({ error: "BAD_REQUEST", message: "vaultPath must be an absolute path" }, 400);
+      }
+      resolvedPath = vaultPath;
     }
 
-    const project = await storageService.registerProject(name, vaultPath, mode);
+    const commandCtx: GlobalCommandContext = {
+      storageService: ctx.get("storageService"),
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const project = await executeGlobalCommand(registerProjectCommand, commandCtx, { name, vaultPath: resolvedPath, mode });
     return ctx.json(project, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -215,10 +248,15 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
 
 projectsRouter.openapi(updateProjectRoute, async (ctx) => {
   try {
-    const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
     const patch = ctx.req.valid("json");
-    const project = await storageService.updateProject(projectId, patch);
+
+    const commandCtx: GlobalCommandContext = {
+      storageService: ctx.get("storageService"),
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const project = await executeGlobalCommand(updateProjectCommand, commandCtx, { projectUUID: projectId, patch });
     return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -227,7 +265,6 @@ projectsRouter.openapi(updateProjectRoute, async (ctx) => {
 
 projectsRouter.openapi(updateVaultPathRoute, async (ctx) => {
   try {
-    const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
     const { newPath, forceOverride } = ctx.req.valid("json");
 
@@ -235,7 +272,12 @@ projectsRouter.openapi(updateVaultPathRoute, async (ctx) => {
       return ctx.json({ error: "BAD_REQUEST", message: "newPath must be an absolute path" }, 400);
     }
 
-    const project = await storageService.updateProjectVaultPath(projectId, newPath, forceOverride);
+    const commandCtx: GlobalCommandContext = {
+      storageService: ctx.get("storageService"),
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const project = await executeGlobalCommand(updateProjectVaultPathCommand, commandCtx, { projectUUID: projectId, newPath, forceOverride });
     return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -244,7 +286,6 @@ projectsRouter.openapi(updateVaultPathRoute, async (ctx) => {
 
 projectsRouter.openapi(deleteProjectRoute, async (ctx) => {
   try {
-    const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
 
     let deleteFiles = false;
@@ -255,14 +296,16 @@ projectsRouter.openapi(deleteProjectRoute, async (ctx) => {
       // No body or non-JSON — treat as deleteFiles: false
     }
 
-    if (deleteFiles) {
-      const project = await storageService.getProject(projectId);
-      const { method } = await moveToTrashOrDelete(project.vaultPath);
-      await storageService.removeProject(projectId);
+    const commandCtx: GlobalCommandContext = {
+      storageService: ctx.get("storageService"),
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const { method } = await executeGlobalCommand(removeProjectCommand, commandCtx, { projectUUID: projectId, deleteFiles });
+
+    if (method) {
       return ctx.json({ method }, 200);
     }
-
-    await storageService.removeProject(projectId);
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

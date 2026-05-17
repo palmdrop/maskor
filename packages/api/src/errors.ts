@@ -1,5 +1,5 @@
 import { HTTPException } from "hono/http-exception";
-import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError } from "@maskor/storage";
+import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError, ExistingVaultManifestError } from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
 
 const errorResponse = (body: Record<string, unknown>, status: number): Response =>
@@ -26,6 +26,12 @@ export const throwStorageError = (error: unknown): never => {
   if (error instanceof VaultUUIDConflictError) {
     throw new HTTPException(409, {
       res: errorResponse({ error: "UUID_CONFLICT", message: error.message }, 409),
+    });
+  }
+
+  if (error instanceof ExistingVaultManifestError) {
+    throw new HTTPException(409, {
+      res: errorResponse({ error: "EXISTING_MANIFEST", message: error.message }, 409),
     });
   }
 
