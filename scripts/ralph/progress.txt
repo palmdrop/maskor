@@ -140,3 +140,17 @@ Started: 2026-05-16
   - `mutation.reset()` in `handleBack` clears error state; call it in `handlePick` too to handle reuse after a failed adoption
   - Manual browser verification is needed (no dev-browser MCP available)
 ---
+
+## 2026-05-17 - US-010
+- Added `allowNonExistent?: boolean` prop to `FolderPicker`: when true and the path returns 404, shows "This folder does not exist yet — it will be created." instead of an error; the "Choose this folder" button remains enabled (already enabled based on `currentPath !== null`)
+- Created `packages/frontend/src/pages/ProjectManagementPage/components/CreateProjectDialog.tsx` — two-step modal: FolderPicker (with `allowNonExistent={true}`) → confirmation with name input, folder kind badge (when path exists), non-markdown warning, and "This folder will be created" info (when path doesn't exist)
+- Submits `POST /projects` with `mode: "create"`; invalidates project list query on success
+- Updated `ProjectManagementPage/index.tsx`: added `createOpen` state, imported and rendered `<CreateProjectDialog>`, wired "Create new project" card button
+- All 576 tests pass; typecheck clean
+- Files changed: `packages/frontend/src/components/FolderPicker.tsx`, `packages/frontend/src/pages/ProjectManagementPage/components/CreateProjectDialog.tsx` (new), `packages/frontend/src/pages/ProjectManagementPage/index.tsx`
+- **Learnings for future iterations:**
+  - FolderPicker "Choose this folder" is gated on `currentPath !== null` only — user can pick a non-existent path if they type it in the address bar (the 404 response doesn't block selection)
+  - Add `allowNonExistent` prop to FolderPicker to suppress the 404 error display and show a friendly info message instead
+  - In the confirmation step, check `listQuery.isError && statusCode === 404` to distinguish "path doesn't exist" from "path exists with content"
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
