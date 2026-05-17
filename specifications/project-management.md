@@ -7,6 +7,7 @@
 
 - 2026-05-16 — Baseline registration lifecycle migrated from `project-config.md`: manual name + absolute-path registration via `POST /projects`, UUID assignment and `.maskor/project.json` manifest written at `<vault>/.maskor/`, registry list backed by `~/.config/maskor/registry.db`, deregister via `DELETE /projects/:projectId` leaving vault files untouched, `vaultPath` uniqueness enforced, and project rename via `PATCH /projects/:projectId` (`storageService.updateProject` + `registry.updateProject`, exercised from the project config tabbed UI). (plan: pre-existing; not produced by a Ralph run.)
 - 2026-05-17 — Project Management - Replace ProjectSelectionPage with a full ProjectManagementPage that lets users register (adopt/create/maskor-managed), rename, locate moved vaults, and deregister projects without typing filesystem paths. Backed by a directory-browse endpoint, settings file, trash helper, and wired-up PATCH rename route. (plan: `scripts/ralph/archive/2026-05-17-project-management/`)
+- 2026-05-17 - Project Management - Redesign registration system (previously one button and flow for adopt, one for create and one for maskor-managed) to use a single "Register" button for all three flows, inferring the right action based on if the user does not input a folder (maskor-managed), inputs an existing maskor-project folder path (adopt), or a new non-maskor folder (create). (review: `references/reviews/project-management-2026-05-17.md`)
 
 ---
 
@@ -80,6 +81,7 @@ The Project Management page exposes a single registration form. The form has a r
   - Non-markdown content unrelated to writing → allowed, but a warning surfaces the non-markdown file count.
 
   Submitting calls `POST /projects` with `mode: "adopt"`.
+
 - **Folder field filled, path does not exist.** A short confirmation indicates Maskor will create the folder. Submitting calls `POST /projects` with `mode: "create"`. Maskor `mkdir -p`s the path and writes the vault skeleton with a new UUID.
 
 Maskor never auto-imports existing markdown content during registration; the user uses the fragment import flow to bring fragments into the index.

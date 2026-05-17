@@ -4,6 +4,11 @@
   - tried `repomix` instead
   - or https://www.augmentcode.com/
 
+- [ ] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
+
+- [ ] create a spec for "snapshots" or versions, i.e saving a draft. The user should be able to go back to old drafts easily, then back again. Making changes in an old draft is not allowed, unless the user restores, or creates a new project based on that draft.
+  - maybe use git in the background? commit, tag, checkout? or some other system
+
 - [x] Feature to create new fragment from within Maskor
 
 - [x] In the suggestion page, merge the top bar for saving, discarding and hitting next... no need for two top bars
@@ -12,7 +17,7 @@
 
 - [ ] Create system for tracking todos, future ideas, etc... stub fragments for things that should be written, etc
 
-- [ ] filename stubs strips åäö -- allow any title that the filesystem supports. ÅÄÖ should be fine?
+- [x] filename stubs strips åäö -- allow any title that the filesystem supports. ÅÄÖ should be fine?
 
 - [x] process specs, vision and plans and create 1) timeline (maybe not though?), 2) a set of features, implemented and not implemented
   - and also, make sure to mark the status of each spec - complete? implemented? no?
@@ -26,11 +31,9 @@
 
 - [ ] when doing things with sequences, the action log shows UUIDs instead of titles
 
-- [ ] add import aliases in frontend - all import paths are ugly
+- [x] add import aliases in frontend - all import paths are ugly
 
-- [ ]
-
-- [ ] try a ralph-like workflow, inspo https://www.youtube.com/watch?v=_IK18goX4X8
+- [x] try a ralph-like workflow, inspo https://www.youtube.com/watch?v=_IK18goX4X8
   - progress file
   - IMPLEMENT FROM THIS: https://github.com/snarktank/ralph/tree/main
   - PIN! i.e short summary of project setup, see https://www.youtube.com/watch?v=4Nna09dG_c0
@@ -82,7 +85,7 @@
 - [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
   - TODO: importing capabilities
 
-- [ ] File import flow: import an entire file that gets split into multiple fragments. Distinct from the current piece-conversion path (1 file → 1 fragment) — needs a splitter (by heading, by paragraph, by length, by user-selected delimiter) and a confirmation UI. When implemented, log as a `fragment:imported` (or similar) action in the action log; payload includes `sourceFileName` and `fragmentCount`. See `specifications/action-log.md`.
+- [x] File import flow: import an entire file that gets split into multiple fragments. Distinct from the current piece-conversion path (1 file → 1 fragment) — needs a splitter (by heading, by paragraph, by length, by user-selected delimiter) and a confirmation UI. When implemented, log as a `fragment:imported` (or similar) action in the action log; payload includes `sourceFileName` and `fragmentCount`. See `specifications/action-log.md`.
 
 - [x] Add way to rename notes, references
 
@@ -93,7 +96,7 @@
 
 - [x] Rework note/reference/aspect management... uses UUIDs for nav but slug is unique (has to be). Makes it hard to link to, if only slug is available. See `packages/frontend/src/components/fragments/fragment-metadata-form.tsx` < link to reference page is wrong
 
-- [ ] Check if eslint has a config for disallowing one-letter variables... but how to exclude iterators from this?
+- [-] Check if eslint has a config for disallowing one-letter variables... but how to exclude iterators from this?
 
 - [ ] look for bad patterns and fix them in the codebase
   - let the code be the documentation
@@ -117,7 +120,7 @@
 - [x] Fragment editor needs a discard button > to automatically move a fragment to discarded
   - the other properties, like incomplete, unplaced, are derived automatically...
 
-- [ ] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
+- [x] Sequences needs to be represented in a relational way... maybe create section objects and indices, add separate document for each fragment?
   - a sequence collection which holds sequence position data? same for sequence itself, sections, etc
 
 - [-] fix `useBlocker` in `FragmentPage`: blocker fires even when no changes have been done. Commented-out now for development purposes.
