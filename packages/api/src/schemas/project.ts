@@ -42,3 +42,9 @@ export const ProjectVaultPathUpdateSchema = z
     forceOverride: z.boolean().optional().openapi({ example: false }),
   })
   .openapi("ProjectVaultPathUpdate");
+
+export const ProjectDeleteResultSchema = z
+  .object({
+    method: z.enum(["trash", "hard-delete"]).openapi({ example: "trash" }),
+  })
+  .openapi("ProjectDeleteResult");

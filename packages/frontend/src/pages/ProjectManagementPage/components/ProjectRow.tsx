@@ -6,10 +6,12 @@ import { useFsList } from "@api/fs";
 import { ApiRequestError } from "@api/errors";
 import { RenameProjectDialog } from "./RenameProjectDialog";
 import { LocateVaultDialog } from "./LocateVaultDialog";
+import { DeregisterDialog } from "./DeregisterDialog";
 
 export const ProjectRow = ({ project }: { project: Project }) => {
   const [renameOpen, setRenameOpen] = useState(false);
   const [locateOpen, setLocateOpen] = useState(false);
+  const [deregisterOpen, setDeregisterOpen] = useState(false);
   const navigate = useNavigate();
   const listQuery = useFsList(project.vaultPath);
 
@@ -30,6 +32,12 @@ export const ProjectRow = ({ project }: { project: Project }) => {
         open={locateOpen}
         onOpenChange={setLocateOpen}
         projectId={project.projectUUID}
+      />
+      <DeregisterDialog
+        open={deregisterOpen}
+        onOpenChange={setDeregisterOpen}
+        projectId={project.projectUUID}
+        projectName={project.name}
       />
       <li className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -70,7 +78,7 @@ export const ProjectRow = ({ project }: { project: Project }) => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-destructive"
-            onClick={() => console.log("deregister", project.projectUUID)}
+            onClick={() => setDeregisterOpen(true)}
           >
             Deregister
           </Button>

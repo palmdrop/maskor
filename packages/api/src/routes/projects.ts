@@ -7,9 +7,11 @@ import {
   ProjectCreateSchema,
   ProjectUpdateSchema,
   ProjectVaultPathUpdateSchema,
+  ProjectDeleteResultSchema,
   ProjectUUIDParamSchema,
 } from "../schemas/project";
 import { ErrorResponseSchema } from "../schemas/error";
+import { moveToTrashOrDelete } from "../helpers/trash";
 
 export const projectsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -158,6 +160,10 @@ const deleteProjectRoute = createRoute({
   summary: "Remove a registered project",
   request: { params: ProjectUUIDParamSchema },
   responses: {
+    200: {
+      content: { "application/json": { schema: ProjectDeleteResultSchema } },
+      description: "Project removed with vault folder deleted",
+    },
     204: { description: "Project removed" },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -240,6 +246,22 @@ projectsRouter.openapi(deleteProjectRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const { projectId } = ctx.req.valid("param");
+
+    let deleteFiles = false;
+    try {
+      const rawBody = (await ctx.req.json()) as { deleteFiles?: boolean };
+      deleteFiles = rawBody?.deleteFiles ?? false;
+    } catch {
+      // No body or non-JSON — treat as deleteFiles: false
+    }
+
+    if (deleteFiles) {
+      const project = await storageService.getProject(projectId);
+      const { method } = await moveToTrashOrDelete(project.vaultPath);
+      await storageService.removeProject(projectId);
+      return ctx.json({ method }, 200);
+    }
+
     await storageService.removeProject(projectId);
     return ctx.body(null, 204);
   } catch (error) {
