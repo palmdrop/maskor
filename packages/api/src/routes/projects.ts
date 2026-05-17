@@ -6,6 +6,7 @@ import {
   ProjectSchema,
   ProjectCreateSchema,
   ProjectUpdateSchema,
+  ProjectVaultPathUpdateSchema,
   ProjectUUIDParamSchema,
 } from "../schemas/project";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -112,6 +113,43 @@ const updateProjectRoute = createRoute({
   },
 });
 
+const updateVaultPathRoute = createRoute({
+  operationId: "updateProjectVaultPath",
+  method: "patch",
+  path: "/{projectId}/vault-path",
+  tags: ["Projects"],
+  summary: "Re-point a project's vault to a new path",
+  request: {
+    params: ProjectUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: ProjectVaultPathUpdateSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ProjectSchema } },
+      description: "Updated project",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Project not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Vault path conflict or UUID conflict requiring forceOverride",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const deleteProjectRoute = createRoute({
   operationId: "deleteProject",
   method: "delete",
@@ -175,6 +213,23 @@ projectsRouter.openapi(updateProjectRoute, async (ctx) => {
     const { projectId } = ctx.req.valid("param");
     const patch = ctx.req.valid("json");
     const project = await storageService.updateProject(projectId, patch);
+    return ctx.json(project, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+projectsRouter.openapi(updateVaultPathRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const { projectId } = ctx.req.valid("param");
+    const { newPath, forceOverride } = ctx.req.valid("json");
+
+    if (!isAbsolute(newPath)) {
+      return ctx.json({ error: "BAD_REQUEST", message: "newPath must be an absolute path" }, 400);
+    }
+
+    const project = await storageService.updateProjectVaultPath(projectId, newPath, forceOverride);
     return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);

@@ -17,3 +17,15 @@ export class ProjectConflictError extends Error {
     this.vaultPath = vaultPath;
   }
 }
+
+export class VaultUUIDConflictError extends Error {
+  readonly newPath: string;
+  readonly conflictingUUID: string;
+
+  constructor(newPath: string, conflictingUUID: string) {
+    super(`The folder at "${newPath}" belongs to a different project (UUID: ${conflictingUUID})`);
+    this.name = "VaultUUIDConflictError";
+    this.newPath = newPath;
+    this.conflictingUUID = conflictingUUID;
+  }
+}

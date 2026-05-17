@@ -224,6 +224,127 @@ describe("PATCH /projects/:projectId", () => {
   });
 });
 
+describe("PATCH /projects/:projectId/vault-path", () => {
+  it("re-points a project to a new path", async () => {
+    const originalDirectory = makeVaultDirectory();
+    const createResponse = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Move Me", vaultPath: originalDirectory, mode: "adopt" }),
+    });
+    const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
+
+    const newDirectory = makeVaultDirectory();
+    const patchResponse = await testContext.app.request(`/projects/${projectUUID}/vault-path`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPath: newDirectory }),
+    });
+
+    expect(patchResponse.status).toBe(200);
+    const body = (await patchResponse.json()) as { projectUUID: string; vaultPath: string };
+    expect(body.projectUUID).toBe(projectUUID);
+    expect(body.vaultPath).toBe(newDirectory);
+
+    const getResponse = await testContext.app.request(`/projects/${projectUUID}`);
+    const getBody = (await getResponse.json()) as { vaultPath: string };
+    expect(getBody.vaultPath).toBe(newDirectory);
+  });
+
+  it("returns 409 UUID_CONFLICT when new path has a different project's manifest", async () => {
+    const originalDirectory = makeVaultDirectory();
+    const createResponse = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Original", vaultPath: originalDirectory, mode: "adopt" }),
+    });
+    const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
+
+    const otherUUID = "cccccccc-dddd-4444-aaaa-bbbbbbbbbbbb";
+    const conflictDirectory = makeVaultDirectoryWithManifest(otherUUID);
+
+    const response = await testContext.app.request(`/projects/${projectUUID}/vault-path`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPath: conflictDirectory }),
+    });
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("UUID_CONFLICT");
+  });
+
+  it("re-points with forceOverride:true when new path has a different project's manifest", async () => {
+    const originalDirectory = makeVaultDirectory();
+    const createResponse = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Force Me", vaultPath: originalDirectory, mode: "adopt" }),
+    });
+    const { projectUUID } = (await createResponse.json()) as { projectUUID: string };
+
+    const otherUUID = "eeeeeeee-ffff-4444-aaaa-aaaaaaaaaaaa";
+    const conflictDirectory = makeVaultDirectoryWithManifest(otherUUID);
+
+    const response = await testContext.app.request(`/projects/${projectUUID}/vault-path`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPath: conflictDirectory, forceOverride: true }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { projectUUID: string; vaultPath: string };
+    expect(body.projectUUID).toBe(projectUUID);
+    expect(body.vaultPath).toBe(conflictDirectory);
+
+    const manifest = JSON.parse(
+      readFileSync(join(conflictDirectory, ".maskor", "project.json"), "utf-8"),
+    ) as { projectUUID: string };
+    expect(manifest.projectUUID).toBe(projectUUID);
+  });
+
+  it("returns 409 CONFLICT when new path is already used by another project", async () => {
+    const vaultA = makeVaultDirectory();
+    const vaultB = makeVaultDirectory();
+
+    const createA = await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Project A", vaultPath: vaultA, mode: "adopt" }),
+    });
+    const { projectUUID: uuidA } = (await createA.json()) as { projectUUID: string };
+
+    await testContext.app.request("/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Project B", vaultPath: vaultB, mode: "adopt" }),
+    });
+
+    const response = await testContext.app.request(`/projects/${uuidA}/vault-path`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPath: vaultB }),
+    });
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("CONFLICT");
+  });
+
+  it("returns 404 for an unknown project UUID", async () => {
+    const newDirectory = makeVaultDirectory();
+    const response = await testContext.app.request(
+      "/projects/00000000-0000-0000-0000-000000000000/vault-path",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPath: newDirectory }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("DELETE /projects/:projectId", () => {
   it("removes a registered project and returns 204", async () => {
     const vaultDirectory = makeVaultDirectory();

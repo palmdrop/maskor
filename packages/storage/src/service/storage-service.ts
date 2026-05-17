@@ -429,6 +429,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       return record;
     },
 
+    async updateProjectVaultPath(
+      projectUUID: string,
+      newPath: string,
+      forceOverride?: boolean,
+    ): Promise<ProjectRecord> {
+      const record = await registry.updateVaultPath(projectUUID, newPath, forceOverride);
+      log.info({ projectUUID, newPath, forceOverride }, "project vault path updated");
+      return record;
+    },
+
     async getProject(projectUUID: string): Promise<ProjectRecord> {
       const record = await registry.findByUUID(projectUUID);
       if (!record) {

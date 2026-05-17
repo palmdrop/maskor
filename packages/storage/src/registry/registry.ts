@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
-import { ProjectNotFoundError, ProjectConflictError } from "./errors";
+import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
 type ProjectManifest = {
@@ -275,6 +275,49 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
 
       const manifest = await readVaultManifest(row.vaultPath);
       return toProjectRecord(updatedRow ?? row, manifest);
+    },
+
+    async updateVaultPath(
+      projectUUID: string,
+      newPath: string,
+      forceOverride = false,
+    ): Promise<ProjectRecord> {
+      const rows = await database
+        .select()
+        .from(projectsTable)
+        .where(eq(projectsTable.uuid, projectUUID))
+        .limit(1);
+
+      if (!rows[0]) {
+        throw new ProjectNotFoundError(projectUUID);
+      }
+
+      const conflictRows = await database
+        .select()
+        .from(projectsTable)
+        .where(and(eq(projectsTable.vaultPath, newPath), ne(projectsTable.uuid, projectUUID)))
+        .limit(1);
+
+      if (conflictRows[0]) {
+        throw new ProjectConflictError(newPath);
+      }
+
+      const manifest = await readVaultManifest(newPath);
+      if (manifest && manifest.projectUUID !== projectUUID) {
+        if (!forceOverride) {
+          throw new VaultUUIDConflictError(newPath, manifest.projectUUID);
+        }
+        await writeVaultManifest(newPath, { ...manifest, projectUUID });
+      }
+
+      const [updatedRow] = await database
+        .update(projectsTable)
+        .set({ vaultPath: newPath, updatedAt: new Date() })
+        .where(eq(projectsTable.uuid, projectUUID))
+        .returning();
+
+      const updatedManifest = await readVaultManifest(newPath);
+      return toProjectRecord(updatedRow ?? rows[0], updatedManifest);
     },
 
     async removeProject(projectUUID: string): Promise<void> {

@@ -5,9 +5,11 @@ import { Button } from "@components/ui/button";
 import { useFsList } from "@api/fs";
 import { ApiRequestError } from "@api/errors";
 import { RenameProjectDialog } from "./RenameProjectDialog";
+import { LocateVaultDialog } from "./LocateVaultDialog";
 
 export const ProjectRow = ({ project }: { project: Project }) => {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [locateOpen, setLocateOpen] = useState(false);
   const navigate = useNavigate();
   const listQuery = useFsList(project.vaultPath);
 
@@ -23,6 +25,11 @@ export const ProjectRow = ({ project }: { project: Project }) => {
         onOpenChange={setRenameOpen}
         projectId={project.projectUUID}
         currentName={project.name}
+      />
+      <LocateVaultDialog
+        open={locateOpen}
+        onOpenChange={setLocateOpen}
+        projectId={project.projectUUID}
       />
       <li className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -42,7 +49,7 @@ export const ProjectRow = ({ project }: { project: Project }) => {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => console.log("locate vault", project.projectUUID)}
+              onClick={() => setLocateOpen(true)}
             >
               Locate vault…
             </Button>

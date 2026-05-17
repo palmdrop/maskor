@@ -35,3 +35,10 @@ export const ProjectCreateSchema = DomainProjectCreateSchema.extend({
 }).openapi("ProjectCreate");
 
 export const ProjectUpdateSchema = DomainProjectUpdateSchema.extend({}).openapi("ProjectUpdate");
+
+export const ProjectVaultPathUpdateSchema = z
+  .object({
+    newPath: z.string().min(1).openapi({ example: "/Users/me/new-location/my-vault" }),
+    forceOverride: z.boolean().optional().openapi({ example: false }),
+  })
+  .openapi("ProjectVaultPathUpdate");
