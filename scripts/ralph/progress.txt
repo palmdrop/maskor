@@ -171,3 +171,16 @@ Started: 2026-05-16
   - `useFsList(managedRoot)` with `enabled: path !== null` pre-fetches managed root contents as soon as settings resolves -- collision detection is instant by confirm step
   - Manual browser verification is needed (no dev-browser MCP available)
 ---
+
+## 2026-05-17 - US-012
+- Created `packages/frontend/src/pages/ProjectManagementPage/components/RenameProjectDialog.tsx` — simple Dialog with a name input, seeded from `currentName` prop, submits via `useUpdateProject` generated hook, invalidates project list on success
+- Updated `packages/frontend/src/pages/ProjectManagementPage/components/ProjectRow.tsx` — added `renameOpen` state, wrapped return in `<>` fragment to co-render `<RenameProjectDialog>` alongside the `<li>`, wired Rename button to `setRenameOpen(true)`
+- All 585 tests pass; typecheck clean
+- Files changed: `packages/frontend/src/pages/ProjectManagementPage/components/RenameProjectDialog.tsx` (new), `packages/frontend/src/pages/ProjectManagementPage/components/ProjectRow.tsx`
+- **Learnings for future iterations:**
+  - `useUpdateProject` from the generated client works directly for PATCH — no need to use `customFetch` manually since `ProjectUpdate.name` is in the generated schema
+  - Manage rename dialog state locally in `ProjectRow` (not in the parent page) since each row needs its own dialog with its own project context
+  - `useEffect([open, currentName])` re-seeds the input when the dialog opens with a potentially updated name; `mutation.reset()` in `handleOpenChange` clears error state on close
+  - Per-row fragment wrapper pattern: wrap `<RenameProjectDialog>` + `<li>` in `<>...</>` to avoid DOM structure issues (dialogs render in a portal but still need a single React root)
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
