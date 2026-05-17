@@ -1,9 +1,8 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
-import { createSettingsService, DEFAULT_CONFIG_DIRECTORY } from "@maskor/storage";
+import type { SettingsService } from "@maskor/storage";
 import type { AppVariables } from "../app";
-import { SettingsResponseSchema } from "../schemas/settings";
-
-export const settingsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+import { SettingsResponseSchema, SettingsPatchSchema } from "../schemas/settings";
+import { ErrorResponseSchema } from "../schemas/error";
 
 const getSettingsRoute = createRoute({
   operationId: "getSettings",
@@ -19,9 +18,41 @@ const getSettingsRoute = createRoute({
   },
 });
 
-const settingsService = createSettingsService(DEFAULT_CONFIG_DIRECTORY);
-
-settingsRouter.openapi(getSettingsRoute, async (ctx) => {
-  const { settings } = await settingsService.readSettings();
-  return ctx.json(settings, 200);
+const patchSettingsRoute = createRoute({
+  operationId: "patchSettings",
+  method: "patch",
+  path: "/",
+  tags: ["Settings"],
+  summary: "Update settings",
+  request: {
+    body: { content: { "application/json": { schema: SettingsPatchSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SettingsResponseSchema } },
+      description: "Updated settings",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+  },
 });
+
+export const createSettingsRouter = (settingsService: SettingsService) => {
+  const router = new OpenAPIHono<{ Variables: AppVariables }>();
+
+  router.openapi(getSettingsRoute, async (ctx) => {
+    const { settings, warning } = await settingsService.readSettings();
+    return ctx.json({ ...settings, ...(warning !== undefined ? { warning } : {}) }, 200);
+  });
+
+  router.openapi(patchSettingsRoute, async (ctx) => {
+    const patch = ctx.req.valid("json");
+    await settingsService.writeSettings(patch);
+    const { settings, warning } = await settingsService.readSettings();
+    return ctx.json({ ...settings, ...(warning !== undefined ? { warning } : {}) }, 200);
+  });
+
+  return router;
+};

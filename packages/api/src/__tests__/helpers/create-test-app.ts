@@ -17,7 +17,7 @@ export const createTestApp = (): TestApp => {
   const configDirectory = join(temporaryDirectory, "config");
 
   const storageService = createStorageService({ configDirectory });
-  const app = createApp(storageService);
+  const app = createApp(storageService, undefined, configDirectory);
 
   const cleanup = () => {
     rmSync(temporaryDirectory, { recursive: true, force: true });

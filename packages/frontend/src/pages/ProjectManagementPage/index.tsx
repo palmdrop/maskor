@@ -4,6 +4,7 @@ import { AdoptProjectDialog } from "./components/AdoptProjectDialog";
 import { CreateProjectDialog } from "./components/CreateProjectDialog";
 import { MaskorManagedDialog } from "./components/MaskorManagedDialog";
 import { ProjectRow } from "./components/ProjectRow";
+import { SettingsSection } from "./components/SettingsSection";
 
 export const ProjectManagementPage = () => {
   const [adoptOpen, setAdoptOpen] = useState(false);
@@ -85,7 +86,7 @@ export const ProjectManagementPage = () => {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Settings
           </h2>
-          <p className="text-sm text-muted-foreground">Settings coming soon.</p>
+          <SettingsSection />
         </section>
       </div>
     </>

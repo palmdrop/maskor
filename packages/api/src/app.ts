@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { createSettingsService, DEFAULT_CONFIG_DIRECTORY } from "@maskor/storage";
 import type { StorageService, ProjectContext } from "@maskor/storage";
 import { resolveProject } from "./middleware/resolve-project";
 import { projectsRouter } from "./routes/projects";
@@ -18,7 +19,7 @@ import { sequencesRouter } from "./routes/sequences";
 import { importRouter } from "./routes/import";
 import { importPreviewRouter } from "./routes/import-preview";
 import { fsRouter } from "./routes/fs";
-import { settingsRouter } from "./routes/settings";
+import { createSettingsRouter } from "./routes/settings";
 import type { Logger } from "@maskor/shared";
 
 export type AppVariables = {
@@ -30,6 +31,7 @@ export type AppVariables = {
 export const createApp = (
   storageService: StorageService,
   logger?: Logger,
+  configDirectory: string = DEFAULT_CONFIG_DIRECTORY,
 ): OpenAPIHono<{ Variables: AppVariables }> => {
   const app = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -68,9 +70,11 @@ export const createApp = (
     return next();
   });
 
+  const settingsService = createSettingsService(configDirectory);
+
   app.route("/projects", projectsRouter);
   app.route("/fs", fsRouter);
-  app.route("/settings", settingsRouter);
+  app.route("/settings", createSettingsRouter(settingsService));
 
   // Project-scoped sub-app with resolveProject middleware
   const projectScopedApp = new OpenAPIHono<{ Variables: AppVariables }>();
