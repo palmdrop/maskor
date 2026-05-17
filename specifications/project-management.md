@@ -6,6 +6,7 @@
 **Shipped**:
 
 - 2026-05-16 — Baseline registration lifecycle migrated from `project-config.md`: manual name + absolute-path registration via `POST /projects`, UUID assignment and `.maskor/project.json` manifest written at `<vault>/.maskor/`, registry list backed by `~/.config/maskor/registry.db`, deregister via `DELETE /projects/:projectId` leaving vault files untouched, `vaultPath` uniqueness enforced, and project rename via `PATCH /projects/:projectId` (`storageService.updateProject` + `registry.updateProject`, exercised from the project config tabbed UI). (plan: pre-existing; not produced by a Ralph run.)
+- 2026-05-17 — Project Management - Replace ProjectSelectionPage with a full ProjectManagementPage that lets users register (adopt/create/maskor-managed), rename, locate moved vaults, and deregister projects without typing filesystem paths. Backed by a directory-browse endpoint, settings file, trash helper, and wired-up PATCH rename route. (plan: `scripts/ralph/archive/2026-05-17-project-management/`)
 
 ---
 
