@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 
 type FolderPickerProps = {
   onSelect: (path: string) => void;
+  allowNonExistent?: boolean;
 };
 
-export const FolderPicker = ({ onSelect }: FolderPickerProps) => {
+export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPickerProps) => {
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [addressBarValue, setAddressBarValue] = useState("");
   const [showHidden, setShowHidden] = useState(false);
@@ -46,6 +47,8 @@ export const FolderPicker = ({ onSelect }: FolderPickerProps) => {
 
   const isPermissionError =
     listError instanceof ApiRequestError && listError.statusCode === 403;
+  const isNotFoundError =
+    listError instanceof ApiRequestError && listError.statusCode === 404;
 
   const entries = fsData?.entries ?? [];
   const visibleEntries = showHidden ? entries : entries.filter((entry) => !entry.hidden);
@@ -88,7 +91,12 @@ export const FolderPicker = ({ onSelect }: FolderPickerProps) => {
             Permission denied — cannot read this folder.
           </p>
         )}
-        {!isPermissionError && listError !== null && (
+        {isNotFoundError && allowNonExistent && !isLoading && (
+          <p className="p-4 text-sm text-muted-foreground">
+            This folder does not exist yet — it will be created.
+          </p>
+        )}
+        {!isPermissionError && !(isNotFoundError && allowNonExistent) && listError !== null && (
           <p className="p-4 text-sm text-destructive">
             {listError instanceof ApiRequestError
               ? listError.message

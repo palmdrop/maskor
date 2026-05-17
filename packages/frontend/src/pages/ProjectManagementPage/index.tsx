@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useListProjects } from "@api/generated/projects/projects";
 import { AdoptProjectDialog } from "./components/AdoptProjectDialog";
+import { CreateProjectDialog } from "./components/CreateProjectDialog";
 import { ProjectRow } from "./components/ProjectRow";
 
 export const ProjectManagementPage = () => {
   const [adoptOpen, setAdoptOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: envelope, isLoading, isError } = useListProjects();
 
   if (isLoading) {
@@ -20,6 +22,7 @@ export const ProjectManagementPage = () => {
   return (
     <>
       <AdoptProjectDialog open={adoptOpen} onOpenChange={setAdoptOpen} />
+      <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <div className="mx-auto max-w-2xl p-8 flex flex-col gap-10">
         <section className="flex flex-col gap-4">
@@ -55,7 +58,7 @@ export const ProjectManagementPage = () => {
             <button
               type="button"
               className="flex flex-col gap-2 rounded-lg border border-border px-4 py-4 text-left hover:bg-muted/50"
-              onClick={() => console.log("create new project")}
+              onClick={() => setCreateOpen(true)}
             >
               <span className="text-sm font-medium">Create new project</span>
               <span className="text-xs text-muted-foreground">
