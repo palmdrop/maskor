@@ -8,6 +8,7 @@
 - Read-only routes can call filesystem/storage directly; mutations must go through `src/commands/` (per api/CLAUDE.md)
 - For 403 tests: create empty dir, `chmodSync(dir, 0o000)`, restore with `chmodSync(dir, 0o755)` in afterAll before rmSync
 - Query params use `createRoute({ request: { query: z.object({...}) } })`; access via `ctx.req.valid("query")`
+- `/fs` and `/settings` routes are NOT in the orval-generated API client; create manual hooks in `src/api/fs.ts` / `src/api/settings.ts` following the pattern from `src/api/action-log.ts`
 
 # Ralph Progress Log
 Started: 2026-05-16
@@ -152,5 +153,21 @@ Started: 2026-05-16
   - FolderPicker "Choose this folder" is gated on `currentPath !== null` only — user can pick a non-existent path if they type it in the address bar (the 404 response doesn't block selection)
   - Add `allowNonExistent` prop to FolderPicker to suppress the 404 error display and show a friendly info message instead
   - In the confirmation step, check `listQuery.isError && statusCode === 404` to distinguish "path doesn't exist" from "path exists with content"
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
+
+## 2026-05-17 - US-011
+- Added `GET /settings` endpoint: `packages/api/src/routes/settings.ts`, `packages/api/src/schemas/settings.ts`; registered in `app.ts`
+- Created `packages/frontend/src/api/settings.ts` with `useSettings` hook (manual, like `fs.ts`, since `/settings` is not in orval-generated client)
+- Created `packages/frontend/src/utils/slug.ts` with `deriveSlug` (normalize NFD + strip combining marks + lowercase + hyphenate + trim) and `resolveSlug` (collision suffix -2, -3, ...)
+- Created `packages/frontend/src/utils/slug.test.ts` covering: lowercase+hyphenate, ASCII-fold accents, leading numbers, empty-after-strip fallback, repeated-hyphen collapse, strip leading/trailing hyphens, no collision, first collision (-2), multi-collision (-3)
+- Created `packages/frontend/src/pages/ProjectManagementPage/components/MaskorManagedDialog.tsx`: two-step modal (name input -> confirmation with resolved path); fetches managed root via `useSettings`, fetches existing dirs via `useFsList(managedRoot)` to detect collisions, submits `POST /projects` with `mode: "create"` and resolved path
+- Updated `ProjectManagementPage/index.tsx`: added `maskorManagedOpen` state, imported and rendered `<MaskorManagedDialog>`, wired "Use Maskor-managed folder" card
+- All tests pass; typecheck clean
+- **Learnings for future iterations:**
+  - `/settings` is not in orval-generated client; create manual hooks in `src/api/settings.ts` following pattern from `src/api/fs.ts`
+  - `GET /settings` is a read-only route so the settings service can be instantiated at module level (no commands/ needed)
+  - Slug derivation: `name.normalize("NFD").replace(/[combiningmarks]/g, "")` strips diacritics using combining diacritical marks range U+0300-U+036F
+  - `useFsList(managedRoot)` with `enabled: path !== null` pre-fetches managed root contents as soon as settings resolves -- collision detection is instant by confirm step
   - Manual browser verification is needed (no dev-browser MCP available)
 ---
