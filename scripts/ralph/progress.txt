@@ -9,6 +9,9 @@
 - For 403 tests: create empty dir, `chmodSync(dir, 0o000)`, restore with `chmodSync(dir, 0o755)` in afterAll before rmSync
 - Query params use `createRoute({ request: { query: z.object({...}) } })`; access via `ctx.req.valid("query")`
 - `/fs` and `/settings` routes are NOT in the orval-generated API client; create manual hooks in `src/api/fs.ts` / `src/api/settings.ts` following the pattern from `src/api/action-log.ts`
+- Project-level operations (registry: register, update, updateVaultPath, remove) call storageService directly in route handlers — no commands/ needed (no vault context, no action log)
+- New custom error types (e.g. `VaultUUIDConflictError`) need to be added to: `registry/errors.ts`, exported from `registry/index.ts` and `storage/src/index.ts`, and handled in `api/src/errors.ts` via `throwStorageError`
+- For UUID conflict errors, return 409 with `error: "UUID_CONFLICT"` so frontend can distinguish from regular 409 CONFLICT (vaultPath uniqueness)
 
 # Ralph Progress Log
 Started: 2026-05-16
@@ -182,5 +185,23 @@ Started: 2026-05-16
   - Manage rename dialog state locally in `ProjectRow` (not in the parent page) since each row needs its own dialog with its own project context
   - `useEffect([open, currentName])` re-seeds the input when the dialog opens with a potentially updated name; `mutation.reset()` in `handleOpenChange` clears error state on close
   - Per-row fragment wrapper pattern: wrap `<RenameProjectDialog>` + `<li>` in `<>...</>` to avoid DOM structure issues (dialogs render in a portal but still need a single React root)
+  - Manual browser verification is needed (no dev-browser MCP available)
+---
+
+## 2026-05-17 - US-013
+- Added `VaultUUIDConflictError` to `packages/storage/src/registry/errors.ts`; exported from registry/index.ts and storage/src/index.ts
+- Added `updateVaultPath(projectUUID, newPath, forceOverride)` method to registry (registry.ts): checks project exists, checks vaultPath uniqueness, checks manifest UUID (throws VaultUUIDConflictError if mismatch and no forceOverride, rewrites manifest if forceOverride), updates DB row
+- Added `updateProjectVaultPath` delegate to storage-service.ts
+- Added `ProjectVaultPathUpdateSchema` to `packages/api/src/schemas/project.ts`
+- Added `PATCH /projects/:projectId/vault-path` route to `packages/api/src/routes/projects.ts`
+- Added VaultUUIDConflictError → 409 `UUID_CONFLICT` mapping in `packages/api/src/errors.ts`
+- Added 5 API route tests: simple re-point, UUID_CONFLICT 409, forceOverride rewrite, uniqueness violation 409, 404 for unknown project
+- Created `LocateVaultDialog.tsx`: 2-step dialog (picker → uuid-conflict confirmation); fires PATCH on pick, transitions to "uuid-conflict" step on 409 UUID_CONFLICT, fires with forceOverride on confirm
+- Updated `ProjectRow.tsx`: added `locateOpen` state, imported LocateVaultDialog, wired "Locate vault…" button
+- Files changed: registry/errors.ts, registry/index.ts, registry/registry.ts, service/storage-service.ts, storage/src/index.ts, api/schemas/project.ts, api/routes/projects.ts, api/errors.ts, api/__tests__/routes/projects.test.ts, LocateVaultDialog.tsx (new), ProjectRow.tsx
+- **Learnings for future iterations:**
+  - Use `and(eq(...), ne(...))` from drizzle-orm for "same path, different UUID" conflict checks
+  - 2-step backend calls (without forceOverride first, then with) work well for confirmation dialogs — frontend checks `error.body.error === "UUID_CONFLICT"` to transition to the confirmation step
+  - `onError` in useMutation can call `setStep()` to transition between dialog steps; this works cleanly in React with closure capture
   - Manual browser verification is needed (no dev-browser MCP available)
 ---
