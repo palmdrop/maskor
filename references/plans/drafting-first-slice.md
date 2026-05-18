@@ -41,12 +41,12 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 > Closes the async race window flagged in `packages/storage/src/watcher/watcher.ts:290-296` and `references/SUGGESTIONS.md`. Without this, a `pause()` between an event handler's `if (isPaused) return` check and its DB upsert can still produce a partial-update snapshot.
 
-- [ ] In `packages/storage/src/watcher/watcher.ts`, replace the `isPaused` flag with a counter-based inflight tracker. Each handler increments on entry and decrements on completion (success or error).
-- [ ] Change `pause()` to async: set paused, then await all in-flight handlers to drain. `resume()` stays sync.
-- [ ] Update callers of `watcher.pause()` (search the codebase — `index.rebuild` at `storage-service.ts:1535` is one) to `await` the now-async call.
-- [ ] Remove the TODO comment block at watcher.ts:290-296.
-- [ ] Tests: a fake handler that takes >0ms must complete before `pause()` resolves; events arriving after `pause()` is invoked but before it resolves are dropped, not run.
-- [ ] Update `references/SUGGESTIONS.md` to mark the entry resolved.
+- [x] Extracted in-flight tracker into `watcher/utils/in-flight-tracker.ts`; handlers wrap `enter` / `try / finally exit`. _(2026-05-18)_
+- [x] `pause()` is async: sets `isPaused` then awaits the tracker. _(2026-05-18)_
+- [x] `index.rebuild` in `storage-service.ts` awaits `watcher.pause()`. _(2026-05-18)_
+- [x] Removed the TODO comment block from watcher.ts. _(2026-05-18)_
+- [x] Tests in `__tests__/in-flight-tracker.test.ts`: drain semantics, multi-enter coalescing, multi-waiter, negative-guard. _(2026-05-18)_
+- [-] _(skipped — no matching entry in references/suggestions.md; the watcher.ts TODO was the canonical reference and is now removed)_
 - [ ] `git commit` — drain in-flight watcher handlers on pause.
 
 ### Phase 3 — Storage primitives for drafts

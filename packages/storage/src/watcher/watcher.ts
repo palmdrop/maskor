@@ -17,6 +17,7 @@ import {
 } from "../indexer/upserts";
 import { eq } from "drizzle-orm";
 import { createRenameBuffer } from "./utils/rename-buffer";
+import { createInFlightTracker } from "./utils/in-flight-tracker";
 import type { CascadeCallbacks, VaultWatcher } from "./types";
 import {
   FRAGMENT_PREFIX,
@@ -57,6 +58,7 @@ export const createVaultWatcher = (
 
   let watcher: ReturnType<typeof chokidar.watch> | null = null;
   let isPaused = false;
+  const inFlight = createInFlightTracker();
 
   const subscribers = new Set<(event: VaultSyncEvent) => void>();
 
@@ -221,6 +223,7 @@ export const createVaultWatcher = (
     const route = routes.find((r) => vaultRelativePath.startsWith(r.prefix));
     if (!route) return;
 
+    inFlight.enter();
     try {
       await route.handleAddOrChange(absolutePath, vaultRelativePath);
     } catch (error) {
@@ -231,6 +234,8 @@ export const createVaultWatcher = (
         },
         "watcher: unhandled error processing add/change event — skipping",
       );
+    } finally {
+      inFlight.exit();
     }
   };
 
@@ -242,6 +247,7 @@ export const createVaultWatcher = (
     const route = routes.find((r) => vaultRelativePath.startsWith(r.prefix));
     if (!route) return;
 
+    inFlight.enter();
     try {
       route.handleUnlink(vaultRelativePath);
       log.debug({ filePath: absolutePath }, "watcher: entity unlink handled");
@@ -253,6 +259,8 @@ export const createVaultWatcher = (
         },
         "watcher: unhandled error processing unlink event — skipping",
       );
+    } finally {
+      inFlight.exit();
     }
   };
 
@@ -287,12 +295,9 @@ export const createVaultWatcher = (
       log.info({ vaultRoot }, "watcher: stopped");
     },
 
-    pause() {
-      // TODO: Async race window — any handler already past the `if (isPaused) return` check and
-      // mid-await when pause() is called will still complete and upsert before rebuild runs.
-      // A full fix requires draining in-flight handlers before proceeding. See:
-      // references/reviews/storage-sync-spec-fixes-2026-04-23.md (warning #4)
+    async pause() {
       isPaused = true;
+      await inFlight.wait();
     },
 
     resume() {

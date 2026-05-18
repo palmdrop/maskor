@@ -1538,7 +1538,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         // Pause the watcher during rebuild to prevent the watcher/rebuild race:
         // a watcher event mid-rebuild would be overwritten by rebuild's stale snapshot.
         const watcher = getVaultWatcher(context);
-        watcher.pause();
+        await watcher.pause();
         log.info({ projectUUID: context.projectUUID }, "index rebuild started");
         try {
           const stats = await getVaultIndexer(context).rebuild();

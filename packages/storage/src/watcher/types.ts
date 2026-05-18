@@ -12,8 +12,9 @@ export type VaultWatcher = {
   // Safe to call before start(). Resolves immediately if never started.
   stop(): Promise<void>;
   // Pause event processing. Events that arrive while paused are dropped.
+  // Awaits in-flight handlers so they don't write after the caller proceeds.
   // Use during rebuild() to avoid the watcher/rebuild race condition.
-  pause(): void;
+  pause(): Promise<void>;
   resume(): void;
   // Subscribe to vault sync events. Returns an unsubscribe function.
   subscribe(callback: (event: VaultSyncEvent) => void): () => void;
