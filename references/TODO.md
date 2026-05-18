@@ -13,6 +13,8 @@
 
 - [ ] create way of exporting a dump of discarded fragments! you might want to save them all
 
+- [ ] add ability to re-order fragments
+
 - [ ] inspiration manager - add images, floating over the project...
   - maybe this is a separate app: like a digital are.na frame?
 

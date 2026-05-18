@@ -9,3 +9,4 @@ export * from "./sequence";
 export * from "./interleaving";
 export * from "./action";
 export * from "./user";
+export * from "./assembled-sequence";

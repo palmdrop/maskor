@@ -1,0 +1,1 @@
+export { assembleSequence } from "./assemble";
