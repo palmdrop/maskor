@@ -6,6 +6,12 @@
 
 - [ ] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
 
+- [ ] remove pieces in favor of dropping partial data directly in the fragments dir, maskor automatically adds missing metdata
+
+- [ ] ralph flow might eat too many tokens for my budget... old plan structure is worse on context but doesn't force the agent to rebuild the relevant context
+  - ralph, for many related user stories, is probably worse. Use it when you have actually scattered work, not when creating large, new features
+  - TODO: introduce commits and branches in old plan flow, and make sure the agent always update the specs with shipped items
+
 - [ ] create ralph prd for generating preview page of project (pre-export), i.e all fragments after each other
   - user can set if titles should be visible or not
   - if section titles should be visible

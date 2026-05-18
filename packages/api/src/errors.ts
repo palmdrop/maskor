@@ -44,10 +44,11 @@ export const throwStorageError = (error: unknown): never => {
           res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
         });
       case "KEY_CONFLICT":
-      case "FRAGMENT_NOT_DISCARDED":
-        throw new HTTPException(409, {
-          res: errorResponse({ error: "CONFLICT", message: error.message }, 409),
-        });
+      case "FRAGMENT_NOT_DISCARDED": {
+        const body: Record<string, unknown> = { error: "CONFLICT", message: error.message };
+        if (error.context.reason) body.reason = error.context.reason;
+        throw new HTTPException(409, { res: errorResponse(body, 409) });
+      }
       case "STALE_INDEX":
         throw new HTTPException(503, {
           res: errorResponse(

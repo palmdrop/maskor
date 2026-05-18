@@ -97,6 +97,32 @@ describe("POST /projects/:projectId/sequences", () => {
       }),
     });
     expect(conflict.status).toBe(409);
+    const body = (await conflict.json()) as { error: string; reason?: string };
+    expect(body.error).toBe("CONFLICT");
+    expect(body.reason).toBe("name_conflict");
+  });
+
+  it("allows two sequences whose names differ only by case", async () => {
+    const first = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "CaseExample",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
+    });
+    expect(first.status).toBe(201);
+    const second = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "caseexample",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
+    });
+    expect(second.status).toBe(201);
   });
 });
 
@@ -141,6 +167,65 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as SequenceFull;
     expect(body.name).toBe("Renamed");
+  });
+
+  it("rejects renaming to a name that collides with another sequence", async () => {
+    const target = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Rename Target",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceFull;
+
+    const blocker = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Rename Blocker",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(`${baseUrl()}/${target.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: blocker.name }),
+    });
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string; reason?: string };
+    expect(body.error).toBe("CONFLICT");
+    expect(body.reason).toBe("name_conflict");
+  });
+
+  it("allows renaming a sequence to its own current name (no-op)", async () => {
+    const created = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Self Rename",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: created.name }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceFull;
+    expect(body.name).toBe(created.name);
   });
 
   it("promotes a non-main sequence to main", async () => {

@@ -507,7 +507,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         // within the same namespace. Without this guard, vault.write would silently overwrite
         // a sibling file and the inline upsert would fail on the unique file_path constraint
         // — leaving both fragments unrecoverable.
-        const allFragments = await indexer.fragments.findAll();
+        const allFragments = await indexer.fragments.findAll(); // TODO: isn't this very expensive for large projects???
         const lowerKey = fragmentToWrite.key.toLowerCase();
         if (
           allFragments.some(
@@ -1370,10 +1370,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       async write(context: ProjectContext, sequence: Sequence): Promise<void> {
         const allSequences = await getVaultIndexer(context).sequences.findAll();
 
-        const lowerName = sequence.name.toLowerCase();
-        if (
-          allSequences.some((s) => s.uuid !== sequence.uuid && s.name.toLowerCase() === lowerName)
-        ) {
+        if (allSequences.some((s) => s.uuid !== sequence.uuid && s.name === sequence.name)) {
           throw new VaultError(
             "KEY_CONFLICT",
             `A sequence named "${sequence.name}" already exists in this project`,

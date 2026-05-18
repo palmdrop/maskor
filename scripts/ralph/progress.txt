@@ -44,3 +44,18 @@ Started: [pending]
   - The transitive-edge graph (used here) is wider than an adjacent-pairs-only graph would be, but it does not change which SCCs exist — only adjacent pairs are sufficient to produce all SCCs. We keep transitive edges because `computeViolations` already needs them and sharing the graph keeps it consistent. If a future story wants the *minimal* secondary set per cycle, that would need adjacent-only edges; flag this when it comes up.
   - When asserting on `Cycle` arrays in tests, sort both sides — Tarjan's pop order is implementation-dependent and `sequenceUuids` comes from a Set.
 ---
+
+## [2026-05-18] - US-004
+- Switched sequence-name uniqueness in `packages/storage/src/service/storage-service.ts` from case-insensitive to case-sensitive comparison per the PRD AC.
+- Extended `ErrorResponseSchema` (`packages/api/src/schemas/error.ts`) with an optional `reason` field and propagated `VaultError.context.reason` for `KEY_CONFLICT`/`FRAGMENT_NOT_DISCARDED` in `packages/api/src/errors.ts`. Frontend can now distinguish name conflicts from other 409s via `response.reason === "name_conflict"`.
+- Added 3 storage tests in `packages/storage/src/__tests__/storage-service.test.ts`: different-case names do NOT collide; rename-to-collision throws KEY_CONFLICT; self-rename no-op is permitted. Tightened the existing collision test to assert `context.reason === "name_conflict"`.
+- Added 3 API integration tests in `packages/api/src/__tests__/routes/sequences.test.ts`: rename-collision returns 409 with `reason: "name_conflict"`, self-rename returns 200, two sequences differing only by case can coexist. The existing create-collision test was tightened to assert the new `reason` field.
+- Added a SUGGESTIONS.md entry flagging the case-sensitivity inconsistency vs. fragment keys (sequence-name is case-sensitive per PRD; fragment-key is case-insensitive).
+- Files changed: `packages/storage/src/service/storage-service.ts`, `packages/storage/src/__tests__/storage-service.test.ts`, `packages/api/src/schemas/error.ts`, `packages/api/src/errors.ts`, `packages/api/src/__tests__/routes/sequences.test.ts`, `references/suggestions.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
+- Verify: `bun run verify` passes (545 backend + 82 frontend tests + typecheck).
+- **Learnings for future iterations:**
+  - The storage layer was *already* enforcing sequence-name uniqueness via `VaultError("KEY_CONFLICT", ..., { reason: "name_conflict" })` and the update-sequence command already routes renames through `storageService.sequences.write`, so the rename-collision check was a freebie — only the case-sensitivity flavor needed flipping. Whenever a "command should reject X" AC lands, check the storage write path first; it often already throws the right typed error.
+  - The PRD specified case-SENSITIVE comparison, which is *less restrictive* than the prior case-insensitive code. Flagged the mismatch with fragment-key behavior (case-insensitive) in `references/suggestions.md` since it is a real UX wart but out-of-scope to amend the PRD here.
+  - The API error response now carries an optional `reason` field. This is part of `ErrorResponseSchema` and will flow through orval codegen on the next regeneration (US-007 explicitly regenerates the orval client). Frontend can branch on `response.reason` to render inline errors.
+  - The existing create-conflict integration test was already written and passing — it only asserted status code, not the structured body. When tightening tests, prefer to assert the structured body (`error`, `reason`) rather than only the status; this caught the new `reason` field automatically when added.
+---

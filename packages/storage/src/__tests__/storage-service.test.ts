@@ -331,7 +331,71 @@ describe("StorageService.sequences.write + read", () => {
 
     await expect(service.sequences.write(context, duplicate)).rejects.toMatchObject({
       code: "KEY_CONFLICT",
+      context: { reason: "name_conflict" },
     });
+  });
+
+  it("allows two sequences whose names differ only by case (case-sensitive comparison)", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const differentCase = makeSequence(context.projectUUID, {
+      uuid: "cccccccc-0000-0000-0000-000000000000",
+      name: "main",
+      isMain: false,
+    });
+
+    await service.sequences.write(context, differentCase);
+    const all = await service.sequences.readAll(context);
+    expect(all.map((s) => s.name).sort()).toEqual(["Main", "main"]);
+  });
+
+  it("rejects a rename that collides with another sequence's name", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+    await service.sequences.write(
+      context,
+      makeSequence(context.projectUUID, {
+        uuid: "cccccccc-0000-0000-0000-000000000000",
+        name: "Secondary",
+        isMain: false,
+      }),
+    );
+
+    const renamed = await service.sequences.read(context, "cccccccc-0000-0000-0000-000000000000");
+    await expect(
+      service.sequences.write(context, {
+        uuid: renamed.uuid,
+        name: "Main",
+        isMain: renamed.isMain,
+        projectUuid: renamed.projectUuid,
+        sections: renamed.sections,
+      }),
+    ).rejects.toMatchObject({
+      code: "KEY_CONFLICT",
+      context: { reason: "name_conflict" },
+    });
+  });
+
+  it("allows writing a sequence with its own existing name (self-rename no-op is permitted)", async () => {
+    const { service, context } = await setupSequenceContext();
+    await service.sequences.write(context, makeSequence(context.projectUUID));
+
+    const existing = await service.sequences.read(
+      context,
+      "bbbbbbbb-0000-0000-0000-000000000000",
+    );
+
+    await service.sequences.write(context, {
+      uuid: existing.uuid,
+      name: existing.name,
+      isMain: existing.isMain,
+      projectUuid: existing.projectUuid,
+      sections: existing.sections,
+    });
+
+    const reread = await service.sequences.read(context, existing.uuid);
+    expect(reread.name).toBe(existing.name);
   });
 
   it("throws KEY_CONFLICT when a second isMain=true sequence is written while one already exists", async () => {
