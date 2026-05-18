@@ -28,8 +28,10 @@ import {
   usePlaceFragment,
   useMoveFragment,
   useUnplaceFragment,
+  useDesignateSequenceMain,
   getGetMainSequenceQueryKey,
   getGetSequenceQueryKey,
+  getListSequencesQueryKey,
   type GetMainSequenceResponse,
   type GetSequenceResponse,
 } from "@api/generated/sequences/sequences";
@@ -247,6 +249,17 @@ export const OverviewPage = () => {
     },
   });
 
+  const listQueryKey = getListSequencesQueryKey(projectId);
+
+  const designateMain = useDesignateSequenceMain({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
+        void queryClient.invalidateQueries({ queryKey: getGetMainSequenceQueryKey(projectId) });
+      },
+    },
+  });
+
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) return pointerCollisions;
@@ -324,7 +337,26 @@ export const OverviewPage = () => {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>
-            <Heading level={1}>{sequence?.name ?? "Overview"}</Heading>
+            <div className="flex items-center gap-3">
+              <Heading level={1}>{sequence?.name ?? "Overview"}</Heading>
+              {sequence && !sequence.isMain && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    designateMain.mutate({ projectId, sequenceId: sequence.uuid })
+                  }
+                  disabled={designateMain.isPending}
+                  className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  Make main
+                </button>
+              )}
+              {sequence?.isMain && (
+                <span className="text-xs px-2 py-1 rounded border border-border text-muted-foreground">
+                  Main
+                </span>
+              )}
+            </div>
 
             <DndContext
               sensors={sensors}

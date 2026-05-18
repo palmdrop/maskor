@@ -73,10 +73,12 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
+  useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   getGetMainSequenceQueryKey: (projectId: string) => [`/projects/${projectId}/sequences/main`],
   getGetSequenceQueryKey: (projectId: string, sequenceId: string) => [
     `/projects/${projectId}/sequences/${sequenceId}`,
   ],
+  getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
 }));
 
 vi.mock("../../api/generated/fragments/fragments", () => ({
