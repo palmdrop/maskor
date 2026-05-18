@@ -18,6 +18,7 @@ import { actionLogRouter } from "./routes/action-log";
 import { sequencesRouter } from "./routes/sequences";
 import { importRouter } from "./routes/import";
 import { importPreviewRouter } from "./routes/import-preview";
+import { previewRouter } from "./routes/preview";
 import { fsRouter } from "./routes/fs";
 import { createSettingsRouter } from "./routes/settings";
 import type { Logger } from "@maskor/shared";
@@ -93,6 +94,7 @@ export const createApp = (
   projectScopedApp.route("/sequences", sequencesRouter);
   projectScopedApp.route("/import", importRouter);
   projectScopedApp.route("/import/preview", importPreviewRouter);
+  projectScopedApp.route("/preview", previewRouter);
 
   // Note: use app.route(), not app.mount(). app.route() propagates parent context variables
   // (including storageService) to the sub-app. app.mount() creates an isolated sub-application

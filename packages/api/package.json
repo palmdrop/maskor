@@ -20,6 +20,7 @@
   "dependencies": {
     "@hono/swagger-ui": "^0.6.1",
     "@hono/zod-openapi": "^1.2.4",
+    "@maskor/exporter": "workspace:*",
     "@maskor/importer": "workspace:*",
     "@maskor/sequencer": "workspace:*",
     "@maskor/shared": "workspace:*",

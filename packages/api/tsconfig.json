@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
+      "@maskor/exporter": ["../exporter/src/index.ts"],
       "@maskor/importer": ["../importer/src/index.ts"],
       "@maskor/sequencer": ["../sequencer/src/index.ts"],
       "@maskor/shared": ["../shared/src/index.ts"],

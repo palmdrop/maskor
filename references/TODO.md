@@ -6,14 +6,16 @@
 
 - [x] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
 
-- [ ] start implementing the preview mode, see new `preview.md` spec
+- [ ] start implement `references/plans/drafting-first-slice.md`
+
+- [x] start implementing the preview mode, see new `preview.md` spec
 
 - [ ] remove pieces in favor of dropping partial data directly in the fragments dir, maskor automatically adds missing metdata
   - make sure to update all relevant specs to avoid confusing the poor poor agents!
 
 - [ ] create way of exporting a dump of discarded fragments! you might want to save them all
 
-- [ ] add ability to re-order fragments
+- [ ] add ability to re-order sections
 
 - [ ] inspiration manager - add images, floating over the project...
   - maybe this is a separate app: like a digital are.na frame?
