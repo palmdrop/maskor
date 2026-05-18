@@ -19,6 +19,7 @@ import { ProjectStatsPage } from "./pages/ProjectStatsPage";
 import { ProjectHistoryPage } from "./pages/ProjectHistoryPage";
 import { FragmentImportPage } from "./pages/FragmentImportPage";
 import { PreviewPage } from "./pages/PreviewPage";
+import { DraftsPage } from "./pages/DraftsPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -140,6 +141,12 @@ const previewRoute = createRoute({
   }),
 });
 
+const draftsRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/drafts",
+  component: DraftsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectShellLayoutRoute.addChildren([
@@ -147,6 +154,7 @@ const routeTree = rootRoute.addChildren([
     fragmentListRoute.addChildren([fragmentRoute]),
     fragmentImportRoute,
     previewRoute,
+    draftsRoute,
     overviewRoute,
     projectConfigRoute,
     noteEditorRoute,

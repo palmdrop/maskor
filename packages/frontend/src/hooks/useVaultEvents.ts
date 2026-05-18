@@ -12,6 +12,7 @@ const VAULT_SYNC_EVENT_TYPES = [
   "reference:synced",
   "reference:deleted",
   "pieces:consumed",
+  "vault:restored",
 ];
 
 export const useVaultEvents = (projectId: string) => {

@@ -92,21 +92,12 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 7 — Frontend Drafts page
 
-- [ ] Add route `/projects/$projectId/drafts` in `packages/frontend/src/router.ts`, mounted under `projectShellLayoutRoute`.
-- [ ] Add a "Drafts" nav item to the project shell layout next to the existing Fragments / Overview / Action log / Statistics entries.
-- [ ] Create `packages/frontend/src/pages/DraftsPage/` with:
-  - `DraftsPage.tsx` — header with "Create draft" button, drafts list below.
-  - `CreateDraftDialog.tsx` — modal with `name` (default `Draft N` where N = drafts count + 1, per spec § Naming and uniqueness), optional `note`, and a "Create" button. Disables on submit. Shows server-side validation errors inline (duplicate name, disk-space refusal).
-  - `DraftListItem.tsx` — name, created date (locale-formatted), note (if any), entity counts as a small summary line ("12 fragments · 4 aspects · 3 notes · 2 references · 1 sequence"). Per-row actions: "Restore", "Delete".
-  - `RestoreDraftDialog.tsx` — confirmation modal with the safety checkbox default-on. Editable pre-restore name field (defaults to `Pre-restore — {ISO timestamp}` per spec § Restoring a draft step 1). Disables and shows progress while the request is in flight.
-  - `DeleteDraftDialog.tsx` — confirmation modal naming the draft. No additional inputs.
-- [ ] Use orval-generated hooks: `useCreateDraft`, `useListDrafts`, `useDeleteDraft`, `useRestoreDraft`.
-- [ ] After a successful restore, invalidate the project's fragment / aspect / note / reference / sequence queries and the action-log query so the rest of the app reflects the restored state. The `vault:restored` SSE event from Phase 5 will also trigger invalidations through the existing event subscription — confirm during testing that the explicit invalidation isn't double-triggering anything broken.
-- [ ] Tests in `packages/frontend/src/pages/DraftsPage/__tests__/`:
-  - `DraftsPage` renders an empty state when the list is empty and a list when populated.
-  - "Create draft" opens the dialog with the default name; submit calls the hook with `{ name, note }`.
-  - "Restore" with the checkbox on calls the restore hook with `saveCurrentFirst: true`; with the checkbox off, passes `false`.
-  - "Delete" requires confirmation; calling it invokes the delete hook with the right uuid.
+- [x] Added `packages/frontend/src/pages/DraftsPage/` with `DraftsPage`, `CreateDraftDialog`, `DeleteDraftDialog`, `RestoreDraftDialog`, `index.ts`. _(2026-05-18)_
+- [x] Registered `/projects/$projectId/drafts` in the router; added "Drafts" nav item to `ProjectShellLayout`. _(2026-05-18)_
+- [x] Wired orval-generated `useListDrafts` / `useCreateDraft` / `useDeleteDraft` / `useRestoreDraft`. _(2026-05-18)_
+- [x] Restore dialog invalidates project-scoped queries on success in addition to relying on the `vault:restored` SSE invalidation hook. _(2026-05-18)_
+- [x] Added `vault:restored` to the SSE event type list in `useVaultEvents` so the frontend invalidates queries when the restore event lands. _(2026-05-18)_
+- [x] Tests in `__tests__/DraftsPage.test.tsx`: empty state, draft list rendering, create-dialog hook wiring, delete confirm hook wiring, restore default `saveCurrentFirst=true`, restore with checkbox off. _(2026-05-18)_
 - [ ] `git commit` — add Drafts page with create / list / delete / restore.
 
 ### Phase 8 — Spec sync and plan close-out

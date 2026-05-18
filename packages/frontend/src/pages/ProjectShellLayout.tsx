@@ -49,6 +49,9 @@ export const ProjectShellLayout = () => {
         <Link to="/projects/$projectId/preview" params={{ projectId }} className={linkClassName}>
           Preview
         </Link>
+        <Link to="/projects/$projectId/drafts" params={{ projectId }} className={linkClassName}>
+          Drafts
+        </Link>
       </nav>
       <div className="flex-1 min-h-0 overflow-hidden">
         <Outlet />
