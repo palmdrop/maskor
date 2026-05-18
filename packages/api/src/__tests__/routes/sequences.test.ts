@@ -584,6 +584,97 @@ describe("bundled response - violations and cycles integration", () => {
   });
 });
 
+describe("POST /projects/:projectId/sequences/:sequenceId/sections", () => {
+  it("appends a new section after existing sections", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const sectionCountBefore = main.sections.length;
+
+    const response = await testContext.app.request(`${baseUrl()}/${main.uuid}/sections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "New Section" }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === main.uuid)!;
+    expect(updated.sections).toHaveLength(sectionCountBefore + 1);
+    expect(updated.sections[updated.sections.length - 1]!.name).toBe("New Section");
+  });
+
+  it("a freshly-created section can accept fragment placements", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const sectionBundle = (await (
+      await testContext.app.request(`${baseUrl()}/${main.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Placement Test Section" }),
+      })
+    ).json()) as SequenceBundle;
+    const updatedMain = sectionBundle.sequences.find((s) => s.uuid === main.uuid)!;
+    const newSection = updatedMain.sections[updatedMain.sections.length - 1]!;
+
+    const fragmentsResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResponse.json()) as { uuid: string }[];
+    const unplaced = fragments.find(
+      (f) => !updatedMain.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
+    );
+    if (!unplaced) return;
+
+    const placeResponse = await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: unplaced.uuid, sectionUuid: newSection.uuid, position: 0 }),
+    });
+    expect(placeResponse.status).toBe(200);
+    const placeBundle = (await placeResponse.json()) as SequenceBundle;
+    const mainAfter = placeBundle.sequences.find((s) => s.uuid === main.uuid)!;
+    const sectionAfter = mainAfter.sections.find((s) => s.uuid === newSection.uuid)!;
+    expect(sectionAfter.fragments).toHaveLength(1);
+    expect(sectionAfter.fragments[0]!.fragmentUuid).toBe(unplaced.uuid);
+  });
+
+  it("works for secondary sequences too", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Section Test Secondary", isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    const secondary = createBundle.sequences.find((s) => s.name === "Section Test Secondary")!;
+
+    const response = await testContext.app.request(`${baseUrl()}/${secondary.uuid}/sections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Secondary Section" }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === secondary.uuid)!;
+    expect(updated.sections.length).toBeGreaterThan(1);
+    expect(updated.sections[updated.sections.length - 1]!.name).toBe("Secondary Section");
+  });
+
+  it("returns 404 for a non-existent sequence", async () => {
+    const response = await testContext.app.request(
+      `${baseUrl()}/00000000-0000-0000-0000-000000000000/sections`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ghost Section" }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("sequence fragment action log entries", () => {
   it("place records target.title and payload.fragmentKey", async () => {
     const main = (await (

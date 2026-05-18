@@ -59,3 +59,12 @@ Started: [pending]
   - The API error response now carries an optional `reason` field. This is part of `ErrorResponseSchema` and will flow through orval codegen on the next regeneration (US-007 explicitly regenerates the orval client). Frontend can branch on `response.reason` to render inline errors.
   - The existing create-conflict integration test was already written and passing — it only asserted status code, not the structured body. When tightening tests, prefer to assert the structured body (`error`, `reason`) rather than only the status; this caught the new `reason` field automatically when added.
 ---
+
+## [2026-05-18] - US-005 through US-008
+- US-005: Added `designate-sequence-main` command (`packages/api/src/commands/sequences/designate-sequence-main.ts`). Added `POST /{sequenceId}/designate-main` route. 3 integration tests.
+- US-006: Confirmed `delete-sequence` command already enforced main-guard with `cannot_delete_main` reason code. Added tests verifying the 409 reason and that fragments survive non-main sequence deletion.
+- US-007: Introduced `buildBundledResponse()` helper in `routes/sequences.ts`. All mutation endpoints (create, update, delete, designate-main, place, move, unplace) now return `SequenceBundledResponse`. `GET /sequences` also returns the bundle. `DELETE` response changed from 204 to 200+bundle. `POST /sequences` stays 201+bundle. Added `SequenceBundledResponseSchema`, `ViolationSchema`, `CycleSchema` to `packages/api/src/schemas/sequence.ts`. Added `Violation` and `Cycle` types to `packages/shared`. All tests updated.
+- US-008: Added `POST /{sequenceId}/sections` route backed by `createSectionCommand`. New section appended at end of sections array. 4 integration tests: appends after existing, accepts fragment placement, works for secondaries, 404 for unknown sequence.
+- Files changed: `packages/api/src/commands/sequences/designate-sequence-main.ts` (new), `packages/api/src/commands/sequences/create-section.ts` (new), `packages/api/src/commands/index.ts`, `packages/api/src/routes/sequences.ts`, `packages/api/src/schemas/sequence.ts`, `packages/api/src/schemas/error.ts`, `packages/api/src/errors.ts`, `packages/api/src/__tests__/routes/sequences.test.ts`, `packages/storage/src/service/storage-service.ts`, `packages/storage/src/__tests__/storage-service.test.ts`, `packages/shared/src/schemas/domain/sequence.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
+- Verify: `bun run verify` passes (555 backend + 82 frontend tests + typecheck).
+---

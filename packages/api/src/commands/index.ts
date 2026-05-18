@@ -28,6 +28,7 @@ export { createSequenceCommand } from "./sequences/create-sequence";
 export { updateSequenceCommand } from "./sequences/update-sequence";
 export { deleteSequenceCommand } from "./sequences/delete-sequence";
 export { designateSequenceMainCommand } from "./sequences/designate-sequence-main";
+export { createSectionCommand } from "./sequences/create-section";
 export { placeFragmentCommand } from "./sequences/place-fragment";
 export { moveFragmentCommand } from "./sequences/move-fragment";
 export { unplaceFragmentCommand } from "./sequences/unplace-fragment";
