@@ -10,6 +10,7 @@ import type * as DndKitSortable from "@dnd-kit/sortable";
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ projectId: PROJECT_ID }),
+  useSearch: () => ({ sequence: undefined }),
 }));
 
 // --- dnd-kit mock: capture onDragEnd so tests can trigger it directly ---
@@ -67,10 +68,15 @@ const unplaceMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
   useGetMainSequence: vi.fn(),
+  useGetSequence: vi.fn(() => ({ data: undefined, isLoading: false })),
+  useListSequences: vi.fn(() => ({ data: undefined })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
   getGetMainSequenceQueryKey: (projectId: string) => [`/projects/${projectId}/sequences/main`],
+  getGetSequenceQueryKey: (projectId: string, sequenceId: string) => [
+    `/projects/${projectId}/sequences/${sequenceId}`,
+  ],
 }));
 
 vi.mock("../../api/generated/fragments/fragments", () => ({

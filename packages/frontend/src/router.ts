@@ -65,6 +65,9 @@ const overviewRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/overview",
   component: OverviewPage,
+  validateSearch: (search: Record<string, unknown>): { sequence?: string } => ({
+    sequence: typeof search.sequence === "string" ? search.sequence : undefined,
+  }),
 });
 
 const validTabs = ["general", "aspects", "notes", "references"] as const;

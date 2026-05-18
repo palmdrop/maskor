@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -23,11 +23,15 @@ import {
 
 import {
   useGetMainSequence,
+  useGetSequence,
+  useListSequences,
   usePlaceFragment,
   useMoveFragment,
   useUnplaceFragment,
   getGetMainSequenceQueryKey,
+  getGetSequenceQueryKey,
   type GetMainSequenceResponse,
+  type GetSequenceResponse,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
@@ -110,11 +114,31 @@ const PoolZone = ({
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
   const { projectId } = useParams({ from });
+  const { sequence: sequenceParam } = useSearch({ from });
   const queryClient = useQueryClient();
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  const { data: sequenceEnvelope, isLoading: sequenceLoading } = useGetMainSequence(projectId);
+  const { data: bundleEnvelope } = useListSequences(projectId);
+  const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
+
+  const sequenceParamIsKnown = useMemo(
+    () => bundle?.sequences.some((s) => s.uuid === sequenceParam) ?? false,
+    [bundle, sequenceParam],
+  );
+  const activeSequenceId = sequenceParamIsKnown ? sequenceParam! : undefined;
+
+  const { data: mainEnvelope, isLoading: mainLoading } = useGetMainSequence(projectId);
+  const { data: specificEnvelope, isLoading: specificLoading } = useGetSequence(
+    projectId,
+    activeSequenceId ?? "",
+    { query: { enabled: !!activeSequenceId } },
+  );
+
+  const sequenceLoading = activeSequenceId ? specificLoading : mainLoading;
+  const sequenceEnvelope: GetMainSequenceResponse | GetSequenceResponse | undefined =
+    activeSequenceId ? specificEnvelope : mainEnvelope;
+
   const { data: summariesEnvelope, isLoading: summariesLoading } =
     useListFragmentSummaries(projectId);
 
@@ -140,31 +164,33 @@ export const OverviewPage = () => {
     [allFragments],
   );
 
-  const mainQueryKey = getGetMainSequenceQueryKey(projectId);
+  const activeQueryKey = activeSequenceId
+    ? getGetSequenceQueryKey(projectId, activeSequenceId)
+    : getGetMainSequenceQueryKey(projectId);
 
   const placeFragment = usePlaceFragment({
     mutation: {
       onMutate: async ({ data: { fragmentUuid, position } }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(mainQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(
             previous,
             optimisticPlace(previous.data, fragmentUuid, position),
           );
         });
-        await queryClient.cancelQueries({ queryKey: mainQueryKey });
+        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
       onSuccess: (data) => {
         if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(previous, data.data);
         });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(mainQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
       },
     },
   });
@@ -172,26 +198,26 @@ export const OverviewPage = () => {
   const moveFragment = useMoveFragment({
     mutation: {
       onMutate: async ({ fragmentUuid, data: { position } }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(mainQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(
             previous,
             optimisticMove(previous.data, fragmentUuid, position),
           );
         });
-        await queryClient.cancelQueries({ queryKey: mainQueryKey });
+        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
       onSuccess: (data) => {
         if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(previous, data.data);
         });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(mainQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
       },
     },
   });
@@ -199,23 +225,23 @@ export const OverviewPage = () => {
   const unplaceFragment = useUnplaceFragment({
     mutation: {
       onMutate: async ({ fragmentUuid }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(mainQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(previous, optimisticUnplace(previous.data, fragmentUuid));
         });
-        await queryClient.cancelQueries({ queryKey: mainQueryKey });
+        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
       onSuccess: (data) => {
         if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(mainQueryKey, (previous) => {
+        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(previous, data.data);
         });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(mainQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
       },
     },
   });
