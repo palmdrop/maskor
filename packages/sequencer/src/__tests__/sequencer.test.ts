@@ -3,6 +3,7 @@ import type { Sequence } from "@maskor/shared";
 import {
   computeViolations,
   createDefaultSequence,
+  detectCycles,
   placeFragment,
   moveFragment,
   unplaceFragment,
@@ -434,6 +435,103 @@ describe("computeViolations", () => {
     expect(violations).toEqual([
       { fragmentUuid: FD, predecessorUuid: FC, secondaryUuid: SECONDARY_C_UUID },
     ]);
+  });
+});
+
+describe("detectCycles", () => {
+  const SECONDARY_A_UUID = "11111111-1111-1111-1111-111111111111";
+  const SECONDARY_B_UUID = "22222222-2222-2222-2222-222222222222";
+  const SECONDARY_C_UUID = "33333333-3333-3333-3333-333333333333";
+  const SECONDARY_D_UUID = "44444444-4444-4444-4444-444444444444";
+
+  function makeSecondary(uuid: string, name: string): Sequence {
+    const sectionUuid = `${uuid.slice(0, 8)}-aaaa-aaaa-aaaa-aaaaaaaaaaaa`;
+    return {
+      uuid,
+      name,
+      isMain: false,
+      projectUuid: PROJECT_UUID,
+      sections: [{ uuid: sectionUuid, name: "", fragments: [] }],
+    };
+  }
+
+  function placeAll(sequence: Sequence, fragmentUuids: string[]): Sequence {
+    const sectionUuid = sequence.sections[0]!.uuid;
+    let next = sequence;
+    for (let i = 0; i < fragmentUuids.length; i++) {
+      next = placeFragment(next, fragmentUuids[i]!, sectionUuid, i);
+    }
+    return next;
+  }
+
+  it("returns no cycles when there are no secondaries", () => {
+    expect(detectCycles([])).toEqual([]);
+  });
+
+  it("returns no cycles when secondaries are consistent", () => {
+    const secondaryA = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB, FC]);
+    const secondaryB = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FA, FC]);
+    expect(detectCycles([secondaryA, secondaryB])).toEqual([]);
+  });
+
+  it("does not report a trivial single-node SCC", () => {
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA]);
+    expect(detectCycles([secondary])).toEqual([]);
+  });
+
+  it("detects a 2-node cycle across two secondaries", () => {
+    const secondaryAtoB = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    const secondaryBtoA = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FB, FA]);
+    const cycles = detectCycles([secondaryAtoB, secondaryBtoA]);
+    expect(cycles).toHaveLength(1);
+    expect([...cycles[0]!.fragmentUuids].sort()).toEqual([FA, FB].sort());
+    expect([...cycles[0]!.sequenceUuids].sort()).toEqual([SECONDARY_A_UUID, SECONDARY_B_UUID].sort());
+  });
+
+  it("detects a 3-node cycle spanning three secondaries", () => {
+    const secondaryAtoB = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    const secondaryBtoC = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FB, FC]);
+    const secondaryCtoA = placeAll(makeSecondary(SECONDARY_C_UUID, "S3"), [FC, FA]);
+    const cycles = detectCycles([secondaryAtoB, secondaryBtoC, secondaryCtoA]);
+    expect(cycles).toHaveLength(1);
+    expect([...cycles[0]!.fragmentUuids].sort()).toEqual([FA, FB, FC].sort());
+    expect([...cycles[0]!.sequenceUuids].sort()).toEqual(
+      [SECONDARY_A_UUID, SECONDARY_B_UUID, SECONDARY_C_UUID].sort(),
+    );
+  });
+
+  it("detects multiple independent cycles", () => {
+    const cycleOneAB = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    const cycleOneBA = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FB, FA]);
+    const cycleTwoCD = placeAll(makeSecondary(SECONDARY_C_UUID, "S3"), [FC, FD]);
+    const cycleTwoDC = placeAll(makeSecondary(SECONDARY_D_UUID, "S4"), [FD, FC]);
+
+    const cycles = detectCycles([cycleOneAB, cycleOneBA, cycleTwoCD, cycleTwoDC]);
+    expect(cycles).toHaveLength(2);
+
+    const cycleAB = cycles.find((c) => c.fragmentUuids.includes(FA));
+    const cycleCD = cycles.find((c) => c.fragmentUuids.includes(FC));
+    expect(cycleAB).toBeDefined();
+    expect(cycleCD).toBeDefined();
+    expect([...cycleAB!.fragmentUuids].sort()).toEqual([FA, FB].sort());
+    expect([...cycleAB!.sequenceUuids].sort()).toEqual(
+      [SECONDARY_A_UUID, SECONDARY_B_UUID].sort(),
+    );
+    expect([...cycleCD!.fragmentUuids].sort()).toEqual([FC, FD].sort());
+    expect([...cycleCD!.sequenceUuids].sort()).toEqual(
+      [SECONDARY_C_UUID, SECONDARY_D_UUID].sort(),
+    );
+  });
+
+  it("only reports secondaries whose edges live inside the SCC", () => {
+    const inCycleAB = placeAll(makeSecondary(SECONDARY_A_UUID, "Cyclic A->B"), [FA, FB]);
+    const inCycleBA = placeAll(makeSecondary(SECONDARY_B_UUID, "Cyclic B->A"), [FB, FA]);
+    const unrelated = placeAll(makeSecondary(SECONDARY_C_UUID, "Unrelated"), [FC, FD]);
+    const cycles = detectCycles([inCycleAB, inCycleBA, unrelated]);
+    expect(cycles).toHaveLength(1);
+    expect([...cycles[0]!.sequenceUuids].sort()).toEqual(
+      [SECONDARY_A_UUID, SECONDARY_B_UUID].sort(),
+    );
   });
 });
 

@@ -176,7 +176,17 @@ export type Violation = {
   secondaryUuid: string;
 };
 
-function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
+export type Cycle = {
+  sequenceUuids: string[];
+  fragmentUuids: string[];
+};
+
+type ConstraintGraph = {
+  adjacency: Map<string, Map<string, Set<string>>>;
+  allNodes: Set<string>;
+};
+
+function buildConstraintGraph(secondaries: Sequence[]): ConstraintGraph {
   const adjacency = new Map<string, Map<string, Set<string>>>();
   const allNodes = new Set<string>();
 
@@ -202,6 +212,11 @@ function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
     }
   }
 
+  return { adjacency, allNodes };
+}
+
+function findStronglyConnectedComponents(graph: ConstraintGraph): string[][] {
+  const { adjacency, allNodes } = graph;
   const indexMap = new Map<string, number>();
   const lowMap = new Map<string, number>();
   const onStack = new Set<string>();
@@ -246,22 +261,44 @@ function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
     }
   }
 
-  const cyclicSecondaryUuids = new Set<string>();
+  return sccs;
+}
+
+export function detectCycles(secondaries: Sequence[]): Cycle[] {
+  const graph = buildConstraintGraph(secondaries);
+  const sccs = findStronglyConnectedComponents(graph);
+  const cycles: Cycle[] = [];
+
   for (const scc of sccs) {
     if (scc.length <= 1) continue;
     const sccSet = new Set(scc);
+    const contributingSecondaries = new Set<string>();
     for (const from of scc) {
-      const neighbors = adjacency.get(from);
+      const neighbors = graph.adjacency.get(from);
       if (!neighbors) continue;
       for (const [to, edgeSecondaries] of neighbors.entries()) {
         if (!sccSet.has(to)) continue;
         for (const secondaryUuid of edgeSecondaries) {
-          cyclicSecondaryUuids.add(secondaryUuid);
+          contributingSecondaries.add(secondaryUuid);
         }
       }
     }
+    cycles.push({
+      sequenceUuids: [...contributingSecondaries],
+      fragmentUuids: scc,
+    });
   }
 
+  return cycles;
+}
+
+function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
+  const cyclicSecondaryUuids = new Set<string>();
+  for (const cycle of detectCycles(secondaries)) {
+    for (const sequenceUuid of cycle.sequenceUuids) {
+      cyclicSecondaryUuids.add(sequenceUuid);
+    }
+  }
   return cyclicSecondaryUuids;
 }
 

@@ -30,3 +30,17 @@ Started: [pending]
   - Pre-existing prettier lint error at `packages/sequencer/src/__tests__/sequencer.test.ts:286` was committed in US-001 (commit 0c7814e) — not introduced here. `bun run verify` (typecheck+test) does not run lint; lint is full of pre-existing repo-wide errors.
   - When designing tests, `placeFragment` requires a real section UUID — build secondaries via a helper that creates a single empty section with a known UUID, then `placeFragment` into it. Direct construction of Section objects works but requires manually picking valid uuid-shaped strings.
 ---
+
+## [2026-05-18] - US-003
+- Exported `Cycle` type and `detectCycles(secondaries)` from `packages/sequencer/src/index.ts`.
+- Refactored SCC machinery into two internal helpers: `buildConstraintGraph` (transitive (A,B) edges with secondary-UUID provenance) and `findStronglyConnectedComponents` (Tarjan's). `detectCycles` reuses both, and the existing `findCyclicSecondaryUuids` helper used by `computeViolations` now delegates to `detectCycles` so cycle-detection logic lives in one place.
+- Trivial single-node SCCs are dropped. A cycle's `sequenceUuids` only includes secondaries whose edges live *inside* the SCC (an edge from a secondary that crosses out of the SCC is not counted).
+- Added 7 unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts`: empty input, all-consistent secondaries, single-node trivial SCC skip, 2-node cycle across two secondaries, 3-node cycle spanning three secondaries, two independent cycles, secondaries-with-edges-outside-SCC are excluded.
+- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
+- Verify: `bun run verify` passes (539 backend + 82 frontend tests + typecheck).
+- **Learnings for future iterations:**
+  - The internal `findCyclicSecondaryUuids` from US-002 is now a thin wrapper over `detectCycles`. Future stories that need cycle info should call `detectCycles` directly rather than re-implementing SCC.
+  - `Cycle.sequenceUuids` is a *contributing-edges* set, not a "secondaries that touched any fragment in the SCC" set. A secondary with one edge inside the SCC and another crossing out only counts via the inside edge. This matches the spec ("the secondaries whose edges contribute to it").
+  - The transitive-edge graph (used here) is wider than an adjacent-pairs-only graph would be, but it does not change which SCCs exist — only adjacent pairs are sufficient to produce all SCCs. We keep transitive edges because `computeViolations` already needs them and sharing the graph keeps it consistent. If a future story wants the *minimal* secondary set per cycle, that would need adjacent-only edges; flag this when it comes up.
+  - When asserting on `Cycle` arrays in tests, sort both sides — Tarjan's pop order is implementation-dependent and `sequenceUuids` comes from a Set.
+---
