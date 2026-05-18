@@ -1,7 +1,8 @@
 # Spec: Preview
 
-**Status**: Draft
+**Status**: Partial
 **Last updated**: 2026-05-18
+**Shipped**: Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
 
 ---
 

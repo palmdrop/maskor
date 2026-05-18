@@ -1,7 +1,7 @@
 # Preview — first slice
 
 **Date**: 18-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/preview.md`, `specifications/export.md`
 
 ---
@@ -18,82 +18,61 @@ A user can navigate to `/projects/$projectId/preview`, see the project's main se
 
 ### Phase 1 — Branch and shared `ReadonlyEditor`
 
-- [ ] Create branch `preview-feature` from `main`.
-- [ ] Extract `ReadonlyEditor` (currently inline at `packages/frontend/src/pages/FragmentImportPage.tsx` lines 63-100) into `packages/frontend/src/components/readonly-editor.tsx`. Props: `content: string`, `fontSize: number`, `maxParagraphWidth: number`.
-- [ ] Replace the inline definition in `FragmentImportPage.tsx` with an import. Verify the import-page preview still renders identically.
-- [ ] Add a short Storybook story (or matching pattern used elsewhere in the codebase) so the component has a visible reference outside the import page.
-- [ ] `git commit` — extract reusable read-only markdown renderer.
+- [x] Create branch `preview-feature` from `main`.
+- [x] Extract `ReadonlyEditor` (currently inline at `packages/frontend/src/pages/FragmentImportPage.tsx` lines 63-100) into `packages/frontend/src/components/readonly-editor.tsx`. Props: `content: string`, `fontSize: number`, `maxParagraphWidth: number`.
+- [x] Replace the inline definition in `FragmentImportPage.tsx` with an import. Verify the import-page preview still renders identically.
+- [x] Add a short Storybook story (or matching pattern used elsewhere in the codebase) so the component has a visible reference outside the import page.
+- [x] `git commit` — extract reusable read-only markdown renderer.
 
 ### Phase 2 — `@maskor/exporter` package skeleton
 
-- [ ] Create `packages/exporter/` mirroring the `packages/importer/` layout: `package.json` (`@maskor/exporter`, depends on `@maskor/shared`), `tsconfig.json`, `src/index.ts`, `src/__tests__/`.
-- [ ] Register the workspace in the root `bun.lock` flow (run `bun install` from repo root).
-- [ ] Define the structured assembly payload type in `@maskor/shared` (`AssembledSequence`): `{ sequenceUuid, sequenceName, isMain, sections: [{ uuid, name, fragments: [{ uuid, key, title, content }] }] }`. Export from `packages/shared/src/schemas/domain/index.ts` if a Zod schema is wanted; otherwise plain TS type for now.
-- [ ] Implement `assembleSequence(sequence: IndexedSequence, fragments: IndexedFragment[]) => AssembledSequence` in `packages/exporter/src/assemble.ts`. Walk sections in order, walk fragment positions in order, resolve each `fragmentUuid` against the fragments array, omit any fragment that is discarded or missing (the missing case is a structural drift that should surface as a warning — log via `Logger` if available, but do not throw; assembly is best-effort).
-- [ ] Export from `packages/exporter/src/index.ts`.
-- [ ] Tests in `packages/exporter/src/__tests__/assemble.test.ts`: empty sequence, single-section single-fragment, multi-section ordering, position gaps tolerated, missing fragment skipped with a warning.
-- [ ] Decision note in the plan: the package ships with `assembleSequence` only. The flat-markdown converter for file export comes in a later slice. Preview's frontend renders the structured payload directly — no flat-markdown intermediate.
-- [ ] `git commit` — add @maskor/exporter package with structured assembly.
+- [x] Create `packages/exporter/` mirroring the `packages/importer/` layout: `package.json` (`@maskor/exporter`, depends on `@maskor/shared`), `tsconfig.json`, `src/index.ts`, `src/__tests__/`.
+- [x] Register the workspace in the root `bun.lock` flow (run `bun install` from repo root).
+- [x] Define the structured assembly payload type in `@maskor/shared` (`AssembledSequence`): `{ sequenceUuid, sequenceName, isMain, sections: [{ uuid, name, fragments: [{ uuid, key, content }] }] }`. Plain TS type — no Zod schema needed since the exporter doesn't validate input. Note: `title` was dropped from Fragment (see migration `20260506_drop_fragment_title.sql`); `key` is the display name.
+- [x] Implement `assembleSequence(sequence: SequenceInput, fragments: Fragment[]) => AssembledSequence` in `packages/exporter/src/assemble.ts`. Signature uses `Fragment[]` (has `content`) instead of `IndexedFragment[]` (no `content`). `SequenceInput` is a local structural type matching `IndexedSequence` — keeps exporter free of `@maskor/storage` dependency.
+- [x] Export from `packages/exporter/src/index.ts`.
+- [x] Tests in `packages/exporter/src/__tests__/assemble.test.ts`: empty sequence, single-section single-fragment, multi-section ordering, position gaps tolerated, missing fragment skipped with a warning, discarded fragment skipped.
+- [x] Decision note: the package ships with `assembleSequence` only. The flat-markdown converter for file export comes in a later slice. Preview's frontend renders the structured payload directly — no flat-markdown intermediate.
+- [x] `git commit` — add @maskor/exporter package with structured assembly.
 
 ### Phase 3 — `project.json` preview field
 
-- [ ] Add a `preview` sub-object to `ProjectRecord` in `packages/storage/src/registry/types.ts`:
-  ```
-  preview: {
-    showTitles: boolean       // default false
-    showSectionHeadings: boolean  // default true
-    separator: "blank-line" | "horizontal-rule" | "none"  // default "blank-line"
-  }
-  ```
-- [ ] Update the registry read/write paths to persist and read these fields. Defaults are applied when the field is absent in the file.
-- [ ] Extend the `updateProject` storage-service call (`packages/storage/src/service/storage-service.ts` line 418-430) to accept `preview` in its patch, matching the existing `editor`/`suggestion`/`advanced` pattern.
-- [ ] Add `UpdateProjectBody` schema fields in `packages/api/src/schemas/` (or wherever the OpenAPI body schema lives) so the API surface accepts the new patch fields.
-- [ ] No migration needed — defaults apply on the first read of a project that lacks the field.
-- [ ] Tests: project round-trips with and without the `preview` field; defaults applied correctly when missing.
-- [ ] `git commit` — add preview config to project record.
+- [x] Add a `preview` sub-object to `ProjectRecord` in `packages/storage/src/registry/types.ts`.
+- [x] Update the registry read/write paths to persist and read these fields. Defaults are applied when the field is absent in the file.
+- [x] Extend the `updateProject` storage-service call to accept `preview` in its patch, matching the existing `editor`/`suggestion`/`advanced` pattern.
+- [x] Add `preview` fields to shared `ProjectSchema` and `ProjectUpdateSchema` — propagates automatically to the API `ProjectUpdateSchema`.
+- [x] No migration needed — defaults apply on the first read of a project that lacks the field.
+- [x] Tests: project round-trips with and without the `preview` field; defaults applied correctly when missing.
+- [x] `git commit` — add preview config to project record.
 
 ### Phase 4 — Backend preview endpoint
 
-- [ ] Add `packages/api/src/routes/preview.ts` mounting `previewRouter` (Hono + zod-openapi).
-- [ ] One route: `GET /api/projects/:projectId/preview/:sequenceUuid` → returns `AssembledSequence`. Per `packages/api/CLAUDE.md`, this is a read-only operation and can call `storageService` directly (no command needed).
-- [ ] Handler steps: resolve project context → load sequence via `storageService.sequences.read(ctx, sequenceUuid)` → load all fragments via `storageService.fragments.readAll(ctx)` → call `assembleSequence(sequence, fragments)` from `@maskor/exporter` → return the result.
-- [ ] Add a sibling helper route `GET /api/projects/:projectId/preview` that resolves the main sequence and 302-redirects to the specific route (or simply returns the main assembly — pick whichever matches existing patterns in the codebase).
-- [ ] Error responses: `404` if sequence not found, `404` if project not found. No partial assembly.
-- [ ] Mount the router in `packages/api/src/app.ts` (or wherever routers are wired).
-- [ ] Regenerate the frontend client: from `packages/frontend`, `bun run codegen` (with the API running per `packages/frontend/CLAUDE.md`).
-- [ ] Tests in `packages/api/src/__tests__/` exercising both happy path and 404 cases.
-- [ ] `git commit` — add preview endpoint.
+- [x] Add `packages/api/src/routes/preview.ts` mounting `previewRouter` (Hono + zod-openapi).
+- [x] `GET /projects/:projectId/preview/:sequenceId` → returns `AssembledSequence`. Read-only, calls storageService directly (no command needed).
+- [x] Handler reads fragment content individually via `storageService.fragments.read()` (not `readAll()` which returns `IndexedFragment[]` without content). Uses `Promise.allSettled` for resilience against stale-index errors.
+- [x] `GET /projects/:projectId/preview` — returns the main sequence assembly directly (no redirect).
+- [x] Error responses: `404` if sequence not found, `404` if project not found.
+- [x] Mounted in `packages/api/src/app.ts`.
+- [x] Frontend client regenerated — generates `useGetAssembledSequence` and `useGetMainAssembledSequence` hooks.
+- [x] 5 tests covering happy path, 404, placed-fragment inclusion, and main preview.
+- [x] `git commit` — add preview endpoint.
 
 ### Phase 5 — Frontend preview page
 
-- [ ] Add `packages/frontend/src/pages/PreviewPage/` containing `PreviewPage.tsx`, `PreviewToolbar.tsx`, `PreviewSidebar.tsx`, `PreviewProse.tsx`, and an `index.ts`.
-- [ ] Register the route in `packages/frontend/src/router.ts`: `path: "/preview"` under `projectShellLayoutRoute`, with `validateSearch` returning `{ sequence?: string }` (matches the overview-route pattern).
-- [ ] `PreviewPage` reads `projectId` from params, `sequence` from search, fetches the project (for preview config + the `useProjectEditorConfig` typography settings), determines the active sequence UUID (search param > main sequence from `useListSequences` (or equivalent) > undefined → empty state).
-- [ ] Fetch the assembled sequence via the generated hook (`usePreview…` or similar — exact name comes from codegen).
-- [ ] `PreviewToolbar`:
-  - Sequence picker (shadcn `Select`), hidden if only one sequence exists.
-  - Three toggles: fragment titles, section headings (auto-hidden if the assembled sequence has zero named sections), separator picker.
-  - Toggle changes call `useUpdateProject` (orval-generated) with a `preview` patch. On success, the project query re-fetches; the toggle state re-hydrates.
-  - Optimistic local state for instant UI feedback before the server round-trip lands. Keep this minimal; the source of truth is the project record.
-- [ ] `PreviewSidebar`:
-  - Lists fragments grouped by section, in order.
-  - Each fragment renders as a button with the fragment's title (or key as fallback). Section names are group headers.
-  - Click handler: `document.getElementById('fragment-' + uuid)?.scrollIntoView({ behavior: 'instant', block: 'start' })`.
-  - Sidebar always groups by section regardless of the section-heading prose toggle.
-- [ ] `PreviewProse`:
-  - Receives the `AssembledSequence` + current toggles + project typography.
-  - Renders each section as: optional `<h2>` (if `showSectionHeadings`) with the section name, followed by the section's fragments.
-  - Renders each fragment as a `<div id={'fragment-' + fragment.uuid}>` wrapper containing: optional `<h3>` (if `showTitles`) with the fragment title, followed by the markdown body rendered via `ReadonlyEditor`.
-  - Between fragments within a section: a `<hr>` element for `horizontal-rule`, nothing for `none`, an empty `<div className="h-4" />` (or equivalent) for `blank-line`. Between sections, always insert a heading-level break.
-  - Anchors are real DOM IDs on the wrappers — no HTML-in-markdown, no `tiptap-markdown` html flag changes, no anchor-emission flag on the exporter. The structured payload + per-fragment wrapper makes the whole problem disappear.
-- [ ] Wire into project navigation: add a "Preview" item to the `ProjectShellLayout` nav (wherever the existing items like Fragments, Overview, etc. are defined) pointing at `/projects/$projectId/preview`.
-- [ ] Tests: `PreviewPage` renders given a mocked assembled payload; sidebar click scrolls to the corresponding fragment; toggle changes call `useUpdateProject` with the right patch; empty sequence shows `Sequence empty.`; missing sequence (404 from preview endpoint) shows `This sequence no longer exists.`
-- [ ] `git commit` — add preview page with sequence picker, toggles, sidebar, and prose rendering.
+- [x] Add `packages/frontend/src/pages/PreviewPage/` containing `PreviewPage.tsx`, `PreviewToolbar.tsx`, `PreviewSidebar.tsx`, `PreviewProse.tsx`, and `index.ts`.
+- [x] Register route `/preview` under `projectShellLayoutRoute` with `validateSearch` returning `{ sequence?: string }`.
+- [x] `PreviewPage` reads `projectId` from params, `sequence` from search, uses `useGetProject` + `useListSequences` + `useGetAssembledSequence`/`useGetMainAssembledSequence`.
+- [x] `PreviewToolbar`: sequence picker (hidden if single sequence), fragment titles toggle, section headings toggle (auto-hidden when no named sections), separator picker. Toggle changes call `useUpdateProject` with `preview` patch.
+- [x] `PreviewSidebar`: fragments grouped by section, click scrolls via DOM ID.
+- [x] `PreviewProse`: renders sections with optional h2, fragments with `id="fragment-<uuid>"` wrappers, optional h3, `ReadonlyEditor` for content, per-fragment separators.
+- [x] "Preview" nav link added to `ProjectShellLayout`.
+- [x] 6 tests: renders fragment keys, prose area, empty state, 404 state, sidebar scroll, toggle persistence.
+- [x] `git commit` — add preview page with sequence picker, toggles, sidebar, and prose rendering.
 
 ### Phase 6 — Spec update on completion
 
-- [ ] After implementation: update `specifications/preview.md` `Shipped` frontmatter with a one-line entry pointing at this plan. Set plan status to `Done`.
-- [ ] If anything in the spec turned out wrong during implementation, update the spec — don't leave stale claims.
+- [x] After implementation: update `specifications/preview.md` `Shipped` frontmatter with a one-line entry pointing at this plan. Set plan status to `Done`.
+- [x] Spec notes: `assembleSequence` takes `Fragment[]` (not `IndexedFragment[]`) since fragments need `content`. Fragment `title` was dropped — `key` is the display name throughout. The backend reads full fragment content per-fragment, not via `readAll()`.
 
 ---
 
