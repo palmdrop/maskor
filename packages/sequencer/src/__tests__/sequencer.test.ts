@@ -7,6 +7,7 @@ import {
   unplaceFragment,
   getUnassignedFragmentUuids,
   validateSequenceInvariants,
+  getFragmentOrder,
 } from "../index";
 
 const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
@@ -258,6 +259,60 @@ describe("getUnassignedFragmentUuids", () => {
     sequence = placeFragment(sequence, FA, sectionA, 0);
     sequence = placeFragment(sequence, FC, sectionB, 0);
     expect(getUnassignedFragmentUuids(sequence, [FA, FB, FC, FD])).toEqual([FB, FD]);
+  });
+});
+
+describe("getFragmentOrder", () => {
+  it("returns empty array for an empty sequence", () => {
+    const sequence = makeSequence();
+    expect(getFragmentOrder(sequence)).toEqual([]);
+  });
+
+  it("returns fragments sorted by position within a single section", () => {
+    let sequence = makeSequence();
+    const sectionUuid = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, sectionUuid, 0);
+    sequence = placeFragment(sequence, FB, sectionUuid, 1);
+    sequence = placeFragment(sequence, FC, sectionUuid, 2);
+    expect(getFragmentOrder(sequence)).toEqual([FA, FB, FC]);
+  });
+
+  it("returns fragments across multiple sections in section-array order", () => {
+    let sequence = makeSequence();
+    const section2Uuid = "22222222-0000-0000-0000-000000000001";
+    sequence = {
+      ...sequence,
+      sections: [
+        ...sequence.sections,
+        { uuid: section2Uuid, name: "Act 2", fragments: [] },
+      ],
+    };
+    const sectionA = sequence.sections[0]!.uuid;
+    const sectionB = sequence.sections[1]!.uuid;
+    sequence = placeFragment(sequence, FA, sectionA, 0);
+    sequence = placeFragment(sequence, FB, sectionA, 1);
+    sequence = placeFragment(sequence, FC, sectionB, 0);
+    sequence = placeFragment(sequence, FD, sectionB, 1);
+    expect(getFragmentOrder(sequence)).toEqual([FA, FB, FC, FD]);
+  });
+
+  it("skips sections with zero fragments interspersed between populated sections", () => {
+    let sequence = makeSequence();
+    const section2Uuid = "22222222-0000-0000-0000-000000000002";
+    const section3Uuid = "33333333-0000-0000-0000-000000000003";
+    sequence = {
+      ...sequence,
+      sections: [
+        ...sequence.sections,
+        { uuid: section2Uuid, name: "Empty", fragments: [] },
+        { uuid: section3Uuid, name: "Act 3", fragments: [] },
+      ],
+    };
+    const sectionA = sequence.sections[0]!.uuid;
+    const sectionC = sequence.sections[2]!.uuid;
+    sequence = placeFragment(sequence, FA, sectionA, 0);
+    sequence = placeFragment(sequence, FB, sectionC, 0);
+    expect(getFragmentOrder(sequence)).toEqual([FA, FB]);
   });
 });
 

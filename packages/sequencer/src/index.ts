@@ -159,6 +159,17 @@ export function unplaceFragment(sequence: Sequence, fragmentUuid: string): Seque
   return { ...sequence, sections: updatedSections };
 }
 
+export function getFragmentOrder(sequence: Sequence): string[] {
+  const result: string[] = [];
+  for (const section of sequence.sections) {
+    const sorted = [...section.fragments].sort((a, b) => a.position - b.position);
+    for (const fragmentPosition of sorted) {
+      result.push(fragmentPosition.fragmentUuid);
+    }
+  }
+  return result;
+}
+
 export function getUnassignedFragmentUuids(
   sequence: Sequence,
   allFragmentUuids: string[],
