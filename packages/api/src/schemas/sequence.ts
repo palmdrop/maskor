@@ -73,3 +73,26 @@ export const FragmentPositionMoveSchema = DomainFragmentPositionMoveSchema.exten
   sectionUuid: z.uuid().openapi({ example: "bbbbbbbb-0000-0000-0000-000000000001" }),
   position: z.number().int().min(0).openapi({ example: 1 }),
 }).openapi("FragmentPositionMove");
+
+export const ViolationSchema = z
+  .object({
+    fragmentUuid: z.uuid(),
+    predecessorUuid: z.uuid(),
+    secondaryUuid: z.uuid(),
+  })
+  .openapi("Violation");
+
+export const CycleSchema = z
+  .object({
+    sequenceUuids: z.array(z.uuid()),
+    fragmentUuids: z.array(z.uuid()),
+  })
+  .openapi("Cycle");
+
+export const SequenceBundledResponseSchema = z
+  .object({
+    sequences: z.array(SequenceSchema),
+    violations: z.array(ViolationSchema),
+    cycles: z.array(CycleSchema),
+  })
+  .openapi("SequenceBundledResponse");

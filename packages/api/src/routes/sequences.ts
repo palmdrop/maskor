@@ -10,6 +10,7 @@ import {
   SequenceUpdateSchema,
   FragmentPositionCreateSchema,
   FragmentPositionMoveSchema,
+  SequenceBundledResponseSchema,
 } from "../schemas/sequence";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -19,6 +20,7 @@ import {
   createSequenceCommand,
   updateSequenceCommand,
   deleteSequenceCommand,
+  designateSequenceMainCommand,
   placeFragmentCommand,
   moveFragmentCommand,
   unplaceFragmentCommand,
@@ -166,6 +168,29 @@ const deleteSequenceRoute = createRoute({
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Cannot delete main sequence",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const designateSequenceMainRoute = createRoute({
+  operationId: "designateSequenceMain",
+  method: "post",
+  path: "/{sequenceId}/designate-main",
+  tags: ["Sequences"],
+  summary: "Make a secondary sequence the main sequence",
+  request: { params: SequenceUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence not found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -355,6 +380,24 @@ sequencesRouter.openapi(deleteSequenceRoute, async (ctx) => {
     };
     await executeCommand(deleteSequenceCommand, commandContext, { sequenceId });
     return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(designateSequenceMainRoute, async (ctx) => {
+  try {
+    const { sequenceId } = ctx.req.valid("param");
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const bundle = await executeCommand(designateSequenceMainCommand, commandContext, {
+      sequenceId,
+    });
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }

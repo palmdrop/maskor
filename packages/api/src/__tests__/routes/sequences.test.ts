@@ -15,6 +15,11 @@ type SequenceFull = SequenceSummary & {
   contentHash: string;
   sections: Section[];
 };
+type SequenceBundle = {
+  sequences: SequenceFull[];
+  violations: { fragmentUuid: string; predecessorUuid: string; secondaryUuid: string }[];
+  cycles: { sequenceUuids: string[]; fragmentUuids: string[] }[];
+};
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -374,6 +379,64 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentU
       { method: "DELETE" },
     );
     expect(response.status).toBe(200);
+  });
+});
+
+describe("POST /projects/:projectId/sequences/:sequenceId/designate-main", () => {
+  it("flips main from A to B: B becomes main, A becomes secondary", async () => {
+    const mainBefore = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const secondary = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Designate Test Secondary",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${secondary.uuid}/designate-main`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    expect(Array.isArray(bundle.sequences)).toBe(true);
+    expect(Array.isArray(bundle.violations)).toBe(true);
+    expect(Array.isArray(bundle.cycles)).toBe(true);
+
+    const newMain = bundle.sequences.find((s) => s.uuid === secondary.uuid);
+    const oldMain = bundle.sequences.find((s) => s.uuid === mainBefore.uuid);
+    expect(newMain?.isMain).toBe(true);
+    expect(oldMain?.isMain).toBe(false);
+  });
+
+  it("designating the already-main sequence is idempotent", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/designate-main`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const stillMain = bundle.sequences.find((s) => s.uuid === main.uuid);
+    expect(stillMain?.isMain).toBe(true);
+  });
+
+  it("returns 404 for a non-existent sequence UUID", async () => {
+    const response = await testContext.app.request(
+      `${baseUrl()}/00000000-0000-0000-0000-000000000000/designate-main`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(404);
   });
 });
 
