@@ -41,12 +41,15 @@ export const ActionTypeSchema = z.enum([
   "sequence:renamed",
   "sequence:deleted",
   "sequence:set-main",
+  "draft:created",
+  "draft:deleted",
+  "draft:restored",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
 
 export const LogEntryTargetSchema = z.object({
-  type: z.enum(["fragment", "aspect", "note", "reference", "sequence"]),
+  type: z.enum(["fragment", "aspect", "note", "reference", "sequence", "draft"]),
   uuid: z.string(),
   key: z.string().optional(),
   title: z.string().optional(),
@@ -123,6 +126,12 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("sequence:renamed", renamed),
   entry("sequence:deleted", empty),
   entry("sequence:set-main", empty),
+  entry("draft:created", z.object({ name: z.string(), note: z.string().optional() })),
+  entry("draft:deleted", z.object({ name: z.string() })),
+  entry(
+    "draft:restored",
+    z.object({ name: z.string(), preRestoreDraftUuid: z.string().optional() }),
+  ),
 ]);
 
 export type LogEntry = z.infer<typeof LogEntrySchema>;

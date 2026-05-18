@@ -30,11 +30,11 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 1 — Branch and shared types
 
-- [ ] Create branch `drafting-first-slice` from `main`.
-- [ ] Add `Draft` and `DraftManifest` types in `packages/shared/src/`. The manifest carries: `uuid`, `name`, `note?`, `createdAt`, and `entityCounts: { fragments, aspects, notes, references, sequences }`. The `Draft` runtime type adds the on-disk slug folder name and full directory path for service use.
-- [ ] Extend `LogEntryTargetSchema.type` in `packages/shared/src/schemas/domain/action.ts` with `"draft"`.
-- [ ] Extend `ActionTypeSchema` with `"draft:created"`, `"draft:deleted"`, `"draft:restored"`. Add matching discriminated-union entries: `draft:created` payload `{ name: string; note?: string }`; `draft:deleted` payload `{ name: string }`; `draft:restored` payload `{ name: string; preRestoreDraftUuid?: string }`.
-- [ ] Tests: schema parse round-trip for each new variant in `packages/shared/src/__tests__/`.
+- [x] Create branch `drafting-first-slice` from `main`. _(2026-05-18)_
+- [x] Add `Draft` and `DraftManifest` types in `packages/shared/src/`. _(2026-05-18)_
+- [x] Extend `LogEntryTargetSchema.type` with `"draft"`. _(2026-05-18)_
+- [x] Extend `ActionTypeSchema` and the discriminated union with `draft:created`, `draft:deleted`, `draft:restored`. _(2026-05-18)_
+- [x] Tests: schema parse round-trip in `packages/shared/src/__tests__/draft-schemas.test.ts`. _(2026-05-18)_
 - [ ] `git commit` — add Draft types and draft action-log entries.
 
 ### Phase 2 — In-flight write-handler drain
