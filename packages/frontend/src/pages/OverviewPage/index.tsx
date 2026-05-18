@@ -219,6 +219,32 @@ export const OverviewPage = () => {
     [violationsByFragmentUuid, fragmentByUuid, sequenceByUuid],
   );
 
+  const cycleTooltipByFragmentUuid = useMemo<Map<string, string[]>>(() => {
+    if (!bundle?.cycles?.length) return new Map();
+    const map = new Map<string, string[]>();
+    for (const cycle of bundle.cycles) {
+      const currentSequenceParticipates =
+        sequence?.isMain || (sequence && cycle.sequenceUuids.includes(sequence.uuid));
+      if (!currentSequenceParticipates) continue;
+      const sequenceNames = cycle.sequenceUuids
+        .map((uuid) => sequenceByUuid.get(uuid)?.name ?? uuid)
+        .join(", ");
+      const tooltip = `Cycle involving: ${sequenceNames}`;
+      for (const fragmentUuid of cycle.fragmentUuids) {
+        const existing = map.get(fragmentUuid) ?? [];
+        if (!existing.includes(tooltip)) {
+          map.set(fragmentUuid, [...existing, tooltip]);
+        }
+      }
+    }
+    return map;
+  }, [bundle?.cycles, sequence, sequenceByUuid]);
+
+  const getCycleTooltips = useCallback(
+    (fragmentUuid: string): string[] => cycleTooltipByFragmentUuid.get(fragmentUuid) ?? [],
+    [cycleTooltipByFragmentUuid],
+  );
+
   const activeQueryKey = activeSequenceId
     ? getGetSequenceQueryKey(projectId, activeSequenceId)
     : getGetMainSequenceQueryKey(projectId);
@@ -600,6 +626,7 @@ export const OverviewPage = () => {
                           fragment={fragment}
                           inSequence={true}
                           violationTooltips={getViolationTooltips(uuid)}
+                          cycleTooltips={getCycleTooltips(uuid)}
                         />
                       );
                     })}
