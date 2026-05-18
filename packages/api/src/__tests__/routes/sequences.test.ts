@@ -285,6 +285,60 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
       method: "DELETE",
     });
     expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string; reason?: string };
+    expect(body.error).toBe("CONFLICT");
+    expect(body.reason).toBe("cannot_delete_main");
+  });
+
+  it("fragments remain in the project after non-main sequence deletion", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const secondary = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Secondary To Delete",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceFull;
+
+    const fragmentsResp = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResp.json()) as { uuid: string }[];
+    const fragment = fragments[0];
+    if (!fragment) return;
+
+    await testContext.app.request(`${baseUrl()}/${secondary.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fragmentUuid: fragment.uuid,
+        sectionUuid: secondary.sections[0]!.uuid,
+        position: 0,
+      }),
+    });
+
+    const deleteResp = await testContext.app.request(`${baseUrl()}/${secondary.uuid}`, {
+      method: "DELETE",
+    });
+    expect(deleteResp.status).toBe(204);
+
+    const afterFragmentsResp = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const afterFragments = (await afterFragmentsResp.json()) as { uuid: string }[];
+    expect(afterFragments.some((f) => f.uuid === fragment.uuid)).toBe(true);
+
+    const mainAfter = (await (
+      await testContext.app.request(`${baseUrl()}/${main.uuid}`)
+    ).json()) as SequenceFull;
+    expect(mainAfter.uuid).toBe(main.uuid);
   });
 });
 
