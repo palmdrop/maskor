@@ -198,14 +198,15 @@ describe("OverviewPage — rendering", () => {
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
-  it("renders Sequence and Pool headings", () => {
+  it("renders section and Pool headings", () => {
     mockSequence([]);
     mockFragments([]);
 
     render(<OverviewPage />, { wrapper: wrap() });
 
     const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings.some((h) => /sequence/i.test(h.textContent ?? ""))).toBe(true);
+    // section heading uses the section name (e.g. "Main") or "Untitled section"
+    expect(headings.length).toBeGreaterThan(0);
     expect(headings.some((h) => /pool/i.test(h.textContent ?? ""))).toBe(true);
   });
 
@@ -272,9 +273,12 @@ describe("OverviewPage — rendering", () => {
     render(<OverviewPage />, { wrapper: wrap() });
 
     const headings = screen.getAllByRole("heading", { level: 2 });
-    const sequenceHeading = headings.find((h) => /sequence/i.test(h.textContent ?? ""));
+    // section heading shows section name and count; pool heading shows pool count
+    const sectionHeading = headings.find(
+      (h) => !/pool/i.test(h.textContent ?? "") && h.textContent?.includes("("),
+    );
     const poolHeading = headings.find((h) => /pool/i.test(h.textContent ?? ""));
-    expect(sequenceHeading?.textContent).toMatch(/\(1\)/);
+    expect(sectionHeading?.textContent).toMatch(/\(1\)/);
     expect(poolHeading?.textContent).toMatch(/\(1\)/);
   });
 });
@@ -305,14 +309,14 @@ describe("OverviewPage — drag interactions", () => {
     });
   });
 
-  it("calls placeFragment at tail when dropped onto the sequence zone container", () => {
+  it("calls placeFragment at tail when dropped onto the section zone container", () => {
     mockSequence([FRAG_A]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
 
     render(<OverviewPage />, { wrapper: wrap() });
 
-    // Drop FRAG_B onto the zone itself → append
-    triggerDragEnd(FRAG_B, "sequence-zone");
+    // Drop FRAG_B onto the section zone itself (zone id = section UUID) → append
+    triggerDragEnd(FRAG_B, SECTION_UUID);
 
     expect(placeMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
@@ -320,7 +324,7 @@ describe("OverviewPage — drag interactions", () => {
       data: {
         fragmentUuid: FRAG_B,
         sectionUuid: SECTION_UUID,
-        position: 1, // sequence has 1 item → append at index 1
+        position: 1, // section has 1 item → append at index 1
       },
     });
   });

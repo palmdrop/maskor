@@ -18,7 +18,6 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
   rectSortingStrategy,
-  arrayMove,
 } from "@dnd-kit/sortable";
 
 import {
@@ -44,7 +43,6 @@ import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 
 const POOL_ZONE_ID = "pool-zone";
-const SEQUENCE_ZONE_ID = "sequence-zone";
 
 function withUpdatedSequence(
   envelope: GetMainSequenceResponse,
@@ -53,17 +51,18 @@ function withUpdatedSequence(
   return { ...envelope, data: sequence } as GetMainSequenceResponse;
 }
 
-// TODO: keep breaking out into separate files
-const SequenceZone = ({
+const SectionZone = ({
   children,
+  sectionId,
   isEmpty,
-  sequenceFragmentUuids,
+  fragmentUuids,
 }: {
   children: React.ReactNode;
+  sectionId: string;
   isEmpty: boolean;
-  sequenceFragmentUuids: string[];
+  fragmentUuids: string[];
 }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: SEQUENCE_ZONE_ID });
+  const { setNodeRef, isOver } = useDroppable({ id: sectionId });
   return (
     <div
       ref={setNodeRef}
@@ -71,7 +70,7 @@ const SequenceZone = ({
         isOver ? "border-primary/50 bg-primary/5" : "border-border/50"
       }`}
     >
-      <SortableContext items={sequenceFragmentUuids} strategy={horizontalListSortingStrategy}>
+      <SortableContext items={fragmentUuids} strategy={horizontalListSortingStrategy}>
         {isEmpty && !isOver && (
           <p className="text-sm text-muted-foreground self-center mx-auto">
             Drag fragments here to build your sequence.
@@ -148,19 +147,38 @@ export const OverviewPage = () => {
   const sequence = sequenceEnvelope?.status === 200 ? sequenceEnvelope.data : undefined;
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
 
-  const sequenceFragmentUuids = useMemo(() => {
-    if (!sequence?.sections[0]) return [];
-    return [...sequence.sections[0].fragments]
-      .sort((a, b) => a.position - b.position)
-      .map((fragment) => fragment.fragmentUuid);
+  const sectionsData = useMemo(() => {
+    if (!sequence) return [];
+    return sequence.sections.map((section) => ({
+      uuid: section.uuid,
+      name: section.name,
+      fragmentUuids: [...section.fragments]
+        .sort((a, b) => a.position - b.position)
+        .map((f) => f.fragmentUuid),
+    }));
   }, [sequence]);
 
+  const allSequenceFragmentUuids = useMemo(
+    () => sectionsData.flatMap((s) => s.fragmentUuids),
+    [sectionsData],
+  );
+
+  const fragmentSectionMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const section of sectionsData) {
+      for (const uuid of section.fragmentUuids) {
+        map.set(uuid, section.uuid);
+      }
+    }
+    return map;
+  }, [sectionsData]);
+
   const poolFragmentUuids = useMemo(() => {
-    const placedSet = new Set(sequenceFragmentUuids);
+    const placedSet = new Set(allSequenceFragmentUuids);
     return allFragments
       .filter((fragment) => !fragment.isDiscarded && !placedSet.has(fragment.uuid))
       .map((fragment) => fragment.uuid);
-  }, [allFragments, sequenceFragmentUuids]);
+  }, [allFragments, allSequenceFragmentUuids]);
 
   const fragmentByUuid = useMemo(
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
@@ -173,13 +191,13 @@ export const OverviewPage = () => {
 
   const placeFragment = usePlaceFragment({
     mutation: {
-      onMutate: async ({ data: { fragmentUuid, position } }) => {
+      onMutate: async ({ data: { fragmentUuid, sectionUuid, position } }) => {
         const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
         queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(
             previous,
-            optimisticPlace(previous.data, fragmentUuid, position),
+            optimisticPlace(previous.data, fragmentUuid, sectionUuid, position),
           );
         });
         await queryClient.cancelQueries({ queryKey: activeQueryKey });
@@ -200,13 +218,13 @@ export const OverviewPage = () => {
 
   const moveFragment = useMoveFragment({
     mutation: {
-      onMutate: async ({ fragmentUuid, data: { position } }) => {
+      onMutate: async ({ fragmentUuid, data: { sectionUuid, position } }) => {
         const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
         queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
           return withUpdatedSequence(
             previous,
-            optimisticMove(previous.data, fragmentUuid, position),
+            optimisticMove(previous.data, fragmentUuid, sectionUuid, position),
           );
         });
         await queryClient.cancelQueries({ queryKey: activeQueryKey });
@@ -278,37 +296,50 @@ export const OverviewPage = () => {
 
     const activeId = String(active.id);
     const overId = String(over.id);
-    const sectionUuid = sequence.sections[0]?.uuid ?? "";
 
-    const isActiveInSequence = sequenceFragmentUuids.includes(activeId);
-    const isOverInSequence = sequenceFragmentUuids.includes(overId) || overId === SEQUENCE_ZONE_ID;
+    const isActiveInSequence = fragmentSectionMap.has(activeId);
+    const sectionIds = new Set(sectionsData.map((s) => s.uuid));
+    const isOverInSequence = sectionIds.has(overId) || fragmentSectionMap.has(overId);
     const isOverInPool = poolFragmentUuids.includes(overId) || overId === POOL_ZONE_ID;
 
+    const targetSectionUuid =
+      sectionIds.has(overId)
+        ? overId
+        : (fragmentSectionMap.get(overId) ?? sectionsData[0]?.uuid ?? "");
+
     if (!isActiveInSequence && isOverInSequence) {
-      const position =
-        overId === SEQUENCE_ZONE_ID
-          ? sequenceFragmentUuids.length
-          : sequenceFragmentUuids.indexOf(overId);
+      const targetSection = sectionsData.find((s) => s.uuid === targetSectionUuid);
+      const position = sectionIds.has(overId)
+        ? (targetSection?.fragmentUuids.length ?? 0)
+        : (targetSection?.fragmentUuids.indexOf(overId) ?? 0);
       placeFragment.mutate({
         projectId,
         sequenceId: sequence.uuid,
-        data: { fragmentUuid: activeId, sectionUuid, position },
+        data: { fragmentUuid: activeId, sectionUuid: targetSectionUuid, position },
       });
     } else if (isActiveInSequence && isOverInSequence && activeId !== overId) {
-      const oldIndex = sequenceFragmentUuids.indexOf(activeId);
-      const newIndex =
-        overId === SEQUENCE_ZONE_ID
-          ? sequenceFragmentUuids.length - 1
-          : sequenceFragmentUuids.indexOf(overId);
-      if (oldIndex !== newIndex) {
-        const reordered = arrayMove(sequenceFragmentUuids, oldIndex, newIndex);
-        const position = reordered.indexOf(activeId);
+      const targetSection = sectionsData.find((s) => s.uuid === targetSectionUuid);
+      if (!targetSection) return;
+
+      if (sectionIds.has(overId)) {
+        const position = targetSection.fragmentUuids.length;
         moveFragment.mutate({
           projectId,
           sequenceId: sequence.uuid,
           fragmentUuid: activeId,
-          data: { sectionUuid, position },
+          data: { sectionUuid: targetSectionUuid, position },
         });
+      } else {
+        const targetFragmentUuids = targetSection.fragmentUuids;
+        const targetIndex = targetFragmentUuids.indexOf(overId);
+        if (targetIndex !== -1) {
+          moveFragment.mutate({
+            projectId,
+            sequenceId: sequence.uuid,
+            fragmentUuid: activeId,
+            data: { sectionUuid: targetSectionUuid, position: targetIndex },
+          });
+        }
       }
     } else if (isActiveInSequence && (isOverInPool || (!isOverInSequence && !isOverInPool))) {
       unplaceFragment.mutate({
@@ -342,9 +373,7 @@ export const OverviewPage = () => {
               {sequence && !sequence.isMain && (
                 <button
                   type="button"
-                  onClick={() =>
-                    designateMain.mutate({ projectId, sequenceId: sequence.uuid })
-                  }
+                  onClick={() => designateMain.mutate({ projectId, sequenceId: sequence.uuid })}
                   disabled={designateMain.isPending}
                   className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 >
@@ -364,21 +393,27 @@ export const OverviewPage = () => {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  Sequence <span className="tabular-nums">({sequenceFragmentUuids.length})</span>
-                </h2>
-                <SequenceZone
-                  isEmpty={sequenceFragmentUuids.length === 0}
-                  sequenceFragmentUuids={sequenceFragmentUuids}
-                >
-                  {sequenceFragmentUuids.map((uuid) => {
-                    const fragment = fragmentByUuid.get(uuid);
-                    if (!fragment) return null;
-                    return <SortableTile key={uuid} fragment={fragment} inSequence={true} />;
-                  })}
-                </SequenceZone>
-              </section>
+              {sectionsData.map((sectionData) => (
+                <section key={sectionData.uuid} className="flex flex-col gap-2">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                    {sectionData.name || (
+                      <span className="italic">Untitled section</span>
+                    )}{" "}
+                    <span className="tabular-nums">({sectionData.fragmentUuids.length})</span>
+                  </h2>
+                  <SectionZone
+                    sectionId={sectionData.uuid}
+                    isEmpty={sectionData.fragmentUuids.length === 0}
+                    fragmentUuids={sectionData.fragmentUuids}
+                  >
+                    {sectionData.fragmentUuids.map((uuid) => {
+                      const fragment = fragmentByUuid.get(uuid);
+                      if (!fragment) return null;
+                      return <SortableTile key={uuid} fragment={fragment} inSequence={true} />;
+                    })}
+                  </SectionZone>
+                </section>
+              ))}
 
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -400,7 +435,7 @@ export const OverviewPage = () => {
                 {activeDragFragment ? (
                   <TileContent
                     fragment={activeDragFragment}
-                    inSequence={sequenceFragmentUuids.includes(activeDragFragment.uuid)}
+                    inSequence={fragmentSectionMap.has(activeDragFragment.uuid)}
                   />
                 ) : null}
               </DragOverlay>
