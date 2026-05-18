@@ -700,6 +700,7 @@ export const OverviewPage = () => {
         fragment={selectedFragmentUuid ? fragmentByUuid.get(selectedFragmentUuid) : undefined}
         sequences={bundle?.sequences ?? []}
         violations={bundle?.violations ?? []}
+        cycles={bundle?.cycles ?? []}
         fragmentByUuid={fragmentByUuid}
       />
     </div>
