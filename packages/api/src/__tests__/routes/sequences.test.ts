@@ -785,6 +785,135 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId/sections/:sectionId",
   });
 });
 
+describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId", () => {
+  it("deletes a section and its fragments are unplaced back to the pool", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Delete Section Test Seq", isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    const sequence = createBundle.sequences.find((s) => s.name === "Delete Section Test Seq")!;
+
+    const sectionBundle = (await (
+      await testContext.app.request(`${baseUrl()}/${sequence.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Section To Delete" }),
+      })
+    ).json()) as SequenceBundle;
+    const updatedSeq = sectionBundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+    const sectionToDelete = updatedSeq.sections[updatedSeq.sections.length - 1]!;
+
+    const fragmentsResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResponse.json()) as { uuid: string }[];
+    const unplaced = fragments.find(
+      (f) => !updatedSeq.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
+    );
+
+    if (unplaced) {
+      await testContext.app.request(`${baseUrl()}/${sequence.uuid}/positions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fragmentUuid: unplaced.uuid, sectionUuid: sectionToDelete.uuid, position: 0 }),
+      });
+    }
+
+    const deleteResponse = await testContext.app.request(
+      `${baseUrl()}/${sequence.uuid}/sections/${sectionToDelete.uuid}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(200);
+    const deleteBundle = (await deleteResponse.json()) as SequenceBundle;
+    const afterSeq = deleteBundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+    expect(afterSeq.sections.some((s) => s.uuid === sectionToDelete.uuid)).toBe(false);
+
+    if (unplaced) {
+      const isStillPlaced = afterSeq.sections.some((s) =>
+        s.fragments.some((fp) => fp.fragmentUuid === unplaced.uuid),
+      );
+      expect(isStillPlaced).toBe(false);
+    }
+  });
+
+  it("remaining sections still exist after deletion", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Compaction Test Seq", isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    const sequence = createBundle.sequences.find((s) => s.name === "Compaction Test Seq")!;
+
+    const after1 = (await (
+      await testContext.app.request(`${baseUrl()}/${sequence.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Section B" }),
+      })
+    ).json()) as SequenceBundle;
+    const after2Bundle = (await (
+      await testContext.app.request(`${baseUrl()}/${sequence.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Section C" }),
+      })
+    ).json()) as SequenceBundle;
+    const seqWith3 = after2Bundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+    expect(seqWith3.sections).toHaveLength(3);
+
+    const middleSection = seqWith3.sections[1]!;
+    const deleteResponse = await testContext.app.request(
+      `${baseUrl()}/${sequence.uuid}/sections/${middleSection.uuid}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(200);
+    const afterBundle = (await deleteResponse.json()) as SequenceBundle;
+    const afterSeq = afterBundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+    expect(afterSeq.sections).toHaveLength(2);
+    expect(afterSeq.sections.some((s) => s.uuid === middleSection.uuid)).toBe(false);
+    expect(afterSeq.sections[0]!.name).toBe(seqWith3.sections[0]!.name);
+    expect(afterSeq.sections[1]!.name).toBe(seqWith3.sections[2]!.name);
+  });
+
+  it("returns 409 when deleting the last remaining section", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Last Section Guard Seq", isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    const sequence = createBundle.sequences.find((s) => s.name === "Last Section Guard Seq")!;
+    expect(sequence.sections).toHaveLength(1);
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${sequence.uuid}/sections/${sequence.sections[0]!.uuid}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string; reason?: string };
+    expect(body.error).toBe("CONFLICT");
+    expect(body.reason).toBe("cannot_delete_last_section");
+  });
+
+  it("returns 404 for a non-existent section", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/00000000-0000-0000-0000-000000000000`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("sequence fragment action log entries", () => {
   it("place records target.title and payload.fragmentKey", async () => {
     const main = (await (

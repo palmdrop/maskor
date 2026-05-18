@@ -26,6 +26,7 @@ import {
   designateSequenceMainCommand,
   createSectionCommand,
   renameSectionCommand,
+  deleteSectionCommand,
   placeFragmentCommand,
   moveFragmentCommand,
   unplaceFragmentCommand,
@@ -340,6 +341,33 @@ const renameSectionRoute = createRoute({
   },
 });
 
+const deleteSectionRoute = createRoute({
+  operationId: "deleteSection",
+  method: "delete",
+  path: "/{sequenceId}/sections/{sectionId}",
+  tags: ["Sequences"],
+  summary: "Delete a section; its fragments return to the sequence pool",
+  request: { params: SectionUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or section not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Cannot delete the last section",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const unplaceFragmentRoute = createRoute({
   operationId: "unplaceFragment",
   method: "delete",
@@ -581,6 +609,25 @@ sequencesRouter.openapi(renameSectionRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
     await executeCommand(renameSectionCommand, commandContext, { sequenceId, sectionId, name });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(deleteSectionRoute, async (ctx) => {
+  try {
+    const { sequenceId, sectionId } = ctx.req.valid("param");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    await executeCommand(deleteSectionCommand, commandContext, { sequenceId, sectionId });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
