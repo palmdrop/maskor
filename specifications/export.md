@@ -64,7 +64,7 @@ The user can take their main sequence and export it to a single document in a fo
 
 ### Preview
 
-The exporter can produce a quick Markdown assembly held in server memory (no file written) and returned to the frontend for display. This doubles as the in-app preview: the frontend renders the Markdown as a read-only view before the user commits to saving a file. No separate preview pipeline is needed.
+Preview is its own feature — see `specifications/preview.md`. Export and preview share the assembly logic in `@maskor/exporter`: preview calls into the assembler and renders the result on screen; export calls into the same assembler and writes the result to a file. The export flow opens the preview surface as its pre-save inspection step.
 
 ---
 
@@ -103,6 +103,6 @@ The exporter can produce a quick Markdown assembly held in server memory (no fil
 - Exporting with fragment titles enabled produces a heading before each fragment body.
 - Exporting with no separator and no headings produces a single continuous block of text with no gaps.
 - The vault and DB are unchanged after a successful export.
-- The preview endpoint returns an assembled Markdown string without writing any file.
+- Export and preview produce byte-identical assembled markdown for the same sequence and assembly options (see `specifications/preview.md`).
 - A `.docx` export produces a valid Word document that can be opened by standard Word-compatible software.
 - A `.pdf` export produces a valid PDF file.

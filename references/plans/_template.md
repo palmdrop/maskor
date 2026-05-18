@@ -33,6 +33,10 @@ Priority is decided at runtime, not encoded here. Rough ordering in the list sig
 Scope creep warning: new items should serve the goal above. If they don't, they belong in a separate plan.
 
 Group tasks in numbered phases for larger plans and/or where implementation order is vital.
+
+The first phase/task should always be to create a new branch based on the plan title.
+
+The last task of each phase, or of the entire plan, should always be to commit the current batch of work using `git commit`.
 -->
 
 ---
@@ -52,5 +56,9 @@ Always include the statements below at the bottom of the plan. Add additional no
 -->
 
 DO NOT IMPLEMENT until clearly stated by the developer.
+
+When clearly stated to implement, create a new branch based on the plan title, and proceed with development in that branch.
+
+Once a phase, or sensible set of changes, is done, make a `git commit` and describe what has been added.
 
 When the plan is implemented, fully or partially, check off the relevant tasks and set the plan status to `Done`, or `In Progress` if partially implemented. ALSO, update the relevant specs `shipped` frontmatter property with the features implemented. Do not include implementation details or granular tasks here.
