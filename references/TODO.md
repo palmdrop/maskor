@@ -6,6 +6,10 @@
 
 - [ ] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
 
+- [ ] create ralph prd for generating preview page of project (pre-export), i.e all fragments after each other
+  - user can set if titles should be visible or not
+  - if section titles should be visible
+
 - [ ] create a spec for "snapshots" or versions, i.e saving a draft. The user should be able to go back to old drafts easily, then back again. Making changes in an old draft is not allowed, unless the user restores, or creates a new project based on that draft.
   - maybe use git in the background? commit, tag, checkout? or some other system
 

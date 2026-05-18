@@ -1,0 +1,284 @@
+{
+  "project": "Maskor",
+  "branchName": "ralph/project-management",
+  "description": "Project Management - Replace ProjectSelectionPage with a full ProjectManagementPage that lets users register (adopt/create/maskor-managed), rename, locate moved vaults, and deregister projects without typing filesystem paths. Backed by a directory-browse endpoint, settings file, trash helper, and wired-up PATCH rename route.",
+  "specs": ["specifications/project-management.md"],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Settings service with maskor-managed root key",
+      "description": "As a developer, I need a persisted settings service so the maskor-managed root can be configured and read across the app.",
+      "acceptanceCriteria": [
+        "New settings service reads/writes `~/.config/maskor/settings.json` (path resolved via `os.homedir()`)",
+        "Schema includes `maskorManagedRoot: string` with OS-aware defaults: `~/Documents/Maskor/` on macOS/Linux, `%USERPROFILE%\\Documents\\Maskor\\` on Windows",
+        "Missing keys fall back to defaults without error",
+        "An unparsable file is treated as empty and a warning string is returned alongside the settings object",
+        "File is created on first write only (not on read)",
+        "Unit tests cover: defaults when file missing, missing-key fallback, unparsable-file returns warning + defaults, first-write creates file",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "GET /fs/list directory-browse endpoint",
+      "description": "As a developer, I need a backend endpoint that lists directory contents so the frontend folder picker can navigate the host filesystem without a native shell.",
+      "acceptanceCriteria": [
+        "`GET /fs/list?path=<absolute>` returns `{ path, parent, entries: [{ name, kind: \"file\" | \"directory\", hidden, hasMaskorManifest, hasObsidianDir }] }`",
+        "`hasMaskorManifest` is true when the directory contains `.maskor/project.json`; `hasObsidianDir` is true when it contains `.obsidian/` — both only computed for `kind === \"directory\"`",
+        "`hidden` is true for entries whose name starts with `.`",
+        "Rejects relative paths with 400",
+        "Returns 404 if the path does not exist",
+        "Returns 403 if the path exists but is not readable",
+        "Endpoint is bound to localhost only (verify existing server config matches)",
+        "Unit tests cover: entry classification, hidden flag, missing path (404), permission denied (403), relative path (400)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "POST /projects accepts mode and reuses manifest UUID on adopt",
+      "description": "As a developer, I need the registration endpoint to accept `mode: \"adopt\" | \"create\"` and reuse an existing manifest UUID on adopt, closing the re-register gap.",
+      "acceptanceCriteria": [
+        "`POST /projects` body accepts `mode: \"adopt\" | \"create\"`; existing callers updated",
+        "`mode: \"adopt\"`: validates that the path exists; if `.maskor/project.json` is present, the registry row UUID equals the manifest UUID and manifest name is used (overrideable by request body)",
+        "`mode: \"adopt\"` without manifest: assigns a new UUID",
+        "`mode: \"create\"`: creates directory if missing via `mkdir -p`, assigns new UUID, writes manifest",
+        "`vaultPath` uniqueness in the registry is preserved; conflict returns 409",
+        "Existing storage-service note that manifests cannot be reused on re-register is removed",
+        "Unit/integration tests cover: adopt-with-manifest reuses UUID, adopt-without-manifest assigns new UUID, create-when-missing creates dir, vaultPath conflict rejected",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Vault skeleton init on mode: create",
+      "description": "As a user creating a new project, I expect Maskor to set up the vault structure so the project is immediately usable.",
+      "acceptanceCriteria": [
+        "On `mode: \"create\"`, Maskor writes `.maskor/`, `.maskor/project.json`, and an empty `aspects/` directory inside the vault path",
+        "Init is idempotent: re-running on an already-initialized folder does not error or overwrite existing manifest",
+        "Other vault structure (arcs config, vault DB) is still created lazily by its owning feature — no regressions",
+        "Unit tests cover: empty-folder init creates expected structure, existing-skeleton is a no-op, manifest contents are correct",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Trash helper using trash npm package",
+      "description": "As a developer, I need a single helper that moves a path to OS trash so deregister-with-delete prefers reversible deletion.",
+      "acceptanceCriteria": [
+        "`trash` added as a backend dependency",
+        "Helper `moveToTrashOrDelete(absolutePath): Promise<{ method: \"trash\" | \"hard-delete\" }>` tries trash first, falls back to hard delete (`fs.rm`) if trash throws",
+        "Unit tests mock `trash` and verify: trash succeeds (method is `\"trash\"`), trash throws (method is `\"hard-delete\"` and hard delete runs)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "PATCH /projects/:projectId for rename",
+      "description": "As a developer, I need to wire ProjectUpdateSchema to an HTTP route so project rename works end-to-end.",
+      "acceptanceCriteria": [
+        "`PATCH /projects/:projectId` accepts `{ name: string }` validated by the existing `ProjectUpdateSchema`",
+        "Updates the registry row's name and the `name` field in `.maskor/project.json`",
+        "Never moves or renames the on-disk folder — verified by test",
+        "Returns 404 when project is not found",
+        "Returns the updated project record on success",
+        "Unit/integration tests cover: success updates registry + manifest, missing project returns 404, folder name is unchanged after rename",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "FolderPicker reusable UI component",
+      "description": "As a user, I want to browse my filesystem inside Maskor and pick a folder so I never have to type an absolute path.",
+      "acceptanceCriteria": [
+        "Reusable `<FolderPicker>` component opens at the user's home directory by default (via `GET /fs/list?path=<home>`)",
+        "Up button navigates to parent directory; clicking a directory navigates into it; clicking a file does nothing (files are visible but disabled)",
+        "Address bar shows the current absolute path; user can edit it and press Enter to navigate",
+        "\"Show hidden\" toggle (off by default) reveals entries whose `hidden` flag is true",
+        "Each directory row badges `.maskor` (Maskor project) when `hasMaskorManifest` is true and `.obsidian` (Obsidian vault) when `hasObsidianDir` is true",
+        "\"Choose this folder\" button calls an `onSelect(path: string)` callback with the current path",
+        "Loading state shown while fetch is in flight; permission-error state shown inline (not as fatal error); empty-directory state shown when entries array is empty",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "ProjectManagementPage replaces ProjectSelectionPage",
+      "description": "As a user, I want a single page that lists all my registered projects so I can act on them in one place.",
+      "acceptanceCriteria": [
+        "`ProjectSelectionPage` is renamed to `ProjectManagementPage` and all references (router, links, imports) are updated",
+        "Page lists registered projects (name + vault path), one row per project in an unordered list",
+        "Each row exposes: Open, Rename, Locate vault… (shown instead of Open when vaultPath is missing on disk), Deregister — as placeholder buttons (wired to console.log or no-op; flows added in later stories)",
+        "At page load, each row checks whether `vaultPath` exists on disk (a per-row call to `GET /fs/list` or equivalent); Locate vault… replaces Open when path is missing",
+        "Page has three sections in this order: project list (top), \"Register project\" (middle, three entry-point cards as placeholders), \"Settings\" (bottom, placeholder)",
+        "No sort, search, or filter affordances",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Adopt-existing registration flow",
+      "description": "As a user, I want to point Maskor at an existing folder so I can use Maskor with an Obsidian vault or prior Maskor project without losing my UUID.",
+      "acceptanceCriteria": [
+        "\"Adopt existing folder\" card on ProjectManagementPage opens the FolderPicker (US-007)",
+        "After picking, a confirmation step shows: project name (manifest name if present, else folder basename, editable) and detected folder kind: Maskor project (manifest present), Obsidian vault, writing folder (markdown files), empty, or other",
+        "When folder contains non-markdown files unrelated to writing, a warning shows the non-markdown file count",
+        "Submitting calls `POST /projects` with `mode: \"adopt\"` and the picked path",
+        "On success, the new project appears in the list; the row's UUID equals the manifest UUID when `.maskor/project.json` was present (verified by inspecting the returned project)",
+        "No markdown content is auto-imported — fragment list for the new project is empty after adoption",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Create-at-custom-path registration flow",
+      "description": "As a user, I want to pick or type any path on my disk and have Maskor initialize a project there.",
+      "acceptanceCriteria": [
+        "\"Create new project\" card opens the FolderPicker; user can also type a path that does not yet exist in the address bar",
+        "If the path does not exist, Maskor creates it via `mkdir -p` (handled by `POST /projects` with `mode: \"create\"`)",
+        "If path exists and is non-empty with unrelated content, the same warning surface as adopt-flow is shown",
+        "Submitting calls `POST /projects` with `mode: \"create\"` and the chosen path",
+        "After submission, the new project's vault folder contains `.maskor/project.json` and an empty `aspects/` directory",
+        "New project appears in the list on success",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Maskor-managed registration flow",
+      "description": "As a user who doesn't want to think about filesystem paths, I want to type a name and have Maskor create the project folder for me under a managed root.",
+      "acceptanceCriteria": [
+        "\"Use Maskor-managed folder\" card shows only a name input — no folder picker",
+        "Slug derivation: lowercase, ASCII-fold accented chars, replace non-alphanumerics with `-`, collapse repeated `-`, strip leading/trailing `-`; empty result falls back to `project`",
+        "On slug collision within the managed root, silently suffix `-2`, `-3`, …",
+        "Confirmation step shows the resolved absolute path (e.g. `Project will be created at ~/Documents/Maskor/my-novel-2/`) before commit",
+        "If the configured managed root does not exist on disk, Maskor `mkdir -p`s it before creating the project folder (no user prompt)",
+        "Submitting calls `POST /projects` with `mode: \"create\"` and the resolved absolute path",
+        "Unit tests cover slug derivation: non-ASCII input, leading numbers, empty-after-strip (falls back to `project`), collision (suffix -2)",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Rename action on each project row",
+      "description": "As a user, I want to rename a project from the management page so its display name stays meaningful over time.",
+      "acceptanceCriteria": [
+        "Row-level \"Rename\" action opens an inline editor or modal seeded with the current project name",
+        "Submitting calls `PATCH /projects/:projectId` with `{ name }` (US-006)",
+        "On success, the row updates to show the new name without a full page reload",
+        "The on-disk folder name is unchanged after rename",
+        "The manifest on disk (`.maskor/project.json`) reflects the new name after rename",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Locate vault action for moved/missing paths",
+      "description": "As a user whose vault folder moved on disk, I want to re-point its registry entry so I can keep using the project.",
+      "acceptanceCriteria": [
+        "Clicking \"Locate vault…\" on a row with a missing path opens the FolderPicker",
+        "New backend endpoint `PATCH /projects/:projectId/vault-path` accepts `{ newPath: string, forceOverride?: boolean }` and updates the registry row's `vaultPath`",
+        "If the picked folder contains `.maskor/project.json` whose UUID matches the row's UUID, re-point succeeds silently",
+        "If the picked folder contains `.maskor/project.json` whose UUID differs, a confirmation dialog appears: \"This folder belongs to a different Maskor project. Re-point anyway?\"; on confirm (`forceOverride: true`), row UUID is preserved and manifest is rewritten with the row's UUID",
+        "If `vaultPath` uniqueness would be violated by the new path, the action errors with a clear message",
+        "On success, the row's vault path updates and the Open button replaces Locate vault…",
+        "Tests cover: simple re-point, UUID-conflict prompt + rewrite, uniqueness violation",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Deregister with optional file deletion",
+      "description": "As a user, I want to deregister a project, with an optional irreversible step to also delete its files.",
+      "acceptanceCriteria": [
+        "Row-level \"Deregister\" opens a confirmation dialog",
+        "Dialog has an \"Also delete the vault folder from disk\" checkbox, unchecked by default",
+        "When checkbox is checked, a text input appears requiring the user to type the project name exactly; confirm button stays disabled until names match",
+        "`DELETE /projects/:projectId` accepts `{ deleteFiles: boolean }` in the request body; when `deleteFiles` is true, calls `moveToTrashOrDelete` helper (US-005) on the vault path before removing the registry row",
+        "Confirmation copy distinguishes \"moved to Trash\" vs \"permanently deleted\" based on platform trash availability (helper returns which method ran)",
+        "Without checkbox: registry row removed, vault files untouched",
+        "With checkbox: vault trashed (preferred) or hard-deleted, then registry row removed",
+        "Tests cover: deregister-only (files untouched), deregister-with-delete-trash, deregister-with-delete-hard-fallback",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Settings section on the management page",
+      "description": "As a user, I want to change where Maskor stores managed projects so I can keep them somewhere other than ~/Documents/Maskor/.",
+      "acceptanceCriteria": [
+        "\"Settings\" section at the bottom of ProjectManagementPage exposes a single field: \"Where to keep Maskor-managed projects\" (text input + \"Browse…\" button that opens FolderPicker)",
+        "A settings endpoint `GET /settings` returns current settings (including `maskorManagedRoot` with default applied); `PATCH /settings` accepts `{ maskorManagedRoot: string }` and writes to `~/.config/maskor/settings.json`",
+        "Submitting writes the value via the settings endpoint; on success the input updates to reflect the saved value",
+        "Changing the value does not move or re-link existing maskor-managed projects (verified by test)",
+        "If the settings file was unparsable, the warning from the settings service is shown inline in this section",
+        "Tests cover: read default, write updates file, existing projects unaffected, unparsable file surfaces warning",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}
