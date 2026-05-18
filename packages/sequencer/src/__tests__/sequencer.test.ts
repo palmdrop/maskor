@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import type { Sequence } from "@maskor/shared";
 import {
+  computeViolations,
   createDefaultSequence,
   placeFragment,
   moveFragment,
@@ -313,6 +314,126 @@ describe("getFragmentOrder", () => {
     sequence = placeFragment(sequence, FA, sectionA, 0);
     sequence = placeFragment(sequence, FB, sectionC, 0);
     expect(getFragmentOrder(sequence)).toEqual([FA, FB]);
+  });
+});
+
+describe("computeViolations", () => {
+  const SECONDARY_A_UUID = "11111111-1111-1111-1111-111111111111";
+  const SECONDARY_B_UUID = "22222222-2222-2222-2222-222222222222";
+
+  function makeMain(): Sequence {
+    return createDefaultSequence(PROJECT_UUID, "Main");
+  }
+
+  function makeSecondary(uuid: string, name: string): Sequence {
+    const sectionUuid = `${uuid.slice(0, 8)}-aaaa-aaaa-aaaa-aaaaaaaaaaaa`;
+    return {
+      uuid,
+      name,
+      isMain: false,
+      projectUuid: PROJECT_UUID,
+      sections: [{ uuid: sectionUuid, name: "", fragments: [] }],
+    };
+  }
+
+  function placeAll(sequence: Sequence, fragmentUuids: string[]): Sequence {
+    const sectionUuid = sequence.sections[0]!.uuid;
+    let next = sequence;
+    for (let i = 0; i < fragmentUuids.length; i++) {
+      next = placeFragment(next, fragmentUuids[i]!, sectionUuid, i);
+    }
+    return next;
+  }
+
+  it("returns no violations when main matches the secondary order", () => {
+    const main = placeAll(makeMain(), [FA, FB, FC]);
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB, FC]);
+    expect(computeViolations(main, [secondary])).toEqual([]);
+  });
+
+  it("returns no violations when there are no secondaries", () => {
+    const main = placeAll(makeMain(), [FA, FB, FC]);
+    expect(computeViolations(main, [])).toEqual([]);
+  });
+
+  it("reports a single violation when one adjacent pair is reversed in main", () => {
+    const main = placeAll(makeMain(), [FB, FA, FC]);
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB, FC]);
+    const violations = computeViolations(main, [secondary]);
+    expect(violations).toEqual([
+      { fragmentUuid: FB, predecessorUuid: FA, secondaryUuid: SECONDARY_A_UUID },
+    ]);
+  });
+
+  it("reports multiple violations on one fragment when several predecessors land after it in main", () => {
+    const main = placeAll(makeMain(), [FD, FA, FB, FC]);
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB, FC, FD]);
+    const violations = computeViolations(main, [secondary]);
+    expect(violations).toHaveLength(3);
+    expect(violations).toContainEqual({
+      fragmentUuid: FD,
+      predecessorUuid: FA,
+      secondaryUuid: SECONDARY_A_UUID,
+    });
+    expect(violations).toContainEqual({
+      fragmentUuid: FD,
+      predecessorUuid: FB,
+      secondaryUuid: SECONDARY_A_UUID,
+    });
+    expect(violations).toContainEqual({
+      fragmentUuid: FD,
+      predecessorUuid: FC,
+      secondaryUuid: SECONDARY_A_UUID,
+    });
+  });
+
+  it("attributes violations to each secondary independently when a fragment is in multiple secondaries", () => {
+    const main = placeAll(makeMain(), [FB, FA]);
+    const secondaryA = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    const secondaryB = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FA, FB]);
+    const violations = computeViolations(main, [secondaryA, secondaryB]);
+    expect(violations).toHaveLength(2);
+    expect(violations).toContainEqual({
+      fragmentUuid: FB,
+      predecessorUuid: FA,
+      secondaryUuid: SECONDARY_A_UUID,
+    });
+    expect(violations).toContainEqual({
+      fragmentUuid: FB,
+      predecessorUuid: FA,
+      secondaryUuid: SECONDARY_B_UUID,
+    });
+  });
+
+  it("does not emit a violation when only one endpoint of a constraint is placed in main", () => {
+    const main = placeAll(makeMain(), [FA]);
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    expect(computeViolations(main, [secondary])).toEqual([]);
+  });
+
+  it("does not emit a violation when the predecessor is placed but the successor is not", () => {
+    const main = placeAll(makeMain(), [FB]);
+    const secondary = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    expect(computeViolations(main, [secondary])).toEqual([]);
+  });
+
+  it("skips secondaries that participate in a cycle", () => {
+    const main = placeAll(makeMain(), [FB, FA]);
+    const secondaryAtoB = placeAll(makeSecondary(SECONDARY_A_UUID, "S1"), [FA, FB]);
+    const secondaryBtoA = placeAll(makeSecondary(SECONDARY_B_UUID, "S2"), [FB, FA]);
+    expect(computeViolations(main, [secondaryAtoB, secondaryBtoA])).toEqual([]);
+  });
+
+  it("does not skip non-cyclic secondaries when other secondaries form a cycle", () => {
+    const SECONDARY_C_UUID = "33333333-3333-3333-3333-333333333333";
+    const main = placeAll(makeMain(), [FB, FA, FD, FC]);
+    const cyclicAtoB = placeAll(makeSecondary(SECONDARY_A_UUID, "Cyclic A->B"), [FA, FB]);
+    const cyclicBtoA = placeAll(makeSecondary(SECONDARY_B_UUID, "Cyclic B->A"), [FB, FA]);
+    const independent = placeAll(makeSecondary(SECONDARY_C_UUID, "Independent"), [FC, FD]);
+    const violations = computeViolations(main, [cyclicAtoB, cyclicBtoA, independent]);
+    expect(violations).toEqual([
+      { fragmentUuid: FD, predecessorUuid: FC, secondaryUuid: SECONDARY_C_UUID },
+    ]);
   });
 });
 

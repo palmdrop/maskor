@@ -170,6 +170,136 @@ export function getFragmentOrder(sequence: Sequence): string[] {
   return result;
 }
 
+export type Violation = {
+  fragmentUuid: string;
+  predecessorUuid: string;
+  secondaryUuid: string;
+};
+
+function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
+  const adjacency = new Map<string, Map<string, Set<string>>>();
+  const allNodes = new Set<string>();
+
+  for (const secondary of secondaries) {
+    const order = getFragmentOrder(secondary);
+    for (let i = 0; i < order.length; i++) {
+      allNodes.add(order[i]!);
+      for (let j = i + 1; j < order.length; j++) {
+        const from = order[i]!;
+        const to = order[j]!;
+        let neighbors = adjacency.get(from);
+        if (!neighbors) {
+          neighbors = new Map();
+          adjacency.set(from, neighbors);
+        }
+        let edgeSecondaries = neighbors.get(to);
+        if (!edgeSecondaries) {
+          edgeSecondaries = new Set();
+          neighbors.set(to, edgeSecondaries);
+        }
+        edgeSecondaries.add(secondary.uuid);
+      }
+    }
+  }
+
+  const indexMap = new Map<string, number>();
+  const lowMap = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const sccs: string[][] = [];
+  let nextIndex = 0;
+
+  function strongconnect(node: string): void {
+    indexMap.set(node, nextIndex);
+    lowMap.set(node, nextIndex);
+    nextIndex++;
+    stack.push(node);
+    onStack.add(node);
+
+    const neighbors = adjacency.get(node);
+    if (neighbors) {
+      for (const neighbor of neighbors.keys()) {
+        if (!indexMap.has(neighbor)) {
+          strongconnect(neighbor);
+          lowMap.set(node, Math.min(lowMap.get(node)!, lowMap.get(neighbor)!));
+        } else if (onStack.has(neighbor)) {
+          lowMap.set(node, Math.min(lowMap.get(node)!, indexMap.get(neighbor)!));
+        }
+      }
+    }
+
+    if (lowMap.get(node) === indexMap.get(node)) {
+      const scc: string[] = [];
+      let popped: string;
+      do {
+        popped = stack.pop()!;
+        onStack.delete(popped);
+        scc.push(popped);
+      } while (popped !== node);
+      sccs.push(scc);
+    }
+  }
+
+  for (const node of allNodes) {
+    if (!indexMap.has(node)) {
+      strongconnect(node);
+    }
+  }
+
+  const cyclicSecondaryUuids = new Set<string>();
+  for (const scc of sccs) {
+    if (scc.length <= 1) continue;
+    const sccSet = new Set(scc);
+    for (const from of scc) {
+      const neighbors = adjacency.get(from);
+      if (!neighbors) continue;
+      for (const [to, edgeSecondaries] of neighbors.entries()) {
+        if (!sccSet.has(to)) continue;
+        for (const secondaryUuid of edgeSecondaries) {
+          cyclicSecondaryUuids.add(secondaryUuid);
+        }
+      }
+    }
+  }
+
+  return cyclicSecondaryUuids;
+}
+
+export function computeViolations(main: Sequence, secondaries: Sequence[]): Violation[] {
+  const mainOrder = getFragmentOrder(main);
+  const mainPosition = new Map<string, number>();
+  for (let i = 0; i < mainOrder.length; i++) {
+    mainPosition.set(mainOrder[i]!, i);
+  }
+
+  const cyclicSecondaryUuids = findCyclicSecondaryUuids(secondaries);
+  const violations: Violation[] = [];
+
+  for (const secondary of secondaries) {
+    if (cyclicSecondaryUuids.has(secondary.uuid)) continue;
+    const order = getFragmentOrder(secondary);
+    for (let i = 0; i < order.length; i++) {
+      const predecessorUuid = order[i]!;
+      const predecessorMainPosition = mainPosition.get(predecessorUuid);
+      if (predecessorMainPosition === undefined) continue;
+      for (let j = i + 1; j < order.length; j++) {
+        const fragmentUuid = order[j]!;
+        const fragmentMainPosition = mainPosition.get(fragmentUuid);
+        if (fragmentMainPosition === undefined) continue;
+        if (predecessorMainPosition >= fragmentMainPosition) {
+          violations.push({
+            fragmentUuid,
+            predecessorUuid,
+            secondaryUuid: secondary.uuid,
+          });
+        }
+      }
+    }
+  }
+
+  return violations;
+}
+
 export function getUnassignedFragmentUuids(
   sequence: Sequence,
   allFragmentUuids: string[],

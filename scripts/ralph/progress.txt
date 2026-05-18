@@ -17,3 +17,16 @@ Started: [pending]
   - Pre-existing tsc errors in sequencer package (fragmentUUID vs fragmentUuid, missing FragmentPosition export) — ignore these, they predate Ralph's work. All 33 tests pass.
   - The `bun run --filter '*' test` command from repo root is the way to run all package tests.
 ---
+
+## [2026-05-18] - US-002
+- Added `Violation` type and `computeViolations(main, secondaries)` to `packages/sequencer/src/index.ts`.
+- Added internal `findCyclicSecondaryUuids` helper using Tarjan's SCC over the union edge graph (with per-edge secondary-UUID provenance) so `computeViolations` can skip secondaries that participate in a cycle. US-003 will expose the cycle detection as `detectCycles` returning the richer `Cycle` shape; this helper can be refactored to share logic when US-003 lands.
+- Added 9 unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts` covering: no violations, no-secondaries, single violation, multiple violations on one fragment, fragment in multiple secondaries, only-one-endpoint-placed (both directions), cycle-skip behavior, and that non-cyclic secondaries still produce violations when other secondaries are cyclic.
+- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
+- Verify: `bun run verify` passes (532 backend tests + 82 frontend tests + typecheck).
+- **Learnings for future iterations:**
+  - Edges in the constraint graph use *all transitive pairs* (A,B) where A precedes B in a secondary's flat order — required for the violation check (subsequence-with-gaps semantics) and consistent with US-003's stated edge construction. Adjacent-pairs-only would miss violations like secondary [A,B,C] vs main [B,C,A] reporting (A→C).
+  - The `Violation.predecessorUuid` is the "A" (should-come-first) and `Violation.fragmentUuid` is the "B" (the fragment that ended up before its predecessor in main).
+  - Pre-existing prettier lint error at `packages/sequencer/src/__tests__/sequencer.test.ts:286` was committed in US-001 (commit 0c7814e) — not introduced here. `bun run verify` (typecheck+test) does not run lint; lint is full of pre-existing repo-wide errors.
+  - When designing tests, `placeFragment` requires a real section UUID — build secondaries via a helper that creates a single empty section with a known UUID, then `placeFragment` into it. Direct construction of Section objects works but requires manually picking valid uuid-shaped strings.
+---
