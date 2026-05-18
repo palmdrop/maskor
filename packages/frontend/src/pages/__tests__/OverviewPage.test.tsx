@@ -74,6 +74,8 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
   useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
   getGetMainSequenceQueryKey: (projectId: string) => [`/projects/${projectId}/sequences/main`],
   getGetSequenceQueryKey: (projectId: string, sequenceId: string) => [
     `/projects/${projectId}/sequences/${sequenceId}`,
@@ -272,13 +274,11 @@ describe("OverviewPage — rendering", () => {
 
     render(<OverviewPage />, { wrapper: wrap() });
 
+    // Pool count is in the <h2> for the pool section
     const headings = screen.getAllByRole("heading", { level: 2 });
-    // section heading shows section name and count; pool heading shows pool count
-    const sectionHeading = headings.find(
-      (h) => !/pool/i.test(h.textContent ?? "") && h.textContent?.includes("("),
-    );
     const poolHeading = headings.find((h) => /pool/i.test(h.textContent ?? ""));
-    expect(sectionHeading?.textContent).toMatch(/\(1\)/);
+    // section has 1 placed fragment; pool has 1 unplaced
+    expect(poolHeading?.textContent).toMatch(/\(1\)/);
     expect(poolHeading?.textContent).toMatch(/\(1\)/);
   });
 });

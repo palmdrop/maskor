@@ -28,6 +28,8 @@ import {
   useMoveFragment,
   useUnplaceFragment,
   useDesignateSequenceMain,
+  useCreateSection,
+  useRenameSection,
   getGetMainSequenceQueryKey,
   getGetSequenceQueryKey,
   getListSequencesQueryKey,
@@ -120,6 +122,8 @@ export const OverviewPage = () => {
   const queryClient = useQueryClient();
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editingSectionValue, setEditingSectionValue] = useState<string>("");
 
   const { data: bundleEnvelope } = useListSequences(projectId);
   const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
@@ -278,6 +282,61 @@ export const OverviewPage = () => {
     },
   });
 
+  const refreshActiveSequence = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: activeQueryKey });
+    void queryClient.invalidateQueries({ queryKey: listQueryKey });
+  }, [queryClient, activeQueryKey, listQueryKey]);
+
+  const createSection = useCreateSection({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.status !== 200) return;
+        const updatedSeq = data.data.sequences.find(
+          (s) => s.uuid === (activeSequenceId ?? sequence?.uuid),
+        );
+        const newSection = updatedSeq?.sections[updatedSeq.sections.length - 1];
+        if (newSection) {
+          setEditingSectionId(newSection.uuid);
+          setEditingSectionValue("");
+        }
+        refreshActiveSequence();
+      },
+    },
+  });
+
+  const renameSection = useRenameSection({
+    mutation: {
+      onSuccess: () => {
+        refreshActiveSequence();
+      },
+    },
+  });
+
+  const handleSectionRenameCommit = (sectionId: string, newName: string) => {
+    if (!sequence) return;
+    renameSection.mutate({
+      projectId,
+      sequenceId: sequence.uuid,
+      sectionId,
+      data: { name: newName },
+    });
+    setEditingSectionId(null);
+  };
+
+  const handleSectionRenameKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    sectionId: string,
+    originalName: string,
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSectionRenameCommit(sectionId, editingSectionValue);
+    } else if (e.key === "Escape") {
+      setEditingSectionId(null);
+      setEditingSectionValue(originalName);
+    }
+  };
+
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) return pointerCollisions;
@@ -395,12 +454,34 @@ export const OverviewPage = () => {
             >
               {sectionsData.map((sectionData) => (
                 <section key={sectionData.uuid} className="flex flex-col gap-2">
-                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                    {sectionData.name || (
-                      <span className="italic">Untitled section</span>
-                    )}{" "}
-                    <span className="tabular-nums">({sectionData.fragmentUuids.length})</span>
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    {editingSectionId === sectionData.uuid ? (
+                      <input
+                        autoFocus
+                        value={editingSectionValue}
+                        onChange={(e) => setEditingSectionValue(e.target.value)}
+                        onKeyDown={(e) =>
+                          handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)
+                        }
+                        onBlur={() => handleSectionRenameCommit(sectionData.uuid, editingSectionValue)}
+                        className="text-sm font-medium text-muted-foreground uppercase tracking-wide bg-transparent border-b border-border focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingSectionId(sectionData.uuid);
+                          setEditingSectionValue(sectionData.name);
+                        }}
+                        className="text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground text-left"
+                      >
+                        {sectionData.name || <span className="italic">Untitled section</span>}
+                      </button>
+                    )}
+                    <span className="text-sm font-medium text-muted-foreground tabular-nums">
+                      ({sectionData.fragmentUuids.length})
+                    </span>
+                  </div>
                   <SectionZone
                     sectionId={sectionData.uuid}
                     isEmpty={sectionData.fragmentUuids.length === 0}
@@ -414,6 +495,23 @@ export const OverviewPage = () => {
                   </SectionZone>
                 </section>
               ))}
+
+              {sequence && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    createSection.mutate({
+                      projectId,
+                      sequenceId: sequence.uuid,
+                      data: { name: "" },
+                    })
+                  }
+                  disabled={createSection.isPending}
+                  className="text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50 self-start"
+                >
+                  + Add section
+                </button>
+              )}
 
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
