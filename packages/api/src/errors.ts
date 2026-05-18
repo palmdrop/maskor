@@ -1,5 +1,11 @@
 import { HTTPException } from "hono/http-exception";
-import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError, ExistingVaultManifestError } from "@maskor/storage";
+import {
+  ProjectNotFoundError,
+  ProjectConflictError,
+  VaultUUIDConflictError,
+  ExistingVaultManifestError,
+  DraftError,
+} from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
 
 const errorResponse = (body: Record<string, unknown>, status: number): Response =>
@@ -33,6 +39,41 @@ export const throwStorageError = (error: unknown): never => {
     throw new HTTPException(409, {
       res: errorResponse({ error: "EXISTING_MANIFEST", message: error.message }, 409),
     });
+  }
+
+  if (error instanceof DraftError) {
+    switch (error.code) {
+      case "DRAFT_NOT_FOUND":
+        throw new HTTPException(404, {
+          res: errorResponse({ error: "NOT_FOUND", message: error.message }, 404),
+        });
+      case "DRAFT_NAME_CONFLICT":
+        throw new HTTPException(409, {
+          res: errorResponse({ error: "DRAFT_NAME_CONFLICT", message: error.message }, 409),
+        });
+      case "DRAFT_OPERATION_IN_PROGRESS":
+        throw new HTTPException(409, {
+          res: errorResponse(
+            { error: "DRAFT_OPERATION_IN_PROGRESS", message: error.message },
+            409,
+          ),
+        });
+      case "INSUFFICIENT_DISK_SPACE":
+        throw new HTTPException(507, {
+          res: errorResponse(
+            { error: "INSUFFICIENT_DISK_SPACE", message: error.message, details: error.details },
+            507,
+          ),
+        });
+      case "DRAFT_INVALID_NAME":
+        throw new HTTPException(400, {
+          res: errorResponse({ error: "DRAFT_INVALID_NAME", message: error.message }, 400),
+        });
+      default:
+        throw new HTTPException(500, {
+          res: errorResponse({ error: "INTERNAL_ERROR", message: error.message }, 500),
+        });
+    }
   }
 
   if (error instanceof VaultError) {

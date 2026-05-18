@@ -41,3 +41,10 @@ export { updateProjectVaultPathCommand } from "./projects/update-project-vault-p
 export { removeProjectCommand } from "./projects/remove-project";
 
 export { createPatchSettingsCommand } from "./settings/patch-settings";
+
+export { createDraftCommand } from "./drafts/create-draft";
+export type { CreateDraftInput } from "./drafts/create-draft";
+export { deleteDraftCommand } from "./drafts/delete-draft";
+export type { DeleteDraftInput } from "./drafts/delete-draft";
+export { restoreDraftCommand } from "./drafts/restore-draft";
+export type { RestoreDraftInput, RestoreDraftResult } from "./drafts/restore-draft";

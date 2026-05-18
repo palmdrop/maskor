@@ -80,19 +80,14 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 6 — Commands and routes
 
-- [ ] Add commands in `packages/api/src/commands/drafts/`:
-  - `create-draft.ts`: `Command<{ name, note? }, DraftManifest>` — calls `storageService.drafts.create`, emits a `draft:created` log entry with `target = { type: "draft", uuid, key: slug, title: name }` and payload `{ name, note }`.
-  - `delete-draft.ts`: `Command<{ draftUuid }, void>` — calls `storageService.drafts.delete`, emits `draft:deleted` with payload `{ name }` (name comes from the manifest deleted-before-removal).
-  - `restore-draft.ts`: `Command<{ draftUuid, saveCurrentFirst, preRestoreName? }, { restoredDraftUuid, preRestoreDraftUuid?: string }>`. If `saveCurrentFirst`, calls `drafts.create` with the supplied or default `Pre-restore — {ISO timestamp}` name **first**. If that fails, the command aborts and surfaces the error before calling `restore`. The command emits TWO log entries on success: `draft:created` (for the pre-restore safety draft) and `draft:restored` (referencing both UUIDs). Matches acceptance criterion: two log-entries in order for the save-then-restore flow.
-- [ ] Export from `packages/api/src/commands/index.ts`.
-- [ ] Add `packages/api/src/routes/drafts.ts` with the router (Hono + zod-openapi):
-  - `POST /api/projects/:projectId/drafts` → create. 400 on duplicate name (case-insensitive); 507 on disk-space refusal; 409 on `DRAFT_OPERATION_IN_PROGRESS`.
-  - `GET /api/projects/:projectId/drafts` → list. Read-only, calls `storageService.drafts.list` directly (per `packages/api/CLAUDE.md`).
-  - `DELETE /api/projects/:projectId/drafts/:draftUuid` → delete. 404 on missing draft.
-  - `POST /api/projects/:projectId/drafts/:draftUuid/restore` → restore. Body: `{ saveCurrentFirst: boolean; preRestoreName?: string }`. 404 on missing draft; 409 on in-progress.
-- [ ] Mount the router in `packages/api/src/app.ts` next to the other project-scoped routers (around line 84-93).
-- [ ] Regenerate the frontend client: from `packages/frontend`, `bun run codegen` with the API running.
-- [ ] Tests in `packages/api/src/__tests__/routes/drafts.test.ts`: 200 happy paths for all four endpoints; duplicate-name 400; missing-draft 404; concurrent-create 409; `draft:created` followed by `draft:restored` in the action log after a save-then-restore.
+- [x] Added commands `create-draft`, `delete-draft`, `restore-draft` under `packages/api/src/commands/drafts/`. `restoreDraftCommand` emits two log entries (pre-restore `draft:created` + `draft:restored`) when `saveCurrentFirst` is on. _(2026-05-18)_
+- [x] Exported the new commands from `commands/index.ts`. _(2026-05-18)_
+- [x] Added `routes/drafts.ts` with list / create / delete / restore endpoints (HTTP 201/200/204/404/409/507/400 mapping via `throwStorageError`). _(2026-05-18)_
+- [x] `DraftError` exported from `@maskor/storage` and mapped in `packages/api/src/errors.ts`. _(2026-05-18)_
+- [x] Mounted `draftsRouter` at `/projects/:projectId/drafts` in `app.ts`. _(2026-05-18)_
+- [x] Regenerated the frontend orval client. `useListDrafts` / `useCreateDraft` / `useDeleteDraft` / `useRestoreDraft` hooks now available. _(2026-05-18)_
+- [x] Route tests cover create / list / delete / restore happy paths plus duplicate-name 409 and missing-draft 404. Restore test asserts the action-log contains both `draft:restored` and `draft:created` for the save-then-restore flow. _(2026-05-18)_
+- [-] _(scope adjustment: concurrent-create 409 is covered at the storage-service level by `mutex.test.ts`. Triggering it cleanly via two simultaneous HTTP requests adds flakiness for no extra signal, so not duplicated here.)_
 - [ ] `git commit` — add draft commands and routes.
 
 ### Phase 7 — Frontend Drafts page

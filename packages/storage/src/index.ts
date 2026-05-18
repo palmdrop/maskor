@@ -39,3 +39,6 @@ export type { ActionLogWriter, ActionLogConfig } from "./action-log";
 
 export { createSettingsService } from "./settings";
 export type { Settings, SettingsService, SettingsReadResult } from "./settings";
+
+export { DraftError } from "./drafts";
+export type { DraftErrorCode, ListedDraft } from "./drafts";
