@@ -5,6 +5,7 @@ import type { Cycle, Sequence, Violation } from "@api/generated/maskorAPI.schema
 import {
   useCreateSequence,
   useUpdateSequence,
+  useDeleteSequence,
   getListSequencesQueryKey,
 } from "@api/generated/sequences/sequences";
 
@@ -107,6 +108,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingDefaultName, setEditingDefaultName] = useState<string>("");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   const listQueryKey = getListSequencesQueryKey(projectId);
 
@@ -119,6 +121,14 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
   });
 
   const updateSequence = useUpdateSequence({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
+      },
+    },
+  });
+
+  const deleteSequence = useDeleteSequence({
     mutation: {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: listQueryKey });
@@ -155,6 +165,24 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
           const newSequence = response.data.sequences.find((s) => s.name === defaultName);
           if (!newSequence) return;
           setEditingRowId(newSequence.uuid);
+        },
+      },
+    );
+  };
+
+  const handleConfirmDelete = (sequenceId: string) => {
+    deleteSequence.mutate(
+      { projectId, sequenceId },
+      {
+        onSuccess: () => {
+          setConfirmingDeleteId(null);
+          if (activeSequenceId === sequenceId) {
+            void navigate({
+              to: "/projects/$projectId/overview",
+              params: { projectId },
+              search: {},
+            });
+          }
         },
       },
     );
@@ -202,6 +230,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
           const isActive =
             (activeSequenceId ?? null) === seq.uuid || (!activeSequenceId && seq.isMain);
           const isEditing = editingRowId === seq.uuid;
+          const isConfirmingDelete = confirmingDeleteId === seq.uuid;
 
           return (
             <li key={seq.uuid}>
@@ -211,25 +240,75 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                   onCommit={(name) => handleCommitRename(seq.uuid, name)}
                   onDone={() => setEditingRowId(null)}
                 />
+              ) : isConfirmingDelete ? (
+                <div className="px-3 py-1.5 flex flex-col gap-1">
+                  <p className="text-xs text-muted-foreground truncate">Delete "{seq.name}"?</p>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmDelete(seq.uuid)}
+                      className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDeleteId(null)}
+                      className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleSelect(seq.uuid)}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors ${
-                    isActive ? "bg-accent text-accent-foreground" : ""
-                  }`}
-                >
-                  <StatusDot status={status} />
-                  <span className="flex-1 truncate">{seq.name}</span>
-                  {seq.isMain && (
-                    <span className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0">
-                      Main
+                <div className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(seq.uuid)}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors ${
+                      isActive ? "bg-accent text-accent-foreground" : ""
+                    }`}
+                  >
+                    <StatusDot status={status} />
+                    <span className="flex-1 truncate">{seq.name}</span>
+                    {seq.isMain && (
+                      <span className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0">
+                        Main
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                      {count}
                     </span>
+                  </button>
+                  {!seq.isMain && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmingDeleteId(seq.uuid);
+                      }}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      aria-label={`Delete sequence "${seq.name}"`}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4h6v2" />
+                      </svg>
+                    </button>
                   )}
-                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                    {count}
-                  </span>
-                </button>
+                </div>
               )}
             </li>
           );
