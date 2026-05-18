@@ -22,7 +22,7 @@ import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
 import { VaultError } from "../vault/types";
 import { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "../db/registry";
-import { createVaultDatabase } from "../db/vault";
+import { closeRawVaultDatabase, createVaultDatabase } from "../db/vault";
 import type { VaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import type { VaultIndexer } from "../indexer/types";
@@ -77,7 +77,16 @@ import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 import { createActionLogWriter, readRecentEntries } from "../action-log";
 import type { ActionLogWriter } from "../action-log";
-import type { LogEntry } from "@maskor/shared";
+import type { DraftManifest, LogEntry } from "@maskor/shared";
+import {
+  cleanupStaleDirectories,
+  createDraft,
+  deleteDraft,
+  listDrafts,
+  restoreDraft,
+  withDraftMutex,
+  type ListedDraft,
+} from "../drafts";
 
 export type StorageServiceConfig = {
   logger?: Logger;
@@ -107,6 +116,18 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const vaultWatcherCache = new Map<string, VaultWatcher>();
   const suggestionCooldownCache = new Map<string, CooldownSet>();
   const actionLogWriterCache = new Map<string, Promise<ActionLogWriter>>();
+
+  // Subscriber bus lives on the service (not the watcher) so SSE clients
+  // survive a watcher teardown — e.g. during a draft restore.
+  const eventSubscribers = new Map<string, Set<(event: VaultSyncEvent) => void>>();
+
+  const emitVaultEvent = (projectUUID: string, event: VaultSyncEvent): void => {
+    const callbacks = eventSubscribers.get(projectUUID);
+    if (!callbacks) return;
+    for (const callback of callbacks) {
+      callback(event);
+    }
+  };
 
   // --- private helpers ---
 
@@ -165,20 +186,26 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     const vault = getVault(context);
     const vaultDatabase = getVaultDatabase(context);
-    const watcher = createVaultWatcher(vaultDatabase, vault, logger, {
-      onNoteRename: async (oldKey, newKey) => {
-        const payload = await cascadeNoteKeyRename(context, oldKey, newKey);
-        vaultDatabase.transaction((tx) => payload.commit(tx));
+    const watcher = createVaultWatcher(
+      vaultDatabase,
+      vault,
+      (event) => emitVaultEvent(context.projectUUID, event),
+      logger,
+      {
+        onNoteRename: async (oldKey, newKey) => {
+          const payload = await cascadeNoteKeyRename(context, oldKey, newKey);
+          vaultDatabase.transaction((tx) => payload.commit(tx));
+        },
+        onReferenceRename: async (oldKey, newKey) => {
+          const payload = await cascadeReferenceKeyRename(context, oldKey, newKey);
+          vaultDatabase.transaction((tx) => payload.commit(tx));
+        },
+        onAspectRename: async (oldKey, newKey) => {
+          const payload = await cascadeAspectKeyRename(context, oldKey, newKey);
+          vaultDatabase.transaction((tx) => payload.commit(tx));
+        },
       },
-      onReferenceRename: async (oldKey, newKey) => {
-        const payload = await cascadeReferenceKeyRename(context, oldKey, newKey);
-        vaultDatabase.transaction((tx) => payload.commit(tx));
-      },
-      onAspectRename: async (oldKey, newKey) => {
-        const payload = await cascadeAspectKeyRename(context, oldKey, newKey);
-        vaultDatabase.transaction((tx) => payload.commit(tx));
-      },
-    });
+    );
     vaultWatcherCache.set(context.projectUUID, watcher);
     return watcher;
   };
@@ -458,6 +485,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         throw new ProjectNotFoundError(projectUUID);
       }
       const { userUUID, vaultPath } = record;
+      // Spec § Crash recovery: clean any stale .staging/.restore-aside left
+      // behind by an interrupted draft create or restore before the user
+      // touches the project.
+      await cleanupStaleDirectories(vaultPath, logger);
       return { userUUID, projectUUID: record.projectUUID, vaultPath };
     },
 
@@ -1579,7 +1610,93 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       subscribe(context: ProjectContext, callback: (event: VaultSyncEvent) => void): () => void {
-        return getVaultWatcher(context).subscribe(callback);
+        let set = eventSubscribers.get(context.projectUUID);
+        if (!set) {
+          set = new Set();
+          eventSubscribers.set(context.projectUUID, set);
+        }
+        set.add(callback);
+        return () => {
+          set?.delete(callback);
+        };
+      },
+    },
+
+    // Draft operations
+
+    drafts: {
+      async create(
+        context: ProjectContext,
+        input: { name: string; note?: string },
+      ): Promise<DraftManifest> {
+        return withDraftMutex(context.vaultPath, async () => {
+          const watcher = getVaultWatcher(context);
+          const vaultDatabase = getVaultDatabase(context);
+          await watcher.pause();
+          try {
+            return await createDraft({
+              vaultPath: context.vaultPath,
+              vaultDatabase,
+              name: input.name,
+              note: input.note,
+              logger,
+            });
+          } finally {
+            watcher.resume();
+          }
+        });
+      },
+
+      async list(context: ProjectContext): Promise<ListedDraft[]> {
+        return listDrafts(context.vaultPath, logger);
+      },
+
+      async delete(context: ProjectContext, uuid: string): Promise<DraftManifest> {
+        return deleteDraft(context.vaultPath, uuid, logger);
+      },
+
+      async restore(context: ProjectContext, uuid: string): Promise<DraftManifest> {
+        return withDraftMutex(context.vaultPath, async () => {
+          // Stop the watcher entirely (not just pause): the live vault.db is
+          // about to be replaced on disk, and the watcher's cached drizzle
+          // wrapper points at the old inode.
+          const oldWatcher = vaultWatcherCache.get(context.projectUUID);
+          if (oldWatcher) {
+            await oldWatcher.pause();
+            await oldWatcher.stop();
+          }
+
+          const result = await restoreDraft({
+            vaultPath: context.vaultPath,
+            uuid,
+            logger,
+          });
+
+          // Close the raw bun:sqlite handle so the new file at the same
+          // path is opened freshly. Drop every cache that closed over the
+          // old database or vault handle.
+          closeRawVaultDatabase(context.vaultPath);
+          vaultDatabaseCache.delete(context.projectUUID);
+          vaultIndexerCache.delete(context.projectUUID);
+          vaultWatcherCache.delete(context.projectUUID);
+
+          // Rebuild the index from the restored vault files. The snapshotted
+          // vault.db is present but not trusted as the live DB — vault stays
+          // source of truth per storage-sync.md.
+          await getVaultIndexer(context).rebuild();
+
+          // Start a fresh watcher on the freshly opened database. Subscriber
+          // bus lives on the service, so existing SSE clients keep receiving
+          // events through the new watcher without re-subscribing.
+          getVaultWatcher(context).start();
+
+          emitVaultEvent(context.projectUUID, {
+            type: "vault:restored",
+            draftUuid: result.draft.uuid,
+          });
+
+          return result.draft;
+        });
       },
     },
   };

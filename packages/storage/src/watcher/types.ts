@@ -16,6 +16,7 @@ export type VaultWatcher = {
   // Use during rebuild() to avoid the watcher/rebuild race condition.
   pause(): Promise<void>;
   resume(): void;
-  // Subscribe to vault sync events. Returns an unsubscribe function.
-  subscribe(callback: (event: VaultSyncEvent) => void): () => void;
+  // Push a synthetic event into the subscribed event bus. Used by the
+  // storage service to broadcast `vault:restored` after a draft restore.
+  emit(event: VaultSyncEvent): void;
 };

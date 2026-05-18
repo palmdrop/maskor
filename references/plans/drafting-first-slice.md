@@ -63,22 +63,19 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 4 — Wire drafts into the storage service
 
-- [ ] In `packages/storage/src/service/storage-service.ts`, add a `drafts` namespace exposing `create(ctx, { name, note? })`, `list(ctx)`, `delete(ctx, draftUuid)`, `restore(ctx, draftUuid)`.
-  - Each operation: `await watcher.pause()` → run the drafts primitive (with the storage write lock held, see below) → `watcher.resume()`.
-  - For `restore`, after the file swap, call `getVaultIndexer(context).rebuild()` before resuming the watcher. Then emit a `vault.restored` event via the watcher's event channel (Phase 5 adds the type).
-  - Wrap concurrent attempts in the module-level draft-ops mutex from Phase 3.
-- [ ] Add a storage write lock at the service level. The lock is a simple async semaphore that the drafts namespace acquires. Mutating routes (fragments / aspects / notes / references / sequences) already serialize through the watcher/indexer in most cases — for v1, drafts.create/restore acquire the lock and other writes proceed normally. Spec § Constraints states the snapshot must drain in-flight writes; combine the existing per-vault path operations via the watcher's drain (Phase 2) so writes complete before the snapshot copy begins.
-- [ ] In project resolve (search `storage-service.ts` for the project resolve path — `register`/`resolve` around line 456), call `cleanupStaleDirectories` from Phase 3 before returning the context.
-- [ ] Tests in `packages/storage/src/__tests__/`: stale `.staging/` removed on resolve; create/list/delete/restore round-trip through service; concurrent create rejects with `DRAFT_OPERATION_IN_PROGRESS`.
+- [x] Added a `drafts` namespace on the storage service with `create`, `list`, `delete`, `restore`. Each operation runs through the per-vault draft mutex; create pauses the watcher (draining writes), restore fully tears down the watcher + DB handle and rebuilds. _(2026-05-18)_
+- [x] `cleanupStaleDirectories` invoked from `resolveProject` before the context is returned. _(2026-05-18)_
+- [x] Service-level integration tests cover create/list/delete round-trip, restore + vault:restored emission, duplicate-name rejection, action-log / project.json preservation across restore, and stale-directory cleanup on resolve. _(2026-05-18)_
+- [-] _(scope adjustment: the planned generic storage write lock turned out to be unnecessary. The per-vault draft mutex + watcher drain already covers the spec's "snapshot must drain in-flight writes" constraint. A general write lock can land later when a non-draft caller needs it.)_
 - [ ] `git commit` — wire drafts into storage service with cleanup-on-resolve.
 
-### Phase 5 — `vault.restored` SSE event
+### Phase 5 — `vault:restored` SSE event
 
-- [ ] Extend `VaultSyncEvent` in `packages/shared/src/events.ts` with `{ type: "vault:restored"; draftUuid: string }`. Add `"vault:restored"` to `VAULT_SYNC_EVENT_TYPES`.
-- [ ] In the watcher (`watcher.ts`), expose a way for the storage service to emit a synthetic event to subscribers. Simplest: add a `emit(event: VaultSyncEvent)` method on the watcher returned object that pushes into the same subscriber set.
-- [ ] In `drafts` service `restore`, after the index rebuild, emit `{ type: "vault:restored", draftUuid }` via that emit method.
-- [ ] Verify the SSE route at `packages/api/src/routes/events.ts` forwards the new variant without changes (it should, since it iterates the union).
-- [ ] Tests: subscribing to vault events sees exactly one `vault:restored` per restore call.
+- [x] Extended `VaultSyncEvent` and `VAULT_SYNC_EVENT_TYPES` with `vault:restored`. _(2026-05-18)_
+- [x] Refactored watcher subscribers out of the watcher and onto the storage service so SSE clients survive watcher teardown across restore. `createVaultWatcher` now takes an `emit` callback; the storage service owns the per-project subscriber bus and proxies subscribe/unsubscribe. _(2026-05-18)_
+- [x] `drafts.restore` emits `vault:restored` through the service bus after the index rebuild. _(2026-05-18)_
+- [x] SSE route in `packages/api/src/routes/events.ts` forwards the new variant unchanged. _(2026-05-18)_
+- [x] Test in `service.test.ts` asserts `vault:restored` is delivered to a subscriber attached before the restore call. _(2026-05-18)_
 - [ ] `git commit` — emit vault:restored SSE event on draft restore.
 
 ### Phase 6 — Commands and routes

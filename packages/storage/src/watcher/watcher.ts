@@ -38,9 +38,12 @@ type Route = {
   handleUnlink: (vaultRelativePath: string) => void;
 };
 
+export type VaultWatcherEmit = (event: VaultSyncEvent) => void;
+
 export const createVaultWatcher = (
   vaultDatabase: VaultDatabase,
   vault: Vault,
+  emit: VaultWatcherEmit,
   logger?: Logger,
   cascadeCallbacks?: CascadeCallbacks,
 ): VaultWatcher => {
@@ -60,17 +63,9 @@ export const createVaultWatcher = (
   let isPaused = false;
   const inFlight = createInFlightTracker();
 
-  const subscribers = new Set<(event: VaultSyncEvent) => void>();
-
   const noteRenameBuffer = createRenameBuffer();
   const referenceRenameBuffer = createRenameBuffer();
   const aspectRenameBuffer = createRenameBuffer();
-
-  const emit = (event: VaultSyncEvent): void => {
-    for (const callback of subscribers) {
-      callback(event);
-    }
-  };
 
   // --- entity configs ---
 
@@ -304,11 +299,8 @@ export const createVaultWatcher = (
       isPaused = false;
     },
 
-    subscribe(callback: (event: VaultSyncEvent) => void): () => void {
-      subscribers.add(callback);
-      return () => {
-        subscribers.delete(callback);
-      };
+    emit(event: VaultSyncEvent): void {
+      emit(event);
     },
   };
 };

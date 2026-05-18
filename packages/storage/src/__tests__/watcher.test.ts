@@ -50,14 +50,23 @@ const makeWatcher = (callbacks: {
 }) => {
   const vault = createVault({ root: vaultDir });
   const vaultDatabase = createVaultDatabase(vaultDir);
+  const subscribers = new Set<(event: VaultSyncEvent) => void>();
+  const emit = (event: VaultSyncEvent) => {
+    for (const cb of subscribers) cb(event);
+  };
+  const watcher = createVaultWatcher(vaultDatabase, vault, emit, undefined, {
+    onNoteRename: callbacks.onNoteRename ?? (async () => {}),
+    onReferenceRename: callbacks.onReferenceRename ?? (async () => {}),
+    onAspectRename: callbacks.onAspectRename ?? (async () => {}),
+  });
   return {
     vault,
     vaultDatabase,
-    watcher: createVaultWatcher(vaultDatabase, vault, undefined, {
-      onNoteRename: callbacks.onNoteRename ?? (async () => {}),
-      onReferenceRename: callbacks.onReferenceRename ?? (async () => {}),
-      onAspectRename: callbacks.onAspectRename ?? (async () => {}),
-    }),
+    watcher,
+    subscribe: (callback: (event: VaultSyncEvent) => void): (() => void) => {
+      subscribers.add(callback);
+      return () => subscribers.delete(callback);
+    },
   };
 };
 
@@ -313,7 +322,7 @@ describe("syncFragment — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
 
@@ -338,7 +347,7 @@ describe("syncFragment — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
     await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
@@ -374,7 +383,7 @@ describe("syncNote — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
 
@@ -399,7 +408,7 @@ describe("syncNote — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
     await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
@@ -433,7 +442,7 @@ describe("syncReference — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
 
@@ -458,7 +467,7 @@ describe("syncReference — hash guard", () => {
     const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
     await indexer.rebuild();
 
-    made.watcher.subscribe((event) => events.push(event));
+    made.subscribe((event) => events.push(event));
     made.watcher.start();
     watcher = made.watcher;
     await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));

@@ -46,3 +46,16 @@ export const vacuumVaultDatabaseInto = (vaultRoot: string, destinationPath: stri
   }
   raw.exec(`VACUUM INTO '${destinationPath.replace(/'/g, "''")}'`);
 };
+
+// Close the raw bun:sqlite handle for a vault and forget it. Used during
+// draft restore: the live `vault.db` file is replaced on disk, so any open
+// handle would still point at the deleted inode. The caller must drop any
+// cached drizzle wrappers / indexer / watcher referencing this database
+// — the next createVaultDatabase call opens a fresh connection.
+export const closeRawVaultDatabase = (vaultRoot: string): void => {
+  const databaseFilePath = vaultDatabaseFilePath(vaultRoot);
+  const raw = rawDatabaseByVaultPath.get(databaseFilePath);
+  if (!raw) return;
+  raw.close();
+  rawDatabaseByVaultPath.delete(databaseFilePath);
+};
