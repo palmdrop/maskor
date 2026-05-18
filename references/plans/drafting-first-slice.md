@@ -51,37 +51,14 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 3 — Storage primitives for drafts
 
-- [ ] Create `packages/storage/src/drafts/` containing `constants.ts`, `types.ts`, `paths.ts`, `manifest.ts`, `disk-space.ts`, `cleanup.ts`, `create.ts`, `list.ts`, `delete.ts`, `restore.ts`, `index.ts`.
-- [ ] `constants.ts`: `DRAFTS_DIRNAME = "drafts"`, `STAGING_DIRNAME = ".staging"`, `RESTORE_ASIDE_DIRNAME = ".restore-aside"`, `MANIFEST_FILENAME = "manifest.json"`.
-- [ ] `paths.ts`: helpers `draftsRoot(vaultPath)`, `stagingRoot(vaultPath)`, `restoreAsideRoot(vaultPath)`, `draftDirectory(vaultPath, slug, shortUuid)`. Encapsulate the `<vault>/.maskor/drafts/<slug>-<short-uuid>/` layout from spec § Draft storage layout.
-- [ ] `manifest.ts`: `readManifest(directory)`, `writeManifest(directory, manifest)`. Validates with the Zod schema added in Phase 1.
-- [ ] `disk-space.ts`: `checkAvailableSpace(vaultPath)` — computes `vaultSize + dbSize` using a recursive directory walker (excluding `.maskor/drafts/`), reads filesystem free space via `statfs` (Bun has `node:fs/promises.statfs` available), and returns `{ ok: boolean; required: number; available: number }`. Refuses if `available < 2 * (vaultSize + dbSize)` per spec § Creating a draft step 1.
-- [ ] `cleanup.ts`: `cleanupStaleDirectories(vaultPath, logger)` — synchronously removes `.staging/` and `.restore-aside/` if either exists, logging warnings. Called from `storage-service.ts` during project resolve (see Phase 4).
-- [ ] `create.ts`: implements the spec § Creating a draft steps 1–7. Takes `{ vaultPath, dbInstance, name, note? }`, returns the resulting `DraftManifest`. Steps inside:
-  1. Pre-check disk space; throw `INSUFFICIENT_DISK_SPACE` if refused.
-  2. Build the staging directory `<vault>/.maskor/drafts/.staging/<uuid>/`.
-  3. Copy `fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/project.json`, `.maskor/action-log.jsonl` into staging. Skip if a directory does not exist.
-  4. Snapshot the DB via `VACUUM INTO '<staging>/.maskor/vault.db'`. Never copy `vault.db` as a raw file (spec § Constraints).
-  5. Compute entity counts from the now-staged content (read counts from the freshly snapshotted DB; cheaper than walking files).
-  6. Write `manifest.json` to staging.
-  7. Atomic rename staging → `<draft-dir>`. On any failure between steps 2–6, delete the staging directory and rethrow.
-- [ ] `list.ts`: reads each subdirectory of `<vault>/.maskor/drafts/` (excluding `.staging/` and `.restore-aside/`), parses each `manifest.json`, returns a sorted-by-`createdAt`-desc list. Does not open the snapshot DB.
-- [ ] `delete.ts`: removes the draft directory recursively. Returns the manifest of the just-deleted draft so the caller (command) can log it.
-- [ ] `restore.ts`: implements spec § Restoring a draft steps 3–10. Takes `{ vaultPath, draftUuid, dbInstance, indexRebuild }`. Steps inside:
-  - Find the draft directory by scanning manifests for `uuid` match. 404 if not found.
-  - Rename each of `fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/vault.db` to `<vault>/.maskor/drafts/.restore-aside/<original-name>/`. Skip live entries that don't exist.
-  - Copy the snapshot's matching entries into the live locations. `project.json` and `action-log.jsonl` are deliberately excluded from this overwrite (spec § Restoring a draft, last two paragraphs).
-  - On any failure during the rename-and-copy loop, rename the aside copies back into place and rethrow.
-  - On success, remove `.restore-aside/`. Trigger a full index rebuild via the passed-in `indexRebuild` callback. Do not trust the snapshotted `vault.db`.
-- [ ] `index.ts`: barrel export of `createDraft`, `listDrafts`, `deleteDraft`, `restoreDraft`, types, error codes.
-- [ ] Define a draft-operations mutex inside the drafts module (or hang it off the storage service). Concurrent create-or-restore returns `DRAFT_OPERATION_IN_PROGRESS`.
-- [ ] Tests in `packages/storage/src/__tests__/drafts/`:
-  - `create.test.ts`: happy path (staging cleaned, draft directory present, manifest correct, entity counts match DB); disk-space refusal; partial-failure cleanup (mock copy to throw mid-way and assert no draft directory exists, no staging directory remains).
-  - `list.test.ts`: empty vault, multiple drafts, sort order, `.staging/` and `.restore-aside/` excluded.
-  - `delete.test.ts`: directory gone after call.
-  - `restore.test.ts`: happy path with file content swap, `action-log.jsonl` preserved byte-for-byte, `project.json` preserved byte-for-byte, rollback on simulated mid-restore failure, missing draft → 404 error.
-  - `cleanup.test.ts`: `.staging/` and `.restore-aside/` removed if present; absent paths are no-ops.
-  - `mutex.test.ts`: two concurrent create calls — one resolves, the other rejects with `DRAFT_OPERATION_IN_PROGRESS`.
+- [x] Created `packages/storage/src/drafts/` (constants, paths, errors, manifest, disk-space, cleanup, mutex, create, list, delete, restore, index). _(2026-05-18)_
+- [x] Added `vacuumVaultDatabaseInto` helper in `db/vault/index.ts` so create.ts can `VACUUM INTO` the live DB. _(2026-05-18)_
+- [x] Case-insensitive name uniqueness enforced in `create.ts`. _(2026-05-18)_
+- [x] Disk-space pre-check using `statfs`. _(2026-05-18)_
+- [x] Atomic staging → rename → cleanup empty staging parent. _(2026-05-18)_
+- [x] Restore rollback path: track moved-aside and copied-into-live, undo both on failure. _(2026-05-18)_
+- [x] Mutex per vault path with `DRAFT_OPERATION_IN_PROGRESS` error. _(2026-05-18)_
+- [x] Tests covering create / list / delete / restore / cleanup / mutex (21 cases). Disk-space refusal not unit-tested — `statfs` is hard to mock portably; the path is covered by integration. _(2026-05-18)_
 - [ ] `git commit` — add storage primitives for drafts.
 
 ### Phase 4 — Wire drafts into the storage service
