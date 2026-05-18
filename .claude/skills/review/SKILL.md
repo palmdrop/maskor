@@ -31,7 +31,7 @@ Examples:
 
 ## How to review
 
-1. Read the relevant diff (`git diff`) or changed files.
+1. Check for uncommited changes using `git diff`, or if in a non-main branch, check for changes against main using `git diff main`.
 2. Check the `references/CODING_STANDARDS.md` to make sure the code conforms to the project standards.
 3. Read the plan (`references/plans/`) and spec (`specifications/`) if they exist — check implementation against intent.
 4. Fill in each section of the template. Remove sections that have nothing to report (replace with "None.").

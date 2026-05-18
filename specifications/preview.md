@@ -56,9 +56,9 @@ Selection is driven by the URL (`/projects/:projectId/preview?sequence=<uuid>`).
 
 ### Assembly
 
-Markdown assembly happens server-side via the `@maskor/exporter` package — the same code path as file export. The frontend calls a preview endpoint with the current sequence and toggle state; the backend returns the assembled markdown plus a per-fragment anchor map. The frontend renders the markdown via the shared `ReadonlyEditor` component, using project typography settings from `useProjectEditorConfig`.
+Sequence assembly happens server-side via the `@maskor/exporter` package — the same code path as file export. The frontend calls a preview endpoint with the current sequence; the backend returns a structured `AssembledSequence` payload (sections → fragments with content and stable uuids). The frontend renders this payload directly: fragment content via a static markdown renderer, anchors via per-fragment wrapper divs, with toggle state controlling section/title visibility and the inter-fragment separator. Typography uses project settings from `useProjectEditorConfig`.
 
-Assembly is deterministic: the same sequence + toggle state always produces the same output, regardless of whether the consumer is preview or export.
+Assembly is deterministic: the same sequence always produces the same `AssembledSequence`, regardless of whether the consumer is preview or export. The structured payload is the shared contract; preview and export each apply their own toggle-driven presentation on top.
 
 ### Toolbar
 
@@ -110,8 +110,8 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - Preview is read-only. It never modifies vault files, the DB, sequences, or any other project state.
 - Assembly logic lives in `@maskor/exporter` — single source of truth shared with export.
 - Toolbar state is project-scoped, stored in `project.json` under `preview`. Not stored in the URL, not stored globally.
-- The `ReadonlyEditor` component used by the preview is shared with the import flow. Extracted from `packages/frontend/src/pages/FragmentImportPage.tsx` to a shared component location.
-- Anchors used for sidebar navigation are emitted by the backend during assembly, not derived by the frontend through text matching.
+- Fragment content in the preview is rendered via a lightweight static markdown component (`StaticMarkdown`), not via a per-fragment Tiptap editor — preview is read-only and editor instances per fragment would blow up at novel-sized sequences. The `ReadonlyEditor` Tiptap wrapper remains for the import flow, where only one instance renders the entire preview.
+- Anchors used for sidebar navigation are stable DOM ids (`fragment-<uuid>`) emitted by the frontend around each rendered fragment, not derived through text matching.
 - Updates are user-driven via the refresh banner — preview never auto-reflows during reading.
 
 ---
@@ -126,7 +126,7 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - **Sidebar grouping is decoupled from prose toggles**: The sidebar is a navigation TOC; toggles are presentation. Section grouping in the sidebar persists regardless of the section-heading prose toggle.
 - **Toggle state persists in `project.json`**: Writers form preferences. URL params or in-memory state would force re-configuration each session. Storing per-project (not per-sequence) keeps the model simple.
 - **Out-of-sequence badge for main only**: For alternate sequences, partial placement is normal. The badge would create noise.
-- **`ReadonlyEditor` is shared with import, but nothing else is**: Import's preview shows "what will be created from this file"; export/preview shows "the assembled manuscript." The renderer is genuinely generic; the surrounding UI and assembly logic are not.
+- **Static markdown for preview, Tiptap for import**: Preview is pure reading — a single Tiptap editor per fragment would create hundreds of editor instances for a novel-sized sequence. The preview uses `StaticMarkdown` (markdown-it → HTML, no editor) per fragment instead. Import's preview keeps `ReadonlyEditor` (one instance, full content) because it shows "what will be created from this file" in a single blob.
 
 ---
 
@@ -153,4 +153,4 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - Previewing the main sequence shows a badge with the count of fragments not placed in main; previewing any other sequence hides the badge.
 - An empty sequence renders the `Sequence empty.` message; a deleted sequence renders the `This sequence no longer exists.` message on the next refresh.
 - The preview never writes to the vault or DB. Repeated preview operations produce no log entries.
-- Preview and export produce byte-identical assembled markdown for the same sequence and toggle state.
+- Preview and export operate on the same `AssembledSequence` payload produced by `@maskor/exporter` for a given sequence — divergence in rendered output is a presentation-layer concern, never an assembly-layer one.

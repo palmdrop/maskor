@@ -53,9 +53,9 @@ export const PreviewToolbar = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {sequences.map((seq) => (
-              <SelectItem key={seq.uuid} value={seq.uuid}>
-                {seq.name}
+            {sequences.map((sequence) => (
+              <SelectItem key={sequence.uuid} value={sequence.uuid}>
+                {sequence.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -90,7 +90,7 @@ export const PreviewToolbar = ({
         <Label className="text-xs shrink-0">Separator</Label>
         <Select
           value={separator}
-          onValueChange={(val) => onPatch({ separator: val as SeparatorType })}
+          onValueChange={(value) => onPatch({ separator: value as SeparatorType })}
         >
           <SelectTrigger className="h-7 text-xs w-36">
             <SelectValue />

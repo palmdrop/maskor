@@ -1,6 +1,6 @@
 import type { AssembledSequence } from "@api/generated/maskorAPI.schemas";
 import type { ProjectPreviewSeparator } from "@api/generated/maskorAPI.schemas";
-import { ReadonlyEditor } from "@components/readonly-editor";
+import { StaticMarkdown } from "@components/static-markdown";
 
 type Props = {
   assembled: AssembledSequence;
@@ -43,11 +43,7 @@ export const PreviewProse = ({
                 {showTitles && fragment.key && (
                   <h3 className="text-base font-medium mb-2">{fragment.key}</h3>
                 )}
-                <ReadonlyEditor
-                  content={fragment.content}
-                  fontSize={fontSize}
-                  maxParagraphWidth={maxParagraphWidth}
-                />
+                <StaticMarkdown content={fragment.content} />
               </div>
             </div>
           ))}

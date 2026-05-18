@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type {
@@ -23,7 +23,12 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("@hooks/useProjectEditorConfig", () => ({
-  useProjectEditorConfig: () => ({ vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 }),
+  useProjectEditorConfig: () => ({
+    vimMode: false,
+    rawMarkdownMode: false,
+    fontSize: 16,
+    maxParagraphWidth: 72,
+  }),
 }));
 
 vi.mock("@api/generated/projects/projects", () => ({
@@ -38,7 +43,6 @@ vi.mock("@api/generated/sequences/sequences", () => ({
 
 vi.mock("@api/generated/preview/preview", () => ({
   useGetAssembledSequence: vi.fn(),
-  useGetMainAssembledSequence: vi.fn(),
 }));
 
 const makeProject = (overrides?: Partial<Project>): Project => ({
@@ -74,7 +78,9 @@ const makeAssembledSequence = (
   ...overrides,
 });
 
-const makeSequenceBundle = (sequences = [{ uuid: SEQUENCE_UUID, name: "Main", isMain: true }]): SequenceBundledResponse => ({
+const makeSequenceBundle = (
+  sequences = [{ uuid: SEQUENCE_UUID, name: "Main", isMain: true }],
+): SequenceBundledResponse => ({
   sequences: sequences as SequenceBundledResponse["sequences"],
   violations: [],
   cycles: [],
@@ -89,10 +95,7 @@ const wrap = () => {
 
 const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
 const { useListSequences } = await import("@api/generated/sequences/sequences");
-const {
-  useGetAssembledSequence,
-  useGetMainAssembledSequence,
-} = await import("@api/generated/preview/preview");
+const { useGetAssembledSequence } = await import("@api/generated/preview/preview");
 const { PreviewPage } = await import("../PreviewPage");
 
 const mockMutate = vi.fn();
@@ -101,7 +104,8 @@ const setupMocks = (overrides?: {
   assembled?: AssembledSequence | null;
   statusCode?: 200 | 404;
 }) => {
-  const assembled = overrides?.assembled !== undefined ? overrides.assembled : makeAssembledSequence();
+  const assembled =
+    overrides?.assembled !== undefined ? overrides.assembled : makeAssembledSequence();
   const statusCode = overrides?.statusCode ?? 200;
 
   (useGetProject as Mock).mockReturnValue({
@@ -116,14 +120,8 @@ const setupMocks = (overrides?: {
     (useGetAssembledSequence as Mock).mockReturnValue({
       data: { status: 404 as const, data: { error: "NOT_FOUND", message: "Not found" } },
     });
-    (useGetMainAssembledSequence as Mock).mockReturnValue({
-      data: { status: 404 as const, data: { error: "NOT_FOUND", message: "Not found" } },
-    });
   } else {
     (useGetAssembledSequence as Mock).mockReturnValue({
-      data: { status: 200 as const, data: assembled },
-    });
-    (useGetMainAssembledSequence as Mock).mockReturnValue({
       data: { status: 200 as const, data: assembled },
     });
   }
@@ -141,12 +139,11 @@ describe("PreviewPage", () => {
     expect(screen.getByText("crossing")).toBeInTheDocument();
   });
 
-  it("renders fragment content via ReadonlyEditor", () => {
+  it("renders fragment content via static markdown", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
-    // ReadonlyEditor renders via tiptap; check that the prose wrapper is in the DOM
-    const mainArea = screen.getByRole("main");
-    expect(mainArea).toBeInTheDocument();
+    expect(screen.getByText("The river was wide.")).toBeInTheDocument();
+    expect(screen.getByText("They crossed at dawn.")).toBeInTheDocument();
   });
 
   it("shows 'Sequence empty.' when the assembled sequence has no fragments", () => {
@@ -194,13 +191,43 @@ describe("PreviewPage", () => {
   it("toggling showTitles applies the change immediately in the prose", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
-    // Before toggle: showTitles is false, so no h3 headings
     expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
 
     const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
     fireEvent.click(toggleButton);
 
-    // After toggle: showTitles is true, fragment keys should appear as h3
     expect(screen.getByRole("heading", { level: 3, name: /opening/i })).toBeInTheDocument();
+  });
+
+  it("rolls back localOverride when the mutation fails", () => {
+    let capturedOnError: (() => void) | undefined;
+    (useGetProject as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeProject() },
+    });
+    (useUpdateProject as Mock).mockImplementation((options) => {
+      capturedOnError = options?.mutation?.onError;
+      return { mutate: mockMutate };
+    });
+    (useListSequences as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeSequenceBundle() },
+    });
+    (useGetAssembledSequence as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeAssembledSequence() },
+    });
+
+    render(<PreviewPage />, { wrapper: wrap() });
+
+    // Apply optimistic toggle: showTitles becomes true via localOverride
+    const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
+    fireEvent.click(toggleButton);
+    expect(screen.getByRole("heading", { level: 3, name: /opening/i })).toBeInTheDocument();
+
+    // Simulate mutation failure: onError should clear localOverride and revert
+    expect(capturedOnError).toBeDefined();
+    act(() => {
+      capturedOnError!();
+    });
+
+    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
   });
 });

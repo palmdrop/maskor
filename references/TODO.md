@@ -8,6 +8,10 @@
 
 - [ ] start implementing `references/plans/drafting-first-slice.md`
 
+- [ ] import does not look right in action log, no import event
+
+- [ ] add typography rule for using indentation instead of newlines... conflicts with markdown syntax but might work out anyway?
+
 - [x] start implementing the preview mode, see new `preview.md` spec
 
 - [ ] remove pieces in favor of dropping partial data directly in the fragments dir, maskor automatically adds missing metdata

@@ -18,7 +18,6 @@ let mainSequenceUuid: string;
 
 const previewUrl = (sequenceId: string) =>
   `/projects/${project.projectUUID}/preview/${sequenceId}`;
-const mainPreviewUrl = () => `/projects/${project.projectUUID}/preview`;
 
 beforeAll(async () => {
   testContext = createTestApp();
@@ -93,18 +92,10 @@ describe("GET /projects/:projectId/preview/:sequenceId", () => {
   });
 });
 
-describe("GET /projects/:projectId/preview", () => {
-  it("returns 200 assembled main sequence", async () => {
-    const response = await testContext.app.request(mainPreviewUrl());
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as AssembledSequence;
-    expect(body.isMain).toBe(true);
-    expect(body.sequenceUuid).toBe(mainSequenceUuid);
-  });
-
+describe("GET /projects/:projectId/preview/:sequenceId", () => {
   it("returns 404 when project does not exist", async () => {
     const response = await testContext.app.request(
-      `/projects/00000000-0000-0000-0000-000000000000/preview`,
+      `/projects/00000000-0000-0000-0000-000000000000/preview/${mainSequenceUuid}`,
     );
     expect(response.status).toBe(404);
   });

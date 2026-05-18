@@ -15,11 +15,11 @@ type SequenceInput = {
   }>;
 };
 
-export function assembleSequence(
+export const assembleSequence = (
   sequence: SequenceInput,
   fragments: Fragment[],
-): AssembledSequence {
-  const fragmentMap = new Map(fragments.map((f) => [f.uuid, f]));
+): AssembledSequence => {
+  const fragmentMap = new Map(fragments.map((fragment) => [fragment.uuid, fragment]));
 
   const sections = sequence.sections.map((section) => {
     const sorted = [...section.fragments].sort((a, b) => a.position - b.position);
@@ -50,4 +50,4 @@ export function assembleSequence(
     isMain: sequence.isMain,
     sections,
   };
-}
+};
