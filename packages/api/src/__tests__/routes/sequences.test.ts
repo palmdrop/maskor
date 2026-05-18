@@ -37,11 +37,13 @@ afterAll(() => {
 const baseUrl = () => `/projects/${project.projectUUID}/sequences`;
 
 describe("GET /projects/:projectId/sequences", () => {
-  it("returns empty list when no sequences exist", async () => {
+  it("returns bundled response when no sequences exist", async () => {
     const response = await testContext.app.request(baseUrl());
     expect(response.status).toBe(200);
-    const body = (await response.json()) as SequenceSummary[];
-    expect(Array.isArray(body)).toBe(true);
+    const body = (await response.json()) as SequenceBundle;
+    expect(Array.isArray(body.sequences)).toBe(true);
+    expect(Array.isArray(body.violations)).toBe(true);
+    expect(Array.isArray(body.cycles)).toBe(true);
   });
 });
 
@@ -66,7 +68,7 @@ describe("GET /projects/:projectId/sequences/main", () => {
 });
 
 describe("POST /projects/:projectId/sequences", () => {
-  it("creates a named sequence and returns 201", async () => {
+  it("creates a named sequence and returns 201 bundle", async () => {
     const response = await testContext.app.request(baseUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,9 +79,10 @@ describe("POST /projects/:projectId/sequences", () => {
       }),
     });
     expect(response.status).toBe(201);
-    const body = (await response.json()) as SequenceFull;
-    expect(body.name).toBe("Draft Order");
-    expect(body.isMain).toBe(false);
+    const body = (await response.json()) as SequenceBundle;
+    const created = body.sequences.find((s) => s.name === "Draft Order");
+    expect(created).toBeDefined();
+    expect(created?.isMain).toBe(false);
   });
 
   it("returns 409 when name conflicts with existing sequence", async () => {
@@ -152,7 +155,7 @@ describe("GET /projects/:projectId/sequences/:sequenceId", () => {
 
 describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
   it("renames a sequence", async () => {
-    const created = (await (
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +165,8 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "To Be Renamed")!;
 
     const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
       method: "PATCH",
@@ -170,12 +174,13 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
       body: JSON.stringify({ name: "Renamed" }),
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as SequenceFull;
-    expect(body.name).toBe("Renamed");
+    const body = (await response.json()) as SequenceBundle;
+    const renamed = body.sequences.find((s) => s.uuid === created.uuid);
+    expect(renamed?.name).toBe("Renamed");
   });
 
   it("rejects renaming to a name that collides with another sequence", async () => {
-    const target = (await (
+    const targetBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,9 +190,10 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const target = targetBundle.sequences.find((s) => s.name === "Rename Target")!;
 
-    const blocker = (await (
+    const blockerBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,7 +203,8 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const blocker = blockerBundle.sequences.find((s) => s.name === "Rename Blocker")!;
 
     const response = await testContext.app.request(`${baseUrl()}/${target.uuid}`, {
       method: "PATCH",
@@ -211,7 +218,7 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
   });
 
   it("allows renaming a sequence to its own current name (no-op)", async () => {
-    const created = (await (
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -221,7 +228,8 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "Self Rename")!;
 
     const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
       method: "PATCH",
@@ -229,12 +237,13 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
       body: JSON.stringify({ name: created.name }),
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as SequenceFull;
-    expect(body.name).toBe(created.name);
+    const body = (await response.json()) as SequenceBundle;
+    const renamed = body.sequences.find((s) => s.uuid === created.uuid);
+    expect(renamed?.name).toBe(created.name);
   });
 
   it("promotes a non-main sequence to main", async () => {
-    const created = (await (
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,7 +253,8 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "Promote Me")!;
 
     const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
       method: "PATCH",
@@ -252,14 +262,15 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
       body: JSON.stringify({ isMain: true }),
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as SequenceFull;
-    expect(body.isMain).toBe(true);
+    const body = (await response.json()) as SequenceBundle;
+    const promoted = body.sequences.find((s) => s.uuid === created.uuid);
+    expect(promoted?.isMain).toBe(true);
   });
 });
 
 describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
-  it("deletes a non-main sequence and returns 204", async () => {
-    const created = (await (
+  it("deletes a non-main sequence and returns 200 bundle", async () => {
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -269,12 +280,15 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "Delete Me")!;
 
     const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
       method: "DELETE",
     });
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceBundle;
+    expect(body.sequences.some((s) => s.uuid === created.uuid)).toBe(false);
   });
 
   it("returns 409 when deleting the main sequence", async () => {
@@ -295,7 +309,7 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
       await testContext.app.request(`${baseUrl()}/main`)
     ).json()) as SequenceFull;
 
-    const secondary = (await (
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -305,7 +319,8 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const secondary = createBundle.sequences.find((s) => s.name === "Secondary To Delete")!;
 
     const fragmentsResp = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments`,
@@ -327,7 +342,7 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
     const deleteResp = await testContext.app.request(`${baseUrl()}/${secondary.uuid}`, {
       method: "DELETE",
     });
-    expect(deleteResp.status).toBe(204);
+    expect(deleteResp.status).toBe(200);
 
     const afterFragmentsResp = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments`,
@@ -343,7 +358,7 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
 });
 
 describe("POST /projects/:projectId/sequences/:sequenceId/positions", () => {
-  it("places a fragment and returns the updated sequence", async () => {
+  it("places a fragment and returns the updated bundle", async () => {
     const main = (await (
       await testContext.app.request(`${baseUrl()}/main`)
     ).json()) as SequenceFull;
@@ -361,9 +376,10 @@ describe("POST /projects/:projectId/sequences/:sequenceId/positions", () => {
       body: JSON.stringify({ fragmentUuid, sectionUuid, position: 0 }),
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as SequenceFull;
-    expect(body.sections[0]!.fragments).toHaveLength(1);
-    expect(body.sections[0]!.fragments[0]!.fragmentUuid).toBe(fragmentUuid);
+    const body = (await response.json()) as SequenceBundle;
+    const mainInBundle = body.sequences.find((s) => s.uuid === main.uuid)!;
+    expect(mainInBundle.sections[0]!.fragments).toHaveLength(1);
+    expect(mainInBundle.sections[0]!.fragments[0]!.fragmentUuid).toBe(fragmentUuid);
   });
 
   it("returns 409 when placing an already-placed fragment", async () => {
@@ -417,11 +433,13 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId/positions/:fragmentUu
       },
     );
     expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceBundle;
+    expect(Array.isArray(body.sequences)).toBe(true);
   });
 });
 
 describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentUuid", () => {
-  it("unplaces a fragment and returns the updated sequence", async () => {
+  it("unplaces a fragment and returns the updated bundle", async () => {
     const main = (await (
       await testContext.app.request(`${baseUrl()}/main`)
     ).json()) as SequenceFull;
@@ -433,6 +451,9 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentU
       { method: "DELETE" },
     );
     expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceBundle;
+    const mainInBundle = body.sequences.find((s) => s.uuid === main.uuid)!;
+    expect(mainInBundle.sections[0]!.fragments.some((f) => f.fragmentUuid === placed.fragmentUuid)).toBe(false);
   });
 });
 
@@ -442,7 +463,7 @@ describe("POST /projects/:projectId/sequences/:sequenceId/designate-main", () =>
       await testContext.app.request(`${baseUrl()}/main`)
     ).json()) as SequenceFull;
 
-    const secondary = (await (
+    const createBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -452,7 +473,8 @@ describe("POST /projects/:projectId/sequences/:sequenceId/designate-main", () =>
           projectUuid: project.projectUUID,
         }),
       })
-    ).json()) as SequenceFull;
+    ).json()) as SequenceBundle;
+    const secondary = createBundle.sequences.find((s) => s.name === "Designate Test Secondary")!;
 
     const response = await testContext.app.request(
       `${baseUrl()}/${secondary.uuid}/designate-main`,
@@ -491,6 +513,74 @@ describe("POST /projects/:projectId/sequences/:sequenceId/designate-main", () =>
       { method: "POST" },
     );
     expect(response.status).toBe(404);
+  });
+});
+
+describe("bundled response - violations and cycles integration", () => {
+  it("includes a violation when secondary order differs from main", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const fragmentsResp = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const allFragments = (await fragmentsResp.json()) as { uuid: string }[];
+    const unplacedInMain = allFragments.filter(
+      (f) => !main.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
+    );
+    if (unplacedInMain.length < 2) return;
+    const [fragA, fragB] = [unplacedInMain[0]!, unplacedInMain[1]!];
+
+    await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: fragA.uuid, sectionUuid: main.sections[0]!.uuid, position: 0 }),
+    });
+    await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: fragB.uuid, sectionUuid: main.sections[0]!.uuid, position: 1 }),
+    });
+
+    const secBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Violation Secondary", isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    const sec = secBundle.sequences.find((s) => s.name === "Violation Secondary")!;
+
+    await testContext.app.request(`${baseUrl()}/${sec.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: fragB.uuid, sectionUuid: sec.sections[0]!.uuid, position: 0 }),
+    });
+    const placeBundle = (await (
+      await testContext.app.request(`${baseUrl()}/${sec.uuid}/positions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fragmentUuid: fragA.uuid, sectionUuid: sec.sections[0]!.uuid, position: 1 }),
+      })
+    ).json()) as SequenceBundle;
+
+    const violation = placeBundle.violations.find(
+      (v) => v.secondaryUuid === sec.uuid,
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.predecessorUuid).toBe(fragB.uuid);
+    expect(violation?.fragmentUuid).toBe(fragA.uuid);
+  });
+
+  it("lists sequences bundle from GET /sequences with populated violations/cycles shape", async () => {
+    const response = await testContext.app.request(baseUrl());
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    expect(Array.isArray(bundle.sequences)).toBe(true);
+    expect(Array.isArray(bundle.violations)).toBe(true);
+    expect(Array.isArray(bundle.cycles)).toBe(true);
+    expect(bundle.sequences.length).toBeGreaterThan(0);
   });
 });
 

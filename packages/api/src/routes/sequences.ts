@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { computeViolations, detectCycles } from "@maskor/sequencer";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
   SequenceSchema,
-  SequenceSummarySchema,
   SequenceUUIDParamSchema,
   SequenceFragmentParamSchema,
   SequenceCreateSchema,
@@ -26,20 +26,33 @@ import {
   unplaceFragmentCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
+import type { StorageService, ProjectContext } from "@maskor/storage";
 
 export const sequencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+async function buildBundledResponse(
+  storageService: StorageService,
+  projectContext: ProjectContext,
+) {
+  const allSequences = await storageService.sequences.readAll(projectContext);
+  const main = allSequences.find((s) => s.isMain) ?? null;
+  const secondaries = allSequences.filter((s) => !s.isMain);
+  const cycles = detectCycles(secondaries);
+  const violations = main ? computeViolations(main, secondaries) : [];
+  return { sequences: allSequences, violations, cycles };
+}
 
 const listSequencesRoute = createRoute({
   operationId: "listSequences",
   method: "get",
   path: "/",
   tags: ["Sequences"],
-  summary: "List sequences for a project (lightweight)",
+  summary: "List all sequences for a project with current violations and cycles",
   request: { params: projectIdParamSchema },
   responses: {
     200: {
-      content: { "application/json": { schema: z.array(SequenceSummarySchema) } },
-      description: "List of sequences",
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Sequences bundle",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -105,7 +118,7 @@ const createSequenceRoute = createRoute({
   },
   responses: {
     201: {
-      content: { "application/json": { schema: SequenceSchema } },
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
       description: "Sequence created",
     },
     409: {
@@ -134,8 +147,8 @@ const updateSequenceRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SequenceSchema } },
-      description: "Updated sequence",
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -160,7 +173,10 @@ const deleteSequenceRoute = createRoute({
   summary: "Delete a sequence (refuses if it is main)",
   request: { params: SequenceUUIDParamSchema },
   responses: {
-    204: { description: "Sequence deleted" },
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Sequence deleted, bundle of remaining sequences",
+    },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Sequence not found",
@@ -214,8 +230,8 @@ const placeFragmentRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SequenceSchema } },
-      description: "Updated sequence",
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -247,8 +263,8 @@ const moveFragmentRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SequenceSchema } },
-      description: "Updated sequence",
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -270,8 +286,8 @@ const unplaceFragmentRoute = createRoute({
   request: { params: SequenceFragmentParamSchema },
   responses: {
     200: {
-      content: { "application/json": { schema: SequenceSchema } },
-      description: "Updated sequence",
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -290,14 +306,8 @@ sequencesRouter.openapi(listSequencesRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
-    const sequences = await storageService.sequences.readAll(projectContext);
-    const summaries = sequences.map(({ uuid, name, isMain, filePath }) => ({
-      uuid,
-      name,
-      isMain,
-      filePath,
-    }));
-    return ctx.json(summaries, 200);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -333,17 +343,20 @@ sequencesRouter.openapi(getSequenceRoute, async (ctx) => {
 sequencesRouter.openapi(createSequenceRoute, async (ctx) => {
   try {
     const { name, isMain } = ctx.req.valid("json");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sequence = await executeCommand(createSequenceCommand, commandContext, {
+    await executeCommand(createSequenceCommand, commandContext, {
       name,
       isMain: isMain ?? false,
     });
-    return ctx.json(sequence, 201);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 201);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -353,17 +366,20 @@ sequencesRouter.openapi(updateSequenceRoute, async (ctx) => {
   try {
     const { sequenceId } = ctx.req.valid("param");
     const patch = ctx.req.valid("json");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sequence = await executeCommand(updateSequenceCommand, commandContext, {
+    await executeCommand(updateSequenceCommand, commandContext, {
       sequenceId,
       patch,
     });
-    return ctx.json(sequence, 200);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -372,14 +388,17 @@ sequencesRouter.openapi(updateSequenceRoute, async (ctx) => {
 sequencesRouter.openapi(deleteSequenceRoute, async (ctx) => {
   try {
     const { sequenceId } = ctx.req.valid("param");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
     await executeCommand(deleteSequenceCommand, commandContext, { sequenceId });
-    return ctx.body(null, 204);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -388,15 +407,16 @@ sequencesRouter.openapi(deleteSequenceRoute, async (ctx) => {
 sequencesRouter.openapi(designateSequenceMainRoute, async (ctx) => {
   try {
     const { sequenceId } = ctx.req.valid("param");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const bundle = await executeCommand(designateSequenceMainCommand, commandContext, {
-      sequenceId,
-    });
+    await executeCommand(designateSequenceMainCommand, commandContext, { sequenceId });
+    const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -419,7 +439,7 @@ sequencesRouter.openapi(placeFragmentRoute, async (ctx) => {
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    const sequence = await executeCommand(placeFragmentCommand, commandContext, {
+    await executeCommand(placeFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
@@ -427,7 +447,8 @@ sequencesRouter.openapi(placeFragmentRoute, async (ctx) => {
       sequenceName: indexedSequence.name,
       fragmentKey: indexedFragment.key,
     });
-    return ctx.json(sequence, 200);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -449,7 +470,7 @@ sequencesRouter.openapi(moveFragmentRoute, async (ctx) => {
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    const sequence = await executeCommand(moveFragmentCommand, commandContext, {
+    await executeCommand(moveFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
@@ -457,7 +478,8 @@ sequencesRouter.openapi(moveFragmentRoute, async (ctx) => {
       sequenceName: indexedSequence.name,
       fragmentKey: indexedFragment.key,
     });
-    return ctx.json(sequence, 200);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }
@@ -478,13 +500,14 @@ sequencesRouter.openapi(unplaceFragmentRoute, async (ctx) => {
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    const sequence = await executeCommand(unplaceFragmentCommand, commandContext, {
+    await executeCommand(unplaceFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
       sequenceName: indexedSequence.name,
       fragmentKey: indexedFragment.key,
     });
-    return ctx.json(sequence, 200);
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
   } catch (error) {
     return throwStorageError(error);
   }

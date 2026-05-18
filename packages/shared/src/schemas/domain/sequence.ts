@@ -77,3 +77,18 @@ export const FragmentPositionMoveSchema = z.object({
 });
 
 export type FragmentPositionMove = z.infer<typeof FragmentPositionMoveSchema>;
+
+export const ViolationSchema = z.object({
+  fragmentUuid: z.string().uuid(),
+  predecessorUuid: z.string().uuid(),
+  secondaryUuid: z.string().uuid(),
+});
+
+export type Violation = z.infer<typeof ViolationSchema>;
+
+export const CycleSchema = z.object({
+  sequenceUuids: z.array(z.string().uuid()),
+  fragmentUuids: z.array(z.string().uuid()),
+});
+
+export type Cycle = z.infer<typeof CycleSchema>;
