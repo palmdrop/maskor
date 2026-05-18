@@ -38,7 +38,7 @@ import {
   type GetSequenceResponse,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
-import type { Sequence } from "@api/generated/maskorAPI.schemas";
+import type { Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import { Heading } from "@components/heading";
 import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
 import { TileContent } from "./components/TileContent";
@@ -189,6 +189,34 @@ export const OverviewPage = () => {
   const fragmentByUuid = useMemo(
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
     [allFragments],
+  );
+
+  const sequenceByUuid = useMemo(
+    () => new Map((bundle?.sequences ?? []).map((s) => [s.uuid, s])),
+    [bundle],
+  );
+
+  const violationsByFragmentUuid = useMemo<Map<string, Violation[]>>(() => {
+    if (!sequence?.isMain || !bundle?.violations?.length) return new Map();
+    const map = new Map<string, Violation[]>();
+    for (const violation of bundle.violations) {
+      const existing = map.get(violation.fragmentUuid) ?? [];
+      map.set(violation.fragmentUuid, [...existing, violation]);
+    }
+    return map;
+  }, [sequence?.isMain, bundle?.violations]);
+
+  const getViolationTooltips = useCallback(
+    (fragmentUuid: string): string[] => {
+      const violations = violationsByFragmentUuid.get(fragmentUuid);
+      if (!violations) return [];
+      return violations.map((violation) => {
+        const predecessor = fragmentByUuid.get(violation.predecessorUuid);
+        const secondary = sequenceByUuid.get(violation.secondaryUuid);
+        return `Should appear after ${predecessor?.key ?? violation.predecessorUuid} (from ${secondary?.name ?? violation.secondaryUuid})`;
+      });
+    },
+    [violationsByFragmentUuid, fragmentByUuid, sequenceByUuid],
   );
 
   const activeQueryKey = activeSequenceId
@@ -566,7 +594,14 @@ export const OverviewPage = () => {
                     {sectionData.fragmentUuids.map((uuid) => {
                       const fragment = fragmentByUuid.get(uuid);
                       if (!fragment) return null;
-                      return <SortableTile key={uuid} fragment={fragment} inSequence={true} />;
+                      return (
+                        <SortableTile
+                          key={uuid}
+                          fragment={fragment}
+                          inSequence={true}
+                          violationTooltips={getViolationTooltips(uuid)}
+                        />
+                      );
                     })}
                   </SectionZone>
                 </section>

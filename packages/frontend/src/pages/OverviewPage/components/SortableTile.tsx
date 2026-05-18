@@ -6,9 +6,10 @@ import { TileContent } from "./TileContent";
 interface TileContentProps {
   fragment: FragmentSummary;
   inSequence: boolean;
+  violationTooltips?: string[];
 }
 
-export const SortableTile = ({ fragment, inSequence }: TileContentProps) => {
+export const SortableTile = ({ fragment, inSequence, violationTooltips }: TileContentProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
   });
@@ -23,7 +24,7 @@ export const SortableTile = ({ fragment, inSequence }: TileContentProps) => {
       {...attributes}
       {...listeners}
     >
-      <TileContent fragment={fragment} inSequence={inSequence} />
+      <TileContent fragment={fragment} inSequence={inSequence} violationTooltips={violationTooltips} />
     </div>
   );
 };
