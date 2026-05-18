@@ -1,8 +1,9 @@
 # Drafting — first slice
 
 **Date**: 18-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/drafting.md`
+**Closed**: 19-05-2026
 
 ---
 
@@ -35,7 +36,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] Extend `LogEntryTargetSchema.type` with `"draft"`. _(2026-05-18)_
 - [x] Extend `ActionTypeSchema` and the discriminated union with `draft:created`, `draft:deleted`, `draft:restored`. _(2026-05-18)_
 - [x] Tests: schema parse round-trip in `packages/shared/src/__tests__/draft-schemas.test.ts`. _(2026-05-18)_
-- [ ] `git commit` — add Draft types and draft action-log entries.
+- [x] `git commit` — add Draft types and draft action-log entries. _(884ffe8)_
 
 ### Phase 2 — In-flight write-handler drain
 
@@ -47,7 +48,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] Removed the TODO comment block from watcher.ts. _(2026-05-18)_
 - [x] Tests in `__tests__/in-flight-tracker.test.ts`: drain semantics, multi-enter coalescing, multi-waiter, negative-guard. _(2026-05-18)_
 - [-] _(skipped — no matching entry in references/suggestions.md; the watcher.ts TODO was the canonical reference and is now removed)_
-- [ ] `git commit` — drain in-flight watcher handlers on pause.
+- [x] `git commit` — drain in-flight watcher handlers on pause. _(b8fb933)_
 
 ### Phase 3 — Storage primitives for drafts
 
@@ -59,7 +60,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] Restore rollback path: track moved-aside and copied-into-live, undo both on failure. _(2026-05-18)_
 - [x] Mutex per vault path with `DRAFT_OPERATION_IN_PROGRESS` error. _(2026-05-18)_
 - [x] Tests covering create / list / delete / restore / cleanup / mutex (21 cases). Disk-space refusal not unit-tested — `statfs` is hard to mock portably; the path is covered by integration. _(2026-05-18)_
-- [ ] `git commit` — add storage primitives for drafts.
+- [x] `git commit` — add storage primitives for drafts. _(810c8c4)_
 
 ### Phase 4 — Wire drafts into the storage service
 
@@ -67,7 +68,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] `cleanupStaleDirectories` invoked from `resolveProject` before the context is returned. _(2026-05-18)_
 - [x] Service-level integration tests cover create/list/delete round-trip, restore + vault:restored emission, duplicate-name rejection, action-log / project.json preservation across restore, and stale-directory cleanup on resolve. _(2026-05-18)_
 - [-] _(scope adjustment: the planned generic storage write lock turned out to be unnecessary. The per-vault draft mutex + watcher drain already covers the spec's "snapshot must drain in-flight writes" constraint. A general write lock can land later when a non-draft caller needs it.)_
-- [ ] `git commit` — wire drafts into storage service with cleanup-on-resolve.
+- [x] `git commit` — wire drafts into storage service + emit vault:restored. _(3c845b9)_
 
 ### Phase 5 — `vault:restored` SSE event
 
@@ -76,7 +77,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] `drafts.restore` emits `vault:restored` through the service bus after the index rebuild. _(2026-05-18)_
 - [x] SSE route in `packages/api/src/routes/events.ts` forwards the new variant unchanged. _(2026-05-18)_
 - [x] Test in `service.test.ts` asserts `vault:restored` is delivered to a subscriber attached before the restore call. _(2026-05-18)_
-- [ ] `git commit` — emit vault:restored SSE event on draft restore.
+- [x] `git commit` — emit vault:restored SSE event on draft restore. _(rolled into 3c845b9)_
 
 ### Phase 6 — Commands and routes
 
@@ -88,7 +89,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] Regenerated the frontend orval client. `useListDrafts` / `useCreateDraft` / `useDeleteDraft` / `useRestoreDraft` hooks now available. _(2026-05-18)_
 - [x] Route tests cover create / list / delete / restore happy paths plus duplicate-name 409 and missing-draft 404. Restore test asserts the action-log contains both `draft:restored` and `draft:created` for the save-then-restore flow. _(2026-05-18)_
 - [-] _(scope adjustment: concurrent-create 409 is covered at the storage-service level by `mutex.test.ts`. Triggering it cleanly via two simultaneous HTTP requests adds flakiness for no extra signal, so not duplicated here.)_
-- [ ] `git commit` — add draft commands and routes.
+- [x] `git commit` — add draft commands and routes. _(7ed75d0)_
 
 ### Phase 7 — Frontend Drafts page
 
@@ -98,14 +99,12 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 - [x] Restore dialog invalidates project-scoped queries on success in addition to relying on the `vault:restored` SSE invalidation hook. _(2026-05-18)_
 - [x] Added `vault:restored` to the SSE event type list in `useVaultEvents` so the frontend invalidates queries when the restore event lands. _(2026-05-18)_
 - [x] Tests in `__tests__/DraftsPage.test.tsx`: empty state, draft list rendering, create-dialog hook wiring, delete confirm hook wiring, restore default `saveCurrentFirst=true`, restore with checkbox off. _(2026-05-18)_
-- [ ] `git commit` — add Drafts page with create / list / delete / restore.
+- [x] `git commit` — add Drafts page with create / list / delete / restore. _(dcf9413)_
 
 ### Phase 8 — Spec sync and plan close-out
 
-- [ ] Update `specifications/drafting.md`:
-  - Add `**Shipped**: 2026-MM-DD — first slice (create, list, delete, restore). Rename and polish items deferred. See `references/plans/drafting-first-slice.md`.` to the frontmatter (mirroring `specifications/export.md` line 6 pattern).
-  - Resolve open question #3 by removing it (drained in-slice — done).
-- [ ] Set this plan's `Status` to `Done` (or `In progress` if shipped partially), set `Closed` date.
+- [x] Added the `Shipped:` line to `specifications/drafting.md` and ticked open question #3. _(2026-05-19)_
+- [x] Plan status flipped to `Done`, `Closed: 19-05-2026`. _(2026-05-19)_
 - [ ] `git commit` — sync drafting spec with first slice shipped.
 
 ---

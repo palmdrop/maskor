@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-18
+**Shipped**: 2026-05-18 — first slice (create, list, delete, restore) shipped end-to-end with crash recovery and the in-flight watcher drain. Rename is deferred to a follow-up slice. See `references/plans/drafting-first-slice.md`.
 
 ---
 
@@ -163,7 +164,7 @@ On project resolve at startup, if `<vault>/.maskor/drafts/.staging/` or `<vault>
 
 - [ ] 2026-05-18 — Should there be a soft-cap on the number of drafts per project, with a warning surfaced when approaching it? Disk-space pre-checks cover the hard failure, but heavy users with hundreds of drafts may want explicit feedback before it becomes a problem.
 - [ ] 2026-05-18 — What is the user-facing label for "Pre-restore — {timestamp}" drafts, and should they be visually distinguished in the drafts list from user-created drafts? Affects UX only, not storage.
-- [ ] 2026-05-18 — Does the SUGGESTIONS-line-28 in-flight drain fix land alongside this work, or as a prerequisite? Both options are viable; resolve when planning the implementation slice.
+- [x] 2026-05-19 — Drain fix landed in the same slice as the first draft implementation. The watcher's `pause()` is now async and drains in-flight handlers via a per-watcher tracker; storage callers `await` it before snapshotting.
 
 ---
 
