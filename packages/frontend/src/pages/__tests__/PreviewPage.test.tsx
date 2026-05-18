@@ -17,9 +17,19 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
+});
+
+vi.mock("@hooks/useProjectEditorConfig", () => ({
+  useProjectEditorConfig: () => ({ vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 }),
+}));
+
 vi.mock("@api/generated/projects/projects", () => ({
   useGetProject: vi.fn(),
   useUpdateProject: vi.fn(),
+  getGetProjectQueryKey: vi.fn(() => ["projects", PROJECT_ID]),
 }));
 
 vi.mock("@api/generated/sequences/sequences", () => ({
@@ -77,10 +87,7 @@ const wrap = () => {
   );
 };
 
-const {
-  useGetProject,
-  useUpdateProject,
-} = await import("@api/generated/projects/projects");
+const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
 const { useListSequences } = await import("@api/generated/sequences/sequences");
 const {
   useGetAssembledSequence,
@@ -178,8 +185,22 @@ describe("PreviewPage", () => {
     fireEvent.click(toggleButton);
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
+        projectId: PROJECT_ID,
         data: expect.objectContaining({ preview: expect.objectContaining({ showTitles: true }) }),
       }),
     );
+  });
+
+  it("toggling showTitles applies the change immediately in the prose", () => {
+    setupMocks();
+    render(<PreviewPage />, { wrapper: wrap() });
+    // Before toggle: showTitles is false, so no h3 headings
+    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
+
+    const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
+    fireEvent.click(toggleButton);
+
+    // After toggle: showTitles is true, fragment keys should appear as h3
+    expect(screen.getByRole("heading", { level: 3, name: /opening/i })).toBeInTheDocument();
   });
 });

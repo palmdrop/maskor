@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useParams, useSearch } from "@tanstack/react-router";
-import { useGetProject } from "@api/generated/projects/projects";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetProject, useUpdateProject, getGetProjectQueryKey } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import {
   useGetAssembledSequence,
@@ -9,12 +11,22 @@ import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { PreviewSidebar } from "./PreviewSidebar";
 import { PreviewProse } from "./PreviewProse";
-import { ProjectPreviewSeparator } from "@api/generated/maskorAPI.schemas";
+import {
+  ProjectPreviewSeparator,
+  type ProjectUpdatePreviewSeparator as SeparatorType,
+} from "@api/generated/maskorAPI.schemas";
+
+type PreviewConfig = {
+  showTitles: boolean;
+  showSectionHeadings: boolean;
+  separator: SeparatorType;
+};
 
 export const PreviewPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/preview" });
   const { sequence: sequenceParam } = useSearch({ from: "/projects/$projectId/preview" });
   const { fontSize, maxParagraphWidth } = useProjectEditorConfig(projectId);
+  const queryClient = useQueryClient();
 
   const { data: projectEnvelope } = useGetProject(projectId);
   const project = projectEnvelope?.status === 200 ? projectEnvelope.data : null;
@@ -26,10 +38,27 @@ export const PreviewPage = () => {
   const mainSequence = sequences.find((s) => s.isMain) ?? null;
   const activeSequenceUuid = sequenceParam ?? mainSequence?.uuid ?? null;
 
-  const preview = project?.preview ?? {
+  const serverPreview: PreviewConfig = project?.preview ?? {
     showTitles: false,
     showSectionHeadings: true,
     separator: ProjectPreviewSeparator["blank-line"],
+  };
+
+  const [localOverride, setLocalOverride] = useState<Partial<PreviewConfig>>({});
+  const preview: PreviewConfig = { ...serverPreview, ...localOverride };
+
+  const { mutate: updateProject } = useUpdateProject({
+    mutation: {
+      onSuccess: () => {
+        setLocalOverride({});
+        void queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      },
+    },
+  });
+
+  const handlePreviewPatch = (patch: Partial<PreviewConfig>) => {
+    setLocalOverride((prev) => ({ ...prev, ...patch }));
+    updateProject({ projectId, data: { preview: patch } });
   };
 
   const { data: assembledEnvelopeById } = useGetAssembledSequence(
@@ -45,8 +74,7 @@ export const PreviewPage = () => {
   const assembledEnvelope = activeSequenceUuid ? assembledEnvelopeById : assembledEnvelopeMain;
   const assembled = assembledEnvelope?.status === 200 ? assembledEnvelope.data : null;
 
-  const hasSections =
-    assembled ? assembled.sections.some((s) => s.name.trim().length > 0) : false;
+  const hasSections = assembled ? assembled.sections.some((s) => s.name.trim().length > 0) : false;
 
   if (assembledEnvelope?.status === 404) {
     return (
@@ -65,13 +93,14 @@ export const PreviewPage = () => {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PreviewToolbar
-        projectId={projectId}
         sequences={sequences}
         activeSequenceUuid={activeSequenceUuid ?? ""}
+        projectId={projectId}
         showTitles={preview.showTitles}
         showSectionHeadings={preview.showSectionHeadings}
         separator={preview.separator}
         hasSections={hasSections}
+        onPatch={handlePreviewPatch}
       />
       <div className="flex flex-1 min-h-0">
         <PreviewSidebar assembled={assembled} />

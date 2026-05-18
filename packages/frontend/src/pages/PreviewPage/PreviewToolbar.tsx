@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useUpdateProject } from "@api/generated/projects/projects";
 import {
   ProjectUpdatePreviewSeparator,
   type ProjectUpdatePreviewSeparator as SeparatorType,
@@ -23,6 +22,7 @@ type Props = {
   showSectionHeadings: boolean;
   separator: SeparatorType;
   hasSections: boolean;
+  onPatch: (patch: { showTitles?: boolean; showSectionHeadings?: boolean; separator?: SeparatorType }) => void;
 };
 
 export const PreviewToolbar = ({
@@ -33,17 +33,9 @@ export const PreviewToolbar = ({
   showSectionHeadings,
   separator,
   hasSections,
+  onPatch,
 }: Props) => {
   const navigate = useNavigate();
-  const { mutate: updateProject } = useUpdateProject();
-
-  const patch = (preview: {
-    showTitles?: boolean;
-    showSectionHeadings?: boolean;
-    separator?: SeparatorType;
-  }) => {
-    updateProject({ projectId, data: { preview } });
-  };
 
   const handleSequenceChange = (sequenceUuid: string) => {
     void navigate({
@@ -74,7 +66,7 @@ export const PreviewToolbar = ({
         <Switch
           id="show-titles"
           checked={showTitles}
-          onCheckedChange={(checked) => patch({ showTitles: checked })}
+          onCheckedChange={(checked) => onPatch({ showTitles: checked })}
         />
         <Label htmlFor="show-titles" className="text-xs">
           Fragment titles
@@ -86,7 +78,7 @@ export const PreviewToolbar = ({
           <Switch
             id="show-section-headings"
             checked={showSectionHeadings}
-            onCheckedChange={(checked) => patch({ showSectionHeadings: checked })}
+            onCheckedChange={(checked) => onPatch({ showSectionHeadings: checked })}
           />
           <Label htmlFor="show-section-headings" className="text-xs">
             Section headings
@@ -96,7 +88,10 @@ export const PreviewToolbar = ({
 
       <div className="flex items-center gap-1.5">
         <Label className="text-xs shrink-0">Separator</Label>
-        <Select value={separator} onValueChange={(val) => patch({ separator: val as SeparatorType })}>
+        <Select
+          value={separator}
+          onValueChange={(val) => onPatch({ separator: val as SeparatorType })}
+        >
           <SelectTrigger className="h-7 text-xs w-36">
             <SelectValue />
           </SelectTrigger>
