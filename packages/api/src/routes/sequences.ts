@@ -362,19 +362,27 @@ sequencesRouter.openapi(deleteSequenceRoute, async (ctx) => {
 
 sequencesRouter.openapi(placeFragmentRoute, async (ctx) => {
   try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const { sequenceId } = ctx.req.valid("param");
     const { fragmentUuid, sectionUuid, position } = ctx.req.valid("json");
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
+    const [indexedSequence, indexedFragment] = await Promise.all([
+      storageService.sequences.read(projectContext, sequenceId),
+      storageService.fragments.read(projectContext, fragmentUuid),
+    ]);
     const sequence = await executeCommand(placeFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
       position,
+      sequenceName: indexedSequence.name,
+      fragmentKey: indexedFragment.key,
     });
     return ctx.json(sequence, 200);
   } catch (error) {
@@ -384,19 +392,27 @@ sequencesRouter.openapi(placeFragmentRoute, async (ctx) => {
 
 sequencesRouter.openapi(moveFragmentRoute, async (ctx) => {
   try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const { sequenceId, fragmentUuid } = ctx.req.valid("param");
     const { sectionUuid, position } = ctx.req.valid("json");
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
+    const [indexedSequence, indexedFragment] = await Promise.all([
+      storageService.sequences.read(projectContext, sequenceId),
+      storageService.fragments.read(projectContext, fragmentUuid),
+    ]);
     const sequence = await executeCommand(moveFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
       position,
+      sequenceName: indexedSequence.name,
+      fragmentKey: indexedFragment.key,
     });
     return ctx.json(sequence, 200);
   } catch (error) {
@@ -406,16 +422,24 @@ sequencesRouter.openapi(moveFragmentRoute, async (ctx) => {
 
 sequencesRouter.openapi(unplaceFragmentRoute, async (ctx) => {
   try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
     const { sequenceId, fragmentUuid } = ctx.req.valid("param");
     const commandContext: CommandContext = {
-      storageService: ctx.get("storageService"),
-      projectContext: ctx.get("projectContext")!,
+      storageService,
+      projectContext,
       actor: "user",
       logger: ctx.get("logger"),
     };
+    const [indexedSequence, indexedFragment] = await Promise.all([
+      storageService.sequences.read(projectContext, sequenceId),
+      storageService.fragments.read(projectContext, fragmentUuid),
+    ]);
     const sequence = await executeCommand(unplaceFragmentCommand, commandContext, {
       sequenceId,
       fragmentUuid,
+      sequenceName: indexedSequence.name,
+      fragmentKey: indexedFragment.key,
     });
     return ctx.json(sequence, 200);
   } catch (error) {

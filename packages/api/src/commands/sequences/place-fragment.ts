@@ -8,10 +8,12 @@ type PlaceFragmentInput = {
   fragmentUuid: string;
   sectionUuid: string;
   position: number;
+  sequenceName: string;
+  fragmentKey: string;
 };
 
 export const placeFragmentCommand: Command<PlaceFragmentInput, IndexedSequence> = {
-  async execute(ctx, { sequenceId, fragmentUuid, sectionUuid, position }) {
+  async execute(ctx, { sequenceId, fragmentUuid, sectionUuid, position, sequenceName, fragmentKey }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
     let updated;
     try {
@@ -32,8 +34,8 @@ export const placeFragmentCommand: Command<PlaceFragmentInput, IndexedSequence> 
         {
           type: "sequence:fragment-placed" as const,
           actor: ctx.actor,
-          target: { type: "sequence" as const, uuid: sequenceId },
-          payload: {},
+          target: { type: "sequence" as const, uuid: sequenceId, title: sequenceName },
+          payload: { fragmentKey },
           undoable: true,
         },
       ],

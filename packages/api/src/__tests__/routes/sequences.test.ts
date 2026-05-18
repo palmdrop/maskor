@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
+import type { LogEntry } from "@maskor/shared";
 
 type SequenceSummary = { uuid: string; name: string; isMain: boolean; filePath: string };
 type Section = {
@@ -288,5 +289,101 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentU
       { method: "DELETE" },
     );
     expect(response.status).toBe(200);
+  });
+});
+
+describe("sequence fragment action log entries", () => {
+  it("place records target.title and payload.fragmentKey", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const sectionUuid = main.sections[0]!.uuid;
+
+    const fragmentsResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResponse.json()) as { uuid: string; key: string }[];
+    const unplaced = fragments.find(
+      (f) => !main.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
+    );
+    if (!unplaced) return;
+
+    await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: unplaced.uuid, sectionUuid, position: 0 }),
+    });
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const entry = entries.find((e) => e.type === "sequence:fragment-placed");
+    expect(entry).toBeDefined();
+    expect(entry!.target.title).toBe(main.name);
+    expect((entry!.payload as { fragmentKey: string }).fragmentKey).toBe(unplaced.key);
+  });
+
+  it("move records target.title and payload.fragmentKey", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const sectionUuid = main.sections[0]!.uuid;
+    const placed = main.sections[0]!.fragments[0];
+    if (!placed) return;
+
+    const fragmentsResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResponse.json()) as { uuid: string; key: string }[];
+    const placedFragment = fragments.find((f) => f.uuid === placed.fragmentUuid);
+    if (!placedFragment) return;
+
+    await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionUuid, position: 0 }),
+      },
+    );
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const entry = entries.find((e) => e.type === "sequence:fragment-moved");
+    expect(entry).toBeDefined();
+    expect(entry!.target.title).toBe(main.name);
+    expect((entry!.payload as { fragmentKey: string }).fragmentKey).toBe(placedFragment.key);
+  });
+
+  it("unplace records target.title and payload.fragmentKey", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const placed = main.sections[0]!.fragments[0];
+    if (!placed) return;
+
+    const fragmentsResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentsResponse.json()) as { uuid: string; key: string }[];
+    const placedFragment = fragments.find((f) => f.uuid === placed.fragmentUuid);
+    if (!placedFragment) return;
+
+    await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`,
+      { method: "DELETE" },
+    );
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const entry = entries.find((e) => e.type === "sequence:fragment-unplaced");
+    expect(entry).toBeDefined();
+    expect(entry!.target.title).toBe(main.name);
+    expect((entry!.payload as { fragmentKey: string }).fragmentKey).toBe(placedFragment.key);
   });
 });

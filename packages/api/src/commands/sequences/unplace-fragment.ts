@@ -5,10 +5,12 @@ import type { Command } from "../types";
 type UnplaceFragmentInput = {
   sequenceId: string;
   fragmentUuid: string;
+  sequenceName: string;
+  fragmentKey: string;
 };
 
 export const unplaceFragmentCommand: Command<UnplaceFragmentInput, IndexedSequence> = {
-  async execute(ctx, { sequenceId, fragmentUuid }) {
+  async execute(ctx, { sequenceId, fragmentUuid, sequenceName, fragmentKey }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
     const updated = unplaceFragment(indexed, fragmentUuid);
     await ctx.storageService.sequences.write(ctx.projectContext, updated);
@@ -20,8 +22,8 @@ export const unplaceFragmentCommand: Command<UnplaceFragmentInput, IndexedSequen
         {
           type: "sequence:fragment-unplaced" as const,
           actor: ctx.actor,
-          target: { type: "sequence" as const, uuid: sequenceId },
-          payload: {},
+          target: { type: "sequence" as const, uuid: sequenceId, title: sequenceName },
+          payload: { fragmentKey },
           undoable: true,
         },
       ],

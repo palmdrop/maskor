@@ -1,7 +1,7 @@
 # Sequence action log: human-readable names
 
 **Date**: 17-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/action-log.md`, `specifications/sequencer.md`
 
 ---
@@ -16,21 +16,21 @@
 
 ### Phase 1 — Extend command input types
 
-- [ ] Add `fragmentKey: string` and `sequenceName: string` to `PlaceFragmentInput` in `packages/api/src/commands/sequences/place-fragment.ts`
-- [ ] Add `fragmentKey: string` and `sequenceName: string` to `MoveFragmentInput` in `packages/api/src/commands/sequences/move-fragment.ts`
-- [ ] Add `fragmentKey: string` and `sequenceName: string` to `UnplaceFragmentInput` in `packages/api/src/commands/sequences/unplace-fragment.ts`
+- [x] Add `fragmentKey: string` and `sequenceName: string` to `PlaceFragmentInput` in `packages/api/src/commands/sequences/place-fragment.ts`
+- [x] Add `fragmentKey: string` and `sequenceName: string` to `MoveFragmentInput` in `packages/api/src/commands/sequences/move-fragment.ts`
+- [x] Add `fragmentKey: string` and `sequenceName: string` to `UnplaceFragmentInput` in `packages/api/src/commands/sequences/unplace-fragment.ts`
 
 ### Phase 2 — Populate log entry fields in commands
 
-- [ ] In `placeFragmentCommand.execute`: set `target: { type: "sequence", uuid: sequenceId, title: sequenceName }` and `payload: { fragmentUuid, fragmentKey }`
-- [ ] In `moveFragmentCommand.execute`: same target and payload shape
-- [ ] In `unplaceFragmentCommand.execute`: same target and payload shape
+- [x] In `placeFragmentCommand.execute`: set `target: { type: "sequence", uuid: sequenceId, title: sequenceName }` and `payload: { fragmentUuid, fragmentKey }`
+- [x] In `moveFragmentCommand.execute`: same target and payload shape
+- [x] In `unplaceFragmentCommand.execute`: same target and payload shape
 
 ### Phase 3 — Pre-fetch in route handlers
 
-- [ ] In `placeFragmentRoute` handler (`packages/api/src/routes/sequences.ts`): read the sequence via `storageService.sequences.read(projectContext, sequenceId)` and the fragment via `storageService.fragments.read(projectContext, fragmentUuid)` before calling `executeCommand`; pass `sequence.name` and `fragment.key` into the command input
-- [ ] In `moveFragmentRoute` handler: same pre-fetches
-- [ ] In `unplaceFragmentRoute` handler: same pre-fetches
+- [x] In `placeFragmentRoute` handler (`packages/api/src/routes/sequences.ts`): read the sequence via `storageService.sequences.read(projectContext, sequenceId)` and the fragment via `storageService.fragments.read(projectContext, fragmentUuid)` before calling `executeCommand`; pass `sequence.name` and `fragment.key` into the command input
+- [x] In `moveFragmentRoute` handler: same pre-fetches
+- [x] In `unplaceFragmentRoute` handler: same pre-fetches
 
 ---
 

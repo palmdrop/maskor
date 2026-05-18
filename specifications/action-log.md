@@ -7,6 +7,7 @@
 
 - 2026-05-09 — Every state-changing user action is recorded in a persistent action log; a history page shows recent entries most-recent-first with human-readable descriptions and entity links. (plan: references/plans/action-log.md)
 - 2026-05-09 — Fragment metadata changes (ready status, aspect weights, note and reference attachments) are individually logged as single-intent entries. (plan: references/plans/entity-live-metadata-save.md)
+- 2026-05-18 — Sequence fragment-placed, fragment-moved, and fragment-unplaced log entries include the sequence name in target.title and the fragment key in payload.fragmentKey for human-readable rendering. (plan: references/plans/sequence-action-log-human-readable.md)
 
 ---
 

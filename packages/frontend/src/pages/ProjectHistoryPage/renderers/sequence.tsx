@@ -1,14 +1,24 @@
 import type { LogEntry } from "@maskor/shared";
 
-const key = (entry: LogEntry) => entry.target.key ?? entry.target.uuid;
+const sequenceName = (entry: LogEntry) => entry.target.title ?? entry.target.uuid;
 
 export const renderSequenceEntryText = (entry: LogEntry): string => {
   switch (entry.type) {
     case "sequence:fragment-placed":
-      return `Fragment "${key(entry)}" placed in sequence`;
+      return `Fragment "${entry.payload.fragmentKey}" placed in sequence "${sequenceName(entry)}"`;
     case "sequence:fragment-moved":
-      return `Fragment "${key(entry)}" moved in sequence`;
+      return `Fragment "${entry.payload.fragmentKey}" moved in sequence "${sequenceName(entry)}"`;
+    case "sequence:fragment-unplaced":
+      return `Fragment "${entry.payload.fragmentKey}" removed from sequence "${sequenceName(entry)}"`;
+    case "sequence:created":
+      return `Sequence "${sequenceName(entry)}" created`;
+    case "sequence:renamed":
+      return `Sequence renamed: "${entry.payload.oldKey}" → "${entry.payload.newKey}"`;
+    case "sequence:deleted":
+      return `Sequence "${sequenceName(entry)}" deleted`;
+    case "sequence:set-main":
+      return `Sequence "${sequenceName(entry)}" set as main`;
     default:
-      return `Sequence action on "${key(entry)}"`;
+      return `Sequence action on "${sequenceName(entry)}"`;
   }
 };
