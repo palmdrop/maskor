@@ -30,6 +30,7 @@ import {
   useDesignateSequenceMain,
   useCreateSection,
   useRenameSection,
+  useDeleteSection,
   getGetMainSequenceQueryKey,
   getGetSequenceQueryKey,
   getListSequencesQueryKey,
@@ -124,6 +125,7 @@ export const OverviewPage = () => {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionValue, setEditingSectionValue] = useState<string>("");
+  const [confirmingDeleteSectionId, setConfirmingDeleteSectionId] = useState<string | null>(null);
 
   const { data: bundleEnvelope } = useListSequences(projectId);
   const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
@@ -323,6 +325,15 @@ export const OverviewPage = () => {
     setEditingSectionId(null);
   };
 
+  const deleteSection = useDeleteSection({
+    mutation: {
+      onSuccess: () => {
+        setConfirmingDeleteSectionId(null);
+        refreshActiveSequence();
+      },
+    },
+  });
+
   const handleSectionRenameKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
     sectionId: string,
@@ -454,34 +465,99 @@ export const OverviewPage = () => {
             >
               {sectionsData.map((sectionData) => (
                 <section key={sectionData.uuid} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    {editingSectionId === sectionData.uuid ? (
-                      <input
-                        autoFocus
-                        value={editingSectionValue}
-                        onChange={(e) => setEditingSectionValue(e.target.value)}
-                        onKeyDown={(e) =>
-                          handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)
-                        }
-                        onBlur={() => handleSectionRenameCommit(sectionData.uuid, editingSectionValue)}
-                        className="text-sm font-medium text-muted-foreground uppercase tracking-wide bg-transparent border-b border-border focus:outline-none"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingSectionId(sectionData.uuid);
-                          setEditingSectionValue(sectionData.name);
-                        }}
-                        className="text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground text-left"
-                      >
-                        {sectionData.name || <span className="italic">Untitled section</span>}
-                      </button>
-                    )}
-                    <span className="text-sm font-medium text-muted-foreground tabular-nums">
-                      ({sectionData.fragmentUuids.length})
-                    </span>
-                  </div>
+                  {confirmingDeleteSectionId === sectionData.uuid ? (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm text-muted-foreground">
+                        Delete section?{" "}
+                        {sectionData.fragmentUuids.length > 0 && (
+                          <span>
+                            {sectionData.fragmentUuids.length} fragment
+                            {sectionData.fragmentUuids.length !== 1 ? "s" : ""} will return to the
+                            pool.
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            sequence &&
+                            deleteSection.mutate({
+                              projectId,
+                              sequenceId: sequence.uuid,
+                              sectionId: sectionData.uuid,
+                            })
+                          }
+                          className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingDeleteSectionId(null)}
+                          className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="group flex items-center gap-2">
+                      {editingSectionId === sectionData.uuid ? (
+                        <input
+                          autoFocus
+                          value={editingSectionValue}
+                          onChange={(e) => setEditingSectionValue(e.target.value)}
+                          onKeyDown={(e) =>
+                            handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)
+                          }
+                          onBlur={() =>
+                            handleSectionRenameCommit(sectionData.uuid, editingSectionValue)
+                          }
+                          className="text-sm font-medium text-muted-foreground uppercase tracking-wide bg-transparent border-b border-border focus:outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingSectionId(sectionData.uuid);
+                            setEditingSectionValue(sectionData.name);
+                          }}
+                          className="text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground text-left"
+                        >
+                          {sectionData.name || <span className="italic">Untitled section</span>}
+                        </button>
+                      )}
+                      <span className="text-sm font-medium text-muted-foreground tabular-nums">
+                        ({sectionData.fragmentUuids.length})
+                      </span>
+                      {sectionsData.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingDeleteSectionId(sectionData.uuid)}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          aria-label={`Delete section "${sectionData.name || "Untitled section"}"`}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4h6v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <SectionZone
                     sectionId={sectionData.uuid}
                     isEmpty={sectionData.fragmentUuids.length === 0}

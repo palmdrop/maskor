@@ -76,6 +76,7 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
+  useDeleteSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   getGetMainSequenceQueryKey: (projectId: string) => [`/projects/${projectId}/sequences/main`],
   getGetSequenceQueryKey: (projectId: string, sequenceId: string) => [
     `/projects/${projectId}/sequences/${sequenceId}`,
