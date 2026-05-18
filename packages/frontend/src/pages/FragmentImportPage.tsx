@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
-import Typography from "@tiptap/extension-typography";
 import { Loader2Icon } from "lucide-react";
 import {
   usePreviewImportFragments,
@@ -17,6 +13,7 @@ import type {
   ImportResult,
 } from "@api/generated/maskorAPI.schemas";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { ReadonlyEditor } from "@components/readonly-editor";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -58,45 +55,6 @@ function getPieceAnchor(piece: PreviewPiece) {
 
 type RouterState = {
   file?: File;
-};
-
-type ReadonlyEditorProps = {
-  content: string;
-  fontSize: number;
-  maxParagraphWidth: number;
-};
-
-const ReadonlyEditor = ({ content, fontSize, maxParagraphWidth }: ReadonlyEditorProps) => {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Markdown.configure({ html: false, transformPastedText: true }),
-      Typography,
-    ],
-    content,
-    editable: false,
-    editorProps: {
-      attributes: {
-        class: "prose prose-stone dark:prose-invert max-w-none px-1 py-2",
-      },
-    },
-  });
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.commands.setContent(content);
-  }, [content, editor]);
-
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div
-        className="mx-auto w-full"
-        style={{ fontSize: `${fontSize}px`, maxWidth: `${maxParagraphWidth}ch` }}
-      >
-        <EditorContent editor={editor} />
-      </div>
-    </div>
-  );
 };
 
 export const FragmentImportPage = () => {
