@@ -5,10 +5,20 @@ interface TileContentProps {
   inSequence: boolean;
   violationTooltips?: string[];
   cycleTooltips?: string[];
+  isSelected?: boolean;
 }
 
-export const TileContent = ({ fragment, violationTooltips, cycleTooltips }: TileContentProps) => (
-  <div className="relative rounded-md border border-border bg-card p-3 flex flex-col gap-1 cursor-grab active:cursor-grabbing select-none shrink-0 overflow-hidden h-28 w-40">
+export const TileContent = ({
+  fragment,
+  violationTooltips,
+  cycleTooltips,
+  isSelected,
+}: TileContentProps) => (
+  <div
+    className={`relative rounded-md border bg-card p-3 flex flex-col gap-1 cursor-grab active:cursor-grabbing select-none shrink-0 overflow-hidden h-28 w-40 transition-colors ${
+      isSelected ? "border-primary ring-1 ring-primary" : "border-border"
+    }`}
+  >
     <div className="absolute top-1.5 right-1.5 flex gap-0.5">
       {violationTooltips && violationTooltips.length > 0 && (
         <span

@@ -8,10 +8,15 @@ import type * as DndKitSortable from "@dnd-kit/sortable";
 
 // --- router mock ---
 
-vi.mock("@tanstack/react-router", () => ({
-  useParams: () => ({ projectId: PROJECT_ID }),
-  useSearch: () => ({ sequence: undefined }),
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    useParams: () => ({ projectId: PROJECT_ID }),
+    useSearch: () => ({ sequence: undefined }),
+    useNavigate: () => vi.fn(),
+  };
+});
 
 // --- dnd-kit mock: capture onDragEnd so tests can trigger it directly ---
 

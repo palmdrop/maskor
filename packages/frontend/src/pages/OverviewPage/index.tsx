@@ -44,6 +44,7 @@ import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequ
 import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
+import { RightSidebar } from "./components/RightSidebar";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -123,6 +124,7 @@ export const OverviewPage = () => {
   const queryClient = useQueryClient();
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedFragmentUuid, setSelectedFragmentUuid] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionValue, setEditingSectionValue] = useState<string>("");
   const [confirmingDeleteSectionId, setConfirmingDeleteSectionId] = useState<string | null>(null);
@@ -487,7 +489,10 @@ export const OverviewPage = () => {
         />
       )}
 
-      <div className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto">
+      <div
+        className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
+        onClick={() => setSelectedFragmentUuid(null)}
+      >
         {sequenceLoading || summariesLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
@@ -627,6 +632,8 @@ export const OverviewPage = () => {
                           inSequence={true}
                           violationTooltips={getViolationTooltips(uuid)}
                           cycleTooltips={getCycleTooltips(uuid)}
+                          isSelected={selectedFragmentUuid === uuid}
+                          onSelect={setSelectedFragmentUuid}
                         />
                       );
                     })}
@@ -662,7 +669,16 @@ export const OverviewPage = () => {
                   {poolFragmentUuids.map((uuid) => {
                     const fragment = fragmentByUuid.get(uuid);
                     if (!fragment) return null;
-                    return <SortableTile key={uuid} fragment={fragment} inSequence={false} />;
+                    return (
+                      <SortableTile
+                        key={uuid}
+                        fragment={fragment}
+                        inSequence={false}
+                        cycleTooltips={getCycleTooltips(uuid)}
+                        isSelected={selectedFragmentUuid === uuid}
+                        onSelect={setSelectedFragmentUuid}
+                      />
+                    );
                   })}
                 </PoolZone>
               </section>
@@ -679,6 +695,13 @@ export const OverviewPage = () => {
           </>
         )}
       </div>
+
+      <RightSidebar
+        fragment={selectedFragmentUuid ? fragmentByUuid.get(selectedFragmentUuid) : undefined}
+        sequences={bundle?.sequences ?? []}
+        violations={bundle?.violations ?? []}
+        fragmentByUuid={fragmentByUuid}
+      />
     </div>
   );
 };
