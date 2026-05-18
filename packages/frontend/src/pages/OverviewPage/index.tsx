@@ -39,6 +39,7 @@ import { Heading } from "@components/heading";
 import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
 import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";
+import { SequenceSidebar } from "./components/SequenceSidebar";
 
 const POOL_ZONE_ID = "pool-zone";
 const SEQUENCE_ZONE_ID = "sequence-zone";
@@ -305,60 +306,76 @@ export const OverviewPage = () => {
     }
   };
 
-  if (sequenceLoading || summariesLoading) {
-    return <p className="text-sm text-muted-foreground p-4">Loading…</p>;
-  }
-
   const activeDragFragment = activeDragId ? fragmentByUuid.get(activeDragId) : undefined;
 
   return (
-    <div className="flex flex-col gap-6 p-4">
-      <Heading level={1}>Overview</Heading>
+    <div className="flex h-full overflow-hidden">
+      {bundle && (
+        <SequenceSidebar
+          sequences={bundle.sequences}
+          violations={bundle.violations}
+          cycles={bundle.cycles}
+          activeSequenceId={activeSequenceId}
+        />
+      )}
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Sequence <span className="tabular-nums">({sequenceFragmentUuids.length})</span>
-          </h2>
-          <SequenceZone
-            isEmpty={sequenceFragmentUuids.length === 0}
-            sequenceFragmentUuids={sequenceFragmentUuids}
-          >
-            {sequenceFragmentUuids.map((uuid) => {
-              const fragment = fragmentByUuid.get(uuid);
-              if (!fragment) return null;
-              return <SortableTile key={uuid} fragment={fragment} inSequence={true} />;
-            })}
-          </SequenceZone>
-        </section>
+      <div className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto">
+        {sequenceLoading || summariesLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <>
+            <Heading level={1}>{sequence?.name ?? "Overview"}</Heading>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
-          </h2>
-          <PoolZone isEmpty={poolFragmentUuids.length === 0} poolFragmentUuids={poolFragmentUuids}>
-            {poolFragmentUuids.map((uuid) => {
-              const fragment = fragmentByUuid.get(uuid);
-              if (!fragment) return null;
-              return <SortableTile key={uuid} fragment={fragment} inSequence={false} />;
-            })}
-          </PoolZone>
-        </section>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={collisionDetection}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <section className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                  Sequence <span className="tabular-nums">({sequenceFragmentUuids.length})</span>
+                </h2>
+                <SequenceZone
+                  isEmpty={sequenceFragmentUuids.length === 0}
+                  sequenceFragmentUuids={sequenceFragmentUuids}
+                >
+                  {sequenceFragmentUuids.map((uuid) => {
+                    const fragment = fragmentByUuid.get(uuid);
+                    if (!fragment) return null;
+                    return <SortableTile key={uuid} fragment={fragment} inSequence={true} />;
+                  })}
+                </SequenceZone>
+              </section>
 
-        <DragOverlay dropAnimation={null}>
-          {activeDragFragment ? (
-            <TileContent
-              fragment={activeDragFragment}
-              inSequence={sequenceFragmentUuids.includes(activeDragFragment.uuid)}
-            />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+              <section className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                  Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
+                </h2>
+                <PoolZone
+                  isEmpty={poolFragmentUuids.length === 0}
+                  poolFragmentUuids={poolFragmentUuids}
+                >
+                  {poolFragmentUuids.map((uuid) => {
+                    const fragment = fragmentByUuid.get(uuid);
+                    if (!fragment) return null;
+                    return <SortableTile key={uuid} fragment={fragment} inSequence={false} />;
+                  })}
+                </PoolZone>
+              </section>
+
+              <DragOverlay dropAnimation={null}>
+                {activeDragFragment ? (
+                  <TileContent
+                    fragment={activeDragFragment}
+                    inSequence={sequenceFragmentUuids.includes(activeDragFragment.uuid)}
+                  />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </>
+        )}
+      </div>
     </div>
   );
 };
