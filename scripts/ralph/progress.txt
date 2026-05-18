@@ -1,3 +1,19 @@
+## Codebase Patterns
+- Sections in the Sequence domain type have no explicit `position` field — they are ordered by array index. Only `FragmentPosition` has a `position: number` field.
+- The sequencer tsconfig has pre-existing tsc type errors (fragmentUUID vs fragmentUuid mismatch) that are not caused by Ralph's changes. Tests run fine with `bun test`.
+- Use `git -C /path/to/repo` for git commands since the shell CWD may not be the repo root.
+- Run tests via `bun run --filter '*' test` from the repo root to catch all packages.
+
 # Ralph Progress Log
 Started: [pending]
+---
+
+## [2026-05-18] - US-001
+- Added `getFragmentOrder(sequence: Sequence): string[]` to `packages/sequencer/src/index.ts`
+- Added unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts` covering: empty sequence, single section with fragments, multi-section ordering, section with zero fragments interspersed
+- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`
+- **Learnings for future iterations:**
+  - Sections are ordered by array position (index), not a `position` field — the `Section` schema has no position. Fragment positions are dense 0-based integers within each section.
+  - Pre-existing tsc errors in sequencer package (fragmentUUID vs fragmentUuid, missing FragmentPosition export) — ignore these, they predate Ralph's work. All 33 tests pass.
+  - The `bun run --filter '*' test` command from repo root is the way to run all package tests.
 ---
