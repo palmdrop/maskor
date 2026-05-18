@@ -1,10 +1,9 @@
 import type { FragmentPosition, Sequence } from "@maskor/shared";
 
-function compactPositions(fragments: FragmentPosition[]): FragmentPosition[] {
-  return [...fragments]
+const compactPositions = (fragments: FragmentPosition[]): FragmentPosition[] =>
+  [...fragments]
     .sort((a, b) => a.position - b.position)
     .map((fragment, index) => ({ ...fragment, position: index }));
-}
 
 export function validateSequenceInvariants(sequence: Sequence): void {
   const seen = new Set<string>();
@@ -186,7 +185,7 @@ type ConstraintGraph = {
   allNodes: Set<string>;
 };
 
-function buildConstraintGraph(secondaries: Sequence[]): ConstraintGraph {
+const buildConstraintGraph = (secondaries: Sequence[]): ConstraintGraph => {
   const adjacency = new Map<string, Map<string, Set<string>>>();
   const allNodes = new Set<string>();
 
@@ -213,9 +212,9 @@ function buildConstraintGraph(secondaries: Sequence[]): ConstraintGraph {
   }
 
   return { adjacency, allNodes };
-}
+};
 
-function findStronglyConnectedComponents(graph: ConstraintGraph): string[][] {
+const findStronglyConnectedComponents = (graph: ConstraintGraph): string[][] => {
   const { adjacency, allNodes } = graph;
   const indexMap = new Map<string, number>();
   const lowMap = new Map<string, number>();
@@ -224,7 +223,7 @@ function findStronglyConnectedComponents(graph: ConstraintGraph): string[][] {
   const sccs: string[][] = [];
   let nextIndex = 0;
 
-  function strongconnect(node: string): void {
+  const strongconnect = (node: string): void => {
     indexMap.set(node, nextIndex);
     lowMap.set(node, nextIndex);
     nextIndex++;
@@ -262,7 +261,7 @@ function findStronglyConnectedComponents(graph: ConstraintGraph): string[][] {
   }
 
   return sccs;
-}
+};
 
 export function detectCycles(secondaries: Sequence[]): Cycle[] {
   const graph = buildConstraintGraph(secondaries);
@@ -292,7 +291,7 @@ export function detectCycles(secondaries: Sequence[]): Cycle[] {
   return cycles;
 }
 
-function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
+const findCyclicSecondaryUuids = (secondaries: Sequence[]): Set<string> => {
   const cyclicSecondaryUuids = new Set<string>();
   for (const cycle of detectCycles(secondaries)) {
     for (const sequenceUuid of cycle.sequenceUuids) {
@@ -300,7 +299,7 @@ function findCyclicSecondaryUuids(secondaries: Sequence[]): Set<string> {
     }
   }
   return cyclicSecondaryUuids;
-}
+};
 
 export function computeViolations(main: Sequence, secondaries: Sequence[]): Violation[] {
   const mainOrder = getFragmentOrder(main);

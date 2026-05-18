@@ -8,7 +8,7 @@ type MembershipEntry = {
   isMain: boolean;
 };
 
-function buildMembership(fragmentUuid: string, sequences: Sequence[]): MembershipEntry[] {
+const buildMembership = (fragmentUuid: string, sequences: Sequence[]): MembershipEntry[] => {
   const entries: MembershipEntry[] = [];
   for (const sequence of sequences) {
     for (const section of sequence.sections) {
@@ -27,13 +27,13 @@ function buildMembership(fragmentUuid: string, sequences: Sequence[]): Membershi
     if (a.isMain !== b.isMain) return a.isMain ? -1 : 1;
     return a.sequenceName.localeCompare(b.sequenceName);
   });
-}
+};
 
-function isInMain(fragmentUuid: string, sequences: Sequence[]): boolean {
+const isInMain = (fragmentUuid: string, sequences: Sequence[]): boolean => {
   const main = sequences.find((s) => s.isMain);
   if (!main) return false;
   return main.sections.some((sec) => sec.fragments.some((f) => f.fragmentUuid === fragmentUuid));
-}
+};
 
 type Props = {
   fragment: FragmentSummary | undefined;

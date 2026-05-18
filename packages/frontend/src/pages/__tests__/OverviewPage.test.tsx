@@ -72,9 +72,7 @@ const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
-  useGetMainSequence: vi.fn(),
-  useGetSequence: vi.fn(() => ({ data: undefined, isLoading: false })),
-  useListSequences: vi.fn(() => ({ data: undefined })),
+  useListSequences: vi.fn(() => ({ data: undefined, isLoading: false })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
@@ -82,10 +80,9 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
   useDeleteSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  getGetMainSequenceQueryKey: (projectId: string) => [`/projects/${projectId}/sequences/main`],
-  getGetSequenceQueryKey: (projectId: string, sequenceId: string) => [
-    `/projects/${projectId}/sequences/${sequenceId}`,
-  ],
+  useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useUpdateSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
+  useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
 }));
 
@@ -102,26 +99,32 @@ const FRAG_A = "frag-aaa";
 const FRAG_B = "frag-bbb";
 const FRAG_C = "frag-ccc";
 
-const makeSequenceResponse = (fragmentUuids: string[] = []) => ({
+const makeBundleResponse = (fragmentUuids: string[] = []) => ({
   status: 200 as const,
   data: {
-    uuid: SEQUENCE_UUID,
-    name: "Main",
-    isMain: true,
-    projectUuid: PROJECT_ID,
-    filePath: `${SEQUENCE_UUID}.yaml`,
-    contentHash: "hash",
-    sections: [
+    sequences: [
       {
-        uuid: SECTION_UUID,
+        uuid: SEQUENCE_UUID,
         name: "Main",
-        fragments: fragmentUuids.map((uuid, index) => ({
-          uuid: `pos-${index}`,
-          fragmentUuid: uuid,
-          position: index,
-        })),
+        isMain: true,
+        projectUuid: PROJECT_ID,
+        filePath: `${SEQUENCE_UUID}.yaml`,
+        contentHash: "hash",
+        sections: [
+          {
+            uuid: SECTION_UUID,
+            name: "Main",
+            fragments: fragmentUuids.map((uuid, index) => ({
+              uuid: `pos-${index}`,
+              fragmentUuid: uuid,
+              position: index,
+            })),
+          },
+        ],
       },
     ],
+    violations: [],
+    cycles: [],
   },
 });
 
@@ -139,12 +142,12 @@ const makeFragmentsResponse = (fragments: ReturnType<typeof makeFragment>[]) => 
 
 // --- helpers ---
 
-const { useGetMainSequence } = await import("../../api/generated/sequences/sequences");
+const { useListSequences } = await import("../../api/generated/sequences/sequences");
 const { useListFragmentSummaries } = await import("../../api/generated/fragments/fragments");
 
 const mockSequence = (fragmentUuids: string[] = []) => {
-  (useGetMainSequence as Mock).mockReturnValue({
-    data: makeSequenceResponse(fragmentUuids),
+  (useListSequences as Mock).mockReturnValue({
+    data: makeBundleResponse(fragmentUuids),
     isLoading: false,
   });
 };
@@ -198,7 +201,7 @@ describe("OverviewPage — rendering", () => {
   });
 
   it("shows loading state while data is fetching", () => {
-    (useGetMainSequence as Mock).mockReturnValue({ data: undefined, isLoading: true });
+    (useListSequences as Mock).mockReturnValue({ data: undefined, isLoading: true });
     (useListFragmentSummaries as Mock).mockReturnValue({ data: undefined, isLoading: true });
 
     render(<OverviewPage />, { wrapper: wrap() });

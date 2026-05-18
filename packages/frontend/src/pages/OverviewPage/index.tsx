@@ -21,8 +21,6 @@ import {
 } from "@dnd-kit/sortable";
 
 import {
-  useGetMainSequence,
-  useGetSequence,
   useListSequences,
   usePlaceFragment,
   useMoveFragment,
@@ -31,11 +29,8 @@ import {
   useCreateSection,
   useRenameSection,
   useDeleteSection,
-  getGetMainSequenceQueryKey,
-  getGetSequenceQueryKey,
   getListSequencesQueryKey,
-  type GetMainSequenceResponse,
-  type GetSequenceResponse,
+  type ListSequencesResponse,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import type { Sequence, Violation } from "@api/generated/maskorAPI.schemas";
@@ -47,13 +42,6 @@ import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 
 const POOL_ZONE_ID = "pool-zone";
-
-function withUpdatedSequence(
-  envelope: GetMainSequenceResponse,
-  sequence: Sequence,
-): GetMainSequenceResponse {
-  return { ...envelope, data: sequence } as GetMainSequenceResponse;
-}
 
 const SectionZone = ({
   children,
@@ -129,7 +117,7 @@ export const OverviewPage = () => {
   const [editingSectionValue, setEditingSectionValue] = useState<string>("");
   const [confirmingDeleteSectionId, setConfirmingDeleteSectionId] = useState<string | null>(null);
 
-  const { data: bundleEnvelope } = useListSequences(projectId);
+  const { data: bundleEnvelope, isLoading: bundleLoading } = useListSequences(projectId);
   const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
 
   const sequenceParamIsKnown = useMemo(
@@ -138,21 +126,12 @@ export const OverviewPage = () => {
   );
   const activeSequenceId = sequenceParamIsKnown ? sequenceParam! : undefined;
 
-  const { data: mainEnvelope, isLoading: mainLoading } = useGetMainSequence(projectId);
-  const { data: specificEnvelope, isLoading: specificLoading } = useGetSequence(
-    projectId,
-    activeSequenceId ?? "",
-    { query: { enabled: !!activeSequenceId } },
-  );
-
-  const sequenceLoading = activeSequenceId ? specificLoading : mainLoading;
-  const sequenceEnvelope: GetMainSequenceResponse | GetSequenceResponse | undefined =
-    activeSequenceId ? specificEnvelope : mainEnvelope;
-
   const { data: summariesEnvelope, isLoading: summariesLoading } =
     useListFragmentSummaries(projectId);
 
-  const sequence = sequenceEnvelope?.status === 200 ? sequenceEnvelope.data : undefined;
+  const sequence =
+    bundle?.sequences.find((s) => s.uuid === activeSequenceId) ??
+    bundle?.sequences.find((s) => s.isMain);
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
 
   const sectionsData = useMemo(() => {
@@ -247,103 +226,106 @@ export const OverviewPage = () => {
     [cycleTooltipByFragmentUuid],
   );
 
-  const activeQueryKey = activeSequenceId
-    ? getGetSequenceQueryKey(projectId, activeSequenceId)
-    : getGetMainSequenceQueryKey(projectId);
+  const listQueryKey = getListSequencesQueryKey(projectId);
 
   const placeFragment = usePlaceFragment({
     mutation: {
-      onMutate: async ({ data: { fragmentUuid, sectionUuid, position } }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
+      onMutate: async ({ sequenceId, data: { fragmentUuid, sectionUuid, position } }) => {
+        await queryClient.cancelQueries({ queryKey: listQueryKey });
+        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
+        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(
-            previous,
-            optimisticPlace(previous.data, fragmentUuid, sectionUuid, position),
-          );
+          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
+          if (!currentSequence) return previous;
+          const updated = optimisticPlace(currentSequence, fragmentUuid, sectionUuid, position);
+          return {
+            ...previous,
+            data: {
+              ...previous.data,
+              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
+            },
+          };
         });
-        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
-      onSuccess: (data) => {
-        if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(previous, data.data);
-        });
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
       },
     },
   });
 
   const moveFragment = useMoveFragment({
     mutation: {
-      onMutate: async ({ fragmentUuid, data: { sectionUuid, position } }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
+      onMutate: async ({ sequenceId, fragmentUuid, data: { sectionUuid, position } }) => {
+        await queryClient.cancelQueries({ queryKey: listQueryKey });
+        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
+        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(
-            previous,
-            optimisticMove(previous.data, fragmentUuid, sectionUuid, position),
-          );
+          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
+          if (!currentSequence) return previous;
+          const updated = optimisticMove(currentSequence, fragmentUuid, sectionUuid, position);
+          return {
+            ...previous,
+            data: {
+              ...previous.data,
+              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
+            },
+          };
         });
-        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
-      onSuccess: (data) => {
-        if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(previous, data.data);
-        });
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
       },
     },
   });
 
   const unplaceFragment = useUnplaceFragment({
     mutation: {
-      onMutate: async ({ fragmentUuid }) => {
-        const snapshot = queryClient.getQueryData<GetMainSequenceResponse>(activeQueryKey);
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
+      onMutate: async ({ sequenceId, fragmentUuid }) => {
+        await queryClient.cancelQueries({ queryKey: listQueryKey });
+        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
+        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
           if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(previous, optimisticUnplace(previous.data, fragmentUuid));
+          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
+          if (!currentSequence) return previous;
+          const updated = optimisticUnplace(currentSequence, fragmentUuid);
+          return {
+            ...previous,
+            data: {
+              ...previous.data,
+              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
+            },
+          };
         });
-        await queryClient.cancelQueries({ queryKey: activeQueryKey });
         return { snapshot };
       },
-      onSuccess: (data) => {
-        if (data.status !== 200) return;
-        queryClient.setQueryData<GetMainSequenceResponse>(activeQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          return withUpdatedSequence(previous, data.data);
-        });
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
       },
       onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(activeQueryKey, context.snapshot);
+        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
       },
     },
   });
-
-  const listQueryKey = getListSequencesQueryKey(projectId);
 
   const designateMain = useDesignateSequenceMain({
     mutation: {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: listQueryKey });
-        void queryClient.invalidateQueries({ queryKey: getGetMainSequenceQueryKey(projectId) });
       },
     },
   });
 
   const refreshActiveSequence = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: activeQueryKey });
     void queryClient.invalidateQueries({ queryKey: listQueryKey });
-  }, [queryClient, activeQueryKey, listQueryKey]);
+  }, [queryClient, listQueryKey]);
 
   const createSection = useCreateSection({
     mutation: {
@@ -493,7 +475,7 @@ export const OverviewPage = () => {
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
         onClick={() => setSelectedFragmentUuid(null)}
       >
-        {sequenceLoading || summariesLoading ? (
+        {bundleLoading || summariesLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>

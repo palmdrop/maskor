@@ -1453,18 +1453,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
         const sequenceToPromote = await vault.sequences.read(indexed.filePath);
         const promoted = { ...sequenceToPromote, isMain: true };
-        await vault.sequences.write(promoted);
-        const promotedAbsolutePath = join(
-          context.vaultPath,
-          ".maskor",
-          "sequences",
-          indexed.filePath,
-        );
-        const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
 
         if (currentMain) {
           const currentMainSequence = await vault.sequences.read(currentMain.filePath);
           const demoted = { ...currentMainSequence, isMain: false };
+
+          // Demote first so there is never a window with two isMain:true files on disk,
+          // which would race the watcher's upsertSequence against the partial-unique index.
           await vault.sequences.write(demoted);
           const demotedAbsolutePath = join(
             context.vaultPath,
@@ -1474,11 +1469,29 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           );
           const demotedRawContent = await Bun.file(demotedAbsolutePath).text();
 
+          await vault.sequences.write(promoted);
+          const promotedAbsolutePath = join(
+            context.vaultPath,
+            ".maskor",
+            "sequences",
+            indexed.filePath,
+          );
+          const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
+
           vaultDatabase.transaction((tx) => {
             upsertSequence(tx, demoted, currentMain.filePath, demotedRawContent);
             upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
           });
         } else {
+          await vault.sequences.write(promoted);
+          const promotedAbsolutePath = join(
+            context.vaultPath,
+            ".maskor",
+            "sequences",
+            indexed.filePath,
+          );
+          const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
+
           vaultDatabase.transaction((tx) => {
             upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
           });

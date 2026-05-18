@@ -16,21 +16,20 @@ type Props = {
   activeSequenceId: string | undefined;
 };
 
-function sequenceStatus(
+const sequenceStatus = (
   sequence: Sequence,
   violations: Violation[],
   cycles: Cycle[],
-): "cycle" | "violation" | "ok" {
+): "cycle" | "violation" | "ok" => {
   if (cycles.some((c) => c.sequenceUuids.includes(sequence.uuid))) return "cycle";
   if (violations.some((v) => v.secondaryUuid === sequence.uuid)) return "violation";
   return "ok";
-}
+};
 
-function fragmentCount(sequence: Sequence): number {
-  return sequence.sections.reduce((total, section) => total + section.fragments.length, 0);
-}
+const fragmentCount = (sequence: Sequence): number =>
+  sequence.sections.reduce((total, section) => total + section.fragments.length, 0);
 
-function generateDefaultName(existingNames: Set<string>): string {
+const generateDefaultName = (existingNames: Set<string>): string => {
   const base = "New sequence";
   if (!existingNames.has(base)) return base;
   let counter = 2;
@@ -38,7 +37,7 @@ function generateDefaultName(existingNames: Set<string>): string {
     counter++;
   }
   return `${base} ${counter}`;
-}
+};
 
 const StatusDot = ({ status }: { status: "cycle" | "violation" | "ok" }) => {
   if (status === "ok") return null;
@@ -189,33 +188,28 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
   };
 
   const handleCommitRename = async (sequenceId: string, newName: string): Promise<string | null> => {
-    return new Promise((resolve) => {
-      updateSequence.mutate(
-        { projectId, sequenceId, data: { name: newName } },
-        {
-          onSuccess: (response) => {
-            if (response.status === 200) {
-              void navigate({
-                to: "/projects/$projectId/overview",
-                params: { projectId },
-                search: { sequence: sequenceId },
-              });
-              resolve(null);
-            } else {
-              resolve("Failed to rename");
-            }
-          },
-          onError: (error: unknown) => {
-            const errorWithReason = error as { reason?: string } | null;
-            if (errorWithReason?.reason === "name_conflict") {
-              resolve("A sequence with that name already exists");
-            } else {
-              resolve("Failed to rename");
-            }
-          },
-        },
-      );
-    });
+    try {
+      const response = await updateSequence.mutateAsync({
+        projectId,
+        sequenceId,
+        data: { name: newName },
+      });
+      if (response.status === 200) {
+        void navigate({
+          to: "/projects/$projectId/overview",
+          params: { projectId },
+          search: { sequence: sequenceId },
+        });
+        return null;
+      }
+      return "Failed to rename";
+    } catch (error: unknown) {
+      const errorWithReason = error as { reason?: string } | null;
+      if (errorWithReason?.reason === "name_conflict") {
+        return "A sequence with that name already exists";
+      }
+      return "Failed to rename";
+    }
   };
 
   return (
