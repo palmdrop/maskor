@@ -12,6 +12,7 @@ import {
   FragmentPositionCreateSchema,
   FragmentPositionMoveSchema,
   SectionCreateSchema,
+  SectionRenameSchema,
   SequenceBundledResponseSchema,
 } from "../schemas/sequence";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -24,6 +25,7 @@ import {
   deleteSequenceCommand,
   designateSequenceMainCommand,
   createSectionCommand,
+  renameSectionCommand,
   placeFragmentCommand,
   moveFragmentCommand,
   unplaceFragmentCommand,
@@ -309,6 +311,35 @@ const createSectionRoute = createRoute({
   },
 });
 
+const renameSectionRoute = createRoute({
+  operationId: "renameSection",
+  method: "patch",
+  path: "/{sequenceId}/sections/{sectionId}",
+  tags: ["Sequences"],
+  summary: "Rename a section within a sequence",
+  request: {
+    params: SectionUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: SectionRenameSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or section not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 const unplaceFragmentRoute = createRoute({
   operationId: "unplaceFragment",
   method: "delete",
@@ -530,6 +561,26 @@ sequencesRouter.openapi(createSectionRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
     await executeCommand(createSectionCommand, commandContext, { sequenceId, name });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(renameSectionRoute, async (ctx) => {
+  try {
+    const { sequenceId, sectionId } = ctx.req.valid("param");
+    const { name } = ctx.req.valid("json");
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    await executeCommand(renameSectionCommand, commandContext, { sequenceId, sectionId, name });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {

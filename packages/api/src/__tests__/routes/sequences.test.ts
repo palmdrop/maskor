@@ -675,6 +675,116 @@ describe("POST /projects/:projectId/sequences/:sequenceId/sections", () => {
   });
 });
 
+describe("PATCH /projects/:projectId/sequences/:sequenceId/sections/:sectionId", () => {
+  it("renames an existing section and reflects the change in the bundle", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const section = main.sections[0]!;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/${section.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Renamed Section" }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === main.uuid)!;
+    const renamedSection = updated.sections.find((s) => s.uuid === section.uuid)!;
+    expect(renamedSection.name).toBe("Renamed Section");
+  });
+
+  it("allows renaming a section to an empty string", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const section = main.sections[0]!;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/${section.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "" }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === main.uuid)!;
+    const renamedSection = updated.sections.find((s) => s.uuid === section.uuid)!;
+    expect(renamedSection.name).toBe("");
+  });
+
+  it("allows two sections with the same name", async () => {
+    const createBundle = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const main = createBundle;
+
+    const sectionBundle = (await (
+      await testContext.app.request(`${baseUrl()}/${main.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Dupe Section" }),
+      })
+    ).json()) as SequenceBundle;
+    const updatedMain = sectionBundle.sequences.find((s) => s.uuid === main.uuid)!;
+    const firstSection = updatedMain.sections[0]!;
+    const secondSection = updatedMain.sections[updatedMain.sections.length - 1]!;
+
+    const renameFirst = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/${firstSection.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Duplicate Name" }),
+      },
+    );
+    expect(renameFirst.status).toBe(200);
+
+    const renameSecond = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/${secondSection.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Duplicate Name" }),
+      },
+    );
+    expect(renameSecond.status).toBe(200);
+  });
+
+  it("returns 404 for a non-existent section UUID", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/00000000-0000-0000-0000-000000000000`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ghost" }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 404 for a non-existent sequence", async () => {
+    const response = await testContext.app.request(
+      `${baseUrl()}/00000000-0000-0000-0000-000000000000/sections/00000000-0000-0000-0000-000000000000`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ghost" }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("sequence fragment action log entries", () => {
   it("place records target.title and payload.fragmentKey", async () => {
     const main = (await (
