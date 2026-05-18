@@ -23,6 +23,11 @@ type ProjectManifest = {
     advanced?: {
       showFragmentStats?: boolean;
     };
+    preview?: {
+      showTitles?: boolean;
+      showSectionHeadings?: boolean;
+      separator?: "blank-line" | "horizontal-rule" | "none";
+    };
   };
 };
 
@@ -65,6 +70,10 @@ const writeVaultManifest = async (
         ...existing.config?.advanced,
         ...patch.config?.advanced,
       },
+      preview: {
+        ...existing.config?.preview,
+        ...patch.config?.preview,
+      },
     },
   };
 
@@ -94,6 +103,11 @@ const toProjectRecord = (
   },
   advanced: {
     showFragmentStats: manifest?.config?.advanced?.showFragmentStats ?? false,
+  },
+  preview: {
+    showTitles: manifest?.config?.preview?.showTitles ?? false,
+    showSectionHeadings: manifest?.config?.preview?.showSectionHeadings ?? true,
+    separator: manifest?.config?.preview?.separator ?? "blank-line",
   },
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -252,6 +266,11 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         };
         suggestion?: { readyStatusThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
+        preview?: {
+          showTitles?: boolean;
+          showSectionHeadings?: boolean;
+          separator?: "blank-line" | "horizontal-rule" | "none";
+        };
       },
     ): Promise<ProjectRecord> {
       const rows = await database
@@ -271,12 +290,14 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       if (
         patch.editor !== undefined ||
         patch.suggestion !== undefined ||
-        patch.advanced !== undefined
+        patch.advanced !== undefined ||
+        patch.preview !== undefined
       ) {
         manifestPatch.config = {
           ...(patch.editor !== undefined ? { editor: patch.editor } : {}),
           ...(patch.suggestion !== undefined ? { suggestion: patch.suggestion } : {}),
           ...(patch.advanced !== undefined ? { advanced: patch.advanced } : {}),
+          ...(patch.preview !== undefined ? { preview: patch.preview } : {}),
         };
       }
 

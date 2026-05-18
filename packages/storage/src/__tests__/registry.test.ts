@@ -284,6 +284,40 @@ describe("registry.updateProject", () => {
       registry.updateProject("00000000-0000-0000-0000-000000000000", { name: "x" }),
     ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
+
+  it("updates preview config and persists to manifest", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+    const updated = await registry.updateProject(record.projectUUID, {
+      preview: { showTitles: true, separator: "horizontal-rule" },
+    });
+
+    expect(updated.preview.showTitles).toBe(true);
+    expect(updated.preview.separator).toBe("horizontal-rule");
+    expect(updated.preview.showSectionHeadings).toBe(true);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.config.preview.showTitles).toBe(true);
+    expect(manifest.config.preview.separator).toBe("horizontal-rule");
+  });
+});
+
+describe("registry preview defaults", () => {
+  it("returns preview defaults when project.json has no preview field", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+
+    // Remove preview config from manifest to simulate an older project.json
+    const manifestPath = join(vaultDir, ".maskor", "project.json");
+    const manifest = await Bun.file(manifestPath).json();
+    delete manifest.config.preview;
+    await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const found = await registry.findByUUID(record.projectUUID);
+    expect(found?.preview.showTitles).toBe(false);
+    expect(found?.preview.showSectionHeadings).toBe(true);
+    expect(found?.preview.separator).toBe("blank-line");
+  });
 });
 
 describe("registry.removeProject", () => {

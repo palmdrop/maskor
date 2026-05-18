@@ -20,6 +20,11 @@ export const ProjectSchema = z.object({
   advanced: z.object({
     showFragmentStats: z.boolean(),
   }),
+  preview: z.object({
+    showTitles: z.boolean(),
+    showSectionHeadings: z.boolean(),
+    separator: z.enum(["blank-line", "horizontal-rule", "none"]),
+  }),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -51,6 +56,13 @@ export const ProjectUpdateSchema = z.object({
   advanced: z
     .object({
       showFragmentStats: z.boolean().optional(),
+    })
+    .optional(),
+  preview: z
+    .object({
+      showTitles: z.boolean().optional(),
+      showSectionHeadings: z.boolean().optional(),
+      separator: z.enum(["blank-line", "horizontal-rule", "none"]).optional(),
     })
     .optional(),
 });

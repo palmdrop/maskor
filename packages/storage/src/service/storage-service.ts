@@ -422,6 +422,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
         suggestion?: { readyStatusThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
+        preview?: {
+          showTitles?: boolean;
+          showSectionHeadings?: boolean;
+          separator?: "blank-line" | "horizontal-rule" | "none";
+        };
       },
     ): Promise<ProjectRecord> {
       const record = await registry.updateProject(projectUUID, patch);

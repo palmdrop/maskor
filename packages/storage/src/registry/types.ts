@@ -17,6 +17,11 @@ export type ProjectRecord = {
   advanced: {
     showFragmentStats: boolean;
   };
+  preview: {
+    showTitles: boolean;
+    showSectionHeadings: boolean;
+    separator: "blank-line" | "horizontal-rule" | "none";
+  };
   createdAt: Date;
   updatedAt: Date;
 };
