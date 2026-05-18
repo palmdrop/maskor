@@ -18,6 +18,7 @@ import { SuggestionModePage } from "./pages/SuggestionModePage";
 import { ProjectStatsPage } from "./pages/ProjectStatsPage";
 import { ProjectHistoryPage } from "./pages/ProjectHistoryPage";
 import { FragmentImportPage } from "./pages/FragmentImportPage";
+import { PreviewPage } from "./pages/PreviewPage";
 import { queryClient } from "./queryClient";
 
 interface RouterContext {
@@ -130,12 +131,22 @@ const fragmentImportRoute = createRoute({
   component: FragmentImportPage,
 });
 
+const previewRoute = createRoute({
+  getParentRoute: () => projectShellLayoutRoute,
+  path: "/preview",
+  component: PreviewPage,
+  validateSearch: (search: Record<string, unknown>): { sequence?: string } => ({
+    sequence: typeof search.sequence === "string" ? search.sequence : undefined,
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectShellLayoutRoute.addChildren([
     projectShellIndexRoute,
     fragmentListRoute.addChildren([fragmentRoute]),
     fragmentImportRoute,
+    previewRoute,
     overviewRoute,
     projectConfigRoute,
     noteEditorRoute,

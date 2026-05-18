@@ -19,7 +19,7 @@ A user can open a Drafts surface inside a project, click "Create draft", give it
 These resolve open questions or in-spec call-outs that the spec deferred to plan time:
 
 - **In-flight write drain lands in this slice, not before it.** The spec's open question #3 asks whether the drain fix (currently a TODO at `packages/storage/src/watcher/watcher.ts:290-296`) is a prerequisite or rides alongside. Drain is load-bearing for safe snapshotting, so it goes in Phase 2 of this slice. Treating it as a standalone prerequisite would split work that has no consumer outside drafting.
-- **Action-log entry types use the colon convention.** Spec text says `draft.created` / `draft.restored` etc., but the codebase uses colons (`fragment:created`, `sequence:created`). The plan adopts the codebase convention (`draft:created`, `draft:deleted`, `draft:restored`). Spec § Behavior and § Acceptance criteria will be updated to match during Phase 8.
+- **Action-log entry types use the colon convention.** The codebase uses colons (`fragment:created`, `sequence:created`). The plan adopts the same (`draft:created`, `draft:deleted`, `draft:restored`). Spec § Behavior and § Acceptance criteria were updated to colon-form on 2026-05-18 before implementation; no further sync needed.
 - **`LogEntryTarget` gains a `draft` type.** The existing union (`fragment`, `aspect`, `note`, `reference`, `sequence`) does not include drafts; adding it is the cleanest place to record `draft.uuid` + `draft.name` on each entry.
 - **Rename is deferred.** Rename is metadata-only and easy, but it has zero blocking value next to create / list / restore. Keeping it out lets this slice stay focused on the snapshot pipeline. The `draft:renamed` action-log entry type is added in the rename slice.
 - **First-slice UI surface: a tab under the project shell.** Mirrors how `ActionLogList` and `ProjectStatistics` live as project-scoped pages. No global drafts surface, no inline drawer.
@@ -97,7 +97,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 5 — `vault.restored` SSE event
 
-- [ ] Extend `VaultSyncEvent` in `packages/shared/src/events.ts` with `{ type: "vault:restored"; draftUuid: string }`. Add `"vault:restored"` to `VAULT_SYNC_EVENT_TYPES`. (Convention check: existing variants use `:` not `.`. Spec § Behavior uses `vault.restored` — update spec to `vault:restored` in Phase 8.)
+- [ ] Extend `VaultSyncEvent` in `packages/shared/src/events.ts` with `{ type: "vault:restored"; draftUuid: string }`. Add `"vault:restored"` to `VAULT_SYNC_EVENT_TYPES`.
 - [ ] In the watcher (`watcher.ts`), expose a way for the storage service to emit a synthetic event to subscribers. Simplest: add a `emit(event: VaultSyncEvent)` method on the watcher returned object that pushes into the same subscriber set.
 - [ ] In `drafts` service `restore`, after the index rebuild, emit `{ type: "vault:restored", draftUuid }` via that emit method.
 - [ ] Verify the SSE route at `packages/api/src/routes/events.ts` forwards the new variant without changes (it should, since it iterates the union).
@@ -143,8 +143,6 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 ### Phase 8 — Spec sync and plan close-out
 
 - [ ] Update `specifications/drafting.md`:
-  - Replace dot-form action types (`draft.created` etc.) with colon-form (`draft:created`) throughout.
-  - Replace `vault.restored` SSE event name with `vault:restored`.
   - Add `**Shipped**: 2026-MM-DD — first slice (create, list, delete, restore). Rename and polish items deferred. See `references/plans/drafting-first-slice.md`.` to the frontmatter (mirroring `specifications/export.md` line 6 pattern).
   - Resolve open question #3 by removing it (drained in-slice — done).
 - [ ] Set this plan's `Status` to `Done` (or `In progress` if shipped partially), set `Closed` date.

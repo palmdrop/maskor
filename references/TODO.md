@@ -6,7 +6,7 @@
 
 - [x] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
 
-- [ ] start implement `references/plans/drafting-first-slice.md`
+- [ ] start implementing `references/plans/drafting-first-slice.md`
 
 - [x] start implementing the preview mode, see new `preview.md` spec
 

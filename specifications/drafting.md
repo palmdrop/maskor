@@ -23,7 +23,7 @@ The mental model mirrors how writers traditionally work: keeping older versions 
 - Restoring the project to a prior draft, with optional "save current first" safety net
 - Atomic snapshot creation (no half-built drafts left on disk)
 - Crash-recovery cleanup of staging and restore-aside directories
-- Action-log integration: `draft.created`, `draft.renamed`, `draft.deleted`, `draft.restored` entries
+- Action-log integration: `draft:created`, `draft:renamed`, `draft:deleted`, `draft:restored` entries
 
 ### Out of scope
 
@@ -81,7 +81,7 @@ Draft creation is a stop-the-world operation:
    - Write `manifest.json`.
 5. Atomically rename the staging directory to `<vault>/.maskor/drafts/<slug>-<short-uuid>/`.
 6. Resume the watcher; release the write lock.
-7. Append a `draft.created` entry to the action log.
+7. Append a `draft:created` entry to the action log.
 
 If any step fails before the atomic rename, the staging directory is deleted and a clear error is surfaced. The user never sees a half-built draft.
 
@@ -100,11 +100,11 @@ The user provides a new name; it must satisfy the same case-insensitive uniquene
 
 If the folder rename fails after the manifest is updated, the manifest remains authoritative; the on-disk slug is stale but functional. The next "fix slugs" pass (future) can reconcile.
 
-A `draft.renamed` entry is appended to the action log.
+A `draft:renamed` entry is appended to the action log.
 
 ### Deleting a draft
 
-The user can delete any draft. A confirmation modal is required, but there are no restrictions on which drafts can be deleted. Deletion removes the draft directory entirely and appends a `draft.deleted` entry to the action log.
+The user can delete any draft. A confirmation modal is required, but there are no restrictions on which drafts can be deleted. Deletion removes the draft directory entirely and appends a `draft:deleted` entry to the action log.
 
 ### Restoring a draft
 
@@ -119,10 +119,10 @@ Restore is destructive: it overwrites the current vault state with the snapshot'
 7. On success, delete `.restore-aside/`.
 8. Trigger a full DB rebuild from the restored vault files. The snapshotted `vault.db` is present, but is not trusted as the live DB — vault remains source of truth.
 9. Resume the watcher; release the write lock.
-10. Emit a single `vault.restored` SSE event with the draft id.
-11. Append a `draft.restored` entry to the action log.
+10. Emit a single `vault:restored` SSE event with the draft id.
+11. Append a `draft:restored` entry to the action log.
 
-`.maskor/action-log.jsonl` is **not** overwritten during restore. The log is meta-history about the user's process and is preserved across restores; the `draft.restored` entry is appended to the existing log.
+`.maskor/action-log.jsonl` is **not** overwritten during restore. The log is meta-history about the user's process and is preserved across restores; the `draft:restored` entry is appended to the existing log.
 
 `.maskor/project.json` is **not** overwritten during restore. It carries per-project settings (name, editor preferences, suggestion thresholds, advanced flags) that belong to the user's current working environment, not to the snapshotted moment. The snapshot still contains a copy of `project.json` as a backup, recoverable manually if the user ever needs to inspect or revert settings.
 
@@ -173,10 +173,10 @@ On project resolve at startup, if `<vault>/.maskor/drafts/.staging/` or `<vault>
 - A draft directory never appears unless it is complete — failed creations leave no partial draft on disk.
 - Two drafts cannot share a name, regardless of case (`Draft 1` and `draft 1` collide).
 - Renaming a draft updates both `manifest.json` and the on-disk folder slug.
-- Restoring a draft, with "save current first" enabled, results in two operations in the action log: a `draft.created` (the pre-restore safety draft) followed by a `draft.restored`.
-- The live `action-log.jsonl` is byte-for-byte identical before and after a restore, except for the appended `draft.restored` entry.
+- Restoring a draft, with "save current first" enabled, results in two operations in the action log: a `draft:created` (the pre-restore safety draft) followed by a `draft:restored`.
+- The live `action-log.jsonl` is byte-for-byte identical before and after a restore, except for the appended `draft:restored` entry.
 - The live `project.json` is byte-for-byte identical before and after a restore, regardless of the snapshot's `project.json` content.
-- A single `vault.restored` SSE event is emitted after restore completes, carrying the restored draft's id.
+- A single `vault:restored` SSE event is emitted after restore completes, carrying the restored draft's id.
 - Concurrent draft-create or draft-restore attempts return `DRAFT_OPERATION_IN_PROGRESS` without affecting the in-progress operation.
 - Stale `.staging/` or `.restore-aside/` directories present at project resolve are cleaned up before any user-facing operation runs.
 - After a successful restore, fragment / aspect / note / reference / sequence counts in the live DB match the counts recorded in the restored draft's manifest.
