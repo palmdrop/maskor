@@ -8,11 +8,13 @@
 
 - [x] start implementing `references/plans/drafting-first-slice.md`
 
+- [x] implement `references/plans/entity-content-swap-files.md`
+
 - [ ] import does not look right in action log, no import event
 
 - [ ] implement `references/plans/overview-density-and-actual-arc.md`
 
-- [ ] implement `references/plans/entity-content-swap-files.md`
+- [ ] add arrow key navigation for moving fragments in sequences
 
 - [ ] add typography rule for using indentation instead of newlines... conflicts with markdown syntax but might work out anyway?
 
