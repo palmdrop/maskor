@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDeleteSwap, useGetSwap, usePutSwap } from "@api/generated/swap/swap";
-import { ApiRequestError } from "../api/errors";
 
 export type SwapEntityKind = "fragment" | "aspect" | "note" | "reference";
 
@@ -80,13 +79,8 @@ export const useEntityContentSwap = (
     if (swapQuery.isLoading || swapQuery.isFetching) return;
 
     if (swapQuery.error) {
-      // 404 is expected when no swap file exists for this entity — not an error.
-      if (
-        !(swapQuery.error instanceof ApiRequestError && swapQuery.error.statusCode === 404)
-      ) {
-        // eslint-disable-next-line no-console
-        console.warn("[useEntityContentSwap] swap read failed", swapQuery.error);
-      }
+      // eslint-disable-next-line no-console
+      console.warn("[useEntityContentSwap] swap read failed", swapQuery.error);
       setHasSeeded(true);
       return;
     }
@@ -97,6 +91,11 @@ export const useEntityContentSwap = (
     }
 
     const cached = swapQuery.data.data;
+    // No swap file → API returns 200 with nulls. Nothing to seed.
+    if (cached.content === null || cached.savedAt === null) {
+      setHasSeeded(true);
+      return;
+    }
     // Suppress an immediate redundant PUT if the editor mounts with the cached
     // content — the server already has this exact string.
     lastWrittenRef.current = cached.content;

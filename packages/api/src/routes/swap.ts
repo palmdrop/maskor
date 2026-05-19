@@ -47,11 +47,7 @@ const getSwapRoute = createRoute({
   responses: {
     200: {
       content: { "application/json": { schema: SwapReadResponseSchema } },
-      description: "Swap content",
-    },
-    404: {
-      content: { "application/json": { schema: ErrorResponseSchema } },
-      description: "No swap file for this entity",
+      description: "Swap content; content and savedAt are null when no swap exists",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -100,10 +96,7 @@ swapRouter.openapi(getSwapRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { entityType, entityUUID } = ctx.req.valid("param");
     const result = await storageService.swap.read(projectContext, entityType, entityUUID);
-    if (!result) {
-      return ctx.json({ error: "NOT_FOUND", message: "No swap file for this entity" }, 404);
-    }
-    return ctx.json(result, 200);
+    return ctx.json(result ?? { content: null, savedAt: null }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

@@ -12,7 +12,6 @@ vi.mock("@api/generated/swap/swap", () => ({
 }));
 
 import { useEntityContentSwap } from "./useEntityContentSwap";
-import { ApiRequestError } from "../api/errors";
 
 const baseProps = {
   projectId: "project-1",
@@ -22,15 +21,20 @@ const baseProps = {
   currentValue: "server content",
 };
 
-const mountedQuery = (
-  data: { status: 200; data: { content: string; savedAt: string } } | undefined,
-  error: unknown = null,
-) => ({
+type SwapReadEnvelope = {
+  status: 200;
+  data: { content: string | null; savedAt: string | null };
+};
+
+const mountedQuery = (data: SwapReadEnvelope | undefined, error: unknown = null) => ({
   data,
   error,
   isLoading: false,
   isFetching: false,
 });
+
+const emptySwapQuery = () =>
+  mountedQuery({ status: 200, data: { content: null, savedAt: null } });
 
 const setupMocks = (
   query: ReturnType<typeof mountedQuery>,
@@ -89,8 +93,8 @@ describe("useEntityContentSwap — mount-time recovery", () => {
     expect(result.current.recovery).toBeNull();
   });
 
-  it("does not expose recovery when the swap read 404s", async () => {
-    setupMocks(mountedQuery(undefined, new ApiRequestError(404, { error: "NOT_FOUND" })));
+  it("does not expose recovery when no swap file exists (null content)", async () => {
+    setupMocks(emptySwapQuery());
 
     const { result } = renderHook(() => useEntityContentSwap(baseProps));
 
@@ -103,7 +107,7 @@ describe("useEntityContentSwap — mount-time recovery", () => {
 
 describe("useEntityContentSwap — debounced writes", () => {
   it("writes after the debounce window when currentValue diverges from serverValue", async () => {
-    const { putMutate } = setupMocks(mountedQuery(undefined, new ApiRequestError(404, {})));
+    const { putMutate } = setupMocks(emptySwapQuery());
 
     const { rerender } = renderHook(
       ({ currentValue }: { currentValue: string }) =>
@@ -128,7 +132,7 @@ describe("useEntityContentSwap — debounced writes", () => {
   });
 
   it("collapses rapid changes into a single PUT with the latest value", async () => {
-    const { putMutate } = setupMocks(mountedQuery(undefined, new ApiRequestError(404, {})));
+    const { putMutate } = setupMocks(emptySwapQuery());
 
     const { rerender } = renderHook(
       ({ currentValue }: { currentValue: string }) =>
@@ -149,7 +153,7 @@ describe("useEntityContentSwap — debounced writes", () => {
   });
 
   it("does not write when currentValue matches serverValue", async () => {
-    const { putMutate } = setupMocks(mountedQuery(undefined, new ApiRequestError(404, {})));
+    const { putMutate } = setupMocks(emptySwapQuery());
 
     renderHook(() => useEntityContentSwap(baseProps));
 
@@ -169,7 +173,7 @@ describe("useEntityContentSwap — debounced writes", () => {
         opts?.onError?.(new Error("network down"));
       },
     );
-    setupMocks(mountedQuery(undefined, new ApiRequestError(404, {})), putMutate);
+    setupMocks(emptySwapQuery(), putMutate);
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -232,7 +236,7 @@ describe("useEntityContentSwap — clear()", () => {
 
   it("clear() does not throw if DELETE rejects", async () => {
     const deleteMutateAsync = vi.fn().mockRejectedValue(new Error("boom"));
-    setupMocks(mountedQuery(undefined, new ApiRequestError(404, {})), undefined, deleteMutateAsync);
+    setupMocks(emptySwapQuery(), undefined, deleteMutateAsync);
 
     const { result } = renderHook(() => useEntityContentSwap(baseProps));
 

@@ -23,9 +23,12 @@ export const SwapWriteResponseSchema = z
   })
   .openapi("SwapWriteResponse");
 
+// Read response always returns 200. `content` and `savedAt` are null when no swap
+// file exists for the entity — keeps the network panel clean and avoids the
+// "looks like an error" 404 on every mount.
 export const SwapReadResponseSchema = z
   .object({
-    content: z.string(),
-    savedAt: z.string(),
+    content: z.string().nullable(),
+    savedAt: z.string().nullable(),
   })
   .openapi("SwapReadResponse");
