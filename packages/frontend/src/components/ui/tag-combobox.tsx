@@ -68,6 +68,14 @@ export function TagCombobox({
               inputRef.current?.blur();
               return;
             }
+
+            if (event.key === "Enter" && open && (showCreate || filtered.length === 1)) {
+              event.preventDefault();
+              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+              showCreate ? handleCreate() : handleSelect(filtered[0]);
+              return;
+            }
+
             if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key) && open) {
               event.preventDefault();
               commandRef.current?.dispatchEvent(
