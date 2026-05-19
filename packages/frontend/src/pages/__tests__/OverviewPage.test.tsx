@@ -633,6 +633,101 @@ describe("OverviewPage — arc panel", () => {
   });
 });
 
+describe("OverviewPage — arc legend and toggles", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+  });
+
+  it("renders a legend chip for every aspect present in the arc", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
+      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 } }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const legend = screen.getByTestId("arc-legend");
+    expect(legend.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+    expect(legend.querySelector('[data-aspect-key="city"]')).not.toBeNull();
+  });
+
+  it("does not render the legend when no aspect has data", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, {})]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.queryByTestId("arc-legend")).toBeNull();
+  });
+
+  it("hides the matching arc when its legend chip is toggled off", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
+      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 }, city: { weight: 0.4 } }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const panel = screen.getByTestId("arc-panel");
+    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+
+    const legend = screen.getByTestId("arc-legend");
+    const griefToggle = legend.querySelector('[data-aspect-key="grief"]') as HTMLButtonElement;
+    fireEvent.click(griefToggle);
+
+    expect(panel.querySelector('[data-aspect-key="grief"]')).toBeNull();
+    // city still visible
+    expect(panel.querySelector('[data-aspect-key="city"]')).not.toBeNull();
+    // toggle reports its new state
+    expect(griefToggle.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("keeps panel height stable when all aspects are toggled off", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
+      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 }, city: { weight: 0.4 } }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const panelBefore = screen.getByTestId("arc-panel") as HTMLElement;
+    const heightBefore = panelBefore.style.height;
+
+    const legend = screen.getByTestId("arc-legend");
+    for (const aspectKey of ["grief", "city"]) {
+      const toggle = legend.querySelector(`[data-aspect-key="${aspectKey}"]`) as HTMLButtonElement;
+      fireEvent.click(toggle);
+    }
+
+    const panelAfter = screen.getByTestId("arc-panel") as HTMLElement;
+    expect(panelAfter.style.height).toBe(heightBefore);
+    // No aspect-bearing SVG elements remain.
+    expect(panelAfter.querySelector("[data-aspect-key]")).toBeNull();
+  });
+
+  it("re-shows the curve when the chip is toggled back on", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 } })]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+    const legend = screen.getByTestId("arc-legend");
+    const griefToggle = legend.querySelector('[data-aspect-key="grief"]') as HTMLButtonElement;
+
+    fireEvent.click(griefToggle);
+    expect(screen.getByTestId("arc-panel").querySelector('[data-aspect-key="grief"]')).toBeNull();
+
+    fireEvent.click(griefToggle);
+    expect(
+      screen.getByTestId("arc-panel").querySelector('[data-aspect-key="grief"]'),
+    ).not.toBeNull();
+  });
+});
+
 describe("parseOverviewDensity", () => {
   it("returns 'full' as the default when value is undefined", async () => {
     const { parseOverviewDensity } = await import("../../router");

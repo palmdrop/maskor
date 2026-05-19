@@ -43,6 +43,7 @@ import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 import { ArcPanel } from "./components/ArcPanel";
+import { ArcLegend } from "./components/ArcLegend";
 import { resolveAspectColor } from "./utils/aspectColors";
 import { computeSequenceLayout } from "./utils/layout";
 import { buildArcSeries, type ArcSeries } from "./utils/arcData";
@@ -135,6 +136,16 @@ export const OverviewPage = () => {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionValue, setEditingSectionValue] = useState<string>("");
   const [confirmingDeleteSectionId, setConfirmingDeleteSectionId] = useState<string | null>(null);
+  const [hiddenAspectKeys, setHiddenAspectKeys] = useState<Set<string>>(new Set());
+
+  const toggleAspectVisibility = useCallback((aspectKey: string) => {
+    setHiddenAspectKeys((previous) => {
+      const next = new Set(previous);
+      if (next.has(aspectKey)) next.delete(aspectKey);
+      else next.add(aspectKey);
+      return next;
+    });
+  }, []);
 
   const { data: bundleEnvelope, isLoading: bundleLoading } = useListSequences(projectId);
   const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
@@ -235,6 +246,12 @@ export const OverviewPage = () => {
     arcSeriesCacheRef.current = next;
     return next;
   }, [activeDragId, sequenceLayout, fragmentByUuid]);
+
+  const arcAspectKeys = useMemo(() => arcSeries.map((series) => series.aspectKey), [arcSeries]);
+  const visibleArcSeries = useMemo(
+    () => arcSeries.filter((series) => !hiddenAspectKeys.has(series.aspectKey)),
+    [arcSeries, hiddenAspectKeys],
+  );
 
   const sequenceByUuid = useMemo(
     () => new Map((bundle?.sequences ?? []).map((s) => [s.uuid, s])),
@@ -592,6 +609,15 @@ export const OverviewPage = () => {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
+              {sequenceLayout.totalWidth > 0 && arcAspectKeys.length > 0 && (
+                <ArcLegend
+                  aspectKeys={arcAspectKeys}
+                  colorByAspectKey={colorByAspectKey}
+                  hiddenAspectKeys={hiddenAspectKeys}
+                  onToggle={toggleAspectVisibility}
+                />
+              )}
+
               <div className="overflow-x-auto">
                 <div
                   className="flex flex-col gap-2"
@@ -600,7 +626,7 @@ export const OverviewPage = () => {
                   {sequenceLayout.totalWidth > 0 && (
                     <ArcPanel
                       width={sequenceLayout.totalWidth}
-                      series={arcSeries}
+                      series={visibleArcSeries}
                       colorByAspectKey={colorByAspectKey}
                     />
                   )}
