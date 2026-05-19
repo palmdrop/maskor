@@ -161,6 +161,37 @@ describe("fragments.findFilePath", () => {
   });
 });
 
+// --- fragments.findAllSummaries ---
+
+describe("fragments.findAllSummaries", () => {
+  it("returns summaries with aspect weights aggregated by fragment", async () => {
+    const indexer = makeIndexer();
+    await indexer.rebuild();
+
+    const summaries = await indexer.fragments.findAllSummaries();
+    expect(summaries.length).toBe(5);
+
+    const bridge = summaries.find((summary) => summary.key === "the-bridge");
+    expect(bridge).toBeDefined();
+    expect(bridge?.aspects["grief"]).toEqual({ weight: 0.6 });
+  });
+
+  it("returns an empty aspects record for fragments with no weights", async () => {
+    // Strip aspects off "the-bridge" and re-index.
+    const vault = createVault({ root: vaultDir });
+    const fragments = await vault.fragments.readAll();
+    const bridge = fragments.find((fragment) => fragment.key === "the-bridge")!;
+    await vault.fragments.write({ ...bridge, aspects: {} });
+
+    const indexer = makeIndexer();
+    await indexer.rebuild();
+
+    const summaries = await indexer.fragments.findAllSummaries();
+    const updatedBridge = summaries.find((summary) => summary.key === "the-bridge");
+    expect(updatedBridge?.aspects).toEqual({});
+  });
+});
+
 // --- aspects ---
 
 describe("aspects.findAll", () => {
@@ -190,6 +221,27 @@ describe("aspects.findByKey", () => {
     await indexer.rebuild();
 
     expect(await indexer.aspects.findByKey("nonexistent")).toBeNull();
+  });
+
+  it("round-trips an aspect color from vault frontmatter through the index", async () => {
+    const vault = createVault({ root: vaultDir });
+    const aspects = await vault.aspects.readAll();
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
+    await vault.aspects.write({ ...grief, color: "#22c55e" });
+
+    const indexer = makeIndexer();
+    await indexer.rebuild();
+
+    const reloaded = await indexer.aspects.findByKey("grief");
+    expect(reloaded?.color).toBe("#22c55e");
+  });
+
+  it("leaves color undefined when not set in vault frontmatter", async () => {
+    const indexer = makeIndexer();
+    await indexer.rebuild();
+
+    const grief = await indexer.aspects.findByKey("grief");
+    expect(grief?.color).toBeUndefined();
   });
 });
 

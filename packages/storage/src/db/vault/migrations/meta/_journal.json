@@ -99,6 +99,13 @@
       "when": 1747180800000,
       "tag": "20260512_add_fragment_excerpt",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1747785600000,
+      "tag": "20260519_add_aspect_color",
+      "breakpoints": true
     }
   ]
 }

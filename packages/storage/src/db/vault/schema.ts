@@ -73,6 +73,7 @@ export const aspectsTable = sqliteTable("aspects", {
   uuid: text("uuid").primaryKey(),
   key: text("key").notNull().unique(),
   category: text("category"),
+  color: text("color"),
   contentHash: text("content_hash").notNull(),
   filePath: text("file_path").notNull().unique(),
   syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),

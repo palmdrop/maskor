@@ -1,0 +1,1 @@
+ALTER TABLE aspects ADD COLUMN color TEXT;

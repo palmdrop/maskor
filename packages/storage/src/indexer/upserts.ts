@@ -61,13 +61,21 @@ export const upsertAspect = (
       uuid: aspect.uuid,
       key: aspect.key,
       category: aspect.category ?? null,
+      color: aspect.color ?? null,
       contentHash,
       filePath,
       syncedAt,
     })
     .onConflictDoUpdate({
       target: aspectsTable.uuid,
-      set: { key: aspect.key, category: aspect.category ?? null, contentHash, filePath, syncedAt },
+      set: {
+        key: aspect.key,
+        category: aspect.category ?? null,
+        color: aspect.color ?? null,
+        contentHash,
+        filePath,
+        syncedAt,
+      },
     })
     .run();
 

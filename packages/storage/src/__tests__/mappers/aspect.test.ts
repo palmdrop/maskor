@@ -45,6 +45,20 @@ describe("aspect.fromFile", () => {
     const aspect = fromFile(parsed, "grief.md");
     expect(aspect.category).toBeUndefined();
   });
+
+  it("reads color from frontmatter when present", () => {
+    const parsed: ParsedFile = {
+      ...PARSED_ASPECT,
+      frontmatter: { ...PARSED_ASPECT.frontmatter, color: "#f97316" },
+    };
+    const aspect = fromFile(parsed, "grief.md");
+    expect(aspect.color).toBe("#f97316");
+  });
+
+  it("sets color to undefined when missing from frontmatter", () => {
+    const aspect = fromFile(PARSED_ASPECT, "grief.md");
+    expect(aspect.color).toBeUndefined();
+  });
 });
 
 describe("aspect.toFile", () => {
@@ -80,6 +94,16 @@ describe("aspect.toFile", () => {
   it("writes empty body when description is undefined", () => {
     const { body } = toFile({ ...aspect, description: undefined });
     expect(body).toBe("");
+  });
+
+  it("writes color to frontmatter when present", () => {
+    const { frontmatter } = toFile({ ...aspect, color: "#22c55e" });
+    expect(frontmatter.color).toBe("#22c55e");
+  });
+
+  it("omits color when undefined", () => {
+    const { frontmatter } = toFile(aspect);
+    expect("color" in frontmatter).toBe(false);
   });
 });
 

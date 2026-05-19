@@ -36,12 +36,14 @@ export type IndexedFragmentSummary = {
   key: string;
   isDiscarded: boolean;
   excerpt: string | null;
+  aspects: Record<string, IndexedFragmentAspect>;
 };
 
 export type IndexedAspect = {
   uuid: string;
   key: string;
   category?: string;
+  color?: string;
   filePath: string;
   notes: string[];
 };

@@ -43,6 +43,7 @@ export const assembleAspect = (
   uuid: row.uuid,
   key: row.key,
   category: row.category ?? undefined,
+  color: row.color ?? undefined,
   filePath: row.filePath,
   notes: noteRows.map((note) => note.noteKey),
 });

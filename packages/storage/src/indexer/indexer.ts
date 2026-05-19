@@ -251,7 +251,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       },
 
       async findAllSummaries() {
-        return vaultDatabase
+        const fragmentRows = vaultDatabase
           .select({
             uuid: fragmentsTable.uuid,
             key: fragmentsTable.key,
@@ -260,6 +260,30 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           })
           .from(fragmentsTable)
           .all();
+
+        const aspectWeightRows = vaultDatabase
+          .select({
+            fragmentUuid: fragmentAspectsTable.fragmentUuid,
+            aspectKey: fragmentAspectsTable.aspectKey,
+            weight: fragmentAspectsTable.weight,
+          })
+          .from(fragmentAspectsTable)
+          .all();
+
+        const aspectsByFragmentUuid = aspectWeightRows.reduce(
+          (acc, row) => {
+            const existing = acc.get(row.fragmentUuid) ?? {};
+            existing[row.aspectKey] = { weight: row.weight };
+            acc.set(row.fragmentUuid, existing);
+            return acc;
+          },
+          new Map<string, Record<string, { weight: number }>>(),
+        );
+
+        return fragmentRows.map((row) => ({
+          ...row,
+          aspects: aspectsByFragmentUuid.get(row.uuid) ?? {},
+        }));
       },
 
       async findByUUID(uuid: string) {

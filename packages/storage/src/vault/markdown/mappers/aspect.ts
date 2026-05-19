@@ -13,6 +13,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Aspect => {
     uuid: frontmatter.uuid as string,
     key,
     category: frontmatter.category as string | undefined,
+    color: frontmatter.color as string | undefined,
     description,
     notes: (frontmatter.notes as string[]) ?? [],
   };
@@ -26,6 +27,10 @@ export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; 
 
   if (aspect.category !== undefined) {
     frontmatter.category = aspect.category;
+  }
+
+  if (aspect.color !== undefined) {
+    frontmatter.color = aspect.color;
   }
 
   return {

@@ -59,6 +59,7 @@ export const FragmentSummarySchema = z
     key: z.string().openapi({ example: "harbour-lights" }),
     isDiscarded: z.boolean(),
     excerpt: z.string().nullable().openapi({ example: "The lights flickered at dusk…" }),
+    aspects: z.record(z.string(), IndexedFragmentAspectSchema),
   })
   .openapi("FragmentSummary");
 

@@ -5,12 +5,15 @@ import {
   AspectUpdateSchema as DomainAspectUpdateSchema,
 } from "@maskor/shared";
 
+const ColorExample = { example: "#f97316" };
+
 // List response — index layer fields
 export const IndexedAspectSchema = DomainAspectSchema.omit({ description: true })
   .extend({
     uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     key: z.string().openapi({ example: "tone" }),
     category: z.string().optional().openapi({ example: "style" }),
+    color: z.string().optional().openapi(ColorExample),
     filePath: z.string(),
   })
   .openapi("IndexedAspect");
@@ -20,6 +23,7 @@ export const AspectSchema = DomainAspectSchema.extend({
   uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
   key: z.string().openapi({ example: "tone" }),
   category: z.string().optional().openapi({ example: "style" }),
+  color: z.string().optional().openapi(ColorExample),
 }).openapi("Aspect");
 
 export const AspectUUIDParamSchema = z.object({
@@ -30,12 +34,14 @@ export const AspectUUIDParamSchema = z.object({
 export const AspectCreateSchema = DomainAspectCreateSchema.extend({
   key: z.string().min(1).openapi({ example: "tone" }),
   category: z.string().optional().openapi({ example: "style" }),
+  color: z.string().optional().openapi(ColorExample),
   notes: z.array(z.string()).default([]),
 }).openapi("AspectCreate");
 
 export const AspectUpdateSchema = DomainAspectUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "tone" }),
   category: z.string().optional().openapi({ example: "style" }),
+  color: z.string().optional().openapi(ColorExample),
 }).openapi("AspectUpdate");
 
 export const AspectUpdateResponseSchema = z
