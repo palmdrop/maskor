@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import type { OverviewDensity } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,7 +42,11 @@ import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
+import { ArcPanel } from "./components/ArcPanel";
 import { resolveAspectColor } from "./utils/aspectColors";
+import { computeSequenceLayout } from "./utils/layout";
+import { buildArcSeries, type ArcSeries } from "./utils/arcData";
+import { ARC_PANEL_HEIGHT } from "./components/ArcPanel";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -51,17 +55,20 @@ const SectionZone = ({
   sectionId,
   isEmpty,
   fragmentUuids,
+  width,
 }: {
   children: React.ReactNode;
   sectionId: string;
   isEmpty: boolean;
   fragmentUuids: string[];
+  width: number;
 }) => {
   const { setNodeRef, isOver } = useDroppable({ id: sectionId });
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-row gap-3 min-h-36 p-4 rounded-lg border-2 border-dashed overflow-x-auto transition-colors ${
+      style={{ width }}
+      className={`flex flex-row gap-3 min-h-36 p-4 rounded-lg border-2 border-dashed transition-colors ${
         isOver ? "border-primary/50 bg-primary/5" : "border-border/50"
       }`}
     >
@@ -206,6 +213,28 @@ export const OverviewPage = () => {
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
     [allFragments],
   );
+
+  const sequenceLayout = useMemo(
+    () => computeSequenceLayout(sectionsData, density),
+    [sectionsData, density],
+  );
+
+  // Stale-while-drag: hold the previously rendered arc series until the drag
+  // ends. The user's optimistic in-flight reorderings still update tile DOM
+  // positions, but the curve only catches up after `onDragEnd` clears
+  // `activeDragId`. Avoids per-frame recomputation while the user drags.
+  const arcSeriesCacheRef = useRef<ArcSeries[]>([]);
+  const arcSeries = useMemo<ArcSeries[]>(() => {
+    if (activeDragId !== null) return arcSeriesCacheRef.current;
+    const next = buildArcSeries(
+      sequenceLayout.sections.flatMap((section) => section.fragmentUuids),
+      fragmentByUuid,
+      sequenceLayout.centerByFragmentUuid,
+      ARC_PANEL_HEIGHT,
+    );
+    arcSeriesCacheRef.current = next;
+    return next;
+  }, [activeDragId, sequenceLayout, fragmentByUuid]);
 
   const sequenceByUuid = useMemo(
     () => new Map((bundle?.sequences ?? []).map((s) => [s.uuid, s])),
@@ -563,8 +592,25 @@ export const OverviewPage = () => {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              {sectionsData.map((sectionData) => (
-                <section key={sectionData.uuid} className="flex flex-col gap-2">
+              <div className="overflow-x-auto">
+                <div
+                  className="flex flex-col gap-2"
+                  style={{ width: sequenceLayout.totalWidth || undefined, minWidth: "100%" }}
+                >
+                  {sequenceLayout.totalWidth > 0 && (
+                    <ArcPanel
+                      width={sequenceLayout.totalWidth}
+                      series={arcSeries}
+                      colorByAspectKey={colorByAspectKey}
+                    />
+                  )}
+                  <div className="flex flex-row gap-3 items-start">
+              {sectionsData.map((sectionData, sectionIndex) => (
+                <section
+                  key={sectionData.uuid}
+                  className="flex flex-col gap-2 shrink-0"
+                  style={{ width: sequenceLayout.sections[sectionIndex]?.width }}
+                >
                   {confirmingDeleteSectionId === sectionData.uuid ? (
                     <div className="flex flex-col gap-1">
                       <p className="text-sm text-muted-foreground">
@@ -662,6 +708,7 @@ export const OverviewPage = () => {
                     sectionId={sectionData.uuid}
                     isEmpty={sectionData.fragmentUuids.length === 0}
                     fragmentUuids={sectionData.fragmentUuids}
+                    width={sequenceLayout.sections[sectionIndex]?.width ?? 0}
                   >
                     {sectionData.fragmentUuids.map((uuid) => {
                       const fragment = fragmentByUuid.get(uuid);
@@ -683,6 +730,9 @@ export const OverviewPage = () => {
                   </SectionZone>
                 </section>
               ))}
+                  </div>
+                </div>
+              </div>
 
               {sequence && (
                 <button

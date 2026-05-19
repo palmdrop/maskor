@@ -1,5 +1,6 @@
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import type { OverviewDensity } from "../../../router";
+import { TILE_DIMENSIONS_BY_DENSITY } from "../utils/layout";
 import { AspectColorBar } from "./AspectColorBar";
 
 interface TileContentProps {
@@ -11,12 +12,6 @@ interface TileContentProps {
   cycleTooltips?: string[];
   isSelected?: boolean;
 }
-
-const SIZE_BY_DENSITY: Record<OverviewDensity, string> = {
-  full: "h-28 w-40 p-3",
-  compact: "h-14 w-32 p-2",
-  mini: "h-6 w-20 p-0",
-};
 
 const IndicatorIcons = ({
   violationTooltips,
@@ -100,7 +95,7 @@ export const TileContent = ({
   isSelected,
 }: TileContentProps) => {
   const aspectKeys = Object.keys(fragment.aspects);
-  const containerSize = SIZE_BY_DENSITY[density];
+  const containerSize = TILE_DIMENSIONS_BY_DENSITY[density].tileClass;
   const borderClass = isSelected ? "border-primary ring-1 ring-primary" : "border-border";
 
   if (density === "mini") {

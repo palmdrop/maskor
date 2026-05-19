@@ -578,6 +578,61 @@ describe("OverviewPage — density-aware tile rendering", () => {
   });
 });
 
+describe("OverviewPage — arc panel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+  });
+
+  it("does not render the arc panel when the sequence has no sections", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: { status: 200, data: { sequences: [], violations: [], cycles: [] } },
+      isLoading: false,
+    });
+    mockFragments([]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.queryByTestId("arc-panel")).toBeNull();
+  });
+
+  it("renders the arc panel when sections exist, even if empty", () => {
+    mockSequence([]);
+    mockFragments([]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByTestId("arc-panel")).toBeInTheDocument();
+  });
+
+  it("renders one curve per aspect that has any weighted point", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
+      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 } }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const panel = screen.getByTestId("arc-panel");
+    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+    // city has only one point — renders as a circle, also tagged with data-aspect-key
+    expect(panel.querySelector('[data-aspect-key="city"]')).not.toBeNull();
+  });
+
+  it("omits an aspect when no placed fragment has weight for it", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 } })]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const panel = screen.getByTestId("arc-panel");
+    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+    expect(panel.querySelector('[data-aspect-key="city"]')).toBeNull();
+  });
+});
+
 describe("parseOverviewDensity", () => {
   it("returns 'full' as the default when value is undefined", async () => {
     const { parseOverviewDensity } = await import("../../router");
