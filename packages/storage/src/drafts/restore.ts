@@ -100,10 +100,37 @@ export const restoreDraft = async (
       },
       "drafts: restore failed, rolling back",
     );
-    // Roll back: remove any copies we placed into live, then move the aside
-    // entries back into place. Best-effort — log but don't throw on rollback
-    // failures so the original error reaches the caller.
+    // Roll back. Invariant: every entry in movedAside also gets its livePath
+    // cleared before the rename, regardless of whether it ended up in
+    // copiedIntoLive. cp may have partially written to livePath and then
+    // thrown before copiedIntoLive.push ran; if we skip the rm, the rename
+    // back from aside fails (livePath exists) and the user loses live data.
+    // Best-effort — log but don't throw on rollback failures so the original
+    // error reaches the caller.
+    for (const target of movedAside) {
+      try {
+        if (existsSync(target.livePath)) {
+          await rm(target.livePath, { recursive: true, force: true });
+        }
+        if (existsSync(target.asidePath)) {
+          await rename(target.asidePath, target.livePath);
+        }
+      } catch (rollbackError) {
+        logger?.error(
+          {
+            relativePath: target.relativePath,
+            errorMessage:
+              rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+          },
+          "drafts: rollback failed to restore live entry from aside",
+        );
+      }
+    }
+    // Clean up any copy that landed at a livePath we never moved aside (the
+    // first rename in the forward loop succeeded for some targets but failed
+    // mid-iteration). Iterating copiedIntoLive covers those.
     for (const target of copiedIntoLive) {
+      if (movedAside.includes(target)) continue;
       try {
         if (existsSync(target.livePath)) {
           await rm(target.livePath, { recursive: true, force: true });
@@ -116,22 +143,6 @@ export const restoreDraft = async (
               rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
           },
           "drafts: rollback failed to remove copied-into-live entry",
-        );
-      }
-    }
-    for (const target of movedAside) {
-      try {
-        if (existsSync(target.asidePath)) {
-          await rename(target.asidePath, target.livePath);
-        }
-      } catch (rollbackError) {
-        logger?.error(
-          {
-            relativePath: target.relativePath,
-            errorMessage:
-              rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
-          },
-          "drafts: rollback failed to rename aside entry back into place",
         );
       }
     }

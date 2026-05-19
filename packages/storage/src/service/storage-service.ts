@@ -87,6 +87,7 @@ import {
   withDraftMutex,
   type ListedDraft,
 } from "../drafts";
+import { withVaultWriteLock } from "../utils/vault-write-lock";
 
 export type StorageServiceConfig = {
   logger?: Logger;
@@ -533,249 +534,257 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, fragment: Fragment): Promise<Fragment> {
-        const fragmentToWrite = { ...fragment, updatedAt: new Date() };
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const fragmentToWrite = { ...fragment, updatedAt: new Date() };
 
-        // Capture old path before writing the new file — needed for orphan cleanup on rename.
-        const indexer = getVaultIndexer(context);
-        const oldFilePath = await indexer.fragments.findFilePath(fragment.uuid);
+          // Capture old path before writing the new file — needed for orphan cleanup on rename.
+          const indexer = getVaultIndexer(context);
+          const oldFilePath = await indexer.fragments.findFilePath(fragment.uuid);
 
-        // Active and discarded fragments share a key namespace by directory; only conflict
-        // within the same namespace. Without this guard, vault.write would silently overwrite
-        // a sibling file and the inline upsert would fail on the unique file_path constraint
-        // — leaving both fragments unrecoverable.
-        const allFragments = await indexer.fragments.findAll(); // TODO: isn't this very expensive for large projects???
-        const lowerKey = fragmentToWrite.key.toLowerCase();
-        if (
-          allFragments.some(
-            (other) =>
-              other.uuid !== fragmentToWrite.uuid &&
-              other.isDiscarded === fragmentToWrite.isDiscarded &&
-              other.key.toLowerCase() === lowerKey,
-          )
-        ) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `A fragment with key "${fragmentToWrite.key}" already exists`,
-            { reason: "key_conflict" },
-          );
-        }
+          // Active and discarded fragments share a key namespace by directory; only conflict
+          // within the same namespace. Without this guard, vault.write would silently overwrite
+          // a sibling file and the inline upsert would fail on the unique file_path constraint
+          // — leaving both fragments unrecoverable.
+          const allFragments = await indexer.fragments.findAll(); // TODO: isn't this very expensive for large projects???
+          const lowerKey = fragmentToWrite.key.toLowerCase();
+          if (
+            allFragments.some(
+              (other) =>
+                other.uuid !== fragmentToWrite.uuid &&
+                other.isDiscarded === fragmentToWrite.isDiscarded &&
+                other.key.toLowerCase() === lowerKey,
+            )
+          ) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `A fragment with key "${fragmentToWrite.key}" already exists`,
+              { reason: "key_conflict" },
+            );
+          }
 
-        await getVault(context).fragments.write(fragmentToWrite);
+          await getVault(context).fragments.write(fragmentToWrite);
 
-        // Inline DB update — closes the stale-index window for API-originated writes.
-        // The watcher will fire afterward and hash-guard to a no-op.
-        const entityRelativePath = fragmentToWrite.isDiscarded
-          ? join("discarded", `${fragmentToWrite.key}.md`)
-          : `${fragmentToWrite.key}.md`;
+          // Inline DB update — closes the stale-index window for API-originated writes.
+          // The watcher will fire afterward and hash-guard to a no-op.
+          const entityRelativePath = fragmentToWrite.isDiscarded
+            ? join("discarded", `${fragmentToWrite.key}.md`)
+            : `${fragmentToWrite.key}.md`;
 
-        // If the slug changed, delete the old file so it doesn't become orphaned.
-        if (oldFilePath && oldFilePath !== entityRelativePath) {
-          const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath);
-          await unlink(absoluteOldPath).catch(() => {
-            log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
+          // If the slug changed, delete the old file so it doesn't become orphaned.
+          if (oldFilePath && oldFilePath !== entityRelativePath) {
+            const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath);
+            await unlink(absoluteOldPath).catch(() => {
+              log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
+            });
+          }
+
+          const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const contentHash = hashContent(rawContent);
+          const vaultDatabase = getVaultDatabase(context);
+          const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+
+          vaultDatabase.transaction((tx) => {
+            upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
           });
-        }
 
-        const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
-        const rawContent = await Bun.file(absolutePath).text();
-        const contentHash = hashContent(rawContent);
-        const vaultDatabase = getVaultDatabase(context);
-        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+          setWordCount(
+            vaultDatabase,
+            fragmentToWrite.uuid,
+            computeWordCount(fragmentToWrite.content),
+          );
 
-        vaultDatabase.transaction((tx) => {
-          upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
+          return { ...fragmentToWrite, contentHash };
         });
-
-        setWordCount(
-          vaultDatabase,
-          fragmentToWrite.uuid,
-          computeWordCount(fragmentToWrite.content),
-        );
-
-        return { ...fragmentToWrite, contentHash };
       },
 
       async discard(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.fragments.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.fragments.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "FRAGMENT_NOT_FOUND",
-            `Cannot discard: fragment "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        const sourceEntityRelativePath = indexed.filePath;
-        const destinationEntityRelativePath = join("discarded", `${indexed.key}.md`);
-
-        try {
-          await getVault(context).fragments.discard(sourceEntityRelativePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: sourceEntityRelativePath },
-              "stale index: fragment file missing on discard",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot discard: fragment "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: sourceEntityRelativePath },
+              "FRAGMENT_NOT_FOUND",
+              `Cannot discard: fragment "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const absoluteDestination = join(
-          context.vaultPath,
-          "fragments",
-          destinationEntityRelativePath,
-        );
-        const rawContent = await Bun.file(absoluteDestination).text();
-        const vaultDatabase = getVaultDatabase(context);
-        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+          const sourceEntityRelativePath = indexed.filePath;
+          const destinationEntityRelativePath = join("discarded", `${indexed.key}.md`);
 
-        // Parse the discarded fragment directly from rawContent — avoids a second file read.
-        // isDiscarded is derived from the destination path in fromFile.
-        const discardedFragment = fragmentMapper.fromFile(
-          parseFile(rawContent),
-          destinationEntityRelativePath,
-        );
+          try {
+            await getVault(context).fragments.discard(sourceEntityRelativePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: sourceEntityRelativePath },
+                "stale index: fragment file missing on discard",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot discard: fragment "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: sourceEntityRelativePath },
+              );
+            }
+            throw error;
+          }
 
-        vaultDatabase.transaction((tx) => {
-          deleteFragmentByFilePath(tx, sourceEntityRelativePath);
-          upsertFragment(
-            tx,
-            discardedFragment,
+          const absoluteDestination = join(
+            context.vaultPath,
+            "fragments",
             destinationEntityRelativePath,
-            rawContent,
-            knownAspectKeys,
           );
+          const rawContent = await Bun.file(absoluteDestination).text();
+          const vaultDatabase = getVaultDatabase(context);
+          const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+
+          // Parse the discarded fragment directly from rawContent — avoids a second file read.
+          // isDiscarded is derived from the destination path in fromFile.
+          const discardedFragment = fragmentMapper.fromFile(
+            parseFile(rawContent),
+            destinationEntityRelativePath,
+          );
+
+          vaultDatabase.transaction((tx) => {
+            deleteFragmentByFilePath(tx, sourceEntityRelativePath);
+            upsertFragment(
+              tx,
+              discardedFragment,
+              destinationEntityRelativePath,
+              rawContent,
+              knownAspectKeys,
+            );
+          });
         });
       },
 
       async restore(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.fragments.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.fragments.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "FRAGMENT_NOT_FOUND",
-            `Cannot restore: fragment "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        if (!indexed.isDiscarded) {
-          throw new VaultError(
-            "FRAGMENT_NOT_DISCARDED",
-            `Cannot restore: fragment "${uuid}" is not discarded`,
-            { uuid },
-          );
-        }
-
-        const allFragments = await indexer.fragments.findAll();
-        const lowerKey = indexed.key.toLowerCase();
-        if (
-          allFragments.some(
-            (other) =>
-              other.uuid !== uuid && !other.isDiscarded && other.key.toLowerCase() === lowerKey,
-          )
-        ) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `Cannot restore: an active fragment with key "${indexed.key}" already exists`,
-            { reason: "key_conflict" },
-          );
-        }
-
-        const sourceEntityRelativePath = indexed.filePath;
-        const destinationEntityRelativePath = `${indexed.key}.md`;
-
-        try {
-          await getVault(context).fragments.restore(sourceEntityRelativePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: sourceEntityRelativePath },
-              "stale index: fragment file missing on restore",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot restore: fragment "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: sourceEntityRelativePath },
+              "FRAGMENT_NOT_FOUND",
+              `Cannot restore: fragment "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const absoluteDestination = join(
-          context.vaultPath,
-          "fragments",
-          destinationEntityRelativePath,
-        );
-        const rawContent = await Bun.file(absoluteDestination).text();
-        const vaultDatabase = getVaultDatabase(context);
-        const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+          if (!indexed.isDiscarded) {
+            throw new VaultError(
+              "FRAGMENT_NOT_DISCARDED",
+              `Cannot restore: fragment "${uuid}" is not discarded`,
+              { uuid },
+            );
+          }
 
-        const restoredFragment = fragmentMapper.fromFile(
-          parseFile(rawContent),
-          destinationEntityRelativePath,
-        );
+          const allFragments = await indexer.fragments.findAll();
+          const lowerKey = indexed.key.toLowerCase();
+          if (
+            allFragments.some(
+              (other) =>
+                other.uuid !== uuid && !other.isDiscarded && other.key.toLowerCase() === lowerKey,
+            )
+          ) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `Cannot restore: an active fragment with key "${indexed.key}" already exists`,
+              { reason: "key_conflict" },
+            );
+          }
 
-        vaultDatabase.transaction((tx) => {
-          deleteFragmentByFilePath(tx, sourceEntityRelativePath);
-          upsertFragment(
-            tx,
-            restoredFragment,
+          const sourceEntityRelativePath = indexed.filePath;
+          const destinationEntityRelativePath = `${indexed.key}.md`;
+
+          try {
+            await getVault(context).fragments.restore(sourceEntityRelativePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: sourceEntityRelativePath },
+                "stale index: fragment file missing on restore",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot restore: fragment "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: sourceEntityRelativePath },
+              );
+            }
+            throw error;
+          }
+
+          const absoluteDestination = join(
+            context.vaultPath,
+            "fragments",
             destinationEntityRelativePath,
-            rawContent,
-            knownAspectKeys,
           );
+          const rawContent = await Bun.file(absoluteDestination).text();
+          const vaultDatabase = getVaultDatabase(context);
+          const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+
+          const restoredFragment = fragmentMapper.fromFile(
+            parseFile(rawContent),
+            destinationEntityRelativePath,
+          );
+
+          vaultDatabase.transaction((tx) => {
+            deleteFragmentByFilePath(tx, sourceEntityRelativePath);
+            upsertFragment(
+              tx,
+              restoredFragment,
+              destinationEntityRelativePath,
+              rawContent,
+              knownAspectKeys,
+            );
+          });
         });
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.fragments.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.fragments.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "FRAGMENT_NOT_FOUND",
-            `Cannot delete: fragment "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        if (!indexed.isDiscarded) {
-          throw new VaultError(
-            "FRAGMENT_NOT_DISCARDED",
-            `Cannot delete: fragment "${uuid}" must be discarded before permanent deletion`,
-            { uuid },
-          );
-        }
-
-        try {
-          await getVault(context).fragments.delete(indexed.filePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: indexed.filePath },
-              "stale index: fragment file missing on delete",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot delete: fragment "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
+              "FRAGMENT_NOT_FOUND",
+              `Cannot delete: fragment "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const vaultDatabase = getVaultDatabase(context);
-        vaultDatabase.transaction((tx) => {
-          deleteFragmentByFilePath(tx, indexed.filePath);
+          if (!indexed.isDiscarded) {
+            throw new VaultError(
+              "FRAGMENT_NOT_DISCARDED",
+              `Cannot delete: fragment "${uuid}" must be discarded before permanent deletion`,
+              { uuid },
+            );
+          }
+
+          try {
+            await getVault(context).fragments.delete(indexed.filePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: indexed.filePath },
+                "stale index: fragment file missing on delete",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot delete: fragment "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
+          }
+
+          const vaultDatabase = getVaultDatabase(context);
+          vaultDatabase.transaction((tx) => {
+            deleteFragmentByFilePath(tx, indexed.filePath);
+          });
         });
       },
     },
@@ -813,61 +822,65 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, aspect: Aspect): Promise<void> {
-        const allAspects = await getVaultIndexer(context).aspects.findAll();
-        const lowerKey = aspect.key.toLowerCase();
-        if (allAspects.some((a) => a.uuid !== aspect.uuid && a.key.toLowerCase() === lowerKey)) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `An aspect with key "${aspect.key}" already exists`,
-            { reason: "key_conflict" },
-          );
-        }
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const allAspects = await getVaultIndexer(context).aspects.findAll();
+          const lowerKey = aspect.key.toLowerCase();
+          if (allAspects.some((a) => a.uuid !== aspect.uuid && a.key.toLowerCase() === lowerKey)) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `An aspect with key "${aspect.key}" already exists`,
+              { reason: "key_conflict" },
+            );
+          }
 
-        await getVault(context).aspects.write(aspect);
+          await getVault(context).aspects.write(aspect);
 
-        // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${aspect.key}.md`;
-        const absolutePath = join(context.vaultPath, "aspects", entityRelativePath);
-        const rawContent = await Bun.file(absolutePath).text();
-        const vaultDatabase = getVaultDatabase(context);
+          // Inline DB update — closes the stale-index window for API-originated writes.
+          const entityRelativePath = `${aspect.key}.md`;
+          const absolutePath = join(context.vaultPath, "aspects", entityRelativePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
 
-        vaultDatabase.transaction((tx) => {
-          upsertAspect(tx, aspect, entityRelativePath, rawContent);
+          vaultDatabase.transaction((tx) => {
+            upsertAspect(tx, aspect, entityRelativePath, rawContent);
+          });
         });
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.aspects.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.aspects.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "ENTITY_NOT_FOUND",
-            `Cannot delete: aspect "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        try {
-          await getVault(context).aspects.delete(indexed.filePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: indexed.filePath },
-              "stale index: aspect file missing on delete",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot delete: aspect "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
+              "ENTITY_NOT_FOUND",
+              `Cannot delete: aspect "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const vaultDatabase = getVaultDatabase(context);
-        vaultDatabase.transaction((tx) => {
-          deleteAspectByFilePath(tx, indexed.filePath);
+          try {
+            await getVault(context).aspects.delete(indexed.filePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: indexed.filePath },
+                "stale index: aspect file missing on delete",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot delete: aspect "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
+          }
+
+          const vaultDatabase = getVaultDatabase(context);
+          vaultDatabase.transaction((tx) => {
+            deleteAspectByFilePath(tx, indexed.filePath);
+          });
         });
       },
 
@@ -876,72 +889,74 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         uuid: string,
         patch: AspectUpdate,
       ): Promise<AspectUpdateResponse> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.aspects.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.aspects.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError("ENTITY_NOT_FOUND", `Aspect "${uuid}" not found in index`, {
-            uuid,
-            reason: "UUID not present in vault index",
-          });
-        }
-
-        try {
-          const current = await getVault(context).aspects.read(indexed.filePath);
-          const oldKey = current.key;
-          const updated: Aspect = {
-            ...current,
-            ...(patch.key !== undefined && { key: patch.key }),
-            ...(patch.category !== undefined && { category: patch.category }),
-            ...(patch.description !== undefined && { description: patch.description }),
-            ...(patch.notes !== undefined && { notes: patch.notes }),
-          };
-
-          await getVault(context).aspects.write(updated);
-
-          const newFilePath = `${updated.key}.md`;
-
-          if (indexed.filePath !== newFilePath) {
-            const absoluteOldPath = join(context.vaultPath, "aspects", indexed.filePath);
-            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-              if (error.code === "ENOENT") {
-                log.warn(
-                  { filePath: indexed.filePath },
-                  "rename cleanup: old aspect file already gone",
-                );
-                return;
-              }
-              throw error;
+          if (!indexed) {
+            throw new VaultError("ENTITY_NOT_FOUND", `Aspect "${uuid}" not found in index`, {
+              uuid,
+              reason: "UUID not present in vault index",
             });
           }
 
-          const absolutePath = join(context.vaultPath, "aspects", newFilePath);
-          const rawContent = await Bun.file(absolutePath).text();
-          const vaultDatabase = getVaultDatabase(context);
+          try {
+            const current = await getVault(context).aspects.read(indexed.filePath);
+            const oldKey = current.key;
+            const updated: Aspect = {
+              ...current,
+              ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.category !== undefined && { category: patch.category }),
+              ...(patch.description !== undefined && { description: patch.description }),
+              ...(patch.notes !== undefined && { notes: patch.notes }),
+            };
 
-          const cascadePayload =
-            patch.key !== undefined && patch.key !== oldKey
-              ? await cascadeAspectKeyRename(context, oldKey, updated.key)
-              : null;
+            await getVault(context).aspects.write(updated);
 
-          const warningFragments = cascadePayload?.fragments ?? [];
+            const newFilePath = `${updated.key}.md`;
 
-          vaultDatabase.transaction((tx) => {
-            cascadePayload?.commit(tx);
-            upsertAspect(tx, updated, newFilePath, rawContent);
-          });
+            if (indexed.filePath !== newFilePath) {
+              const absoluteOldPath = join(context.vaultPath, "aspects", indexed.filePath);
+              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === "ENOENT") {
+                  log.warn(
+                    { filePath: indexed.filePath },
+                    "rename cleanup: old aspect file already gone",
+                  );
+                  return;
+                }
+                throw error;
+              });
+            }
 
-          return { aspect: updated, warnings: warningFragments };
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            throw new VaultError(
-              "STALE_INDEX",
-              `Aspect "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
-            );
+            const absolutePath = join(context.vaultPath, "aspects", newFilePath);
+            const rawContent = await Bun.file(absolutePath).text();
+            const vaultDatabase = getVaultDatabase(context);
+
+            const cascadePayload =
+              patch.key !== undefined && patch.key !== oldKey
+                ? await cascadeAspectKeyRename(context, oldKey, updated.key)
+                : null;
+
+            const warningFragments = cascadePayload?.fragments ?? [];
+
+            vaultDatabase.transaction((tx) => {
+              cascadePayload?.commit(tx);
+              upsertAspect(tx, updated, newFilePath, rawContent);
+            });
+
+            return { aspect: updated, warnings: warningFragments };
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              throw new VaultError(
+                "STALE_INDEX",
+                `Aspect "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
           }
-          throw error;
-        }
+        });
       },
     },
 
@@ -978,24 +993,26 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, note: Note): Promise<void> {
-        const allNotes = await getVaultIndexer(context).notes.findAll();
-        const lowerKey = note.key.toLowerCase();
-        if (allNotes.some((n) => n.uuid !== note.uuid && n.key.toLowerCase() === lowerKey)) {
-          throw new VaultError("KEY_CONFLICT", `A note with key "${note.key}" already exists`, {
-            reason: "key_conflict",
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const allNotes = await getVaultIndexer(context).notes.findAll();
+          const lowerKey = note.key.toLowerCase();
+          if (allNotes.some((n) => n.uuid !== note.uuid && n.key.toLowerCase() === lowerKey)) {
+            throw new VaultError("KEY_CONFLICT", `A note with key "${note.key}" already exists`, {
+              reason: "key_conflict",
+            });
+          }
+
+          await getVault(context).notes.write(note);
+
+          // Inline DB update — closes the stale-index window for API-originated writes.
+          const entityRelativePath = `${note.key}.md`;
+          const absolutePath = join(context.vaultPath, "notes", entityRelativePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
+
+          vaultDatabase.transaction((tx) => {
+            upsertNote(tx, note, entityRelativePath, rawContent);
           });
-        }
-
-        await getVault(context).notes.write(note);
-
-        // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${note.key}.md`;
-        const absolutePath = join(context.vaultPath, "notes", entityRelativePath);
-        const rawContent = await Bun.file(absolutePath).text();
-        const vaultDatabase = getVaultDatabase(context);
-
-        vaultDatabase.transaction((tx) => {
-          upsertNote(tx, note, entityRelativePath, rawContent);
         });
       },
 
@@ -1004,106 +1021,110 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         uuid: string,
         patch: NoteUpdate,
       ): Promise<NoteUpdateResponse> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.notes.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.notes.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError("ENTITY_NOT_FOUND", `Note "${uuid}" not found in index`, {
-            uuid,
-            reason: "UUID not present in vault index",
-          });
-        }
-
-        try {
-          const current = await getVault(context).notes.read(indexed.filePath);
-          const oldKey = current.key;
-          const updated: Note = {
-            ...current,
-            ...(patch.key !== undefined && { key: patch.key }),
-            ...(patch.content !== undefined && { content: patch.content }),
-          };
-
-          await getVault(context).notes.write(updated);
-
-          const newFilePath = `${updated.key}.md`;
-
-          if (indexed.filePath !== newFilePath) {
-            const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
-            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-              if (error.code === "ENOENT") {
-                log.warn(
-                  { filePath: indexed.filePath },
-                  "rename cleanup: old note file already gone",
-                );
-                return;
-              }
-              throw error;
+          if (!indexed) {
+            throw new VaultError("ENTITY_NOT_FOUND", `Note "${uuid}" not found in index`, {
+              uuid,
+              reason: "UUID not present in vault index",
             });
           }
 
-          const absolutePath = join(context.vaultPath, "notes", newFilePath);
-          const rawContent = await Bun.file(absolutePath).text();
-          const vaultDatabase = getVaultDatabase(context);
+          try {
+            const current = await getVault(context).notes.read(indexed.filePath);
+            const oldKey = current.key;
+            const updated: Note = {
+              ...current,
+              ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.content !== undefined && { content: patch.content }),
+            };
 
-          const cascadePayload =
-            patch.key !== undefined && patch.key !== oldKey
-              ? await cascadeNoteKeyRename(context, oldKey, updated.key)
-              : null;
+            await getVault(context).notes.write(updated);
 
-          const warnings = cascadePayload
-            ? { fragments: cascadePayload.fragments, aspects: cascadePayload.aspects }
-            : { fragments: [], aspects: [] };
+            const newFilePath = `${updated.key}.md`;
 
-          vaultDatabase.transaction((tx) => {
-            cascadePayload?.commit(tx);
-            upsertNote(tx, updated, newFilePath, rawContent);
-          });
+            if (indexed.filePath !== newFilePath) {
+              const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
+              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === "ENOENT") {
+                  log.warn(
+                    { filePath: indexed.filePath },
+                    "rename cleanup: old note file already gone",
+                  );
+                  return;
+                }
+                throw error;
+              });
+            }
 
-          return { note: updated, warnings };
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            throw new VaultError(
-              "STALE_INDEX",
-              `Note "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
-            );
+            const absolutePath = join(context.vaultPath, "notes", newFilePath);
+            const rawContent = await Bun.file(absolutePath).text();
+            const vaultDatabase = getVaultDatabase(context);
+
+            const cascadePayload =
+              patch.key !== undefined && patch.key !== oldKey
+                ? await cascadeNoteKeyRename(context, oldKey, updated.key)
+                : null;
+
+            const warnings = cascadePayload
+              ? { fragments: cascadePayload.fragments, aspects: cascadePayload.aspects }
+              : { fragments: [], aspects: [] };
+
+            vaultDatabase.transaction((tx) => {
+              cascadePayload?.commit(tx);
+              upsertNote(tx, updated, newFilePath, rawContent);
+            });
+
+            return { note: updated, warnings };
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              throw new VaultError(
+                "STALE_INDEX",
+                `Note "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
           }
-          throw error;
-        }
+        });
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.notes.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.notes.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "ENTITY_NOT_FOUND",
-            `Cannot delete: note "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        try {
-          await getVault(context).notes.delete(indexed.filePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: indexed.filePath },
-              "stale index: note file missing on delete",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot delete: note "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
+              "ENTITY_NOT_FOUND",
+              `Cannot delete: note "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const vaultDatabase = getVaultDatabase(context);
-        vaultDatabase.transaction((tx) => {
-          deleteNoteByFilePath(tx, indexed.filePath);
+          try {
+            await getVault(context).notes.delete(indexed.filePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: indexed.filePath },
+                "stale index: note file missing on delete",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot delete: note "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
+          }
+
+          const vaultDatabase = getVaultDatabase(context);
+          vaultDatabase.transaction((tx) => {
+            deleteNoteByFilePath(tx, indexed.filePath);
+          });
         });
       },
     },
@@ -1141,28 +1162,30 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, reference: Reference): Promise<void> {
-        const allReferences = await getVaultIndexer(context).references.findAll();
-        const lowerKey = reference.key.toLowerCase();
-        if (
-          allReferences.some((r) => r.uuid !== reference.uuid && r.key.toLowerCase() === lowerKey)
-        ) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `A reference with key "${reference.key}" already exists`,
-            { reason: "key_conflict" },
-          );
-        }
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const allReferences = await getVaultIndexer(context).references.findAll();
+          const lowerKey = reference.key.toLowerCase();
+          if (
+            allReferences.some((r) => r.uuid !== reference.uuid && r.key.toLowerCase() === lowerKey)
+          ) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `A reference with key "${reference.key}" already exists`,
+              { reason: "key_conflict" },
+            );
+          }
 
-        await getVault(context).references.write(reference);
+          await getVault(context).references.write(reference);
 
-        // Inline DB update — closes the stale-index window for API-originated writes.
-        const entityRelativePath = `${reference.key}.md`;
-        const absolutePath = join(context.vaultPath, "references", entityRelativePath);
-        const rawContent = await Bun.file(absolutePath).text();
-        const vaultDatabase = getVaultDatabase(context);
+          // Inline DB update — closes the stale-index window for API-originated writes.
+          const entityRelativePath = `${reference.key}.md`;
+          const absolutePath = join(context.vaultPath, "references", entityRelativePath);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
 
-        vaultDatabase.transaction((tx) => {
-          upsertReference(tx, reference, entityRelativePath, rawContent);
+          vaultDatabase.transaction((tx) => {
+            upsertReference(tx, reference, entityRelativePath, rawContent);
+          });
         });
       },
 
@@ -1171,106 +1194,110 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         uuid: string,
         patch: ReferenceUpdate,
       ): Promise<ReferenceUpdateResponse> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.references.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.references.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError("ENTITY_NOT_FOUND", `Reference "${uuid}" not found in index`, {
-            uuid,
-            reason: "UUID not present in vault index",
-          });
-        }
-
-        try {
-          const current = await getVault(context).references.read(indexed.filePath);
-          const oldKey = current.key;
-          const updated: Reference = {
-            ...current,
-            ...(patch.key !== undefined && { key: patch.key }),
-            ...(patch.content !== undefined && { content: patch.content }),
-          };
-
-          await getVault(context).references.write(updated);
-
-          const newFilePath = `${updated.key}.md`;
-
-          if (indexed.filePath !== newFilePath) {
-            const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
-            await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-              if (error.code === "ENOENT") {
-                log.warn(
-                  { filePath: indexed.filePath },
-                  "rename cleanup: old reference file already gone",
-                );
-                return;
-              }
-              throw error;
+          if (!indexed) {
+            throw new VaultError("ENTITY_NOT_FOUND", `Reference "${uuid}" not found in index`, {
+              uuid,
+              reason: "UUID not present in vault index",
             });
           }
 
-          const absolutePath = join(context.vaultPath, "references", newFilePath);
-          const rawContent = await Bun.file(absolutePath).text();
-          const vaultDatabase = getVaultDatabase(context);
+          try {
+            const current = await getVault(context).references.read(indexed.filePath);
+            const oldKey = current.key;
+            const updated: Reference = {
+              ...current,
+              ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.content !== undefined && { content: patch.content }),
+            };
 
-          const cascadePayload =
-            patch.key !== undefined && patch.key !== oldKey
-              ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
-              : null;
+            await getVault(context).references.write(updated);
 
-          const warnings = cascadePayload
-            ? { fragments: cascadePayload.fragments }
-            : { fragments: [] };
+            const newFilePath = `${updated.key}.md`;
 
-          vaultDatabase.transaction((tx) => {
-            cascadePayload?.commit(tx);
-            upsertReference(tx, updated, newFilePath, rawContent);
-          });
+            if (indexed.filePath !== newFilePath) {
+              const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
+              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === "ENOENT") {
+                  log.warn(
+                    { filePath: indexed.filePath },
+                    "rename cleanup: old reference file already gone",
+                  );
+                  return;
+                }
+                throw error;
+              });
+            }
 
-          return { reference: updated, warnings };
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            throw new VaultError(
-              "STALE_INDEX",
-              `Reference "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
-            );
+            const absolutePath = join(context.vaultPath, "references", newFilePath);
+            const rawContent = await Bun.file(absolutePath).text();
+            const vaultDatabase = getVaultDatabase(context);
+
+            const cascadePayload =
+              patch.key !== undefined && patch.key !== oldKey
+                ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
+                : null;
+
+            const warnings = cascadePayload
+              ? { fragments: cascadePayload.fragments }
+              : { fragments: [] };
+
+            vaultDatabase.transaction((tx) => {
+              cascadePayload?.commit(tx);
+              upsertReference(tx, updated, newFilePath, rawContent);
+            });
+
+            return { reference: updated, warnings };
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              throw new VaultError(
+                "STALE_INDEX",
+                `Reference "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
           }
-          throw error;
-        }
+        });
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.references.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.references.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "ENTITY_NOT_FOUND",
-            `Cannot delete: reference "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        try {
-          await getVault(context).references.delete(indexed.filePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: indexed.filePath },
-              "stale index: reference file missing on delete",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot delete: reference "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
+              "ENTITY_NOT_FOUND",
+              `Cannot delete: reference "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const vaultDatabase = getVaultDatabase(context);
-        vaultDatabase.transaction((tx) => {
-          deleteReferenceByFilePath(tx, indexed.filePath);
+          try {
+            await getVault(context).references.delete(indexed.filePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: indexed.filePath },
+                "stale index: reference file missing on delete",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot delete: reference "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
+          }
+
+          const vaultDatabase = getVaultDatabase(context);
+          vaultDatabase.transaction((tx) => {
+            deleteReferenceByFilePath(tx, indexed.filePath);
+          });
         });
       },
     },
@@ -1279,15 +1306,21 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     arcs: {
       read: readArc,
-      write: writeArc,
-      delete: deleteArc,
+      write: async (context: ProjectContext, arc: Arc): Promise<void> => {
+        return withVaultWriteLock(context.vaultPath, () => writeArc(context, arc));
+      },
+      delete: async (context: ProjectContext, aspectKey: string): Promise<void> => {
+        return withVaultWriteLock(context.vaultPath, () => deleteArc(context, aspectKey));
+      },
     },
 
     // Piece operations
 
     pieces: {
       async consumeAll(context: ProjectContext): Promise<Fragment[]> {
-        return getVault(context).pieces.consumeAll();
+        return withVaultWriteLock(context.vaultPath, () =>
+          getVault(context).pieces.consumeAll(),
+        );
       },
     },
 
@@ -1303,74 +1336,80 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         excludeUuid?: string,
         readyStatusThreshold = 0.95,
       ): Promise<{ fragmentUuid: string | null; avoidanceCount: number }> {
-        const vaultDatabase = getVaultDatabase(context);
-        const indexer = getVaultIndexer(context);
-        const cooldown = getSuggestionCooldown(context);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const vaultDatabase = getVaultDatabase(context);
+          const indexer = getVaultIndexer(context);
+          const cooldown = getSuggestionCooldown(context);
 
-        if (
-          excludeUuid &&
-          cooldown.has(excludeUuid) &&
-          !cooldown.wasEditedWhileSurfaced(excludeUuid)
-        ) {
-          incrementAvoidance(vaultDatabase, excludeUuid);
-        }
+          if (
+            excludeUuid &&
+            cooldown.has(excludeUuid) &&
+            !cooldown.wasEditedWhileSurfaced(excludeUuid)
+          ) {
+            incrementAvoidance(vaultDatabase, excludeUuid);
+          }
 
-        const allFragments = await indexer.fragments.findAll();
-        const preFilter = allFragments.filter(
-          (fragment) => !fragment.isDiscarded && fragment.readyStatus < readyStatusThreshold,
-        );
+          const allFragments = await indexer.fragments.findAll();
+          const preFilter = allFragments.filter(
+            (fragment) => !fragment.isDiscarded && fragment.readyStatus < readyStatusThreshold,
+          );
 
-        if (preFilter.length === 0) {
-          return { fragmentUuid: null, avoidanceCount: 0 };
-        }
+          if (preFilter.length === 0) {
+            return { fragmentUuid: null, avoidanceCount: 0 };
+          }
 
-        const eligibleUuids = cooldown.getEligible(preFilter.map((fragment) => fragment.uuid));
-        const eligibleSet = new Set(eligibleUuids);
-        const eligible = preFilter.filter((fragment) => eligibleSet.has(fragment.uuid));
+          const eligibleUuids = cooldown.getEligible(preFilter.map((fragment) => fragment.uuid));
+          const eligibleSet = new Set(eligibleUuids);
+          const eligible = preFilter.filter((fragment) => eligibleSet.has(fragment.uuid));
 
-        // Exclude the current fragment from selection when alternatives exist, so Next never
-        // returns the same fragment that was just on screen.
-        const selectionPool =
-          excludeUuid && eligible.length > 1
-            ? eligible.filter((fragment) => fragment.uuid !== excludeUuid)
-            : eligible;
+          // Exclude the current fragment from selection when alternatives exist, so Next never
+          // returns the same fragment that was just on screen.
+          const selectionPool =
+            excludeUuid && eligible.length > 1
+              ? eligible.filter((fragment) => fragment.uuid !== excludeUuid)
+              : eligible;
 
-        const statsMap = getStatsBatch(
-          vaultDatabase,
-          selectionPool.map((fragment) => fragment.uuid),
-        );
+          const statsMap = getStatsBatch(
+            vaultDatabase,
+            selectionPool.map((fragment) => fragment.uuid),
+          );
 
-        const selectedUuid = selectNextSuggestion({
-          eligibleFragments: selectionPool.map((fragment) => ({
-            uuid: fragment.uuid,
-            readyStatus: fragment.readyStatus,
-          })),
-          stats: statsMap,
-          rng: Math.random,
+          const selectedUuid = selectNextSuggestion({
+            eligibleFragments: selectionPool.map((fragment) => ({
+              uuid: fragment.uuid,
+              readyStatus: fragment.readyStatus,
+            })),
+            stats: statsMap,
+            rng: Math.random,
+          });
+
+          if (!selectedUuid) {
+            return { fragmentUuid: null, avoidanceCount: 0 };
+          }
+
+          const surfacedAt = new Date();
+          cooldown.add(selectedUuid);
+          incrementPromptAccept(vaultDatabase, selectedUuid, surfacedAt);
+
+          const fragmentStats = getStats(vaultDatabase, selectedUuid);
+          return { fragmentUuid: selectedUuid, avoidanceCount: fragmentStats.avoidanceCount };
         });
-
-        if (!selectedUuid) {
-          return { fragmentUuid: null, avoidanceCount: 0 };
-        }
-
-        const surfacedAt = new Date();
-        cooldown.add(selectedUuid);
-        incrementPromptAccept(vaultDatabase, selectedUuid, surfacedAt);
-
-        const fragmentStats = getStats(vaultDatabase, selectedUuid);
-        return { fragmentUuid: selectedUuid, avoidanceCount: fragmentStats.avoidanceCount };
       },
 
-      recordVisit(context: ProjectContext, fragmentUuid: string): void {
-        const vaultDatabase = getVaultDatabase(context);
-        incrementVoluntaryOpen(vaultDatabase, fragmentUuid);
+      async recordVisit(context: ProjectContext, fragmentUuid: string): Promise<void> {
+        await withVaultWriteLock(context.vaultPath, async () => {
+          const vaultDatabase = getVaultDatabase(context);
+          incrementVoluntaryOpen(vaultDatabase, fragmentUuid);
+        });
       },
 
-      recordEditSaved(context: ProjectContext, fragmentUuid: string): void {
-        const vaultDatabase = getVaultDatabase(context);
-        const cooldown = getSuggestionCooldown(context);
-        incrementEdit(vaultDatabase, fragmentUuid);
-        cooldown.markEdited(fragmentUuid);
+      async recordEditSaved(context: ProjectContext, fragmentUuid: string): Promise<void> {
+        await withVaultWriteLock(context.vaultPath, async () => {
+          const vaultDatabase = getVaultDatabase(context);
+          const cooldown = getSuggestionCooldown(context);
+          incrementEdit(vaultDatabase, fragmentUuid);
+          cooldown.markEdited(fragmentUuid);
+        });
       },
 
       getFragmentStats(context: ProjectContext, fragmentUuid: string): FragmentStats {
@@ -1404,134 +1443,140 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
 
       async write(context: ProjectContext, sequence: Sequence): Promise<void> {
-        const allSequences = await getVaultIndexer(context).sequences.findAll();
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const allSequences = await getVaultIndexer(context).sequences.findAll();
 
-        if (allSequences.some((s) => s.uuid !== sequence.uuid && s.name === sequence.name)) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `A sequence named "${sequence.name}" already exists in this project`,
-            { reason: "name_conflict" },
-          );
-        }
+          if (allSequences.some((s) => s.uuid !== sequence.uuid && s.name === sequence.name)) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `A sequence named "${sequence.name}" already exists in this project`,
+              { reason: "name_conflict" },
+            );
+          }
 
-        if (sequence.isMain && allSequences.some((s) => s.uuid !== sequence.uuid && s.isMain)) {
-          throw new VaultError(
-            "KEY_CONFLICT",
-            `Another main sequence already exists. Use setMain to promote a sequence.`,
-            { reason: "main_conflict" },
-          );
-        }
+          if (sequence.isMain && allSequences.some((s) => s.uuid !== sequence.uuid && s.isMain)) {
+            throw new VaultError(
+              "KEY_CONFLICT",
+              `Another main sequence already exists. Use setMain to promote a sequence.`,
+              { reason: "main_conflict" },
+            );
+          }
 
-        await getVault(context).sequences.write(sequence);
+          await getVault(context).sequences.write(sequence);
 
-        const filename = `${sequence.uuid}.yaml`;
-        const absolutePath = join(context.vaultPath, ".maskor", "sequences", filename);
-        const rawContent = await Bun.file(absolutePath).text();
-        const vaultDatabase = getVaultDatabase(context);
+          const filename = `${sequence.uuid}.yaml`;
+          const absolutePath = join(context.vaultPath, ".maskor", "sequences", filename);
+          const rawContent = await Bun.file(absolutePath).text();
+          const vaultDatabase = getVaultDatabase(context);
 
-        vaultDatabase.transaction((tx) => {
-          upsertSequence(tx, sequence, filename, rawContent);
+          vaultDatabase.transaction((tx) => {
+            upsertSequence(tx, sequence, filename, rawContent);
+          });
         });
       },
 
       async delete(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.sequences.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.sequences.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "SEQUENCE_NOT_FOUND",
-            `Cannot delete: sequence "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
-
-        try {
-          await getVault(context).sequences.delete(indexed.filePath);
-        } catch (error) {
-          if (error instanceof VaultError && error.code === "SEQUENCE_NOT_FOUND") {
-            log.warn(
-              { uuid, filePath: indexed.filePath },
-              "stale index: sequence file missing on delete",
-            );
+          if (!indexed) {
             throw new VaultError(
-              "STALE_INDEX",
-              `Cannot delete: sequence "${uuid}" file missing — index may be stale`,
-              { uuid, filePath: indexed.filePath },
+              "SEQUENCE_NOT_FOUND",
+              `Cannot delete: sequence "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
             );
           }
-          throw error;
-        }
 
-        const vaultDatabase = getVaultDatabase(context);
-        vaultDatabase.transaction((tx) => {
-          deleteSequenceByFilePath(tx, indexed.filePath);
+          try {
+            await getVault(context).sequences.delete(indexed.filePath);
+          } catch (error) {
+            if (error instanceof VaultError && error.code === "SEQUENCE_NOT_FOUND") {
+              log.warn(
+                { uuid, filePath: indexed.filePath },
+                "stale index: sequence file missing on delete",
+              );
+              throw new VaultError(
+                "STALE_INDEX",
+                `Cannot delete: sequence "${uuid}" file missing — index may be stale`,
+                { uuid, filePath: indexed.filePath },
+              );
+            }
+            throw error;
+          }
+
+          const vaultDatabase = getVaultDatabase(context);
+          vaultDatabase.transaction((tx) => {
+            deleteSequenceByFilePath(tx, indexed.filePath);
+          });
         });
       },
 
       async setMain(context: ProjectContext, uuid: string): Promise<void> {
-        const indexer = getVaultIndexer(context);
-        const indexed = await indexer.sequences.findByUUID(uuid);
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const indexer = getVaultIndexer(context);
+          const indexed = await indexer.sequences.findByUUID(uuid);
 
-        if (!indexed) {
-          throw new VaultError(
-            "SEQUENCE_NOT_FOUND",
-            `Cannot set main: sequence "${uuid}" not found in index`,
-            { uuid, reason: "UUID not present in vault index" },
-          );
-        }
+          if (!indexed) {
+            throw new VaultError(
+              "SEQUENCE_NOT_FOUND",
+              `Cannot set main: sequence "${uuid}" not found in index`,
+              { uuid, reason: "UUID not present in vault index" },
+            );
+          }
 
-        if (indexed.isMain) return;
+          if (indexed.isMain) return;
 
-        const vault = getVault(context);
-        const vaultDatabase = getVaultDatabase(context);
-        const currentMain = await indexer.sequences.findMain();
+          const vault = getVault(context);
+          const vaultDatabase = getVaultDatabase(context);
+          const currentMain = await indexer.sequences.findMain();
 
-        const sequenceToPromote = await vault.sequences.read(indexed.filePath);
-        const promoted = { ...sequenceToPromote, isMain: true };
+          const sequenceToPromote = await vault.sequences.read(indexed.filePath);
+          const promoted = { ...sequenceToPromote, isMain: true };
 
-        if (currentMain) {
-          const currentMainSequence = await vault.sequences.read(currentMain.filePath);
-          const demoted = { ...currentMainSequence, isMain: false };
+          if (currentMain) {
+            const currentMainSequence = await vault.sequences.read(currentMain.filePath);
+            const demoted = { ...currentMainSequence, isMain: false };
 
-          // Demote first so there is never a window with two isMain:true files on disk,
-          // which would race the watcher's upsertSequence against the partial-unique index.
-          await vault.sequences.write(demoted);
-          const demotedAbsolutePath = join(
-            context.vaultPath,
-            ".maskor",
-            "sequences",
-            currentMain.filePath,
-          );
-          const demotedRawContent = await Bun.file(demotedAbsolutePath).text();
+            // Demote first so there is never a window with two isMain:true files on disk,
+            // which would race the watcher's upsertSequence against the partial-unique index.
+            await vault.sequences.write(demoted);
+            const demotedAbsolutePath = join(
+              context.vaultPath,
+              ".maskor",
+              "sequences",
+              currentMain.filePath,
+            );
+            const demotedRawContent = await Bun.file(demotedAbsolutePath).text();
 
-          await vault.sequences.write(promoted);
-          const promotedAbsolutePath = join(
-            context.vaultPath,
-            ".maskor",
-            "sequences",
-            indexed.filePath,
-          );
-          const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
+            await vault.sequences.write(promoted);
+            const promotedAbsolutePath = join(
+              context.vaultPath,
+              ".maskor",
+              "sequences",
+              indexed.filePath,
+            );
+            const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
 
-          vaultDatabase.transaction((tx) => {
-            upsertSequence(tx, demoted, currentMain.filePath, demotedRawContent);
-            upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
-          });
-        } else {
-          await vault.sequences.write(promoted);
-          const promotedAbsolutePath = join(
-            context.vaultPath,
-            ".maskor",
-            "sequences",
-            indexed.filePath,
-          );
-          const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
+            vaultDatabase.transaction((tx) => {
+              upsertSequence(tx, demoted, currentMain.filePath, demotedRawContent);
+              upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
+            });
+          } else {
+            await vault.sequences.write(promoted);
+            const promotedAbsolutePath = join(
+              context.vaultPath,
+              ".maskor",
+              "sequences",
+              indexed.filePath,
+            );
+            const promotedRawContent = await Bun.file(promotedAbsolutePath).text();
 
-          vaultDatabase.transaction((tx) => {
-            upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
-          });
-        }
+            vaultDatabase.transaction((tx) => {
+              upsertSequence(tx, promoted, indexed.filePath, promotedRawContent);
+            });
+          }
+        });
       },
     },
 
@@ -1629,21 +1674,26 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         context: ProjectContext,
         input: { name: string; note?: string },
       ): Promise<DraftManifest> {
+        // withDraftMutex rejects concurrent draft ops with DRAFT_OPERATION_IN_PROGRESS.
+        // withVaultWriteLock blocks (queues) concurrent storage writes so the snapshot
+        // doesn't race fragment / aspect / note writes mid-copy.
         return withDraftMutex(context.vaultPath, async () => {
-          const watcher = getVaultWatcher(context);
-          const vaultDatabase = getVaultDatabase(context);
-          await watcher.pause();
-          try {
-            return await createDraft({
-              vaultPath: context.vaultPath,
-              vaultDatabase,
-              name: input.name,
-              note: input.note,
-              logger,
-            });
-          } finally {
-            watcher.resume();
-          }
+          return withVaultWriteLock(context.vaultPath, async () => {
+            const watcher = getVaultWatcher(context);
+            const vaultDatabase = getVaultDatabase(context);
+            await watcher.pause();
+            try {
+              return await createDraft({
+                vaultPath: context.vaultPath,
+                vaultDatabase,
+                name: input.name,
+                note: input.note,
+                logger,
+              });
+            } finally {
+              watcher.resume();
+            }
+          });
         });
       },
 
@@ -1657,45 +1707,47 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async restore(context: ProjectContext, uuid: string): Promise<DraftManifest> {
         return withDraftMutex(context.vaultPath, async () => {
-          // Stop the watcher entirely (not just pause): the live vault.db is
-          // about to be replaced on disk, and the watcher's cached drizzle
-          // wrapper points at the old inode.
-          const oldWatcher = vaultWatcherCache.get(context.projectUUID);
-          if (oldWatcher) {
-            await oldWatcher.pause();
-            await oldWatcher.stop();
-          }
+          return withVaultWriteLock(context.vaultPath, async () => {
+            // Stop the watcher entirely (not just pause): the live vault.db is
+            // about to be replaced on disk, and the watcher's cached drizzle
+            // wrapper points at the old inode.
+            const oldWatcher = vaultWatcherCache.get(context.projectUUID);
+            if (oldWatcher) {
+              await oldWatcher.pause();
+              await oldWatcher.stop();
+            }
 
-          const result = await restoreDraft({
-            vaultPath: context.vaultPath,
-            uuid,
-            logger,
+            const result = await restoreDraft({
+              vaultPath: context.vaultPath,
+              uuid,
+              logger,
+            });
+
+            // Close the raw bun:sqlite handle so the new file at the same
+            // path is opened freshly. Drop every cache that closed over the
+            // old database or vault handle.
+            closeRawVaultDatabase(context.vaultPath);
+            vaultDatabaseCache.delete(context.projectUUID);
+            vaultIndexerCache.delete(context.projectUUID);
+            vaultWatcherCache.delete(context.projectUUID);
+
+            // Rebuild the index from the restored vault files. The snapshotted
+            // vault.db is present but not trusted as the live DB — vault stays
+            // source of truth per storage-sync.md.
+            await getVaultIndexer(context).rebuild();
+
+            // Start a fresh watcher on the freshly opened database. Subscriber
+            // bus lives on the service, so existing SSE clients keep receiving
+            // events through the new watcher without re-subscribing.
+            getVaultWatcher(context).start();
+
+            emitVaultEvent(context.projectUUID, {
+              type: "vault:restored",
+              draftUuid: result.draft.uuid,
+            });
+
+            return result.draft;
           });
-
-          // Close the raw bun:sqlite handle so the new file at the same
-          // path is opened freshly. Drop every cache that closed over the
-          // old database or vault handle.
-          closeRawVaultDatabase(context.vaultPath);
-          vaultDatabaseCache.delete(context.projectUUID);
-          vaultIndexerCache.delete(context.projectUUID);
-          vaultWatcherCache.delete(context.projectUUID);
-
-          // Rebuild the index from the restored vault files. The snapshotted
-          // vault.db is present but not trusted as the live DB — vault stays
-          // source of truth per storage-sync.md.
-          await getVaultIndexer(context).rebuild();
-
-          // Start a fresh watcher on the freshly opened database. Subscriber
-          // bus lives on the service, so existing SSE clients keep receiving
-          // events through the new watcher without re-subscribing.
-          getVaultWatcher(context).start();
-
-          emitVaultEvent(context.projectUUID, {
-            type: "vault:restored",
-            draftUuid: result.draft.uuid,
-          });
-
-          return result.draft;
         });
       },
     },
