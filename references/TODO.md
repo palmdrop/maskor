@@ -12,7 +12,18 @@
 
 - [ ] import does not look right in action log, no import event
 
-- [ ] implement `references/plans/overview-density-and-actual-arc.md`
+- [x] implement `references/plans/overview-density-and-actual-arc.md`
+
+- [ ] create implementation plan for `specifications/command-palette.md`
+
+- [ ] deleting aspects in project view leaves them on fragments, causes them to show up in overview/sequencer
+
+- [ ] color picker for aspects/arcs
+
+- [ ] quick margin/fontsize editing in fragment editor...
+
+- [ ] on first registration, or when db is lost, opening maskor shows no fragments etc, until first refresh
+  - need loading state for db rebuild
 
 - [ ] add arrow key navigation for moving fragments in sequences
 
