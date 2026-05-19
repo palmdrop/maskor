@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Fragment, FragmentUpdate } from "@api/generated/maskorAPI.schemas";
 import {
@@ -6,7 +6,11 @@ import {
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
-import { useListAspects } from "@api/generated/aspects/aspects";
+import {
+  useListAspects,
+  useCreateAspect,
+  getListAspectsQueryKey,
+} from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
 import { useInvalidateActionLog } from "@api/action-log";
@@ -44,6 +48,8 @@ type Props = {
 export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   const queryClient = useQueryClient();
   const { mutateAsync: updateFragment } = useUpdateFragment();
+  const { mutateAsync: createAspect } = useCreateAspect();
+  const [createAspectError, setCreateAspectError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
   const { data: notesEnvelope } = useListNotes(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);
@@ -235,6 +241,26 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     [aspectsField],
   );
 
+  const createAndAttachAspect = useCallback(
+    async (aspectKey: string) => {
+      setCreateAspectError(null);
+      try {
+        const result = await createAspect({ projectId, data: { key: aspectKey } });
+        if (result.status !== 201) {
+          const message = (result.data as { message?: string }).message;
+          throw new Error(message ?? "Failed to create aspect.");
+        }
+        await queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
+        attachAspect(aspectKey);
+      } catch (error) {
+        const message = (error as { message?: string })?.message ?? "Failed to create aspect.";
+        setCreateAspectError(message);
+        throw error;
+      }
+    },
+    [createAspect, projectId, queryClient, attachAspect],
+  );
+
   return (
     <form className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -344,10 +370,15 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         ))}
         <TagCombobox
           availableOptions={availableAspects}
-          placeholder="Add aspect — type to filter"
-          onSelect={attachAspect}
+          placeholder="Add aspect — type to filter or create"
+          onSelect={(value) => {
+            setCreateAspectError(null);
+            attachAspect(value);
+          }}
+          onCreate={createAndAttachAspect}
         />
         {aspectsField.error && <p className="text-xs text-destructive">{aspectsField.error}</p>}
+        {createAspectError && <p className="text-xs text-destructive">{createAspectError}</p>}
       </div>
     </form>
   );

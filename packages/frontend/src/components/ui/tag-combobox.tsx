@@ -8,27 +8,46 @@ type Props = {
   availableOptions: string[];
   placeholder?: string;
   onSelect: (value: string) => void;
+  onCreate?: (query: string) => void | Promise<void>;
 };
 
 export function TagCombobox({
   availableOptions,
   placeholder = "Add — type to filter",
   onSelect,
+  onCreate,
 }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const commandRef = useRef<HTMLDivElement>(null);
 
+  const trimmedQuery = query.trim();
   const filtered = availableOptions.filter((option) =>
     option.toLowerCase().includes(query.toLowerCase()),
   );
+  const showCreate =
+    !!onCreate &&
+    trimmedQuery.length > 0 &&
+    !availableOptions.some((option) => option.toLowerCase() === trimmedQuery.toLowerCase());
 
   function handleSelect(value: string) {
     onSelect(value);
     setQuery("");
     setOpen(false);
     inputRef.current?.blur();
+  }
+
+  async function handleCreate() {
+    if (!onCreate) return;
+    try {
+      await onCreate(trimmedQuery);
+      setQuery("");
+      setOpen(false);
+      inputRef.current?.blur();
+    } catch {
+      // Parent surfaces the error; keep the query so the user can retry or edit.
+    }
   }
 
   return (
@@ -80,7 +99,7 @@ export function TagCombobox({
         >
           <Command ref={commandRef} shouldFilter={false}>
             <Command.List className="max-h-48 overflow-y-auto p-1">
-              {filtered.length === 0 && (
+              {filtered.length === 0 && !showCreate && (
                 <Command.Empty className="py-2 px-3 text-sm text-muted-foreground">
                   No options available.
                 </Command.Empty>
@@ -98,6 +117,19 @@ export function TagCombobox({
                   {option}
                 </Command.Item>
               ))}
+              {showCreate && (
+                <Command.Item
+                  key="__create"
+                  value={`__create:${trimmedQuery}`}
+                  onSelect={handleCreate}
+                  className={cn(
+                    "cursor-pointer rounded-md px-2 py-1.5 text-sm outline-none text-muted-foreground",
+                    "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+                  )}
+                >
+                  Create <span className="font-mono text-foreground">{trimmedQuery}</span>
+                </Command.Item>
+              )}
             </Command.List>
           </Command>
         </PopoverPrimitive.Content>
