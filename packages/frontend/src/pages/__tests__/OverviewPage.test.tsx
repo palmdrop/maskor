@@ -1,20 +1,27 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type * as DndKitCore from "@dnd-kit/core";
 import type * as DndKitSortable from "@dnd-kit/sortable";
+import type { OverviewDensity } from "../../router";
 
 // --- router mock ---
+
+let currentSearch: { sequence?: string; density: OverviewDensity } = {
+  sequence: undefined,
+  density: "full",
+};
+const navigateMock = vi.fn();
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
     useParams: () => ({ projectId: PROJECT_ID }),
-    useSearch: () => ({ sequence: undefined }),
-    useNavigate: () => vi.fn(),
+    useSearch: () => currentSearch,
+    useNavigate: () => navigateMock,
   };
 });
 
@@ -198,6 +205,7 @@ describe("OverviewPage — rendering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
   });
 
   it("shows loading state while data is fetching", () => {
@@ -296,6 +304,7 @@ describe("OverviewPage — drag interactions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
   });
 
   it("calls placeFragment when a pool tile is dropped onto a sequence tile", () => {
@@ -414,5 +423,94 @@ describe("OverviewPage — drag interactions", () => {
     triggerDragEnd(FRAG_A, FRAG_A);
 
     expect(moveMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("OverviewPage — density toggle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+    mockSequence([]);
+    mockFragments([]);
+  });
+
+  it("renders all three density tier buttons", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const group = screen.getByRole("group", { name: /tile density/i });
+    const buttons = group.querySelectorAll("button");
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0]?.textContent?.toLowerCase()).toBe("full");
+    expect(buttons[1]?.textContent?.toLowerCase()).toBe("compact");
+    expect(buttons[2]?.textContent?.toLowerCase()).toBe("mini");
+  });
+
+  it("marks 'full' active by default", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const fullButton = screen.getByRole("button", { name: /^full$/i });
+    expect(fullButton.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("reflects the density URL param in the active button", () => {
+    currentSearch = { sequence: undefined, density: "compact" };
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByRole("button", { name: /^full$/i }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /^compact$/i }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^mini$/i }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+  });
+
+  it("calls navigate with updated density when a tier button is clicked", () => {
+    currentSearch = { sequence: "seq-existing", density: "full" };
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByRole("button", { name: /^mini$/i }));
+
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const navigateCall = navigateMock.mock.calls[0][0];
+    expect(navigateCall.to).toBe("/projects/$projectId/overview");
+    expect(navigateCall.params).toEqual({ projectId: PROJECT_ID });
+    // search is a function that merges into previous params
+    expect(typeof navigateCall.search).toBe("function");
+    const previousSearch = { sequence: "seq-existing", density: "full" as const };
+    expect(navigateCall.search(previousSearch)).toEqual({
+      sequence: "seq-existing",
+      density: "mini",
+    });
+  });
+});
+
+describe("parseOverviewDensity", () => {
+  it("returns 'full' as the default when value is undefined", async () => {
+    const { parseOverviewDensity } = await import("../../router");
+    expect(parseOverviewDensity(undefined)).toBe("full");
+  });
+
+  it("returns 'full' for unknown string values", async () => {
+    const { parseOverviewDensity } = await import("../../router");
+    expect(parseOverviewDensity("bogus")).toBe("full");
+    expect(parseOverviewDensity("")).toBe("full");
+  });
+
+  it("returns the value when it is a valid density tier", async () => {
+    const { parseOverviewDensity } = await import("../../router");
+    expect(parseOverviewDensity("full")).toBe("full");
+    expect(parseOverviewDensity("compact")).toBe("compact");
+    expect(parseOverviewDensity("mini")).toBe("mini");
+  });
+
+  it("returns 'full' for non-string inputs", async () => {
+    const { parseOverviewDensity } = await import("../../router");
+    expect(parseOverviewDensity(null)).toBe("full");
+    expect(parseOverviewDensity(42)).toBe("full");
+    expect(parseOverviewDensity({})).toBe("full");
   });
 });

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
+import type { OverviewDensity } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -108,8 +109,17 @@ const PoolZone = ({
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
   const { projectId } = useParams({ from });
-  const { sequence: sequenceParam } = useSearch({ from });
+  const { sequence: sequenceParam, density } = useSearch({ from });
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const handleDensityChange = (next: OverviewDensity) => {
+    void navigate({
+      to: from,
+      params: { projectId },
+      search: (previous) => ({ ...previous, density: next }),
+    });
+  };
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedFragmentUuid, setSelectedFragmentUuid] = useState<string | null>(null);
@@ -496,6 +506,30 @@ export const OverviewPage = () => {
                   Main
                 </span>
               )}
+              <div
+                role="group"
+                aria-label="Tile density"
+                className="ml-auto flex items-center rounded border border-border overflow-hidden"
+              >
+                {(["full", "compact", "mini"] as const).map((tier) => {
+                  const isActive = density === tier;
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => handleDensityChange(tier)}
+                      className={`text-xs px-2 py-1 capitalize transition-colors ${
+                        isActive
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {tier}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <DndContext

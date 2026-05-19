@@ -63,12 +63,21 @@ const fragmentRoute = createRoute({
   component: FragmentPage,
 });
 
+const validDensities = ["full", "compact", "mini"] as const;
+export type OverviewDensity = (typeof validDensities)[number];
+
+export const parseOverviewDensity = (value: unknown): OverviewDensity =>
+  validDensities.includes(value as OverviewDensity) ? (value as OverviewDensity) : "full";
+
 const overviewRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/overview",
   component: OverviewPage,
-  validateSearch: (search: Record<string, unknown>): { sequence?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { sequence?: string; density: OverviewDensity } => ({
     sequence: typeof search.sequence === "string" ? search.sequence : undefined,
+    density: parseOverviewDensity(search.density),
   }),
 });
 
