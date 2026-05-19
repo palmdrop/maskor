@@ -5,6 +5,7 @@ import {
   VaultUUIDConflictError,
   ExistingVaultManifestError,
   DraftError,
+  SwapEntityTypeError,
 } from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
 
@@ -38,6 +39,15 @@ export const throwStorageError = (error: unknown): never => {
   if (error instanceof ExistingVaultManifestError) {
     throw new HTTPException(409, {
       res: errorResponse({ error: "EXISTING_MANIFEST", message: error.message }, 409),
+    });
+  }
+
+  if (error instanceof SwapEntityTypeError) {
+    throw new HTTPException(400, {
+      res: errorResponse(
+        { error: "SWAP_UNKNOWN_ENTITY_TYPE", message: error.message, entityType: error.entityType },
+        400,
+      ),
     });
   }
 

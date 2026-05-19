@@ -59,6 +59,10 @@ export const createSwapStorage = (config: SwapStorageConfig): SwapStorage => {
         }
         return { content: parsed.content, savedAt: parsed.savedAt };
       } catch (error) {
+        // TODO: .corrupt files are never cleaned up. One stays per entity that
+        // ever had a malformed swap; subsequent corruptions overwrite the same
+        // <file>.corrupt. Low priority — corruption is rare and the file is
+        // tiny — but worth a periodic sweep if it ever becomes a problem.
         const corruptPath = `${filePath}.corrupt`;
         log?.warn(
           { entityType, entityUUID, corruptPath, error: (error as Error).message },

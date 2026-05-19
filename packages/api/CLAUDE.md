@@ -7,3 +7,5 @@ Example to mirror:
 - Command file: `src/commands/fragments/create-fragment.ts`
 - Route usage: `src/routes/fragments.ts` (search for `executeCommand`)
 - Plumbing: `src/commands/types.ts` (`Command`, `CommandContext`, `executeCommand`)
+
+Exception: `swap.*` routes call `storageService.swap.*` directly. Swap files are a transient unsaved-content cache (see `references/plans/entity-content-swap-files.md`); they're not user actions and intentionally do not emit action log entries, so the commands pipeline adds no value.

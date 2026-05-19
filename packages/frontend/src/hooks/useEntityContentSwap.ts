@@ -40,8 +40,6 @@ export const useEntityContentSwap = (
 
   const swapQuery = useGetSwap(projectId, entityType, entityUUID, {
     query: {
-      retry: false,
-      staleTime: Infinity,
       refetchOnWindowFocus: false,
     },
   });
@@ -97,7 +95,7 @@ export const useEntityContentSwap = (
       return;
     }
     // Suppress an immediate redundant PUT if the editor mounts with the cached
-    // content — the server already has this exact string.
+    // content — the swap file already holds this exact string.
     lastWrittenRef.current = cached.content;
     if (cached.content !== serverValue) {
       setRecovery({ content: cached.content, at: new Date(cached.savedAt) });

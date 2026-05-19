@@ -100,14 +100,19 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       recoveryAppliedRef.current = false;
     }, [projectId, entityKind, entityUUID]);
 
+    // Consumers pass a fresh onProseChange each render; ref it so the recovery
+    // effect doesn't re-run (no-op or otherwise) on every parent render.
+    const onProseChangeRef = useRef(onProseChange);
+    onProseChangeRef.current = onProseChange;
+
     useEffect(() => {
       if (!recovery) return;
       if (recoveryAppliedRef.current) return;
       recoveryAppliedRef.current = true;
       proseEditorRef.current?.setContent(recovery.content);
       setLiveContent(recovery.content);
-      onProseChange();
-    }, [recovery, onProseChange]);
+      onProseChangeRef.current();
+    }, [recovery]);
 
     const handleRestoreFromServer = useCallback(() => {
       proseEditorRef.current?.setContent(content);
