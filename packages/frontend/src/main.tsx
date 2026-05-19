@@ -6,11 +6,16 @@ import { router } from "./router";
 
 import "./styles/global.css";
 import { queryClient } from "./queryClient";
+import { CommandsProvider } from "@lib/commands/CommandsProvider";
+import { HotkeyBinder } from "@lib/commands/HotkeyBinder";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <CommandsProvider>
+      <HotkeyBinder />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </CommandsProvider>
   </StrictMode>,
 );
