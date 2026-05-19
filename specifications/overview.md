@@ -1,11 +1,12 @@
 # Spec: Overview
 
 **Status**: Stable
-**Last updated**: 2026-05-12
+**Last updated**: 2026-05-19
 
 **Shipped**:
 
 - 2026-05-12 — Users can arrange fragments on the overview: all non-discarded fragments appear as draggable tiles in two zones (sequence + unassigned pool); dragging between zones places or unplaces a fragment; dragging within the sequence reorders it; all changes survive a reload. (plan: references/plans/sequencer-manual-placement.md)
+- 2026-05-19 — Density tiers (`full`/`compact`/`mini`) drive tile content and width via a `?density=` URL search param; a sticky arc panel above the tile row renders one Catmull-Rom-smoothed curve per aspect (actual arcs derived client-side from `FragmentSummary.aspects`); a chip-row legend toggles aspects on/off; aspect color metadata is round-tripped through vault frontmatter with a deterministic palette fallback. (plan: references/plans/overview-density-and-actual-arc.md)
 
 ---
 
@@ -23,7 +24,8 @@ The user can see all fragments in a sequence displayed as a visual timeline, ins
 - Displaying sections as labeled groupings of fragment tiles
 - Showing arc trajectories as graph overlays (one per arc, user-defined colors)
 - Aspect visibility via color-coding and/or filters on fragment tiles
-- Zoom and pan of the sequence view
+- Density tiers controlling tile content and width: `full` (key + excerpt + aspect chips), `compact` (key + thin color bar), `mini` (color bar only)
+- Horizontal scroll for x-axis navigation; a sticky arc panel above the tile row sharing the same x-axis
 - Rearranging fragment positions via drag-and-drop or keyboard (arrow keys)
 - Switching between the main sequence and any secondary sequences
 - Tile width proportional to fragment content length
@@ -80,8 +82,10 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 ### Navigation
 
-- The view supports zoom in/out and pan left/right (and vertically if arc overlays overflow).
-- Rendered with HTML/CSS, not canvas or WebGL, to preserve text selection, link following, and browser accessibility.
+- X-axis navigation is via horizontal scroll on a single sequence container shared by the tile row and the arc panel; the panel translates with the tiles on horizontal scroll so both share the same x-axis.
+- The arc panel sticks to the top of the sequence container during vertical scroll; horizontal scroll moves the tile row beneath it.
+- Tile size is controlled by a density tier (`full`, `compact`, or `mini`) selectable in the page header and reflected in the `?density=` URL search param. This replaces a zoom/pan model — the user picks a fixed legibility tier rather than zooming continuously.
+- Rendered with HTML/CSS and inline SVG (no canvas or WebGL) to preserve text selection and browser accessibility.
 
 ### Rearrangement
 
@@ -100,7 +104,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 ## Constraints
 
-- Rendered with HTML/CSS in `@maskor/frontend` (React + Vite). Not a canvas or WebGL renderer.
+- Rendered with HTML/CSS and inline SVG in `@maskor/frontend` (React + Vite). Tile content is HTML/CSS; the arc panel is an inline `<svg>` in the same DOM tree. Not a canvas or WebGL renderer.
 - All sequence data (positions, fitting scores, arc positions) is read from the API. No vault file access from the frontend.
 - Changes made in the overview (rearrangements) are persisted via API calls. The DB owns sequence positions; vault files are never modified.
 - The DB schema for sequences, sections, and fragment positions is defined in `sequencer.md` — implementation is blocked until those tables exist.
@@ -112,21 +116,26 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 **First slice shipped (2026-05-12):** `/overview` route now renders a live sequencer surface. Sequence zone (horizontal sortable row) + unassigned pool (wrappable grid). Drag-and-drop with `@dnd-kit/core` + `@dnd-kit/sortable`. Optimistic updates with React Query rollback.
 
+**Second slice shipped (2026-05-19):** Density tiers, sticky arc panel, and per-aspect legend toggles. The three sections of the sequence now sit in one horizontal scroller; an `<svg>` arc panel sticks to the top of that scroller and renders one Catmull-Rom curve per aspect, derived client-side from `FragmentSummary.aspects` and per-aspect colors (vault `aspects/*.md` frontmatter `color` field, with a deterministic palette fallback). Arc x-coordinates are computed from a single layout formula shared with the tile row so points land on tile centers without DOM measurement. Arc recomputation is gated on `@dnd-kit`'s `activeDragId` to avoid per-frame churn during drag.
+
 **Deferred to follow-up plans:**
 
-- Arc overlays (require arc data model and API endpoint — see `aspect-arc-model.md`)
+- Explicit-arc overlays (the user-authored target curves; require an arc data endpoint — see `aspect-arc-model.md` and the open question below)
 - Sections UI (data model and storage are ready; UI labels and reordering are deferred)
 - Secondary sequences picker
-- Zoom and pan
 - Arrow-key rearrangement
-- Aspect color-coding and filter panel
+- Aspect color-coding by selected aspect / weight-threshold filter panel on tiles (legend toggles only hide arcs, not tiles)
 - Fitting score visualisation on tiles
+- User-configurable curve interpolation (currently hard-coded Catmull-Rom)
+- DOM virtualization for very long sequences
+- Aspect color editor UI (color is read-only from vault frontmatter for now)
 
 ---
 
 ## Prior decisions
 
-- **HTML/CSS over canvas**: Explicitly chosen to preserve text selection, link following, and browser accessibility. Canvas-like zoom and pan behavior must be achieved within HTML/CSS constraints.
+- **HTML + SVG, not canvas/WebGL**: Tile content is rendered with HTML/CSS and the arc panel is inline SVG in the same DOM tree. Chosen to preserve text selection and browser accessibility. SVG is essential for the arc layer and is the prescribed renderer there.
+- **Density tiers replace continuous zoom**: The user picks a fixed legibility tier (`full`/`compact`/`mini`) via the URL search param `?density=`, instead of zooming continuously. Layout is deterministic at each tier, which lets the arc panel compute x-coordinates from a shared formula without DOM measurement.
 
 ---
 
@@ -137,7 +146,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 - [ ] 2026-04-27 — Are secondary sequences viewable in the overview, or only the main sequence? Secondary sequences are defined in `sequencer.md`.
 - [ ] 2026-04-27 — How is aspect color-coding resolved when a fragment has high weights for multiple aspects (most-dominant wins, blend, or user picks which aspect to highlight)?
 - [x] 2026-04-27 — Does the overview serve as the entry point for placing unassigned fragments, or only for rearranging already-placed ones? **Resolved 2026-05-12**: Both. The pool zone is a drag source; dragging a pool tile into the sequence zone places it. The overview is the primary placement surface.
-- [ ] 2026-04-27 — Where are arc curves fetched from in the frontend? Arc data is vault-stored in `<vault>/.maskor/config/arcs/` (see `aspect-arc-model.md`) and served via the API. An arc endpoint needs to be defined before arc overlays can be implemented.
+- [ ] 2026-04-27 — Where are **explicit** arc curves fetched from in the frontend? Arc data is vault-stored in `<vault>/.maskor/config/arcs/` (see `aspect-arc-model.md`) and served via the API. **Blocker for the explicit-arc slice.** Actual arcs (the curves derived from placed fragments) are computed client-side from `FragmentSummary.aspects` and do not depend on this endpoint — only the user-authored target curves do.
 
 ---
 
@@ -149,5 +158,5 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 - Arc overlays are rendered as graphs aligned to the sequence position axis and are individually toggleable.
 - Dragging a tile to a new position updates the fragment's sequence position (confirmed via an API call that returns the updated order).
 - Arrow-key navigation moves a selected tile one position in either direction.
-- The view is pannable and zoomable without layout breaking or tiles becoming illegible.
+- The user can switch tile density (`full`/`compact`/`mini`) and horizontally scroll the sequence without layout breaking; the arc panel stays vertically pinned and remains aligned to the tiles on horizontal scroll.
 - Toggling off all arc overlays leaves the fragment tile layout unchanged.

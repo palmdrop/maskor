@@ -1,7 +1,8 @@
 # Overview — density tiers and actual-arc panel
 
 **Date**: 19-05-2026
-**Status**: Todo
+**Status**: Done
+**Closed**: 19-05-2026
 **Specs**: `specifications/overview.md`, `specifications/aspect-arc-model.md`
 
 ---
@@ -34,12 +35,12 @@ These resolve open questions from the design session and from `overview.md`:
 
 ### Phase 1 — Branch, URL state, and density toggle UI
 
-- [ ] Create branch `overview-density-and-actual-arc` from `main`.
-- [ ] Add `density` search-param schema to the `/projects/$projectId/overview` route. Default `full`. Enum: `full | compact | mini`.
-- [ ] Add a density toggle control in the overview header (segmented control, three buttons). Updates the URL search param via `useNavigate`.
-- [ ] Read `density` from `useSearch` in `OverviewPage` and thread it to the tile rendering layer.
-- [ ] Tests: route param validation, toggle interaction updates the URL, default falls back to `full`.
-- [ ] `git commit` — add density tier URL state and header toggle.
+- [x] Create branch `overview-density-and-actual-arc` from `main`.
+- [x] Add `density` search-param schema to the `/projects/$projectId/overview` route. Default `full`. Enum: `full | compact | mini`.
+- [x] Add a density toggle control in the overview header (segmented control, three buttons). Updates the URL search param via `useNavigate`.
+- [x] Read `density` from `useSearch` in `OverviewPage` and thread it to the tile rendering layer.
+- [x] Tests: route param validation, toggle interaction updates the URL, default falls back to `full`.
+- [x] `git commit` — add density tier URL state and header toggle.
 
 ### Phase 2 — Per-tier tile content and width
 
@@ -50,41 +51,41 @@ These resolve open questions from the design session and from `overview.md`:
 >
 > Tile width also shrinks per tier (concrete pixel values decided during implementation; the existing `w-40 h-28` is the `full` baseline).
 
-- [ ] Refactor `TileContent.tsx` to accept a `density` prop and switch its layout / sizing accordingly.
-- [ ] Render an "aspect color bar" sub-component that paints stacked color segments proportional to each aspect's weight on the fragment. Used by both `compact` and `mini`.
-- [ ] Confirm the bar uses the same aspect color source the arc panel will use in phase 3 (single source of truth).
-- [ ] Update `SortableTile.tsx` to pass the `density` prop through.
-- [ ] Verify `@dnd-kit` drag overlays look correct at each density (the `DragOverlay` in `OverviewPage/index.tsx` renders `TileContent` directly — it needs the same `density` prop).
-- [ ] Tests: snapshot or DOM tests for each density tier, ensuring the right fields are rendered at each.
-- [ ] `git commit` — render tiles per density tier with aspect color bar.
+- [x] Refactor `TileContent.tsx` to accept a `density` prop and switch its layout / sizing accordingly.
+- [x] Render an "aspect color bar" sub-component that paints stacked color segments proportional to each aspect's weight on the fragment. Used by both `compact` and `mini`.
+- [x] Confirm the bar uses the same aspect color source the arc panel will use in phase 3 (single source of truth).
+- [x] Update `SortableTile.tsx` to pass the `density` prop through.
+- [x] Verify `@dnd-kit` drag overlays look correct at each density (the `DragOverlay` in `OverviewPage/index.tsx` renders `TileContent` directly — it needs the same `density` prop).
+- [x] Tests: snapshot or DOM tests for each density tier, ensuring the right fields are rendered at each.
+- [x] `git commit` — render tiles per density tier with aspect color bar.
 
 ### Phase 3 — Sticky arc panel with actual arc
 
-- [ ] Add a `ArcPanel` component under `packages/frontend/src/pages/OverviewPage/components/`. Renders a single inline SVG whose width tracks the tile row's content width. Sticky at the top of the scrollable area via `position: sticky; top: 0;`.
-- [ ] Implement an arc-data hook that derives, per aspect, a list of `(x = absolute fragment index, y = aspect weight)` points from the current sequence + summaries. Fragments with no weight for that aspect contribute no point (consistent with `aspect-arc-model.md` § "Fragments with no weight for an arc'd aspect are ignored in scoring").
-- [ ] Interpolate each aspect's points into a smoothed SVG path (Catmull-Rom). Two control-point minimum; aspects with one point render as a single dot, zero points render nothing.
-- [ ] x-axis: align each point to the horizontal center of its tile. The tile row and the arc share the same parent's scroll, so the curve and tiles stay aligned during scroll.
-- [ ] Debounce arc recomputation during active `@dnd-kit` drag (use `activeDragId` from the existing state as the gate). Recompute immediately on `onDragEnd`.
-- [ ] Verify aspect color metadata is available client-side; wire it in. If the data model doesn't expose colors yet, this phase pauses and a follow-up captures the gap.
-- [ ] Tests: arc path generation given a small fixture sequence; correct point alignment to tile centers; the panel does not render points for fragments with missing aspect weights.
-- [ ] `git commit` — add sticky arc panel rendering the actual arc.
+- [x] Add a `ArcPanel` component under `packages/frontend/src/pages/OverviewPage/components/`. Renders a single inline SVG whose width tracks the tile row's content width. Sticky at the top of the scrollable area via `position: sticky; top: 0;`.
+- [x] Implement an arc-data hook that derives, per aspect, a list of `(x = absolute fragment index, y = aspect weight)` points from the current sequence + summaries. Fragments with no weight for that aspect contribute no point (consistent with `aspect-arc-model.md` § "Fragments with no weight for an arc'd aspect are ignored in scoring").
+- [x] Interpolate each aspect's points into a smoothed SVG path (Catmull-Rom). Two control-point minimum; aspects with one point render as a single dot, zero points render nothing.
+- [x] x-axis: align each point to the horizontal center of its tile. The tile row and the arc share the same parent's scroll, so the curve and tiles stay aligned during scroll.
+- [x] Debounce arc recomputation during active `@dnd-kit` drag (use `activeDragId` from the existing state as the gate). Recompute immediately on `onDragEnd`.
+- [x] Verify aspect color metadata is available client-side; wire it in. If the data model doesn't expose colors yet, this phase pauses and a follow-up captures the gap.
+- [x] Tests: arc path generation given a small fixture sequence; correct point alignment to tile centers; the panel does not render points for fragments with missing aspect weights.
+- [x] `git commit` — add sticky arc panel rendering the actual arc.
 
 ### Phase 4 — Multi-aspect legend and toggles
 
-- [ ] Render a legend inside (or adjacent to) the arc panel showing each aspect with its color and a toggle.
-- [ ] Toggling an aspect hides its curve in the SVG. State is component-local.
-- [ ] When zero aspects are toggled on, the SVG renders an empty axis area but does not collapse — the panel's reserved height stays stable to avoid layout shift on toggling.
-- [ ] Tests: toggle hides the corresponding `<path>` from the SVG; the panel's container height does not change when all aspects are off.
-- [ ] `git commit` — add per-aspect legend and toggle controls.
+- [x] Render a legend inside (or adjacent to) the arc panel showing each aspect with its color and a toggle.
+- [x] Toggling an aspect hides its curve in the SVG. State is component-local.
+- [x] When zero aspects are toggled on, the SVG renders an empty axis area but does not collapse — the panel's reserved height stays stable to avoid layout shift on toggling.
+- [x] Tests: toggle hides the corresponding `<path>` from the SVG; the panel's container height does not change when all aspects are off.
+- [x] `git commit` — add per-aspect legend and toggle controls.
 
 ### Phase 5 — Spec sync and plan close-out
 
 > See § Spec changes below for the exact edits queued.
 
-- [ ] Apply the queued edits to `specifications/overview.md`.
-- [ ] Add the `Shipped:` line under `overview.md`'s frontmatter for this slice.
-- [ ] Plan status flipped to `Done`, `Closed: DD-MM-YYYY`.
-- [ ] `git commit` — sync overview spec with density + actual-arc slice.
+- [x] Apply the queued edits to `specifications/overview.md`.
+- [x] Add the `Shipped:` line under `overview.md`'s frontmatter for this slice.
+- [x] Plan status flipped to `Done`, `Closed: DD-MM-YYYY`.
+- [x] `git commit` — sync overview spec with density + actual-arc slice.
 
 ---
 
