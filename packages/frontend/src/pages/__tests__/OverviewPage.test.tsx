@@ -97,6 +97,10 @@ vi.mock("../../api/generated/fragments/fragments", () => ({
   useListFragmentSummaries: vi.fn(),
 }));
 
+vi.mock("../../api/generated/aspects/aspects", () => ({
+  useListAspects: vi.fn(() => ({ data: { status: 200, data: [] }, isLoading: false })),
+}));
+
 // --- test data ---
 
 const PROJECT_ID = "proj-1";
@@ -135,11 +139,17 @@ const makeBundleResponse = (fragmentUuids: string[] = []) => ({
   },
 });
 
-const makeFragment = (uuid: string, key: string, excerpt = "Some text content here.") => ({
+const makeFragment = (
+  uuid: string,
+  key: string,
+  excerpt: string | null = "Some text content here.",
+  aspects: Record<string, { weight: number }> = {},
+) => ({
   uuid,
   key,
   isDiscarded: false,
   excerpt,
+  aspects,
 });
 
 const makeFragmentsResponse = (fragments: ReturnType<typeof makeFragment>[]) => ({
@@ -485,6 +495,86 @@ describe("OverviewPage — density toggle", () => {
       sequence: "seq-existing",
       density: "mini",
     });
+  });
+});
+
+describe("OverviewPage — density-aware tile rendering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+  });
+
+  it("renders fragment excerpt and aspect chips when density is full", () => {
+    currentSearch = { sequence: undefined, density: "full" };
+    mockSequence([]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", "This is the excerpt for alpha.", {
+        grief: { weight: 0.6 },
+        city: { weight: 0.3 },
+      }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByText("This is the excerpt for alpha.")).toBeInTheDocument();
+    expect(screen.getByText("grief")).toBeInTheDocument();
+    expect(screen.getByText("city")).toBeInTheDocument();
+  });
+
+  it("hides excerpt and shows a color bar when density is compact", () => {
+    currentSearch = { sequence: undefined, density: "compact" };
+    mockSequence([]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", "This excerpt should not be rendered.", {
+        grief: { weight: 0.6 },
+      }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByText("alpha")).toBeInTheDocument();
+    expect(screen.queryByText("This excerpt should not be rendered.")).not.toBeInTheDocument();
+
+    const compactTile = document.querySelector('[data-density="compact"]');
+    expect(compactTile).not.toBeNull();
+    expect(compactTile?.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+  });
+
+  it("renders only the color bar (no key text) when density is mini", () => {
+    currentSearch = { sequence: undefined, density: "mini" };
+    mockSequence([]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha", "Hidden excerpt.", {
+        grief: { weight: 0.6 },
+        city: { weight: 0.4 },
+      }),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // No visible key or excerpt at mini.
+    expect(screen.queryByText("alpha")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hidden excerpt.")).not.toBeInTheDocument();
+
+    const miniTile = document.querySelector('[data-density="mini"]');
+    expect(miniTile).not.toBeNull();
+    expect(miniTile?.getAttribute("aria-label")).toBe("alpha");
+    expect(miniTile?.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
+    expect(miniTile?.querySelector('[data-aspect-key="city"]')).not.toBeNull();
+  });
+
+  it("renders an empty color bar fallback for fragments with no aspect weights", () => {
+    currentSearch = { sequence: undefined, density: "mini" };
+    mockSequence([]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, {})]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const miniTile = document.querySelector('[data-density="mini"]');
+    expect(miniTile).not.toBeNull();
+    // No aspect segments are rendered when there are no weights.
+    expect(miniTile?.querySelector("[data-aspect-key]")).toBeNull();
   });
 });
 

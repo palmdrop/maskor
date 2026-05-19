@@ -34,6 +34,7 @@ import {
   type ListSequencesResponse,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
+import { useListAspects } from "@api/generated/aspects/aspects";
 import type { Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import { Heading } from "@components/heading";
 import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
@@ -41,6 +42,7 @@ import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
+import { resolveAspectColor } from "./utils/aspectColors";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -139,10 +141,33 @@ export const OverviewPage = () => {
   const { data: summariesEnvelope, isLoading: summariesLoading } =
     useListFragmentSummaries(projectId);
 
+  const { data: aspectsEnvelope } = useListAspects(projectId);
+
   const sequence =
     bundle?.sequences.find((s) => s.uuid === activeSequenceId) ??
     bundle?.sequences.find((s) => s.isMain);
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
+  const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
+
+  const colorByAspectKey = useMemo(() => {
+    const map = new Map<string, string>();
+    const seenKeys = new Set<string>();
+    for (const aspect of aspectList) {
+      map.set(aspect.key, resolveAspectColor(aspect.key, aspect.color));
+      seenKeys.add(aspect.key);
+    }
+    // Cover aspect keys present on fragments but not (yet) in the aspects index —
+    // fall back to the deterministic palette so the tile color matches the arc.
+    for (const fragment of allFragments) {
+      for (const aspectKey of Object.keys(fragment.aspects)) {
+        if (!seenKeys.has(aspectKey)) {
+          map.set(aspectKey, resolveAspectColor(aspectKey, undefined));
+          seenKeys.add(aspectKey);
+        }
+      }
+    }
+    return map;
+  }, [aspectList, allFragments]);
 
   const sectionsData = useMemo(() => {
     if (!sequence) return [];
@@ -646,6 +671,8 @@ export const OverviewPage = () => {
                           key={uuid}
                           fragment={fragment}
                           inSequence={true}
+                          density={density}
+                          colorByAspectKey={colorByAspectKey}
                           violationTooltips={getViolationTooltips(uuid)}
                           cycleTooltips={getCycleTooltips(uuid)}
                           isSelected={selectedFragmentUuid === uuid}
@@ -690,6 +717,8 @@ export const OverviewPage = () => {
                         key={uuid}
                         fragment={fragment}
                         inSequence={false}
+                        density={density}
+                        colorByAspectKey={colorByAspectKey}
                         cycleTooltips={getCycleTooltips(uuid)}
                         isSelected={selectedFragmentUuid === uuid}
                         onSelect={setSelectedFragmentUuid}
@@ -704,6 +733,8 @@ export const OverviewPage = () => {
                   <TileContent
                     fragment={activeDragFragment}
                     inSequence={fragmentSectionMap.has(activeDragFragment.uuid)}
+                    density={density}
+                    colorByAspectKey={colorByAspectKey}
                   />
                 ) : null}
               </DragOverlay>

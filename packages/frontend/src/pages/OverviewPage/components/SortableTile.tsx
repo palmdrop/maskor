@@ -1,11 +1,14 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
+import type { OverviewDensity } from "../../../router";
 import { TileContent } from "./TileContent";
 
-interface TileContentProps {
+interface SortableTileProps {
   fragment: FragmentSummary;
   inSequence: boolean;
+  density: OverviewDensity;
+  colorByAspectKey: Map<string, string>;
   violationTooltips?: string[];
   cycleTooltips?: string[];
   isSelected?: boolean;
@@ -15,11 +18,13 @@ interface TileContentProps {
 export const SortableTile = ({
   fragment,
   inSequence,
+  density,
+  colorByAspectKey,
   violationTooltips,
   cycleTooltips,
   isSelected,
   onSelect,
-}: TileContentProps) => {
+}: SortableTileProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
   });
@@ -41,6 +46,8 @@ export const SortableTile = ({
       <TileContent
         fragment={fragment}
         inSequence={inSequence}
+        density={density}
+        colorByAspectKey={colorByAspectKey}
         violationTooltips={violationTooltips}
         cycleTooltips={cycleTooltips}
         isSelected={isSelected}
