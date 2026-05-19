@@ -6,9 +6,13 @@
 
 - [x] perform planned sequence action log name fix: `references/plans/sequence-action-log-human-readable.md`
 
-- [ ] start implementing `references/plans/drafting-first-slice.md`
+- [x] start implementing `references/plans/drafting-first-slice.md`
 
 - [ ] import does not look right in action log, no import event
+
+- [ ] implement `references/plans/overview-density-and-actual-arc.md`
+
+- [ ] implement `references/plans/entity-content-swap-files.md`
 
 - [ ] add typography rule for using indentation instead of newlines... conflicts with markdown syntax but might work out anyway?
 
@@ -16,6 +20,9 @@
 
 - [ ] remove pieces in favor of dropping partial data directly in the fragments dir, maskor automatically adds missing metdata
   - make sure to update all relevant specs to avoid confusing the poor poor agents!
+
+- [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
+  - TODO: importing capabilities
 
 - [ ] create way of exporting a dump of discarded fragments! you might want to save them all
 
@@ -32,7 +39,7 @@
   - user can set if titles should be visible or not
   - if section titles should be visible
 
-- [ ] create a spec for "snapshots" or versions, i.e saving a draft. The user should be able to go back to old drafts easily, then back again. Making changes in an old draft is not allowed, unless the user restores, or creates a new project based on that draft.
+- [x] create a spec for "snapshots" or versions, i.e saving a draft. The user should be able to go back to old drafts easily, then back again. Making changes in an old draft is not allowed, unless the user restores, or creates a new project based on that draft.
   - maybe use git in the background? commit, tag, checkout? or some other system
 
 - [x] Feature to create new fragment from within Maskor
@@ -55,7 +62,7 @@
   - or discuss this with the agent > how to handle this? an arc pertaining to an aspect, for example character development - however, that character could have multiple related arcs? should all these get aspects of their own? yes?
   - implicit link between arcs and aspects? a 1-to-1 relationship?
 
-- [ ] when doing things with sequences, the action log shows UUIDs instead of titles
+- [x] when doing things with sequences, the action log shows UUIDs instead of titles
 
 - [x] add import aliases in frontend - all import paths are ugly
 
@@ -107,9 +114,6 @@
 - [x] Refactor watcher code, lots of code duplication and huge file size
 
 - [ ] Investigate logger... is the pattern good? where to see logs? how to write intentional logs for me to read?
-
-- [ ] If any file in the appropriate folder is missing metadata or uuid, just create it -- user might have dragged it in from another project
-  - TODO: importing capabilities
 
 - [x] File import flow: import an entire file that gets split into multiple fragments. Distinct from the current piece-conversion path (1 file → 1 fragment) — needs a splitter (by heading, by paragraph, by length, by user-selected delimiter) and a confirmation UI. When implemented, log as a `fragment:imported` (or similar) action in the action log; payload includes `sourceFileName` and `fragmentCount`. See `specifications/action-log.md`.
 
