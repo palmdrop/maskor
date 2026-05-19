@@ -494,3 +494,30 @@ describe("syncReference — hash guard", () => {
     expect(referenceSynced.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("watcher — swap files are ignored under .maskor/", () => {
+  it("does not emit any events when a swap file is written under .maskor/swap/", async () => {
+    const { default: nodeFs } = await import("node:fs/promises");
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const swapDir = join(vaultDir, ".maskor", "swap", "fragment");
+    await nodeFs.mkdir(swapDir, { recursive: true });
+    await Bun.write(
+      join(swapDir, "test-uuid.json"),
+      JSON.stringify({ content: "swap body", savedAt: new Date().toISOString() }),
+    );
+
+    // Wait longer than chokidar's awaitWriteFinish stability threshold (200ms).
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(events).toHaveLength(0);
+  });
+});

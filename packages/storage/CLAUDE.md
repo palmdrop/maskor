@@ -27,4 +27,4 @@ return withDraftMutex(context.vaultPath, async () => {
 });
 ```
 
-Skip the lock for: `actionLog.append` (the file is preserved across restore; appends survive), registry operations (not vault-scoped), and `index.rebuild` (called from `resolveProject` middleware on first access, before any user write can race it — and from inside `drafts.restore` which already holds the lock; re-acquiring would deadlock).
+Skip the lock for: `actionLog.append` (the file is preserved across restore; appends survive), registry operations (not vault-scoped), `index.rebuild` (called from `resolveProject` middleware on first access, before any user write can race it — and from inside `drafts.restore` which already holds the lock; re-acquiring would deadlock), and `swap.*` (transient unsaved-content cache under `.maskor/swap/`; same exclusion rationale as `actionLog.append` — not part of the canonical vault, watcher ignores it via the dotfile regex, and serializing per-keystroke writes behind every other vault mutation would defeat the point).

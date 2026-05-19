@@ -37,6 +37,9 @@ export type { FragmentStats, ProjectStats, FragmentStatsSummary } from "./sugges
 export { readRecentEntries } from "./action-log";
 export type { ActionLogWriter, ActionLogConfig } from "./action-log";
 
+export { SWAP_ENTITY_TYPES, SwapEntityTypeError } from "./swap";
+export type { SwapEntityType, SwapFile, SwapListEntry, SwapStorage } from "./swap";
+
 export { createSettingsService } from "./settings";
 export type { Settings, SettingsService, SettingsReadResult } from "./settings";
 

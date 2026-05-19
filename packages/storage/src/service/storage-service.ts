@@ -77,6 +77,8 @@ import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 import { createActionLogWriter, readRecentEntries } from "../action-log";
 import type { ActionLogWriter } from "../action-log";
+import { createSwapStorage } from "../swap";
+import type { SwapEntityType, SwapFile, SwapListEntry, SwapStorage } from "../swap";
 import type { DraftManifest, LogEntry } from "@maskor/shared";
 import {
   cleanupStaleDirectories,
@@ -117,6 +119,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
   const vaultWatcherCache = new Map<string, VaultWatcher>();
   const suggestionCooldownCache = new Map<string, CooldownSet>();
   const actionLogWriterCache = new Map<string, Promise<ActionLogWriter>>();
+  const swapStorageCache = new Map<string, SwapStorage>();
 
   // Subscriber bus lives on the service (not the watcher) so SSE clients
   // survive a watcher teardown — e.g. during a draft restore.
@@ -138,6 +141,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const writerPromise = createActionLogWriter({ vaultPath: context.vaultPath, logger });
     actionLogWriterCache.set(context.projectUUID, writerPromise);
     return writerPromise;
+  };
+
+  const getSwapStorage = (context: ProjectContext): SwapStorage => {
+    const cached = swapStorageCache.get(context.projectUUID);
+    if (cached) return cached;
+    const storage = createSwapStorage({ vaultPath: context.vaultPath, logger });
+    swapStorageCache.set(context.projectUUID, storage);
+    return storage;
   };
 
   const getVault = (context: ProjectContext): Vault => {
@@ -1590,6 +1601,39 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
       async readRecent(context: ProjectContext, limit: number): Promise<LogEntry[]> {
         return readRecentEntries(context.vaultPath, limit, logger);
+      },
+    },
+
+    // Swap operations — transient unsaved-content cache. See packages/storage/CLAUDE.md
+    // for why these bypass withVaultWriteLock and the action log.
+    swap: {
+      async write(
+        context: ProjectContext,
+        entityType: SwapEntityType,
+        entityUUID: string,
+        content: string,
+      ): Promise<SwapFile> {
+        return getSwapStorage(context).write(entityType, entityUUID, content);
+      },
+
+      async read(
+        context: ProjectContext,
+        entityType: SwapEntityType,
+        entityUUID: string,
+      ): Promise<SwapFile | null> {
+        return getSwapStorage(context).read(entityType, entityUUID);
+      },
+
+      async delete(
+        context: ProjectContext,
+        entityType: SwapEntityType,
+        entityUUID: string,
+      ): Promise<void> {
+        return getSwapStorage(context).delete(entityType, entityUUID);
+      },
+
+      async list(context: ProjectContext): Promise<SwapListEntry[]> {
+        return getSwapStorage(context).list();
       },
     },
 
