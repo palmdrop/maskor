@@ -618,7 +618,7 @@ export const OverviewPage = () => {
                 />
               )}
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto shrink-0">
                 <div
                   className="flex flex-col gap-2"
                   style={{ width: sequenceLayout.totalWidth || undefined, minWidth: "100%" }}
