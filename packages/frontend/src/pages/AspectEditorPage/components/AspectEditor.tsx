@@ -198,6 +198,8 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     <EntityEditorShell
       label="Aspect"
       projectId={projectId}
+      entityKind="aspect"
+      entityUUID={aspectId}
       backNode={backNode}
       entityKey={aspect.key}
       content={aspect.description ?? ""}
@@ -207,6 +209,7 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
       onDismissWarnings={() => setCascadeWarnings([])}
       onProseChange={() => setIsDirty(true)}
       onSaved={() => setIsDirty(false)}
+      onContentRevert={() => setIsDirty(false)}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
       sidebar={sidebar}

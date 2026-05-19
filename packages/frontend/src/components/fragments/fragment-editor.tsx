@@ -201,6 +201,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       ref={shellRef}
       label="Fragment"
       projectId={projectId}
+      entityKind="fragment"
+      entityUUID={fragmentId}
       entityKey={fragment.key}
       content={fragment.content}
       isPending={isActionPending}
@@ -213,6 +215,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         setIsProseDirty(false);
         onSaved?.();
       }}
+      onContentRevert={() => setIsProseDirty(false)}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
       sidebar={

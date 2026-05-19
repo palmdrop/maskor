@@ -14,6 +14,7 @@ type MarkdownStorage = {
 
 export type ProseEditorHandle = {
   getContent: () => string;
+  setContent: (value: string) => void;
 };
 
 type Props = {
@@ -97,6 +98,17 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           return viewRef.current?.state.doc.toString() ?? content;
         }
         return (editor?.storage as unknown as MarkdownStorage)?.markdown.getMarkdown() ?? content;
+      },
+      setContent: (value: string) => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: value },
+          });
+          return;
+        }
+        editor?.commands.setContent(value, { emitUpdate: false });
       },
     }),
     [vimMode, rawMarkdownMode, editor, content],

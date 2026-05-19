@@ -1,5 +1,14 @@
-import { forwardRef, type ReactNode, useCallback, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { ProseEditor, type ProseEditorHandle } from "./prose-editor";
+import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
@@ -7,6 +16,7 @@ import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -15,6 +25,8 @@ export type EntityEditorShellHandle = {
 type Props = {
   label: string;
   projectId: string;
+  entityKind: SwapEntityKind;
+  entityUUID: string;
   entityKey: string;
   content: string;
   isPending: boolean;
@@ -28,6 +40,7 @@ type Props = {
   onDismissWarnings?: () => void;
   onProseChange: () => void;
   onSaved: () => void;
+  onContentRevert?: () => void;
   onKeySave: (key: string) => Promise<void>;
   onContentSave: (content: string) => Promise<void>;
 };
@@ -37,6 +50,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     {
       label,
       projectId,
+      entityKind,
+      entityUUID,
       entityKey,
       content,
       isPending,
@@ -50,6 +65,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onDismissWarnings,
       onProseChange,
       onSaved,
+      onContentRevert,
       onKeySave,
       onContentSave,
     },
@@ -58,6 +74,47 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const editorConfig = useProjectEditorConfig(projectId);
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
+
+    // Track the live editor content so useEntityContentSwap can debounce-write it.
+    // Re-reads from the editor on every onProseChange so the swap matches what's
+    // on screen.
+    const [liveContent, setLiveContent] = useState(content);
+
+    useEffect(() => {
+      // Re-sync from the server when we're not dirty (e.g. server data refetched
+      // while the editor was clean). Pending edits must not be clobbered.
+      if (!isDirty) setLiveContent(content);
+    }, [content, isDirty]);
+
+    const { recovery, clear: clearSwap } = useEntityContentSwap({
+      projectId,
+      entityType: entityKind,
+      entityUUID,
+      currentValue: liveContent,
+      serverValue: content,
+    });
+
+    const recoveryAppliedRef = useRef(false);
+    useEffect(() => {
+      // Reset the per-entity guard when the swap target changes.
+      recoveryAppliedRef.current = false;
+    }, [projectId, entityKind, entityUUID]);
+
+    useEffect(() => {
+      if (!recovery) return;
+      if (recoveryAppliedRef.current) return;
+      recoveryAppliedRef.current = true;
+      proseEditorRef.current?.setContent(recovery.content);
+      setLiveContent(recovery.content);
+      onProseChange();
+    }, [recovery, onProseChange]);
+
+    const handleRestoreFromServer = useCallback(() => {
+      proseEditorRef.current?.setContent(content);
+      setLiveContent(content);
+      void clearSwap();
+      onContentRevert?.();
+    }, [content, clearSwap, onContentRevert]);
 
     const [isSidebarCollapsed, , toggleSidebar] = usePersistedBoolean(
       `entityEditorSidebar_${label}`,
@@ -80,9 +137,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       if (!isDirty || isPending) return;
       const currentContent = proseEditorRef.current?.getContent() ?? content;
       const metadataUpdate = await onContentSave(currentContent);
+      // Swap is preserved on failure — onContentSave throws on non-2xx, so this
+      // line only runs if the canonical save succeeded.
+      await clearSwap();
       onSaved();
       return metadataUpdate;
-    }, [isDirty, isPending, content, onContentSave, onSaved]);
+    }, [isDirty, isPending, content, onContentSave, onSaved, clearSwap]);
 
     // Button-triggered save — swallows errors so the parent keeps isDirty=true on failure.
     const handleContentSave = useCallback(async () => {
@@ -95,8 +155,17 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     useImperativeHandle(ref, () => ({ save: saveContent }), [saveContent]);
 
+    const handleProseChange = useCallback(() => {
+      const current = proseEditorRef.current?.getContent();
+      if (current !== undefined) setLiveContent(current);
+      onProseChange();
+    }, [onProseChange]);
+
     return (
       <div className="flex flex-col h-full gap-2">
+        {recovery && (
+          <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
+        )}
         {banner}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
@@ -184,7 +253,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               fontSize={editorConfig.fontSize}
               maxParagraphWidth={editorConfig.maxParagraphWidth}
               onSave={handleContentSave}
-              onChange={onProseChange}
+              onChange={handleProseChange}
             />
           </main>
         </div>

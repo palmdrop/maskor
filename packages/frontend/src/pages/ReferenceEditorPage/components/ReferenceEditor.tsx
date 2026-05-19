@@ -82,6 +82,8 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
     <EntityEditorShell
       label="Reference"
       projectId={projectId}
+      entityKind="reference"
+      entityUUID={referenceId}
       backNode={backNode}
       entityKey={reference.key}
       content={reference.content}
@@ -91,6 +93,7 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
       onDismissWarnings={() => setCascadeWarnings([])}
       onProseChange={() => setIsDirty(true)}
       onSaved={() => setIsDirty(false)}
+      onContentRevert={() => setIsDirty(false)}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
     />

@@ -82,6 +82,8 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
     <EntityEditorShell
       label="Note"
       projectId={projectId}
+      entityKind="note"
+      entityUUID={noteId}
       backNode={backNode}
       entityKey={note.key}
       content={note.content}
@@ -91,6 +93,7 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
       onDismissWarnings={() => setCascadeWarnings([])}
       onProseChange={() => setIsDirty(true)}
       onSaved={() => setIsDirty(false)}
+      onContentRevert={() => setIsDirty(false)}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
     />
