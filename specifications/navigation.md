@@ -1,7 +1,7 @@
 # Spec: Navigation
 
 **Status**: Stable
-**Last updated**: 2026-04-27
+**Last updated**: 2026-05-19
 
 **Shipped**:
 
@@ -78,11 +78,13 @@ In brief: after saving a fragment and navigating away, Maskor surfaces a non-det
 
 ### Keyboard navigation
 
-- A global keyboard shortcut opens the Fragment list.
-- A global keyboard shortcut opens the Overview.
-- A global keyboard shortcut opens Project config.
+Keyboard-driven navigation is owned by the command system. See `command-palette.md` — every navigation destination is a registered command with an optional hotkey, surfaced both in the palette (`Cmd/Ctrl+K`) and via direct hotkey binding.
+
+- A global hotkey opens the Fragment list.
+- A global hotkey opens the Overview.
+- A global hotkey opens Project config.
 - Within the Fragment editor, a shortcut switches focus between the prose editor and the metadata sidebar (see `fragment-editor.md` open questions).
-- Exact key bindings are not defined yet — they are an open question.
+- The existing chord-based prefix shortcuts (`g+f`, `g+o`, `g+c`) shipped 2026-04-27 are legacy and will be replaced by command-bound hotkeys. The final scheme (modifier-prefixed vs unmodified single letters) is tracked in `command-palette.md`.
 
 ---
 
@@ -97,7 +99,7 @@ In brief: after saving a fragment and navigating away, Maskor surfaces a non-det
 ## Open questions
 
 - [ ] 2026-04-27 — What is the Fragment list view? A simple list with search/filter? A grid? Does it exist as a separate route or is it a panel within the Overview? This needs its own spec before the navigation layer can be fully implemented.
-- [ ] 2026-04-27 — What keyboard shortcuts are assigned to each global navigation action?
+- [x] 2026-04-27 — What keyboard shortcuts are assigned to each global navigation action? **Resolved 2026-05-19**: ownership moved to `command-palette.md`. Nav actions are commands; their hotkeys are declared on the command definitions. The exact post-chord scheme remains an open question there.
 - [ ] 2026-04-27 — Prompting mechanism open questions are tracked in `prompting.md`.
 - [ ] 2026-04-27 — Does fragment prev/next navigation within the editor follow sequence order, list order, or recency? Should it exist at all?
 - [x] 2026-04-27 — Where does the user switch between open projects? **Resolved**: The project name in the sidebar links to `/` (the project management screen). No separate picker needed.

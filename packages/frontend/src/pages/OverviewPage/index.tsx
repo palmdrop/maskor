@@ -42,12 +42,11 @@ import { TileContent } from "./components/TileContent";
 import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
-import { ArcPanel } from "./components/ArcPanel";
+import { ArcPanel, ARC_PANEL_HEIGHT } from "./components/ArcPanel";
 import { ArcLegend } from "./components/ArcLegend";
 import { resolveAspectColor } from "./utils/aspectColors";
 import { computeSequenceLayout } from "./utils/layout";
 import { buildArcSeries, type ArcSeries } from "./utils/arcData";
-import { ARC_PANEL_HEIGHT } from "./components/ArcPanel";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -235,6 +234,18 @@ export const OverviewPage = () => {
   // positions, but the curve only catches up after `onDragEnd` clears
   // `activeDragId`. Avoids per-frame recomputation while the user drags.
   const arcSeriesCacheRef = useRef<ArcSeries[]>([]);
+
+  // Refs for syncing horizontal scroll between the sticky arc panel wrapper and
+  // the tile scroller. The arc wrapper uses overflow-x:hidden so the SVG is
+  // clipped to the viewport; its scrollLeft mirrors the tile scroller so the
+  // curves stay aligned with their tiles during horizontal scroll.
+  const tileScrollerRef = useRef<HTMLDivElement>(null);
+  const arcScrollerRef = useRef<HTMLDivElement>(null);
+  const handleTileScroll = useCallback(() => {
+    if (tileScrollerRef.current && arcScrollerRef.current) {
+      arcScrollerRef.current.scrollLeft = tileScrollerRef.current.scrollLeft;
+    }
+  }, []);
   const arcSeries = useMemo<ArcSeries[]>(() => {
     if (activeDragId !== null) return arcSeriesCacheRef.current;
     const next = buildArcSeries(
@@ -618,18 +629,21 @@ export const OverviewPage = () => {
                 />
               )}
 
-              <div className="overflow-x-auto shrink-0">
+              {sequenceLayout.totalWidth > 0 && (
+                <div ref={arcScrollerRef} className="overflow-x-hidden shrink-0 sticky top-0 z-10">
+                  <ArcPanel
+                    width={sequenceLayout.totalWidth}
+                    series={visibleArcSeries}
+                    colorByAspectKey={colorByAspectKey}
+                  />
+                </div>
+              )}
+
+              <div ref={tileScrollerRef} className="overflow-x-auto shrink-0" onScroll={handleTileScroll}>
                 <div
                   className="flex flex-col gap-2"
                   style={{ width: sequenceLayout.totalWidth || undefined, minWidth: "100%" }}
                 >
-                  {sequenceLayout.totalWidth > 0 && (
-                    <ArcPanel
-                      width={sequenceLayout.totalWidth}
-                      series={visibleArcSeries}
-                      colorByAspectKey={colorByAspectKey}
-                    />
-                  )}
                   <div className="flex flex-row gap-3 items-start">
               {sectionsData.map((sectionData, sectionIndex) => (
                 <section
@@ -743,7 +757,6 @@ export const OverviewPage = () => {
                         <SortableTile
                           key={uuid}
                           fragment={fragment}
-                          inSequence={true}
                           density={density}
                           colorByAspectKey={colorByAspectKey}
                           violationTooltips={getViolationTooltips(uuid)}
@@ -792,7 +805,6 @@ export const OverviewPage = () => {
                       <SortableTile
                         key={uuid}
                         fragment={fragment}
-                        inSequence={false}
                         density={density}
                         colorByAspectKey={colorByAspectKey}
                         cycleTooltips={getCycleTooltips(uuid)}
@@ -808,7 +820,6 @@ export const OverviewPage = () => {
                 {activeDragFragment ? (
                   <TileContent
                     fragment={activeDragFragment}
-                    inSequence={fragmentSectionMap.has(activeDragFragment.uuid)}
                     density={density}
                     colorByAspectKey={colorByAspectKey}
                   />

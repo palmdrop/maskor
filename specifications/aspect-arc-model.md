@@ -8,6 +8,7 @@
 - 2026-04-15 — Aspects can be created and deleted within a project. (plan: references/plans/aspects-notes-references-crud.md)
 - 2026-05-06 — Fragments can be assigned aspect weights; the weight interface supports adding, removing, and editing values. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
 - 2026-05-09 — Aspect weight changes on fragments save immediately without a manual save step. (plan: references/plans/entity-live-metadata-save.md)
+- 2026-05-19 - Aspect actual arcs are visualized above a sequence in the overview page (plan: references/plans/overview-density-and-actual-arc.md)
 
 ---
 
@@ -131,7 +132,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - **Arc storage is vault-only**: Each arc lives in `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. User-authored intent is vault-stored, consistent with the vault-as-source-of-truth principle and interleaving config storage.
 - **Arc ↔ aspect cardinality is zero-or-one**: An aspect can have zero or one explicit arc. Arcs are strictly per-aspect; multiple aspects cannot share one arc.
 - **Explicit arcs are user-authored; implicit arcs are not**: Maskor never auto-generates explicit arcs. The implicit arc (the actual arc used as a scoring baseline when no explicit arc exists) is derived from the current arrangement and is not a user-authored entity.
-- **Fragments with no weight for an arc'd aspect are ignored in scoring**: No implicit zero weight. See `fitting-score.md`.
+- **"No weight" means the aspect key is absent from `fragment.aspects`**: An explicit `weight: 0` is a valid value — it means the fragment strongly lacks the aspect — and is distinct from omission. For scoring, a fragment with an absent aspect key is ignored (no score contribution, no penalty). An explicit `weight: 0` is included in scoring and arc rendering. See `fitting-score.md`.
 - **Actual arcs are always available**: Once at least one fragment with an aspect weight is placed in a sequence, the actual arc for that aspect is computable. No configuration required.
 - **Implicit arc is a transparent fallback**: When no explicit arc exists, the sequencer uses the actual arc as the scoring baseline. The user does not need to understand this distinction to benefit from it.
 

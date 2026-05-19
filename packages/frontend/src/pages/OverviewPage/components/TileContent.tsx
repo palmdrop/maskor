@@ -5,7 +5,6 @@ import { AspectColorBar } from "./AspectColorBar";
 
 interface TileContentProps {
   fragment: FragmentSummary;
-  inSequence: boolean;
   density: OverviewDensity;
   colorByAspectKey: Map<string, string>;
   violationTooltips?: string[];

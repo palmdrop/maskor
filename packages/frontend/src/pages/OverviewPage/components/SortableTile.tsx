@@ -6,7 +6,6 @@ import { TileContent } from "./TileContent";
 
 interface SortableTileProps {
   fragment: FragmentSummary;
-  inSequence: boolean;
   density: OverviewDensity;
   colorByAspectKey: Map<string, string>;
   violationTooltips?: string[];
@@ -17,7 +16,6 @@ interface SortableTileProps {
 
 export const SortableTile = ({
   fragment,
-  inSequence,
   density,
   colorByAspectKey,
   violationTooltips,
@@ -45,7 +43,6 @@ export const SortableTile = ({
     >
       <TileContent
         fragment={fragment}
-        inSequence={inSequence}
         density={density}
         colorByAspectKey={colorByAspectKey}
         violationTooltips={violationTooltips}

@@ -18,7 +18,7 @@ export const ArcPanel = ({ width, series, colorByAspectKey }: ArcPanelProps) => 
     <div
       role="img"
       aria-label="Aspect arcs across the placed sequence"
-      className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border"
+      className="bg-background/95 backdrop-blur-sm border-b border-border"
       style={{ width, height: panelHeight }}
       data-testid="arc-panel"
     >

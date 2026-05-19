@@ -8,13 +8,16 @@ export type ArcSeries = {
 };
 
 // Build per-aspect series from the placed fragments. Each aspect key with at
-// least one weighted fragment yields a series; fragments with no weight for
-// that aspect contribute no point (consistent with the aspect-arc model: such
-// fragments are ignored in the arc curve, not treated as zero).
+// least one weighted fragment yields a series.
+//
+// "No weight" means the aspect key is absent from fragment.aspects entirely —
+// such fragments are skipped (not plotted as zero). An explicit weight: 0 is a
+// valid point and is plotted at the floor of the panel; it is distinct from
+// omission and must not be dropped.
 //
 // y is mapped from aspect weight (0..1) to pixel space: weight=1 → top of the
-// panel (y=0), weight=0 → bottom (y=panelHeight). Coordinates are in the same
-// pixel system as `centerByFragmentUuid`.
+// panel (y=0), weight=0 → bottom (y=panelHeight). Out-of-range values are
+// clamped. Coordinates are in the same pixel system as `centerByFragmentUuid`.
 export const buildArcSeries = (
   orderedFragmentUuids: string[],
   fragmentByUuid: Map<string, FragmentSummary>,
@@ -29,7 +32,7 @@ export const buildArcSeries = (
     if (xCenter === undefined) continue;
     for (const [aspectKey, value] of Object.entries(fragment.aspects)) {
       const weight = value.weight;
-      if (weight === undefined || weight <= 0) continue;
+      if (weight === undefined) continue;
       const clampedWeight = Math.max(0, Math.min(1, weight));
       const y = (1 - clampedWeight) * panelHeight;
       const existing = pointsByAspect.get(aspectKey) ?? [];

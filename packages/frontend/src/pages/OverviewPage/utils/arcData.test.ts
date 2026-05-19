@@ -106,6 +106,25 @@ describe("buildArcSeries", () => {
     expect(series[0]?.points[0]?.y).toBe(0);
   });
 
+  it("plots an explicit weight=0 at the floor of the panel (not skipped)", () => {
+    const fragments = [
+      makeFragment("f1", "a", { grief: { weight: 0.6 } }),
+      makeFragment("f2", "b", { grief: { weight: 0 } }),
+    ];
+    const series = buildArcSeries(
+      ["f1", "f2"],
+      makeFragmentMap(fragments),
+      makeCenters([
+        ["f1", 100],
+        ["f2", 200],
+      ]),
+      PANEL_HEIGHT,
+    );
+    const grief = series.find((s) => s.aspectKey === "grief");
+    expect(grief?.points).toHaveLength(2);
+    expect(grief?.points[1]?.y).toBe(PANEL_HEIGHT);
+  });
+
   it("skips fragments not present in the center map", () => {
     const fragments = [
       makeFragment("f1", "a", { grief: { weight: 0.6 } }),

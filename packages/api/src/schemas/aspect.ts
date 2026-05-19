@@ -3,6 +3,7 @@ import {
   AspectSchema as DomainAspectSchema,
   AspectCreateSchema as DomainAspectCreateSchema,
   AspectUpdateSchema as DomainAspectUpdateSchema,
+  AspectColorSchema,
 } from "@maskor/shared";
 
 const ColorExample = { example: "#f97316" };
@@ -13,7 +14,7 @@ export const IndexedAspectSchema = DomainAspectSchema.omit({ description: true }
     uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     key: z.string().openapi({ example: "tone" }),
     category: z.string().optional().openapi({ example: "style" }),
-    color: z.string().optional().openapi(ColorExample),
+    color: AspectColorSchema.optional().openapi(ColorExample),
     filePath: z.string(),
   })
   .openapi("IndexedAspect");
