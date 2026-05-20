@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, defaultFilter } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ const KEY_GLYPHS: Record<string, string> = {
   arrowright: "→",
 };
 
-function formatHotkeyParts(hotkey: string): string[] {
+const formatHotkeyParts = (hotkey: string): string[] => {
   const mac = isMac();
   return hotkey.toLowerCase().split("+").map((part) => {
     if (part === "mod") return mac ? "⌘" : "Ctrl";
@@ -29,7 +29,7 @@ function formatHotkeyParts(hotkey: string): string[] {
     if (part === "ctrl") return "⌃";
     return KEY_GLYPHS[part] ?? part.toUpperCase();
   });
-}
+};
 
 const HotkeyBadge = ({ hotkey }: { hotkey: string }) => (
   <div className="flex shrink-0 items-center gap-0.5">
@@ -123,6 +123,11 @@ export const CommandPalette = () => {
   const [activeArgCommand, setActiveArgCommand] = useState<CommandDef | null>(null);
   const [argItems, setArgItems] = useState<unknown[]>([]);
   const [argLoading, setArgLoading] = useState(false);
+  // Bumped on every transition out of an in-flight arg load (Esc, close, picking
+  // a different command). Resolutions whose generation no longer matches are
+  // discarded so a slow promise from a prior selection can't clobber the
+  // current picker's state.
+  const argGenerationRef = useRef(0);
 
   const { getMap, run } = useCommandsContext();
 
@@ -143,6 +148,7 @@ export const CommandPalette = () => {
   // Reset all step state when palette closes.
   useEffect(() => {
     if (!open) {
+      argGenerationRef.current++;
       setStep("commands");
       setQuery("");
       setSavedQuery("");
@@ -185,7 +191,11 @@ export const CommandPalette = () => {
     });
 
     return { viewScopedSections, globalSections };
-  }, [open]); // recompute when palette opens to pick up latest commands
+    // Snapshot-at-open: sections are computed once per palette opening so
+    // section order doesn't reshuffle while the user is typing. Per-row state
+    // (disabledReason, arg) stays live because commands are Proxies into the
+    // registry; only the grouping/sort order is frozen.
+  }, [open]);
 
   const commandMap = useMemo(
     () => new Map(Array.from(getMap().values()).map((c) => [c.id, c])),
@@ -215,10 +225,12 @@ export const CommandPalette = () => {
     }
 
     // Transition to arg picker.
+    const generation = ++argGenerationRef.current;
     setSavedQuery(query);
     setQuery("");
     setActiveArgCommand(command);
     setStep("args");
+    setArgItems([]);
     setArgLoading(true);
 
     try {
@@ -226,12 +238,16 @@ export const CommandPalette = () => {
         typeof command.arg.items === "function"
           ? await (command.arg.items as () => unknown[] | Promise<unknown[]>)()
           : (command.arg.items as unknown[]);
+      if (argGenerationRef.current !== generation) return;
       setArgItems(resolvedItems);
     } catch (error) {
+      if (argGenerationRef.current !== generation) return;
       console.error("[command-palette] Failed to load arg items:", error);
       setOpen(false);
     } finally {
-      setArgLoading(false);
+      if (argGenerationRef.current === generation) {
+        setArgLoading(false);
+      }
     }
   };
 
@@ -244,6 +260,7 @@ export const CommandPalette = () => {
   const handleEscapeKeyDown = (event: Event) => {
     if (step === "args") {
       event.preventDefault();
+      argGenerationRef.current++;
       setStep("commands");
       setQuery(savedQuery);
       setSavedQuery("");

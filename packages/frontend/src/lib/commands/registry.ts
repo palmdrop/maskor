@@ -3,7 +3,7 @@ import { router } from "@/router";
 import { ListProjects } from "@api/generated/projects/projects";
 import type { Project } from "@api/generated/maskorAPI.schemas";
 
-const staticRegistry: CommandDef[] = [
+export const staticRegistry: CommandDef[] = [
   {
     id: "navigation:go-to-project-management",
     label: "Go to Project management",
@@ -34,5 +34,3 @@ const staticRegistry: CommandDef[] = [
     },
   },
 ];
-
-export { staticRegistry };

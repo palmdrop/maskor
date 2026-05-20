@@ -82,7 +82,7 @@
 - [x] Failure: close the palette and surface the error via the existing toast mechanism (currently logs to console — no toast library exists yet; tracked in SUGGESTIONS.md)
 - [x] Tests: ellipsis command opens arg picker; selecting an item invokes `run(arg)`; Esc returns to command list with restored query; zero-item command is disabled with explanation
 - [x] Update spec `Shipped:`
-- [ ] `git commit` — "feat(command-palette): support parameterized two-step commands"
+- [x] `git commit` — "feat(command-palette): support parameterized two-step commands"
 
 ### Phase 6 — Initial global catalog
 
@@ -94,7 +94,7 @@
 - [x] Decide whether the palette is mounted shell-wide (works on `/` for `Create project…`) or project-shell-only; resolve the open question in the spec before merging
 - [x] Tests: each registered command runs and lands on the expected route or invokes the expected mutation
 - [x] Update spec `Shipped:` + close the relevant open question
-- [ ] `git commit` — "feat(command-palette): populate global command catalog"
+- [x] `git commit` — "feat(command-palette): populate global command catalog"
 
 ### Phase 7 — Chord nav removal
 
@@ -105,7 +105,7 @@
 - [x] Delete `src/hooks/useKeyboardNav.ts` and remove its mount from `ProjectShellLayout`
 - [x] Update tests that referenced the chord shortcuts (none existed)
 - [x] Update `specifications/navigation.md` `Shipped:` and `specifications/command-palette.md` `Shipped:`
-- [ ] `git commit` — "refactor(navigation): replace chord shortcuts with command-bound hotkeys"
+- [x] `git commit` — "refactor(navigation): replace chord shortcuts with command-bound hotkeys"
 
 ---
 

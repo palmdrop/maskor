@@ -6,22 +6,21 @@ import { useCommand } from "@lib/commands/useCommand";
 import { CommandPalette } from "../CommandPalette";
 import type { ReactNode } from "react";
 
-// Helper: render palette with a set of commands pre-registered
-function renderWithCommands(
-  commandDefs: Parameters<typeof useCommand>[0][],
-  children?: ReactNode,
-) {
-  const Registrar = () => {
-    for (const def of commandDefs) {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      useCommand(def);
-    }
-    return <>{children}</>;
-  };
+type CommandInput = Parameters<typeof useCommand>[0];
 
+const RegistrarItem = ({ def }: { def: CommandInput }) => {
+  useCommand(def);
+  return null;
+};
+
+// Helper: render palette with a set of commands pre-registered
+function renderWithCommands(commandDefs: CommandInput[], children?: ReactNode) {
   return render(
     <CommandsProvider>
-      <Registrar />
+      {commandDefs.map((def) => (
+        <RegistrarItem key={def.id} def={def} />
+      ))}
+      {children}
       <CommandPalette />
     </CommandsProvider>,
   );
@@ -318,6 +317,48 @@ describe("CommandPalette", () => {
     openPalette();
     expect(screen.getByText("No items available")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Empty Picker/ })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("discards stale arg-items resolution when user returns to the command list before load completes", async () => {
+    let resolveItems!: (items: { id: string; name: string }[]) => void;
+    const loadItems = vi.fn(
+      () =>
+        new Promise<{ id: string; name: string }[]>((resolve) => {
+          resolveItems = resolve;
+        }),
+    );
+    renderWithCommands([
+      {
+        id: "cmd:async-arg",
+        label: "Async Pick",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items: loadItems,
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: /Async Pick/ }));
+    await waitFor(() => {
+      expect(screen.getAllByTestId("arg-skeleton").length).toBeGreaterThan(0);
+    });
+
+    // Esc back to the command list while the load is still in flight.
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search commands…")).toBeInTheDocument();
+    });
+
+    // Late resolution must not leak items into the now-current command list.
+    await act(async () => {
+      resolveItems([{ id: "1", name: "Stale Item" }]);
+    });
+    expect(screen.queryByRole("option", { name: "Stale Item" })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search commands…")).toBeInTheDocument();
   });
 
   it("does not transition to arg picker when zero-item command is selected", async () => {

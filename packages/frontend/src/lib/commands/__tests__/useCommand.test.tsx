@@ -102,6 +102,45 @@ describe("useCommand", () => {
     expect(secondRun).toHaveBeenCalledTimes(1);
   });
 
+  it("registered def reads arg, label, and disabledReason live from the latest render", () => {
+    let capturedMap: ReadonlyMap<string, CommandDef> | null = null;
+
+    const Component = ({ items, label, reason }: { items: string[]; label: string; reason?: string }) => {
+      const { getMap } = useCommandsContext();
+      useCommand(
+        makeCommand({
+          id: "live:command",
+          label,
+          disabledReason: reason,
+          arg: {
+            items,
+            getKey: (item) => item as string,
+            getLabel: (item) => item as string,
+          },
+        }),
+      );
+      capturedMap = getMap();
+      return null;
+    };
+
+    const { rerender } = render(
+      <Component items={["a"]} label="First" />,
+      { wrapper },
+    );
+
+    const initial = capturedMap!.get("live:command")!;
+    expect(initial.label).toBe("First");
+    expect(initial.arg!.items).toEqual(["a"]);
+    expect(initial.disabledReason).toBeUndefined();
+
+    rerender(<Component items={["x", "y"]} label="Second" reason="not ready" />);
+
+    // Same Proxy reference, but reads now reflect the latest render.
+    expect(initial.label).toBe("Second");
+    expect(initial.arg!.items).toEqual(["x", "y"]);
+    expect(initial.disabledReason).toBe("not ready");
+  });
+
   it("warns in dev mode when a duplicate id is registered", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 

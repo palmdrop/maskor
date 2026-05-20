@@ -8,15 +8,17 @@ export const useCommand = (def: CommandDef) => {
   defRef.current = def;
 
   useEffect(() => {
-    const stableDef: CommandDef = {
-      ...defRef.current,
-      // Read live from ref so state-derived values (disabledReason, run) are never stale.
-      get disabledReason() {
-        return defRef.current.disabledReason;
-      },
-      run: (arg?: unknown) => defRef.current.run(arg),
-    };
-    register(stableDef);
-    return () => unregister(stableDef.id);
+    // Proxy reads every field live from the ref. Spec contract: the registered
+    // def always reflects the latest render, so arg.items closures over state
+    // (e.g. projectId) stay current across re-renders of the host component.
+    const liveDef = new Proxy({} as CommandDef, {
+      get: (_target, prop) => defRef.current[prop as keyof CommandDef],
+      has: (_target, prop) => prop in defRef.current,
+      ownKeys: () => Reflect.ownKeys(defRef.current),
+      getOwnPropertyDescriptor: (_target, prop) =>
+        Reflect.getOwnPropertyDescriptor(defRef.current, prop),
+    });
+    register(liveDef);
+    return () => unregister(def.id);
   }, [def.id, register, unregister]);
 };
