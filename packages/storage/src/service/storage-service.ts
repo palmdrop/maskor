@@ -459,7 +459,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       patch: {
         name?: string;
         editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
-        suggestion?: { readyStatusThreshold?: number };
+        suggestion?: { readinessThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
         preview?: {
           showTitles?: boolean;
@@ -1341,11 +1341,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       // Returns the next suggested fragment UUID and its avoidance count, or null if the pool
       // is empty. If excludeUuid is provided and was surfaced in this session without being
       // edited, its avoidance_count is incremented before selection.
-      // readyStatusThreshold: fragments at or above this value are excluded (default 0.95).
+      // readinessThreshold: fragments at or above this value are excluded (default 0.95).
       async getNext(
         context: ProjectContext,
         excludeUuid?: string,
-        readyStatusThreshold = 0.95,
+        readinessThreshold = 0.95,
       ): Promise<{ fragmentUuid: string | null; avoidanceCount: number }> {
         return withVaultWriteLock(context.vaultPath, async () => {
           const vaultDatabase = getVaultDatabase(context);
@@ -1362,7 +1362,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           const allFragments = await indexer.fragments.findAll();
           const preFilter = allFragments.filter(
-            (fragment) => !fragment.isDiscarded && fragment.readyStatus < readyStatusThreshold,
+            (fragment) => !fragment.isDiscarded && fragment.readiness < readinessThreshold,
           );
 
           if (preFilter.length === 0) {
@@ -1388,7 +1388,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const selectedUuid = selectNextSuggestion({
             eligibleFragments: selectionPool.map((fragment) => ({
               uuid: fragment.uuid,
-              readyStatus: fragment.readyStatus,
+              readiness: fragment.readiness,
             })),
             stats: statsMap,
             rng: Math.random,

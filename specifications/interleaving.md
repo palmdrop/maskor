@@ -24,11 +24,11 @@ Interleaving is an incremental feature. The sequencer works without any interlea
 - Contribution to the fitting score (as weights or filters on the candidate set)
 - The data model for an `Interleaving` configuration and its rules
 - Storage of the interleaving config as a human-readable file in the vault
-- Distinction from arc (intensity) and sequencer (placement engine)
+- Distinction from arc (weight) and sequencer (placement engine)
 
 ### Out of scope
 
-- Intensity of individual aspects — that belongs to arcs (`aspect-arc-model.md`)
+- Weight of individual aspects — that belongs to arcs (`aspect-arc-model.md`)
 - How the sequencer runs the placement algorithm — that belongs to the sequencer (`sequencer.md`)
 - Interleaving visualization / UI (covered in `overview.md`)
 - Hand-drawn pattern input as a UI mechanism (future — when implemented, Maskor will approximate the drawn pattern using existing rule types; it is not a separate data model concept)
@@ -101,7 +101,7 @@ The sequencer reads the interleaving config as one of its inputs alongside arc d
 
 ## Prior decisions
 
-- **Arc owns intensity; interleaving owns frequency/pattern**: Explicitly called out in `aspect-arc-model.md`. Arcs describe a target intensity shape; interleaving describes transition and frequency constraints.
+- **Arc owns weight; interleaving owns frequency/pattern**: Explicitly called out in `aspect-arc-model.md`. Arcs describe a target weight shape; interleaving describes transition and frequency constraints.
 - **Interleaving is a sequencer input, not a separate engine**: The sequencer consumes interleaving rules as one input alongside arcs. There is no standalone interleaving pass.
 - **Incremental data model**: No full schema upfront. Frequency/spacing rules ship first; more complex rule types are added as the feature matures.
 - **Main-sequence-first**: Interleaving defaults to the main sequence. Secondary sequences can optionally carry their own interleaving config, but this is not required.

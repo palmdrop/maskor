@@ -7,7 +7,7 @@ const PARSED: ParsedFile = {
   frontmatter: {
     uuid: "frag-0001-0000-0000-000000000001",
     updatedAt: "2026-04-01T12:00:00.000Z",
-    readyStatus: 0.8,
+    readiness: 0.8,
     notes: ["bridge observation"],
     references: ["city research"],
   },
@@ -21,7 +21,7 @@ describe("fragment.fromFile", () => {
     expect(fragment.uuid as string).toBe("frag-0001-0000-0000-000000000001");
     expect(fragment.key).toBe("the-bridge");
     expect(fragment.isDiscarded).toBe(false);
-    expect(fragment.readyStatus).toBe(0.8);
+    expect(fragment.readiness).toBe(0.8);
     expect(fragment.notes).toEqual(["bridge observation"]);
     expect(fragment.references).toEqual(["city research"]);
   });
@@ -59,13 +59,13 @@ describe("fragment.fromFile", () => {
     expect(fragment.isDiscarded).toBe(true);
   });
 
-  it("defaults readyStatus to 0 when missing", () => {
+  it("defaults readiness to 0 when missing", () => {
     const parsed: ParsedFile = {
       ...PARSED,
-      frontmatter: { ...PARSED.frontmatter, readyStatus: undefined },
+      frontmatter: { ...PARSED.frontmatter, readiness: undefined },
     };
     const fragment = fromFile(parsed, "the-bridge.md");
-    expect(fragment.readyStatus).toBe(0);
+    expect(fragment.readiness).toBe(0);
   });
 
   it("defaults notes and references to empty arrays", () => {
@@ -85,7 +85,7 @@ describe("fragment.toFile", () => {
     uuid: "frag-0001-0000-0000-000000000001",
     key: "the-bridge",
     isDiscarded: false,
-    readyStatus: 0.8,
+    readiness: 0.8,
     notes: ["bridge observation"],
     references: ["city research"],
     aspects: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
@@ -98,7 +98,7 @@ describe("fragment.toFile", () => {
     const { frontmatter } = toFile(fragment);
     expect(frontmatter.uuid).toBe(fragment.uuid);
     expect(frontmatter.updatedAt).toBe("2026-04-01T12:00:00.000Z");
-    expect(frontmatter.readyStatus).toBe(0.8);
+    expect(frontmatter.readiness).toBe(0.8);
   });
 
   it("does not write contentHash or isDiscarded", () => {

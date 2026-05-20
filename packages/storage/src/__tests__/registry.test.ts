@@ -130,7 +130,7 @@ describe("registry.registerProject", () => {
     expect(manifest.config.editor.rawMarkdownMode).toBe(false);
     expect(manifest.config.editor.fontSize).toBe(16);
     expect(manifest.config.editor.maxParagraphWidth).toBe(72);
-    expect(manifest.config.suggestion.readyStatusThreshold).toBe(0.95);
+    expect(manifest.config.suggestion.readinessThreshold).toBe(0.95);
   });
 
   it("mode create on already-initialized folder throws ExistingVaultManifestError", async () => {

@@ -9,7 +9,7 @@ export const FragmentSchema = z.object({
   uuid: z.uuid(),
   key: z.string(),
   content: z.string(),
-  readyStatus: z.number().min(0).max(1),
+  readiness: z.number().min(0).max(1),
   contentHash: z.string(),
   updatedAt: z.date(),
   notes: z.array(z.string()),
@@ -29,7 +29,7 @@ export const FragmentCreateSchema = z.object({
 export const FragmentUpdateSchema = z.object({
   key: z.string().min(1).optional(),
   content: z.string().optional(),
-  readyStatus: z.number().min(0).max(1).optional(),
+  readiness: z.number().min(0).max(1).optional(),
   notes: z.array(z.string()).optional(),
   references: z.array(z.string()).optional(),
   aspects: AspectWeightsSchema.optional(),

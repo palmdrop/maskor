@@ -4,7 +4,7 @@ import type { Fragment } from "@maskor/shared";
 
 const makeFragment = (overrides: Partial<Fragment> & { uuid: string; key: string }): Fragment => ({
   content: `Content of ${overrides.key}`,
-  readyStatus: 1,
+  readiness: 1,
   contentHash: "",
   updatedAt: new Date(),
   notes: [],

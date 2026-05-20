@@ -23,7 +23,7 @@ const baseFragment: Fragment = {
   uuid: "fragment-1",
   key: "late-winter",
   content: "fragment content",
-  readyStatus: 0.2,
+  readiness: 0.2,
   contentHash: "hash",
   notes: [],
   references: [],

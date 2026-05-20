@@ -15,7 +15,7 @@ export const ProjectSchema = z.object({
     maxParagraphWidth: z.number().int().min(40).max(120),
   }),
   suggestion: z.object({
-    readyStatusThreshold: z.number().min(0).max(1),
+    readinessThreshold: z.number().min(0).max(1),
   }),
   advanced: z.object({
     showFragmentStats: z.boolean(),
@@ -50,7 +50,7 @@ export const ProjectUpdateSchema = z.object({
     .optional(),
   suggestion: z
     .object({
-      readyStatusThreshold: z.number().min(0).max(1).optional(),
+      readinessThreshold: z.number().min(0).max(1).optional(),
     })
     .optional(),
   advanced: z

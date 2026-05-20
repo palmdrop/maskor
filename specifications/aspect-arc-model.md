@@ -65,18 +65,18 @@ A fragment can carry weights for any number of aspects. Unweighted aspects are a
 
 ### Arcs
 
-An arc defines how a given aspect should evolve across the sequence. It is a curve — a series of target intensity values from the sequence's start to its end. A rising arc means the aspect should grow stronger as the sequence progresses; a falling arc the reverse; an arc can also peak, valley, or hold flat.
+An arc defines how a given aspect should evolve across the sequence. It is a curve — a series of target weight values from the sequence's start to its end. A rising arc means the aspect should grow stronger as the sequence progresses; a falling arc the reverse; an arc can also peak, valley, or hold flat.
 
 Arcs are user-authored intent, not computed output. The user defines what shape they want; the fitting score tells them how close reality is.
 
-Each arc belongs to one aspect. An aspect without an arc has no intensity target — its fragments are placed freely from a structural standpoint.
+Each arc belongs to one aspect. An aspect without an arc has no weight target — its fragments are placed freely from a structural standpoint.
 
 An arc is represented as an ordered list of **control points**. Each control point has:
 
 - `x` — normalized position in the sequence, in [0, 1]. `0` is the start, `1` is the end. This is sequence-length-independent: an arc defined on a 50-fragment sequence means the same thing on a 200-fragment sequence.
-- `y` — target intensity at that position, in [0, 1].
+- `y` — target weight at that position, in [0, 1].
 
-A minimum of two points is required. The sequencer interpolates between adjacent points at query time to get the target intensity for any sequence position. The interpolation method (linear, cubic spline) is a sequencer concern and is not specified here.
+A minimum of two points is required. The sequencer interpolates between adjacent points at query time to get the target weight for any sequence position. The interpolation method (linear, cubic spline) is a sequencer concern and is not specified here.
 
 ### Actual arc
 
@@ -86,7 +86,7 @@ The actual arc is visible in the overview regardless of whether an explicit arc 
 
 ### Explicit arc vs. implicit arc
 
-An **explicit arc** is a user-authored curve. The user draws it or derives it from an existing arrangement. When an explicit arc is defined for an aspect, the fitting score measures the gap between the fragment's weight and the explicit arc's target intensity at each position. The overview shows both the explicit arc and the actual arc simultaneously, making the gap visible.
+An **explicit arc** is a user-authored curve. The user draws it or derives it from an existing arrangement. When an explicit arc is defined for an aspect, the fitting score measures the gap between the fragment's weight and the explicit arc's target weight at each position. The overview shows both the explicit arc and the actual arc simultaneously, making the gap visible.
 
 When no explicit arc is defined for an aspect, the sequencer falls back to an **implicit arc**: it uses the actual arc of the already-placed fragments as the target curve for suggesting where a new fragment should go. This means "fit the new fragment to the existing shape." The implicit arc is not stored — it is recomputed from the current placement each time the sequencer runs.
 
@@ -117,7 +117,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - Fragment weights reference aspects by key. Key is the only join field — no UUID reference.
 - Orphaned aspect keys in fragment files must be preserved on save, never dropped silently.
 - Arc positions (where a fragment sits on an arc at its sequence index) and fitting scores are not stored in vault files. They are derived at runtime and can be lost if the DB is wiped.
-- An arc controls intensity/amount only. Frequency and pattern are interleaving's concern.
+- An arc controls weight only. Frequency and pattern are interleaving's concern.
 - Arcs are stored in `<vault>/.maskor/config/arcs/<aspect-key>.yaml`, one file per aspect. The watcher ignores `.maskor/` — arc files are read on startup and written when the user saves arc config.
 
 ---
@@ -140,11 +140,11 @@ A fragment may reference an aspect that does not really exist as an entity in th
 
 ## Open questions
 
-- [x] 2026-04-26 — What does the arc curve look like concretely? **Resolved**: sparse control points `{ x, y }` both in [0, 1], minimum 2 points. x is normalized sequence position; y is target intensity. Interpolation is delegated to the sequencer.
-- [x] 2026-04-26 — Is the arc ↔ aspect relationship strictly 1:1, or can an aspect have no arc? Can multiple aspects share one arc? **Resolved**: An aspect has zero or one arc. Arcs are per-aspect — multiple aspects cannot share one arc. An aspect with no arc has no intensity target; its fragments are placed freely from a structural standpoint.
+- [x] 2026-04-26 — What does the arc curve look like concretely? **Resolved**: sparse control points `{ x, y }` both in [0, 1], minimum 2 points. x is normalized sequence position; y is target weight. Interpolation is delegated to the sequencer.
+- [x] 2026-04-26 — Is the arc ↔ aspect relationship strictly 1:1, or can an aspect have no arc? Can multiple aspects share one arc? **Resolved**: An aspect has zero or one arc. Arcs are per-aspect — multiple aspects cannot share one arc. An aspect with no arc has no weight target; its fragments are placed freely from a structural standpoint.
 - [x] 2026-04-26 — Where are arcs stored? They are user-authored intent, which suggests vault files — but project-config is also plausible. DB-only seems wrong for something the user defines. **Resolved**: Vault-stored. Each arc is stored as `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. Keeps arcs human-readable, Obsidian-visible, and consistent with vault-as-source-of-truth. Consistent with interleaving config in `<vault>/.maskor/config/`.
 - [ ] 2026-04-26 — Do arcs apply project-wide, or per-sequence? A project with multiple sequences may need different arc curves per sequence.
-- [ ] 2026-04-26 — Should the spec use "weight" (matching the codebase) or "intensity" (matching product language in early docs)? The distinction between "weight" (fragment embodies an aspect) and "intensity" (arc's target value at a position) may be worth preserving as two distinct terms.
+- [x] 2026-04-26 — Should the spec use "weight" (matching the codebase) or "intensity" (matching product language in early docs)? **Resolved**: "weight" uniformly — for both fragment values and arc targets. See `specifications/_glossary.md`.
 - [x] 2026-04-26 — How is the fitting score calculated? Per-aspect distance from arc target, then aggregated? What happens when a fragment has no weight for an aspect that has an arc? **Resolved**: See `fitting-score.md`. A fragment with no weight for an arc'd aspect is ignored for that aspect — no score contribution, no penalty.
 - [x] 2026-04-26 — Who creates arcs — does the user create them explicitly, or does Maskor auto-generate one per aspect? Can the sequencer produce arc definitions by analyzing an existing arrangement? **Resolved**: Explicit user creation only. Maskor never auto-generates arcs. Auto-generating a flat arc for every aspect would pollute the config with structure the user has not authored. Arc derivation from an existing arrangement is tracked as a future feature in `project-config.md`.
 
@@ -155,7 +155,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - A user can create, view, and delete aspects within a project.
 - A fragment can be assigned a weight for any aspect; the weight is stored in the fragment file and survives a full sync cycle.
 - If an aspect key referenced by a fragment is deleted or renamed, the fragment file is not modified; a sync warning is produced instead.
-- An explicit arc can be defined for an aspect, expressing a target intensity curve.
+- An explicit arc can be defined for an aspect, expressing a target weight curve.
 - A fitting score is computable for any fragment at a given sequence position, given arc definitions.
 - A fragment with no weight for an aspect that has an arc produces a defined score (not an error).
 - Fitting scores are not required to place a fragment — the user can place fragments freely and ignore scores entirely.

@@ -21,7 +21,7 @@ export const initFragment = async (config: VaultConfig, piece: Piece): Promise<F
     uuid,
     key: piece.key,
     isDiscarded: false,
-    readyStatus: 0,
+    readiness: 0,
     aspects: {},
     notes: [],
     references: [],
@@ -34,7 +34,7 @@ export const initFragment = async (config: VaultConfig, piece: Piece): Promise<F
     frontmatter: {
       uuid,
       updatedAt: updatedAt.toISOString(),
-      readyStatus: 0,
+      readiness: 0,
       notes: [],
       references: [],
     },

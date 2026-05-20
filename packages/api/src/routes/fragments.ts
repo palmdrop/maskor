@@ -29,14 +29,14 @@ import type { UpdateSource } from "../commands/fragments/update-fragment";
 
 const classifyFragmentSource = (patch: {
   content?: unknown;
-  readyStatus?: unknown;
+  readiness?: unknown;
   notes?: unknown;
   references?: unknown;
   aspects?: unknown;
 }): UpdateSource => {
   const hasContent = patch.content !== undefined;
   const hasMetadata =
-    patch.readyStatus !== undefined ||
+    patch.readiness !== undefined ||
     patch.notes !== undefined ||
     patch.references !== undefined ||
     patch.aspects !== undefined;
@@ -341,7 +341,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       key,
       content,
       isDiscarded: false,
-      readyStatus: 0,
+      readiness: 0,
       notes: [],
       references: [],
       aspects: {},

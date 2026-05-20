@@ -6,7 +6,7 @@ uuid: "frag-0001"
 title: "The Bridge"
 version: 3
 customField: some-value
-readyStatus: 0.8
+readiness: 0.8
 notes:
   - "bridge observation"
 references: []
@@ -25,7 +25,7 @@ describe("parseFile", () => {
     expect(result.frontmatter.title).toBe("The Bridge");
     expect(result.frontmatter.version).toBe(3);
     expect(result.frontmatter.customField).toBe("some-value");
-    expect(result.frontmatter.readyStatus).toBe(0.8);
+    expect(result.frontmatter.readiness).toBe(0.8);
   });
 
   it("extracts inline fields", () => {

@@ -17,7 +17,7 @@ Given a fragment and a candidate position in a sequence, the system produces a s
 ### In scope
 
 - Computing a fitting score for a (fragment, position) pair
-- Arc alignment: comparing a fragment's aspect weights against the arc curve's target intensity at that position
+- Arc alignment: comparing a fragment's aspect weights against the arc curve's target weight at that position
 - Hard requirement evaluation: ordering constraints that must hold (e.g. fragment B must follow fragment A)
 - Aggregating per-aspect scores into a single value
 - Storing the computed score in the DB as a cached value
@@ -48,12 +48,12 @@ A fitting score computation takes:
 
 ### Arc alignment
 
-For each aspect that has a weight on the fragment, the target intensity at the given position is determined as follows:
+For each aspect that has a weight on the fragment, the target weight at the given position is determined as follows:
 
-- If an **explicit arc** exists for the aspect: use the arc's interpolated target intensity at the normalized position.
+- If an **explicit arc** exists for the aspect: use the arc's interpolated target weight at the normalized position.
 - If no explicit arc exists: use the **implicit arc** — the actual arc derived from the current placement of all other fragments' weights for that aspect. See `aspect-arc-model.md`.
 
-Compute the distance between the fragment's weight and the resolved target intensity. A small distance = good fit. Convert to a score component (e.g. `1 - distance`, but the exact algorithm is open).
+Compute the distance between the fragment's weight and the resolved target weight. A small distance = good fit. Convert to a score component (e.g. `1 - distance`, but the exact algorithm is open).
 
 Fragments with no weight for an aspect are ignored for that aspect. If an aspect has no explicit arc and no other fragments with that weight are placed (so no implicit arc can be computed), the aspect is ignored for this fragment.
 
@@ -86,12 +86,12 @@ The computed fitting score for a (fragment, sequence position) pair is stored in
 
 - **Fitting scores are DB-only**: Derived from aspects + arcs + position context. Can be lost and recomputed.
 - **Noise is not part of the fitting score**: The sequencer applies seeded noise on top of the raw fitting score. The score itself is a deterministic function of the inputs.
-- **Arc controls intensity, not frequency**: Frequency is interleaving's domain. The fitting score only models intensity alignment.
+- **Arc controls intensity, not frequency**: Frequency is interleaving's domain. The fitting score only models weight alignment.
 - **Aspect weights are 0–1 floats**: Stored in `fragment_properties(fragment_uuid, aspect_key, weight)`. Referenced by aspect key, not UUID.
 - **Score is normalized to [0, 1]**: Any score formula must produce values in this range. Required before `sequencer.md`'s noise offset range is meaningful.
 - **Hard requirements produce exclusion, not penalty scores**: A fragment that violates a hard ordering constraint is removed from the candidate set before scoring. No penalty value is assigned. This is consistent with how interleaving hard rules work — see `interleaving.md`.
 - **Fragments with no weight for an arc'd aspect are ignored**: Absent weight = no score contribution for that aspect. There is no implicit zero weight. Penalising fragments for not mentioning every arc'd aspect would make scores noise-dominated on projects with many aspects.
-- **Aspects with no arc are ignored in scoring**: If an aspect has no arc, there is no target intensity to compare against. Aspect weights for arc-less aspects do not contribute to the fitting score.
+- **Aspects with no arc are ignored in scoring**: If an aspect has no arc, there is no target weight to compare against. Aspect weights for arc-less aspects do not contribute to the fitting score.
 - **Position input is normalized 0–1**: Consistent with the arc control point x-axis convention and the key fragment positional model. See `sequencer.md`.
 
 ---
@@ -101,7 +101,7 @@ The computed fitting score for a (fragment, sequence position) pair is stored in
 - [ ] 2026-04-27 — What is the exact algorithm for computing arc alignment? Absolute distance (`|weight - target|`)? Squared? Gaussian decay?
 - [ ] 2026-04-27 — How are per-aspect scores aggregated? Simple average? Weighted by some aspect-level importance factor?
 - [x] 2026-04-27 — What happens when a fragment has no weight for an aspect that has an arc? Treat as weight = 0 (maximum penalty), or ignore the aspect entirely for that fragment? **Resolved**: Ignored — absent weight means no score contribution for that aspect. See `aspect-arc-model.md`.
-- [x] 2026-04-27 — What happens when an aspect has no arc? Should its weight contribute to the score at all, or is it ignored? **Resolved**: Ignored — no arc means no target intensity, so no score contribution.
+- [x] 2026-04-27 — What happens when an aspect has no arc? Should its weight contribute to the score at all, or is it ignored? **Resolved**: Ignored — no arc means no target weight, so no score contribution.
 - [x] 2026-04-27 — How does the arc curve interpolate across positions? The `movement: number[]` array length may not equal the sequence length — is it linear interpolation, step, or smooth? **Resolved**: Arc curves are sparse control points `{ x, y }` (both in [0, 1]); the `movement: number[]` representation is obsolete. Interpolation method (linear, cubic spline) is a sequencer concern. See `aspect-arc-model.md`.
 - [x] 2026-04-27 — Is the position input a raw index or a normalised value (0–1 fraction of total length)? This determines how the arc curve is sampled. **Resolved**: Normalized 0–1. Consistent with the arc control point x-axis and the key fragment positional model. See `sequencer.md`.
 - [x] 2026-04-27 — Should the score be normalised to a known range (e.g. 0–1) before noise is applied? **Resolved**: Yes. Fitting scores are normalized to [0, 1]. Noise offsets (when used) are applied in the same range. See `sequencer.md`.

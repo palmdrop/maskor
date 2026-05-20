@@ -21,7 +21,7 @@ export const assembleFragment = (
   uuid: row.uuid,
   key: row.key,
   isDiscarded: row.isDiscarded,
-  readyStatus: row.readyStatus,
+  readiness: row.readiness,
   contentHash: row.contentHash,
   filePath: row.filePath,
   updatedAt: row.updatedAt,

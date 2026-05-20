@@ -15,7 +15,7 @@ export const fragmentsTable = sqliteTable(
     uuid: text("uuid").primaryKey(),
     key: text("key").notNull(),
     isDiscarded: integer("is_discarded", { mode: "boolean" }).notNull().default(false),
-    readyStatus: real("ready_status").notNull().default(0),
+    readiness: real("readiness").notNull().default(0),
     excerpt: text("excerpt"),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(), // relative to vault root

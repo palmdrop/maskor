@@ -64,11 +64,11 @@ describe("vault.fragments.write", () => {
   it("writes a fragment file and reads it back", async () => {
     const vault = createVault(config);
     const original = await vault.fragments.read("the-bridge.md");
-    const modified = { ...original, readyStatus: 0.95 };
+    const modified = { ...original, readiness: 0.95 };
 
     await vault.fragments.write(modified);
     const reread = await vault.fragments.read("the-bridge.md");
-    expect(reread.readyStatus).toBe(0.95);
+    expect(reread.readiness).toBe(0.95);
   });
 });
 

@@ -32,7 +32,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [localReadyStatusThreshold, setLocalReadyStatusThreshold] = useState(
-    Math.round(project.suggestion.readyStatusThreshold * 100),
+    Math.round(project.suggestion.readinessThreshold * 100),
   );
   const [localFontSize, setLocalFontSize] = useState(project.editor.fontSize);
   const [localMaxParagraphWidth, setLocalMaxParagraphWidth] = useState(
@@ -40,8 +40,8 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   );
 
   useEffect(() => {
-    setLocalReadyStatusThreshold(Math.round(project.suggestion.readyStatusThreshold * 100));
-  }, [project.suggestion.readyStatusThreshold]);
+    setLocalReadyStatusThreshold(Math.round(project.suggestion.readinessThreshold * 100));
+  }, [project.suggestion.readinessThreshold]);
 
   useEffect(() => {
     setLocalFontSize(project.editor.fontSize);
@@ -145,7 +145,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
     try {
       await updateProject.mutateAsync({
         projectId: project.projectUUID,
-        data: { suggestion: { readyStatusThreshold: value / 100 } },
+        data: { suggestion: { readinessThreshold: value / 100 } },
       });
       invalidateProject();
     } catch {

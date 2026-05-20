@@ -153,7 +153,7 @@ export const FragmentListPage = () => {
                     {fragment.key}
                   </span>
                   <span className="ml-1.5 text-xs text-muted-foreground">
-                    {Math.round(fragment.readyStatus * 100)}%
+                    {Math.round(fragment.readiness * 100)}%
                   </span>
                 </Link>
                 {fragment.isDiscarded ? (

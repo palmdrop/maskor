@@ -84,7 +84,7 @@ export const SuggestionModePage = () => {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-lg font-medium">All fragments are finished</p>
         <p className="text-muted-foreground text-sm">
-          No fragments need work right now. Mark fragments as unfinished or lower their readyStatus
+          No fragments need work right now. Mark fragments as unfinished or lower their readiness
           to add them back to the pool.
         </p>
         <Link to="/projects/$projectId/fragments" params={{ projectId }}>
@@ -122,7 +122,7 @@ export const SuggestionModePage = () => {
       {showNudge && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2 text-sm">
           <span className="text-muted-foreground">
-            You&apos;ve skipped this fragment a few times. Consider raising its readyStatus or
+            You&apos;ve skipped this fragment a few times. Consider raising its readiness or
             discarding it.
           </span>
           <button

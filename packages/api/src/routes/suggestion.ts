@@ -58,12 +58,12 @@ suggestionRouter.openapi(getNextSuggestionRoute, async (ctx) => {
     const { exclude } = ctx.req.valid("query");
 
     const project = await storageService.getProject(projectContext.projectUUID);
-    const readyStatusThreshold = project.suggestion.readyStatusThreshold;
+    const readinessThreshold = project.suggestion.readinessThreshold;
 
     const { fragmentUuid, avoidanceCount } = await storageService.suggestion.getNext(
       projectContext,
       exclude,
-      readyStatusThreshold,
+      readinessThreshold,
     );
 
     if (!fragmentUuid) {

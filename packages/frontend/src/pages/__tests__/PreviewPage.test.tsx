@@ -51,7 +51,7 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
   name: "Test Project",
   vaultPath: "/vault",
   editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
-  suggestion: { readyStatusThreshold: 0.95 },
+  suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" },
   createdAt: "2026-01-01T00:00:00.000Z",

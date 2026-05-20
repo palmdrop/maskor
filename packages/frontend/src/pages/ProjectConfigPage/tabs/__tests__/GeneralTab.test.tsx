@@ -33,7 +33,7 @@ import { GeneralTab } from "../GeneralTab";
 const makeProject = () => ({
   projectUUID: PROJECT_ID,
   name: "Test Project",
-  suggestion: { readyStatusThreshold: 0.8 },
+  suggestion: { readinessThreshold: 0.8 },
   editor: { fontSize: 16, maxParagraphWidth: 80, vimMode: false, rawMarkdownMode: false },
   advanced: { showFragmentStats: false },
 });

@@ -23,7 +23,7 @@ export const FragmentList = ({ fragments, selectedId, onSelect }: Props) => {
                 Discarded
               </span>
             )}{" "}
-            ({fragment.readyStatus})
+            ({fragment.readiness})
           </Button>
         </li>
       ))}

@@ -18,7 +18,7 @@ export const FragmentStatsSummarySchema = z
     key: z.string().openapi({ example: "my-fragment" }),
     wordCount: z.number().int().openapi({ example: 120 }),
     updatedAt: z.string().openapi({ example: "2026-01-01T00:00:00.000Z" }),
-    readyStatus: z.number().openapi({ example: 0.75 }),
+    readiness: z.number().openapi({ example: 0.75 }),
     isDiscarded: z.boolean().openapi({ example: false }),
   })
   .openapi("FragmentStatsSummary");
@@ -29,8 +29,8 @@ export const ProjectStatsSchema = z
       totalCount: z.number().int().openapi({ example: 42 }),
       discardedCount: z.number().int().openapi({ example: 5 }),
       readyCount: z.number().int().openapi({ example: 10 }),
-      averageReadyStatus: z.number().openapi({ example: 0.65 }),
-      readyStatusHistogram: z
+      averageReadiness: z.number().openapi({ example: 0.65 }),
+      readinessHistogram: z
         .tuple([
           z.number().int(),
           z.number().int(),

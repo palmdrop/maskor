@@ -173,7 +173,7 @@ export const upsertFragment = (
       uuid: fragment.uuid,
       key: fragment.key,
       isDiscarded,
-      readyStatus: fragment.readyStatus,
+      readiness: fragment.readiness,
       excerpt,
       contentHash,
       filePath,
@@ -185,7 +185,7 @@ export const upsertFragment = (
       set: {
         key: fragment.key,
         isDiscarded,
-        readyStatus: fragment.readyStatus,
+        readiness: fragment.readiness,
         excerpt,
         contentHash,
         filePath,

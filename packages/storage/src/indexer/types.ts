@@ -22,7 +22,7 @@ export type IndexedFragment = {
   uuid: string;
   key: string;
   isDiscarded: boolean;
-  readyStatus: number;
+  readiness: number;
   contentHash: string;
   filePath: string;
   updatedAt: Date;

@@ -4,7 +4,7 @@ import type { FragmentStats } from "./stats-repo";
 
 export type EligibleFragment = {
   uuid: string;
-  readyStatus: number;
+  readiness: number;
 };
 
 type SelectInput = {
@@ -30,7 +30,7 @@ export const selectNextSuggestion = ({
     const editCount = fragmentStats?.editCount ?? 0;
 
     const score =
-      weights.readyStatusWeight * (1 - fragment.readyStatus) -
+      weights.readinessWeight * (1 - fragment.readiness) -
       weights.voluntaryOpenPenalty * voluntaryOpenCount -
       weights.avoidancePenalty * avoidanceCount +
       weights.editCountWeight * (1 / (editCount + 1));

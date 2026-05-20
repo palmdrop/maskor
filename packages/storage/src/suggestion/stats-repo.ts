@@ -17,7 +17,7 @@ export type FragmentStatsSummary = {
   key: string;
   wordCount: number;
   updatedAt: Date;
-  readyStatus: number;
+  readiness: number;
   isDiscarded: boolean;
 };
 
@@ -26,8 +26,8 @@ export type ProjectStats = {
     totalCount: number;
     discardedCount: number;
     readyCount: number;
-    averageReadyStatus: number;
-    readyStatusHistogram: [number, number, number, number, number];
+    averageReadiness: number;
+    readinessHistogram: [number, number, number, number, number];
     totalWordCount: number;
     averageWordCount: number;
   };
@@ -89,14 +89,14 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
   const nonDiscarded = fragments.filter((fragment) => !fragment.isDiscarded);
   const discarded = fragments.filter((fragment) => fragment.isDiscarded);
 
-  const readyCount = nonDiscarded.filter((fragment) => fragment.readyStatus === 1.0).length;
+  const readyCount = nonDiscarded.filter((fragment) => fragment.readiness === 1.0).length;
 
-  const totalReadyStatus = nonDiscarded.reduce((acc, fragment) => acc + fragment.readyStatus, 0);
-  const averageReadyStatus = nonDiscarded.length > 0 ? totalReadyStatus / nonDiscarded.length : 0;
+  const totalReadiness = nonDiscarded.reduce((acc, fragment) => acc + fragment.readiness, 0);
+  const averageReadiness = nonDiscarded.length > 0 ? totalReadiness / nonDiscarded.length : 0;
 
   const histogram: [number, number, number, number, number] = [0, 0, 0, 0, 0];
   for (const fragment of nonDiscarded) {
-    const status = fragment.readyStatus;
+    const status = fragment.readiness;
     if (status < 0.2) {
       histogram[0] += 1;
     } else if (status < 0.4) {
@@ -125,7 +125,7 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
         key: fragment.key,
         wordCount: stats?.wordCount ?? 0,
         updatedAt: fragment.updatedAt,
-        readyStatus: fragment.readyStatus,
+        readiness: fragment.readiness,
         isDiscarded: fragment.isDiscarded,
       };
     })
@@ -136,8 +136,8 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
       totalCount: nonDiscarded.length,
       discardedCount: discarded.length,
       readyCount,
-      averageReadyStatus,
-      readyStatusHistogram: histogram,
+      averageReadiness,
+      readinessHistogram: histogram,
       totalWordCount,
       averageWordCount,
     },

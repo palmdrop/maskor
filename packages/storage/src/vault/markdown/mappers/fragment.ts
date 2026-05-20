@@ -16,7 +16,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
     uuid: frontmatter.uuid as string,
     key,
     isDiscarded,
-    readyStatus: typeof frontmatter.readyStatus === "number" ? frontmatter.readyStatus : 0,
+    readiness: typeof frontmatter.readiness === "number" ? frontmatter.readiness : 0,
     notes: (frontmatter.notes as string[]) ?? [],
     references: (frontmatter.references as string[]) ?? [],
     aspects: inlineFieldsToAspects(parsed.inlineFields),
@@ -37,7 +37,7 @@ export const toFile = (
     frontmatter: {
       uuid: fragment.uuid,
       updatedAt: fragment.updatedAt.toISOString(),
-      readyStatus: fragment.readyStatus,
+      readiness: fragment.readiness,
       notes: fragment.notes,
       references: fragment.references,
     },

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // A single control point on an arc curve. Both axes are normalized to [0, 1]:
 // x = position in the sequence (0 = start, 1 = end), sequence-length-independent.
-// y = target intensity at that position.
+// y = target weight at that position.
 // The sequencer interpolates between adjacent points at query time.
 export const ArcPointSchema = z.object({
   x: z.number().min(0).max(1),

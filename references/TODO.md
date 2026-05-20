@@ -10,6 +10,8 @@
 
 - [x] implement `references/plans/entity-content-swap-files.md`
 
+- [ ] implement the `references/plans/glossary-alignment.md` plan
+
 - [ ] import does not look right in action log, no import event
 
 - [ ] create actions in command palette only navigates to view, without prompting creation
@@ -17,6 +19,8 @@
 - [ ] dnd in sequences is slow and clunky, fix
 
 - [ ] overview does not remember density mode when navigating back and forth -- store in setting? local storage?
+
+- [ ] try the "improve codebase architecture" skill: https://github.com/mattpocock/skills/blob/main/skills/engineering/improve-codebase-architecture/SKILL.md
 
 - [x] implement `references/plans/overview-density-and-actual-arc.md`
 

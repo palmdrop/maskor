@@ -6,7 +6,7 @@
 **Shipped**:
 
 - 2026-04-04 — The suggestion eligibility cutoff ("Ready status threshold") is configurable per project, controlling which fragments are eligible for suggestion mode. (plan: references/plans/suggestion-mode.md)
-- 2026-04-30 — User can manage project configuration from a dedicated tabbed UI: edit project name, create/rename/delete aspects and their intensity arcs, manage notes and references. (plan: references/plans/project-config-page.md)
+- 2026-04-30 — User can manage project configuration from a dedicated tabbed UI: edit project name, create/rename/delete aspects and their arcs, manage notes and references. (plan: references/plans/project-config-page.md)
 - 2026-05-08 — Project configuration is stored in the vault, making vaults portable — moving a vault preserves all configuration without registry dependency. (plan: references/plans/project-config-vault-storage.md)
 - 2026-05-08 — The fragment stats inspector panel can be toggled per project from an Advanced section in the General tab. (plan: references/plans/project-statistics.md)
 - 2026-05-10 — Font size and paragraph width are configurable per project from the General tab and applied live across all editor modes. (plan: references/plans/editor-typography-settings.md)
@@ -26,7 +26,7 @@ The user can create a project (pointing at a vault on disk), give it a name and 
 - Project registration: name + vault path → assigns UUID, writes vault manifest
 - Project metadata: name, notes, references (user-editable)
 - Aspect management: create, rename, delete aspects within a project
-- Arc configuration: define an arc (a curve of intensity values over time) for each aspect
+- Arc configuration: define an arc (a curve of weight values over time) for each aspect
 - Interleaving rules: a minimal, configurable set of constraints on how aspects can sequence — e.g. weights, exclusion rules, section constraints
 - A dedicated project configuration UI view
 - Future consideration: derive arcs and interleaving config FROM an existing rough sequence (user arranges fragments manually, then generates config from that ordering)
@@ -69,9 +69,9 @@ See `aspect-arc-model.md`
 
 See `aspect-arc-model.md`
 
-- An arc describes how one aspect rises and falls in intensity across the sequence — a curve, not a frequency rule.
+- An arc describes how one aspect rises and falls in weight across the sequence — a curve, not a frequency rule.
 - Each arc is associated with exactly one aspect.
-- An arc is defined as an ordered list of control points `{ x, y }` — both in [0, 1] — where `x` is the normalized sequence position and `y` is the target intensity. At least two points are required. The sequencer interpolates between points; the method (linear, cubic spline) is a sequencer concern.
+- An arc is defined as an ordered list of control points `{ x, y }` — both in [0, 1] — where `x` is the normalized sequence position and `y` is the target weight. At least two points are required. The sequencer interpolates between points; the method (linear, cubic spline) is a sequencer concern.
 - Arc data is stored at `<vault>/.maskor/config/arcs/<aspect-key>.yaml`, one file per aspect. See `aspect-arc-model.md`.
 - Arcs are inputs to the sequencer's fitting score calculation; they are not evaluated here.
 
@@ -134,6 +134,6 @@ See `interleaving.md`
 - A project can be deregistered; the registry entry is gone and vault files are untouched.
 - Aspects created in the config view appear as markdown files in `<vault>/aspects/`.
 - Deleting an aspect removes its vault file; fragments that referenced its key show `UNKNOWN_ASPECT_KEY` warnings on the next rebuild, not errors.
-- An arc can be created for an aspect and its intensity curve can be saved and retrieved.
+- An arc can be created for an aspect and its weight curve can be saved and retrieved.
 - An interleaving config with at least per-aspect weights and one exclusion rule can be saved and retrieved for a project.
 - The configuration view displays existing aspects, arcs, and interleaving rules for the active project.

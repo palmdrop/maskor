@@ -127,7 +127,7 @@ describe("fragments.findByUUID", () => {
     expect(bridge).not.toBeNull();
     expect(bridge?.key).toBe("the-bridge");
     expect(bridge?.isDiscarded).toBe(false);
-    expect(bridge?.readyStatus).toBe(0.58);
+    expect(bridge?.readiness).toBe(0.58);
   });
 
   it("returns null for unknown UUID", async () => {

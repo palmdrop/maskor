@@ -14,7 +14,7 @@ type UpdateFragmentInput = {
   patch: {
     key?: string;
     content?: string;
-    readyStatus?: number;
+    readiness?: number;
     notes?: string[];
     references?: string[];
     aspects?: Record<string, { weight: number }>;
@@ -27,8 +27,8 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
 
     const contentChanged = patch.content !== undefined && patch.content !== existing.content;
-    const readyStatusChanged =
-      patch.readyStatus !== undefined && patch.readyStatus !== existing.readyStatus;
+    const readinessChanged =
+      patch.readiness !== undefined && patch.readiness !== existing.readiness;
     const notesChanged =
       patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
     const referencesChanged =
@@ -37,7 +37,7 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       patch.aspects !== undefined && !aspectWeightsEqual(patch.aspects, existing.aspects);
 
     const anyNonKeyChanged =
-      contentChanged || readyStatusChanged || notesChanged || referencesChanged || aspectsChanged;
+      contentChanged || readinessChanged || notesChanged || referencesChanged || aspectsChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: existing, logEntries: [] };
@@ -87,12 +87,12 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       }
     }
 
-    if (readyStatusChanged) {
+    if (readinessChanged) {
       logEntries.push({
-        type: "fragment:ready-status-changed",
+        type: "fragment:readiness-changed",
         actor: ctx.actor,
         target: { type: "fragment", uuid: existing.uuid, key: patch.key ?? existing.key },
-        payload: { from: existing.readyStatus, to: patch.readyStatus! },
+        payload: { from: existing.readiness, to: patch.readiness! },
         undoable: true,
       });
     }

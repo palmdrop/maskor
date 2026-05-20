@@ -5,7 +5,7 @@ import type { FragmentStats } from "../../suggestion/stats-repo";
 import type { SuggestionWeights } from "../../suggestion/weights";
 
 const weights: SuggestionWeights = {
-  readyStatusWeight: 2.0,
+  readinessWeight: 2.0,
   voluntaryOpenPenalty: 0.3,
   avoidancePenalty: 0.2,
   editCountWeight: 0.5,
@@ -48,7 +48,7 @@ describe("selectNextSuggestion — empty pool", () => {
 
 describe("selectNextSuggestion — single fragment", () => {
   it("returns the only eligible fragment regardless of stats", () => {
-    const fragment: EligibleFragment = { uuid: "a", readyStatus: 0.5 };
+    const fragment: EligibleFragment = { uuid: "a", readiness: 0.5 };
     const result = selectNextSuggestion({
       eligibleFragments: [fragment],
       stats: noStats(),
@@ -59,10 +59,10 @@ describe("selectNextSuggestion — single fragment", () => {
   });
 });
 
-describe("selectNextSuggestion — lower readyStatus surfaced more often", () => {
-  it("favors the fragment with lower readyStatus in repeated runs", () => {
-    const low: EligibleFragment = { uuid: "low", readyStatus: 0.1 };
-    const high: EligibleFragment = { uuid: "high", readyStatus: 0.9 };
+describe("selectNextSuggestion — lower readiness surfaced more often", () => {
+  it("favors the fragment with lower readiness in repeated runs", () => {
+    const low: EligibleFragment = { uuid: "low", readiness: 0.1 };
+    const high: EligibleFragment = { uuid: "high", readiness: 0.9 };
 
     const counts = { low: 0, high: 0 };
     for (let i = 0; i < 500; i++) {
@@ -82,8 +82,8 @@ describe("selectNextSuggestion — lower readyStatus surfaced more often", () =>
 
 describe("selectNextSuggestion — high voluntary open deprioritized", () => {
   it("surfaces frequently-visited fragments less often", () => {
-    const frequent: EligibleFragment = { uuid: "frequent", readyStatus: 0.5 };
-    const rare: EligibleFragment = { uuid: "rare", readyStatus: 0.5 };
+    const frequent: EligibleFragment = { uuid: "frequent", readiness: 0.5 };
+    const rare: EligibleFragment = { uuid: "rare", readiness: 0.5 };
 
     const stats = new Map<string, FragmentStats>([
       ["frequent", makeStats({ fragmentUuid: "frequent", voluntaryOpenCount: 20 })],
@@ -108,7 +108,7 @@ describe("selectNextSuggestion — high voluntary open deprioritized", () => {
 
 describe("selectNextSuggestion — avoidance penalty caps but does not exclude", () => {
   it("heavily avoided fragment is still selectable", () => {
-    const avoided: EligibleFragment = { uuid: "avoided", readyStatus: 0.5 };
+    const avoided: EligibleFragment = { uuid: "avoided", readiness: 0.5 };
 
     const stats = new Map<string, FragmentStats>([
       ["avoided", makeStats({ fragmentUuid: "avoided", avoidanceCount: 1000 })],
@@ -125,8 +125,8 @@ describe("selectNextSuggestion — avoidance penalty caps but does not exclude",
   });
 
   it("heavily avoided fragment is selected less frequently than a non-avoided one", () => {
-    const avoided: EligibleFragment = { uuid: "avoided", readyStatus: 0.5 };
-    const normal: EligibleFragment = { uuid: "normal", readyStatus: 0.5 };
+    const avoided: EligibleFragment = { uuid: "avoided", readiness: 0.5 };
+    const normal: EligibleFragment = { uuid: "normal", readiness: 0.5 };
 
     const stats = new Map<string, FragmentStats>([
       ["avoided", makeStats({ fragmentUuid: "avoided", avoidanceCount: 50 })],

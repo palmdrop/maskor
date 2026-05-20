@@ -54,7 +54,7 @@ describe("PATCH /fragments/:fragmentId — changedFields reflects only real chan
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: `${fragment.content}\nA new line.`,
-          readyStatus: fragment.readyStatus,
+          readiness: fragment.readiness,
           notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,
@@ -87,7 +87,7 @@ describe("PATCH /fragments/:fragmentId — changedFields reflects only real chan
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: fragment.content,
-          readyStatus: fragment.readyStatus,
+          readiness: fragment.readiness,
           notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,
@@ -153,21 +153,21 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
     expect(edited).toBeTruthy();
   });
 
-  it("emits 'fragment:ready-status-changed' with from/to when readyStatus changes", async () => {
+  it("emits 'fragment:readiness-changed' with from/to when readiness changes", async () => {
     const fragment = await findFragmentByKey("late-winter");
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ readyStatus: 0.5 }),
+        body: JSON.stringify({ readiness: 0.5 }),
       },
     );
     expect(response.status).toBe(200);
 
     const entries = await tailEntries();
     const entry = entries.find(
-      (e) => e.type === "fragment:ready-status-changed" && e.target.uuid === fragment.uuid,
+      (e) => e.type === "fragment:readiness-changed" && e.target.uuid === fragment.uuid,
     );
     expect(entry).toBeTruthy();
     expect(entry?.payload.from).toBe(0.2);
@@ -252,7 +252,7 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: `${fragment.content}\nEdited.`,
-          readyStatus: fragment.readyStatus,
+          readiness: fragment.readiness,
           notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,

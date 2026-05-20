@@ -8,8 +8,8 @@ type ApiProjectStats = {
     totalCount: number;
     discardedCount: number;
     readyCount: number;
-    averageReadyStatus: number;
-    readyStatusHistogram: [number, number, number, number, number];
+    averageReadiness: number;
+    readinessHistogram: [number, number, number, number, number];
     totalWordCount: number;
     averageWordCount: number;
   };
@@ -18,7 +18,7 @@ type ApiProjectStats = {
     key: string;
     wordCount: number;
     updatedAt: string;
-    readyStatus: number;
+    readiness: number;
     isDiscarded: boolean;
   }>;
 };
@@ -68,10 +68,10 @@ describe("GET /projects/:projectId/stats", () => {
     expect(body.global.totalCount).toBe(nonDiscarded.length);
   });
 
-  it("readyStatusHistogram buckets sum to totalCount", async () => {
+  it("readinessHistogram buckets sum to totalCount", async () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await response.json()) as ApiProjectStats;
-    const histogramSum = body.global.readyStatusHistogram.reduce((acc, count) => acc + count, 0);
+    const histogramSum = body.global.readinessHistogram.reduce((acc, count) => acc + count, 0);
     expect(histogramSum).toBe(body.global.totalCount);
   });
 

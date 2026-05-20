@@ -135,11 +135,11 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     ],
   );
 
-  const readyStatusField = useLiveFieldSave({
-    serverValue: fragment.readyStatus,
+  const readinessField = useLiveFieldSave({
+    serverValue: fragment.readiness,
     save: makeSave(
-      (_, value) => ({ readyStatus: value }),
-      (value) => ({ readyStatus: value }),
+      (_, value) => ({ readiness: value }),
+      (value) => ({ readiness: value }),
     ),
   });
 
@@ -264,16 +264,16 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   return (
     <form className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label>Ready — {Math.round(readyStatusField.value * 100)}%</Label>
+        <Label>Ready — {Math.round(readinessField.value * 100)}%</Label>
         <Slider
-          value={[Math.round(readyStatusField.value * 100)]}
-          onValueChange={([value]) => readyStatusField.onChange(value / 100)}
+          value={[Math.round(readinessField.value * 100)]}
+          onValueChange={([value]) => readinessField.onChange(value / 100)}
           min={0}
           max={100}
           step={1}
         />
-        {readyStatusField.error && (
-          <p className="text-xs text-destructive">{readyStatusField.error}</p>
+        {readinessField.error && (
+          <p className="text-xs text-destructive">{readinessField.error}</p>
         )}
       </div>
 

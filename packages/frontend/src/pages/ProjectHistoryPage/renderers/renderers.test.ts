@@ -19,10 +19,10 @@ describe("renderFragmentEntryText", () => {
     expect(renderFragmentEntryText(entry)).toBe('Fragment "late-winter" edited');
   });
 
-  it("renders fragment:ready-status-changed", () => {
+  it("renders fragment:readiness-changed", () => {
     const entry: LogEntry = {
       ...base,
-      type: "fragment:ready-status-changed",
+      type: "fragment:readiness-changed",
       payload: { from: 0.2, to: 0.5 },
     };
     expect(renderFragmentEntryText(entry)).toBe(
@@ -118,10 +118,10 @@ describe("renderFragmentEntryText", () => {
     const entry: LogEntry = {
       ...base,
       type: "fragment:updated",
-      payload: { changedFields: ["content", "readyStatus"] },
+      payload: { changedFields: ["content", "readiness"] },
     };
     expect(renderFragmentEntryText(entry)).toBe(
-      'Fragment "late-winter" edited — content, readyStatus',
+      'Fragment "late-winter" edited — content, readiness',
     );
   });
 });

@@ -38,7 +38,7 @@ statsRouter.openapi(getProjectStatsRoute, (ctx) => {
       {
         global: {
           ...stats.global,
-          readyStatusHistogram: stats.global.readyStatusHistogram,
+          readinessHistogram: stats.global.readinessHistogram,
         },
         fragments: stats.fragments.map((fragment) => ({
           ...fragment,

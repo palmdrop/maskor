@@ -47,7 +47,7 @@ describe("serializeFile", () => {
 
   it("round-trips correctly through parseFile", () => {
     const original = {
-      frontmatter: { uuid: "frag-0001", title: "The Bridge", version: 3, readyStatus: 0.8 },
+      frontmatter: { uuid: "frag-0001", title: "The Bridge", version: 3, readiness: 0.8 },
       inlineFields: { grief: 0.6, city: 0.9 },
       body: "She crossed it every morning without looking down.",
     };

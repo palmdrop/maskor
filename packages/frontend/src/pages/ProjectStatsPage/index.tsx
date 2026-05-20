@@ -46,7 +46,7 @@ const FragmentRow = ({
       {new Date(fragment.updatedAt).toLocaleDateString()}
     </td>
     <td className="py-2 text-sm tabular-nums text-right">
-      {Math.round(fragment.readyStatus * 100)}%
+      {Math.round(fragment.readiness * 100)}%
     </td>
   </tr>
 );
@@ -73,7 +73,7 @@ export const ProjectStatsPage = () => {
 
   const { global: globalStats, fragments } = envelope.data;
 
-  const histogramMax = Math.max(...globalStats.readyStatusHistogram, 1);
+  const histogramMax = Math.max(...globalStats.readinessHistogram, 1);
 
   return (
     <div className="p-6 flex flex-col gap-8 overflow-y-auto h-full">
@@ -102,7 +102,7 @@ export const ProjectStatsPage = () => {
           Ready status distribution
         </h2>
         <div className="flex gap-2 items-end">
-          {globalStats.readyStatusHistogram.map((count, index) => (
+          {globalStats.readinessHistogram.map((count, index) => (
             <div key={HISTOGRAM_LABELS[index]} className="flex flex-col items-center gap-1 flex-1">
               <HistogramBar count={count} max={histogramMax} />
               <span className="text-xs text-muted-foreground">{HISTOGRAM_LABELS[index]}</span>

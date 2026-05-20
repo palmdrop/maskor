@@ -12,7 +12,7 @@ export type ProjectRecord = {
     maxParagraphWidth: number;
   };
   suggestion: {
-    readyStatusThreshold: number;
+    readinessThreshold: number;
   };
   advanced: {
     showFragmentStats: boolean;

@@ -18,7 +18,7 @@ type ProjectManifest = {
       maxParagraphWidth?: number;
     };
     suggestion?: {
-      readyStatusThreshold?: number;
+      readinessThreshold?: number;
     };
     advanced?: {
       showFragmentStats?: boolean;
@@ -97,8 +97,8 @@ const toProjectRecord = (
     maxParagraphWidth: manifest?.config?.editor?.maxParagraphWidth ?? 72,
   },
   suggestion: {
-    readyStatusThreshold:
-      manifest?.config?.suggestion?.readyStatusThreshold ??
+    readinessThreshold:
+      manifest?.config?.suggestion?.readinessThreshold ??
       SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
   },
   advanced: {
@@ -153,7 +153,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
                     fontSize: 16,
                     maxParagraphWidth: 72,
                   },
-                  suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+                  suggestion: { readinessThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
                 },
               }),
         });
@@ -195,7 +195,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
               fontSize: 16,
               maxParagraphWidth: 72,
             },
-            suggestion: { readyStatusThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+            suggestion: { readinessThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
           },
         });
       }
@@ -264,7 +264,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           fontSize?: number;
           maxParagraphWidth?: number;
         };
-        suggestion?: { readyStatusThreshold?: number };
+        suggestion?: { readinessThreshold?: number };
         advanced?: { showFragmentStats?: boolean };
         preview?: {
           showTitles?: boolean;

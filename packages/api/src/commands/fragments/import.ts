@@ -73,7 +73,7 @@ export const createImportCommand = (
         key,
         content: piece.content,
         isDiscarded: false,
-        readyStatus: 0,
+        readiness: 0,
         notes: [],
         references: [],
         aspects: {},

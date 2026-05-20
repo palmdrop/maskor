@@ -1,12 +1,12 @@
 export type SuggestionWeights = {
-  readyStatusWeight: number;
+  readinessWeight: number;
   voluntaryOpenPenalty: number;
   avoidancePenalty: number;
   editCountWeight: number;
 };
 
 // Composite score formula:
-//   score = readyStatusWeight * (1 - readyStatus)
+//   score = readinessWeight * (1 - readiness)
 //         - voluntaryOpenPenalty * voluntaryOpenCount
 //         - avoidancePenalty * avoidanceCount
 //         + editCountWeight * (1 / (editCount + 1))
@@ -14,7 +14,7 @@ export type SuggestionWeights = {
 // so every eligible fragment remains selectable regardless of signals.
 // These are internal constants; they are not exposed to users.
 export const DEFAULT_WEIGHTS: SuggestionWeights = {
-  readyStatusWeight: 2.0,
+  readinessWeight: 2.0,
   voluntaryOpenPenalty: 0.3,
   avoidancePenalty: 0.2,
   editCountWeight: 0.5,

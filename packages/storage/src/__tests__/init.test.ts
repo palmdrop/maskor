@@ -33,7 +33,7 @@ describe("initFragment", () => {
     const raw = await file.text();
     const parsed = parseFile(raw);
 
-    expect(parsed.frontmatter.readyStatus).toBe(0);
+    expect(parsed.frontmatter.readiness).toBe(0);
     expect(typeof parsed.frontmatter.updatedAt).toBe("string");
     expect(isValidDateString(parsed.frontmatter.updatedAt as string)).toBe(true);
     expect(parsed.frontmatter.uuid).toBe(fragment.uuid);
@@ -56,7 +56,7 @@ describe("initFragment", () => {
 
     expect(fragment.key).toBe("late-winter");
     expect(fragment.isDiscarded).toBe(false);
-    expect(fragment.readyStatus).toBe(0);
+    expect(fragment.readiness).toBe(0);
     expect(typeof fragment.uuid).toBe("string");
   });
 

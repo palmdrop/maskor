@@ -5,7 +5,7 @@
 
 **Shipped**:
 
-- 2026-04-05 — Notes and references are stored as vault markdown files; Maskor reads and writes their frontmatter (UUID, title/name, createdAt, updatedAt) without touching body content. (plan: references/plans/storage-markdown-reader.md)
+- 2026-04-05 — Notes and references are stored as vault markdown files; Maskor reads and writes their frontmatter (UUID, key, createdAt, updatedAt) without touching body content. (plan: references/plans/storage-markdown-reader.md)
 - 2026-04-10 — Notes and references are indexed in a per-vault SQLite database; the index is rebuilt on demand and kept live by the file watcher. (plan: references/plans/vault-content-index.md)
 - 2026-04-15 — Notes and references can be created and deleted via API; deletion hard-removes both the vault file and the DB row. (plan: references/plans/aspects-notes-references-crud.md)
 - 2026-04-30 — Renaming a note or reference through Maskor atomically renames the vault file and propagates the key change to all referencing fragment frontmatter; no orphan warnings are produced. (plan: references/plans/project-config-page.md)
@@ -46,34 +46,34 @@ Users can create named, free-text vault documents — notes and references — a
 
 A note or reference is a named, free-text document. It has:
 
-- A **title** (notes) or **name** (references) — the display label. The title/name equals the filename stem and is the canonical key; there is no separate key field in frontmatter.
+- A **key** — the filename stem and the canonical identifier; there is no separate key field in frontmatter.
 - A **UUID** — assigned on first detection, stable across renames.
 - **`createdAt`** and **`updatedAt`** timestamps — managed by Maskor.
 - **Body content** — free-form markdown. No schema.
 
-Vault path: `notes/<title>.md` or `references/<name>.md`.
+Vault path: `notes/<key>.md` or `references/<key>.md`.
 
-Frontmatter schema: UUID, title/name, `createdAt`, `updatedAt`. Body is free-form.
+Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 
 ### Lifecycle
 
 - **Creation**: user creates via the UI; a vault file is written immediately.
 - **Editing**: user edits the body via the UI or directly in Obsidian. Maskor never modifies body content.
-- **Rename via Maskor**: Maskor atomically renames the vault file and updates all fragment frontmatter lists that referenced the old title/name to the new one. No orphan warnings. This is the expected path — renames through Maskor are safe.
-- **Rename externally** (Obsidian or filesystem, while Maskor is not running): Maskor has no way to correlate the old and new filename. On next startup, the old entity is missing (orphan warnings on all fragments that referenced it) and the new file is a new unknown entity. The user must re-attach manually.
+- **Rename via Maskor**: Maskor atomically renames the vault file and updates all fragment frontmatter lists that referenced the old key to the new key. No orphan warnings. This is the expected path — renames through Maskor are safe.
+- **Rename externally** (Obsidian or filesystem, while Maskor is not running): Maskor has no way to correlate the old and new filename. On next startup, the old key is missing (orphan warnings on all fragments that referenced it) and the new file is a new unknown entity. The user must re-attach manually.
 - **Deletion**: removes the vault file. If the document is attached to any fragment at deletion time, Maskor warns the user before proceeding. Fragment frontmatter lists are not auto-updated — orphaned references persist and produce sync warnings on the next rebuild.
 
 ### Attaching to fragments
 
-- A fragment's frontmatter contains lists of note titles and reference names it is linked to.
+- A fragment's frontmatter contains lists of note and reference keys it is linked to.
 - The fragment owns the relationship. Notes and references carry no back-reference to the fragment.
 - Only documents that already exist in the vault can be attached. Creating inline from the fragment editor is out of scope for the initial implementation.
 - The same note or reference can be attached to multiple fragments.
-- Detaching removes the title/name from the fragment's frontmatter list. The document file is unaffected.
+- Detaching removes the key from the fragment's frontmatter list. The document file is unaffected.
 
 ### Orphaned attachments
 
-- If a title/name in a fragment's frontmatter no longer resolves to a file, the attachment is orphaned.
+- If a key in a fragment's frontmatter no longer resolves to a file, the attachment is orphaned.
 - Maskor surfaces this as a sync warning on rebuild.
 - Maskor never rewrites fragment files to remove orphaned entries.
 - The user must either restore the document or manually remove the entry from the fragment.
@@ -91,7 +91,7 @@ Frontmatter schema: UUID, title/name, `createdAt`, `updatedAt`. Body is free-for
 
 ## Prior decisions
 
-- **Fragment owns the relationship**: Fragment frontmatter lists titles/names; documents carry no back-reference. The fragment is the structured entity; notes and references are attachments.
+- **Fragment owns the relationship**: Fragment frontmatter lists keys; documents carry no back-reference. The fragment is the structured entity; notes and references are attachments.
 - **Filename stem as join key, not UUID**: The filename stem is the canonical key; fragment frontmatter stores it directly. Human-readable keys keep vault files legible in Obsidian without Maskor.
 - **Maskor-initiated renames propagate automatically**: When the user renames a note or reference through Maskor, all fragment frontmatter references are updated atomically. No orphan warnings.
 - **External renames produce orphan warnings**: Maskor cannot detect a filesystem rename as such. External renames result in the old entity becoming orphaned. The user must re-attach. This is the cost of editing outside Maskor while it is not running.
@@ -105,10 +105,10 @@ Frontmatter schema: UUID, title/name, `createdAt`, `updatedAt`. Body is free-for
 
 - A document created via the API appears as a markdown file at the correct vault path.
 - A document's UUID does not change on rename.
-- Renaming a document via Maskor updates all fragment frontmatter references to the new title/name atomically. No orphan warnings are produced.
-- Renaming a document externally (outside Maskor) and triggering a rebuild produces a sync warning for any fragment that referenced the old title/name. Fragment files are not modified.
+- Renaming a document via Maskor updates all fragment frontmatter references to the new key atomically. No orphan warnings are produced.
+- Renaming a document externally (outside Maskor) and triggering a rebuild produces a sync warning for any fragment that referenced the old key. Fragment files are not modified.
 - Deleting a document that is referenced by at least one fragment produces a warning before deletion proceeds.
 - Deleting a document and triggering a rebuild produces a sync warning for any fragment that referenced it. Fragment files are not modified.
 - Only document titles/names that exist in the vault can be attached to a fragment.
 - The same document can be attached to multiple fragments simultaneously.
-- Detaching a document from a fragment removes the title/name from the fragment's frontmatter list. The document file is unchanged.
+- Detaching a document from a fragment removes the key from the fragment's frontmatter list. The document file is unchanged.

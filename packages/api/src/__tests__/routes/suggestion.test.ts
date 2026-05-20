@@ -5,7 +5,7 @@ import type { ProjectRecord } from "@maskor/storage";
 import type { IndexedFragment } from "@maskor/storage";
 
 type SuggestionNextResponse = {
-  fragment: { uuid: string; readyStatus: number; isDiscarded: boolean } | null;
+  fragment: { uuid: string; readiness: number; isDiscarded: boolean } | null;
   avoidanceCount: number;
 };
 
@@ -33,7 +33,7 @@ describe("GET /projects/:projectId/suggestion/next", () => {
     expect(typeof body.avoidanceCount).toBe("number");
   });
 
-  it("returned fragment is not discarded and has readyStatus < 1.0", async () => {
+  it("returned fragment is not discarded and has readiness < 1.0", async () => {
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/suggestion/next`,
     );
@@ -41,24 +41,24 @@ describe("GET /projects/:projectId/suggestion/next", () => {
     const body = (await response.json()) as SuggestionNextResponse;
     if (body.fragment) {
       expect(body.fragment.isDiscarded).toBe(false);
-      expect(body.fragment.readyStatus).toBeLessThan(1.0);
+      expect(body.fragment.readiness).toBeLessThan(1.0);
     }
   });
 
-  it("excludes finished fragments (readyStatus === 1.0) from the pool", async () => {
+  it("excludes finished fragments (readiness === 1.0) from the pool", async () => {
     const listResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/fragments`,
     );
     const fragments = (await listResponse.json()) as IndexedFragment[];
     const active = fragments.filter((f) => !f.isDiscarded);
 
-    // Set all but one to readyStatus 1.0
+    // Set all but one to readiness 1.0
     const toFinish = active.slice(0, active.length - 1);
     for (const fragment of toFinish) {
       await testContext.app.request(`/projects/${project.projectUUID}/fragments/${fragment.uuid}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ readyStatus: 1.0 }),
+        body: JSON.stringify({ readiness: 1.0 }),
       });
     }
 
@@ -91,7 +91,7 @@ describe("GET /projects/:projectId/suggestion/next", () => {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ readyStatus: 1.0 }),
+          body: JSON.stringify({ readiness: 1.0 }),
         },
       );
     }
