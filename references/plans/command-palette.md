@@ -88,12 +88,12 @@
 
 > Populate the static registry with the v1 global commands so the palette is actually useful end-to-end.
 
-- [ ] Navigation: `Go to Overview`, `Go to Fragment list`, `Go to Drafts`, `Go to Preview`, `Go to Project config`, `Go to Stats`, `Go to History`, `Go to Project management`
-- [ ] Create: `Create fragment…`, `Create note…`, `Create reference…`, `Create aspect…` (open the existing creation flows; parameterized later if needed)
-- [ ] Project: `Switch project…` (parameterized — projects from registry), `Switch sequence…` (parameterized — sequences in current project), `Export sequence…`
-- [ ] Decide whether the palette is mounted shell-wide (works on `/` for `Create project…`) or project-shell-only; resolve the open question in the spec before merging
-- [ ] Tests: each registered command runs and lands on the expected route or invokes the expected mutation
-- [ ] Update spec `Shipped:` + close the relevant open question
+- [x] Navigation: `Go to Overview`, `Go to Fragment list`, `Go to Drafts`, `Go to Preview`, `Go to Project config`, `Go to Stats`, `Go to History`, `Go to Project management`
+- [x] Create: `Create fragment…`, `Create note…`, `Create reference…`, `Create aspect…` (navigate to creation page; dialog auto-open deferred — tracked in SUGGESTIONS.md)
+- [x] Project: `Switch project…` (parameterized — projects from registry), `Switch sequence…` (parameterized — sequences in current project); `Export sequence…` skipped — no API endpoint exists yet
+- [x] Decide whether the palette is mounted shell-wide (works on `/` for `Create project…`) or project-shell-only; resolve the open question in the spec before merging
+- [x] Tests: each registered command runs and lands on the expected route or invokes the expected mutation
+- [x] Update spec `Shipped:` + close the relevant open question
 - [ ] `git commit` — "feat(command-palette): populate global command catalog"
 
 ### Phase 7 — Chord nav removal

@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-20
-**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5).
+**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6).
 
 ---
 
@@ -135,7 +135,7 @@ Rules for where a command lives:
 
 - [ ] 2026-05-19 — Final scheme for global navigation hotkeys after chord deprecation: modifier-prefixed (`Cmd+1`..`Cmd+N`) versus unmodified single letters that skip text inputs. Depends on a small follow-up decision; not blocking the palette itself.
 - [ ] 2026-05-19 — Exhaustive enumeration of global commands at launch. The static registry needs a first-pass list; current candidates: Go to {Overview, Fragment list, Drafts, Preview, Project config, Stats, History, Project management}, Create {fragment, note, reference, aspect}, Export sequence, Switch project…, Switch sequence…
-- [ ] 2026-05-19 — Should the palette work on the `/` project management screen (no active project)? Globals like "Create project…" and "Switch project…" make sense there; resolving this changes whether the palette mount is shell-wide or project-shell-only.
+- [x] 2026-05-20 — **Resolved.** The palette is shell-wide (mounted in `main.tsx` above the router). Static-registry commands (`Go to Project management`, `Switch project…`) are always available on every route including `/`. Project-scoped commands (navigation to project routes, create, switch sequence) register via `useProjectShellCommands` inside `ProjectShellLayout` and are therefore available only when a project is active — they disappear on `/`.
 - [ ] 2026-05-19 — Public shape of the command-invocation API: a `useCommands()` hook returning `{ run, isAvailable }`, a direct `commands.run(id)` import, or both. Affects how buttons migrate.
 - [ ] 2026-05-19 — Whether `disabledReason` should also surface as a tooltip on the corresponding UI button (not just the palette row). Out of strict scope but cheap to wire if the command system is the source of truth.
 
