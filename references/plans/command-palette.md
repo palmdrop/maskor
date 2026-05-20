@@ -50,12 +50,12 @@
 
 > The component that powers the palette, the parameterized arg step, and (later) the entity quick-open.
 
-- [ ] `src/components/picker/Picker.tsx`: wraps `cmdk` + Radix Dialog; props `{ items, getKey, getLabel, renderItem?, placeholder, open, onOpenChange, onSelect }`
-- [ ] Built-in cmdk subsequence scoring (no custom filter in v1)
-- [ ] "No items found" empty state
-- [ ] Focus trap + restoration via Radix Dialog (inherited)
-- [ ] Tests: filters items by query; arrow keys + Enter select; Esc closes; focus returns to prior element
-- [ ] `git commit` — "feat(picker): add shared Picker primitive"
+- [x] `src/components/picker/Picker.tsx`: wraps `cmdk` + Radix Dialog; props `{ items, getKey, getLabel, renderItem?, placeholder, open, onOpenChange, onSelect }`
+- [x] Built-in cmdk subsequence scoring (no custom filter in v1)
+- [x] "No items found" empty state
+- [x] Focus trap + restoration via Radix Dialog (inherited)
+- [x] Tests: filters items by query; arrow keys + Enter select; Esc closes; focus returns to prior element
+- [x] `git commit` — "feat(picker): add shared Picker primitive"
 
 ### Phase 4 — Command palette UI
 
