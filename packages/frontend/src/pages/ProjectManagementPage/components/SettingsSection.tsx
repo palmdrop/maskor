@@ -11,6 +11,8 @@ import {
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import { useCommands } from "@lib/commands/useCommands";
+import { useProjectManagementCommands } from "@lib/commands/catalog/useProjectManagementCommands";
 
 export const SettingsSection = () => {
   const queryClient = useQueryClient();
@@ -52,6 +54,12 @@ export const SettingsSection = () => {
     setManagedRootInput(path);
     setPickerOpen(false);
   };
+
+  const commands = useCommands();
+  useProjectManagementCommands({
+    canSaveSettings: !!managedRootInput.trim() && !patchMutation.isPending,
+    onSaveSettings: handleSave,
+  });
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading settings…</p>;
@@ -109,7 +117,7 @@ export const SettingsSection = () => {
         <div className="flex items-center gap-3">
           <Button
             type="button"
-            onClick={handleSave}
+            onClick={() => commands.run("project-management:save-settings")}
             disabled={!managedRootInput.trim() || patchMutation.isPending}
           >
             {patchMutation.isPending ? "Saving…" : "Save"}

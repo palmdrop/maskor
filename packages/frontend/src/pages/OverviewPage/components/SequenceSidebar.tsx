@@ -8,6 +8,8 @@ import {
   useDeleteSequence,
   getListSequencesQueryKey,
 } from "@api/generated/sequences/sequences";
+import { useCommands } from "@lib/commands/useCommands";
+import { useSequenceSidebarCommands } from "@lib/commands/catalog/useSequenceSidebarCommands";
 
 type Props = {
   sequences: Sequence[];
@@ -187,6 +189,17 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     );
   };
 
+  const commands = useCommands();
+
+  useSequenceSidebarCommands({
+    createSequencePending: createSequence.isPending,
+    onCreateSequence: handleCreate,
+    confirmingDeleteId,
+    onDeleteSequence: () => {
+      if (confirmingDeleteId) handleConfirmDelete(confirmingDeleteId);
+    },
+  });
+
   const handleCommitRename = async (sequenceId: string, newName: string): Promise<string | null> => {
     try {
       const response = await updateSequence.mutateAsync({
@@ -240,7 +253,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      onClick={() => handleConfirmDelete(seq.uuid)}
+                      onClick={() => commands.run("overview:delete-sequence")}
                       className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
                     >
                       Delete
@@ -311,7 +324,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
       <div className="px-2 py-2 border-t border-border mt-auto">
         <button
           type="button"
-          onClick={handleCreate}
+          onClick={() => commands.run("overview:create-sequence")}
           disabled={createSequence.isPending}
           className="w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50"
         >

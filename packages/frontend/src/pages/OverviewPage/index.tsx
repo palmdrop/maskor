@@ -47,6 +47,8 @@ import { ArcLegend } from "./components/ArcLegend";
 import { resolveAspectColor } from "./utils/aspectColors";
 import { computeSequenceLayout } from "./utils/layout";
 import { buildArcSeries, type ArcSeries } from "./utils/arcData";
+import { useCommands } from "@lib/commands/useCommands";
+import { useOverviewCommands } from "@lib/commands/catalog/useOverviewCommands";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -464,6 +466,25 @@ export const OverviewPage = () => {
     },
   });
 
+  const commands = useCommands();
+
+  useOverviewCommands({
+    canDesignateMain: !!sequence && !sequence.isMain,
+    onDesignateMain: () => {
+      if (sequence) designateMain.mutate({ projectId, sequenceId: sequence.uuid });
+    },
+    createSectionPending: createSection.isPending,
+    onCreateSection: () => {
+      if (sequence) createSection.mutate({ projectId, sequenceId: sequence.uuid, data: { name: "" } });
+    },
+    confirmingDeleteSectionId,
+    onDeleteSection: () => {
+      if (sequence && confirmingDeleteSectionId) {
+        deleteSection.mutate({ projectId, sequenceId: sequence.uuid, sectionId: confirmingDeleteSectionId });
+      }
+    },
+  });
+
   const handleSectionRenameKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
     sectionId: string,
@@ -576,7 +597,7 @@ export const OverviewPage = () => {
               {sequence && !sequence.isMain && (
                 <button
                   type="button"
-                  onClick={() => designateMain.mutate({ projectId, sequenceId: sequence.uuid })}
+                  onClick={() => commands.run("overview:designate-main")}
                   disabled={designateMain.isPending}
                   className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 >
@@ -666,14 +687,7 @@ export const OverviewPage = () => {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            sequence &&
-                            deleteSection.mutate({
-                              projectId,
-                              sequenceId: sequence.uuid,
-                              sectionId: sectionData.uuid,
-                            })
-                          }
+                          onClick={() => commands.run("overview:delete-section")}
                           className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
                         >
                           Delete
@@ -776,13 +790,7 @@ export const OverviewPage = () => {
               {sequence && (
                 <button
                   type="button"
-                  onClick={() =>
-                    createSection.mutate({
-                      projectId,
-                      sequenceId: sequence.uuid,
-                      data: { name: "" },
-                    })
-                  }
+                  onClick={() => commands.run("overview:add-section")}
                   disabled={createSection.isPending}
                   className="text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50 self-start"
                 >

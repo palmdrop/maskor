@@ -10,6 +10,10 @@ export const useCommand = (def: CommandDef) => {
   useEffect(() => {
     const stableDef: CommandDef = {
       ...defRef.current,
+      // Read live from ref so state-derived values (disabledReason, run) are never stale.
+      get disabledReason() {
+        return defRef.current.disabledReason;
+      },
       run: (arg?: unknown) => defRef.current.run(arg),
     };
     register(stableDef);

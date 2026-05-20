@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type * as DndKitCore from "@dnd-kit/core";
 import type * as DndKitSortable from "@dnd-kit/sortable";
@@ -179,7 +180,9 @@ const mockFragments = (fragments: ReturnType<typeof makeFragment>[]) => {
 const wrap = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <CommandsProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </CommandsProvider>
   );
   return Wrapper;
 };

@@ -12,11 +12,19 @@ import { Switch } from "@components/ui/switch";
 import { Slider } from "@components/ui/slider";
 import { Button } from "@components/ui/button";
 import { useRebuildIndex } from "@api/generated/index";
+import { useCommands } from "@lib/commands/useCommands";
+import { useProjectConfigCommands } from "@lib/commands/catalog/useProjectConfigCommands";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
   const updateProject = useUpdateProject();
   const rebuildIndex = useRebuildIndex();
+
+  const commands = useCommands();
+  useProjectConfigCommands({
+    rebuildIndexPending: rebuildIndex.isPending,
+    onRebuildIndex: () => rebuildIndex.mutate({ projectId: project.projectUUID }),
+  });
 
   const [editing, setEditing] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
@@ -172,11 +180,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              rebuildIndex.mutate({
-                projectId: project.projectUUID,
-              })
-            }
+            onClick={() => commands.run("config:rebuild-index")}
           >
             Rebuild index
           </Button>
