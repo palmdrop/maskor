@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-20
-**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6).
+**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7).
 
 ---
 

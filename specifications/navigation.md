@@ -1,7 +1,7 @@
 # Spec: Navigation
 
 **Status**: Stable
-**Last updated**: 2026-05-19
+**Last updated**: 2026-05-20
 
 **Shipped**:
 
@@ -9,6 +9,7 @@
 - 2026-04-27 — Application shell renders a persistent navigation bar scoped to the active project, with links to Fragment list, Overview, and Project config. (plan: references/plans/frontend-navigation.md)
 - 2026-04-27 — Fragment list view is available: users can browse, search, and open any fragment into the editor from a dedicated route. (plan: references/plans/frontend-navigation.md)
 - 2026-04-27 — Navigating away from the Fragment editor with unsaved changes triggers a save/discard prompt. (plan: references/plans/frontend-navigation.md)
+- 2026-05-20 — Chord-based keyboard shortcuts (`g+f`, `g+o`, `g+c`) removed; replaced by command-palette navigation commands accessible via `Cmd/Ctrl+K`. (plan: references/plans/command-palette.md)
 
 ---
 

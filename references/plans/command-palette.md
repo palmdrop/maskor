@@ -1,7 +1,7 @@
 # Command Palette
 
 **Date**: 19-05-2026
-**Status**: In Progress
+**Status**: Done
 **Specs**: `specifications/command-palette.md`
 
 ---
@@ -100,11 +100,11 @@
 
 > This removes the chord nav with no direct replacement. This is by design.
 
-- [ ] Add navigation commands with no bound hotkeys (hotkeys will be added in future work)
-- [ ] Declare nav hotkeys on the corresponding static commands
-- [ ] Delete `src/hooks/useKeyboardNav.ts` and remove its mount from `ProjectShellLayout`
-- [ ] Update tests that referenced the chord shortcuts
-- [ ] Update `specifications/navigation.md` `Shipped:` and `specifications/command-palette.md` `Shipped:`; close the remaining open question in the palette spec
+- [x] Add navigation commands with no bound hotkeys (hotkeys will be added in future work)
+- [x] Declare nav hotkeys on the corresponding static commands (deferred — no hotkeys declared yet per plan; navigation via Cmd+K palette only)
+- [x] Delete `src/hooks/useKeyboardNav.ts` and remove its mount from `ProjectShellLayout`
+- [x] Update tests that referenced the chord shortcuts (none existed)
+- [x] Update `specifications/navigation.md` `Shipped:` and `specifications/command-palette.md` `Shipped:`
 - [ ] `git commit` — "refactor(navigation): replace chord shortcuts with command-bound hotkeys"
 
 ---

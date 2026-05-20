@@ -1,7 +1,6 @@
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
-import { useKeyboardNav } from "@hooks/useKeyboardNav";
 import { useProjectShellCommands } from "@lib/commands/catalog/useProjectShellCommands";
 
 export const ProjectShellLayout = () => {
@@ -9,7 +8,6 @@ export const ProjectShellLayout = () => {
   const { data: envelope } = useGetProject(projectId);
 
   useVaultEvents(projectId);
-  useKeyboardNav(projectId);
   useProjectShellCommands(projectId);
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
