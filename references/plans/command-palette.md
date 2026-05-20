@@ -69,19 +69,19 @@
 - [x] Editor key precedence: capture-phase `preventDefault()` is sufficient; ProseMirror and CodeMirror both check `event.defaultPrevented` before handling.
 - [x] Mount the palette inside `CommandsProvider`, available on every authenticated/project route
 - [x] Tests: opens from body focus; opens from inside contentEditable; Esc closes; sections render in prescribed order; hotkey glyphs render correctly; "No commands found" on no-match; disabled command shows reason and blocks run
-- [ ] Update `specifications/command-palette.md` `Shipped:` with the slice that landed
+- [x] Update `specifications/command-palette.md` `Shipped:` with the slice that landed
 - [x] `bun run verify`
 - [x] `git commit` — "feat(command-palette): add palette UI with global trigger"
 
 ### Phase 5 — Parameterized commands
 
-- [ ] Extend `CommandPalette` with a two-step mode: selecting a command with `arg` transitions the same modal to an argument picker (also a `Picker`)
-- [ ] `Esc` from the argument picker returns to the command list with the prior query restored
-- [ ] Zero-item arg: command renders disabled with explanation in the command list (no transition possible)
-- [ ] Loading state for arg items: skeleton rows in the argument picker
-- [ ] Failure: close the palette and surface the error via the existing toast mechanism
-- [ ] Tests: ellipsis command opens arg picker; selecting an item invokes `run(arg)`; Esc returns to command list with restored query; zero-item command is disabled with explanation
-- [ ] Update spec `Shipped:`
+- [x] Extend `CommandPalette` with a two-step mode: selecting a command with `arg` transitions the same modal to an argument picker (also a `Picker`)
+- [x] `Esc` from the argument picker returns to the command list with the prior query restored
+- [x] Zero-item arg: command renders disabled with explanation in the command list (no transition possible)
+- [x] Loading state for arg items: skeleton rows in the argument picker
+- [x] Failure: close the palette and surface the error via the existing toast mechanism (currently logs to console — no toast library exists yet; tracked in SUGGESTIONS.md)
+- [x] Tests: ellipsis command opens arg picker; selecting an item invokes `run(arg)`; Esc returns to command list with restored query; zero-item command is disabled with explanation
+- [x] Update spec `Shipped:`
 - [ ] `git commit` — "feat(command-palette): support parameterized two-step commands"
 
 ### Phase 6 — Initial global catalog

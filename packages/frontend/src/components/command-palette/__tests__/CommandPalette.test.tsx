@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import { useCommand } from "@lib/commands/useCommand";
@@ -163,5 +163,183 @@ describe("CommandPalette", () => {
     await userEvent.click(screen.getByRole("option", { name: "Run This" }));
     expect(onRun).toHaveBeenCalled();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  // --- Phase 5: parameterized commands ---
+
+  it("renders ellipsis on commands with arg", () => {
+    renderWithCommands([
+      {
+        id: "cmd:arg",
+        label: "Pick Something",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items: [{ id: "1", name: "Item" }],
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    expect(screen.getByText("Pick Something…")).toBeInTheDocument();
+  });
+
+  it("transitions to arg picker when selecting a command with static arg items", async () => {
+    const items = [
+      { id: "1", name: "Item One" },
+      { id: "2", name: "Item Two" },
+    ];
+    renderWithCommands([
+      {
+        id: "cmd:arg",
+        label: "Pick Something",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items,
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+          placeholder: "Choose an item",
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: /Pick Something/ }));
+    expect(screen.getByPlaceholderText("Choose an item")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Item One" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Item Two" })).toBeInTheDocument();
+  });
+
+  it("invokes run with selected arg item and closes palette", async () => {
+    const onRun = vi.fn();
+    const items = [{ id: "1", name: "Item One" }];
+    renderWithCommands([
+      {
+        id: "cmd:arg",
+        label: "Pick Something",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items,
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+        },
+        run: onRun,
+      },
+    ]);
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: /Pick Something/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Item One" }));
+    expect(onRun).toHaveBeenCalledWith(items[0]);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("Esc from arg picker returns to command list with prior query restored", async () => {
+    const items = [{ id: "1", name: "Item One" }];
+    renderWithCommands([
+      {
+        id: "cmd:arg",
+        label: "Pick Something",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items,
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "pick");
+    await userEvent.click(screen.getByRole("option", { name: /Pick Something/ }));
+    // Now in arg picker mode
+    expect(screen.queryByPlaceholderText("Search commands…")).not.toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    // Back to command list with prior query
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search commands…")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("combobox")).toHaveValue("pick");
+  });
+
+  it("shows loading skeletons while async arg items resolve", async () => {
+    let resolveItems!: (items: { id: string; name: string }[]) => void;
+    const loadItems = vi.fn(
+      () => new Promise<{ id: string; name: string }[]>((resolve) => { resolveItems = resolve; }),
+    );
+    renderWithCommands([
+      {
+        id: "cmd:async-arg",
+        label: "Async Pick",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items: loadItems,
+          getKey: (item: { id: string }) => item.id,
+          getLabel: (item: { id: string; name: string }) => item.name,
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: /Async Pick/ }));
+    // Skeletons visible while loading
+    await waitFor(() => {
+      expect(screen.getAllByTestId("arg-skeleton").length).toBeGreaterThan(0);
+    });
+    // Resolve the items
+    await act(async () => {
+      resolveItems([{ id: "1", name: "Resolved Item" }]);
+    });
+    expect(screen.queryByTestId("arg-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Resolved Item" })).toBeInTheDocument();
+  });
+
+  it("renders zero-item static arg command as disabled with explanation", () => {
+    renderWithCommands([
+      {
+        id: "cmd:empty-arg",
+        label: "Empty Picker",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items: [],
+          getKey: (item: unknown) => String(item),
+          getLabel: (item: unknown) => String(item),
+        },
+        run: vi.fn(),
+      },
+    ]);
+    openPalette();
+    expect(screen.getByText("No items available")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Empty Picker/ })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("does not transition to arg picker when zero-item command is selected", async () => {
+    const onRun = vi.fn();
+    renderWithCommands([
+      {
+        id: "cmd:empty-arg",
+        label: "Empty Picker",
+        scope: "Test",
+        category: "other",
+        arg: {
+          items: [],
+          getKey: (item: unknown) => String(item),
+          getLabel: (item: unknown) => String(item),
+        },
+        run: onRun,
+      },
+    ]);
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: /Empty Picker/ }));
+    // Still on command list, not arg picker
+    expect(screen.getByPlaceholderText("Search commands…")).toBeInTheDocument();
+    expect(onRun).not.toHaveBeenCalled();
   });
 });

@@ -46,13 +46,22 @@ const HotkeyBadge = ({ hotkey }: { hotkey: string }) => (
 
 // --- Command row ---
 
-const CommandRow = ({ command }: { command: CommandDef }) => (
+const CommandRow = ({
+  command,
+  effectiveDisabledReason,
+}: {
+  command: CommandDef;
+  effectiveDisabledReason?: string;
+}) => (
   <div className="flex w-full items-center justify-between gap-4">
-    <span className="truncate">{command.label}</span>
+    <span className="truncate">
+      {command.label}
+      {command.arg ? "…" : ""}
+    </span>
     <div className="flex shrink-0 items-center gap-2">
-      {command.disabledReason && (
+      {effectiveDisabledReason && (
         <span className="max-w-32 truncate text-xs text-muted-foreground/60">
-          {command.disabledReason}
+          {effectiveDisabledReason}
         </span>
       )}
       {command.hotkey && <HotkeyBadge hotkey={command.hotkey} />}
@@ -65,6 +74,34 @@ const CommandRow = ({ command }: { command: CommandDef }) => (
 const SectionHeading = ({ children }: { children: string }) => (
   <div className="px-2 py-1 text-xs font-medium text-muted-foreground">{children}</div>
 );
+
+// --- Arg loading skeleton ---
+
+const ARG_SKELETON_WIDTHS = ["60%", "45%", "75%", "50%"];
+
+const ArgLoadingSkeleton = () => (
+  <>
+    {ARG_SKELETON_WIDTHS.map((width) => (
+      <div
+        key={width}
+        data-testid="arg-skeleton"
+        className="flex items-center px-2 py-1.5"
+      >
+        <div className="h-4 animate-pulse rounded bg-muted" style={{ width }} />
+      </div>
+    ))}
+  </>
+);
+
+// --- Effective disabled reason ---
+
+const getEffectiveDisabledReason = (command: CommandDef): string | undefined => {
+  if (command.disabledReason) return command.disabledReason;
+  if (command.arg && Array.isArray(command.arg.items) && command.arg.items.length === 0) {
+    return "No items available";
+  }
+  return undefined;
+};
 
 // --- Global category ordering ---
 
@@ -80,6 +117,13 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
 
 export const CommandPalette = () => {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [step, setStep] = useState<"commands" | "args">("commands");
+  const [savedQuery, setSavedQuery] = useState("");
+  const [activeArgCommand, setActiveArgCommand] = useState<CommandDef | null>(null);
+  const [argItems, setArgItems] = useState<unknown[]>([]);
+  const [argLoading, setArgLoading] = useState(false);
+
   const { getMap, run } = useCommandsContext();
 
   // Capture-phase listener intercepts Cmd+K and Cmd+Shift+P before editors see them.
@@ -96,10 +140,22 @@ export const CommandPalette = () => {
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, []);
 
+  // Reset all step state when palette closes.
+  useEffect(() => {
+    if (!open) {
+      setStep("commands");
+      setQuery("");
+      setSavedQuery("");
+      setActiveArgCommand(null);
+      setArgItems([]);
+      setArgLoading(false);
+    }
+  }, [open]);
+
   const sortCommands = (commands: CommandDef[]): CommandDef[] =>
     [...commands].sort((a, b) => {
-      const aDisabled = a.disabledReason != null;
-      const bDisabled = b.disabledReason != null;
+      const aDisabled = getEffectiveDisabledReason(a) != null;
+      const bDisabled = getEffectiveDisabledReason(b) != null;
       if (aDisabled !== bDisabled) return aDisabled ? 1 : -1;
       return a.label.localeCompare(b.label);
     });
@@ -107,7 +163,6 @@ export const CommandPalette = () => {
   const { viewScopedSections, globalSections } = useMemo(() => {
     const all = Array.from(getMap().values());
 
-    // View-scoped: scope !== "global"
     const scopeMap = new Map<string, CommandDef[]>();
     for (const command of all) {
       if (command.scope === "global") continue;
@@ -117,7 +172,6 @@ export const CommandPalette = () => {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([scope, commands]) => ({ scope, commands: sortCommands(commands) }));
 
-    // Global: scope === "global", grouped by category
     const categoryMap = new Map<CommandCategory, CommandDef[]>(
       CATEGORY_ORDER.map((category) => [category, []]),
     );
@@ -133,44 +187,106 @@ export const CommandPalette = () => {
     return { viewScopedSections, globalSections };
   }, [open]); // recompute when palette opens to pick up latest commands
 
-  // Custom filter: score against label, penalise disabled commands so they sort last.
   const commandMap = useMemo(
     () => new Map(Array.from(getMap().values()).map((c) => [c.id, c])),
     [open],
   );
 
-  const filter = useCallback(
+  const commandFilter = useCallback(
     (value: string, search: string, keywords?: string[]) => {
       const command = commandMap.get(value);
       if (!command) return 0;
       const score = defaultFilter(command.label, search, keywords);
-      if (command.disabledReason) return score > 0 ? score * 0.1 : 0;
+      const disabled = getEffectiveDisabledReason(command);
+      if (disabled) return score > 0 ? score * 0.1 : 0;
       return score;
     },
     [commandMap],
   );
 
-  const handleSelect = (command: CommandDef) => {
-    if (command.disabledReason) return;
-    run(command.id);
+  const handleSelectCommand = async (command: CommandDef) => {
+    const effectiveDisabled = getEffectiveDisabledReason(command);
+    if (effectiveDisabled) return;
+
+    if (!command.arg) {
+      run(command.id);
+      setOpen(false);
+      return;
+    }
+
+    // Transition to arg picker.
+    setSavedQuery(query);
+    setQuery("");
+    setActiveArgCommand(command);
+    setStep("args");
+    setArgLoading(true);
+
+    try {
+      const resolvedItems =
+        typeof command.arg.items === "function"
+          ? await (command.arg.items as () => unknown[] | Promise<unknown[]>)()
+          : (command.arg.items as unknown[]);
+      setArgItems(resolvedItems);
+    } catch (error) {
+      console.error("[command-palette] Failed to load arg items:", error);
+      setOpen(false);
+    } finally {
+      setArgLoading(false);
+    }
+  };
+
+  const handleSelectArg = (item: unknown) => {
+    if (!activeArgCommand) return;
+    run(activeArgCommand.id, item);
     setOpen(false);
   };
 
-  const renderItems = (commands: CommandDef[]) =>
-    commands.map((command) => (
+  const handleEscapeKeyDown = (event: Event) => {
+    if (step === "args") {
+      event.preventDefault();
+      setStep("commands");
+      setQuery(savedQuery);
+      setSavedQuery("");
+      setActiveArgCommand(null);
+      setArgItems([]);
+      setArgLoading(false);
+    }
+  };
+
+  const renderCommandItems = (commands: CommandDef[]) =>
+    commands.map((command) => {
+      const effectiveDisabledReason = getEffectiveDisabledReason(command);
+      return (
+        <CommandItem
+          key={command.id}
+          value={command.id}
+          disabled={!!effectiveDisabledReason}
+          className={cn(
+            "flex cursor-pointer items-center rounded px-2 py-1.5 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+            effectiveDisabledReason && "cursor-default opacity-50",
+          )}
+          onSelect={() => void handleSelectCommand(command)}
+        >
+          <CommandRow command={command} effectiveDisabledReason={effectiveDisabledReason} />
+        </CommandItem>
+      );
+    });
+
+  const renderArgItems = () => {
+    if (argLoading) return <ArgLoadingSkeleton />;
+    if (!activeArgCommand?.arg) return null;
+    const { arg } = activeArgCommand;
+    return argItems.map((item) => (
       <CommandItem
-        key={command.id}
-        value={command.id}
-        disabled={!!command.disabledReason}
-        className={cn(
-          "flex cursor-pointer items-center rounded px-2 py-1.5 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
-          command.disabledReason && "cursor-default opacity-50",
-        )}
-        onSelect={() => handleSelect(command)}
+        key={arg.getKey(item)}
+        value={arg.getLabel(item)}
+        className="flex cursor-pointer items-center rounded px-2 py-1.5 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+        onSelect={() => handleSelectArg(item)}
       >
-        <CommandRow command={command} />
+        {arg.renderItem ? arg.renderItem(item) : arg.getLabel(item)}
       </CommandItem>
     ));
+  };
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -185,32 +301,48 @@ export const CommandPalette = () => {
             "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
             "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           )}
+          onEscapeKeyDown={handleEscapeKeyDown}
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
-          <Command loop filter={filter}>
+          <Command loop filter={step === "commands" ? commandFilter : undefined}>
             <CommandInput
-              placeholder="Search commands…"
+              placeholder={
+                step === "args"
+                  ? (activeArgCommand?.arg?.placeholder ?? "Select…")
+                  : "Search commands…"
+              }
+              value={query}
+              onValueChange={setQuery}
               className="w-full border-b border-border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
             />
             <CommandList className="max-h-80 overflow-y-auto p-1">
-              <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No commands found.
-              </CommandEmpty>
-
-              {viewScopedSections.map(({ scope, commands }) => (
-                <CommandGroup key={scope} heading={<SectionHeading>{scope}</SectionHeading>}>
-                  {renderItems(commands)}
-                </CommandGroup>
-              ))}
-
-              {globalSections.map(({ category, commands }) => (
-                <CommandGroup
-                  key={category}
-                  heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
-                >
-                  {renderItems(commands)}
-                </CommandGroup>
-              ))}
+              {step === "commands" ? (
+                <>
+                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No commands found.
+                  </CommandEmpty>
+                  {viewScopedSections.map(({ scope, commands }) => (
+                    <CommandGroup key={scope} heading={<SectionHeading>{scope}</SectionHeading>}>
+                      {renderCommandItems(commands)}
+                    </CommandGroup>
+                  ))}
+                  {globalSections.map(({ category, commands }) => (
+                    <CommandGroup
+                      key={category}
+                      heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
+                    >
+                      {renderCommandItems(commands)}
+                    </CommandGroup>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No items found.
+                  </CommandEmpty>
+                  {renderArgItems()}
+                </>
+              )}
             </CommandList>
           </Command>
         </DialogPrimitive.Content>
