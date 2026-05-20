@@ -12,6 +12,8 @@
 
 - [ ] import does not look right in action log, no import event
 
+- [ ] create actions in command palette only navigates to view, without prompting creation
+
 - [ ] dnd in sequences is slow and clunky, fix
 
 - [ ] overview does not remember density mode when navigating back and forth -- store in setting? local storage?
