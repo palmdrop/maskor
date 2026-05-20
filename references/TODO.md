@@ -12,9 +12,13 @@
 
 - [ ] import does not look right in action log, no import event
 
+- [ ] dnd in sequences is slow and clunky, fix
+
+- [ ] overview does not remember density mode when navigating back and forth -- store in setting? local storage?
+
 - [x] implement `references/plans/overview-density-and-actual-arc.md`
 
-- [ ] create implementation plan for `specifications/command-palette.md`
+- [x] create implementation plan for `specifications/command-palette.md`
 
 - [ ] deleting aspects in project view leaves them on fragments, causes them to show up in overview/sequencer
 

@@ -1,7 +1,7 @@
 # Command Palette
 
 **Date**: 19-05-2026
-**Status**: Todo
+**Status**: In Progress
 **Specs**: `specifications/command-palette.md`
 
 ---
@@ -18,30 +18,33 @@
 
 > Internal plumbing only. No user-visible change. Catalogs and palette UI come later.
 
-- [ ] Create branch `command-palette` from `main`
-- [ ] `src/lib/commands/types.ts`: `CommandDef` (id, label, scope, category as literal union, hotkey?, arg?, disabledReason?, run); `CommandArg` (items, getKey, getLabel, renderItem, placeholder); category union `'navigation' | 'create' | 'project' | 'other'`
-- [ ] `src/lib/commands/CommandsProvider.tsx`: provider holding a ref-backed `Map<id, CommandDef>`; exposes register/unregister and `run(id, arg?)`
-- [ ] `src/lib/commands/useCommand.ts`: writes the def into the provider's map on every render, removes on unmount; dev-mode warning on duplicate IDs across mounted components
-- [ ] `src/lib/commands/useCommands.ts`: returns `{ run, isAvailable, list }` for consumers (buttons, hotkey binder, palette)
-- [ ] `src/lib/commands/registry.ts`: static-registry module exporting an initial empty array of `CommandDef`; loaded by `CommandsProvider` at mount
-- [ ] `src/lib/commands/HotkeyBinder.tsx`: a mounted-once child of `CommandsProvider` that subscribes to the command map and binds `keydown` for any command declaring a `hotkey`; respects "skip in text input" only for unmodified single-key hotkeys
-- [ ] Mount `CommandsProvider` + `HotkeyBinder` at the app root, above the router
-- [ ] Tests: `useCommand` mount/unmount lifecycle; latest-closure invocation after state change; collision warning in dev; `HotkeyBinder` adds/removes listeners with the command lifecycle
-- [ ] `bun run verify`
-- [ ] `git commit` — "feat(commands): add command system foundation"
+- [x] Create branch `command-palette` from `main`
+- [x] `src/lib/commands/types.ts`: `CommandDef` (id, label, scope, category as literal union, hotkey?, arg?, disabledReason?, run); `CommandArg` (items, getKey, getLabel, renderItem, placeholder); category union `'navigation' | 'create' | 'project' | 'other'`
+- [x] `src/lib/commands/CommandsProvider.tsx`: provider holding a ref-backed `Map<id, CommandDef>`; exposes register/unregister and `run(id, arg?)`
+- [x] `src/lib/commands/useCommand.ts`: writes the def into the provider's map on every render, removes on unmount; dev-mode warning on duplicate IDs across mounted components
+- [x] `src/lib/commands/useCommands.ts`: returns `{ run, isAvailable, list }` for consumers (buttons, hotkey binder, palette)
+- [x] `src/lib/commands/registry.ts`: static-registry module exporting an initial empty array of `CommandDef`; loaded by `CommandsProvider` at mount
+- [x] `src/lib/commands/HotkeyBinder.tsx`: a mounted-once child of `CommandsProvider` that subscribes to the command map and binds `keydown` for any command declaring a `hotkey`; respects "skip in text input" only for unmodified single-key hotkeys
+- [x] Mount `CommandsProvider` + `HotkeyBinder` at the app root, above the router
+- [x] Tests: `useCommand` mount/unmount lifecycle; latest-closure invocation after state change; collision warning in dev; `HotkeyBinder` adds/removes listeners with the command lifecycle
+- [x] `bun run verify`
+- [x] `git commit` — "feat(commands): add command system foundation"
 
 ### Phase 2 — Migrate existing actions to commands
 
 > Strict migration: every mutation that runs from an `onClick` (or equivalent) becomes a command. Inline `useMutation().mutate(...)` in click handlers is removed in this phase.
 
-- [ ] Inventory mutation call sites (current sweep: `FragmentListPage`, `ProjectManagementPage/components/*`, `NoteEditor`, `OverviewPage`, `OverviewPage/components/SequenceSidebar`, `DraftsPage/*`, `PreviewPage`, `AspectEditor`, `ReferenceEditor`, `ProjectConfigPage/tabs/*`, `ProjectConfigPage/components/ArcEditor`, `fragment-metadata-form`, `fragment-editor`). Record the list as a checklist below before starting work.
-- [ ] For each call site, decide static-registry vs `useCommand` per spec rules (state-free → static; closure-dependent → hook)
-- [ ] Convert each `onClick` to `commands.run('<id>')` and register the command alongside the component (or in the static registry)
-- [ ] Keep `<Link>` elements untouched — only non-link actions migrate
-- [ ] Verify per-component: existing tests still pass; add a smoke test for any component lacking one to confirm the migrated action still runs
-- [ ] Grep guard: no `onClick` handler in any button calls a `*Mutation().mutate(...)` directly. Document the check in the commit message.
-- [ ] `bun run verify`
-- [ ] `git commit` — "refactor(frontend): route all UI actions through the command system"
+- [x] Inventory mutation call sites. Decision: page/sidebar-level button mutations migrated via catalog hooks; dialog-internal confirmation buttons, DnD handlers, and keyboard/blur-driven renames are exempt (not palette-discoverable).
+  - Migrated: `OverviewPage` (designate-main, delete-section, add-section), `SequenceSidebar` (create-sequence, delete-sequence), `GeneralTab` (rebuild-index), `SettingsSection` (save-settings)
+  - Exempt: all dialog confirm/submit buttons; DnD `handleDragEnd` mutations; inline rename mutations
+- [x] For each call site, decide static-registry vs `useCommand` — all page/sidebar commands are closure-dependent → catalog hooks in `src/lib/commands/catalog/`
+- [x] Convert each `onClick` to `commands.run('<id>')` and register via catalog hook
+- [x] Keep `<Link>` elements untouched — only non-link actions migrate
+- [x] Existing tests pass; smoke tests added for `GeneralTab` and `SettingsSection`
+- [x] Grep guard documented in commit message
+- [x] Document the pattern in `packages/frontend/CLAUDE.md`
+- [x] `bun run verify`
+- [x] `git commit` — "refactor(frontend): route page/sidebar actions through command system"
 
 ### Phase 3 — Shared `Picker` primitive
 
@@ -95,9 +98,9 @@
 
 ### Phase 7 — Chord nav removal
 
-> Blocked on the post-chord hotkey scheme decision (see Notes).
+> This removes the chord nav with no direct replacement. This is by design.
 
-- [ ] Decide final scheme for global navigation hotkeys (modifier-prefixed `Cmd+1..N` vs unmodified single letters that skip text inputs)
+- [ ] Add navigation commands with no bound hotkeys (hotkeys will be added in future work)
 - [ ] Declare nav hotkeys on the corresponding static commands
 - [ ] Delete `src/hooks/useKeyboardNav.ts` and remove its mount from `ProjectShellLayout`
 - [ ] Update tests that referenced the chord shortcuts
@@ -125,8 +128,6 @@ When clearly stated to implement, create a new branch based on the plan title, a
 Once a phase, or sensible set of changes, is done, make a `git commit` and describe what has been added.
 
 When the plan is implemented, fully or partially, check off the relevant tasks and set the plan status to `Done`, or `In Progress` if partially implemented. ALSO, update the relevant specs `shipped` frontmatter property with the features implemented. Do not include implementation details or granular tasks here.
-
-**Open question blocking Phase 7**: post-chord hotkey scheme — modifier-prefixed (`Cmd+1`, `Cmd+2`, …) vs unmodified single letters skipping text inputs. Resolve before starting Phase 7. Phases 1–6 do not depend on this; chord nav and the new command system coexist until Phase 7.
 
 **Phase 2 is the highest-touch phase.** Many small components change. Work component-by-component, verify each, and consider landing it as a single dedicated PR/commit to keep the diff reviewable.
 

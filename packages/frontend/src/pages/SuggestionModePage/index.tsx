@@ -3,6 +3,8 @@ import { Link, useParams } from "@tanstack/react-router";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
+import { useCommands } from "@lib/commands/useCommands";
+import { useSuggestionModeCommands } from "@lib/commands/catalog/useSuggestionModeCommands";
 
 // TODO: this should be configured globally and not in a random FE-component
 const AVOIDANCE_NUDGE_THRESHOLD = 3;
@@ -62,16 +64,11 @@ export const SuggestionModePage = () => {
     await loadNext(currentFragmentId ?? undefined);
   }, [isLoadingNext, fragmentId, loadNext]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        event.preventDefault();
-        void handleNext();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleNext]);
+  const commands = useCommands();
+  useSuggestionModeCommands({
+    isLoading: isLoadingNext,
+    onNext: () => void handleNext(),
+  });
 
   // fragmentId === undefined means initial load
   if (fragmentId === undefined) {
@@ -113,7 +110,7 @@ export const SuggestionModePage = () => {
         </div>
       )}
       <div className="flex shrink-0 items-center justify-end gap-2 border-border">
-        <Button size="sm" disabled={isLoadingNext} onClick={() => void handleNext()}>
+        <Button size="sm" disabled={isLoadingNext} onClick={() => commands.run("suggestion:next")}>
           {isLoadingNext ? "Loading…" : "Next"}
         </Button>
       </div>

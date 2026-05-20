@@ -15,6 +15,8 @@ import type {
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { ReadonlyEditor } from "@components/readonly-editor";
 import { Button } from "@components/ui/button";
+import { useCommands } from "@lib/commands/useCommands";
+import { useFragmentImportCommands } from "@lib/commands/catalog/useFragmentImportCommands";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import {
@@ -188,6 +190,15 @@ export const FragmentImportPage = () => {
     }
   };
 
+  const isInFlight = isPreviewPending || isCommitPending;
+  const pieceCount = previewResult?.pieces?.length ?? 0;
+
+  const commands = useCommands();
+  useFragmentImportCommands({
+    canImport: pieceCount > 0 && !isInFlight,
+    onImport: () => void handleImport(),
+  });
+
   if (!file || !format) return null;
 
   // Partial failure state — replace page body
@@ -234,11 +245,9 @@ export const FragmentImportPage = () => {
   }
 
   const pieces = previewResult?.pieces ?? [];
-  const pieceCount = pieces.length;
   const showHeadingLevel = format === "markdown" || format === "docx";
   const showDelimiter = format === "plaintext";
   const previewMarkdown = buildPreviewMarkdown(pieces);
-  const isInFlight = isPreviewPending || isCommitPending;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -362,7 +371,7 @@ export const FragmentImportPage = () => {
         >
           Cancel
         </Button>
-        <Button disabled={pieceCount === 0 || isInFlight} onClick={() => void handleImport()}>
+        <Button disabled={pieceCount === 0 || isInFlight} onClick={() => commands.run("fragment-import:import")}>
           {isCommitPending ? (
             <>
               <Loader2Icon className="animate-spin" />
