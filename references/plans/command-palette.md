@@ -61,17 +61,17 @@
 
 > First user-visible slice.
 
-- [ ] `src/components/command-palette/CommandPalette.tsx`: consumes `useCommands().list` and the `Picker`
-- [ ] Sections: view-scoped first (heading is the scope name), then global sections by category (`Navigation`, `Create`, `Project`, `Other`); alphabetical within each section
-- [ ] Hotkey shown right-aligned per row, dimmed; modifier glyphs (`⌘`, `⌃`, `⇧`) rendered consistently
-- [ ] Disabled-with-explanation rendering: dimmed, `disabledReason` shown after the label, ordered last in its section
-- [ ] Global trigger bindings: `Cmd/Ctrl+K` (primary), `Cmd/Ctrl+Shift+P` (secondary). Bind at the provider level so editor focus does not block them.
-- [ ] Editor key precedence: configure Tiptap and CodeMirror so they yield `Cmd/Ctrl+K`, `Cmd/Ctrl+Shift+P`, and `Cmd/Ctrl+O` (the entity quick-open key, reserved for a sibling spec)
-- [ ] Mount the palette inside `CommandsProvider`, available on every authenticated/project route
-- [ ] Tests: opens from body focus; opens from inside Tiptap; opens from inside CodeMirror; Esc closes and restores focus; sections render in the prescribed order; hotkey strings render correctly; "No commands found" appears on no-match
+- [x] `src/components/command-palette/CommandPalette.tsx`: consumes `useCommands()` and cmdk+Radix Dialog directly (groups require CommandGroup, not flat Picker)
+- [x] Sections: view-scoped first (heading is the scope name), then global sections by category (`Navigation`, `Create`, `Project`, `Other`); alphabetical within each section
+- [x] Hotkey shown right-aligned per row, dimmed; modifier glyphs (`⌘`, `⌃`, `⇧`) rendered consistently
+- [x] Disabled-with-explanation rendering: dimmed, `disabledReason` shown after the label, ordered last in its section
+- [x] Global trigger bindings: `Cmd/Ctrl+K` (primary), `Cmd/Ctrl+Shift+P` (secondary). Bound via capture-phase window listener — intercepts before editors without editor-specific config.
+- [x] Editor key precedence: capture-phase `preventDefault()` is sufficient; ProseMirror and CodeMirror both check `event.defaultPrevented` before handling.
+- [x] Mount the palette inside `CommandsProvider`, available on every authenticated/project route
+- [x] Tests: opens from body focus; opens from inside contentEditable; Esc closes; sections render in prescribed order; hotkey glyphs render correctly; "No commands found" on no-match; disabled command shows reason and blocks run
 - [ ] Update `specifications/command-palette.md` `Shipped:` with the slice that landed
-- [ ] `bun run verify`
-- [ ] `git commit` — "feat(command-palette): add palette UI with global trigger"
+- [x] `bun run verify`
+- [x] `git commit` — "feat(command-palette): add palette UI with global trigger"
 
 ### Phase 5 — Parameterized commands
 

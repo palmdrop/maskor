@@ -8,11 +8,13 @@ import "./styles/global.css";
 import { queryClient } from "./queryClient";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import { HotkeyBinder } from "@lib/commands/HotkeyBinder";
+import { CommandPalette } from "@components/command-palette/CommandPalette";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <CommandsProvider>
       <HotkeyBinder />
+      <CommandPalette />
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
