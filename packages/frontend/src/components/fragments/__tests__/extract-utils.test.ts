@@ -25,6 +25,19 @@ describe("findSmallestUnusedSuffix", () => {
     const keys = new Set(["unnamed-fragment-1"]);
     expect(findSmallestUnusedSuffix(keys)).toBe(2);
   });
+
+  it("uses a custom prefix when provided", () => {
+    expect(findSmallestUnusedSuffix(new Set(), "unnamed-note")).toBe(1);
+    expect(findSmallestUnusedSuffix(new Set(["unnamed-note-1"]), "unnamed-note")).toBe(2);
+    expect(
+      findSmallestUnusedSuffix(new Set(["unnamed-note-1", "unnamed-note-2"]), "unnamed-note"),
+    ).toBe(3);
+  });
+
+  it("custom prefix does not collide with the default prefix", () => {
+    const keys = new Set(["unnamed-fragment-1", "unnamed-fragment-2"]);
+    expect(findSmallestUnusedSuffix(keys, "unnamed-note")).toBe(1);
+  });
 });
 
 describe("validateExtractKey", () => {
@@ -59,6 +72,19 @@ describe("validateExtractKey", () => {
     const all = new Set(["taken-key"]);
     const result = validateExtractKey("taken-key", all, noDiscarded);
     expect(result).toBe("A fragment with this key already exists");
+  });
+
+  it("returns entity-type-specific clash message for non-fragment types", () => {
+    const all = new Set(["taken-key"]);
+    expect(validateExtractKey("taken-key", all, noDiscarded, "note")).toBe(
+      "A note with this key already exists",
+    );
+    expect(validateExtractKey("taken-key", all, noDiscarded, "reference")).toBe(
+      "A reference with this key already exists",
+    );
+    expect(validateExtractKey("taken-key", all, noDiscarded, "aspect")).toBe(
+      "An aspect with this key already exists",
+    );
   });
 
   it("returns null when key is valid and unused", () => {

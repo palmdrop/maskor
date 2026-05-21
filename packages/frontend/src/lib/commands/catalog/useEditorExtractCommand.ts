@@ -1,15 +1,18 @@
 import { useCommand } from "../useCommand";
 import type { SelectionCapture } from "@components/prose-editor";
 
+type TargetEntityType = "fragment" | "note" | "reference" | "aspect";
+
 type Params = {
+  targetType: TargetEntityType;
   getSelection: () => SelectionCapture;
   onExtract: (selectionText: string) => void;
 };
 
-export const useEditorExtractToFragmentCommand = ({ getSelection, onExtract }: Params) => {
+export const useEditorExtractCommand = ({ targetType, getSelection, onExtract }: Params) => {
   useCommand({
-    id: "editor.extract-to-fragment",
-    label: "Extract to fragment",
+    id: `editor.extract-to-${targetType}`,
+    label: `Extract to ${targetType}`,
     scope: "Editor",
     category: "other",
     get disabledReason() {

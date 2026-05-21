@@ -18,7 +18,7 @@ import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
-import { useEditorExtractToFragmentCommand } from "@lib/commands/catalog/useEditorExtractToFragmentCommand";
+import { useEditorExtractCommand } from "@lib/commands/catalog/useEditorExtractCommand";
 import { ExtractToFragmentDialog } from "./fragments/extract-to-fragment-dialog";
 
 export type EntityEditorShellHandle = {
@@ -191,7 +191,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       [navigate, projectId],
     );
 
-    useEditorExtractToFragmentCommand({
+    useEditorExtractCommand({
+      targetType: "fragment",
       getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
       onExtract: handleExtractOpen,
     });

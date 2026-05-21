@@ -1,8 +1,8 @@
 const ENTITY_KEY_REGEX = /^[\p{L}\p{N} _-]+$/u;
 
-export const findSmallestUnusedSuffix = (keys: Set<string>): number => {
+export const findSmallestUnusedSuffix = (keys: Set<string>, prefix = "unnamed-fragment"): number => {
   let n = 1;
-  while (keys.has(`unnamed-fragment-${n}`)) n++;
+  while (keys.has(`${prefix}-${n}`)) n++;
   return n;
 };
 
@@ -10,6 +10,7 @@ export const validateExtractKey = (
   key: string,
   allKeys: Set<string>,
   discardedKeys: Set<string>,
+  entityType: "fragment" | "note" | "reference" | "aspect" = "fragment",
 ): string | null => {
   const trimmed = key.trim();
   if (trimmed.length === 0) return "Key is required";
@@ -17,6 +18,7 @@ export const validateExtractKey = (
     return "Key may only contain letters, numbers, spaces, hyphens, and underscores";
   if (discardedKeys.has(trimmed))
     return "A discarded fragment uses this key. Restore or rename it first.";
-  if (allKeys.has(trimmed)) return "A fragment with this key already exists";
+  const article = entityType === "aspect" ? "An" : "A";
+  if (allKeys.has(trimmed)) return `${article} ${entityType} with this key already exists`;
   return null;
 };
