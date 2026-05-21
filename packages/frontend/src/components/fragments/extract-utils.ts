@@ -1,6 +1,10 @@
+// TODO: this should use the key from the shared package?
 const ENTITY_KEY_REGEX = /^[\p{L}\p{N} _-]+$/u;
 
-export const findSmallestUnusedSuffix = (keys: Set<string>, prefix = "unnamed-fragment"): number => {
+export const findSmallestUnusedSuffix = (
+  keys: Set<string>,
+  prefix = "unnamed-fragment",
+): number => {
   let n = 1;
   while (keys.has(`${prefix}-${n}`)) n++;
   return n;

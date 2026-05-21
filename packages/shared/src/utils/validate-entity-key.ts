@@ -1,4 +1,4 @@
-const ENTITY_KEY_CHAR_CLASS = "\\p{L}\\p{N} _-";
+export const ENTITY_KEY_CHAR_CLASS = "\\p{L}\\p{N} _-";
 
 export const ENTITY_KEY_REGEX = new RegExp(`^[${ENTITY_KEY_CHAR_CLASS}]+$`, "u");
 

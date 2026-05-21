@@ -1,4 +1,5 @@
 import matter from "gray-matter";
+import { ENTITY_KEY_CHAR_CLASS } from "@maskor/shared";
 
 export type ParsedFile = {
   frontmatter: Record<string, unknown>;
@@ -6,8 +7,7 @@ export type ParsedFile = {
   body: string;
 };
 
-// TODO: this should use the same regex as the one that is used to allow or reject file names
-const INLINE_FIELD_REGEX = /^([\w _-]+):: (.+)$/;
+export const INLINE_FIELD_REGEX = new RegExp(`^([${ENTITY_KEY_CHAR_CLASS}]+):: (.+)$`, "u");
 
 export const parseFile = (rawFile: string): ParsedFile => {
   const parsed = matter(rawFile);
