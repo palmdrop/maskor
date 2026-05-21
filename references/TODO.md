@@ -10,7 +10,24 @@
 
 - [x] implement `references/plans/entity-content-swap-files.md`
 
-- [ ] implement the `references/plans/glossary-alignment.md` plan
+- [x] implement the `references/plans/glossary-alignment.md` plan
+
+- [ ] quick-create: select text in any document, use command palette to grab the selected text and convert it into a new entity, for example a fragment, note, ref, aspect, arc, etc -> any entity type is valid.
+
+- [ ] yanking/deleting in vim should copy to the actual clipboard
+
+- [ ] cmd/ctrl+s should save the document, override default browser behavior
+
+- [ ] changing capitalization of a fragment causes it to be lost - no such file etc
+
+- [ ] add more commands to palette in edit view, to quickly add aspects, notes, etc > and create new ones if they do not already exist!
+
+- [ ] on draft, export a markdown/word/pdf document of the entire current state, including unsorted fragments?
+  - just to make it easy to get a sense of the state of the project without restoring?
+  - create a document for the main sequence, then one document for all the unplaced fragments, then one for all the discarded ones
+  - but what about notes? aspects? refs?
+
+- [ ] on new projects, the full skeleton of folder is not created. Discarding a fragment does not work until the folder is manually created.
 
 - [ ] import does not look right in action log, no import event
 

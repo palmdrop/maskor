@@ -1,7 +1,7 @@
 # Spec: Command Palette
 
 **Status**: Draft
-**Last updated**: 2026-05-20
+**Last updated**: 2026-05-21
 **Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7).
 
 ---
@@ -29,7 +29,7 @@ The user can press a single key from anywhere in the app and reach any action �
 - **Entity quick-open** (fragments, notes, references, aspects, projects). Sibling spec, opened with `Cmd/Ctrl+O`, shares the `Picker` primitive.
 - **User-configurable hotkey rebinding.** Architecture must support it; v1 ships with fixed bindings declared in the registry.
 - **Recent / frequent boosting.** Palette ordering is deterministic in v1.
-- **Free-text argument input.** Parameterized commands pick from a closed item set only.
+- **Free-text argument input.** Parameterized commands pick from a closed item set only. Commands that need a free-text input (a new key, a label, a description) hand off to a dedicated modal owned by the command's `run` — see Prior decisions and `extract-selection.md` for the established pattern.
 - **Chained multi-argument commands.** Single argument step only.
 - **LLM-assisted command matching.** Only deterministic subsequence scoring (vision: no LLMs).
 - **Plugin / extension system.** All commands ship in the codebase.
@@ -128,6 +128,7 @@ Rules for where a command lives:
 - **cmdk is the library.** Already installed, shadcn-aligned, primitives-based, active maintenance, plays well with React Query data inside `Command.List`. Rationale: zero additional dependency, lowest-friction fit for the codebase's existing component vocabulary.
 - **No user rebinding in v1**, but the architecture is rebinding-ready: hotkeys are declared on commands, bound by a single layer, overridable later.
 - **No chord nav going forward.** `useKeyboardNav.ts` is legacy and will be removed in favor of command-bound hotkeys.
+- **Modal handoff for free-text and multi-field input.** The palette's argument step is closed-set-only by design. Commands needing free-text input (a new entity key, a description) or more than one field close the palette and open a dedicated modal owned by the command's `run`. The palette is the entry point; the modal is where typing happens. First established by `extract-selection.md` (four `Extract to …` commands handing off to an extraction modal). Reusable for any future command in the same shape — for example, the `document-links.md` "inline creation of new entity from a broken link" affordance when it ships.
 
 ---
 

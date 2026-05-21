@@ -8,6 +8,7 @@ ALWAYS KEEP THESE THINGS IN MIND:
 - Add suggestions to `@references/SUGGESTIONS.md` when encountering issues or surprises that are not immediately fixed.
 - Be succinct. Short sentences, no fluff. Skip filler words. Sentence fragments are fine.
 - Reference `@references/CODEBASE_SNAPSHOT.md` instead of traversing the codebase. `grep` to locate symbols, keywords and code snippets. Regenerate with `bun run snapshot`.
+- When you've changed the API and need the corresponding frontend queries/mutations, run `bun run codegen` in `packages/frontend`. Assume the API is already running, and start it if it is not.
 - Write tests when adding features or changing behavior.
 - Make note of `specifications` that are out of sync with the code or direction.
 - When writing code, match the style of the already existing code.
