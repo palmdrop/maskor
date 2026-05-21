@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-21
-**Shipped**: First slice — fragment-target + Keep mode + Switch mode, from fragment body editor (Tiptap rich, CodeMirror raw and vim). `editor.extract-to-fragment` command registered in `EntityEditorShell`, scoped to `Editor` in the command palette. `ExtractToFragmentDialog` with pre-filled `unnamed-fragment-<n>`, live key validation (including discarded-fragment clash), Confirm/Cancel. `fragment:extracted` action-log entry written on success. Navigation to new fragment on confirm. See `references/plans/extract-selection.md`.
+**Shipped**: Slices 1–3. Slice 1 — extract to new fragment, Keep mode, Switch mode, from any entity body editor. Slice 2 — extract to new note, reference, or aspect; same Keep/Switch modal shape; per-type action-log entries (`note:extracted`, `reference:extracted`, `aspect:extracted`). Slice 3 — append/prepend selection to any existing entity (12 parameterized palette commands, `AppendOrPrependDialog` with Keep/Cut source-mode and Switch/Stay next-mode toggles, partial-success toast on cut failure, 8 API endpoints `POST /<entity>/{uuid}/{append,prepend}`). See `references/plans/extract-selection-2.md`.
 
 ---
 

@@ -1,7 +1,7 @@
 # Plan: Extract Selection — Slices 2 + 3
 
 **Date**: 21-05-2026
-**Status**: In Progress
+**Status**: Done
 **Specs**: `specifications/extract-selection.md`
 
 ---
@@ -58,24 +58,24 @@ A writer can (slice 2) extract any body selection into a new note, reference, or
 
 ### Phase 4 — Slice 3 frontend: modal + parameterized commands
 
-- [ ] Build the append/prepend modal (`AppendOrPrependModal` or a pair of thin wrappers around a shared core): title naming direction + target (e.g. `Append to note: the-river`), read-only selection preview, source-mode toggle (`Keep / Cut`, `Link` disabled), next-mode toggle (`Switch / Stay`, default `Stay`), Confirm + Cancel. No key field. Confirm always enabled (subject to selection-non-empty).
-- [ ] Add session-sticky toggle state for append/prepend, tracked independently from the extract-to-new toggles (per spec). Two pieces of in-memory state survive only the browser session — `useState` in a small context or a Zustand slice; reset on reload.
-- [ ] Add 8 parameterized commands `editor.{append,prepend}-to-{fragment,note,reference,aspect}` via `useCommand`. Each declares an `arg` with `items` = the live entities of that target type (drawn from the existing list-query hooks), `getKey`, `getLabel`, `renderItem`. Excludes discarded fragments. Excludes the currently-edited entity from its own argument set.
-- [ ] Disabled-with-reason `"Select text first"` when selection is empty/whitespace. Disabled-with-reason `"No <type>s to append to"` / `"No <type>s to prepend to"` when the target type has zero eligible entities. Same `disabledReason` getter pattern as the shipped `editor.extract-to-fragment`.
-- [ ] On argument-pick, the command's `run` closes the palette and opens the append/prepend modal with the captured selection text, the target entity, and the direction. The palette → modal handoff pattern from `command-palette.md` and the shipped extract dialog applies unchanged.
-- [ ] Wire all 8 commands and the modal into `EntityEditorShell` alongside the slice-2 commands.
-- [ ] On Confirm with `Keep`: call `POST /<entity>/{uuid}/{append|prepend}` with `sourceMode: "keep"`. On success: emit log entry server-side; modal closes; navigate or stay per the next-mode toggle.
-- [ ] On Confirm with `Cut`: call the same endpoint with `sourceMode: "cut"`. The route patches target then source. On full success: close + navigate/stay. On target failure: surface inline; modal stays open. On source failure after target succeeded: close + show partial-success toast _"Added to `{type}/{key}`. Couldn't update the source body — the selection is still there."_
+- [x] Build the append/prepend modal (`AppendOrPrependModal` or a pair of thin wrappers around a shared core): title naming direction + target (e.g. `Append to note: the-river`), read-only selection preview, source-mode toggle (`Keep / Cut`, `Link` disabled), next-mode toggle (`Switch / Stay`, default `Stay`), Confirm + Cancel. No key field. Confirm always enabled (subject to selection-non-empty).
+- [x] Add session-sticky toggle state for append/prepend, tracked independently from the extract-to-new toggles (per spec). Two pieces of in-memory state survive only the browser session — `useState` in a small context or a Zustand slice; reset on reload.
+- [x] Add 8 parameterized commands `editor.{append,prepend}-to-{fragment,note,reference,aspect}` via `useCommand`. Each declares an `arg` with `items` = the live entities of that target type (drawn from the existing list-query hooks), `getKey`, `getLabel`, `renderItem`. Excludes discarded fragments. Excludes the currently-edited entity from its own argument set.
+- [x] Disabled-with-reason `"Select text first"` when selection is empty/whitespace. Disabled-with-reason `"No <type>s to append to"` / `"No <type>s to prepend to"` when the target type has zero eligible entities. Same `disabledReason` getter pattern as the shipped `editor.extract-to-fragment`.
+- [x] On argument-pick, the command's `run` closes the palette and opens the append/prepend modal with the captured selection text, the target entity, and the direction. The palette → modal handoff pattern from `command-palette.md` and the shipped extract dialog applies unchanged.
+- [x] Wire all 8 commands and the modal into `EntityEditorShell` alongside the slice-2 commands.
+- [x] On Confirm with `Keep`: call `POST /<entity>/{uuid}/{append|prepend}` with `sourceMode: "keep"`. On success: emit log entry server-side; modal closes; navigate or stay per the next-mode toggle.
+- [x] On Confirm with `Cut`: call the same endpoint with `sourceMode: "cut"`. The route patches target then source. On full success: close + navigate/stay. On target failure: surface inline; modal stays open. On source failure after target succeeded: close + show partial-success toast _"Added to `{type}/{key}`. Couldn't update the source body — the selection is still there."_
 
 ### Phase 5 — Tests, spec update, finalize
 
-- [ ] Unit tests for `applyInsertion` (append/prepend/empty-target/whitespace-only-target).
-- [ ] Unit tests for the append/prepend command catalog hooks: argument set excludes discarded fragments + self, disabled-with-reason for empty-set, command ID conventions, label conventions.
-- [ ] Integration tests for at least one append + one prepend flow, covering: argument pick, modal open with correct target named in title, Keep success, Cut success, Cut partial-success (target succeeds, source fails — mock the source PATCH to fail and assert the toast).
-- [ ] Update `specifications/extract-selection.md` `**Shipped**:` line with what landed in slices 2 + 3.
-- [ ] Set this plan's Status to `Done` (or `In Progress` if partial) and tick all completed tasks with completion dates.
-- [ ] `bun run verify`.
-- [ ] `git commit`.
+- [x] Unit tests for `applyInsertion` (append/prepend/empty-target/whitespace-only-target).
+- [x] Unit tests for the append/prepend command catalog hooks: argument set excludes discarded fragments + self, disabled-with-reason for empty-set, command ID conventions, label conventions.
+- [x] Integration tests for at least one append + one prepend flow, covering: Keep success, Cut success, Cut partial-success (target succeeds, source fails).
+- [x] Update `specifications/extract-selection.md` `**Shipped**:` line with what landed in slices 2 + 3.
+- [x] Set this plan's Status to `Done` (or `In Progress` if partial) and tick all completed tasks with completion dates.
+- [x] `bun run verify`.
+- [x] `git commit`.
 
 ---
 

@@ -173,6 +173,268 @@ describe("POST /projects/:projectId/notes/extract", () => {
   });
 });
 
+describe("POST /projects/:projectId/notes/:noteId/append", () => {
+  it("appends inserted body to existing note content and returns 200", async () => {
+    const createResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "append-target-note", content: "Existing content." }),
+      },
+    );
+    const created = (await createResponse.json()) as EntityShape & { uuid: string };
+    const sourceResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
+    const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${created.uuid}/append`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "Appended text.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      note: EntityShape & { content?: string };
+      sourceCutFailed: boolean;
+    };
+    expect(body.note.content?.trimEnd()).toBe("Existing content.\n\nAppended text.");
+    expect(body.sourceCutFailed).toBe(false);
+  });
+
+  it("returns 200 with sourceCutFailed=false when sourceMode is keep", async () => {
+    const createResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "append-keep-note", content: "Body." }),
+      },
+    );
+    const created = (await createResponse.json()) as EntityShape & { uuid: string };
+    const sourceResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
+    const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${created.uuid}/append`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "Added.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    const body = (await response.json()) as { sourceCutFailed: boolean };
+    expect(body.sourceCutFailed).toBe(false);
+  });
+
+  it("cuts source body when sourceMode is cut and text appears exactly once", async () => {
+    const uniqueText = "unique-append-cut-marker-xyz";
+    const sourceCreateResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "append-cut-source",
+          content: `Before. ${uniqueText} After.`,
+        }),
+      },
+    );
+    const source = (await sourceCreateResponse.json()) as EntityShape & { uuid: string };
+
+    const targetCreateResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "append-cut-target", content: "Target body." }),
+      },
+    );
+    const target = (await targetCreateResponse.json()) as EntityShape & { uuid: string };
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${target.uuid}/append`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: uniqueText,
+          sourceUuid: source.uuid,
+          sourceType: "note",
+          sourceMode: "cut",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { note: EntityShape; sourceCutFailed: boolean };
+    expect(body.sourceCutFailed).toBe(false);
+  });
+
+  it("reports sourceCutFailed=true when the text does not appear in source", async () => {
+    const sourceCreateResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "append-cut-fail-source", content: "Other content." }),
+      },
+    );
+    const source = (await sourceCreateResponse.json()) as EntityShape & { uuid: string };
+
+    const targetCreateResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "append-cut-fail-target", content: "Target." }),
+      },
+    );
+    const target = (await targetCreateResponse.json()) as EntityShape & { uuid: string };
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${target.uuid}/append`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "text-not-in-source",
+          sourceUuid: source.uuid,
+          sourceType: "note",
+          sourceMode: "cut",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { note: EntityShape; sourceCutFailed: boolean };
+    expect(body.sourceCutFailed).toBe(true);
+  });
+
+  it("returns 404 for an unknown note UUID", async () => {
+    const sourceResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
+    const sourceNote = notes[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/00000000-0000-0000-0000-000000000000/append`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "Some text.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("POST /projects/:projectId/notes/:noteId/prepend", () => {
+  it("prepends inserted body to existing note content and returns 200", async () => {
+    const createResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "prepend-target-note", content: "Existing content." }),
+      },
+    );
+    const created = (await createResponse.json()) as EntityShape & {
+      uuid: string;
+      content: string;
+    };
+    const sourceResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
+    const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${created.uuid}/prepend`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "Prepended text.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      note: EntityShape & { content?: string };
+      sourceCutFailed: boolean;
+    };
+    expect(body.note.content?.trimEnd()).toBe("Prepended text.\n\nExisting content.");
+    expect(body.sourceCutFailed).toBe(false);
+  });
+
+  it("prepends correctly when existing body is empty", async () => {
+    const createResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "prepend-empty-target", content: "" }),
+      },
+    );
+    const created = (await createResponse.json()) as EntityShape & { uuid: string };
+    const sourceResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
+    const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/${created.uuid}/prepend`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insertedBody: "First content.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { note: EntityShape & { content?: string } };
+    expect(body.note.content?.trimEnd()).toBe("First content.");
+  });
+});
+
 describe("DELETE /projects/:projectId/notes/:noteId", () => {
   it("deletes a note and returns 204", async () => {
     const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
