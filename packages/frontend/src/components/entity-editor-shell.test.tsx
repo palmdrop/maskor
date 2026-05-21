@@ -59,6 +59,34 @@ vi.mock("./aspects/extract-to-aspect-dialog", () => ({
   ExtractToAspectDialog: () => null,
 }));
 
+vi.mock("./append-or-prepend-dialog", () => ({
+  AppendOrPrependDialog: () => null,
+}));
+
+vi.mock("@api/generated/fragments/fragments", () => ({
+  useListFragments: () => ({ data: { status: 200, data: [] } }),
+  useAppendFragment: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePrependFragment: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@api/generated/notes/notes", () => ({
+  useListNotes: () => ({ data: { status: 200, data: [] } }),
+  useAppendNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePrependNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@api/generated/references/references", () => ({
+  useListReferences: () => ({ data: { status: 200, data: [] } }),
+  useAppendReference: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePrependReference: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@api/generated/aspects/aspects", () => ({
+  useListAspects: () => ({ data: { status: 200, data: [] } }),
+  useAppendAspect: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePrependAspect: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 vi.mock("@hooks/useProjectEditorConfig", () => ({
   useProjectEditorConfig: () => ({
     vimMode: false,
