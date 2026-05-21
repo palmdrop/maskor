@@ -10,16 +10,19 @@ import { queryClient } from "./queryClient";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import { HotkeyBinder } from "@lib/commands/HotkeyBinder";
 import { CommandPalette } from "@components/command-palette/CommandPalette";
+import { InsertTogglesProvider } from "@lib/insert-toggles/InsertTogglesProvider";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <CommandsProvider>
-      <HotkeyBinder />
-      <CommandPalette />
-      <Toaster />
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      <InsertTogglesProvider>
+        <HotkeyBinder />
+        <CommandPalette />
+        <Toaster />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </InsertTogglesProvider>
     </CommandsProvider>
   </StrictMode>,
 );

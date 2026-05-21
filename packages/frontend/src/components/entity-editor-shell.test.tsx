@@ -3,6 +3,7 @@ import { render, screen, act, fireEvent } from "@testing-library/react";
 import { forwardRef, useImperativeHandle } from "react";
 import type { Ref } from "react";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
+import { InsertTogglesProvider } from "@lib/insert-toggles/InsertTogglesProvider";
 import type { ReactNode } from "react";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -115,7 +116,9 @@ const baseProps = {
 };
 
 const wrap = ({ children }: { children: ReactNode }) => (
-  <CommandsProvider>{children}</CommandsProvider>
+  <CommandsProvider>
+    <InsertTogglesProvider>{children}</InsertTogglesProvider>
+  </CommandsProvider>
 );
 
 beforeEach(() => {

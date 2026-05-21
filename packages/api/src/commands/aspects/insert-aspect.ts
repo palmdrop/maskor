@@ -30,9 +30,7 @@ export const insertAspectCommand: Command<InsertAspectInput, Aspect> = {
       result: updated,
       logEntries: [
         {
-          type: (position === "append" ? "aspect:appended" : "aspect:prepended") as
-            | "aspect:appended"
-            | "aspect:prepended",
+          type: position === "append" ? "aspect:appended" : "aspect:prepended",
           actor: ctx.actor,
           target: { type: "aspect" as const, uuid: aspectId, key: existing.key },
           payload: { sourceType, sourceKey, sourceUuid, sourceMode, navigated },

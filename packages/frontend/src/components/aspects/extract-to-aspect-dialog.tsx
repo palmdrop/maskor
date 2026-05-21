@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useListAspects, useExtractAspect } from "@api/generated/aspects/aspects";
 import { ExtractToEntityDialogCore } from "@components/extract-to-entity-dialog-core";
+import { validateExtractKey } from "@components/extract-utils";
 
 type Props = {
   open: boolean;
@@ -35,6 +36,11 @@ export const ExtractToAspectDialog = ({
     return all;
   }, [aspects]);
 
+  const validateKey = useCallback(
+    (key: string): string | null => validateExtractKey(key, allKeys, "aspect"),
+    [allKeys],
+  );
+
   const handleConfirm = useCallback(
     async (key: string): Promise<string | null> => {
       try {
@@ -68,8 +74,7 @@ export const ExtractToAspectDialog = ({
       selectionText={selectionText}
       preFillPrefix="unnamed-aspect"
       allKeys={allKeys}
-      discardedKeys={new Set()}
-      targetType="aspect"
+      validateKey={validateKey}
       isPending={isPending}
       onClose={onClose}
       onConfirm={handleConfirm}

@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useListReferences, useExtractReference } from "@api/generated/references/references";
 import { ExtractToEntityDialogCore } from "@components/extract-to-entity-dialog-core";
+import { validateExtractKey } from "@components/extract-utils";
 
 type Props = {
   open: boolean;
@@ -35,6 +36,11 @@ export const ExtractToReferenceDialog = ({
     return all;
   }, [references]);
 
+  const validateKey = useCallback(
+    (key: string): string | null => validateExtractKey(key, allKeys, "reference"),
+    [allKeys],
+  );
+
   const handleConfirm = useCallback(
     async (key: string): Promise<string | null> => {
       try {
@@ -68,8 +74,7 @@ export const ExtractToReferenceDialog = ({
       selectionText={selectionText}
       preFillPrefix="unnamed-reference"
       allKeys={allKeys}
-      discardedKeys={new Set()}
-      targetType="reference"
+      validateKey={validateKey}
       isPending={isPending}
       onClose={onClose}
       onConfirm={handleConfirm}

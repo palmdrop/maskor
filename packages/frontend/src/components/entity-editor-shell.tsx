@@ -29,12 +29,8 @@ import { ExtractToFragmentDialog } from "./fragments/extract-to-fragment-dialog"
 import { ExtractToNoteDialog } from "./notes/extract-to-note-dialog";
 import { ExtractToReferenceDialog } from "./references/extract-to-reference-dialog";
 import { ExtractToAspectDialog } from "./aspects/extract-to-aspect-dialog";
-import {
-  AppendOrPrependDialog,
-  type InsertDirection,
-  type InsertSourceMode,
-  type InsertNextMode,
-} from "./append-or-prepend-dialog";
+import { AppendOrPrependDialog, type InsertDirection } from "./append-or-prepend-dialog";
+import { useInsertToggles } from "@lib/insert-toggles/InsertTogglesProvider";
 import { useListFragments } from "@api/generated/fragments/fragments";
 import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
@@ -154,10 +150,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     const [insertionTarget, setInsertionTarget] = useState<InsertionTarget | null>(null);
     const [insertionSelectionText, setInsertionSelectionText] = useState("");
-    const [appendSourceMode, setAppendSourceMode] = useState<InsertSourceMode>("cut");
-    const [appendNextMode, setAppendNextMode] = useState<InsertNextMode>("stay");
-    const [prependSourceMode, setPrependSourceMode] = useState<InsertSourceMode>("cut");
-    const [prependNextMode, setPrependNextMode] = useState<InsertNextMode>("stay");
+    const {
+      sourceMode: insertSourceMode,
+      nextMode: insertNextMode,
+      setSourceMode: setInsertSourceMode,
+      setNextMode: setInsertNextMode,
+    } = useInsertToggles();
 
     // Track the live editor content so useEntityContentSwap can debounce-write it.
     // Re-reads from the editor on every onProseChange so the swap matches what's
@@ -367,15 +365,13 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const handleInsertConfirm = useCallback(async () => {
       if (!insertionTarget) return;
       const { direction, targetType, targetEntity } = insertionTarget;
-      const sourceMode = direction === "append" ? appendSourceMode : prependSourceMode;
-      const nextMode = direction === "append" ? appendNextMode : prependNextMode;
 
       const insertionData = {
         insertedBody: insertionSelectionText,
         sourceUuid: entityUUID,
         sourceType: entityKind as "fragment" | "note" | "reference" | "aspect",
-        sourceMode,
-        navigated: nextMode === "switch",
+        sourceMode: insertSourceMode,
+        navigated: insertNextMode === "switch",
       };
 
       type InsertResult = { sourceCutFailed: boolean };
@@ -425,7 +421,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         );
       }
 
-      if (nextMode === "switch") {
+      if (insertNextMode === "switch") {
         if (targetType === "fragment") {
           void navigate({
             to: "/projects/$projectId/fragments/$fragmentId",
@@ -453,10 +449,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       insertionSelectionText,
       entityUUID,
       entityKind,
-      appendSourceMode,
-      appendNextMode,
-      prependSourceMode,
-      prependNextMode,
+      insertSourceMode,
+      insertNextMode,
       projectId,
       appendFragment,
       prependFragment,
@@ -691,17 +685,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             targetType={insertionTarget.targetType}
             targetKey={insertionTarget.targetEntity.key}
             selectionText={insertionSelectionText}
-            sourceMode={
-              insertionTarget.direction === "append" ? appendSourceMode : prependSourceMode
-            }
-            nextMode={insertionTarget.direction === "append" ? appendNextMode : prependNextMode}
+            sourceMode={insertSourceMode}
+            nextMode={insertNextMode}
             isPending={isInsertionPending}
-            onSourceModeChange={
-              insertionTarget.direction === "append" ? setAppendSourceMode : setPrependSourceMode
-            }
-            onNextModeChange={
-              insertionTarget.direction === "append" ? setAppendNextMode : setPrependNextMode
-            }
+            onSourceModeChange={setInsertSourceMode}
+            onNextModeChange={setInsertNextMode}
             onClose={handleInsertClose}
             onConfirm={() => void handleInsertConfirm()}
           />

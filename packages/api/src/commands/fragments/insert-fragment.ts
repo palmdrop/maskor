@@ -28,9 +28,7 @@ export const insertFragmentCommand: Command<InsertFragmentInput, Fragment> = {
       result: updated,
       logEntries: [
         {
-          type: (position === "append" ? "fragment:appended" : "fragment:prepended") as
-            | "fragment:appended"
-            | "fragment:prepended",
+          type: position === "append" ? "fragment:appended" : "fragment:prepended",
           actor: ctx.actor,
           target: { type: "fragment" as const, uuid: fragmentId, key: existing.key },
           payload: { sourceType, sourceKey, sourceUuid, sourceMode, navigated },

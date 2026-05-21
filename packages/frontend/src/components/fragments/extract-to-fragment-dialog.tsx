@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useListFragments, useExtractFragment } from "@api/generated/fragments/fragments";
 import { ExtractToEntityDialogCore } from "@components/extract-to-entity-dialog-core";
+import { validateExtractKey } from "@components/extract-utils";
 
 type Props = {
   open: boolean;
@@ -37,6 +38,16 @@ export const ExtractToFragmentDialog = ({
     return { allKeys: all, discardedKeys: discarded };
   }, [fragments]);
 
+  const validateKey = useCallback(
+    (key: string): string | null => {
+      if (discardedKeys.has(key.trim())) {
+        return "A discarded fragment uses this key. Restore or rename it first.";
+      }
+      return validateExtractKey(key, allKeys, "fragment");
+    },
+    [allKeys, discardedKeys],
+  );
+
   const handleConfirm = useCallback(
     async (key: string): Promise<string | null> => {
       try {
@@ -70,8 +81,7 @@ export const ExtractToFragmentDialog = ({
       selectionText={selectionText}
       preFillPrefix="unnamed-fragment"
       allKeys={allKeys}
-      discardedKeys={discardedKeys}
-      targetType="fragment"
+      validateKey={validateKey}
       isPending={isPending}
       onClose={onClose}
       onConfirm={handleConfirm}

@@ -56,7 +56,7 @@ export const AspectUpdateResponseSchema = z
 export const AspectExtractSchema = z
   .object({
     key: z.string().min(1).openapi({ example: "tone" }),
-    description: z.string().openapi({ example: "Melancholic undertone throughout..." }),
+    description: z.string().min(1).openapi({ example: "Melancholic undertone throughout..." }),
     sourceUuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     sourceType: z
       .enum(["fragment", "note", "reference", "aspect"])

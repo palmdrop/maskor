@@ -27,9 +27,7 @@ export const insertNoteCommand: Command<InsertNoteInput, Note> = {
       result: updated,
       logEntries: [
         {
-          type: (position === "append" ? "note:appended" : "note:prepended") as
-            | "note:appended"
-            | "note:prepended",
+          type: position === "append" ? "note:appended" : "note:prepended",
           actor: ctx.actor,
           target: { type: "note" as const, uuid: noteId, key: existing.key },
           payload: { sourceType, sourceKey, sourceUuid, sourceMode, navigated },

@@ -18,6 +18,12 @@
 
 - [ ] cmd/ctrl+s should save the document, override default browser behavior
 
+- [ ] merge extract and append, append if user chooses title of existing entity
+
+- [ ] refactor EntityEditorShell, which has grown huge
+
+- [ ] quick-switching between entities, maybe also tabs, support for multiple open editors
+
 - [ ] changing capitalization of a fragment causes it to be lost - no such file etc
 
 - [ ] add more commands to palette in edit view, to quickly add aspects, notes, etc > and create new ones if they do not already exist!

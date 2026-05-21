@@ -38,9 +38,7 @@ export const insertReferenceCommand: Command<InsertReferenceInput, Reference> = 
       result: updated,
       logEntries: [
         {
-          type: (position === "append" ? "reference:appended" : "reference:prepended") as
-            | "reference:appended"
-            | "reference:prepended",
+          type: position === "append" ? "reference:appended" : "reference:prepended",
           actor: ctx.actor,
           target: { type: "reference" as const, uuid: referenceId, key: existing.key },
           payload: { sourceType, sourceKey, sourceUuid, sourceMode, navigated },

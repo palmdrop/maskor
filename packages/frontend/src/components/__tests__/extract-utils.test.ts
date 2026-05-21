@@ -42,59 +42,52 @@ describe("findSmallestUnusedSuffix", () => {
 
 describe("validateExtractKey", () => {
   const noKeys = new Set<string>();
-  const noDiscarded = new Set<string>();
 
   it("returns error when key is empty", () => {
-    expect(validateExtractKey("", noKeys, noDiscarded)).toBe("Key is required");
-    expect(validateExtractKey("   ", noKeys, noDiscarded)).toBe("Key is required");
+    expect(validateExtractKey("", noKeys, "fragment")).toBe("Key is required");
+    expect(validateExtractKey("   ", noKeys, "fragment")).toBe("Key is required");
   });
 
   it("returns error when key contains illegal characters", () => {
-    expect(validateExtractKey("bad/key", noKeys, noDiscarded)).toMatch(/letters, numbers/);
-    expect(validateExtractKey("bad.key", noKeys, noDiscarded)).toMatch(/letters, numbers/);
+    expect(validateExtractKey("bad/key", noKeys, "fragment")).toMatch(/letters, numbers/);
+    expect(validateExtractKey("bad.key", noKeys, "fragment")).toMatch(/letters, numbers/);
   });
 
   it("accepts valid keys with letters, numbers, hyphens, underscores, spaces", () => {
-    expect(validateExtractKey("my-fragment", noKeys, noDiscarded)).toBeNull();
-    expect(validateExtractKey("fragment 1", noKeys, noDiscarded)).toBeNull();
-    expect(validateExtractKey("fragment_one", noKeys, noDiscarded)).toBeNull();
-    expect(validateExtractKey("My Fragment 2", noKeys, noDiscarded)).toBeNull();
-  });
-
-  it("returns discarded-specific message when key clashes with a discarded fragment", () => {
-    const discarded = new Set(["used-key"]);
-    const all = new Set(["used-key"]);
-    const result = validateExtractKey("used-key", all, discarded);
-    expect(result).toBe("A discarded fragment uses this key. Restore or rename it first.");
+    expect(validateExtractKey("my-fragment", noKeys, "fragment")).toBeNull();
+    expect(validateExtractKey("fragment 1", noKeys, "fragment")).toBeNull();
+    expect(validateExtractKey("fragment_one", noKeys, "fragment")).toBeNull();
+    expect(validateExtractKey("My Fragment 2", noKeys, "fragment")).toBeNull();
   });
 
   it("returns live-clash message when key clashes with a live fragment", () => {
     const all = new Set(["taken-key"]);
-    const result = validateExtractKey("taken-key", all, noDiscarded);
-    expect(result).toBe("A fragment with this key already exists");
+    expect(validateExtractKey("taken-key", all, "fragment")).toBe(
+      "A fragment with this key already exists",
+    );
   });
 
   it("returns entity-type-specific clash message for non-fragment types", () => {
     const all = new Set(["taken-key"]);
-    expect(validateExtractKey("taken-key", all, noDiscarded, "note")).toBe(
+    expect(validateExtractKey("taken-key", all, "note")).toBe(
       "A note with this key already exists",
     );
-    expect(validateExtractKey("taken-key", all, noDiscarded, "reference")).toBe(
+    expect(validateExtractKey("taken-key", all, "reference")).toBe(
       "A reference with this key already exists",
     );
-    expect(validateExtractKey("taken-key", all, noDiscarded, "aspect")).toBe(
+    expect(validateExtractKey("taken-key", all, "aspect")).toBe(
       "An aspect with this key already exists",
     );
   });
 
   it("returns null when key is valid and unused", () => {
     const all = new Set(["other-key"]);
-    expect(validateExtractKey("new-key", all, noDiscarded)).toBeNull();
+    expect(validateExtractKey("new-key", all, "fragment")).toBeNull();
   });
 
   it("checks trimmed key against the key sets", () => {
     const all = new Set(["taken"]);
-    expect(validateExtractKey("  taken  ", all, noDiscarded)).toBe(
+    expect(validateExtractKey("  taken  ", all, "fragment")).toBe(
       "A fragment with this key already exists",
     );
   });

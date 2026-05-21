@@ -6,7 +6,7 @@ export type ExtractReferenceInput = {
   sourceType: "fragment" | "note" | "reference" | "aspect";
   sourceKey: string;
   sourceUuid: string;
-  sourceMode: "keep" | "cut" | "link";
+  sourceMode: "keep";
   navigated: boolean;
 };
 

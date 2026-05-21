@@ -9,14 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
-import { findSmallestUnusedSuffix, validateExtractKey } from "./fragments/extract-utils";
+import { findSmallestUnusedSuffix } from "./extract-utils";
 
 const PREVIEW_MAX_LENGTH = 200;
 
 const truncatePreview = (text: string) =>
   text.length > PREVIEW_MAX_LENGTH ? text.slice(0, PREVIEW_MAX_LENGTH) + "…" : text;
-
-type TargetEntityType = "fragment" | "note" | "reference" | "aspect";
 
 type Props = {
   open: boolean;
@@ -24,8 +22,7 @@ type Props = {
   selectionText: string;
   preFillPrefix: string;
   allKeys: Set<string>;
-  discardedKeys: Set<string>;
-  targetType: TargetEntityType;
+  validateKey: (key: string) => string | null;
   isPending: boolean;
   onClose: () => void;
   onConfirm: (key: string) => Promise<string | null>;
@@ -37,8 +34,7 @@ export const ExtractToEntityDialogCore = ({
   selectionText,
   preFillPrefix,
   allKeys,
-  discardedKeys,
-  targetType,
+  validateKey,
   isPending,
   onClose,
   onConfirm,
@@ -70,15 +66,14 @@ export const ExtractToEntityDialogCore = ({
 
   useEffect(() => {
     if (!open) return;
-    const validationError = validateExtractKey(keyValue, allKeys, discardedKeys, targetType);
-    setError(validationError);
-  }, [keyValue, allKeys, discardedKeys, targetType, open]);
+    setError(validateKey(keyValue));
+  }, [keyValue, validateKey, open]);
 
   const isConfirmDisabled = isPending || error !== null || keyValue.trim().length === 0;
 
   const handleConfirm = async () => {
     const trimmedKey = keyValue.trim();
-    const validationError = validateExtractKey(trimmedKey, allKeys, discardedKeys, targetType);
+    const validationError = validateKey(trimmedKey);
     if (validationError) {
       setError(validationError);
       return;
