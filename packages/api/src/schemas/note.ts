@@ -5,6 +5,7 @@ import {
   NoteUpdateSchema as DomainNoteUpdateSchema,
   NoteUpdateResponseSchema as DomainNoteUpdateResponseSchema,
 } from "@maskor/shared";
+import { InsertionBodySchema } from "./shared";
 
 // List response — index layer fields
 export const IndexedNoteSchema = DomainNoteSchema.pick({ uuid: true, key: true })
@@ -52,3 +53,12 @@ export const NoteExtractSchema = z
     navigated: z.boolean().openapi({ example: true }),
   })
   .openapi("NoteExtract");
+
+export const NoteInsertionSchema = InsertionBodySchema.openapi("NoteInsertion");
+
+export const NoteInsertionResponseSchema = z
+  .object({
+    note: NoteSchema,
+    sourceCutFailed: z.boolean().openapi({ example: false }),
+  })
+  .openapi("NoteInsertionResponse");

@@ -12,6 +12,8 @@ import {
   ReferenceCreateSchema,
   ReferenceUpdateSchema,
   ReferenceExtractSchema,
+  ReferenceInsertionSchema,
+  ReferenceInsertionResponseSchema,
 } from "../schemas/reference";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -19,8 +21,10 @@ import {
   executeCommand,
   createReferenceCommand,
   extractReferenceCommand,
+  insertReferenceCommand,
   updateReferenceCommand,
   deleteReferenceCommand,
+  cutBodyCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
@@ -100,6 +104,64 @@ const extractReferenceRoute = createRoute({
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Reference with this key already exists",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const appendReferenceRoute = createRoute({
+  operationId: "appendReference",
+  method: "post",
+  path: "/{referenceId}/append",
+  tags: ["References"],
+  summary: "Append selected text to an existing reference",
+  request: {
+    params: ReferenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: ReferenceInsertionSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ReferenceInsertionResponseSchema } },
+      description: "Reference updated with appended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Reference or source entity not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const prependReferenceRoute = createRoute({
+  operationId: "prependReference",
+  method: "post",
+  path: "/{referenceId}/prepend",
+  tags: ["References"],
+  summary: "Prepend selected text to an existing reference",
+  request: {
+    params: ReferenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: ReferenceInsertionSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ReferenceInsertionResponseSchema } },
+      description: "Reference updated with prepended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Reference or source entity not found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -228,6 +290,76 @@ referencesRouter.openapi(extractReferenceRoute, async (ctx) => {
     });
 
     return ctx.json(reference, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+referencesRouter.openapi(appendReferenceRoute, async (ctx) => {
+  const { referenceId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const reference = await executeCommand(insertReferenceCommand, commandContext, {
+      referenceId,
+      insertedBody,
+      position: "append",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ reference, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ reference, sourceCutFailed: !cutSuccess }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+referencesRouter.openapi(prependReferenceRoute, async (ctx) => {
+  const { referenceId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const reference = await executeCommand(insertReferenceCommand, commandContext, {
+      referenceId,
+      insertedBody,
+      position: "prepend",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ reference, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ reference, sourceCutFailed: !cutSuccess }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

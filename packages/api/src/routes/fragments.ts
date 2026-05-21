@@ -13,6 +13,8 @@ import {
   FragmentUpdateSchema,
   FragmentUUIDParamSchema,
   FragmentExtractSchema,
+  FragmentInsertionSchema,
+  FragmentInsertionResponseSchema,
 } from "../schemas/fragment";
 import { FragmentStatsSchema } from "../schemas/stats";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -21,10 +23,12 @@ import {
   executeCommand,
   createFragmentCommand,
   extractFragmentCommand,
+  insertFragmentCommand,
   updateFragmentCommand,
   discardFragmentCommand,
   restoreFragmentCommand,
   deleteFragmentCommand,
+  cutBodyCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
@@ -175,6 +179,58 @@ const extractFragmentRoute = createRoute({
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Fragment with this key already exists",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const appendFragmentRoute = createRoute({
+  operationId: "appendFragment",
+  method: "post",
+  path: "/{fragmentId}/append",
+  tags: ["Fragments"],
+  summary: "Append selected text to an existing fragment",
+  request: {
+    params: FragmentUUIDParamSchema,
+    body: { content: { "application/json": { schema: FragmentInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: FragmentInsertionResponseSchema } },
+      description: "Fragment updated with appended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment or source entity not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const prependFragmentRoute = createRoute({
+  operationId: "prependFragment",
+  method: "post",
+  path: "/{fragmentId}/prepend",
+  tags: ["Fragments"],
+  summary: "Prepend selected text to an existing fragment",
+  request: {
+    params: FragmentUUIDParamSchema,
+    body: { content: { "application/json": { schema: FragmentInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: FragmentInsertionResponseSchema } },
+      description: "Fragment updated with prepended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment or source entity not found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -440,6 +496,76 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
     });
 
     return ctx.json(fragment, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(appendFragmentRoute, async (ctx) => {
+  const { fragmentId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const fragment = await executeCommand(insertFragmentCommand, commandContext, {
+      fragmentId,
+      insertedBody,
+      position: "append",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ fragment, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ fragment, sourceCutFailed: !cutSuccess }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(prependFragmentRoute, async (ctx) => {
+  const { fragmentId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const fragment = await executeCommand(insertFragmentCommand, commandContext, {
+      fragmentId,
+      insertedBody,
+      position: "prepend",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ fragment, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ fragment, sourceCutFailed: !cutSuccess }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

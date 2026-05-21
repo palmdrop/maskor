@@ -5,6 +5,7 @@ import {
   AspectUpdateSchema as DomainAspectUpdateSchema,
   AspectColorSchema,
 } from "@maskor/shared";
+import { InsertionBodySchema } from "./shared";
 
 const ColorExample = { example: "#f97316" };
 
@@ -64,3 +65,12 @@ export const AspectExtractSchema = z
     navigated: z.boolean().openapi({ example: true }),
   })
   .openapi("AspectExtract");
+
+export const AspectInsertionSchema = InsertionBodySchema.openapi("AspectInsertion");
+
+export const AspectInsertionResponseSchema = z
+  .object({
+    aspect: AspectSchema,
+    sourceCutFailed: z.boolean().openapi({ example: false }),
+  })
+  .openapi("AspectInsertionResponse");

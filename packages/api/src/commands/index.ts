@@ -4,6 +4,8 @@ export type { Command, CommandContext, GlobalCommand, GlobalCommandContext } fro
 export { createFragmentCommand } from "./fragments/create-fragment";
 export { extractFragmentCommand } from "./fragments/extract-fragment";
 export type { ExtractFragmentInput } from "./fragments/extract-fragment";
+export { insertFragmentCommand } from "./fragments/insert-fragment";
+export type { InsertFragmentInput } from "./fragments/insert-fragment";
 export { createImportCommand } from "./fragments/import";
 export type { ImportInput, ImportResult, ImportError } from "./fragments/import";
 export { createPreviewImportCommand } from "./fragments/preview-import";
@@ -16,18 +18,24 @@ export { deleteFragmentCommand } from "./fragments/delete-fragment";
 export { createAspectCommand } from "./aspects/create-aspect";
 export { extractAspectCommand } from "./aspects/extract-aspect";
 export type { ExtractAspectInput } from "./aspects/extract-aspect";
+export { insertAspectCommand } from "./aspects/insert-aspect";
+export type { InsertAspectInput } from "./aspects/insert-aspect";
 export { updateAspectCommand } from "./aspects/update-aspect";
 export { deleteAspectCommand } from "./aspects/delete-aspect";
 
 export { createNoteCommand } from "./notes/create-note";
 export { extractNoteCommand } from "./notes/extract-note";
 export type { ExtractNoteInput } from "./notes/extract-note";
+export { insertNoteCommand } from "./notes/insert-note";
+export type { InsertNoteInput } from "./notes/insert-note";
 export { updateNoteCommand } from "./notes/update-note";
 export { deleteNoteCommand } from "./notes/delete-note";
 
 export { createReferenceCommand } from "./references/create-reference";
 export { extractReferenceCommand } from "./references/extract-reference";
 export type { ExtractReferenceInput } from "./references/extract-reference";
+export { insertReferenceCommand } from "./references/insert-reference";
+export type { InsertReferenceInput } from "./references/insert-reference";
 export { updateReferenceCommand } from "./references/update-reference";
 export { deleteReferenceCommand } from "./references/delete-reference";
 
@@ -47,6 +55,9 @@ export { registerProjectCommand } from "./projects/register-project";
 export { updateProjectCommand } from "./projects/update-project";
 export { updateProjectVaultPathCommand } from "./projects/update-project-vault-path";
 export { removeProjectCommand } from "./projects/remove-project";
+
+export { cutBodyCommand } from "./cut-body";
+export type { CutBodyInput } from "./cut-body";
 
 export { createPatchSettingsCommand } from "./settings/patch-settings";
 

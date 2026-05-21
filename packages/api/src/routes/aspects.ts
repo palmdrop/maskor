@@ -12,6 +12,8 @@ import {
   AspectCreateSchema,
   AspectUpdateSchema,
   AspectExtractSchema,
+  AspectInsertionSchema,
+  AspectInsertionResponseSchema,
 } from "../schemas/aspect";
 import { ArcSchema, ArcCreateSchema, ArcAspectParamSchema } from "../schemas/arc";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -20,8 +22,10 @@ import {
   executeCommand,
   createAspectCommand,
   extractAspectCommand,
+  insertAspectCommand,
   updateAspectCommand,
   deleteAspectCommand,
+  cutBodyCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
@@ -113,6 +117,58 @@ const extractAspectRoute = createRoute({
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Aspect with this key already exists",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const appendAspectRoute = createRoute({
+  operationId: "appendAspect",
+  method: "post",
+  path: "/{aspectId}/append",
+  tags: ["Aspects"],
+  summary: "Append selected text to an existing aspect",
+  request: {
+    params: AspectUUIDParamSchema,
+    body: { content: { "application/json": { schema: AspectInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: AspectInsertionResponseSchema } },
+      description: "Aspect updated with appended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Aspect or source entity not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const prependAspectRoute = createRoute({
+  operationId: "prependAspect",
+  method: "post",
+  path: "/{aspectId}/prepend",
+  tags: ["Aspects"],
+  summary: "Prepend selected text to an existing aspect",
+  request: {
+    params: AspectUUIDParamSchema,
+    body: { content: { "application/json": { schema: AspectInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: AspectInsertionResponseSchema } },
+      description: "Aspect updated with prepended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Aspect or source entity not found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -246,6 +302,76 @@ aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
     });
 
     return ctx.json(aspect, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+aspectsRouter.openapi(appendAspectRoute, async (ctx) => {
+  const { aspectId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const aspect = await executeCommand(insertAspectCommand, commandContext, {
+      aspectId,
+      insertedBody,
+      position: "append",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ aspect, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ aspect, sourceCutFailed: !cutSuccess }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+aspectsRouter.openapi(prependAspectRoute, async (ctx) => {
+  const { aspectId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const aspect = await executeCommand(insertAspectCommand, commandContext, {
+      aspectId,
+      insertedBody,
+      position: "prepend",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ aspect, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ aspect, sourceCutFailed: !cutSuccess }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

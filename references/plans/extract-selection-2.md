@@ -1,7 +1,7 @@
 # Plan: Extract Selection — Slices 2 + 3
 
 **Date**: 21-05-2026
-**Status**: Todo
+**Status**: In Progress
 **Specs**: `specifications/extract-selection.md`
 
 ---
@@ -27,34 +27,34 @@ A writer can (slice 2) extract any body selection into a new note, reference, or
 
 ### Phase 1 — Branch and shared frontend refactor
 
-- [ ] Create branch `feature/extract-selection-slices-2-3` off `main`.
-- [ ] Refactor `ExtractToFragmentDialog` into a per-type pair: a shared core (selection preview, key field with live validation, Confirm/Cancel, pre-fill+pre-select on open) and four thin wrappers per target type that supply the type-specific mutation hook, list-query hook, pre-fill prefix, and post-success route. The fragment wrapper preserves current behavior 1:1.
-- [ ] Refactor `useEditorExtractToFragmentCommand` into a generic `useEditorExtractCommand` factory or four parallel per-type hooks (`useEditorExtractTo{Fragment,Note,Reference,Aspect}Command`). Each registers `editor.extract-to-<type>` with the correct label, scope, disabled-with-reason, and `onExtract` callback. Pick the shape that minimizes duplication — likely a factory taking the target type plus the `getSelection` callback.
-- [ ] Confirm `SelectionCapture` already works for all four body editor surfaces (note/reference/aspect editors use the same `prose-editor` component as fragments). If any surface diverges, fix the divergence here, not later.
-- [ ] `bun run verify`.
-- [ ] `git commit` — refactor only, behavior preserved for the shipped fragment slice.
+- [x] Create branch `feature/extract-selection-slices-2-3` off `main`.
+- [x] Refactor `ExtractToFragmentDialog` into a per-type pair: a shared core (selection preview, key field with live validation, Confirm/Cancel, pre-fill+pre-select on open) and four thin wrappers per target type that supply the type-specific mutation hook, list-query hook, pre-fill prefix, and post-success route. The fragment wrapper preserves current behavior 1:1.
+- [x] Refactor `useEditorExtractToFragmentCommand` into a generic `useEditorExtractCommand` factory or four parallel per-type hooks (`useEditorExtractTo{Fragment,Note,Reference,Aspect}Command`). Each registers `editor.extract-to-<type>` with the correct label, scope, disabled-with-reason, and `onExtract` callback. Pick the shape that minimizes duplication — likely a factory taking the target type plus the `getSelection` callback.
+- [x] Confirm `SelectionCapture` already works for all four body editor surfaces (note/reference/aspect editors use the same `prose-editor` component as fragments). If any surface diverges, fix the divergence here, not later.
+- [x] `bun run verify`.
+- [x] `git commit` — refactor only, behavior preserved for the shipped fragment slice.
 
 ### Phase 2 — Slice 2: extract-to-{note, reference, aspect}
 
-- [ ] Add `note:extracted`, `reference:extracted`, `aspect:extracted` to `ActionTypeSchema` and the `LogEntrySchema` discriminated union in `packages/shared/src/schemas/domain/action.ts`. Payload shape is identical to the shipped `fragment:extracted` (`sourceType`, `sourceKey`, `sourceUuid`, `sourceMode`, `navigated`).
-- [ ] Add API commands `commands/notes/extract-note.ts`, `commands/references/extract-reference.ts`, `commands/aspects/extract-aspect.ts`, each mirroring `extract-fragment.ts` — write the new entity via the appropriate storage service and emit one `<type>:extracted` log entry. Export from `commands/index.ts`.
-- [ ] Add routes `POST /notes/extract`, `POST /references/extract`, `POST /aspects/extract` mirroring `extractFragmentRoute`, each accepting `{ key, content, sourceFragmentUuid, sourceMode, navigated }` (or the per-source-type equivalent — see next task) and returning `201` + the new entity.
-- [ ] Decide whether the extract endpoint takes `sourceFragmentUuid` or a generic `sourceUuid` + `sourceType`. The shipped route hardcodes `sourceFragmentUuid` because both source and target were fragments. The destination type now varies, but the source can also be any of the four; pick a name that holds for both axes (`sourceUuid` + `sourceType` is the obvious choice). Update the shipped `extract-fragment` route to match — this is a breaking change to the OpenAPI surface, run `bun run codegen` after.
-- [ ] Run `bun run codegen` in `packages/frontend`. Confirm `useExtractNote`, `useExtractReference`, `useExtractAspect` hooks generate.
-- [ ] Frontend: wire up `useEditorExtractTo{Note,Reference,Aspect}Command` in `EntityEditorShell` (and parallel modal state for each target type), reusing the shared dialog wrappers.
-- [ ] Tests: per-type unit tests for the smallest-unused-suffix logic and validate-extract-key behavior (the existing fragment tests are the template — parameterize by target type if cheap). Integration tests for at least one non-fragment target (e.g. note) covering pre-fill, clash, Confirm payload, success → navigation, server-error surface.
-- [ ] `bun run verify`.
-- [ ] `git commit` — slice 2.
+- [x] Add `note:extracted`, `reference:extracted`, `aspect:extracted` to `ActionTypeSchema` and the `LogEntrySchema` discriminated union in `packages/shared/src/schemas/domain/action.ts`. Payload shape is identical to the shipped `fragment:extracted` (`sourceType`, `sourceKey`, `sourceUuid`, `sourceMode`, `navigated`).
+- [x] Add API commands `commands/notes/extract-note.ts`, `commands/references/extract-reference.ts`, `commands/aspects/extract-aspect.ts`, each mirroring `extract-fragment.ts` — write the new entity via the appropriate storage service and emit one `<type>:extracted` log entry. Export from `commands/index.ts`.
+- [x] Add routes `POST /notes/extract`, `POST /references/extract`, `POST /aspects/extract` mirroring `extractFragmentRoute`, each accepting `{ key, content, sourceFragmentUuid, sourceMode, navigated }` (or the per-source-type equivalent — see next task) and returning `201` + the new entity.
+- [x] Decide whether the extract endpoint takes `sourceFragmentUuid` or a generic `sourceUuid` + `sourceType`. The shipped route hardcodes `sourceFragmentUuid` because both source and target were fragments. The destination type now varies, but the source can also be any of the four; pick a name that holds for both axes (`sourceUuid` + `sourceType` is the obvious choice). Update the shipped `extract-fragment` route to match — this is a breaking change to the OpenAPI surface, run `bun run codegen` after.
+- [x] Run `bun run codegen` in `packages/frontend`. Confirm `useExtractNote`, `useExtractReference`, `useExtractAspect` hooks generate.
+- [x] Frontend: wire up `useEditorExtractTo{Note,Reference,Aspect}Command` in `EntityEditorShell` (and parallel modal state for each target type), reusing the shared dialog wrappers.
+- [x] Tests: per-type unit tests for the smallest-unused-suffix logic and validate-extract-key behavior (the existing fragment tests are the template — parameterize by target type if cheap). Integration tests for at least one non-fragment target (e.g. note) covering pre-fill, clash, Confirm payload, success → navigation, server-error surface.
+- [x] `bun run verify`.
+- [x] `git commit` — slice 2.
 
 ### Phase 3 — Slice 3 backend: append/prepend API
 
-- [ ] Add 8 action types to `ActionTypeSchema` + `LogEntrySchema`: `fragment:appended`, `note:appended`, `reference:appended`, `aspect:appended`, `fragment:prepended`, `note:prepended`, `reference:prepended`, `aspect:prepended`. Payload shape identical to `*:extracted` (`sourceType`, `sourceKey`, `sourceUuid`, `sourceMode`, `navigated`).
-- [ ] Add a pure helper `applyInsertion(existingBody, insertedBody, position): string` with the blank-line separator rules from the spec (blank line between sides; suppress separator when existing body is empty/whitespace-only).
-- [ ] Add API commands `commands/<entity>/append-<entity>.ts` and `prepend-<entity>.ts` (8 files) — each reads the target entity, applies `applyInsertion`, writes the updated entity via the storage service, and emits one `<type>:appended` or `<type>:prepended` log entry. If the consolidation is cheap, a single per-entity `received-extract.ts` command with a `position` parameter is acceptable; otherwise keep them split for symmetry with `extract-<entity>.ts`. Export from `commands/index.ts`.
-- [ ] Decide on the source-mode handling at the command level. The command must accept `sourceMode: keep | cut | link`. For `cut`, the source-body update is a separate concern from the target-body update — the route should issue the target write first, then the source PATCH, and surface the partial-success state if the source write fails after the target succeeded. This matches the spec's target-then-source ordering. Implementation note: the source PATCH reuses the existing per-type update endpoint; no new route needed for it.
-- [ ] Add routes `POST /<entity>/{uuid}/append`, `POST /<entity>/{uuid}/prepend` (8 endpoints). Path uses the target entity's UUID; body carries `{ insertedBody, sourceUuid, sourceType, sourceMode, navigated }`.
-- [ ] On `sourceMode: "link"`, route returns 400 — `Link` mode is reserved until `document-links.md` ships.
-- [ ] Run `bun run codegen` in `packages/frontend`.
+- [x] Add 8 action types to `ActionTypeSchema` + `LogEntrySchema`: `fragment:appended`, `note:appended`, `reference:appended`, `aspect:appended`, `fragment:prepended`, `note:prepended`, `reference:prepended`, `aspect:prepended`. Payload shape identical to `*:extracted` (`sourceType`, `sourceKey`, `sourceUuid`, `sourceMode`, `navigated`).
+- [x] Add a pure helper `applyInsertion(existingBody, insertedBody, position): string` with the blank-line separator rules from the spec (blank line between sides; suppress separator when existing body is empty/whitespace-only).
+- [x] Add API commands `commands/<entity>/insert-<entity>.ts` (4 files, one per entity type with `position: "append" | "prepend"`) — each reads the target entity, applies `applyInsertion`, writes the updated entity via the storage service, and emits one `<type>:appended` or `<type>:prepended` log entry. `cutBodyCommand` handles source-body removal (no log entries emitted — the cut is a downstream effect already covered by the insertion log entry). Exported from `commands/index.ts`.
+- [x] Source-mode handling: `sourceMode: keep | cut` accepted (`link` schema-rejected). Target write first (via insert command), then source PATCH (via `cutBodyCommand` which calls storage directly and emits no log entries). Route surfaces `{ sourceCutFailed: boolean }` in response for partial-success.
+- [x] Add routes `POST /<entity>/{uuid}/append`, `POST /<entity>/{uuid}/prepend` (8 endpoints). Path uses the target entity's UUID; body carries `{ insertedBody, sourceUuid, sourceType, sourceMode, navigated }`.
+- [x] `sourceMode: "link"` rejected at schema validation level (enum is `["keep", "cut"]`).
+- [x] Run `bun run codegen` in `packages/frontend`. All 8 hooks generated (`useAppendFragment`, `usePrependFragment`, etc.).
 
 ### Phase 4 — Slice 3 frontend: modal + parameterized commands
 

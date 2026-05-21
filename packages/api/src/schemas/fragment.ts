@@ -5,6 +5,7 @@ import {
   FragmentUpdateSchema as DomainFragmentUpdateSchema,
   AspectWeightsSchema,
 } from "@maskor/shared";
+import { InsertionBodySchema } from "./shared";
 
 const IndexedFragmentAspectSchema = z.object({
   weight: z.number(),
@@ -80,3 +81,12 @@ export const FragmentExtractSchema = z
     navigated: z.boolean().openapi({ example: true }),
   })
   .openapi("FragmentExtract");
+
+export const FragmentInsertionSchema = InsertionBodySchema.openapi("FragmentInsertion");
+
+export const FragmentInsertionResponseSchema = z
+  .object({
+    fragment: FragmentSchema,
+    sourceCutFailed: z.boolean().openapi({ example: false }),
+  })
+  .openapi("FragmentInsertionResponse");

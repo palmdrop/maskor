@@ -12,6 +12,8 @@ import {
   NoteCreateSchema,
   NoteUpdateSchema,
   NoteExtractSchema,
+  NoteInsertionSchema,
+  NoteInsertionResponseSchema,
 } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -19,8 +21,10 @@ import {
   executeCommand,
   createNoteCommand,
   extractNoteCommand,
+  insertNoteCommand,
   updateNoteCommand,
   deleteNoteCommand,
+  cutBodyCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
@@ -100,6 +104,58 @@ const extractNoteRoute = createRoute({
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Note with this key already exists",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const appendNoteRoute = createRoute({
+  operationId: "appendNote",
+  method: "post",
+  path: "/{noteId}/append",
+  tags: ["Notes"],
+  summary: "Append selected text to an existing note",
+  request: {
+    params: NoteUUIDParamSchema,
+    body: { content: { "application/json": { schema: NoteInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: NoteInsertionResponseSchema } },
+      description: "Note updated with appended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Note or source entity not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const prependNoteRoute = createRoute({
+  operationId: "prependNote",
+  method: "post",
+  path: "/{noteId}/prepend",
+  tags: ["Notes"],
+  summary: "Prepend selected text to an existing note",
+  request: {
+    params: NoteUUIDParamSchema,
+    body: { content: { "application/json": { schema: NoteInsertionSchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: NoteInsertionResponseSchema } },
+      description: "Note updated with prepended content",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Note or source entity not found",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -228,6 +284,76 @@ notesRouter.openapi(extractNoteRoute, async (ctx) => {
     });
 
     return ctx.json(note, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+notesRouter.openapi(appendNoteRoute, async (ctx) => {
+  const { noteId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const note = await executeCommand(insertNoteCommand, commandContext, {
+      noteId,
+      insertedBody,
+      position: "append",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ note, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ note, sourceCutFailed: !cutSuccess }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+notesRouter.openapi(prependNoteRoute, async (ctx) => {
+  const { noteId } = ctx.req.valid("param");
+  const { insertedBody, sourceUuid, sourceType, sourceMode, navigated } = ctx.req.valid("json");
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const note = await executeCommand(insertNoteCommand, commandContext, {
+      noteId,
+      insertedBody,
+      position: "prepend",
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+    if (sourceMode !== "cut") return ctx.json({ note, sourceCutFailed: false }, 200);
+    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+      sourceType,
+      sourceId: sourceUuid,
+      textToRemove: insertedBody,
+    });
+    return ctx.json({ note, sourceCutFailed: !cutSuccess }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

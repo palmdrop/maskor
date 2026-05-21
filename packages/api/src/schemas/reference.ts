@@ -5,6 +5,7 @@ import {
   ReferenceUpdateSchema as DomainReferenceUpdateSchema,
   ReferenceUpdateResponseSchema as DomainReferenceUpdateResponseSchema,
 } from "@maskor/shared";
+import { InsertionBodySchema } from "./shared";
 
 // List response — index layer fields
 export const IndexedReferenceSchema = DomainReferenceSchema.pick({ uuid: true, key: true })
@@ -52,3 +53,12 @@ export const ReferenceExtractSchema = z
     navigated: z.boolean().openapi({ example: true }),
   })
   .openapi("ReferenceExtract");
+
+export const ReferenceInsertionSchema = InsertionBodySchema.openapi("ReferenceInsertion");
+
+export const ReferenceInsertionResponseSchema = z
+  .object({
+    reference: ReferenceSchema,
+    sourceCutFailed: z.boolean().openapi({ example: false }),
+  })
+  .openapi("ReferenceInsertionResponse");
