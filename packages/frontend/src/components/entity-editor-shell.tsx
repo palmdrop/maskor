@@ -7,7 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { ProseEditor, type ProseEditorHandle } from "./prose-editor";
+import { useNavigate } from "@tanstack/react-router";
+import { ProseEditor, type ProseEditorHandle, type SelectionCapture } from "./prose-editor";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -17,9 +18,12 @@ import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
+import { useEditorExtractToFragmentCommand } from "@lib/commands/catalog/useEditorExtractToFragmentCommand";
+import { ExtractToFragmentDialog } from "./fragments/extract-to-fragment-dialog";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
+  getSelection: () => SelectionCapture;
 };
 
 type Props = {
@@ -72,8 +76,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     ref,
   ) {
     const editorConfig = useProjectEditorConfig(projectId);
+    const navigate = useNavigate();
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
+
+    const [extractModalOpen, setExtractModalOpen] = useState(false);
+    const [extractSelectionText, setExtractSelectionText] = useState("");
 
     // Track the live editor content so useEntityContentSwap can debounce-write it.
     // Re-reads from the editor on every onProseChange so the swap matches what's
@@ -158,7 +166,35 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       }
     }, [saveContent]);
 
-    useImperativeHandle(ref, () => ({ save: saveContent }), [saveContent]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        save: saveContent,
+        getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
+      }),
+      [saveContent],
+    );
+
+    const handleExtractOpen = useCallback((text: string) => {
+      setExtractSelectionText(text);
+      setExtractModalOpen(true);
+    }, []);
+
+    const handleExtractSuccess = useCallback(
+      (newFragmentUuid: string) => {
+        setExtractModalOpen(false);
+        void navigate({
+          to: "/projects/$projectId/fragments/$fragmentId",
+          params: { projectId, fragmentId: newFragmentUuid },
+        });
+      },
+      [navigate, projectId],
+    );
+
+    useEditorExtractToFragmentCommand({
+      getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
+      onExtract: handleExtractOpen,
+    });
 
     const handleProseChange = useCallback(() => {
       const current = proseEditorRef.current?.getContent();
@@ -262,6 +298,16 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             />
           </main>
         </div>
+        {entityKind === "fragment" && (
+          <ExtractToFragmentDialog
+            open={extractModalOpen}
+            projectId={projectId}
+            sourceFragmentUuid={entityUUID}
+            selectionText={extractSelectionText}
+            onClose={() => setExtractModalOpen(false)}
+            onSuccess={handleExtractSuccess}
+          />
+        )}
       </div>
     );
   },

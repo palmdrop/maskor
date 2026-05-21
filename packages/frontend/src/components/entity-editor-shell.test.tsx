@@ -2,16 +2,28 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { forwardRef, useImperativeHandle } from "react";
 import type { Ref } from "react";
+import { CommandsProvider } from "@lib/commands/CommandsProvider";
+import type { ReactNode } from "react";
+
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
 
 // ---- Stubs ----
 
 const proseGetContentMock = vi.fn(() => "current editor content");
 const proseSetContentMock = vi.fn();
+const proseGetSelectionMock = vi.fn(() => ({ text: "", isEmpty: true }));
 const onChangeRef: { current: (() => void) | undefined } = { current: undefined };
 
 type ProseEditorHandle = {
   getContent: () => string;
   setContent: (value: string) => void;
+  getSelection: () => { text: string; isEmpty: boolean };
 };
 
 type ProseEditorProps = { content: string; onChange?: () => void; onSave?: () => void };
@@ -24,10 +36,15 @@ vi.mock("./prose-editor", () => ({
     useImperativeHandle(ref, () => ({
       getContent: proseGetContentMock,
       setContent: proseSetContentMock,
+      getSelection: proseGetSelectionMock,
     }));
     onChangeRef.current = onChange;
     return <div data-testid="prose-stub" />;
   }),
+}));
+
+vi.mock("./fragments/extract-to-fragment-dialog", () => ({
+  ExtractToFragmentDialog: () => null,
 }));
 
 vi.mock("@hooks/useProjectEditorConfig", () => ({
@@ -57,10 +74,16 @@ const baseProps = {
   isPending: false,
 };
 
+const wrap = ({ children }: { children: ReactNode }) => (
+  <CommandsProvider>{children}</CommandsProvider>
+);
+
 beforeEach(() => {
   proseGetContentMock.mockReset();
   proseGetContentMock.mockReturnValue("current editor content");
   proseSetContentMock.mockReset();
+  proseGetSelectionMock.mockReset();
+  proseGetSelectionMock.mockReturnValue({ text: "", isEmpty: true });
   swapHookMock.mockReset();
 });
 
@@ -81,6 +104,7 @@ describe("EntityEditorShell — swap integration", () => {
         onKeySave={async () => {}}
         onContentSave={async () => {}}
       />,
+      { wrapper: wrap },
     );
 
     await act(async () => {});
@@ -102,6 +126,7 @@ describe("EntityEditorShell — swap integration", () => {
         onKeySave={async () => {}}
         onContentSave={async () => {}}
       />,
+      { wrapper: wrap },
     );
 
     await act(async () => {});
@@ -125,6 +150,7 @@ describe("EntityEditorShell — swap integration", () => {
         onKeySave={async () => {}}
         onContentSave={onContentSave}
       />,
+      { wrapper: wrap },
     );
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -150,6 +176,7 @@ describe("EntityEditorShell — swap integration", () => {
         onKeySave={async () => {}}
         onContentSave={onContentSave}
       />,
+      { wrapper: wrap },
     );
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -178,6 +205,7 @@ describe("EntityEditorShell — swap integration", () => {
         onKeySave={async () => {}}
         onContentSave={async () => {}}
       />,
+      { wrapper: wrap },
     );
 
     await act(async () => {});

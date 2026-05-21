@@ -2,6 +2,8 @@ export { executeCommand, executeGlobalCommand } from "./types";
 export type { Command, CommandContext, GlobalCommand, GlobalCommandContext } from "./types";
 
 export { createFragmentCommand } from "./fragments/create-fragment";
+export { extractFragmentCommand } from "./fragments/extract-fragment";
+export type { ExtractFragmentInput } from "./fragments/extract-fragment";
 export { createImportCommand } from "./fragments/import";
 export type { ImportInput, ImportResult, ImportError } from "./fragments/import";
 export { createPreviewImportCommand } from "./fragments/preview-import";

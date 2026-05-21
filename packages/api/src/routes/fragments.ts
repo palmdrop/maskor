@@ -12,6 +12,7 @@ import {
   FragmentCreateSchema,
   FragmentUpdateSchema,
   FragmentUUIDParamSchema,
+  FragmentExtractSchema,
 } from "../schemas/fragment";
 import { FragmentStatsSchema } from "../schemas/stats";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -19,6 +20,7 @@ import { projectIdParamSchema } from "../schemas/shared";
 import {
   executeCommand,
   createFragmentCommand,
+  extractFragmentCommand,
   updateFragmentCommand,
   discardFragmentCommand,
   restoreFragmentCommand,
@@ -134,6 +136,40 @@ const createFragmentRoute = createRoute({
     400: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Invalid request body",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment with this key already exists",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const extractFragmentRoute = createRoute({
+  operationId: "extractFragment",
+  method: "post",
+  path: "/extract",
+  tags: ["Fragments"],
+  summary: "Extract selected text into a new fragment",
+  request: {
+    params: projectIdParamSchema,
+    body: { content: { "application/json": { schema: FragmentExtractSchema } }, required: true },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: FragmentSchema } },
+      description: "New fragment created from extraction",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Source fragment not found",
     },
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -350,6 +386,57 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
     };
 
     const fragment = await executeCommand(createFragmentCommand, commandContext, draft);
+    return ctx.json(fragment, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
+  const { key: rawKey, content, sourceFragmentUuid, sourceMode, navigated } = ctx.req.valid("json");
+
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const sourceFragment = await storageService.fragments.read(projectContext, sourceFragmentUuid);
+
+    const newFragment: Fragment = {
+      uuid: randomUUID(),
+      key,
+      content,
+      isDiscarded: false,
+      readiness: 0,
+      notes: [],
+      references: [],
+      aspects: {},
+      contentHash: "",
+      updatedAt: new Date(),
+    };
+
+    const fragment = await executeCommand(extractFragmentCommand, commandContext, {
+      newFragment,
+      sourceType: "fragment",
+      sourceKey: sourceFragment.key,
+      sourceUuid: sourceFragment.uuid,
+      sourceMode,
+      navigated,
+    });
+
     return ctx.json(fragment, 201);
   } catch (error) {
     return throwStorageError(error);

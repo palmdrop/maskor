@@ -9,12 +9,18 @@ import Typography from "@tiptap/extension-typography";
 import { ProseToolbar } from "./prose-toolbar";
 
 type MarkdownStorage = {
-  markdown: { getMarkdown: () => string };
+  markdown: {
+    getMarkdown: () => string;
+    serializer: { serialize: (content: unknown) => string };
+  };
 };
+
+export type SelectionCapture = { text: string; isEmpty: boolean };
 
 export type ProseEditorHandle = {
   getContent: () => string;
   setContent: (value: string) => void;
+  getSelection: () => SelectionCapture;
 };
 
 type Props = {
@@ -109,6 +115,24 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           return;
         }
         editor?.commands.setContent(value, { emitUpdate: false });
+      },
+      getSelection: (): SelectionCapture => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return { text: "", isEmpty: true };
+          const { from, to } = view.state.selection.main;
+          const raw = view.state.doc.sliceString(from, to);
+          const text = raw.trim();
+          return { text, isEmpty: text.length === 0 };
+        }
+        if (!editor) return { text: "", isEmpty: true };
+        const { from, to } = editor.state.selection;
+        if (from === to) return { text: "", isEmpty: true };
+        const slice = editor.state.doc.slice(from, to);
+        const storage = editor.storage as unknown as MarkdownStorage;
+        const raw = storage.markdown.serializer.serialize(slice.content);
+        const text = raw.trim();
+        return { text, isEmpty: text.length === 0 };
       },
     }),
     [vimMode, rawMarkdownMode, editor, content],

@@ -67,3 +67,13 @@ export const FragmentUUIDParamSchema = z.object({
   projectId: z.uuid(),
   fragmentId: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
 });
+
+export const FragmentExtractSchema = z
+  .object({
+    key: z.string().min(1).openapi({ example: "harbour-lights" }),
+    content: z.string().min(1).openapi({ example: "The lights flickered at dusk..." }),
+    sourceFragmentUuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceMode: z.enum(["keep"]).openapi({ example: "keep" }),
+    navigated: z.boolean().openapi({ example: true }),
+  })
+  .openapi("FragmentExtract");
