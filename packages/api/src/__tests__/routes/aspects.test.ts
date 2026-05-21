@@ -73,6 +73,43 @@ describe("POST /projects/:projectId/aspects", () => {
   });
 });
 
+describe("POST /projects/:projectId/aspects/extract", () => {
+  it("creates an aspect from selection and returns 201", async () => {
+    const fragmentListResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentListResponse.json()) as { uuid: string; key: string }[];
+    const sourceFragment = fragments[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "melancholy",
+          description: "A pervading sense of loss.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as {
+      uuid: string;
+      key: string;
+      description?: string;
+      notes: string[];
+    };
+    expect(body.uuid).toBeDefined();
+    expect(body.key).toBe("melancholy");
+    expect(body.description).toBe("A pervading sense of loss.");
+    expect(body.notes).toEqual([]);
+  });
+});
+
 describe("DELETE /projects/:projectId/aspects/:aspectId", () => {
   it("deletes an aspect and returns 204", async () => {
     const createResponse = await testContext.app.request(

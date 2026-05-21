@@ -20,6 +20,9 @@ import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
 import { useEditorExtractCommand } from "@lib/commands/catalog/useEditorExtractCommand";
 import { ExtractToFragmentDialog } from "./fragments/extract-to-fragment-dialog";
+import { ExtractToNoteDialog } from "./notes/extract-to-note-dialog";
+import { ExtractToReferenceDialog } from "./references/extract-to-reference-dialog";
+import { ExtractToAspectDialog } from "./aspects/extract-to-aspect-dialog";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -80,7 +83,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
 
-    const [extractModalOpen, setExtractModalOpen] = useState(false);
+    const [extractTarget, setExtractTarget] = useState<
+      "fragment" | "note" | "reference" | "aspect" | null
+    >(null);
     const [extractSelectionText, setExtractSelectionText] = useState("");
 
     // Track the live editor content so useEntityContentSwap can debounce-write it.
@@ -175,17 +180,60 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       [saveContent],
     );
 
-    const handleExtractOpen = useCallback((text: string) => {
-      setExtractSelectionText(text);
-      setExtractModalOpen(true);
-    }, []);
+    const getEditorSelection = useCallback(
+      () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
+      [],
+    );
 
-    const handleExtractSuccess = useCallback(
-      (newFragmentUuid: string) => {
-        setExtractModalOpen(false);
+    const handleExtractOpen = useCallback(
+      (targetType: "fragment" | "note" | "reference" | "aspect") => (text: string) => {
+        setExtractSelectionText(text);
+        setExtractTarget(targetType);
+      },
+      [],
+    );
+
+    const handleExtractClose = useCallback(() => setExtractTarget(null), []);
+
+    const handleExtractToFragmentSuccess = useCallback(
+      (uuid: string) => {
+        setExtractTarget(null);
         void navigate({
           to: "/projects/$projectId/fragments/$fragmentId",
-          params: { projectId, fragmentId: newFragmentUuid },
+          params: { projectId, fragmentId: uuid },
+        });
+      },
+      [navigate, projectId],
+    );
+
+    const handleExtractToNoteSuccess = useCallback(
+      (uuid: string) => {
+        setExtractTarget(null);
+        void navigate({
+          to: "/projects/$projectId/notes/$noteId",
+          params: { projectId, noteId: uuid },
+        });
+      },
+      [navigate, projectId],
+    );
+
+    const handleExtractToReferenceSuccess = useCallback(
+      (uuid: string) => {
+        setExtractTarget(null);
+        void navigate({
+          to: "/projects/$projectId/references/$referenceId",
+          params: { projectId, referenceId: uuid },
+        });
+      },
+      [navigate, projectId],
+    );
+
+    const handleExtractToAspectSuccess = useCallback(
+      (uuid: string) => {
+        setExtractTarget(null);
+        void navigate({
+          to: "/projects/$projectId/aspects/$aspectId",
+          params: { projectId, aspectId: uuid },
         });
       },
       [navigate, projectId],
@@ -193,8 +241,23 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     useEditorExtractCommand({
       targetType: "fragment",
-      getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
-      onExtract: handleExtractOpen,
+      getSelection: getEditorSelection,
+      onExtract: handleExtractOpen("fragment"),
+    });
+    useEditorExtractCommand({
+      targetType: "note",
+      getSelection: getEditorSelection,
+      onExtract: handleExtractOpen("note"),
+    });
+    useEditorExtractCommand({
+      targetType: "reference",
+      getSelection: getEditorSelection,
+      onExtract: handleExtractOpen("reference"),
+    });
+    useEditorExtractCommand({
+      targetType: "aspect",
+      getSelection: getEditorSelection,
+      onExtract: handleExtractOpen("aspect"),
     });
 
     const handleProseChange = useCallback(() => {
@@ -299,16 +362,41 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             />
           </main>
         </div>
-        {entityKind === "fragment" && (
-          <ExtractToFragmentDialog
-            open={extractModalOpen}
-            projectId={projectId}
-            sourceFragmentUuid={entityUUID}
-            selectionText={extractSelectionText}
-            onClose={() => setExtractModalOpen(false)}
-            onSuccess={handleExtractSuccess}
-          />
-        )}
+        <ExtractToFragmentDialog
+          open={extractTarget === "fragment"}
+          projectId={projectId}
+          sourceFragmentUuid={entityUUID}
+          selectionText={extractSelectionText}
+          onClose={handleExtractClose}
+          onSuccess={handleExtractToFragmentSuccess}
+        />
+        <ExtractToNoteDialog
+          open={extractTarget === "note"}
+          projectId={projectId}
+          sourceUuid={entityUUID}
+          sourceType={entityKind}
+          selectionText={extractSelectionText}
+          onClose={handleExtractClose}
+          onSuccess={handleExtractToNoteSuccess}
+        />
+        <ExtractToReferenceDialog
+          open={extractTarget === "reference"}
+          projectId={projectId}
+          sourceUuid={entityUUID}
+          sourceType={entityKind}
+          selectionText={extractSelectionText}
+          onClose={handleExtractClose}
+          onSuccess={handleExtractToReferenceSuccess}
+        />
+        <ExtractToAspectDialog
+          open={extractTarget === "aspect"}
+          projectId={projectId}
+          sourceUuid={entityUUID}
+          sourceType={entityKind}
+          selectionText={extractSelectionText}
+          onClose={handleExtractClose}
+          onSuccess={handleExtractToAspectSuccess}
+        />
       </div>
     );
   },

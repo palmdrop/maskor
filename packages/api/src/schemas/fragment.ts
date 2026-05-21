@@ -72,7 +72,10 @@ export const FragmentExtractSchema = z
   .object({
     key: z.string().min(1).openapi({ example: "harbour-lights" }),
     content: z.string().min(1).openapi({ example: "The lights flickered at dusk..." }),
-    sourceFragmentUuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceUuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceType: z
+      .enum(["fragment", "note", "reference", "aspect"])
+      .openapi({ example: "fragment" }),
     sourceMode: z.enum(["keep"]).openapi({ example: "keep" }),
     navigated: z.boolean().openapi({ example: true }),
   })

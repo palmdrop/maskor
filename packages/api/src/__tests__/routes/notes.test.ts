@@ -73,6 +73,106 @@ describe("POST /projects/:projectId/notes", () => {
   });
 });
 
+describe("POST /projects/:projectId/notes/extract", () => {
+  it("creates a note from selection and returns 201", async () => {
+    const fragmentListResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentListResponse.json()) as { uuid: string; key: string }[];
+    const sourceFragment = fragments[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "extracted-note",
+          content: "The mist settled over the harbour.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: true,
+        }),
+      },
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { uuid: string; key: string; content: string };
+    expect(body.uuid).toBeDefined();
+    expect(body.key).toBe("extracted-note");
+    expect(body.content).toBe("The mist settled over the harbour.");
+  });
+
+  it("returns 400 for an invalid key", async () => {
+    const fragmentListResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentListResponse.json()) as { uuid: string }[];
+    const sourceFragment = fragments[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "bad/key!",
+          content: "Some content.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 404 when source UUID does not exist", async () => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "note-from-ghost",
+          content: "Some content.",
+          sourceUuid: "00000000-0000-0000-0000-000000000000",
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("allows a note key that is already used by a fragment (cross-type keys do not collide)", async () => {
+    const fragmentListResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await fragmentListResponse.json()) as { uuid: string; key: string }[];
+    const sourceFragment = fragments[0]!;
+
+    const crossKeyResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: sourceFragment.key,
+          content: "Reusing a fragment key for a note.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(crossKeyResponse.status).toBe(201);
+  });
+});
+
 describe("DELETE /projects/:projectId/notes/:noteId", () => {
   it("deletes a note and returns 204", async () => {
     const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {

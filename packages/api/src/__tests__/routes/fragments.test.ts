@@ -125,6 +125,81 @@ describe("POST /projects/:projectId/fragments", () => {
   });
 });
 
+describe("POST /projects/:projectId/fragments/extract", () => {
+  it("creates a fragment from selection and returns 201", async () => {
+    const listResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const sourceFragment = fragments[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "extracted-harbour-lights",
+          content: "The lights flickered at dusk.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: true,
+        }),
+      },
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as IndexedFragment & { content: string };
+    expect(body.uuid).toBeDefined();
+    expect(body.key).toBe("extracted-harbour-lights");
+    expect(body.content).toBe("The lights flickered at dusk.");
+  });
+
+  it("returns 400 for an invalid key", async () => {
+    const listResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const sourceFragment = fragments[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "bad/key",
+          content: "Some content.",
+          sourceUuid: sourceFragment.uuid,
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 404 when source UUID is unknown", async () => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "orphaned-extraction",
+          content: "Content from nowhere.",
+          sourceUuid: "00000000-0000-0000-0000-000000000000",
+          sourceType: "fragment",
+          sourceMode: "keep",
+          navigated: false,
+        }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("DELETE /projects/:projectId/fragments/:fragmentId", () => {
   it("discards a fragment and returns 204", async () => {
     const listResponse = await testContext.app.request(

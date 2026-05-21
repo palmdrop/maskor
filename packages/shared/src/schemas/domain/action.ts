@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const ActionTypeSchema = z.enum([
   "fragment:extracted",
+  "note:extracted",
+  "reference:extracted",
+  "aspect:extracted",
   "fragment:created",
   "fragment:edited",
   "fragment:updated",
@@ -72,17 +75,19 @@ const entry = <T extends ActionType, P extends z.ZodTypeAny>(type: T, payload: P
 const empty = z.object({});
 const renamed = z.object({ oldKey: z.string(), newKey: z.string() });
 
+const extractionPayload = z.object({
+  sourceType: z.enum(["fragment", "note", "reference", "aspect"]),
+  sourceKey: z.string(),
+  sourceUuid: z.string(),
+  sourceMode: z.enum(["keep", "cut", "link"]),
+  navigated: z.boolean(),
+});
+
 export const LogEntrySchema = z.discriminatedUnion("type", [
-  entry(
-    "fragment:extracted",
-    z.object({
-      sourceType: z.enum(["fragment", "note", "reference", "aspect"]),
-      sourceKey: z.string(),
-      sourceUuid: z.string(),
-      sourceMode: z.enum(["keep", "cut", "link"]),
-      navigated: z.boolean(),
-    }),
-  ),
+  entry("fragment:extracted", extractionPayload),
+  entry("note:extracted", extractionPayload),
+  entry("reference:extracted", extractionPayload),
+  entry("aspect:extracted", extractionPayload),
   entry("fragment:created", empty),
   entry("fragment:edited", empty),
   entry(

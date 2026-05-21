@@ -51,3 +51,16 @@ export const AspectUpdateResponseSchema = z
     warnings: z.array(z.string()),
   })
   .openapi("AspectUpdateResponse");
+
+export const AspectExtractSchema = z
+  .object({
+    key: z.string().min(1).openapi({ example: "tone" }),
+    description: z.string().openapi({ example: "Melancholic undertone throughout..." }),
+    sourceUuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
+    sourceType: z
+      .enum(["fragment", "note", "reference", "aspect"])
+      .openapi({ example: "fragment" }),
+    sourceMode: z.enum(["keep"]).openapi({ example: "keep" }),
+    navigated: z.boolean().openapi({ example: true }),
+  })
+  .openapi("AspectExtract");

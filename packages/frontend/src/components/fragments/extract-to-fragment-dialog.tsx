@@ -45,7 +45,8 @@ export const ExtractToFragmentDialog = ({
           data: {
             key,
             content: selectionText,
-            sourceFragmentUuid,
+            sourceUuid: sourceFragmentUuid,
+            sourceType: "fragment",
             sourceMode: "keep",
             navigated: true,
           },

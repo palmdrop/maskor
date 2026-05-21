@@ -47,6 +47,18 @@ vi.mock("./fragments/extract-to-fragment-dialog", () => ({
   ExtractToFragmentDialog: () => null,
 }));
 
+vi.mock("./notes/extract-to-note-dialog", () => ({
+  ExtractToNoteDialog: () => null,
+}));
+
+vi.mock("./references/extract-to-reference-dialog", () => ({
+  ExtractToReferenceDialog: () => null,
+}));
+
+vi.mock("./aspects/extract-to-aspect-dialog", () => ({
+  ExtractToAspectDialog: () => null,
+}));
+
 vi.mock("@hooks/useProjectEditorConfig", () => ({
   useProjectEditorConfig: () => ({
     vimMode: false,

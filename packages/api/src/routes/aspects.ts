@@ -11,6 +11,7 @@ import {
   AspectUUIDParamSchema,
   AspectCreateSchema,
   AspectUpdateSchema,
+  AspectExtractSchema,
 } from "../schemas/aspect";
 import { ArcSchema, ArcCreateSchema, ArcAspectParamSchema } from "../schemas/arc";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -18,11 +19,13 @@ import { projectIdParamSchema } from "../schemas/shared";
 import {
   executeCommand,
   createAspectCommand,
+  extractAspectCommand,
   updateAspectCommand,
   deleteAspectCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
+import { resolveSourceKey } from "../helpers/resolve-source-key";
 
 const classifyAspectSource = (patch: {
   description?: unknown;
@@ -76,6 +79,40 @@ const getAspectRoute = createRoute({
     503: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const extractAspectRoute = createRoute({
+  operationId: "extractAspect",
+  method: "post",
+  path: "/extract",
+  tags: ["Aspects"],
+  summary: "Extract selected text into a new aspect",
+  request: {
+    params: projectIdParamSchema,
+    body: { content: { "application/json": { schema: AspectExtractSchema } }, required: true },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: AspectSchema } },
+      description: "New aspect created from extraction",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Source entity not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Aspect with this key already exists",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -166,6 +203,52 @@ const updateAspectRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
+  const { key: rawKey, description, sourceUuid, sourceType, sourceMode, navigated } =
+    ctx.req.valid("json");
+
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+
+    const newAspect: Aspect = {
+      uuid: randomUUID(),
+      key,
+      description: description || undefined,
+      notes: [],
+    };
+
+    const aspect = await executeCommand(extractAspectCommand, commandContext, {
+      newAspect,
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+
+    return ctx.json(aspect, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
 });
 
 aspectsRouter.openapi(listAspectsRoute, async (ctx) => {

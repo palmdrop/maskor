@@ -178,7 +178,8 @@ describe("ExtractToFragmentDialog", () => {
         data: expect.objectContaining({
           key: "unnamed-fragment-1",
           content: selectionText,
-          sourceFragmentUuid,
+          sourceUuid: sourceFragmentUuid,
+          sourceType: "fragment",
           sourceMode: "keep",
           navigated: true,
         }),

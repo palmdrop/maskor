@@ -39,3 +39,16 @@ export const ReferenceUpdateSchema = DomainReferenceUpdateSchema.extend({
 export const ReferenceUpdateResponseSchema = DomainReferenceUpdateResponseSchema.extend({
   reference: ReferenceSchema,
 }).openapi("ReferenceUpdateResponse");
+
+export const ReferenceExtractSchema = z
+  .object({
+    key: z.string().min(1).openapi({ example: "The Old Man and the Sea" }),
+    content: z.string().min(1).openapi({ example: "Hemingway. Santiago. Marlin." }),
+    sourceUuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceType: z
+      .enum(["fragment", "note", "reference", "aspect"])
+      .openapi({ example: "fragment" }),
+    sourceMode: z.enum(["keep"]).openapi({ example: "keep" }),
+    navigated: z.boolean().openapi({ example: true }),
+  })
+  .openapi("ReferenceExtract");

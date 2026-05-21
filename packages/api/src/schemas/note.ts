@@ -39,3 +39,16 @@ export const NoteUpdateSchema = DomainNoteUpdateSchema.extend({
 export const NoteUpdateResponseSchema = DomainNoteUpdateResponseSchema.extend({
   note: NoteSchema,
 }).openapi("NoteUpdateResponse");
+
+export const NoteExtractSchema = z
+  .object({
+    key: z.string().min(1).openapi({ example: "On solitude" }),
+    content: z.string().min(1).openapi({ example: "A note body..." }),
+    sourceUuid: z.uuid().openapi({ example: "n1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceType: z
+      .enum(["fragment", "note", "reference", "aspect"])
+      .openapi({ example: "fragment" }),
+    sourceMode: z.enum(["keep"]).openapi({ example: "keep" }),
+    navigated: z.boolean().openapi({ example: true }),
+  })
+  .openapi("NoteExtract");

@@ -28,6 +28,7 @@ import {
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
+import { resolveSourceKey } from "../helpers/resolve-source-key";
 
 const classifyFragmentSource = (patch: {
   content?: unknown;
@@ -393,7 +394,8 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
 });
 
 fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
-  const { key: rawKey, content, sourceFragmentUuid, sourceMode, navigated } = ctx.req.valid("json");
+  const { key: rawKey, content, sourceUuid, sourceType, sourceMode, navigated } =
+    ctx.req.valid("json");
 
   let key: string;
   try {
@@ -413,7 +415,7 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
 
-    const sourceFragment = await storageService.fragments.read(projectContext, sourceFragmentUuid);
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
 
     const newFragment: Fragment = {
       uuid: randomUUID(),
@@ -430,9 +432,9 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
 
     const fragment = await executeCommand(extractFragmentCommand, commandContext, {
       newFragment,
-      sourceType: "fragment",
-      sourceKey: sourceFragment.key,
-      sourceUuid: sourceFragment.uuid,
+      sourceType,
+      sourceKey,
+      sourceUuid,
       sourceMode,
       navigated,
     });

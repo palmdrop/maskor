@@ -75,6 +75,37 @@ describe("POST /projects/:projectId/references", () => {
   });
 });
 
+describe("POST /projects/:projectId/references/extract", () => {
+  it("creates a reference from selection and returns 201", async () => {
+    const noteListResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/notes`,
+    );
+    const notes = (await noteListResponse.json()) as { uuid: string; key: string }[];
+    const sourceNote = notes[0]!;
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/references/extract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "extracted-reference",
+          content: "Hemingway. Cuba. Fish.",
+          sourceUuid: sourceNote.uuid,
+          sourceType: "note",
+          sourceMode: "keep",
+          navigated: true,
+        }),
+      },
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { uuid: string; key: string; content: string };
+    expect(body.uuid).toBeDefined();
+    expect(body.key).toBe("extracted-reference");
+    expect(body.content).toBe("Hemingway. Cuba. Fish.");
+  });
+});
+
 describe("DELETE /projects/:projectId/references/:referenceId", () => {
   it("deletes a reference and returns 204", async () => {
     const createResponse = await testContext.app.request(

@@ -14,14 +14,20 @@ export { restoreFragmentCommand } from "./fragments/restore-fragment";
 export { deleteFragmentCommand } from "./fragments/delete-fragment";
 
 export { createAspectCommand } from "./aspects/create-aspect";
+export { extractAspectCommand } from "./aspects/extract-aspect";
+export type { ExtractAspectInput } from "./aspects/extract-aspect";
 export { updateAspectCommand } from "./aspects/update-aspect";
 export { deleteAspectCommand } from "./aspects/delete-aspect";
 
 export { createNoteCommand } from "./notes/create-note";
+export { extractNoteCommand } from "./notes/extract-note";
+export type { ExtractNoteInput } from "./notes/extract-note";
 export { updateNoteCommand } from "./notes/update-note";
 export { deleteNoteCommand } from "./notes/delete-note";
 
 export { createReferenceCommand } from "./references/create-reference";
+export { extractReferenceCommand } from "./references/extract-reference";
+export type { ExtractReferenceInput } from "./references/extract-reference";
 export { updateReferenceCommand } from "./references/update-reference";
 export { deleteReferenceCommand } from "./references/delete-reference";
 

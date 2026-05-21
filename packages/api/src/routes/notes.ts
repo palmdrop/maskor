@@ -11,17 +11,20 @@ import {
   NoteUUIDParamSchema,
   NoteCreateSchema,
   NoteUpdateSchema,
+  NoteExtractSchema,
 } from "../schemas/note";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
 import {
   executeCommand,
   createNoteCommand,
+  extractNoteCommand,
   updateNoteCommand,
   deleteNoteCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { UpdateSource } from "../commands/fragments/update-fragment";
+import { resolveSourceKey } from "../helpers/resolve-source-key";
 
 export const notesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
@@ -63,6 +66,40 @@ const getNoteRoute = createRoute({
     503: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Index temporarily out of sync — retry",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const extractNoteRoute = createRoute({
+  operationId: "extractNote",
+  method: "post",
+  path: "/extract",
+  tags: ["Notes"],
+  summary: "Extract selected text into a new note",
+  request: {
+    params: projectIdParamSchema,
+    body: { content: { "application/json": { schema: NoteExtractSchema } }, required: true },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: NoteSchema } },
+      description: "New note created from extraction",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid request body",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Source entity not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Note with this key already exists",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -153,6 +190,47 @@ const deleteNoteRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+notesRouter.openapi(extractNoteRoute, async (ctx) => {
+  const { key: rawKey, content, sourceUuid, sourceType, sourceMode, navigated } =
+    ctx.req.valid("json");
+
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid key";
+    return ctx.json({ error: "INVALID_KEY", message }, 400);
+  }
+
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+
+    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+
+    const newNote: Note = { uuid: randomUUID(), key, content };
+
+    const note = await executeCommand(extractNoteCommand, commandContext, {
+      newNote,
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    });
+
+    return ctx.json(note, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
 });
 
 notesRouter.openapi(listNotesRoute, async (ctx) => {
