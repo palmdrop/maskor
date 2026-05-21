@@ -68,10 +68,8 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
   const isLoading = homeQuery.isPending || listQuery.isFetching;
   const listError = listQuery.isError ? listQuery.error : null;
 
-  const isPermissionError =
-    listError instanceof ApiRequestError && listError.statusCode === 403;
-  const isNotFoundError =
-    listError instanceof ApiRequestError && listError.statusCode === 404;
+  const isPermissionError = listError instanceof ApiRequestError && listError.statusCode === 403;
+  const isNotFoundError = listError instanceof ApiRequestError && listError.statusCode === 404;
 
   const entries = fsData?.entries ?? [];
   const visibleEntries = showHidden ? entries : entries.filter((entry) => !entry.hidden);
@@ -143,11 +141,18 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
       )}
 
       <div className="flex items-center gap-2">
-        <Switch id="folder-picker-show-hidden" checked={showHidden} onCheckedChange={setShowHidden} />
+        <Switch
+          id="folder-picker-show-hidden"
+          checked={showHidden}
+          onCheckedChange={setShowHidden}
+        />
         <Label htmlFor="folder-picker-show-hidden">Show hidden</Label>
       </div>
 
-      <div className="overflow-y-auto rounded-lg border border-border" style={{ maxHeight: "320px" }}>
+      <div
+        className="overflow-y-auto rounded-lg border border-border"
+        style={{ maxHeight: "320px" }}
+      >
         {isLoading && <p className="p-4 text-sm text-muted-foreground">Loading...</p>}
         {isPermissionError && (
           <p className="p-4 text-sm text-destructive">
@@ -161,9 +166,7 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
         )}
         {!isPermissionError && !(isNotFoundError && allowNonExistent) && listError !== null && (
           <p className="p-4 text-sm text-destructive">
-            {listError instanceof ApiRequestError
-              ? listError.message
-              : "Failed to load directory."}
+            {listError instanceof ApiRequestError ? listError.message : "Failed to load directory."}
           </p>
         )}
         {isEmpty && <p className="p-4 text-sm text-muted-foreground">Empty directory.</p>}
@@ -180,9 +183,7 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
                 onClick={() => isDir && navigate(joinPath(fsData.path, entry.name))}
                 className={cn(
                   "flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-sm last:border-0 transition-colors",
-                  isDir
-                    ? "cursor-pointer hover:bg-muted"
-                    : "cursor-default text-muted-foreground",
+                  isDir ? "cursor-pointer hover:bg-muted" : "cursor-default text-muted-foreground",
                 )}
               >
                 {isDir ? (

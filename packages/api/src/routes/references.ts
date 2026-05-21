@@ -255,8 +255,14 @@ const deleteReferenceRoute = createRoute({
 });
 
 referencesRouter.openapi(extractReferenceRoute, async (ctx) => {
-  const { key: rawKey, content, sourceUuid, sourceType, sourceMode, navigated } =
-    ctx.req.valid("json");
+  const {
+    key: rawKey,
+    content,
+    sourceUuid,
+    sourceType,
+    sourceMode,
+    navigated,
+  } = ctx.req.valid("json");
 
   let key: string;
   try {
@@ -276,7 +282,12 @@ referencesRouter.openapi(extractReferenceRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
 
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
 
     const newReference: Reference = { uuid: randomUUID(), key, content };
 
@@ -307,7 +318,12 @@ referencesRouter.openapi(appendReferenceRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const reference = await executeCommand(insertReferenceCommand, commandContext, {
       referenceId,
       insertedBody,
@@ -342,7 +358,12 @@ referencesRouter.openapi(prependReferenceRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const reference = await executeCommand(insertReferenceCommand, commandContext, {
       referenceId,
       insertedBody,

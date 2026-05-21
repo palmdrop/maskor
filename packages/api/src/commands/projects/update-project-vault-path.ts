@@ -7,7 +7,10 @@ type UpdateProjectVaultPathInput = {
   forceOverride?: boolean;
 };
 
-export const updateProjectVaultPathCommand: GlobalCommand<UpdateProjectVaultPathInput, ProjectRecord> = {
+export const updateProjectVaultPathCommand: GlobalCommand<
+  UpdateProjectVaultPathInput,
+  ProjectRecord
+> = {
   async execute(ctx, { projectUUID, newPath, forceOverride }) {
     return ctx.storageService.updateProjectVaultPath(projectUUID, newPath, forceOverride);
   },

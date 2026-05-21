@@ -62,7 +62,9 @@ describe("CommandPalette", () => {
       </div>,
     );
     const editor = screen.getByTestId("editor-container");
-    act(() => { editor.focus(); });
+    act(() => {
+      editor.focus();
+    });
     fireEvent.keyDown(editor, { key: "k", metaKey: true, bubbles: true });
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
@@ -98,7 +100,13 @@ describe("CommandPalette", () => {
     const onRun = vi.fn();
     renderWithCommands([
       { id: "view:cmd", label: "View Command", scope: "MyView", category: "other", run: onRun },
-      { id: "global:cmd", label: "Global Command", scope: "global", category: "navigation", run: onRun },
+      {
+        id: "global:cmd",
+        label: "Global Command",
+        scope: "global",
+        category: "navigation",
+        run: onRun,
+      },
     ]);
     openPalette();
     const viewHeading = screen.getByText("MyView");
@@ -110,7 +118,14 @@ describe("CommandPalette", () => {
 
   it("renders hotkey badge with glyph for mod+k", () => {
     renderWithCommands([
-      { id: "cmd:a", label: "Foo", scope: "Test", category: "other", hotkey: "mod+k", run: vi.fn() },
+      {
+        id: "cmd:a",
+        label: "Foo",
+        scope: "Test",
+        category: "other",
+        hotkey: "mod+k",
+        run: vi.fn(),
+      },
     ]);
     openPalette();
     expect(screen.getByText("K")).toBeInTheDocument();
@@ -118,7 +133,14 @@ describe("CommandPalette", () => {
 
   it("renders hotkey badge with shift glyph for mod+shift+p", () => {
     renderWithCommands([
-      { id: "cmd:b", label: "Bar", scope: "Test", category: "other", hotkey: "mod+shift+p", run: vi.fn() },
+      {
+        id: "cmd:b",
+        label: "Bar",
+        scope: "Test",
+        category: "other",
+        hotkey: "mod+shift+p",
+        run: vi.fn(),
+      },
     ]);
     openPalette();
     expect(screen.getByText("⇧")).toBeInTheDocument();
@@ -269,7 +291,10 @@ describe("CommandPalette", () => {
   it("shows loading skeletons while async arg items resolve", async () => {
     let resolveItems!: (items: { id: string; name: string }[]) => void;
     const loadItems = vi.fn(
-      () => new Promise<{ id: string; name: string }[]>((resolve) => { resolveItems = resolve; }),
+      () =>
+        new Promise<{ id: string; name: string }[]>((resolve) => {
+          resolveItems = resolve;
+        }),
     );
     renderWithCommands([
       {
@@ -316,7 +341,10 @@ describe("CommandPalette", () => {
     ]);
     openPalette();
     expect(screen.getByText("No items available")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /Empty Picker/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("option", { name: /Empty Picker/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("discards stale arg-items resolution when user returns to the command list before load completes", async () => {

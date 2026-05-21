@@ -21,19 +21,13 @@ describe("computeSequenceLayout", () => {
   });
 
   it("centers a single fragment in a single section at the expected x", () => {
-    const layout = computeSequenceLayout(
-      [{ uuid: "sec-1", fragmentUuids: ["f1"] }],
-      "full",
-    );
+    const layout = computeSequenceLayout([{ uuid: "sec-1", fragmentUuids: ["f1"] }], "full");
     const expectedCenter = SECTION_BORDER + SECTION_PADDING + fullTile / 2;
     expect(layout.centerByFragmentUuid.get("f1")).toBe(expectedCenter);
   });
 
   it("places successive fragments TILE_GAP apart within a section", () => {
-    const layout = computeSequenceLayout(
-      [{ uuid: "sec-1", fragmentUuids: ["f1", "f2"] }],
-      "full",
-    );
+    const layout = computeSequenceLayout([{ uuid: "sec-1", fragmentUuids: ["f1", "f2"] }], "full");
     const centerA = layout.centerByFragmentUuid.get("f1")!;
     const centerB = layout.centerByFragmentUuid.get("f2")!;
     expect(centerB - centerA).toBe(fullTile + TILE_GAP);
@@ -51,14 +45,13 @@ describe("computeSequenceLayout", () => {
     expect(layout.sections[0]?.width).toBe(section1Width);
     expect(layout.sections[1]?.startX).toBe(section1Width + SECTION_GAP);
     const centerB = layout.centerByFragmentUuid.get("f2")!;
-    expect(centerB).toBe(section1Width + SECTION_GAP + SECTION_BORDER + SECTION_PADDING + fullTile / 2);
+    expect(centerB).toBe(
+      section1Width + SECTION_GAP + SECTION_BORDER + SECTION_PADDING + fullTile / 2,
+    );
   });
 
   it("uses EMPTY_SECTION_WIDTH content for an empty section", () => {
-    const layout = computeSequenceLayout(
-      [{ uuid: "sec-1", fragmentUuids: [] }],
-      "full",
-    );
+    const layout = computeSequenceLayout([{ uuid: "sec-1", fragmentUuids: [] }], "full");
     expect(layout.sections[0]?.width).toBe(EMPTY_SECTION_WIDTH + sectionBoxOverhead);
   });
 

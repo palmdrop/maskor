@@ -132,7 +132,15 @@ describe("useProjectShellCommands", () => {
 
   it("Switch sequence arg.items calls ListSequences with projectId", async () => {
     const sequences = [
-      { uuid: "s-1", name: "Main", isMain: true, projectUuid: PROJECT_ID, filePath: "", contentHash: "", sections: [] },
+      {
+        uuid: "s-1",
+        name: "Main",
+        isMain: true,
+        projectUuid: PROJECT_ID,
+        filePath: "",
+        contentHash: "",
+        sections: [],
+      },
     ];
     mockListSequences.mockResolvedValue({
       status: 200,
@@ -146,7 +154,15 @@ describe("useProjectShellCommands", () => {
 
   it("navigates to overview with sequence uuid when sequence is selected from picker", async () => {
     const sequences = [
-      { uuid: "s-1", name: "Main", isMain: true, projectUuid: PROJECT_ID, filePath: "", contentHash: "", sections: [] },
+      {
+        uuid: "s-1",
+        name: "Main",
+        isMain: true,
+        projectUuid: PROJECT_ID,
+        filePath: "",
+        contentHash: "",
+        sections: [],
+      },
     ];
     mockListSequences.mockResolvedValue({
       status: 200,

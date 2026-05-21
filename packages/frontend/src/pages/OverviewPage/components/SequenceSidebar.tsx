@@ -200,7 +200,10 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     },
   });
 
-  const handleCommitRename = async (sequenceId: string, newName: string): Promise<string | null> => {
+  const handleCommitRename = async (
+    sequenceId: string,
+    newName: string,
+  ): Promise<string | null> => {
     try {
       const response = await updateSequence.mutateAsync({
         projectId,

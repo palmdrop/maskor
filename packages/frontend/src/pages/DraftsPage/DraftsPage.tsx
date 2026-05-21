@@ -24,11 +24,14 @@ type Draft = {
 
 const formatCounts = (counts: DraftEntityCounts): string => {
   const parts: string[] = [];
-  if (counts.fragments > 0) parts.push(`${counts.fragments} fragment${counts.fragments === 1 ? "" : "s"}`);
+  if (counts.fragments > 0)
+    parts.push(`${counts.fragments} fragment${counts.fragments === 1 ? "" : "s"}`);
   if (counts.aspects > 0) parts.push(`${counts.aspects} aspect${counts.aspects === 1 ? "" : "s"}`);
   if (counts.notes > 0) parts.push(`${counts.notes} note${counts.notes === 1 ? "" : "s"}`);
-  if (counts.references > 0) parts.push(`${counts.references} reference${counts.references === 1 ? "" : "s"}`);
-  if (counts.sequences > 0) parts.push(`${counts.sequences} sequence${counts.sequences === 1 ? "" : "s"}`);
+  if (counts.references > 0)
+    parts.push(`${counts.references} reference${counts.references === 1 ? "" : "s"}`);
+  if (counts.sequences > 0)
+    parts.push(`${counts.sequences} sequence${counts.sequences === 1 ? "" : "s"}`);
   return parts.length > 0 ? parts.join(" · ") : "empty";
 };
 
@@ -77,7 +80,8 @@ export const DraftsPage = () => {
             Drafts
           </h2>
           <p className="text-xs text-muted-foreground">
-            Snapshots of the project at a moment in time. Restore any draft to roll the project back.
+            Snapshots of the project at a moment in time. Restore any draft to roll the project
+            back.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>Create draft</Button>

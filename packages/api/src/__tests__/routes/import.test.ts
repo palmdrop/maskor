@@ -116,11 +116,9 @@ describe("POST /projects/:projectId/import — docx", () => {
       return;
     }
 
-    const file = new File(
-      [docxBytes],
-      "sample.docx",
-      { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-    );
+    const file = new File([docxBytes], "sample.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
 
     const response = await makeImportRequest(testContext.app, project.projectUUID, file, {
       format: "docx",

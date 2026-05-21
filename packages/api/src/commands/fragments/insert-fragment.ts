@@ -16,7 +16,16 @@ export type InsertFragmentInput = {
 export const insertFragmentCommand: Command<InsertFragmentInput, Fragment> = {
   async execute(
     ctx,
-    { fragmentId, insertedBody, position, sourceType, sourceKey, sourceUuid, sourceMode, navigated },
+    {
+      fragmentId,
+      insertedBody,
+      position,
+      sourceType,
+      sourceKey,
+      sourceUuid,
+      sourceMode,
+      navigated,
+    },
   ) {
     const existing = await ctx.storageService.fragments.read(ctx.projectContext, fragmentId);
     const newContent = applyInsertion(existing.content, insertedBody, position);

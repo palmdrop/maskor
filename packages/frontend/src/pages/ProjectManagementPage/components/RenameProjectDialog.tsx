@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useUpdateProject,
-  getListProjectsQueryKey,
-} from "@api/generated/projects/projects";
+import { useUpdateProject, getListProjectsQueryKey } from "@api/generated/projects/projects";
 import {
   Dialog,
   DialogContent,
@@ -76,9 +73,7 @@ export const RenameProjectDialog = ({
             />
           </div>
 
-          {mutation.error && (
-            <p className="text-xs text-destructive">{mutation.error.message}</p>
-          )}
+          {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
         </div>
 
         <DialogFooter>
@@ -89,10 +84,7 @@ export const RenameProjectDialog = ({
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!nameInput.trim() || mutation.isPending}
-          >
+          <Button onClick={handleSubmit} disabled={!nameInput.trim() || mutation.isPending}>
             {mutation.isPending ? "Renaming…" : "Rename"}
           </Button>
         </DialogFooter>

@@ -371,7 +371,10 @@ export const FragmentImportPage = () => {
         >
           Cancel
         </Button>
-        <Button disabled={pieceCount === 0 || isInFlight} onClick={() => commands.run("fragment-import:import")}>
+        <Button
+          disabled={pieceCount === 0 || isInFlight}
+          onClick={() => commands.run("fragment-import:import")}
+        >
           {isCommitPending ? (
             <>
               <Loader2Icon className="animate-spin" />

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderPicker } from "@components/FolderPicker";
-import { useUpdateProjectVaultPath, getListProjectsQueryKey } from "@api/generated/projects/projects";
+import {
+  useUpdateProjectVaultPath,
+  getListProjectsQueryKey,
+} from "@api/generated/projects/projects";
 import { ApiRequestError } from "@api/errors";
 import {
   Dialog,
@@ -69,12 +72,12 @@ export const LocateVaultDialog = ({ open, onOpenChange, projectId }: LocateVault
 
   const pickerError =
     step === "picker" && mutation.isError && !isUUIDConflictError
-      ? mutation.error?.message ?? null
+      ? (mutation.error?.message ?? null)
       : null;
 
   const overrideError =
     step === "uuid-conflict" && mutation.isError && !isUUIDConflictError
-      ? mutation.error?.message ?? null
+      ? (mutation.error?.message ?? null)
       : null;
 
   return (

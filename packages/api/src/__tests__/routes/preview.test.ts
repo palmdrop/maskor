@@ -16,8 +16,7 @@ let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
 let mainSequenceUuid: string;
 
-const previewUrl = (sequenceId: string) =>
-  `/projects/${project.projectUUID}/preview/${sequenceId}`;
+const previewUrl = (sequenceId: string) => `/projects/${project.projectUUID}/preview/${sequenceId}`;
 
 beforeAll(async () => {
   testContext = createTestApp();
@@ -25,9 +24,7 @@ beforeAll(async () => {
   project = seeded.project;
 
   // Ensure a main sequence exists via the API (auto-creates one if absent)
-  const mainResp = await testContext.app.request(
-    `/projects/${project.projectUUID}/sequences/main`,
-  );
+  const mainResp = await testContext.app.request(`/projects/${project.projectUUID}/sequences/main`);
   const mainSeq = (await mainResp.json()) as { uuid: string };
   mainSequenceUuid = mainSeq.uuid;
 });
@@ -62,10 +59,7 @@ describe("GET /projects/:projectId/preview/:sequenceId", () => {
     const liveFragment = fragments.find((f) => !f.isDiscarded);
     if (!liveFragment) return;
 
-    const sequence = await testContext.storageService.sequences.read(
-      context,
-      mainSequenceUuid,
-    );
+    const sequence = await testContext.storageService.sequences.read(context, mainSequenceUuid);
     const sectionUuid = sequence.sections[0]!.uuid;
 
     await testContext.app.request(

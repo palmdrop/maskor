@@ -249,8 +249,14 @@ const deleteNoteRoute = createRoute({
 });
 
 notesRouter.openapi(extractNoteRoute, async (ctx) => {
-  const { key: rawKey, content, sourceUuid, sourceType, sourceMode, navigated } =
-    ctx.req.valid("json");
+  const {
+    key: rawKey,
+    content,
+    sourceUuid,
+    sourceType,
+    sourceMode,
+    navigated,
+  } = ctx.req.valid("json");
 
   let key: string;
   try {
@@ -270,7 +276,12 @@ notesRouter.openapi(extractNoteRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
 
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
 
     const newNote: Note = { uuid: randomUUID(), key, content };
 
@@ -301,7 +312,12 @@ notesRouter.openapi(appendNoteRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const note = await executeCommand(insertNoteCommand, commandContext, {
       noteId,
       insertedBody,
@@ -336,7 +352,12 @@ notesRouter.openapi(prependNoteRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const note = await executeCommand(insertNoteCommand, commandContext, {
       noteId,
       insertedBody,

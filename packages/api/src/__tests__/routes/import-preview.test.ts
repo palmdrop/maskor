@@ -105,11 +105,9 @@ describe("POST /projects/:projectId/import/preview — docx", () => {
       return;
     }
 
-    const file = new File(
-      [docxBytes],
-      "sample.docx",
-      { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-    );
+    const file = new File([docxBytes], "sample.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
 
     const response = await makePreviewRequest(testContext.app, project.projectUUID, file, {
       format: "docx",
@@ -211,11 +209,9 @@ describe("POST /projects/:projectId/import/preview — invalid options", () => {
 describe("POST /projects/:projectId/import/preview — corrupt docx", () => {
   it("returns 500 with usable error message for a corrupt docx file", async () => {
     const corruptBytes = new Uint8Array([0, 1, 2, 3, 4, 5]);
-    const file = new File(
-      [corruptBytes],
-      "corrupt.docx",
-      { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-    );
+    const file = new File([corruptBytes], "corrupt.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
 
     const response = await makePreviewRequest(testContext.app, project.projectUUID, file, {
       format: "docx",

@@ -113,7 +113,9 @@ describe("Picker", () => {
 
     const { rerender } = render(<TriggerAndPicker open={false} />);
     const trigger = screen.getByTestId("trigger");
-    act(() => { trigger.focus(); });
+    act(() => {
+      trigger.focus();
+    });
     expect(document.activeElement).toBe(trigger);
 
     rerender(<TriggerAndPicker open={true} />);

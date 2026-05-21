@@ -68,7 +68,7 @@ describe("createSettingsService", () => {
 
       const settingsFile = Bun.file(join(configDir, "settings.json"));
       expect(await settingsFile.exists()).toBe(true);
-      const stored = await settingsFile.json() as { maskorManagedRoot: string };
+      const stored = (await settingsFile.json()) as { maskorManagedRoot: string };
       expect(stored.maskorManagedRoot).toBe(customRoot);
     });
 

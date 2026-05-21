@@ -77,13 +77,7 @@ export const ArcPanel = ({ width, series, colorByAspectKey }: ArcPanelProps) => 
                 strokeLinecap="round"
               />
               {offsetPoints.map((point) => (
-                <circle
-                  key={point.fragmentUuid}
-                  cx={point.x}
-                  cy={point.y}
-                  r={2.5}
-                  fill={color}
-                />
+                <circle key={point.fragmentUuid} cx={point.x} cy={point.y} r={2.5} fill={color} />
               ))}
             </g>
           );

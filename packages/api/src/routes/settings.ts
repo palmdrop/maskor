@@ -56,7 +56,11 @@ export const createSettingsRouter = (settingsService: SettingsService) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const result = await executeGlobalCommand(createPatchSettingsCommand(settingsService), commandCtx, patch);
+    const result = await executeGlobalCommand(
+      createPatchSettingsCommand(settingsService),
+      commandCtx,
+      patch,
+    );
     return ctx.json(result, 200);
   });
 

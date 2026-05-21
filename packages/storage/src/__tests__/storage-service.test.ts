@@ -381,10 +381,7 @@ describe("StorageService.sequences.write + read", () => {
     const { service, context } = await setupSequenceContext();
     await service.sequences.write(context, makeSequence(context.projectUUID));
 
-    const existing = await service.sequences.read(
-      context,
-      "bbbbbbbb-0000-0000-0000-000000000000",
-    );
+    const existing = await service.sequences.read(context, "bbbbbbbb-0000-0000-0000-000000000000");
 
     await service.sequences.write(context, {
       uuid: existing.uuid,

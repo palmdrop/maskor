@@ -20,7 +20,10 @@ export const deleteSectionCommand: Command<DeleteSectionInput, void> = {
 
     const sectionExists = indexed.sections.some((s) => s.uuid === sectionId);
     if (!sectionExists) {
-      throw new VaultError("ENTITY_NOT_FOUND", `Section ${sectionId} not found in sequence ${sequenceId}`);
+      throw new VaultError(
+        "ENTITY_NOT_FOUND",
+        `Section ${sectionId} not found in sequence ${sequenceId}`,
+      );
     }
 
     const updatedSections = indexed.sections.filter((s) => s.uuid !== sectionId);

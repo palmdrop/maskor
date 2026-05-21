@@ -115,9 +115,7 @@ export const DeregisterDialog = ({
               </div>
             )}
 
-            {mutation.error && (
-              <p className="text-xs text-destructive">{mutation.error.message}</p>
-            )}
+            {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
           </div>
         )}
 

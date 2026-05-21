@@ -66,7 +66,11 @@ describe("PATCH /settings", () => {
     const createResponse = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Settings Test Project", vaultPath: vaultDirectory, mode: "adopt" }),
+      body: JSON.stringify({
+        name: "Settings Test Project",
+        vaultPath: vaultDirectory,
+        mode: "adopt",
+      }),
     });
     expect(createResponse.status).toBe(201);
     const { projectUUID } = (await createResponse.json()) as { projectUUID: string };

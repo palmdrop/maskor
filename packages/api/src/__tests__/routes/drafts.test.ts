@@ -90,9 +90,7 @@ describe("DELETE /projects/:projectId/drafts/:draftId", () => {
     );
     expect(deleteResponse.status).toBe(204);
 
-    const listResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/drafts`,
-    );
+    const listResponse = await testContext.app.request(`/projects/${project.projectUUID}/drafts`);
     const list = (await listResponse.json()) as DraftResponse[];
     expect(list.some((draft) => draft.uuid === created.uuid)).toBe(false);
   });

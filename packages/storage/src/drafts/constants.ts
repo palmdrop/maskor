@@ -15,7 +15,12 @@ export const SNAPSHOT_VAULT_DIRECTORIES = [
 
 // Items inside .maskor/ that are snapshotted (everything except drafts/, vault.db, and
 // the Obsidian editor state). vault.db is snapshotted separately via VACUUM INTO.
-export const SNAPSHOT_MASKOR_ENTRIES = ["sequences", "config", "project.json", "action-log.jsonl"] as const;
+export const SNAPSHOT_MASKOR_ENTRIES = [
+  "sequences",
+  "config",
+  "project.json",
+  "action-log.jsonl",
+] as const;
 
 // Live vault entries that are renamed-aside and replaced during restore.
 // project.json and action-log.jsonl are deliberately excluded — they belong

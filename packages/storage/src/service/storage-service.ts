@@ -1329,9 +1329,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     pieces: {
       async consumeAll(context: ProjectContext): Promise<Fragment[]> {
-        return withVaultWriteLock(context.vaultPath, () =>
-          getVault(context).pieces.consumeAll(),
-        );
+        return withVaultWriteLock(context.vaultPath, () => getVault(context).pieces.consumeAll());
       },
     },
 

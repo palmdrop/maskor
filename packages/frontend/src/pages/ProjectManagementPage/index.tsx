@@ -32,9 +32,7 @@ export const ProjectManagementPage = () => {
             </Button>
           </div>
           {projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No projects registered yet.
-            </p>
+            <p className="text-sm text-muted-foreground">No projects registered yet.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {projects.map((project) => (

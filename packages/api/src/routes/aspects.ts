@@ -262,8 +262,14 @@ const updateAspectRoute = createRoute({
 });
 
 aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
-  const { key: rawKey, description, sourceUuid, sourceType, sourceMode, navigated } =
-    ctx.req.valid("json");
+  const {
+    key: rawKey,
+    description,
+    sourceUuid,
+    sourceType,
+    sourceMode,
+    navigated,
+  } = ctx.req.valid("json");
 
   let key: string;
   try {
@@ -283,7 +289,12 @@ aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
 
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
 
     const newAspect: Aspect = {
       uuid: randomUUID(),
@@ -319,7 +330,12 @@ aspectsRouter.openapi(appendAspectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const aspect = await executeCommand(insertAspectCommand, commandContext, {
       aspectId,
       insertedBody,
@@ -354,7 +370,12 @@ aspectsRouter.openapi(prependAspectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const aspect = await executeCommand(insertAspectCommand, commandContext, {
       aspectId,
       insertedBody,

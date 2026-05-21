@@ -17,8 +17,7 @@ const assertEntityType: (entityType: string) => asserts entityType is SwapEntity
   }
 };
 
-const isNotFound = (error: unknown): boolean =>
-  (error as NodeJS.ErrnoException).code === "ENOENT";
+const isNotFound = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === "ENOENT";
 
 export const createSwapStorage = (config: SwapStorageConfig): SwapStorage => {
   const { vaultPath, logger } = config;

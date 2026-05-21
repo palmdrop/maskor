@@ -32,8 +32,7 @@ const makeNote = (key: string): IndexedNote => ({
   filePath: `notes/${key}.md`,
 });
 
-const createQueryClient = () =>
-  new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 const Wrapper =
   (queryClient: QueryClient) =>

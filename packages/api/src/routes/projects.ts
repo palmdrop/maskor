@@ -220,7 +220,10 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
 
     if (!vaultPath) {
       if (mode !== "create") {
-        return ctx.json({ error: "BAD_REQUEST", message: "vaultPath is required for mode: adopt" }, 400);
+        return ctx.json(
+          { error: "BAD_REQUEST", message: "vaultPath is required for mode: adopt" },
+          400,
+        );
       }
       const settingsService = ctx.get("settingsService");
       const { settings } = await settingsService.readSettings();
@@ -229,7 +232,10 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
       resolvedPath = join(settings.maskorManagedRoot, resolvedSlug);
     } else {
       if (!isAbsolute(vaultPath)) {
-        return ctx.json({ error: "BAD_REQUEST", message: "vaultPath must be an absolute path" }, 400);
+        return ctx.json(
+          { error: "BAD_REQUEST", message: "vaultPath must be an absolute path" },
+          400,
+        );
       }
       resolvedPath = vaultPath;
     }
@@ -239,7 +245,11 @@ projectsRouter.openapi(createProjectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const project = await executeGlobalCommand(registerProjectCommand, commandCtx, { name, vaultPath: resolvedPath, mode });
+    const project = await executeGlobalCommand(registerProjectCommand, commandCtx, {
+      name,
+      vaultPath: resolvedPath,
+      mode,
+    });
     return ctx.json(project, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -256,7 +266,10 @@ projectsRouter.openapi(updateProjectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const project = await executeGlobalCommand(updateProjectCommand, commandCtx, { projectUUID: projectId, patch });
+    const project = await executeGlobalCommand(updateProjectCommand, commandCtx, {
+      projectUUID: projectId,
+      patch,
+    });
     return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -277,7 +290,11 @@ projectsRouter.openapi(updateVaultPathRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const project = await executeGlobalCommand(updateProjectVaultPathCommand, commandCtx, { projectUUID: projectId, newPath, forceOverride });
+    const project = await executeGlobalCommand(updateProjectVaultPathCommand, commandCtx, {
+      projectUUID: projectId,
+      newPath,
+      forceOverride,
+    });
     return ctx.json(project, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -301,7 +318,10 @@ projectsRouter.openapi(deleteProjectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const { method } = await executeGlobalCommand(removeProjectCommand, commandCtx, { projectUUID: projectId, deleteFiles });
+    const { method } = await executeGlobalCommand(removeProjectCommand, commandCtx, {
+      projectUUID: projectId,
+      deleteFiles,
+    });
 
     if (method) {
       return ctx.json({ method }, 200);

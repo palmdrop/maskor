@@ -177,11 +177,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
     <div className="flex flex-col gap-6 pt-4 max-w-md">
       <div className="flex flex-col gap-1.5">
         <div className="flex flex-col gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => commands.run("config:rebuild-index")}
-          >
+          <Button variant="outline" size="sm" onClick={() => commands.run("config:rebuild-index")}>
             Rebuild index
           </Button>
         </div>

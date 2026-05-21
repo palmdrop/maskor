@@ -2,16 +2,10 @@ import { mkdir, rename, rm, cp } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Logger } from "@maskor/shared";
-import {
-  RESTORE_MASKOR_ENTRIES,
-  RESTORE_VAULT_DIRECTORIES,
-} from "./constants";
+import { RESTORE_MASKOR_ENTRIES, RESTORE_VAULT_DIRECTORIES } from "./constants";
 import { DraftError } from "./errors";
 import { findDraftByUuid, type ListedDraft } from "./list";
-import {
-  draftDirectory,
-  restoreAsideRoot,
-} from "./paths";
+import { draftDirectory, restoreAsideRoot } from "./paths";
 
 export type RestoreDraftInput = {
   vaultPath: string;
@@ -54,9 +48,7 @@ const buildTargets = (vaultPath: string, draftPath: string): RestoreTarget[] => 
   return targets;
 };
 
-export const restoreDraft = async (
-  input: RestoreDraftInput,
-): Promise<RestoreDraftResult> => {
+export const restoreDraft = async (input: RestoreDraftInput): Promise<RestoreDraftResult> => {
   const { vaultPath, uuid, logger } = input;
 
   const draft = await findDraftByUuid(vaultPath, uuid, logger);

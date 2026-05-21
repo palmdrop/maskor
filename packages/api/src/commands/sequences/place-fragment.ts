@@ -13,7 +13,10 @@ type PlaceFragmentInput = {
 };
 
 export const placeFragmentCommand: Command<PlaceFragmentInput, IndexedSequence> = {
-  async execute(ctx, { sequenceId, fragmentUuid, sectionUuid, position, sequenceName, fragmentKey }) {
+  async execute(
+    ctx,
+    { sequenceId, fragmentUuid, sectionUuid, position, sequenceName, fragmentKey },
+  ) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
     let updated;
     try {

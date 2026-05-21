@@ -252,7 +252,7 @@ const findStronglyConnectedComponents = (graph: ConstraintGraph): string[][] => 
       } while (popped !== node);
       sccs.push(scc);
     }
-  }
+  };
 
   for (const node of allNodes) {
     if (!indexMap.has(node)) {

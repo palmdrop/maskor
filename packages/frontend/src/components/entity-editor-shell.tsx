@@ -35,22 +35,10 @@ import { useListFragments } from "@api/generated/fragments/fragments";
 import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
 import { useListAspects } from "@api/generated/aspects/aspects";
-import {
-  useAppendFragment,
-  usePrependFragment,
-} from "@api/generated/fragments/fragments";
-import {
-  useAppendNote,
-  usePrependNote,
-} from "@api/generated/notes/notes";
-import {
-  useAppendReference,
-  usePrependReference,
-} from "@api/generated/references/references";
-import {
-  useAppendAspect,
-  usePrependAspect,
-} from "@api/generated/aspects/aspects";
+import { useAppendFragment, usePrependFragment } from "@api/generated/fragments/fragments";
+import { useAppendNote, usePrependNote } from "@api/generated/notes/notes";
+import { useAppendReference, usePrependReference } from "@api/generated/references/references";
+import { useAppendAspect, usePrependAspect } from "@api/generated/aspects/aspects";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -120,8 +108,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const { mutateAsync: prependFragment, isPending: isPrependingFragment } = usePrependFragment();
     const { mutateAsync: appendNote, isPending: isAppendingNote } = useAppendNote();
     const { mutateAsync: prependNote, isPending: isPrependingNote } = usePrependNote();
-    const { mutateAsync: appendReference, isPending: isAppendingReference } =
-      useAppendReference();
+    const { mutateAsync: appendReference, isPending: isAppendingReference } = useAppendReference();
     const { mutateAsync: prependReference, isPending: isPrependingReference } =
       usePrependReference();
     const { mutateAsync: appendAspect, isPending: isAppendingAspect } = useAppendAspect();
@@ -309,8 +296,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     );
 
     const eligibleFragments = useMemo<InsertCommandTarget[]>(() => {
-      const fragments =
-        fragmentsEnvelope?.status === 200 ? fragmentsEnvelope.data : [];
+      const fragments = fragmentsEnvelope?.status === 200 ? fragmentsEnvelope.data : [];
       return fragments
         .filter((fragment) => !fragment.isDiscarded && fragment.uuid !== entityUUID)
         .map((fragment) => ({ uuid: fragment.uuid, key: fragment.key }));
@@ -324,8 +310,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     }, [notesEnvelope, entityUUID]);
 
     const eligibleReferences = useMemo<InsertCommandTarget[]>(() => {
-      const references =
-        referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
+      const references = referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
       return references
         .filter((reference) => reference.uuid !== entityUUID)
         .map((reference) => ({ uuid: reference.uuid, key: reference.key }));
@@ -349,10 +334,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     );
 
     const handleInsertOpen = useCallback(
-      (
-        direction: InsertDirection,
-        targetType: "fragment" | "note" | "reference" | "aspect",
-      ) =>
+      (direction: InsertDirection, targetType: "fragment" | "note" | "reference" | "aspect") =>
         (selectionText: string, targetEntity: InsertCommandTarget) => {
           setInsertionSelectionText(selectionText);
           setInsertionTarget({ direction, targetType, targetEntity });

@@ -1,8 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type {
-  InsertSourceMode,
-  InsertNextMode,
-} from "@components/append-or-prepend-dialog";
+import type { InsertSourceMode, InsertNextMode } from "@components/append-or-prepend-dialog";
 
 type InsertTogglesContextValue = {
   sourceMode: InsertSourceMode;

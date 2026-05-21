@@ -13,5 +13,9 @@ export const writeManifest = async (
   manifest: DraftManifest,
 ): Promise<void> => {
   const validated = DraftManifestSchema.parse(manifest);
-  await writeFile(manifestPath(draftDirectoryPath), JSON.stringify(validated, null, 2) + "\n", "utf8");
+  await writeFile(
+    manifestPath(draftDirectoryPath),
+    JSON.stringify(validated, null, 2) + "\n",
+    "utf8",
+  );
 };

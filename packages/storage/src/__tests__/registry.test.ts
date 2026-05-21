@@ -70,7 +70,9 @@ describe("registry.registerProject", () => {
 
   it("throws when vault path does not exist", async () => {
     const registry = makeRegistry();
-    await expect(registry.registerProject("Bad Project", "/nonexistent/path", "adopt")).rejects.toThrow();
+    await expect(
+      registry.registerProject("Bad Project", "/nonexistent/path", "adopt"),
+    ).rejects.toThrow();
   });
 
   it("throws when vault path is a file, not a directory", async () => {
@@ -150,9 +152,9 @@ describe("registry.registerProject", () => {
   it("throws ProjectConflictError when vaultPath already registered", async () => {
     const registry = makeRegistry();
     await registry.registerProject("First", vaultDir, "adopt");
-    await expect(
-      registry.registerProject("Second", vaultDir, "adopt"),
-    ).rejects.toBeInstanceOf(ProjectConflictError);
+    await expect(registry.registerProject("Second", vaultDir, "adopt")).rejects.toBeInstanceOf(
+      ProjectConflictError,
+    );
   });
 
   it("mode create pre-checks DB uniqueness before writing to filesystem", async () => {
@@ -161,9 +163,9 @@ describe("registry.registerProject", () => {
     await registry.registerProject("First", newPath, "create");
 
     // Attempting mode: "create" on the same registered path must throw before FS writes
-    await expect(
-      registry.registerProject("Second", newPath, "create"),
-    ).rejects.toBeInstanceOf(ProjectConflictError);
+    await expect(registry.registerProject("Second", newPath, "create")).rejects.toBeInstanceOf(
+      ProjectConflictError,
+    );
   });
 });
 

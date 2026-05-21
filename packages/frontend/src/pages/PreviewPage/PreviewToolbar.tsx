@@ -22,7 +22,11 @@ type Props = {
   showSectionHeadings: boolean;
   separator: SeparatorType;
   hasSections: boolean;
-  onPatch: (patch: { showTitles?: boolean; showSectionHeadings?: boolean; separator?: SeparatorType }) => void;
+  onPatch: (patch: {
+    showTitles?: boolean;
+    showSectionHeadings?: boolean;
+    separator?: SeparatorType;
+  }) => void;
 };
 
 export const PreviewToolbar = ({

@@ -186,7 +186,9 @@ describe("DraftsPage", () => {
       fireEvent.click(screen.getByText("Restore"));
     });
 
-    const checkbox = screen.getByLabelText("Save current state as a draft first") as HTMLInputElement;
+    const checkbox = screen.getByLabelText(
+      "Save current state as a draft first",
+    ) as HTMLInputElement;
     fireEvent.click(checkbox);
 
     act(() => {

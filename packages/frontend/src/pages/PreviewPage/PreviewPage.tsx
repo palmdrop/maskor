@@ -65,11 +65,9 @@ export const PreviewPage = () => {
     updateProject({ projectId, data: { preview: patch } });
   };
 
-  const { data: assembledEnvelope } = useGetAssembledSequence(
-    projectId,
-    activeSequenceUuid ?? "",
-    { query: { enabled: !!activeSequenceUuid } },
-  );
+  const { data: assembledEnvelope } = useGetAssembledSequence(projectId, activeSequenceUuid ?? "", {
+    query: { enabled: !!activeSequenceUuid },
+  });
 
   const assembled = assembledEnvelope?.status === 200 ? assembledEnvelope.data : null;
 

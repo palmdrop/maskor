@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSettings, usePatchSettings, SETTINGS_QUERY_KEY_FN } from "@api/settings";
 import { FolderPicker } from "@components/FolderPicker";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -100,11 +95,7 @@ export const SettingsSection = () => {
               placeholder="/path/to/Maskor"
               className="flex-1"
             />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPickerOpen(true)}
-            >
+            <Button type="button" variant="outline" onClick={() => setPickerOpen(true)}>
               Browse…
             </Button>
           </div>

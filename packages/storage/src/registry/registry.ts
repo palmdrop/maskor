@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { RegistryDatabase } from "../db/registry";
 import { projectsTable } from "../db/registry/schema";
-import { ProjectNotFoundError, ProjectConflictError, VaultUUIDConflictError, ExistingVaultManifestError } from "./errors";
+import {
+  ProjectNotFoundError,
+  ProjectConflictError,
+  VaultUUIDConflictError,
+  ExistingVaultManifestError,
+} from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
 
 type ProjectManifest = {
@@ -98,8 +103,7 @@ const toProjectRecord = (
   },
   suggestion: {
     readinessThreshold:
-      manifest?.config?.suggestion?.readinessThreshold ??
-      SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
+      manifest?.config?.suggestion?.readinessThreshold ?? SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
   },
   advanced: {
     showFragmentStats: manifest?.config?.advanced?.showFragmentStats ?? false,

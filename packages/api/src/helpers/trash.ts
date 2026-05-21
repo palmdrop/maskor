@@ -1,7 +1,9 @@
 import trash from "trash";
 import { rm } from "node:fs/promises";
 
-export async function moveToTrashOrDelete(absolutePath: string): Promise<{ method: "trash" | "hard-delete" }> {
+export async function moveToTrashOrDelete(
+  absolutePath: string,
+): Promise<{ method: "trash" | "hard-delete" }> {
   try {
     await trash(absolutePath);
     return { method: "trash" };

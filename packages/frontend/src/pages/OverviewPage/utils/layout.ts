@@ -51,9 +51,7 @@ export const computeSequenceLayout = (
     const section = sectionsData[sectionIndex]!;
     const count = section.fragmentUuids.length;
     const sectionContentWidth =
-      count === 0
-        ? EMPTY_SECTION_WIDTH
-        : count * tileWidth + Math.max(0, count - 1) * TILE_GAP;
+      count === 0 ? EMPTY_SECTION_WIDTH : count * tileWidth + Math.max(0, count - 1) * TILE_GAP;
     const sectionWidth = sectionContentWidth + 2 * SECTION_PADDING + 2 * SECTION_BORDER;
 
     const innerStartX = cursorX + SECTION_BORDER + SECTION_PADDING;

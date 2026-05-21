@@ -54,11 +54,7 @@ export const ProjectRow = ({ project }: { project: Project }) => {
             Rename
           </Button>
           {vaultMissing ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setLocateOpen(true)}
-            >
+            <Button size="sm" variant="outline" onClick={() => setLocateOpen(true)}>
               Locate vault…
             </Button>
           ) : (

@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, defaultFilter } from "cmdk";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  defaultFilter,
+} from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { useCommandsContext } from "@lib/commands/CommandsProvider";
@@ -22,13 +30,16 @@ const KEY_GLYPHS: Record<string, string> = {
 
 const formatHotkeyParts = (hotkey: string): string[] => {
   const mac = isMac();
-  return hotkey.toLowerCase().split("+").map((part) => {
-    if (part === "mod") return mac ? "⌘" : "Ctrl";
-    if (part === "shift") return "⇧";
-    if (part === "alt") return mac ? "⌥" : "Alt";
-    if (part === "ctrl") return "⌃";
-    return KEY_GLYPHS[part] ?? part.toUpperCase();
-  });
+  return hotkey
+    .toLowerCase()
+    .split("+")
+    .map((part) => {
+      if (part === "mod") return mac ? "⌘" : "Ctrl";
+      if (part === "shift") return "⇧";
+      if (part === "alt") return mac ? "⌥" : "Alt";
+      if (part === "ctrl") return "⌃";
+      return KEY_GLYPHS[part] ?? part.toUpperCase();
+    });
 };
 
 const HotkeyBadge = ({ hotkey }: { hotkey: string }) => (
@@ -82,11 +93,7 @@ const ARG_SKELETON_WIDTHS = ["60%", "45%", "75%", "50%"];
 const ArgLoadingSkeleton = () => (
   <>
     {ARG_SKELETON_WIDTHS.map((width) => (
-      <div
-        key={width}
-        data-testid="arg-skeleton"
-        className="flex items-center px-2 py-1.5"
-      >
+      <div key={width} data-testid="arg-skeleton" className="flex items-center px-2 py-1.5">
         <div className="h-4 animate-pulse rounded bg-muted" style={{ width }} />
       </div>
     ))}

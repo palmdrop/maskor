@@ -84,8 +84,8 @@ export const SuggestionModePage = () => {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-lg font-medium">All fragments are finished</p>
         <p className="text-muted-foreground text-sm">
-          No fragments need work right now. Mark fragments as unfinished or lower their readiness
-          to add them back to the pool.
+          No fragments need work right now. Mark fragments as unfinished or lower their readiness to
+          add them back to the pool.
         </p>
         <Link to="/projects/$projectId/fragments" params={{ projectId }}>
           Back to fragments

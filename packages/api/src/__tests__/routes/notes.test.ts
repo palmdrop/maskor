@@ -175,18 +175,13 @@ describe("POST /projects/:projectId/notes/extract", () => {
 
 describe("POST /projects/:projectId/notes/:noteId/append", () => {
   it("appends inserted body to existing note content and returns 200", async () => {
-    const createResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "append-target-note", content: "Existing content." }),
-      },
-    );
+    const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "append-target-note", content: "Existing content." }),
+    });
     const created = (await createResponse.json()) as EntityShape & { uuid: string };
-    const sourceResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-    );
+    const sourceResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`);
     const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
     const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
 
@@ -214,18 +209,13 @@ describe("POST /projects/:projectId/notes/:noteId/append", () => {
   });
 
   it("returns 200 with sourceCutFailed=false when sourceMode is keep", async () => {
-    const createResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "append-keep-note", content: "Body." }),
-      },
-    );
+    const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "append-keep-note", content: "Body." }),
+    });
     const created = (await createResponse.json()) as EntityShape & { uuid: string };
-    const sourceResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-    );
+    const sourceResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`);
     const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
     const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
 
@@ -332,9 +322,7 @@ describe("POST /projects/:projectId/notes/:noteId/append", () => {
   });
 
   it("returns 404 for an unknown note UUID", async () => {
-    const sourceResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-    );
+    const sourceResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`);
     const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
     const sourceNote = notes[0]!;
 
@@ -358,21 +346,16 @@ describe("POST /projects/:projectId/notes/:noteId/append", () => {
 
 describe("POST /projects/:projectId/notes/:noteId/prepend", () => {
   it("prepends inserted body to existing note content and returns 200", async () => {
-    const createResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "prepend-target-note", content: "Existing content." }),
-      },
-    );
+    const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "prepend-target-note", content: "Existing content." }),
+    });
     const created = (await createResponse.json()) as EntityShape & {
       uuid: string;
       content: string;
     };
-    const sourceResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-    );
+    const sourceResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`);
     const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
     const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
 
@@ -400,18 +383,13 @@ describe("POST /projects/:projectId/notes/:noteId/prepend", () => {
   });
 
   it("prepends correctly when existing body is empty", async () => {
-    const createResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "prepend-empty-target", content: "" }),
-      },
-    );
+    const createResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "prepend-empty-target", content: "" }),
+    });
     const created = (await createResponse.json()) as EntityShape & { uuid: string };
-    const sourceResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/notes`,
-    );
+    const sourceResponse = await testContext.app.request(`/projects/${project.projectUUID}/notes`);
     const notes = (await sourceResponse.json()) as Array<EntityShape & { uuid: string }>;
     const sourceNote = notes.find((note) => note.uuid !== created.uuid)!;
 

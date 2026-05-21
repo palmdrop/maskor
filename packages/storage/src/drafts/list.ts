@@ -9,10 +9,7 @@ export type ListedDraft = DraftManifest & { directoryName: string };
 
 const RESERVED_DIRECTORIES = new Set<string>([STAGING_DIRNAME, RESTORE_ASIDE_DIRNAME]);
 
-export const listDrafts = async (
-  vaultPath: string,
-  logger?: Logger,
-): Promise<ListedDraft[]> => {
+export const listDrafts = async (vaultPath: string, logger?: Logger): Promise<ListedDraft[]> => {
   const root = draftsRoot(vaultPath);
   if (!existsSync(root)) return [];
 

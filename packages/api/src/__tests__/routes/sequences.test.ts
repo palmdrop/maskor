@@ -453,7 +453,9 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/positions/:fragmentU
     expect(response.status).toBe(200);
     const body = (await response.json()) as SequenceBundle;
     const mainInBundle = body.sequences.find((s) => s.uuid === main.uuid)!;
-    expect(mainInBundle.sections[0]!.fragments.some((f) => f.fragmentUuid === placed.fragmentUuid)).toBe(false);
+    expect(
+      mainInBundle.sections[0]!.fragments.some((f) => f.fragmentUuid === placed.fragmentUuid),
+    ).toBe(false);
   });
 });
 
@@ -497,10 +499,9 @@ describe("POST /projects/:projectId/sequences/:sequenceId/designate-main", () =>
       await testContext.app.request(`${baseUrl()}/main`)
     ).json()) as SequenceFull;
 
-    const response = await testContext.app.request(
-      `${baseUrl()}/${main.uuid}/designate-main`,
-      { method: "POST" },
-    );
+    const response = await testContext.app.request(`${baseUrl()}/${main.uuid}/designate-main`, {
+      method: "POST",
+    });
     expect(response.status).toBe(200);
     const bundle = (await response.json()) as SequenceBundle;
     const stillMain = bundle.sequences.find((s) => s.uuid === main.uuid);
@@ -535,19 +536,31 @@ describe("bundled response - violations and cycles integration", () => {
     await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fragmentUuid: fragA.uuid, sectionUuid: main.sections[0]!.uuid, position: 0 }),
+      body: JSON.stringify({
+        fragmentUuid: fragA.uuid,
+        sectionUuid: main.sections[0]!.uuid,
+        position: 0,
+      }),
     });
     await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fragmentUuid: fragB.uuid, sectionUuid: main.sections[0]!.uuid, position: 1 }),
+      body: JSON.stringify({
+        fragmentUuid: fragB.uuid,
+        sectionUuid: main.sections[0]!.uuid,
+        position: 1,
+      }),
     });
 
     const secBundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Violation Secondary", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Violation Secondary",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceBundle;
     const sec = secBundle.sequences.find((s) => s.name === "Violation Secondary")!;
@@ -555,19 +568,25 @@ describe("bundled response - violations and cycles integration", () => {
     await testContext.app.request(`${baseUrl()}/${sec.uuid}/positions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fragmentUuid: fragB.uuid, sectionUuid: sec.sections[0]!.uuid, position: 0 }),
+      body: JSON.stringify({
+        fragmentUuid: fragB.uuid,
+        sectionUuid: sec.sections[0]!.uuid,
+        position: 0,
+      }),
     });
     const placeBundle = (await (
       await testContext.app.request(`${baseUrl()}/${sec.uuid}/positions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fragmentUuid: fragA.uuid, sectionUuid: sec.sections[0]!.uuid, position: 1 }),
+        body: JSON.stringify({
+          fragmentUuid: fragA.uuid,
+          sectionUuid: sec.sections[0]!.uuid,
+          position: 1,
+        }),
       })
     ).json()) as SequenceBundle;
 
-    const violation = placeBundle.violations.find(
-      (v) => v.secondaryUuid === sec.uuid,
-    );
+    const violation = placeBundle.violations.find((v) => v.secondaryUuid === sec.uuid);
     expect(violation).toBeDefined();
     expect(violation?.predecessorUuid).toBe(fragB.uuid);
     expect(violation?.fragmentUuid).toBe(fragA.uuid);
@@ -623,14 +642,19 @@ describe("POST /projects/:projectId/sequences/:sequenceId/sections", () => {
     );
     const fragments = (await fragmentsResponse.json()) as { uuid: string }[];
     const unplaced = fragments.find(
-      (f) => !updatedMain.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
+      (f) =>
+        !updatedMain.sections.some((s) => s.fragments.some((fp) => fp.fragmentUuid === f.uuid)),
     );
     if (!unplaced) return;
 
     const placeResponse = await testContext.app.request(`${baseUrl()}/${main.uuid}/positions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fragmentUuid: unplaced.uuid, sectionUuid: newSection.uuid, position: 0 }),
+      body: JSON.stringify({
+        fragmentUuid: unplaced.uuid,
+        sectionUuid: newSection.uuid,
+        position: 0,
+      }),
     });
     expect(placeResponse.status).toBe(200);
     const placeBundle = (await placeResponse.json()) as SequenceBundle;
@@ -645,7 +669,11 @@ describe("POST /projects/:projectId/sequences/:sequenceId/sections", () => {
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Section Test Secondary", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Section Test Secondary",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceBundle;
     const secondary = createBundle.sequences.find((s) => s.name === "Section Test Secondary")!;
@@ -791,7 +819,11 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId"
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Delete Section Test Seq", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Delete Section Test Seq",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceBundle;
     const sequence = createBundle.sequences.find((s) => s.name === "Delete Section Test Seq")!;
@@ -818,7 +850,11 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId"
       await testContext.app.request(`${baseUrl()}/${sequence.uuid}/positions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fragmentUuid: unplaced.uuid, sectionUuid: sectionToDelete.uuid, position: 0 }),
+        body: JSON.stringify({
+          fragmentUuid: unplaced.uuid,
+          sectionUuid: sectionToDelete.uuid,
+          position: 0,
+        }),
       });
     }
 
@@ -844,7 +880,11 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId"
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Compaction Test Seq", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Compaction Test Seq",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceBundle;
     const sequence = createBundle.sequences.find((s) => s.name === "Compaction Test Seq")!;
@@ -885,7 +925,11 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId"
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Last Section Guard Seq", isMain: false, projectUuid: project.projectUUID }),
+        body: JSON.stringify({
+          name: "Last Section Guard Seq",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
       })
     ).json()) as SequenceBundle;
     const sequence = createBundle.sequences.find((s) => s.name === "Last Section Guard Seq")!;
@@ -961,14 +1005,11 @@ describe("sequence fragment action log entries", () => {
     const placedFragment = fragments.find((f) => f.uuid === placed.fragmentUuid);
     if (!placedFragment) return;
 
-    await testContext.app.request(
-      `${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sectionUuid, position: 0 }),
-      },
-    );
+    await testContext.app.request(`${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionUuid, position: 0 }),
+    });
 
     const logResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/action-log?limit=10`,
@@ -994,10 +1035,9 @@ describe("sequence fragment action log entries", () => {
     const placedFragment = fragments.find((f) => f.uuid === placed.fragmentUuid);
     if (!placedFragment) return;
 
-    await testContext.app.request(
-      `${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`,
-      { method: "DELETE" },
-    );
+    await testContext.app.request(`${baseUrl()}/${main.uuid}/positions/${placed.fragmentUuid}`, {
+      method: "DELETE",
+    });
 
     const logResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/action-log?limit=10`,

@@ -13,7 +13,10 @@ export const renameSectionCommand: Command<RenameSectionInput, void> = {
 
     const sectionIndex = indexed.sections.findIndex((s) => s.uuid === sectionId);
     if (sectionIndex === -1) {
-      throw new VaultError("ENTITY_NOT_FOUND", `Section ${sectionId} not found in sequence ${sequenceId}`);
+      throw new VaultError(
+        "ENTITY_NOT_FOUND",
+        `Section ${sectionId} not found in sequence ${sequenceId}`,
+      );
     }
 
     const updatedSections = indexed.sections.map((section, index) =>

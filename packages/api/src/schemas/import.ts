@@ -50,9 +50,11 @@ export const PreviewImportResultSchema = z
   .openapi("PreviewImportResult");
 
 export const ImportBodySchema = z.object({
-  file: z
-    .any()
-    .openapi({ type: "string", format: "binary", description: "File to import (.md, .txt, or .docx)" }),
+  file: z.any().openapi({
+    type: "string",
+    format: "binary",
+    description: "File to import (.md, .txt, or .docx)",
+  }),
   options: z.string().openapi({
     example: '{"format":"markdown","headingLevel":1}',
     description:

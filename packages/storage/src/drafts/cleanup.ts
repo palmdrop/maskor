@@ -16,7 +16,10 @@ export const cleanupStaleDirectories = async (
   const aside = restoreAsideRoot(vaultPath);
 
   if (existsSync(staging)) {
-    logger?.warn({ staging }, "drafts: removing stale staging directory from interrupted operation");
+    logger?.warn(
+      { staging },
+      "drafts: removing stale staging directory from interrupted operation",
+    );
     await rm(staging, { recursive: true, force: true });
   }
   if (existsSync(aside)) {

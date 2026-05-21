@@ -13,8 +13,7 @@ export type VaultDatabase = ReturnType<typeof createVaultDatabase>;
 // service passes around.
 const rawDatabaseByVaultPath = new Map<string, Database>();
 
-const vaultDatabaseFilePath = (vaultRoot: string): string =>
-  join(vaultRoot, ".maskor", "vault.db");
+const vaultDatabaseFilePath = (vaultRoot: string): string => join(vaultRoot, ".maskor", "vault.db");
 
 export const createVaultDatabase = (vaultRoot: string) => {
   const maskorDirectory = join(vaultRoot, ".maskor");
@@ -40,9 +39,7 @@ export const vacuumVaultDatabaseInto = (vaultRoot: string, destinationPath: stri
   const databaseFilePath = vaultDatabaseFilePath(vaultRoot);
   const raw = rawDatabaseByVaultPath.get(databaseFilePath);
   if (!raw) {
-    throw new Error(
-      `vacuumVaultDatabaseInto: no live database registered for vault ${vaultRoot}`,
-    );
+    throw new Error(`vacuumVaultDatabaseInto: no live database registered for vault ${vaultRoot}`);
   }
   raw.exec(`VACUUM INTO '${destinationPath.replace(/'/g, "''")}'`);
 };

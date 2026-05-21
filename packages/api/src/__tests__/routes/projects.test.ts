@@ -21,7 +21,11 @@ const makeVaultDirectoryWithManifest = (projectUUID: string): string => {
   mkdirSync(join(directory, ".maskor"), { recursive: true });
   writeFileSync(
     join(directory, ".maskor", "project.json"),
-    JSON.stringify({ projectUUID, name: "Manifest Project", registeredAt: new Date().toISOString() }),
+    JSON.stringify({
+      projectUUID,
+      name: "Manifest Project",
+      registeredAt: new Date().toISOString(),
+    }),
   );
   return directory;
 };
@@ -126,7 +130,11 @@ describe("POST /projects", () => {
     const response = await testContext.app.request("/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Relative Path Project", vaultPath: "relative/path/to/vault", mode: "adopt" }),
+      body: JSON.stringify({
+        name: "Relative Path Project",
+        vaultPath: "relative/path/to/vault",
+        mode: "adopt",
+      }),
     });
     expect(response.status).toBe(400);
   });

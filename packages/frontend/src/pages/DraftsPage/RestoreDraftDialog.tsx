@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useRestoreDraft,
-  getListDraftsQueryKey,
-} from "@api/generated/drafts/drafts";
+import { useRestoreDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
 import {
   Dialog,
   DialogContent,
@@ -116,9 +113,7 @@ export const RestoreDraftDialog = ({
             </div>
           )}
 
-          {mutation.error && (
-            <p className="text-xs text-destructive">{mutation.error.message}</p>
-          )}
+          {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
         </div>
 
         <DialogFooter>

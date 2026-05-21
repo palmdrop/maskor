@@ -109,10 +109,7 @@ export const createDraft = async (input: CreateDraftInput): Promise<CreateDraftR
     const stagingMaskorDirectory = join(stagingPath, ".maskor");
     await mkdir(stagingMaskorDirectory, { recursive: true });
     for (const entry of SNAPSHOT_MASKOR_ENTRIES) {
-      await copyIfExists(
-        join(vaultPath, ".maskor", entry),
-        join(stagingMaskorDirectory, entry),
-      );
+      await copyIfExists(join(vaultPath, ".maskor", entry), join(stagingMaskorDirectory, entry));
     }
 
     // VACUUM INTO requires the destination not to exist.

@@ -284,10 +284,7 @@ describe("getFragmentOrder", () => {
     const section2Uuid = "22222222-0000-0000-0000-000000000001";
     sequence = {
       ...sequence,
-      sections: [
-        ...sequence.sections,
-        { uuid: section2Uuid, name: "Act 2", fragments: [] },
-      ],
+      sections: [...sequence.sections, { uuid: section2Uuid, name: "Act 2", fragments: [] }],
     };
     const sectionA = sequence.sections[0]!.uuid;
     const sectionB = sequence.sections[1]!.uuid;
@@ -485,7 +482,9 @@ describe("detectCycles", () => {
     const cycles = detectCycles([secondaryAtoB, secondaryBtoA]);
     expect(cycles).toHaveLength(1);
     expect([...cycles[0]!.fragmentUuids].sort()).toEqual([FA, FB].sort());
-    expect([...cycles[0]!.sequenceUuids].sort()).toEqual([SECONDARY_A_UUID, SECONDARY_B_UUID].sort());
+    expect([...cycles[0]!.sequenceUuids].sort()).toEqual(
+      [SECONDARY_A_UUID, SECONDARY_B_UUID].sort(),
+    );
   });
 
   it("detects a 3-node cycle spanning three secondaries", () => {
@@ -514,13 +513,9 @@ describe("detectCycles", () => {
     expect(cycleAB).toBeDefined();
     expect(cycleCD).toBeDefined();
     expect([...cycleAB!.fragmentUuids].sort()).toEqual([FA, FB].sort());
-    expect([...cycleAB!.sequenceUuids].sort()).toEqual(
-      [SECONDARY_A_UUID, SECONDARY_B_UUID].sort(),
-    );
+    expect([...cycleAB!.sequenceUuids].sort()).toEqual([SECONDARY_A_UUID, SECONDARY_B_UUID].sort());
     expect([...cycleCD!.fragmentUuids].sort()).toEqual([FC, FD].sort());
-    expect([...cycleCD!.sequenceUuids].sort()).toEqual(
-      [SECONDARY_C_UUID, SECONDARY_D_UUID].sort(),
-    );
+    expect([...cycleCD!.sequenceUuids].sort()).toEqual([SECONDARY_C_UUID, SECONDARY_D_UUID].sort());
   });
 
   it("only reports secondaries whose edges live inside the SCC", () => {

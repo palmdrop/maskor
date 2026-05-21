@@ -33,8 +33,7 @@ const mountedQuery = (data: SwapReadEnvelope | undefined, error: unknown = null)
   isFetching: false,
 });
 
-const emptySwapQuery = () =>
-  mountedQuery({ status: 200, data: { content: null, savedAt: null } });
+const emptySwapQuery = () => mountedQuery({ status: 200, data: { content: null, savedAt: null } });
 
 const setupMocks = (
   query: ReturnType<typeof mountedQuery>,
@@ -166,10 +165,7 @@ describe("useEntityContentSwap — debounced writes", () => {
 
   it("does not throw when PUT fails", async () => {
     const putMutate = vi.fn(
-      (
-        _vars: unknown,
-        opts?: { onError?: (error: unknown) => void; onSuccess?: () => void },
-      ) => {
+      (_vars: unknown, opts?: { onError?: (error: unknown) => void; onSuccess?: () => void }) => {
         opts?.onError?.(new Error("network down"));
       },
     );

@@ -1,10 +1,13 @@
 export type { FsEntry, FsListResponse as FsListData } from "./generated/maskorAPI.schemas";
-export { getListDirectoryQueryKey, getGetHomeDirectoryQueryKey } from "./generated/filesystem/filesystem";
+export {
+  getListDirectoryQueryKey,
+  getGetHomeDirectoryQueryKey,
+} from "./generated/filesystem/filesystem";
 
 import {
   useGetHomeDirectory,
   useListDirectory,
-  ListDirectory,
+  type ListDirectory,
 } from "./generated/filesystem/filesystem";
 import type { ApiRequestError } from "./errors";
 

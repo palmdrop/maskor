@@ -105,7 +105,15 @@ describe("useCommand", () => {
   it("registered def reads arg, label, and disabledReason live from the latest render", () => {
     let capturedMap: ReadonlyMap<string, CommandDef> | null = null;
 
-    const Component = ({ items, label, reason }: { items: string[]; label: string; reason?: string }) => {
+    const Component = ({
+      items,
+      label,
+      reason,
+    }: {
+      items: string[];
+      label: string;
+      reason?: string;
+    }) => {
       const { getMap } = useCommandsContext();
       useCommand(
         makeCommand({
@@ -123,10 +131,7 @@ describe("useCommand", () => {
       return null;
     };
 
-    const { rerender } = render(
-      <Component items={["a"]} label="First" />,
-      { wrapper },
-    );
+    const { rerender } = render(<Component items={["a"]} label="First" />, { wrapper });
 
     const initial = capturedMap!.get("live:command")!;
     expect(initial.label).toBe("First");
@@ -152,9 +157,7 @@ describe("useCommand", () => {
 
     render(<Component />, { wrapper });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("dupe:command"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("dupe:command"));
 
     warnSpy.mockRestore();
   });

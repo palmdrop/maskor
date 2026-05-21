@@ -12,7 +12,10 @@ type MoveFragmentInput = {
 };
 
 export const moveFragmentCommand: Command<MoveFragmentInput, IndexedSequence> = {
-  async execute(ctx, { sequenceId, fragmentUuid, sectionUuid, position, sequenceName, fragmentKey }) {
+  async execute(
+    ctx,
+    { sequenceId, fragmentUuid, sectionUuid, position, sequenceName, fragmentKey },
+  ) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
     const updated = moveFragment(indexed, fragmentUuid, sectionUuid, position);
     await ctx.storageService.sequences.write(ctx.projectContext, updated);

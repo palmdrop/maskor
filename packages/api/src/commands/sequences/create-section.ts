@@ -12,10 +12,7 @@ export const createSectionCommand: Command<CreateSectionInput, void> = {
 
     const updated = {
       ...indexed,
-      sections: [
-        ...indexed.sections,
-        { uuid: randomUUID(), name, fragments: [] },
-      ],
+      sections: [...indexed.sections, { uuid: randomUUID(), name, fragments: [] }],
     };
 
     await ctx.storageService.sequences.write(ctx.projectContext, updated);

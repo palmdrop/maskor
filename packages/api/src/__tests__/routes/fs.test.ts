@@ -44,9 +44,7 @@ afterAll(() => {
 
 describe("GET /fs/list", () => {
   it("returns 400 for a relative path", async () => {
-    const response = await testContext.app.request(
-      "/fs/list?path=relative/path/to/folder",
-    );
+    const response = await testContext.app.request("/fs/list?path=relative/path/to/folder");
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe("BAD_REQUEST");

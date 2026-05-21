@@ -4,11 +4,7 @@ import { join } from "node:path";
 import { setupDraftVault, type DraftTestVault } from "./setup";
 import { createDraft } from "../../drafts/create";
 import { listDrafts } from "../../drafts/list";
-import {
-  draftsRoot,
-  restoreAsideRoot,
-  stagingRoot,
-} from "../../drafts/paths";
+import { draftsRoot, restoreAsideRoot, stagingRoot } from "../../drafts/paths";
 
 let vault: DraftTestVault;
 

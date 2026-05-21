@@ -31,7 +31,8 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
 
   const queryClient = useQueryClient();
   const settingsQuery = useSettings();
-  const managedRoot = settingsQuery.data?.status === 200 ? settingsQuery.data.data.maskorManagedRoot : null;
+  const managedRoot =
+    settingsQuery.data?.status === 200 ? settingsQuery.data.data.maskorManagedRoot : null;
 
   const folderListQuery = useFsList(folderPath);
   const pathDoesNotExist =
@@ -43,13 +44,12 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
     pathDoesNotExist || folderPath === null ? [] : (folderListQuery.data?.data.entries ?? []);
   const folderKind = detectFolderKind(entries);
   const nonMarkdownCount = countNonMarkdownFiles(entries);
-  const showFolderInfo = folderPath !== null && !pathDoesNotExist && folderListQuery.data !== undefined;
+  const showFolderInfo =
+    folderPath !== null && !pathDoesNotExist && folderListQuery.data !== undefined;
 
   const pathSep = managedRoot?.includes("\\") ? "\\" : "/";
   const managedRootPreview =
-    managedRoot && nameInput.trim()
-      ? `${managedRoot}${pathSep}${deriveSlug(nameInput)}`
-      : null;
+    managedRoot && nameInput.trim() ? `${managedRoot}${pathSep}${deriveSlug(nameInput)}` : null;
 
   const mutation = useCreateProject({
     mutation: {
@@ -65,7 +65,11 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
     setFolderPath(path);
     setFolderPickerOpen(false);
     if (!nameManuallyEdited) {
-      const basename = path.replace(/[/\\]$/, "").split(/[/\\]/).at(-1) ?? "";
+      const basename =
+        path
+          .replace(/[/\\]$/, "")
+          .split(/[/\\]/)
+          .at(-1) ?? "";
       if (basename) setNameInput(basename);
     }
   };
@@ -131,14 +135,18 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
                   setNameInput(e.target.value);
                   setNameManuallyEdited(true);
                 }}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                }}
                 placeholder="My novel"
                 autoFocus
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Folder <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label>
+                Folder <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
               {folderPath ? (
                 <div className="flex items-start gap-2">
                   <p className="flex-1 break-all rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-sm">
@@ -162,9 +170,8 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
 
             {folderPath === null && managedRootPreview && (
               <p className="text-xs text-muted-foreground">
-                Will be created at{" "}
-                <span className="font-mono">{managedRootPreview}</span>
-                {" "}(exact name resolved on save)
+                Will be created at <span className="font-mono">{managedRootPreview}</span> (exact
+                name resolved on save)
               </p>
             )}
 
@@ -196,9 +203,7 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
               </p>
             )}
 
-            {mutation.error && (
-              <p className="text-xs text-destructive">{mutation.error.message}</p>
-            )}
+            {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
           </div>
 
           <DialogFooter>

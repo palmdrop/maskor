@@ -78,12 +78,7 @@ swapRouter.openapi(putSwapRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { entityType, entityUUID } = ctx.req.valid("param");
     const { content } = ctx.req.valid("json");
-    const result = await storageService.swap.write(
-      projectContext,
-      entityType,
-      entityUUID,
-      content,
-    );
+    const result = await storageService.swap.write(projectContext, entityType, entityUUID, content);
     return ctx.json({ savedAt: result.savedAt }, 200);
   } catch (error) {
     return throwStorageError(error);

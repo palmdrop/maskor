@@ -63,10 +63,7 @@ export const throwStorageError = (error: unknown): never => {
         });
       case "DRAFT_OPERATION_IN_PROGRESS":
         throw new HTTPException(409, {
-          res: errorResponse(
-            { error: "DRAFT_OPERATION_IN_PROGRESS", message: error.message },
-            409,
-          ),
+          res: errorResponse({ error: "DRAFT_OPERATION_IN_PROGRESS", message: error.message }, 409),
         });
       case "INSUFFICIENT_DISK_SPACE":
         throw new HTTPException(507, {

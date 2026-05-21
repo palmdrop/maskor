@@ -39,8 +39,7 @@ const makeFragment = (key: string, isDiscarded = false): IndexedFragment => ({
   contentHash: "hash",
 });
 
-const createQueryClient = () =>
-  new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 const Wrapper =
   (queryClient: QueryClient) =>
@@ -78,7 +77,10 @@ describe("ExtractToFragmentDialog", () => {
   beforeEach(() => {
     queryClient = createQueryClient();
     vi.clearAllMocks();
-    vi.mocked(useExtractFragment).mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
+    vi.mocked(useExtractFragment).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
   });
 
   it("renders the dialog with a key input", async () => {

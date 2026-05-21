@@ -212,9 +212,7 @@ const ProjectWarningsPanel = ({
         Project warnings
       </p>
 
-      {!hasConflicts && (
-        <p className="text-xs text-muted-foreground">No constraint conflicts.</p>
-      )}
+      {!hasConflicts && <p className="text-xs text-muted-foreground">No constraint conflicts.</p>}
 
       {cycles.length > 0 && (
         <div className="flex flex-col gap-2">

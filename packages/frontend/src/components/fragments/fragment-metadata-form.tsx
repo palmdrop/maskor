@@ -272,9 +272,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           max={100}
           step={1}
         />
-        {readinessField.error && (
-          <p className="text-xs text-destructive">{readinessField.error}</p>
-        )}
+        {readinessField.error && <p className="text-xs text-destructive">{readinessField.error}</p>}
       </div>
 
       <div className="flex flex-col gap-2">

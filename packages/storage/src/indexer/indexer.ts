@@ -270,15 +270,12 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .from(fragmentAspectsTable)
           .all();
 
-        const aspectsByFragmentUuid = aspectWeightRows.reduce(
-          (acc, row) => {
-            const existing = acc.get(row.fragmentUuid) ?? {};
-            existing[row.aspectKey] = { weight: row.weight };
-            acc.set(row.fragmentUuid, existing);
-            return acc;
-          },
-          new Map<string, Record<string, { weight: number }>>(),
-        );
+        const aspectsByFragmentUuid = aspectWeightRows.reduce((acc, row) => {
+          const existing = acc.get(row.fragmentUuid) ?? {};
+          existing[row.aspectKey] = { weight: row.weight };
+          acc.set(row.fragmentUuid, existing);
+          return acc;
+        }, new Map<string, Record<string, { weight: number }>>());
 
         return fragmentRows.map((row) => ({
           ...row,

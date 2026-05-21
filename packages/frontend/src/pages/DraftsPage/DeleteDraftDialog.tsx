@@ -1,8 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useDeleteDraft,
-  getListDraftsQueryKey,
-} from "@api/generated/drafts/drafts";
+import { useDeleteDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
 import {
   Dialog,
   DialogContent,

@@ -60,7 +60,8 @@ describe("restoreDraft", () => {
     });
 
     const logPath = join(vault.vaultPath, ".maskor", "action-log.jsonl");
-    const livePost = "\n{\"id\":\"after\",\"timestamp\":\"2026-02-01T00:00:00Z\",\"type\":\"fragment:created\",\"actor\":\"user\",\"target\":{\"type\":\"fragment\",\"uuid\":\"f2\"},\"payload\":{},\"undoable\":false}\n";
+    const livePost =
+      '\n{"id":"after","timestamp":"2026-02-01T00:00:00Z","type":"fragment:created","actor":"user","target":{"type":"fragment","uuid":"f2"},"payload":{},"undoable":false}\n';
     writeFileSync(logPath, readFileSync(logPath, "utf8") + livePost, "utf8");
     const beforeRestore = readFileSync(logPath, "utf8");
 

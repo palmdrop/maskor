@@ -30,11 +30,13 @@ export const ProjectSchema = DomainProjectSchema.omit({
 
 // vaultPath is optional: when omitted with mode:"create", the backend creates
 // the project under the configured managed root with a slug derived from name.
-export const ProjectCreateSchema = z.object({
-  name: z.string().min(1).openapi({ example: "My Writing Project" }),
-  vaultPath: z.string().min(1).optional().openapi({ example: "/Users/me/Documents/my-vault" }),
-  mode: z.enum(["adopt", "create"]).openapi({ example: "adopt" }),
-}).openapi("ProjectCreate");
+export const ProjectCreateSchema = z
+  .object({
+    name: z.string().min(1).openapi({ example: "My Writing Project" }),
+    vaultPath: z.string().min(1).optional().openapi({ example: "/Users/me/Documents/my-vault" }),
+    mode: z.enum(["adopt", "create"]).openapi({ example: "adopt" }),
+  })
+  .openapi("ProjectCreate");
 
 export const ProjectUpdateSchema = DomainProjectUpdateSchema.extend({}).openapi("ProjectUpdate");
 

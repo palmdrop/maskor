@@ -44,7 +44,14 @@ function openPalette() {
 const MapReader = ({
   onRead,
 }: {
-  onRead: (map: ReadonlyMap<string, ReturnType<typeof useCommandsContext>["getMap"] extends () => ReadonlyMap<string, infer V> ? V : never>) => void;
+  onRead: (
+    map: ReadonlyMap<
+      string,
+      ReturnType<typeof useCommandsContext>["getMap"] extends () => ReadonlyMap<string, infer V>
+        ? V
+        : never
+    >,
+  ) => void;
 }) => {
   const { getMap } = useCommandsContext();
   onRead(getMap());

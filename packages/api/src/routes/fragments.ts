@@ -450,8 +450,14 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
 });
 
 fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
-  const { key: rawKey, content, sourceUuid, sourceType, sourceMode, navigated } =
-    ctx.req.valid("json");
+  const {
+    key: rawKey,
+    content,
+    sourceUuid,
+    sourceType,
+    sourceMode,
+    navigated,
+  } = ctx.req.valid("json");
 
   let key: string;
   try {
@@ -471,7 +477,12 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       logger: ctx.get("logger"),
     };
 
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
 
     const newFragment: Fragment = {
       uuid: randomUUID(),
@@ -513,7 +524,12 @@ fragmentsRouter.openapi(appendFragmentRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const fragment = await executeCommand(insertFragmentCommand, commandContext, {
       fragmentId,
       insertedBody,
@@ -548,7 +564,12 @@ fragmentsRouter.openapi(prependFragmentRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const sourceKey = await resolveSourceKey(storageService, projectContext, sourceUuid, sourceType);
+    const sourceKey = await resolveSourceKey(
+      storageService,
+      projectContext,
+      sourceUuid,
+      sourceType,
+    );
     const fragment = await executeCommand(insertFragmentCommand, commandContext, {
       fragmentId,
       insertedBody,

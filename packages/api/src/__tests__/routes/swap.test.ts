@@ -63,14 +63,11 @@ describe("PUT /projects/:projectId/swap/:entityType/:entityUUID", () => {
 describe("GET /projects/:projectId/swap/:entityType/:entityUUID", () => {
   it("returns the swap content when one exists", async () => {
     const entityUUID = randomUUID();
-    await testContext.app.request(
-      `/projects/${project.projectUUID}/swap/aspect/${entityUUID}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "aspect prose" }),
-      },
-    );
+    await testContext.app.request(`/projects/${project.projectUUID}/swap/aspect/${entityUUID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "aspect prose" }),
+    });
 
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/swap/aspect/${entityUUID}`,
@@ -95,14 +92,11 @@ describe("GET /projects/:projectId/swap/:entityType/:entityUUID", () => {
 describe("DELETE /projects/:projectId/swap/:entityType/:entityUUID", () => {
   it("deletes an existing swap and returns 204", async () => {
     const entityUUID = randomUUID();
-    await testContext.app.request(
-      `/projects/${project.projectUUID}/swap/reference/${entityUUID}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "ref body" }),
-      },
-    );
+    await testContext.app.request(`/projects/${project.projectUUID}/swap/reference/${entityUUID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "ref body" }),
+    });
 
     const deleteResponse = await testContext.app.request(
       `/projects/${project.projectUUID}/swap/reference/${entityUUID}`,

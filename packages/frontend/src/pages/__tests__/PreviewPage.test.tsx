@@ -59,9 +59,7 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
   ...overrides,
 });
 
-const makeAssembledSequence = (
-  overrides?: Partial<AssembledSequence>,
-): AssembledSequence => ({
+const makeAssembledSequence = (overrides?: Partial<AssembledSequence>): AssembledSequence => ({
   sequenceUuid: SEQUENCE_UUID,
   sequenceName: "Main",
   isMain: true,

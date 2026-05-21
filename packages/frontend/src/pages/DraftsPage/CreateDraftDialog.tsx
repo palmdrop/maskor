@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useCreateDraft,
-  getListDraftsQueryKey,
-} from "@api/generated/drafts/drafts";
+import { useCreateDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
 import {
   Dialog,
   DialogContent,

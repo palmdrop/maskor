@@ -11,8 +11,7 @@ describe("splitMarkdown", () => {
   });
 
   it("splits on mixed heading levels", () => {
-    const content =
-      "# H1 Title\nBody one\n## H2 Title\nBody two\n### H3 Title\nBody three";
+    const content = "# H1 Title\nBody one\n## H2 Title\nBody two\n### H3 Title\nBody three";
     const pieces = splitMarkdown(content, 2);
     expect(pieces).toHaveLength(2);
     expect(pieces[0]).toEqual({ title: "H1 Title", content: "Body one" });
@@ -23,8 +22,7 @@ describe("splitMarkdown", () => {
   });
 
   it("does not split on heading inside fenced code block", () => {
-    const content =
-      "# Real heading\nSome text\n```\n# Not a heading\n```\nMore text";
+    const content = "# Real heading\nSome text\n```\n# Not a heading\n```\nMore text";
     const pieces = splitMarkdown(content, 1);
     expect(pieces).toHaveLength(1);
     expect(pieces[0]?.title).toBe("Real heading");

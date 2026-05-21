@@ -8,10 +8,7 @@ type Props = {
 // Small inline helper — there's no shared relative-time util in the
 // codebase yet. If one shows up, swap to it. Keep this in sync with the
 // banner's copy expectations.
-export const formatRelativeTime = (
-  from: Date,
-  now: Date = new Date(),
-): string => {
+export const formatRelativeTime = (from: Date, now: Date = new Date()): string => {
   const diffMs = now.getTime() - from.getTime();
   if (diffMs < 0) return "just now";
   const seconds = Math.floor(diffMs / 1000);
