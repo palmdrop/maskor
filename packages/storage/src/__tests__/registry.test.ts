@@ -108,12 +108,17 @@ describe("registry.registerProject", () => {
     expect(record.projectUUID).toBeTruthy();
   });
 
-  it("mode create writes .maskor/ and aspects/ directories on empty folder", async () => {
+  it("mode create writes full vault skeleton on empty folder", async () => {
     const registry = makeRegistry();
     const newPath = join(tmpDir, "skeleton-project");
     await registry.registerProject("Skeleton Project", newPath, "create");
     expect(existsSync(join(newPath, ".maskor"))).toBe(true);
     expect(existsSync(join(newPath, "aspects"))).toBe(true);
+    expect(existsSync(join(newPath, "fragments"))).toBe(true);
+    expect(existsSync(join(newPath, "fragments", "discarded"))).toBe(true);
+    expect(existsSync(join(newPath, "notes"))).toBe(true);
+    expect(existsSync(join(newPath, "references"))).toBe(true);
+    expect(existsSync(join(newPath, "pieces"))).toBe(true);
   });
 
   it("mode create writes .maskor/project.json with correct contents", async () => {

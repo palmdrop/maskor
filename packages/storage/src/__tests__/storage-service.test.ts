@@ -54,6 +54,23 @@ describe("StorageService.resolveProject", () => {
 
     await expect(service.resolveProject(unknownUUID)).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
+
+  it("lazily creates missing skeleton dirs for vaults that predate full skeleton bootstrap", async () => {
+    // Create a minimal vault (only .maskor/) to simulate a vault registered before full skeleton.
+    const minimalVaultDir = join(tmpDir, "minimal-vault");
+    mkdirSync(join(minimalVaultDir, ".maskor"), { recursive: true });
+
+    const service = makeService();
+    const record = await service.registerProject("Minimal Project", minimalVaultDir, "adopt");
+    await service.resolveProject(record.projectUUID);
+
+    expect(existsSync(join(minimalVaultDir, "fragments"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, "fragments", "discarded"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, "aspects"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, "notes"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, "references"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, "pieces"))).toBe(true);
+  });
 });
 
 describe("StorageService.removeProject", () => {

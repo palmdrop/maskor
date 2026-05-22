@@ -101,6 +101,12 @@ Maskor never auto-imports existing markdown content during registration; the use
   - `.maskor/` directory
   - `.maskor/project.json` manifest
   - `aspects/` directory
+  - `fragments/` directory
+  - `fragments/discarded/` directory
+  - `notes/` directory
+  - `references/` directory
+  - `pieces/` directory
+- On first access of any existing project (`resolveProject`), the same skeleton dirs are created idempotently, repairing vaults that predate full skeleton bootstrap.
 - Other vault structure (arcs config, vault DB) is still created lazily by the features that own it.
 
 ### Name handling

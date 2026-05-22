@@ -2,6 +2,7 @@ import { eq, and, ne } from "drizzle-orm";
 import { join } from "node:path";
 import { stat, mkdir } from "node:fs/promises";
 import type { RegistryDatabase } from "../db/registry";
+import { ensureVaultSkeleton } from "../utils/vault-skeleton";
 import { projectsTable } from "../db/registry/schema";
 import {
   ProjectNotFoundError,
@@ -173,11 +174,9 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           throw new ProjectConflictError(vaultPath);
         }
 
-        // create: mkdir -p vault + aspects/, then write manifest
+        // create: mkdir -p vault + full skeleton, then write manifest
         await mkdir(vaultPath, { recursive: true });
-
-        // TODO: create helper function for creating entire repo structure... not just aspects
-        await mkdir(join(vaultPath, "aspects"), { recursive: true });
+        await ensureVaultSkeleton(vaultPath);
 
         const existingManifest = await readVaultManifest(vaultPath);
         if (existingManifest) {

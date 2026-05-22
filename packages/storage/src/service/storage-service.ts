@@ -59,6 +59,7 @@ import {
 } from "../indexer/upserts";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
+import { ensureVaultSkeleton } from "../utils/vault-skeleton";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
 import { CooldownSet } from "../suggestion/cooldown";
@@ -501,6 +502,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       // behind by an interrupted draft create or restore before the user
       // touches the project.
       await cleanupStaleDirectories(vaultPath, logger);
+      // Lazy repair: ensure skeleton dirs exist for vaults predating full skeleton bootstrap.
+      await ensureVaultSkeleton(vaultPath);
       return { userUUID, projectUUID: record.projectUUID, vaultPath };
     },
 
