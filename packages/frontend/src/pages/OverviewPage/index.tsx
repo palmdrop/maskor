@@ -49,6 +49,7 @@ import { computeSequenceLayout } from "./utils/layout";
 import { buildArcSeries, type ArcSeries } from "./utils/arcData";
 import { useCommands } from "@lib/commands/useCommands";
 import { useOverviewCommands } from "@lib/commands/catalog/useOverviewCommands";
+import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 
 const POOL_ZONE_ID = "pool-zone";
 
@@ -147,6 +148,8 @@ export const OverviewPage = () => {
       return next;
     });
   }, []);
+
+  const { isRebuilding } = useRebuildStatus();
 
   const { data: bundleEnvelope, isLoading: bundleLoading } = useListSequences(projectId);
   const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
@@ -592,7 +595,9 @@ export const OverviewPage = () => {
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
         onClick={() => setSelectedFragmentUuid(null)}
       >
-        {bundleLoading || summariesLoading ? (
+        {(bundleLoading || summariesLoading) && isRebuilding ? (
+          <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
+        ) : bundleLoading || summariesLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>

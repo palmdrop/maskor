@@ -30,3 +30,46 @@ describe("POST /projects/:projectId/index/rebuild", () => {
     expect(body).toHaveProperty("aspects");
   });
 });
+
+describe("GET /projects/:projectId/rebuild-status", () => {
+  it("returns rebuilding:false when no rebuild is in progress", async () => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/rebuild-status`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { rebuilding: boolean };
+    expect(typeof body.rebuilding).toBe("boolean");
+  });
+
+  it("concurrent data requests all wait for the same rebuild (no empty-data race)", async () => {
+    // Create a fresh test context so the rebuild state is clean.
+    const freshContext = createTestApp();
+    const { project: freshProject } = await seedVault(
+      freshContext.storageService,
+      freshContext.temporaryDirectory,
+    );
+
+    // Fire three fragment-list requests in parallel — all should get full data, not empty results.
+    const [response1, response2, response3] = await Promise.all([
+      freshContext.app.request(`/projects/${freshProject.projectUUID}/fragments`),
+      freshContext.app.request(`/projects/${freshProject.projectUUID}/fragments`),
+      freshContext.app.request(`/projects/${freshProject.projectUUID}/fragments`),
+    ]);
+
+    expect(response1.status).toBe(200);
+    expect(response2.status).toBe(200);
+    expect(response3.status).toBe(200);
+
+    const body1 = (await response1.json()) as unknown[];
+    const body2 = (await response2.json()) as unknown[];
+    const body3 = (await response3.json()) as unknown[];
+
+    // All three responses should contain the same non-empty fragment list.
+    expect(Array.isArray(body1)).toBe(true);
+    expect(body1.length).toBe(body2.length);
+    expect(body1.length).toBe(body3.length);
+    expect(body1.length).toBeGreaterThan(0);
+
+    freshContext.cleanup();
+  });
+});

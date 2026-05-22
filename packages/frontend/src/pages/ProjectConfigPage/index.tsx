@@ -1,5 +1,6 @@
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
+import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
@@ -11,7 +12,9 @@ export const ProjectConfigPage = () => {
   const { tab } = useSearch({ from: "/projects/$projectId/config" });
   const navigate = useNavigate({ from: "/projects/$projectId/config" });
   const { data: envelope, isLoading, isError } = useGetProject(projectId);
+  const { isRebuilding } = useRebuildStatus();
 
+  if (isLoading && isRebuilding) return <p className="p-6 text-sm text-muted-foreground">Rebuilding project index…</p>;
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (isError || !envelope)
     return <p className="p-6 text-sm text-muted-foreground">Failed to load project.</p>;

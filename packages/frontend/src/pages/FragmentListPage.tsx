@@ -15,6 +15,7 @@ import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { UploadIcon } from "lucide-react";
 
 export const FragmentListPage = () => {
@@ -25,6 +26,7 @@ export const FragmentListPage = () => {
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
+  const { isRebuilding } = useRebuildStatus();
   const { mutate: discardFragment } = useDiscardFragment();
   const { mutate: restoreFragment } = useRestoreFragment();
   const { mutate: deleteFragment } = useDeleteFragment();
@@ -70,8 +72,9 @@ export const FragmentListPage = () => {
     }
   };
 
-  if (isLoading) return <p>Loading fragments…</p>;
-  if (isError || !envelope) return <p>Failed to load fragments.</p>;
+  if (isLoading && isRebuilding) return <p className="p-4 text-sm text-muted-foreground">Rebuilding project index…</p>;
+  if (isLoading) return <p className="p-4 text-sm text-muted-foreground">Loading fragments…</p>;
+  if (isError || !envelope) return <p className="p-4 text-sm text-muted-foreground">Failed to load fragments.</p>;
 
   const fragments = envelope.status === 200 ? envelope.data : [];
   const discardedCount = fragments.reduce((count, f) => count + (f.isDiscarded ? 1 : 0), 0);

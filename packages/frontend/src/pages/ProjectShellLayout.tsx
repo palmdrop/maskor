@@ -2,6 +2,7 @@ import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
 import { useProjectShellCommands } from "@lib/commands/catalog/useProjectShellCommands";
+import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
 
 export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
@@ -54,7 +55,9 @@ export const ProjectShellLayout = () => {
         </Link>
       </nav>
       <div className="flex-1 min-h-0 overflow-hidden">
-        <Outlet />
+        <RebuildStatusProvider projectId={projectId}>
+          <Outlet />
+        </RebuildStatusProvider>
       </div>
     </div>
   );

@@ -55,8 +55,15 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 ### Startup sequence
 
 1. Middleware detects active project.
-2. DB rebuild is triggered to make sure everything is in i sync.
+2. DB rebuild is triggered to make sure everything is in sync. Concurrent requests on the same project wait for the same rebuild promise — only one rebuild runs per project per process lifetime.
 3. Watcher starts — handles all changes from this point forward.
+
+### Rebuild-in-progress UX contract
+
+- During an in-progress rebuild, `GET /projects/:projectId/rebuild-status` returns `{ rebuilding: true }` immediately (no blocking).
+- All other project-scoped API requests block until rebuild completes — they never return partial/empty data.
+- The frontend polls `rebuild-status` on mount and shows a named loading state "Rebuilding project index…" in the fragment list, overview, and project-config views while `rebuilding: true`.
+- When rebuild completes, the status endpoint returns `{ rebuilding: false }` and the frontend invalidates all project queries so views auto-refresh.
 
 ### Rebuild
 

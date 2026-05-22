@@ -10,7 +10,9 @@ import {
   ProjectDeleteResultSchema,
   ProjectDeleteInputSchema,
   ProjectUUIDParamSchema,
+  ProjectRebuildStatusSchema,
 } from "../schemas/project";
+import { isProjectRebuilding } from "../middleware/rebuild-state";
 import { ErrorResponseSchema } from "../schemas/error";
 import {
   executeGlobalCommand,
@@ -161,6 +163,21 @@ const updateVaultPathRoute = createRoute({
   },
 });
 
+const getProjectRebuildStatusRoute = createRoute({
+  operationId: "getProjectRebuildStatus",
+  method: "get",
+  path: "/{projectId}/rebuild-status",
+  tags: ["Projects"],
+  summary: "Check if a vault index rebuild is in progress",
+  request: { params: ProjectUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ProjectRebuildStatusSchema } },
+      description: "Current rebuild status",
+    },
+  },
+});
+
 const deleteProjectRoute = createRoute({
   operationId: "deleteProject",
   method: "delete",
@@ -189,6 +206,11 @@ const deleteProjectRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+projectsRouter.openapi(getProjectRebuildStatusRoute, (ctx) => {
+  const { projectId } = ctx.req.valid("param");
+  return ctx.json({ rebuilding: isProjectRebuilding(projectId) }, 200);
 });
 
 projectsRouter.openapi(listProjectsRoute, async (ctx) => {

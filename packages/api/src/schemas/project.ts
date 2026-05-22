@@ -58,3 +58,9 @@ export const ProjectDeleteInputSchema = z
     deleteFiles: z.boolean().optional().openapi({ example: false }),
   })
   .openapi("ProjectDeleteInput");
+
+export const ProjectRebuildStatusSchema = z
+  .object({
+    rebuilding: z.boolean().openapi({ example: false, description: "True while the vault index rebuild is in progress" }),
+  })
+  .openapi("ProjectRebuildStatus");
