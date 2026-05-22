@@ -20,25 +20,13 @@ import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
-import { useEditorExtractCommand } from "@lib/commands/catalog/useEditorExtractCommand";
-import {
-  useEditorInsertCommand,
-  type InsertCommandTarget,
-} from "@lib/commands/catalog/useEditorInsertCommand";
-import { ExtractToFragmentDialog } from "./fragments/extract-to-fragment-dialog";
-import { ExtractToNoteDialog } from "./notes/extract-to-note-dialog";
-import { ExtractToReferenceDialog } from "./references/extract-to-reference-dialog";
-import { ExtractToAspectDialog } from "./aspects/extract-to-aspect-dialog";
+import { useEditorExtractAndInsertCommands } from "@lib/commands/catalog/useEditorExtractAndInsertCommands";
+import type { InsertCommandTarget } from "@lib/commands/catalog/useEditorInsertCommand";
+import { ExtractToEntityDialog } from "./extract-to-entity-dialog";
 import { AppendOrPrependDialog, type InsertDirection } from "./append-or-prepend-dialog";
 import { useInsertToggles } from "@lib/insert-toggles/InsertTogglesProvider";
-import { useListFragments } from "@api/generated/fragments/fragments";
-import { useListNotes } from "@api/generated/notes/notes";
-import { useListReferences } from "@api/generated/references/references";
-import { useListAspects } from "@api/generated/aspects/aspects";
-import { useAppendFragment, usePrependFragment } from "@api/generated/fragments/fragments";
-import { useAppendNote, usePrependNote } from "@api/generated/notes/notes";
-import { useAppendReference, usePrependReference } from "@api/generated/references/references";
-import { useAppendAspect, usePrependAspect } from "@api/generated/aspects/aspects";
+import { ENTITY_KINDS, type EntityKind } from "@lib/entity-kinds/registry";
+import { useEntityKindRegistry } from "@lib/entity-kinds/useEntityKindRegistry";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -66,6 +54,17 @@ type Props = {
   onContentRevert?: () => void;
   onKeySave: (key: string) => Promise<void>;
   onContentSave: (content: string) => Promise<void>;
+};
+
+type InsertionTarget = {
+  direction: InsertDirection;
+  targetKind: EntityKind;
+  targetEntity: InsertCommandTarget;
+};
+
+type InsertMutationResult = {
+  status: number;
+  data: { sourceCutFailed: boolean };
 };
 
 export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
@@ -99,41 +98,15 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
 
-    const { data: fragmentsEnvelope } = useListFragments(projectId);
-    const { data: notesEnvelope } = useListNotes(projectId);
-    const { data: referencesEnvelope } = useListReferences(projectId);
-    const { data: aspectsEnvelope } = useListAspects(projectId);
+    const registry = useEntityKindRegistry(projectId);
+    const sourceKind = entityKind as EntityKind;
 
-    const { mutateAsync: appendFragment, isPending: isAppendingFragment } = useAppendFragment();
-    const { mutateAsync: prependFragment, isPending: isPrependingFragment } = usePrependFragment();
-    const { mutateAsync: appendNote, isPending: isAppendingNote } = useAppendNote();
-    const { mutateAsync: prependNote, isPending: isPrependingNote } = usePrependNote();
-    const { mutateAsync: appendReference, isPending: isAppendingReference } = useAppendReference();
-    const { mutateAsync: prependReference, isPending: isPrependingReference } =
-      usePrependReference();
-    const { mutateAsync: appendAspect, isPending: isAppendingAspect } = useAppendAspect();
-    const { mutateAsync: prependAspect, isPending: isPrependingAspect } = usePrependAspect();
+    const isInsertionPending = ENTITY_KINDS.some(
+      (kind) => registry[kind].append.isPending || registry[kind].prepend.isPending,
+    );
 
-    const isInsertionPending =
-      isAppendingFragment ||
-      isPrependingFragment ||
-      isAppendingNote ||
-      isPrependingNote ||
-      isAppendingReference ||
-      isPrependingReference ||
-      isAppendingAspect ||
-      isPrependingAspect;
-
-    const [extractTarget, setExtractTarget] = useState<
-      "fragment" | "note" | "reference" | "aspect" | null
-    >(null);
+    const [extractTarget, setExtractTarget] = useState<EntityKind | null>(null);
     const [extractSelectionText, setExtractSelectionText] = useState("");
-
-    type InsertionTarget = {
-      direction: InsertDirection;
-      targetType: "fragment" | "note" | "reference" | "aspect";
-      targetEntity: InsertCommandTarget;
-    };
 
     const [insertionTarget, setInsertionTarget] = useState<InsertionTarget | null>(null);
     const [insertionSelectionText, setInsertionSelectionText] = useState("");
@@ -241,104 +214,82 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       [],
     );
 
-    const handleExtractOpen = useCallback(
-      (targetType: "fragment" | "note" | "reference" | "aspect") => (text: string) => {
-        setExtractSelectionText(text);
-        setExtractTarget(targetType);
+    const navigateToEntity = useCallback(
+      (kind: EntityKind, uuid: string) => {
+        // TanStack Router needs the route literal at the call site for params inference,
+        // so the four routes stay unrolled — but only in this one helper.
+
+        switch (kind) {
+          case "fragment":
+            void navigate({
+              to: "/projects/$projectId/fragments/$fragmentId",
+              params: { projectId, fragmentId: uuid },
+            });
+            return;
+          case "note":
+            void navigate({
+              to: "/projects/$projectId/notes/$noteId",
+              params: { projectId, noteId: uuid },
+            });
+            return;
+          case "reference":
+            void navigate({
+              to: "/projects/$projectId/references/$referenceId",
+              params: { projectId, referenceId: uuid },
+            });
+            return;
+          case "aspect":
+            void navigate({
+              to: "/projects/$projectId/aspects/$aspectId",
+              params: { projectId, aspectId: uuid },
+            });
+            return;
+        }
       },
-      [],
+      [navigate, projectId],
     );
+
+    const handleExtractOpen = useCallback((kind: EntityKind, text: string) => {
+      setExtractSelectionText(text);
+      setExtractTarget(kind);
+    }, []);
 
     const handleExtractClose = useCallback(() => setExtractTarget(null), []);
 
-    const handleExtractToFragmentSuccess = useCallback(
-      (uuid: string) => {
+    const handleExtractSuccess = useCallback(
+      (kind: EntityKind, uuid: string) => {
         setExtractTarget(null);
-        void navigate({
-          to: "/projects/$projectId/fragments/$fragmentId",
-          params: { projectId, fragmentId: uuid },
-        });
+        navigateToEntity(kind, uuid);
       },
-      [navigate, projectId],
+      [navigateToEntity],
     );
 
-    const handleExtractToNoteSuccess = useCallback(
-      (uuid: string) => {
-        setExtractTarget(null);
-        void navigate({
-          to: "/projects/$projectId/notes/$noteId",
-          params: { projectId, noteId: uuid },
-        });
-      },
-      [navigate, projectId],
-    );
-
-    const handleExtractToReferenceSuccess = useCallback(
-      (uuid: string) => {
-        setExtractTarget(null);
-        void navigate({
-          to: "/projects/$projectId/references/$referenceId",
-          params: { projectId, referenceId: uuid },
-        });
-      },
-      [navigate, projectId],
-    );
-
-    const handleExtractToAspectSuccess = useCallback(
-      (uuid: string) => {
-        setExtractTarget(null);
-        void navigate({
-          to: "/projects/$projectId/aspects/$aspectId",
-          params: { projectId, aspectId: uuid },
-        });
-      },
-      [navigate, projectId],
-    );
-
-    const eligibleFragments = useMemo<InsertCommandTarget[]>(() => {
-      const fragments = fragmentsEnvelope?.status === 200 ? fragmentsEnvelope.data : [];
-      return fragments
-        .filter((fragment) => !fragment.isDiscarded && fragment.uuid !== entityUUID)
-        .map((fragment) => ({ uuid: fragment.uuid, key: fragment.key }));
-    }, [fragmentsEnvelope, entityUUID]);
-
-    const eligibleNotes = useMemo<InsertCommandTarget[]>(() => {
-      const notes = notesEnvelope?.status === 200 ? notesEnvelope.data : [];
-      return notes
-        .filter((note) => note.uuid !== entityUUID)
-        .map((note) => ({ uuid: note.uuid, key: note.key }));
-    }, [notesEnvelope, entityUUID]);
-
-    const eligibleReferences = useMemo<InsertCommandTarget[]>(() => {
-      const references = referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
-      return references
-        .filter((reference) => reference.uuid !== entityUUID)
-        .map((reference) => ({ uuid: reference.uuid, key: reference.key }));
-    }, [referencesEnvelope, entityUUID]);
-
-    const eligibleAspects = useMemo<InsertCommandTarget[]>(() => {
-      const aspects = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
-      return aspects
-        .filter((aspect) => aspect.uuid !== entityUUID)
-        .map((aspect) => ({ uuid: aspect.uuid, key: aspect.key }));
-    }, [aspectsEnvelope, entityUUID]);
-
-    const getEligibleItems = useCallback(
-      (targetType: "fragment" | "note" | "reference" | "aspect") => {
-        if (targetType === "fragment") return eligibleFragments;
-        if (targetType === "note") return eligibleNotes;
-        if (targetType === "reference") return eligibleReferences;
-        return eligibleAspects;
-      },
-      [eligibleFragments, eligibleNotes, eligibleReferences, eligibleAspects],
-    );
+    const eligibleByKind = useMemo<Record<EntityKind, InsertCommandTarget[]>>(() => {
+      const buildList = (kind: EntityKind): InsertCommandTarget[] =>
+        registry[kind].list
+          .filter(
+            (item) =>
+              item.uuid !== entityUUID && !(kind === "fragment" && item.isDiscarded === true),
+          )
+          .map((item) => ({ uuid: item.uuid, key: item.key }));
+      return {
+        fragment: buildList("fragment"),
+        note: buildList("note"),
+        reference: buildList("reference"),
+        aspect: buildList("aspect"),
+      };
+    }, [registry, entityUUID]);
 
     const handleInsertOpen = useCallback(
-      (direction: InsertDirection, targetType: "fragment" | "note" | "reference" | "aspect") =>
-        (selectionText: string, targetEntity: InsertCommandTarget) => {
-          setInsertionSelectionText(selectionText);
-          setInsertionTarget({ direction, targetType, targetEntity });
-        },
+      (
+        direction: InsertDirection,
+        targetKind: EntityKind,
+        selectionText: string,
+        targetEntity: InsertCommandTarget,
+      ) => {
+        setInsertionSelectionText(selectionText);
+        setInsertionTarget({ direction, targetKind, targetEntity });
+      },
       [],
     );
 
@@ -346,181 +297,61 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     const handleInsertConfirm = useCallback(async () => {
       if (!insertionTarget) return;
-      const { direction, targetType, targetEntity } = insertionTarget;
+      const { direction, targetKind, targetEntity } = insertionTarget;
+      const bundle = registry[targetKind];
 
-      const insertionData = {
-        insertedBody: insertionSelectionText,
-        sourceUuid: entityUUID,
-        sourceType: entityKind as "fragment" | "note" | "reference" | "aspect",
-        sourceMode: insertSourceMode,
-        navigated: insertNextMode === "switch",
+      const mutation = direction === "append" ? bundle.append : bundle.prepend;
+      const input = {
+        projectId,
+        [bundle.meta.insertIdParamKey]: targetEntity.uuid,
+        data: {
+          insertedBody: insertionSelectionText,
+          sourceUuid: entityUUID,
+          sourceType: sourceKind,
+          sourceMode: insertSourceMode,
+          navigated: insertNextMode === "switch",
+        },
       };
 
-      type InsertResult = { sourceCutFailed: boolean };
-      let insertResult: InsertResult | null = null;
-
+      // NOTE: The assignment is not useless, ts is wrong?
+      // eslint-disable-next-line no-useless-assignment
+      let result: InsertMutationResult | null = null;
       try {
-        if (targetType === "fragment") {
-          const result = await (direction === "append" ? appendFragment : prependFragment)({
-            projectId,
-            fragmentId: targetEntity.uuid,
-            data: insertionData,
-          });
-          if (result.status === 200) insertResult = result.data;
-        } else if (targetType === "note") {
-          const result = await (direction === "append" ? appendNote : prependNote)({
-            projectId,
-            noteId: targetEntity.uuid,
-            data: insertionData,
-          });
-          if (result.status === 200) insertResult = result.data;
-        } else if (targetType === "reference") {
-          const result = await (direction === "append" ? appendReference : prependReference)({
-            projectId,
-            referenceId: targetEntity.uuid,
-            data: insertionData,
-          });
-          if (result.status === 200) insertResult = result.data;
-        } else {
-          const result = await (direction === "append" ? appendAspect : prependAspect)({
-            projectId,
-            aspectId: targetEntity.uuid,
-            data: insertionData,
-          });
-          if (result.status === 200) insertResult = result.data;
-        }
+        result = (await mutation.mutateAsync(input as never)) as InsertMutationResult;
       } catch {
         return;
       }
 
-      if (!insertResult) return;
+      if (result?.status !== 200) return;
 
       setInsertionTarget(null);
 
-      if (insertResult.sourceCutFailed) {
+      if (result.data.sourceCutFailed) {
         toast.warning(
-          `Added to ${targetType}/${targetEntity.key}. Couldn't update the source body — the selection is still there.`,
+          `Added to ${targetKind}/${targetEntity.key}. Couldn't update the source body — the selection is still there.`,
         );
       }
 
       if (insertNextMode === "switch") {
-        if (targetType === "fragment") {
-          void navigate({
-            to: "/projects/$projectId/fragments/$fragmentId",
-            params: { projectId, fragmentId: targetEntity.uuid },
-          });
-        } else if (targetType === "note") {
-          void navigate({
-            to: "/projects/$projectId/notes/$noteId",
-            params: { projectId, noteId: targetEntity.uuid },
-          });
-        } else if (targetType === "reference") {
-          void navigate({
-            to: "/projects/$projectId/references/$referenceId",
-            params: { projectId, referenceId: targetEntity.uuid },
-          });
-        } else {
-          void navigate({
-            to: "/projects/$projectId/aspects/$aspectId",
-            params: { projectId, aspectId: targetEntity.uuid },
-          });
-        }
+        navigateToEntity(targetKind, targetEntity.uuid);
       }
     }, [
       insertionTarget,
       insertionSelectionText,
       entityUUID,
-      entityKind,
+      sourceKind,
       insertSourceMode,
       insertNextMode,
       projectId,
-      appendFragment,
-      prependFragment,
-      appendNote,
-      prependNote,
-      appendReference,
-      prependReference,
-      appendAspect,
-      prependAspect,
-      navigate,
+      registry,
+      navigateToEntity,
     ]);
 
-    useEditorExtractCommand({
-      targetType: "fragment",
+    useEditorExtractAndInsertCommands({
       getSelection: getEditorSelection,
-      onExtract: handleExtractOpen("fragment"),
-    });
-    useEditorExtractCommand({
-      targetType: "note",
-      getSelection: getEditorSelection,
-      onExtract: handleExtractOpen("note"),
-    });
-    useEditorExtractCommand({
-      targetType: "reference",
-      getSelection: getEditorSelection,
-      onExtract: handleExtractOpen("reference"),
-    });
-    useEditorExtractCommand({
-      targetType: "aspect",
-      getSelection: getEditorSelection,
-      onExtract: handleExtractOpen("aspect"),
-    });
-
-    useEditorInsertCommand({
-      direction: "append",
-      targetType: "fragment",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleFragments,
-      onInsert: handleInsertOpen("append", "fragment"),
-    });
-    useEditorInsertCommand({
-      direction: "append",
-      targetType: "note",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleNotes,
-      onInsert: handleInsertOpen("append", "note"),
-    });
-    useEditorInsertCommand({
-      direction: "append",
-      targetType: "reference",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleReferences,
-      onInsert: handleInsertOpen("append", "reference"),
-    });
-    useEditorInsertCommand({
-      direction: "append",
-      targetType: "aspect",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleAspects,
-      onInsert: handleInsertOpen("append", "aspect"),
-    });
-    useEditorInsertCommand({
-      direction: "prepend",
-      targetType: "fragment",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleFragments,
-      onInsert: handleInsertOpen("prepend", "fragment"),
-    });
-    useEditorInsertCommand({
-      direction: "prepend",
-      targetType: "note",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleNotes,
-      onInsert: handleInsertOpen("prepend", "note"),
-    });
-    useEditorInsertCommand({
-      direction: "prepend",
-      targetType: "reference",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleReferences,
-      onInsert: handleInsertOpen("prepend", "reference"),
-    });
-    useEditorInsertCommand({
-      direction: "prepend",
-      targetType: "aspect",
-      getSelection: getEditorSelection,
-      getItems: () => eligibleAspects,
-      onInsert: handleInsertOpen("prepend", "aspect"),
+      eligibleByKind,
+      onExtract: handleExtractOpen,
+      onInsert: handleInsertOpen,
     });
 
     const handleProseChange = useCallback(() => {
@@ -625,46 +456,23 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             />
           </main>
         </div>
-        <ExtractToFragmentDialog
-          open={extractTarget === "fragment"}
-          projectId={projectId}
-          sourceFragmentUuid={entityUUID}
-          selectionText={extractSelectionText}
-          onClose={handleExtractClose}
-          onSuccess={handleExtractToFragmentSuccess}
-        />
-        <ExtractToNoteDialog
-          open={extractTarget === "note"}
-          projectId={projectId}
-          sourceUuid={entityUUID}
-          sourceType={entityKind}
-          selectionText={extractSelectionText}
-          onClose={handleExtractClose}
-          onSuccess={handleExtractToNoteSuccess}
-        />
-        <ExtractToReferenceDialog
-          open={extractTarget === "reference"}
-          projectId={projectId}
-          sourceUuid={entityUUID}
-          sourceType={entityKind}
-          selectionText={extractSelectionText}
-          onClose={handleExtractClose}
-          onSuccess={handleExtractToReferenceSuccess}
-        />
-        <ExtractToAspectDialog
-          open={extractTarget === "aspect"}
-          projectId={projectId}
-          sourceUuid={entityUUID}
-          sourceType={entityKind}
-          selectionText={extractSelectionText}
-          onClose={handleExtractClose}
-          onSuccess={handleExtractToAspectSuccess}
-        />
+        {extractTarget && (
+          <ExtractToEntityDialog
+            open={true}
+            bundle={registry[extractTarget]}
+            projectId={projectId}
+            sourceUuid={entityUUID}
+            sourceKind={sourceKind}
+            selectionText={extractSelectionText}
+            onClose={handleExtractClose}
+            onSuccess={(uuid) => handleExtractSuccess(extractTarget, uuid)}
+          />
+        )}
         {insertionTarget && (
           <AppendOrPrependDialog
             open={true}
             direction={insertionTarget.direction}
-            targetType={insertionTarget.targetType}
+            targetType={insertionTarget.targetKind}
             targetKey={insertionTarget.targetEntity.key}
             selectionText={insertionSelectionText}
             sourceMode={insertSourceMode}

@@ -44,49 +44,35 @@ vi.mock("./prose-editor", () => ({
   }),
 }));
 
-vi.mock("./fragments/extract-to-fragment-dialog", () => ({
-  ExtractToFragmentDialog: () => null,
-}));
-
-vi.mock("./notes/extract-to-note-dialog", () => ({
-  ExtractToNoteDialog: () => null,
-}));
-
-vi.mock("./references/extract-to-reference-dialog", () => ({
-  ExtractToReferenceDialog: () => null,
-}));
-
-vi.mock("./aspects/extract-to-aspect-dialog", () => ({
-  ExtractToAspectDialog: () => null,
+vi.mock("./extract-to-entity-dialog", () => ({
+  ExtractToEntityDialog: () => null,
 }));
 
 vi.mock("./append-or-prepend-dialog", () => ({
   AppendOrPrependDialog: () => null,
 }));
 
-vi.mock("@api/generated/fragments/fragments", () => ({
-  useListFragments: () => ({ data: { status: 200, data: [] } }),
-  useAppendFragment: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePrependFragment: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
-
-vi.mock("@api/generated/notes/notes", () => ({
-  useListNotes: () => ({ data: { status: 200, data: [] } }),
-  useAppendNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePrependNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
-
-vi.mock("@api/generated/references/references", () => ({
-  useListReferences: () => ({ data: { status: 200, data: [] } }),
-  useAppendReference: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePrependReference: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
-
-vi.mock("@api/generated/aspects/aspects", () => ({
-  useListAspects: () => ({ data: { status: 200, data: [] } }),
-  useAppendAspect: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePrependAspect: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
+vi.mock("@lib/entity-kinds/useEntityKindRegistry", async () => {
+  const { ENTITY_KIND_META } = await import("@lib/entity-kinds/registry");
+  const emptyBundle = (kind: "fragment" | "note" | "reference" | "aspect") => ({
+    kind,
+    meta: ENTITY_KIND_META[kind],
+    list: [],
+    allKeys: new Set<string>(),
+    discardedKeys: new Set<string>(),
+    append: { mutateAsync: vi.fn(), isPending: false },
+    prepend: { mutateAsync: vi.fn(), isPending: false },
+    extract: { mutateAsync: vi.fn(), isPending: false },
+  });
+  return {
+    useEntityKindRegistry: () => ({
+      fragment: emptyBundle("fragment"),
+      note: emptyBundle("note"),
+      reference: emptyBundle("reference"),
+      aspect: emptyBundle("aspect"),
+    }),
+  };
+});
 
 vi.mock("@hooks/useProjectEditorConfig", () => ({
   useProjectEditorConfig: () => ({
