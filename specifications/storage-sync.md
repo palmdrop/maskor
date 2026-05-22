@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-05-22 — Rebuild-in-progress loading state: concurrent requests all await the same rebuild promise; `GET rebuild-status` endpoint exposes in-progress state without blocking; fragment list, overview, and project-config views show "Rebuilding project index…" during rebuild. (plan: `scripts/ralph/archive/2026-05-22-small-improvements/`)
 - 2026-04-04 — Vault change events are emitted over SSE after each watcher transaction; the frontend invalidates its cache automatically without polling. (plan: references/plans/sse-vault-events.md)
 - 2026-04-05 — Fragments, aspects, notes, and references are stored as vault markdown files; Maskor reads and writes frontmatter without modifying body content. (plan: references/plans/storage-markdown-reader.md)
 - 2026-04-10 — All vault entities are indexed in a per-vault SQLite database; full rebuilds run as a single atomic transaction and soft-delete entities no longer present in the vault. (plan: references/plans/vault-content-index.md)

@@ -1,70 +1,62 @@
 ## Codebase Patterns
-- Sections in the Sequence domain type have no explicit `position` field — they are ordered by array index. Only `FragmentPosition` has a `position: number` field.
-- The sequencer tsconfig has pre-existing tsc type errors (fragmentUUID vs fragmentUuid mismatch) that are not caused by Ralph's changes. Tests run fine with `bun test`.
-- Use `git -C /path/to/repo` for git commands since the shell CWD may not be the repo root.
-- Run tests via `bun run --filter '*' test` from the repo root to catch all packages.
+- Vault skeleton dirs: fragments/, fragments/discarded/, aspects/, notes/, references/, pieces/
+- `resolveProject` in storage-service is the entry point for first project access — good place for startup repairs
+- Registry tests use `BASIC_VAULT` fixture (cpSync'd to tmp dir); storage-service tests do the same
+- `ensureVaultSkeleton` uses `mkdir(path, { recursive: true })` making it idempotent and safe anywhere
+- Fragment rename logic lives in `storage-service.ts` `fragments.write` — captures oldFilePath before write, then deletes old file if key changed
+- Use `readdirSync` (not `existsSync`) to check exact on-disk filename casing — `existsSync` is case-insensitive on macOS and will return true for wrong-case paths
+- Case-only rename fix: temp-file roundtrip (rename old→temp, write new, unlink temp); works on both case-sensitive (Linux) and case-insensitive (macOS/Windows) filesystems
+- Rebuild-state tracking lives in `packages/api/src/middleware/rebuild-state.ts` (module-level Maps/Sets); import `isProjectRebuilding` for status checks, `registerRebuild` for deduplication
+- Generated frontend API client is gitignored — always run `bun run codegen` in packages/frontend after adding/changing API endpoints
+- To add a new path alias in frontend: update tsconfig.app.json paths, vite.config.ts alias, AND vitest.config.ts alias — all three are required
+- Status endpoints that must NOT await rebuild: register in `projectsRouter` (under `/projects` prefix), not in `projectScopedApp` (which uses `resolveProject` middleware)
 
 # Ralph Progress Log
 Started: [pending]
 ---
 
-## [2026-05-18] - US-001
-- Added `getFragmentOrder(sequence: Sequence): string[]` to `packages/sequencer/src/index.ts`
-- Added unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts` covering: empty sequence, single section with fragments, multi-section ordering, section with zero fragments interspersed
-- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`
+## 2026-05-22 - US-001
+- Implemented full vault skeleton bootstrap on project creation and lazy repair on startup
+- Created `packages/storage/src/utils/vault-skeleton.ts` with `VAULT_SKELETON_DIRS` and `ensureVaultSkeleton`
+- Updated `packages/storage/src/registry/registry.ts`: replaced single `aspects/` mkdir with `ensureVaultSkeleton(vaultPath)` in create mode
+- Updated `packages/storage/src/service/storage-service.ts`: added `ensureVaultSkeleton(vaultPath)` call in `resolveProject` after `cleanupStaleDirectories`
+- Updated `packages/storage/src/__tests__/registry.test.ts`: expanded skeleton test to assert all 6 dirs
+- Updated `packages/storage/src/__tests__/storage-service.test.ts`: added lazy-repair test using a minimal vault with only `.maskor/`
+- Updated `specifications/project-management.md`: listed all skeleton dirs including the new lazy-repair behavior
 - **Learnings for future iterations:**
-  - Sections are ordered by array position (index), not a `position` field — the `Section` schema has no position. Fragment positions are dense 0-based integers within each section.
-  - Pre-existing tsc errors in sequencer package (fragmentUUID vs fragmentUuid, missing FragmentPosition export) — ignore these, they predate Ralph's work. All 33 tests pass.
-  - The `bun run --filter '*' test` command from repo root is the way to run all package tests.
+  - BASIC_VAULT has files in `fragments/discarded/` — can't use `rmdirSync` on non-empty dirs; use a purpose-built minimal vault in tests instead
+  - The `resolveProject` method is the right hook for startup-time repairs; it runs before any user-facing operation on a project
+  - The existing TODO comment in registry.ts (`// TODO: create helper function for creating entire repo structure`) was exactly what US-001 addressed
 ---
 
-## [2026-05-18] - US-002
-- Added `Violation` type and `computeViolations(main, secondaries)` to `packages/sequencer/src/index.ts`.
-- Added internal `findCyclicSecondaryUuids` helper using Tarjan's SCC over the union edge graph (with per-edge secondary-UUID provenance) so `computeViolations` can skip secondaries that participate in a cycle. US-003 will expose the cycle detection as `detectCycles` returning the richer `Cycle` shape; this helper can be refactored to share logic when US-003 lands.
-- Added 9 unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts` covering: no violations, no-secondaries, single violation, multiple violations on one fragment, fragment in multiple secondaries, only-one-endpoint-placed (both directions), cycle-skip behavior, and that non-cyclic secondaries still produce violations when other secondaries are cyclic.
-- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
-- Verify: `bun run verify` passes (532 backend tests + 82 frontend tests + typecheck).
+## 2026-05-22 - US-002
+- Fixed case-only fragment rename on case-insensitive filesystems (macOS APFS, Windows NTFS)
+- Root cause: `fragments.write` in storage-service.ts wrote new content to "chapter one.md", then called `unlink("Chapter One.md")` — on case-insensitive FS both paths are the same physical file, so the content was deleted
+- Fix: added `isCaseOnlyRename` detection in `storage-service.ts` `fragments.write`; when triggered, uses temp-file roundtrip (`rename old→temp`, `vault.write new`, `unlink temp`) instead of write-then-unlink
+- Added `rename` to imports from `node:fs/promises` in storage-service.ts
+- Updated `packages/storage/src/__tests__/storage-service.test.ts`: new describe block "case-only rename" with test verifying UUID/key survival and correct on-disk filename via `readdirSync`
+- Updated `specifications/fragment-editor.md`: added Prior decisions entry documenting the case-only rename behavior
 - **Learnings for future iterations:**
-  - Edges in the constraint graph use *all transitive pairs* (A,B) where A precedes B in a secondary's flat order — required for the violation check (subsequence-with-gaps semantics) and consistent with US-003's stated edge construction. Adjacent-pairs-only would miss violations like secondary [A,B,C] vs main [B,C,A] reporting (A→C).
-  - The `Violation.predecessorUuid` is the "A" (should-come-first) and `Violation.fragmentUuid` is the "B" (the fragment that ended up before its predecessor in main).
-  - Pre-existing prettier lint error at `packages/sequencer/src/__tests__/sequencer.test.ts:286` was committed in US-001 (commit 0c7814e) — not introduced here. `bun run verify` (typecheck+test) does not run lint; lint is full of pre-existing repo-wide errors.
-  - When designing tests, `placeFragment` requires a real section UUID — build secondaries via a helper that creates a single empty section with a known UUID, then `placeFragment` into it. Direct construction of Section objects works but requires manually picking valid uuid-shaped strings.
+  - Fragment key is derived from the on-disk filename (basename), not from frontmatter — if the file keeps the old case, the watcher will re-index with old key
+  - `existsSync` is case-insensitive on macOS — use `readdirSync` to verify exact filename casing in tests
+  - The `isCaseOnlyRename` check: `old !== new && old.toLowerCase() === new.toLowerCase()` correctly fires for case-only changes on both FS types
+  - `vault.fragments.write` derives path from `fragment.key` — after `rename old→temp`, writing creates a fresh file at the new-case path on both FS types
 ---
 
-## [2026-05-18] - US-003
-- Exported `Cycle` type and `detectCycles(secondaries)` from `packages/sequencer/src/index.ts`.
-- Refactored SCC machinery into two internal helpers: `buildConstraintGraph` (transitive (A,B) edges with secondary-UUID provenance) and `findStronglyConnectedComponents` (Tarjan's). `detectCycles` reuses both, and the existing `findCyclicSecondaryUuids` helper used by `computeViolations` now delegates to `detectCycles` so cycle-detection logic lives in one place.
-- Trivial single-node SCCs are dropped. A cycle's `sequenceUuids` only includes secondaries whose edges live *inside* the SCC (an edge from a secondary that crosses out of the SCC is not counted).
-- Added 7 unit tests in `packages/sequencer/src/__tests__/sequencer.test.ts`: empty input, all-consistent secondaries, single-node trivial SCC skip, 2-node cycle across two secondaries, 3-node cycle spanning three secondaries, two independent cycles, secondaries-with-edges-outside-SCC are excluded.
-- Files changed: `packages/sequencer/src/index.ts`, `packages/sequencer/src/__tests__/sequencer.test.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
-- Verify: `bun run verify` passes (539 backend + 82 frontend tests + typecheck).
+## 2026-05-22 - US-003
+- Fixed concurrent-request bug: changed `resolveProject` middleware from `Set<string>` (rebuilt flag) to `Map<string, Promise<void>>` via new `packages/api/src/middleware/rebuild-state.ts` module. All concurrent requests now await the same rebuild promise instead of the first one marking "done" before the await completes.
+- Added `GET /projects/:projectId/rebuild-status` endpoint (in `projectsRouter` — bypasses `resolveProject` middleware). Returns `{ rebuilding: boolean }` immediately without blocking.
+- Added `ProjectRebuildStatusSchema` to `packages/api/src/schemas/project.ts`.
+- Created `packages/frontend/src/contexts/RebuildStatusContext.tsx`: polls rebuild-status every 500ms while rebuilding; invalidates all project queries on completion.
+- Wrapped `<Outlet />` in `ProjectShellLayout.tsx` with `<RebuildStatusProvider>`.
+- Updated `FragmentListPage`, `OverviewPage`, and `ProjectConfigPage` to show "Rebuilding project index…" when `isRebuilding && isLoading`.
+- Added `@contexts` path alias to tsconfig.app.json, vite.config.ts, and vitest.config.ts.
+- Added tests: rebuild-status endpoint returns boolean; concurrent fragment requests all return same non-empty data (covers the race bug).
+- Updated `specifications/storage-sync.md` with rebuild-in-progress UX contract.
+- **Browser verification not performed** — no browser MCP available; manual verification required.
 - **Learnings for future iterations:**
-  - The internal `findCyclicSecondaryUuids` from US-002 is now a thin wrapper over `detectCycles`. Future stories that need cycle info should call `detectCycles` directly rather than re-implementing SCC.
-  - `Cycle.sequenceUuids` is a *contributing-edges* set, not a "secondaries that touched any fragment in the SCC" set. A secondary with one edge inside the SCC and another crossing out only counts via the inside edge. This matches the spec ("the secondaries whose edges contribute to it").
-  - The transitive-edge graph (used here) is wider than an adjacent-pairs-only graph would be, but it does not change which SCCs exist — only adjacent pairs are sufficient to produce all SCCs. We keep transitive edges because `computeViolations` already needs them and sharing the graph keeps it consistent. If a future story wants the *minimal* secondary set per cycle, that would need adjacent-only edges; flag this when it comes up.
-  - When asserting on `Cycle` arrays in tests, sort both sides — Tarjan's pop order is implementation-dependent and `sequenceUuids` comes from a Set.
----
-
-## [2026-05-18] - US-004
-- Switched sequence-name uniqueness in `packages/storage/src/service/storage-service.ts` from case-insensitive to case-sensitive comparison per the PRD AC.
-- Extended `ErrorResponseSchema` (`packages/api/src/schemas/error.ts`) with an optional `reason` field and propagated `VaultError.context.reason` for `KEY_CONFLICT`/`FRAGMENT_NOT_DISCARDED` in `packages/api/src/errors.ts`. Frontend can now distinguish name conflicts from other 409s via `response.reason === "name_conflict"`.
-- Added 3 storage tests in `packages/storage/src/__tests__/storage-service.test.ts`: different-case names do NOT collide; rename-to-collision throws KEY_CONFLICT; self-rename no-op is permitted. Tightened the existing collision test to assert `context.reason === "name_conflict"`.
-- Added 3 API integration tests in `packages/api/src/__tests__/routes/sequences.test.ts`: rename-collision returns 409 with `reason: "name_conflict"`, self-rename returns 200, two sequences differing only by case can coexist. The existing create-collision test was tightened to assert the new `reason` field.
-- Added a SUGGESTIONS.md entry flagging the case-sensitivity inconsistency vs. fragment keys (sequence-name is case-sensitive per PRD; fragment-key is case-insensitive).
-- Files changed: `packages/storage/src/service/storage-service.ts`, `packages/storage/src/__tests__/storage-service.test.ts`, `packages/api/src/schemas/error.ts`, `packages/api/src/errors.ts`, `packages/api/src/__tests__/routes/sequences.test.ts`, `references/suggestions.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
-- Verify: `bun run verify` passes (545 backend + 82 frontend tests + typecheck).
-- **Learnings for future iterations:**
-  - The storage layer was *already* enforcing sequence-name uniqueness via `VaultError("KEY_CONFLICT", ..., { reason: "name_conflict" })` and the update-sequence command already routes renames through `storageService.sequences.write`, so the rename-collision check was a freebie — only the case-sensitivity flavor needed flipping. Whenever a "command should reject X" AC lands, check the storage write path first; it often already throws the right typed error.
-  - The PRD specified case-SENSITIVE comparison, which is *less restrictive* than the prior case-insensitive code. Flagged the mismatch with fragment-key behavior (case-insensitive) in `references/suggestions.md` since it is a real UX wart but out-of-scope to amend the PRD here.
-  - The API error response now carries an optional `reason` field. This is part of `ErrorResponseSchema` and will flow through orval codegen on the next regeneration (US-007 explicitly regenerates the orval client). Frontend can branch on `response.reason` to render inline errors.
-  - The existing create-conflict integration test was already written and passing — it only asserted status code, not the structured body. When tightening tests, prefer to assert the structured body (`error`, `reason`) rather than only the status; this caught the new `reason` field automatically when added.
----
-
-## [2026-05-18] - US-005 through US-008
-- US-005: Added `designate-sequence-main` command (`packages/api/src/commands/sequences/designate-sequence-main.ts`). Added `POST /{sequenceId}/designate-main` route. 3 integration tests.
-- US-006: Confirmed `delete-sequence` command already enforced main-guard with `cannot_delete_main` reason code. Added tests verifying the 409 reason and that fragments survive non-main sequence deletion.
-- US-007: Introduced `buildBundledResponse()` helper in `routes/sequences.ts`. All mutation endpoints (create, update, delete, designate-main, place, move, unplace) now return `SequenceBundledResponse`. `GET /sequences` also returns the bundle. `DELETE` response changed from 204 to 200+bundle. `POST /sequences` stays 201+bundle. Added `SequenceBundledResponseSchema`, `ViolationSchema`, `CycleSchema` to `packages/api/src/schemas/sequence.ts`. Added `Violation` and `Cycle` types to `packages/shared`. All tests updated.
-- US-008: Added `POST /{sequenceId}/sections` route backed by `createSectionCommand`. New section appended at end of sections array. 4 integration tests: appends after existing, accepts fragment placement, works for secondaries, 404 for unknown sequence.
-- Files changed: `packages/api/src/commands/sequences/designate-sequence-main.ts` (new), `packages/api/src/commands/sequences/create-section.ts` (new), `packages/api/src/commands/index.ts`, `packages/api/src/routes/sequences.ts`, `packages/api/src/schemas/sequence.ts`, `packages/api/src/schemas/error.ts`, `packages/api/src/errors.ts`, `packages/api/src/__tests__/routes/sequences.test.ts`, `packages/storage/src/service/storage-service.ts`, `packages/storage/src/__tests__/storage-service.test.ts`, `packages/shared/src/schemas/domain/sequence.ts`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
-- Verify: `bun run verify` passes (555 backend + 82 frontend tests + typecheck).
+  - The concurrent-request bug: `rebuiltProjects.add(uuid)` ran synchronously BEFORE `await rebuild()`, so concurrent requests skipped the wait. Fix: promise map where all requests await the same promise.
+  - `projectsRouter` is mounted at `/projects` without `resolveProject` middleware — perfect for bypass routes. `projectScopedApp` runs `resolveProject` for ALL routes under `/projects/:projectId`.
+  - Orval-generated client files are gitignored. The `useGetProjectRebuildStatus` hook is generated from the OpenAPI spec after running `bun run codegen`.
+  - Three alias files to update: tsconfig.app.json, vite.config.ts, vitest.config.ts.
 ---
