@@ -15,7 +15,8 @@ You are an autonomous coding agent working on a software project.
 7. Update CLAUDE.md files if you discover reusable patterns (see below)
 8. If checks pass, commit ALL changes with message: `feat: [Story ID] - [Story Title]`
 9. Update the PRD to set `passes: true` for the completed story. If the story could not be completed, just update `progress.txt` with your findings.
-10. Append your progress to `progress.txt`. After this step, your work for this run is COMPLETE. Do not loop back to step 4.
+10. Update any relevant `specifications` files with an entry in the `Shipped` frontmatter list. Describe on a high level what has been implemented. Only include details related to that specific spec.
+11. Append your progress to `progress.txt`. After this step, your work for this run is COMPLETE. Do not loop back to step 4.
 
 ## Progress Report Format
 

@@ -1,0 +1,393 @@
+{
+  "project": "Maskor",
+  "branchName": "ralph/secondary-sequences",
+  "description": "Secondary Sequences (sequencer slice 2) - Allow a project to hold multiple sequences with one designated as main. Non-main secondaries are real arrangements that project their internal order as soft pairwise ordering constraints onto main. Adds violation glyphs, cycle detection, section CRUD as a first-class UI concept, a left sequence-list sidebar, a persistent right sidebar (fragment detail / project warnings), and URL-based active-sequence selection. Builds on the shipped slice 1 (manual placement of a single main sequence).",
+  "specs": ["specifications/sequencer.md", "specifications/vision.md"],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Sequencer - flat-order primitive",
+      "description": "As a backend developer, I need a function that produces the flat ordered list of fragment UUIDs for any sequence so that downstream constraint and violation logic has a single source of truth for sequence order.",
+      "acceptanceCriteria": [
+        "`getFragmentOrder(sequence: Sequence): string[]` added to `@maskor/sequencer`",
+        "Flat order = sections sorted by section position, then fragments sorted by fragment position within each section",
+        "Pure function, no side effects",
+        "Unit tests cover: empty sequence, single section with fragments, multi-section ordering, section with zero fragments interspersed",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Sequencer - violation computation",
+      "description": "As a backend developer, I need a function that returns all soft-constraint violations of the main sequence given the secondaries, so the API can return live warnings.",
+      "acceptanceCriteria": [
+        "`computeViolations(main: Sequence, secondaries: Sequence[]): Violation[]` added to `@maskor/sequencer`",
+        "`Violation` type = `{ fragmentUuid: string; predecessorUuid: string; secondaryUuid: string }`",
+        "Constraint semantics: subsequence relation with gaps allowed - if A precedes B in a secondary and both are placed in main, A must precede B in main",
+        "Violations are computed only when both endpoints are placed in main",
+        "Secondaries that participate in a cycle (per US-003) are skipped entirely",
+        "Unit tests cover: no violations, single violation, multiple violations on one fragment, fragment in multiple secondaries, only-one-endpoint-placed (no violation), cycle-skip behavior",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Sequencer - cycle detection",
+      "description": "As a backend developer, I need a function that finds non-trivial strongly-connected components across the union graph of all secondary ordering constraints, so cycles can be surfaced separately from violations.",
+      "acceptanceCriteria": [
+        "`detectCycles(secondaries: Sequence[]): Cycle[]` added to `@maskor/sequencer`",
+        "`Cycle` type = `{ sequenceUuids: string[]; fragmentUuids: string[] }` - the SCC and the secondaries whose edges contribute to it",
+        "Edges built from each secondary's pairwise constraints (all (A, B) where A precedes B in that secondary's flat order)",
+        "Trivial SCCs (single nodes) are not reported",
+        "Algorithm: Tarjan's SCC over the union graph; track edge -> secondary mapping during construction so `Cycle.sequenceUuids` can be populated",
+        "Unit tests cover: no cycles, single 2-node cycle across two secondaries, 3-node cycle, multiple independent cycles",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Sequence command - name uniqueness validation",
+      "description": "As a user, I want to be prevented from creating or renaming a sequence to a name that already exists in the project so the sidebar list remains unambiguous.",
+      "acceptanceCriteria": [
+        "`create-sequence` rejects with a clear typed error if the proposed name collides (case-sensitive comparison within the project)",
+        "`update-sequence` rejects rename to a colliding name (the sequence's own current name is allowed)",
+        "Error surfaces a structured code/message that the frontend can render inline",
+        "Integration test: create two sequences with the same name fails the second creation",
+        "Integration test: rename to an existing name fails; rename to the sequence's own name succeeds",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Sequence command - designate as main",
+      "description": "As a user, I want to make a secondary into the main sequence so I can change which sequence is the export target.",
+      "acceptanceCriteria": [
+        "New API command `designate-sequence-main` in `packages/api/src/commands/sequences/designate-sequence-main.ts` taking a sequence UUID",
+        "The flip is atomic: in a single SQLite transaction, the previous main becomes `isMain: false` and the target becomes `isMain: true`",
+        "Vault files for both affected sequences are rewritten on success",
+        "Partial unique index on `sequences.is_main` is not violated at any point during the transaction (verify on a real DB)",
+        "Returns the bundled response shape (sequences + violations + cycles)",
+        "Integration test: flipping main from A to B sets B as main and A as secondary; running it again with B has no effect; running it with a non-existent UUID errors",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Sequence command - guard main deletion",
+      "description": "As a user, I want to be prevented from deleting the main sequence so I cannot accidentally lose the export target without explicit intent.",
+      "acceptanceCriteria": [
+        "`delete-sequence` rejects with a typed error when the target is `isMain: true`",
+        "Error surfaces a structured code the frontend can render inline (e.g. 'Designate another sequence as main first')",
+        "Non-main deletion still works and cascades cleanly: the vault file is removed; DB rows for the sequence, its sections, and its fragment_positions are deleted via existing cascade",
+        "Fragments remain in the project after their containing secondary is deleted (they are not orphaned in any other sequence they belong to)",
+        "Integration test: deleting main rejects; deleting non-main succeeds and other sequences are unaffected",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "API - bundled sequence list response",
+      "description": "As a frontend developer, I want the project's sequences, current violations, and current cycles all in one payload so the UI is a pure consumer with no orchestration logic.",
+      "acceptanceCriteria": [
+        "`GET /api/projects/:projectUuid/sequences` returns `{ sequences: Sequence[]; violations: Violation[]; cycles: Cycle[] }` (replacing the current single-main endpoint)",
+        "All mutating commands (create-sequence, update-sequence, delete-sequence, designate-sequence-main, place-fragment, move-fragment, unplace-fragment, create-section, rename-section, delete-section) return the same bundled shape",
+        "Violations and cycles are computed live on every request via the sequencer package; nothing is cached",
+        "`Violation` and `Cycle` types exported from `@maskor/shared` for frontend consumption",
+        "Integration test: create a secondary with a constraint, place fragments out of order in main, fetch - response includes the expected violation",
+        "Integration test: create two secondaries with conflicting orders - response includes the expected cycle and excludes per-fragment violations from those secondaries",
+        "Regenerate orval client (`bun run codegen` in packages/frontend) after the API change",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Section command - create section",
+      "description": "As a user, I want to add a new section to a sequence so I can organize fragments into named groups.",
+      "acceptanceCriteria": [
+        "New API command `create-section` in `packages/api/src/commands/sequences/create-section.ts` taking `{ sequenceId, name }`",
+        "New section is appended at the highest existing section position + 1 within the sequence",
+        "Empty-string name is permitted (intentional - new sections can stay unnamed until renamed)",
+        "Vault file for the sequence is rewritten on success",
+        "Returns the bundled response shape (sequences + violations + cycles)",
+        "Integration test: creating a section in any sequence (main or secondary) appends it after existing sections",
+        "Integration test: a sequence with a freshly-created section can accept fragment placements into it",
+        "Regenerate orval client",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Section command - rename section",
+      "description": "As a user, I want to rename a section so I can label organizational groupings meaningfully.",
+      "acceptanceCriteria": [
+        "New API command `rename-section` in `packages/api/src/commands/sequences/rename-section.ts` taking `{ sequenceId, sectionId, name }`",
+        "Name may be any string including the empty string (intentional)",
+        "No uniqueness constraint on section names within a sequence",
+        "Vault file is rewritten on success",
+        "Returns the bundled response shape",
+        "Integration test: renaming an existing section updates the vault and the API response",
+        "Regenerate orval client",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Section command - delete section",
+      "description": "As a user, I want to delete a section, with its placed fragments returning to the sequence's unassigned pool rather than being lost.",
+      "acceptanceCriteria": [
+        "New API command `delete-section` in `packages/api/src/commands/sequences/delete-section.ts` taking `{ sequenceId, sectionId }`",
+        "Deletion is rejected with a typed error if the target is the last remaining section in the sequence (every sequence must have at least one section)",
+        "Deletion is rejected with a typed error if the target sequence does not contain the section",
+        "On success: all `fragment_positions` rows under the section are removed; the fragments themselves remain in the project (they appear in this sequence's pool again on next read)",
+        "Remaining sections are compacted: their `position` values are renumbered to 0..N-1 to remove the gap",
+        "Vault file is rewritten on success",
+        "Returns the bundled response shape",
+        "Integration test: deleting a non-empty section unplaces its fragments to the pool; remaining sections renumber correctly; deleting the only remaining section errors",
+        "Regenerate orval client",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Frontend - sequence selection via URL query param",
+      "description": "As a user, I want the active sequence to be reflected in the URL so I can bookmark and reload directly into a specific sequence's editing view.",
+      "acceptanceCriteria": [
+        "OverviewPage reads `?sequence=<uuid>` from the URL via TanStack Router (`useSearch` / `useNavigate`)",
+        "Define the search schema on the route so invalid values are surfaced as zod validation errors and the page can fall back gracefully",
+        "If the param is absent or the UUID does not match any sequence in the project, the page falls back to the main sequence",
+        "Switching sequences (via the left sidebar, US-012) updates the URL query param",
+        "Reloading the page restores the same active sequence",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Frontend - left sidebar sequence list",
+      "description": "As a user, I want to see all sequences in the project in a left sidebar so I can switch between them and see their status at a glance.",
+      "acceptanceCriteria": [
+        "Left sidebar lists all sequences for the active project",
+        "Sort order: main first, then alphabetical by name",
+        "Each row shows: name, 'Main' badge (only on the main row), per-sequence status dot (red = part of a cycle, amber = has violations against main, none = satisfied), fragment count",
+        "Clicking a row sets the URL `?sequence` query param and switches the active editing pane",
+        "The active sequence is visually highlighted",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Frontend - create secondary",
+      "description": "As a user, I want to create a new secondary sequence by clicking a '+' affordance and naming it inline so I can start outlining a new storyline without modal friction.",
+      "acceptanceCriteria": [
+        "'+' button at the bottom (or top) of the sequence list",
+        "Click creates a new sequence via API with default name 'New sequence' (with ' 2', ' 3', etc. suffix on collision)",
+        "The new sequence is created with `isMain: false` and one default section with an empty-string name",
+        "After creation, the row enters inline-rename mode; the input is focused and selects all",
+        "Pressing Enter commits the rename; pressing Escape reverts to the default name",
+        "If the user types a name that collides with an existing sequence, the inline input shows an error and stays in edit mode",
+        "After rename commits, the new sequence becomes the active editing pane (URL updates per US-011)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Frontend - delete secondary with inline confirm",
+      "description": "As a user, I want to delete a secondary sequence with a lightweight inline confirmation so I do not lose work accidentally without a heavy modal.",
+      "acceptanceCriteria": [
+        "Delete affordance appears on hover/focus of a non-main sequence row (e.g. trash icon)",
+        "Clicking it replaces the row's content with 'Delete <name>?' + Cancel + Confirm buttons",
+        "Confirm calls the delete API; Cancel restores the row",
+        "Delete is not offered on the main sequence row at all (rendered hidden or disabled)",
+        "After deletion, if the deleted sequence was the active editing pane, the main sequence becomes active and the URL updates",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Frontend - designate-as-main control",
+      "description": "As a user, I want to make a secondary into the main sequence from the sequence header so the export target reflects the structure I am most happy with.",
+      "acceptanceCriteria": [
+        "A 'Make main' button appears in the active sequence's detail header when the sequence is `isMain: false`",
+        "Clicking it calls the designate-as-main API and updates the UI",
+        "After the flip, the previously-main sequence's header shows 'Make main' instead, and the newly-main sequence shows the main badge",
+        "Sidebar order updates (new main first)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Frontend - section rendering with header and drop zone",
+      "description": "As a user, I want each section to be visually distinct with a labeled header and its own drop zone so I can understand which fragments belong to which section.",
+      "acceptanceCriteria": [
+        "OverviewPage editing pane renders every section of the active sequence as a vertical stack (in section-position order), not just `sections[0]`",
+        "Each section block shows: header (section name; placeholder text 'Untitled section' if name is empty string), followed by the section's horizontal fragment drop zone with the existing dashed-border styling",
+        "An empty section displays a 'Drop fragments here' placeholder inside its drop zone (matching the current main-zone empty state)",
+        "Drag-and-drop between sections within the same sequence works via the existing `move-fragment` command (which already accepts cross-section targets)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Frontend - create and inline-rename section",
+      "description": "As a user, I want to add a new section via an inline affordance and immediately name it so I can quickly subdivide a sequence.",
+      "acceptanceCriteria": [
+        "'Add section' button appears at the bottom of the active sequence's section list (or as an always-visible affordance below the last section)",
+        "Clicking it calls `create-section` with an empty string name and immediately enters inline-rename mode on the new section's header",
+        "Existing section headers support inline rename triggered by click or a dedicated rename action (mirror the project-rename pattern in the codebase)",
+        "Pressing Enter commits via `rename-section`; Escape reverts to the previous name",
+        "Empty-string names commit successfully and render as 'Untitled section' placeholder text",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Frontend - delete section with inline confirm",
+      "description": "As a user, I want to delete a section via a lightweight inline confirm so I can clean up structure without losing my placed fragments unintentionally.",
+      "acceptanceCriteria": [
+        "Each section header shows a delete affordance on hover/focus",
+        "Clicking it replaces the header with 'Delete section? N fragments will return to the pool' + Cancel + Confirm",
+        "Confirm calls `delete-section`; Cancel restores the header",
+        "The delete affordance is hidden/disabled when this is the only section in the sequence",
+        "After deletion, the section disappears and its fragments appear in the sequence's pool",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Frontend - per-fragment violation glyph on main",
+      "description": "As a user viewing the main sequence, I want a warning glyph on any fragment that is out of order relative to a secondary so I can see at a glance where my arrangement diverges from my outlines.",
+      "acceptanceCriteria": [
+        "On the main view only, fragments with at least one incoming violation render a small warning glyph",
+        "Hover tooltip lists each violation as 'Should appear after <predecessor.key> (from <secondary.name>)'",
+        "No glyph on fragments without violations",
+        "No glyph in non-main views even if the fragment appears there (violations are relative to main)",
+        "The glyph is visually distinct from the cycle indicator (US-020) - suggest warning triangle for violation",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Frontend - cycle indicator across affected views",
+      "description": "As a user, I want fragments involved in a cycle to be marked in every view they appear in so I can recognize that the conflict cannot be resolved by reordering within a single sequence.",
+      "acceptanceCriteria": [
+        "Fragments in the `fragmentUuids` of any cycle render a cycle indicator (distinct from US-019's violation glyph - suggest broken-loop icon)",
+        "Indicator appears on main view and on each secondary view that participates in the cycle",
+        "Hover tooltip names the secondaries involved",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Frontend - fragment detail in right sidebar",
+      "description": "As a user, when I select a fragment I want the right sidebar to show its title, where it lives across all sequences, and any violations affecting it, so the right sidebar acts as the outlining-tool surface.",
+      "acceptanceCriteria": [
+        "Right sidebar is persistent and always visible",
+        "Clicking a fragment selects it; clicking empty area deselects",
+        "When selected, the sidebar shows: fragment `key` and `excerpt` (reuse existing TileContent-style rendering), membership list across all sequences ('<sequence.name>: <section.name>, position <n>' for each placement; empty-name sections render as 'Untitled section'), violations affecting this fragment (always relative to main, regardless of which sequence is active), an 'Open fragment' action that routes to the existing fragment editor",
+        "Membership list is sorted main-first then alphabetical by sequence name",
+        "If the fragment is not placed in main, the violation list is empty (no false positives)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Frontend - right sidebar project warnings panel",
+      "description": "As a user, when no fragment is selected I want the right sidebar to summarize all cycles and violations in the project so I have one screen for triaging problems.",
+      "acceptanceCriteria": [
+        "When no fragment is selected, the right sidebar shows the project warnings panel",
+        "Top section: Cycles. Each cycle entry lists the secondaries involved by name and the fragments in the SCC",
+        "Below: Per-secondary violation summaries. Each non-main sequence with at least one violation shows its name and the count",
+        "Clicking a sequence name in either section switches the active editing pane to that sequence (and updates the URL per US-011)",
+        "Empty state: when there are no cycles and no violations, panel shows a brief 'No constraint conflicts' message",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

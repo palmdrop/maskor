@@ -96,7 +96,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     cat "$SCRIPT_DIR/prompt.md" | amp --dangerously-allow-all 2>&1 | tee "$TMPFILE" || true
   else
     # Claude Code: use --dangerously-skip-permissions for autonomous operation, --print for output
-    claude --dangerously-skip-permissions --print < "$SCRIPT_DIR/prompt.md" 2>&1 | tee "$TMPFILE" || true
+    claude --model claude-sonnet-4-6 --dangerously-skip-permissions --print < "$SCRIPT_DIR/prompt.md" 2>&1 | tee "$TMPFILE" || true
   fi
   OUTPUT=$(cat "$TMPFILE")
   rm -f "$TMPFILE"
