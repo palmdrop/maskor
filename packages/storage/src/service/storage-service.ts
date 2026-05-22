@@ -15,7 +15,7 @@ import type {
   VaultSyncEvent,
 } from "@maskor/shared";
 import { ArcSchema } from "@maskor/shared";
-import { mkdir, unlink } from "node:fs/promises";
+import { mkdir, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { createVault } from "../vault/markdown";
@@ -576,20 +576,43 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             );
           }
 
-          await getVault(context).fragments.write(fragmentToWrite);
-
           // Inline DB update — closes the stale-index window for API-originated writes.
           // The watcher will fire afterward and hash-guard to a no-op.
           const entityRelativePath = fragmentToWrite.isDiscarded
             ? join("discarded", `${fragmentToWrite.key}.md`)
             : `${fragmentToWrite.key}.md`;
 
-          // If the slug changed, delete the old file so it doesn't become orphaned.
-          if (oldFilePath && oldFilePath !== entityRelativePath) {
-            const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath);
-            await unlink(absoluteOldPath).catch(() => {
-              log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
-            });
+          const hasKeyChange =
+            oldFilePath !== null && oldFilePath !== undefined && oldFilePath !== entityRelativePath;
+          // Case-only renames (e.g. "Chapter One" → "chapter one") need special handling on
+          // case-insensitive filesystems (macOS APFS, Windows NTFS): both paths resolve to the
+          // same physical file, so write-then-unlink would delete the content we just wrote.
+          const isCaseOnlyRename =
+            hasKeyChange && oldFilePath!.toLowerCase() === entityRelativePath.toLowerCase();
+
+          if (isCaseOnlyRename) {
+            // Free the old-case FS entry by renaming to a temp path, then write the new-case
+            // file, then remove the temp. Safe on both case-sensitive and case-insensitive
+            // filesystems.
+            const tempFileName = `${fragmentToWrite.uuid}---tmp.md`;
+            const tempAbsolutePath = fragmentToWrite.isDiscarded
+              ? join(context.vaultPath, "fragments", "discarded", tempFileName)
+              : join(context.vaultPath, "fragments", tempFileName);
+            const oldAbsolutePath = join(context.vaultPath, "fragments", oldFilePath!);
+
+            await rename(oldAbsolutePath, tempAbsolutePath);
+            await getVault(context).fragments.write(fragmentToWrite);
+            await unlink(tempAbsolutePath).catch(() => {});
+          } else {
+            await getVault(context).fragments.write(fragmentToWrite);
+
+            // If the slug changed, delete the old file so it doesn't become orphaned.
+            if (hasKeyChange) {
+              const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath!);
+              await unlink(absoluteOldPath).catch(() => {
+                log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
+              });
+            }
           }
 
           const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);

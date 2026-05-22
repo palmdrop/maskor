@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createStorageService } from "../service/storage-service";
@@ -201,6 +201,39 @@ describe("StorageService.fragments.write — rename cleanup", () => {
     expect(renamed.key).toBe("completely-new-key");
     expect(existsSync(join(vaultDir, "fragments", "completely-new-key.md"))).toBe(true);
     expect(existsSync(oldAbsolutePath)).toBe(false);
+  });
+});
+
+describe("StorageService.fragments.write — case-only rename", () => {
+  it("preserves fragment UUID and content when key changes only in case", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const indexed = allFragments.find((fragment) => !fragment.isDiscarded);
+    if (!indexed) throw new Error("expected at least one active fragment in fixtures");
+
+    const fragment = await service.fragments.read(context, indexed.uuid);
+    const newKey = fragment.key.toUpperCase();
+
+    const renamed = await service.fragments.write(context, { ...fragment, key: newKey });
+
+    expect(renamed.uuid).toBe(fragment.uuid);
+    expect(renamed.key).toBe(newKey);
+
+    // The file must be listed under the new case — use readdirSync (not existsSync) because
+    // existsSync is case-insensitive on macOS and would return true for the old name too.
+    const activeFiles = readdirSync(join(vaultDir, "fragments"));
+    expect(activeFiles).toContain(`${newKey}.md`);
+    expect(activeFiles).not.toContain(`${fragment.key}.md`);
+
+    // Fragment must still be readable by UUID after the case-only rename.
+    const reread = await service.fragments.read(context, fragment.uuid);
+    expect(reread.uuid).toBe(fragment.uuid);
+    expect(reread.key).toBe(newKey);
   });
 });
 
