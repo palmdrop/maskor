@@ -61,7 +61,7 @@ Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 - **Editing**: user edits the body via the UI or directly in Obsidian. Maskor never modifies body content.
 - **Rename via Maskor**: Maskor atomically renames the vault file and updates all fragment frontmatter lists that referenced the old key to the new key. No orphan warnings. This is the expected path — renames through Maskor are safe.
 - **Rename externally** (Obsidian or filesystem, while Maskor is not running): Maskor has no way to correlate the old and new filename. On next startup, the old key is missing (orphan warnings on all fragments that referenced it) and the new file is a new unknown entity. The user must re-attach manually.
-- **Deletion**: removes the vault file. If the document is attached to any fragment at deletion time, Maskor warns the user before proceeding. Fragment frontmatter lists are not auto-updated — orphaned references persist and produce sync warnings on the next rebuild.
+- **Deletion**: moves the vault file to a trash folder (`<vault>/.maskor/trash/<type>/<key>-<short-uuid>.md`) instead of hard-deleting it. If the document is attached to any fragment at deletion time, Maskor warns the user before proceeding. Fragment frontmatter lists are not auto-updated — orphaned references persist and produce sync warnings on the next rebuild. The trashed file is the recoverable artifact; restoring is a manual filesystem move (or a future "Restore" affordance, out of scope here). The trash folder is not indexed by the DB and is excluded from sync.
 
 ### Attaching to fragments
 
@@ -97,6 +97,7 @@ Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 - **External renames produce orphan warnings**: Maskor cannot detect a filesystem rename as such. External renames result in the old entity becoming orphaned. The user must re-attach. This is the cost of editing outside Maskor while it is not running.
 - **Notes and references are distinct types at the product level**: Despite identical structure, the semantic distinction (internal thought vs. external source) is preserved in naming and UI placement. The shared implementation does not merge the two into a single entity type.
 - **Deletion warns if attached**: Before deleting a document referenced by any fragment, Maskor shows a warning. The user can confirm or cancel.
+- **Trash folder instead of hard delete**: Deletion moves the file to `<vault>/.maskor/trash/<type>/`. Recovery from accidental deletion is then a filesystem operation rather than a "restore from a draft" operation. Retention policy, automated purge, and an in-app Restore surface are out of scope for this iteration — surfaced as an open question once trashed-file accumulation becomes observable.
 - **Multi-fragment attachment is permitted**: The same document can be attached to any number of fragments.
 
 ---
@@ -108,6 +109,7 @@ Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 - Renaming a document via Maskor updates all fragment frontmatter references to the new key atomically. No orphan warnings are produced.
 - Renaming a document externally (outside Maskor) and triggering a rebuild produces a sync warning for any fragment that referenced the old key. Fragment files are not modified.
 - Deleting a document that is referenced by at least one fragment produces a warning before deletion proceeds.
+- Deleting a document moves the vault file into `<vault>/.maskor/trash/<type>/<key>-<short-uuid>.md` rather than removing it from disk. The trash folder is not indexed by the DB and is excluded from sync.
 - Deleting a document and triggering a rebuild produces a sync warning for any fragment that referenced it. Fragment files are not modified.
 - Only document titles/names that exist in the vault can be attached to a fragment.
 - The same document can be attached to multiple fragments simultaneously.

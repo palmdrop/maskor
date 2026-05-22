@@ -4,6 +4,8 @@
 **Last updated**: 2026-04-27
 **Shipped**:
 
+- 18-05-2026: Basic sequence assembly used for the `specifications/preview.md` feature: consumes a sequence and a set of fragments and returns a sequential list of sections and fragments.
+
 ---
 
 ## Outcome
@@ -25,6 +27,7 @@ The user can take their main sequence and export it to a single document in a fo
   - Whether to strip all headings and produce one continuous block of text
 - Export is triggered on demand
 - Output file is saved to a user-chosen path on disk
+- **Exporting a dump of all discarded fragments** as a single companion file, separate from the main sequence export — same assembly machinery, but the input is the unordered set of fragments under `fragments/discarded/` rather than a sequence
 
 ### Out of scope
 
@@ -61,6 +64,14 @@ The user can take their main sequence and export it to a single document in a fo
 - `.md`: assembled directly from fragment markdown bodies. No conversion needed.
 - `.txt`: strip markdown syntax; output plain text.
 - `.docx` and `.pdf`: require a conversion step. Tool choice is not decided.
+
+### Discarded-fragment dump
+
+- A second, distinct export operation produces a single file containing every fragment under `fragments/discarded/`.
+- Ordering is alphabetical by `key` (deterministic, since discarded fragments have no sequence position).
+- Reuses the same assembly options as a sequence export (separators, title heading, etc.); section-heading toggle is meaningless and is hidden or disabled.
+- Output is written to a user-chosen path, distinct from any main-sequence export.
+- Intended use case: a writer wants to skim, archive, or rescue cut material outside Maskor without restoring fragments one by one.
 
 ### Preview
 
@@ -106,3 +117,4 @@ Preview is its own feature — see `specifications/preview.md`. Export and previ
 - Export and preview produce byte-identical assembled markdown for the same sequence and assembly options (see `specifications/preview.md`).
 - A `.docx` export produces a valid Word document that can be opened by standard Word-compatible software.
 - A `.pdf` export produces a valid PDF file.
+- The discarded-fragment dump operation produces a single file containing every fragment under `fragments/discarded/`, ordered alphabetically by `key`. It does not touch any sequence and does not modify the discarded fragments themselves.

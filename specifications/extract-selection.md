@@ -2,7 +2,11 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-21
-**Shipped**: Slices 1–3. Slice 1 — extract to new fragment, Keep mode, Switch mode, from any entity body editor. Slice 2 — extract to new note, reference, or aspect; same Keep/Switch modal shape; per-type action-log entries (`note:extracted`, `reference:extracted`, `aspect:extracted`). Slice 3 — append/prepend selection to any existing entity (12 parameterized palette commands, `AppendOrPrependDialog` with Keep/Cut source-mode and Switch/Stay next-mode toggles, partial-success toast on cut failure, 8 API endpoints `POST /<entity>/{uuid}/{append,prepend}`). See `references/plans/extract-selection-2.md`.
+**Shipped**:
+
+- 2026-05-21 - extract to new fragment, Keep mode, Switch mode, from any entity body editor.
+- 2026-05-21 — extract to new note, reference, or aspect; same Keep/Switch modal shape; per-type action-log entries (`note:extracted`, `reference:extracted`, `aspect:extracted`).
+- 2026-05-21 - append/prepend selection to any existing entity (12 parameterized palette commands, `AppendOrPrependDialog` with Keep/Cut source-mode and Switch/Stay next-mode toggles, partial-success toast on cut failure, 8 API endpoints `POST /<entity>/{uuid}/{append,prepend}`). See `references/plans/extract-selection-2.md`.
 
 ---
 
@@ -48,20 +52,20 @@ The user can select a contiguous range of text inside any entity's body — frag
 
 Twelve commands are registered by the shared body-editor component via the `useCommand` hook defined in `command-palette.md`:
 
-| Command ID                       | Palette label             | Direction              |
-| -------------------------------- | ------------------------- | ---------------------- |
-| `editor.extract-to-fragment`     | Extract to fragment…      | Create new fragment    |
-| `editor.extract-to-note`         | Extract to note…          | Create new note        |
-| `editor.extract-to-reference`    | Extract to reference…     | Create new reference   |
-| `editor.extract-to-aspect`       | Extract to aspect…        | Create new aspect      |
-| `editor.append-to-fragment`      | Append to fragment…       | Append to existing     |
-| `editor.append-to-note`          | Append to note…           | Append to existing     |
-| `editor.append-to-reference`     | Append to reference…      | Append to existing     |
-| `editor.append-to-aspect`        | Append to aspect…         | Append to existing     |
-| `editor.prepend-to-fragment`     | Prepend to fragment…      | Prepend to existing    |
-| `editor.prepend-to-note`         | Prepend to note…          | Prepend to existing    |
-| `editor.prepend-to-reference`    | Prepend to reference…     | Prepend to existing    |
-| `editor.prepend-to-aspect`       | Prepend to aspect…        | Prepend to existing    |
+| Command ID                    | Palette label         | Direction            |
+| ----------------------------- | --------------------- | -------------------- |
+| `editor.extract-to-fragment`  | Extract to fragment…  | Create new fragment  |
+| `editor.extract-to-note`      | Extract to note…      | Create new note      |
+| `editor.extract-to-reference` | Extract to reference… | Create new reference |
+| `editor.extract-to-aspect`    | Extract to aspect…    | Create new aspect    |
+| `editor.append-to-fragment`   | Append to fragment…   | Append to existing   |
+| `editor.append-to-note`       | Append to note…       | Append to existing   |
+| `editor.append-to-reference`  | Append to reference…  | Append to existing   |
+| `editor.append-to-aspect`     | Append to aspect…     | Append to existing   |
+| `editor.prepend-to-fragment`  | Prepend to fragment…  | Prepend to existing  |
+| `editor.prepend-to-note`      | Prepend to note…      | Prepend to existing  |
+| `editor.prepend-to-reference` | Prepend to reference… | Prepend to existing  |
+| `editor.prepend-to-aspect`    | Prepend to aspect…    | Prepend to existing  |
 
 All twelve appear in the palette's view-scoped section (top of the list) under the `Editor` scope while a body editor is focused. They are absent from the palette outside of a body editor.
 
@@ -101,11 +105,11 @@ The command is enabled iff:
 
 Otherwise the command is shown in the palette **disabled with reason**:
 
-| Condition                                   | Reason text          |
-| ------------------------------------------- | -------------------- |
-| Empty selection (cursor only)               | "Select text first"  |
-| Selection contains only whitespace          | "Select text first"  |
-| No body editor focused                      | _Command not surfaced_ |
+| Condition                          | Reason text            |
+| ---------------------------------- | ---------------------- |
+| Empty selection (cursor only)      | "Select text first"    |
+| Selection contains only whitespace | "Select text first"    |
+| No body editor focused             | _Command not surfaced_ |
 
 Disjoint / multi-cursor selections are not expected to arise in Maskor's editor configuration; if they do, the command operates on `selection.main` only.
 
@@ -162,11 +166,11 @@ Validation runs **live** as the user types, with a short debounce against the pe
 
 Three source-side modes are defined; **two ship in v1**.
 
-| Mode    | Effect on source body                                              | Shipped in v1 |
-| ------- | ------------------------------------------------------------------ | ------------- |
-| `Keep`  | Selection unchanged. Source body is not touched.                   | Yes           |
-| `Cut`   | Selection removed via the editor's native delete-range operation.  | Yes           |
-| `Link`  | Selection replaced with `[[type/key]]` per `document-links.md`.    | No (reserved) |
+| Mode   | Effect on source body                                             | Shipped in v1 |
+| ------ | ----------------------------------------------------------------- | ------------- |
+| `Keep` | Selection unchanged. Source body is not touched.                  | Yes           |
+| `Cut`  | Selection removed via the editor's native delete-range operation. | Yes           |
+| `Link` | Selection replaced with `[[type/key]]` per `document-links.md`.   | No (reserved) |
 
 `Cut` is the v1 default. When `document-links.md` ships and `Link` is unlocked, the default flips to `Link`.
 
@@ -178,12 +182,12 @@ _Applies to extract-to-new only._
 
 The modal asks for `key` and the two options. Every other field on the new entity defaults to its create-time default. Specifically:
 
-| Target     | Populated from extraction      | Defaulted                                                                |
-| ---------- | ------------------------------ | ------------------------------------------------------------------------ |
-| Fragment   | `key`, `content` (= selection) | `readyStatus: 0`, empty `aspects`, empty `notes`, empty `references`, `isDiscarded: false`, unplaced (not in any sequence) |
-| Note       | `key`, body (= selection)      | Timestamps, UUID                                                          |
-| Reference  | `key`, body (= selection)      | Timestamps, UUID                                                          |
-| Aspect     | `key`, body (= selection → description) | Empty `category`, empty notes                                            |
+| Target    | Populated from extraction               | Defaulted                                                                                                                  |
+| --------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Fragment  | `key`, `content` (= selection)          | `readyStatus: 0`, empty `aspects`, empty `notes`, empty `references`, `isDiscarded: false`, unplaced (not in any sequence) |
+| Note      | `key`, body (= selection)               | Timestamps, UUID                                                                                                           |
+| Reference | `key`, body (= selection)               | Timestamps, UUID                                                                                                           |
+| Aspect    | `key`, body (= selection → description) | Empty `category`, empty notes                                                                                              |
 
 Extraction never modifies any aspect-weight relationship on the source fragment. Notes/references/aspects extracted from a fragment body are not auto-attached as the fragment's metadata — that behavior is owned by `document-links.md` and is therefore tied to the (reserved) `Link` mode.
 
@@ -290,11 +294,11 @@ The first slice already ships `fragment:extracted`:
 
 The extension adds eleven sibling action types, mirroring the existing payload exactly:
 
-| Direction | Action types                                                                                           |
-| --------- | ------------------------------------------------------------------------------------------------------ |
-| Extract   | `fragment:extracted` (shipped), `note:extracted`, `reference:extracted`, `aspect:extracted`            |
-| Append    | `fragment:appended`, `note:appended`, `reference:appended`, `aspect:appended`                          |
-| Prepend   | `fragment:prepended`, `note:prepended`, `reference:prepended`, `aspect:prepended`                      |
+| Direction | Action types                                                                                |
+| --------- | ------------------------------------------------------------------------------------------- |
+| Extract   | `fragment:extracted` (shipped), `note:extracted`, `reference:extracted`, `aspect:extracted` |
+| Append    | `fragment:appended`, `note:appended`, `reference:appended`, `aspect:appended`               |
+| Prepend   | `fragment:prepended`, `note:prepended`, `reference:prepended`, `aspect:prepended`           |
 
 For all twelve, the `target` is the destination entity (newly created for `*:extracted`, the existing entity for `*:appended` / `*:prepended`), and the payload carries `sourceType` / `sourceKey` / `sourceUuid` / `sourceMode` / `navigated`. The downstream effects (target file written or rewritten; source file rewritten) are derivable and are not separately logged. If a future undo is added, a single log entry must reverse all effects atomically.
 

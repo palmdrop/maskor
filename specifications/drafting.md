@@ -25,16 +25,16 @@ The mental model mirrors how writers traditionally work: keeping older versions 
 - Atomic snapshot creation (no half-built drafts left on disk)
 - Crash-recovery cleanup of staging and restore-aside directories
 - Action-log integration: `draft:created`, `draft:renamed`, `draft:deleted`, `draft:restored` entries
+- **Full-state export on draft creation** (opt-in checkbox): alongside writing the snapshot, produce a companion exportable bundle that represents the project's prose state at that moment — see "Full-state export" below
 
 ### Out of scope
 
 - In-app draft preview / overview surfaces (deferred — see `references/SUGGESTIONS.md`)
-- Per-draft markdown export at creation time (deferred — see `references/SUGGESTIONS.md`)
 - Automatic snapshots, time-based history, or session checkpoints
 - Content-addressed deduplication between drafts
 - Draft forking, branching, or diffing UI
 - Multi-project draft operations
-- Export of an individual draft outside the vault
+- Export of an individual draft outside the vault, beyond the full-state export described below
 
 ---
 
@@ -131,6 +131,29 @@ Restore is destructive: it overwrites the current vault state with the snapshot'
 
 On project resolve at startup, if `<vault>/.maskor/drafts/.staging/` or `<vault>/.maskor/drafts/.restore-aside/` exists, it is evidence of an interrupted operation. Both are deleted; a warning is logged so the user knows recovery happened. The pre-restore draft (if a restore was in progress) remains intact as the primary recovery surface.
 
+### Full-state export
+
+A draft snapshot captures everything needed to restore inside Maskor. But a writer also wants a readable artifact of the project at that moment — something to skim, print, share, or compare to a future version — without having to manually export afterwards.
+
+When creating a draft, the user can opt into producing a **full-state export bundle** alongside the snapshot. The bundle is written into the draft's own directory (`<vault>/.maskor/drafts/<slug>-<short-uuid>/export/`) and contains:
+
+- One file per sequence (main sequence first, then any secondary sequences), assembled via `@maskor/exporter` using the project's current default export options.
+- One file containing **all unplaced fragments** (those not in any sequence at draft creation time), assembled in alphabetical order by `key`.
+- One file containing **all discarded fragments**, assembled in alphabetical order — same shape as the discarded-fragment dump in `export.md`.
+
+Notes, references, and aspects are **not** included in the export bundle in v1. The bundle is prose-focused; metadata documents are intentionally left to a future iteration if the use case proves out.
+
+The export bundle's format defaults to Markdown. Other formats (`.txt`, `.docx`, `.pdf`) follow `export.md`'s decisions once they land there.
+
+Generating the bundle is part of the draft-creation transaction:
+
+- The bundle is written into the staging directory before the atomic rename, so a failed bundle aborts the entire draft creation cleanly.
+- A bundle-generation failure surfaces a clear error and rolls back the staged draft (matching the existing all-or-nothing creation contract).
+
+The export bundle is independent of restore: restoring a draft does not regenerate or modify the bundle. The bundle is a frozen artifact tied to the draft's creation moment.
+
+The "Per-draft markdown export at creation time" previously listed as deferred is replaced by this section.
+
 ---
 
 ## Constraints
@@ -183,3 +206,6 @@ On project resolve at startup, if `<vault>/.maskor/drafts/.staging/` or `<vault>
 - After a successful restore, fragment / aspect / note / reference / sequence counts in the live DB match the counts recorded in the restored draft's manifest.
 - The disk-space pre-check refuses creation when free space is less than `2 × (vaultSize + dbSize)`.
 - Snapshot creation does not interleave with any in-flight write — handlers are drained before the snapshot begins.
+- When the user opts in to a full-state export on draft creation, the resulting bundle is present under `<vault>/.maskor/drafts/<slug>-<short-uuid>/export/` and contains one file per sequence, one for unplaced fragments, and one for discarded fragments.
+- A bundle-generation failure aborts the draft creation atomically — no draft directory appears on disk.
+- Restoring a draft does not regenerate or modify any previously written export bundle.
