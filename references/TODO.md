@@ -6,7 +6,33 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ---
 
+## Codebase
+
+- [ ] Refactor command system, introduce strong types and reduce boilerplate
+
+- [ ] notification/banner component for communicating result of actions
+
+- [ ] subfolders for organizing aspects/arcs
+  - do not duplicate obsidian functionality... make this a companion app for obsidian, a layer above, not a replacement? at least for now.
+  - focus on adding features that make the gap seamless
+
+- [ ] edit counter seems off in suggestion mode. Should only count every session that results in a change, not every save
+
+- [ ] investigate code changes required for small schema/manifest changes: commit hash 32bb4fa8320c62d0c6e38b551b52982d536746e2
+  - intermediate manifest types, schemas, types that could be inferred, etc
+
+- [ ] back button for suggestion mode
+- [ ] explicit search in suggestion mode
+
+- [ ] extract in suggestion, how should that work?
+
+- [ ] investigate spelling, language settings
+
+- [ ] fragment-specific notes, viewing fragment and comments/notes side by side in same view
+
 ## Workflow / tooling
+
+- [ ] add claude browser MCP server and skill for testing manually in browser
 
 - [ ] try the "improve codebase architecture" skill: https://github.com/mattpocock/skills/blob/main/skills/engineering/improve-codebase-architecture/SKILL.md
 
