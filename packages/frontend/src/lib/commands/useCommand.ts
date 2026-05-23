@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react";
 import type { CommandDef } from "./types";
 import { useCommandsContext } from "./CommandsProvider";
 
-export const useCommand = (def: CommandDef) => {
+export const useCommand = <T = unknown>(def: CommandDef<T>) => {
   const { register, unregister } = useCommandsContext();
-  const defRef = useRef<CommandDef>(def);
+  const defRef = useRef<CommandDef<T>>(def);
   defRef.current = def;
 
   useEffect(() => {

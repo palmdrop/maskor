@@ -1,4 +1,4 @@
-export type CommandCategory = "navigation" | "create" | "project" | "other";
+export type CommandCategory = "navigation" | "create" | "project" | "attach" | "other";
 
 export type CommandScope = "global" | string;
 

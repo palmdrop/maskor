@@ -19,6 +19,8 @@ import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
 import { TagCombobox } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
+import { useFragmentMetadataCommands } from "../../lib/commands/catalog/useFragmentMetadataCommands";
+import { useCommands } from "../../lib/commands/useCommands";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -261,6 +263,14 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     [createAspect, projectId, queryClient, attachAspect],
   );
 
+  const commands = useCommands();
+  useFragmentMetadataCommands({
+    onAttachAspect: attachAspect,
+    onDetachAspect: removeAspect,
+    getAvailableAspects: () => projectAspects.map((aspect) => aspect.key),
+    getAttachedAspects: () => Object.keys(visibleAspects),
+  });
+
   return (
     <form className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -351,7 +361,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
               </span>
               <button
                 type="button"
-                onClick={() => removeAspect(aspectKey)}
+                onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
                 className="ml-1 text-muted-foreground hover:text-foreground"
               >
                 ×
@@ -371,7 +381,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           placeholder="Add aspect — type to filter or create"
           onSelect={(value) => {
             setCreateAspectError(null);
-            attachAspect(value);
+            commands.run("fragment-metadata:attach-aspect", value);
           }}
           onCreate={createAndAttachAspect}
         />

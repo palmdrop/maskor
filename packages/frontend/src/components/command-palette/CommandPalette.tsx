@@ -118,6 +118,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   create: "Create",
   project: "Project",
   other: "Other",
+  attach: "Attach",
 };
 
 // --- CommandPalette ---
