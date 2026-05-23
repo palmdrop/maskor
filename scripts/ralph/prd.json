@@ -76,8 +76,7 @@
         "Each global `Create <entity>…` command in the palette opens the appropriate creation flow directly (modal or inline form) instead of routing to the list view",
         "Cancelling the creation flow returns focus to the previous surface (not the list view, unless the user was already there)",
         "specifications/command-palette.md is updated to clarify the expected behavior of `Create…` commands",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 4,
       "passes": false,
@@ -93,11 +92,10 @@
         "The shortcut works identically in rich (Tiptap), raw markdown, and vim editor modes",
         "The save hotkey is registered through the command system per command-palette.md (a *.save command with hotkey: '⌘S'), not as a free-standing keydown handler",
         "specifications/fragment-editor.md is updated to list the Save hotkey under the editor's view-scoped commands",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

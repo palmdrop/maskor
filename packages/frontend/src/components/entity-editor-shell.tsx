@@ -27,6 +27,8 @@ import { AppendOrPrependDialog, type InsertDirection } from "./append-or-prepend
 import { useInsertToggles } from "@lib/insert-toggles/InsertTogglesProvider";
 import { ENTITY_KINDS, type EntityKind } from "@lib/entity-kinds/registry";
 import { useEntityKindRegistry } from "@lib/entity-kinds/useEntityKindRegistry";
+import { useEditorSaveCommands } from "../lib/commands/catalog/useEditorSaveCommands";
+import { useCommands } from "../lib/commands/useCommands";
 
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
@@ -186,7 +188,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       const metadataUpdate = await onContentSave(currentContent);
       // Swap is preserved on failure — onContentSave throws on non-2xx, so this
       // line only runs if the canonical save succeeded.
-      await clearSwap();
+      await clearSwap(); // TODO: should frontend worry about swap? or is that just a backend concern?
       onSaved();
       return metadataUpdate;
     }, [isDirty, isPending, content, onContentSave, onSaved, clearSwap]);
@@ -347,11 +349,18 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       navigateToEntity,
     ]);
 
+    const commands = useCommands();
+
     useEditorExtractAndInsertCommands({
       getSelection: getEditorSelection,
       eligibleByKind,
       onExtract: handleExtractOpen,
       onInsert: handleInsertOpen,
+    });
+
+    useEditorSaveCommands({
+      canSave: isDirty && !isPending,
+      onSave: handleContentSave,
     });
 
     const handleProseChange = useCallback(() => {
@@ -399,7 +408,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             <Button
               size="sm"
               disabled={isPending || !isDirty}
-              onClick={handleContentSave}
+              onClick={() => commands.run("editor:save")}
               className="min-w-20"
             >
               {showSaving ? "Saving…" : "Save"}
@@ -451,7 +460,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               rawMarkdownMode={editorConfig.rawMarkdownMode}
               fontSize={editorConfig.fontSize}
               maxParagraphWidth={editorConfig.maxParagraphWidth}
-              onSave={handleContentSave}
+              onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
             />
           </main>
