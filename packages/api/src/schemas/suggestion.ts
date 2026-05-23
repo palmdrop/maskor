@@ -8,6 +8,15 @@ export const SuggestionNextResponseSchema = z
   })
   .openapi("SuggestionNextResponse");
 
+export const SuggestionCurrentQuerySchema = z.null();
+
+export const SuggestionCurrentResponseSchema = z
+  .object({
+    fragment: FragmentSchema.nullable(),
+    avoidanceCount: z.number().int().nonnegative(),
+  })
+  .openapi("SuggestionCurrentResponse");
+
 export const SuggestionNextQuerySchema = z.object({
   exclude: z.uuid().optional().openapi({
     description: "UUID of the currently displayed fragment to exclude from selection",

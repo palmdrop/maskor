@@ -9,6 +9,7 @@
 - 2026-05-07 — Selection is non-deterministic and weighted: lower readyStatus, low edit count, and infrequently-visited fragments are favored; high-avoidance and frequently-opened fragments are deprioritized. (plan: references/plans/suggestion-mode.md)
 - 2026-05-07 — Per-fragment behavioral stats (voluntary open count, prompt accept count, avoidance count, edit count) are persisted in the DB and feed the selection weights. (plan: references/plans/suggestion-mode.md)
 - 2026-05-07 — A readyStatus nudge banner appears when a fragment's avoidance count exceeds the configured threshold, prompting the user to raise its readyStatus or discard it. (plan: references/plans/suggestion-mode.md)
+- 2026-05-23 - Suggestion page remembers current fragment using query params and project manifest state. The same suggestion will surface until the user explicitly presses next. This makes sure the user can navigate away and back again and keep working on the same fragment.
 
 ---
 

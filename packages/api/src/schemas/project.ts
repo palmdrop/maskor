@@ -1,7 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import {
   ProjectSchema as DomainProjectSchema,
-  ProjectCreateSchema as DomainProjectCreateSchema,
   ProjectUpdateSchema as DomainProjectUpdateSchema,
 } from "@maskor/shared";
 
@@ -61,6 +60,9 @@ export const ProjectDeleteInputSchema = z
 
 export const ProjectRebuildStatusSchema = z
   .object({
-    rebuilding: z.boolean().openapi({ example: false, description: "True while the vault index rebuild is in progress" }),
+    rebuilding: z.boolean().openapi({
+      example: false,
+      description: "True while the vault index rebuild is in progress",
+    }),
   })
   .openapi("ProjectRebuildStatus");

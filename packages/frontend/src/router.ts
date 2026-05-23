@@ -121,6 +121,9 @@ const suggestionModeRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/suggestion",
   component: SuggestionModePage,
+  validateSearch: (search: Record<string, unknown>): { fragment?: string } => ({
+    fragment: typeof search.fragment === "string" ? search.fragment : undefined,
+  }),
 });
 
 const projectStatsRoute = createRoute({

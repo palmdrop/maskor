@@ -1362,6 +1362,27 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     // Suggestion operations
 
     suggestion: {
+      async getCurrent(context: ProjectContext) {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const project = await registry.findByUUID(context.projectUUID);
+          const vaultDatabase = getVaultDatabase(context);
+          const currentFragmentUUID = project?.suggestion.currentFragmentUUID;
+
+          if (!currentFragmentUUID) {
+            return {
+              fragmentUuid: null,
+              avoidanceCount: 0,
+            };
+          }
+
+          const fragmentStats = getStats(vaultDatabase, currentFragmentUUID);
+          return {
+            fragmentUuid: currentFragmentUUID,
+            avoidanceCount: fragmentStats.avoidanceCount,
+          };
+        });
+      },
+
       // Returns the next suggested fragment UUID and its avoidance count, or null if the pool
       // is empty. If excludeUuid is provided and was surfaced in this session without being
       // edited, its avoidance_count is incremented before selection.
@@ -1425,6 +1446,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const surfacedAt = new Date();
           cooldown.add(selectedUuid);
           incrementPromptAccept(vaultDatabase, selectedUuid, surfacedAt);
+
+          await registry.updateProject(context.projectUUID, {
+            suggestion: {
+              currentFragmentUUID: selectedUuid,
+            },
+          });
 
           const fragmentStats = getStats(vaultDatabase, selectedUuid);
           return { fragmentUuid: selectedUuid, avoidanceCount: fragmentStats.avoidanceCount };

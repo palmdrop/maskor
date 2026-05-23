@@ -25,6 +25,7 @@ type ProjectManifest = {
     };
     suggestion?: {
       readinessThreshold?: number;
+      currentFragmentUUID?: string;
     };
     advanced?: {
       showFragmentStats?: boolean;
@@ -105,6 +106,7 @@ const toProjectRecord = (
   suggestion: {
     readinessThreshold:
       manifest?.config?.suggestion?.readinessThreshold ?? SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
+    currentFragmentUUID: manifest?.config?.suggestion?.currentFragmentUUID,
   },
   advanced: {
     showFragmentStats: manifest?.config?.advanced?.showFragmentStats ?? false,
@@ -267,7 +269,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           fontSize?: number;
           maxParagraphWidth?: number;
         };
-        suggestion?: { readinessThreshold?: number };
+        suggestion?: { readinessThreshold?: number; currentFragmentUUID?: string };
         advanced?: { showFragmentStats?: boolean };
         preview?: {
           showTitles?: boolean;

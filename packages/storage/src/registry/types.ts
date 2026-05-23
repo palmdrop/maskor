@@ -1,5 +1,6 @@
 export const LOCAL_USER_UUID = "local";
 
+// TODO: couldn't this be inferred from the schema?
 export type ProjectRecord = {
   projectUUID: string;
   userUUID: string;
@@ -13,6 +14,7 @@ export type ProjectRecord = {
   };
   suggestion: {
     readinessThreshold: number;
+    currentFragmentUUID?: string;
   };
   advanced: {
     showFragmentStats: boolean;

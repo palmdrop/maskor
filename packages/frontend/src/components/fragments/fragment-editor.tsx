@@ -25,6 +25,8 @@ import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { Separator } from "@components/ui/separator";
+import { useCommands } from "../../lib/commands/useCommands";
+import { useFragmentEditorCommands } from "../../lib/commands/catalog/useFragmentEditorCommands";
 
 export type FragmentEditorHandle = {
   save: () => Promise<void>;
@@ -36,11 +38,20 @@ type Props = {
   sidebarCollapsible?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: () => void;
+  onDiscarded?: () => void;
   customizeExtraActions?: (defaultExtraActions?: ReactNode) => ReactNode;
 };
 
 export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function FragmentEditor(
-  { projectId, fragmentId, sidebarCollapsible, onDirtyChange, onSaved, customizeExtraActions },
+  {
+    projectId,
+    fragmentId,
+    sidebarCollapsible,
+    onDirtyChange,
+    onSaved,
+    onDiscarded,
+    customizeExtraActions,
+  },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -136,6 +147,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         onSuccess: () => {
           invalidateFragment();
           invalidateActionLog();
+          onDiscarded?.();
         },
       },
     );
@@ -152,6 +164,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       },
     );
   }, [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog]);
+
+  const commands = useCommands();
+  useFragmentEditorCommands({
+    hasFragment: !!fragment,
+    isDiscarded: !!fragment?.isDiscarded,
+    onDiscard: handleDiscard,
+    onRestore: handleRestore,
+  });
 
   const extraActions = useMemo(() => {
     const discardButton = (

@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
 import { useCommands } from "@lib/commands/useCommands";
 import { useSuggestionModeCommands } from "@lib/commands/catalog/useSuggestionModeCommands";
+import { useGetCurrentSuggestion } from "../../api/generated/suggestion/suggestion";
 
 // TODO: this should be configured globally and not in a random FE-component
 const AVOIDANCE_NUDGE_THRESHOLD = 3;
 
 export const SuggestionModePage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/suggestion" });
+  const { fragment: queryFragmentUUID } = useSearch({ from: "/projects/$projectId/suggestion" });
+  const navigate = useNavigate({ from: "/projects/$projectId/suggestion" });
+  const current = useGetCurrentSuggestion(projectId);
+
   const editorRef = useRef<FragmentEditorHandle>(null);
 
   const [fragmentId, setFragmentId] = useState<string | null | undefined>(undefined);
@@ -25,6 +30,7 @@ export const SuggestionModePage = () => {
       setIsLoadingNext(true);
       setSaveError(null);
       try {
+        // TODO: why does hits use custom fetch instead of generated orval mutation?
         const result = await getNextSuggestion(projectId, excludeUuid);
         if (result.status !== 200) {
           setSaveError("Failed to load next suggestion.");
@@ -33,6 +39,7 @@ export const SuggestionModePage = () => {
         const { fragment, avoidanceCount: count } = result.data;
         setFragmentId(fragment?.uuid ?? null);
         setAvoidanceCount(count);
+        navigate({ search: { fragment: fragment?.uuid } });
       } catch {
         setSaveError("Failed to load next suggestion.");
       } finally {
@@ -43,10 +50,21 @@ export const SuggestionModePage = () => {
   );
 
   useEffect(() => {
-    // NOTE: this will cause a double load-next call when strict mode is enabled...? make abortable?
+    if (current.isLoading || fragmentId) return;
+
+    const currentFragmentId =
+      queryFragmentUUID ??
+      (current.data?.status === 200 ? current.data.data.fragment.uuid : undefined);
+
+    if (currentFragmentId) {
+      setFragmentId(currentFragmentId);
+      navigate({ search: { fragment: currentFragmentId } });
+      return;
+    }
+
     void loadNext();
     // Only run on mount
-  }, []);
+  }, [current, fragmentId]);
 
   const handleNext = useCallback(async () => {
     if (isLoadingNext) return;
@@ -139,6 +157,7 @@ export const SuggestionModePage = () => {
           ref={editorRef}
           projectId={projectId}
           fragmentId={fragmentId}
+          onDiscarded={loadNext}
           sidebarCollapsible
           customizeExtraActions={(defaultExtraActions) => (
             <>

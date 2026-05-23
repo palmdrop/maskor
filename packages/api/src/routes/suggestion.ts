@@ -6,10 +6,32 @@ import {
   SuggestionNextResponseSchema,
   SuggestionNextQuerySchema,
   SuggestionVisitParamSchema,
+  SuggestionCurrentResponseSchema,
 } from "../schemas/suggestion";
 import { ErrorResponseSchema } from "../schemas/error";
 
 export const suggestionRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+const getCurrentSuggestionRoute = createRoute({
+  operationId: "getCurrentSuggestion",
+  method: "get",
+  path: "/current",
+  tags: ["Suggestion"],
+  summary: "Get the current/active suggested fragment for suggestion mode",
+  request: {
+    params: projectIdParamSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SuggestionCurrentResponseSchema } },
+      description: "Current suggestion or null when no current suggestion is set",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
 
 const getNextSuggestionRoute = createRoute({
   operationId: "getNextSuggestion",
@@ -49,6 +71,23 @@ const recordVisitRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+suggestionRouter.openapi(getCurrentSuggestionRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentUuid, avoidanceCount } =
+      await storageService.suggestion.getCurrent(projectContext);
+
+    if (!fragmentUuid) {
+      return ctx.json({ fragment: null, avoidanceCount: 0 }, 200);
+    }
+    const fragment = await storageService.fragments.read(projectContext, fragmentUuid);
+    return ctx.json({ fragment, avoidanceCount }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
 });
 
 suggestionRouter.openapi(getNextSuggestionRoute, async (ctx) => {
