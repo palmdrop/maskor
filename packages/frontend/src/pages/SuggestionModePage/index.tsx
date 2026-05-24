@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
@@ -12,13 +12,13 @@ const AVOIDANCE_NUDGE_THRESHOLD = 3;
 
 export const SuggestionModePage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/suggestion" });
-  const { fragment: queryFragmentUUID } = useSearch({ from: "/projects/$projectId/suggestion" });
+  const { fragment: fragmentId } = useSearch({ from: "/projects/$projectId/suggestion" });
   const navigate = useNavigate({ from: "/projects/$projectId/suggestion" });
+  const router = useRouter();
   const current = useGetCurrentSuggestion(projectId);
 
   const editorRef = useRef<FragmentEditorHandle>(null);
 
-  const [fragmentId, setFragmentId] = useState<string | null | undefined>(undefined);
   const [avoidanceCount, setAvoidanceCount] = useState(0);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -37,7 +37,6 @@ export const SuggestionModePage = () => {
           return;
         }
         const { fragment, avoidanceCount: count } = result.data;
-        setFragmentId(fragment?.uuid ?? null);
         setAvoidanceCount(count);
         navigate({ search: { fragment: fragment?.uuid } });
       } catch {
@@ -50,21 +49,22 @@ export const SuggestionModePage = () => {
   );
 
   useEffect(() => {
-    if (current.isLoading || fragmentId) return;
+    if (current.isLoading || isLoadingNext || fragmentId) {
+      return;
+    }
 
     const currentFragmentId =
-      queryFragmentUUID ??
-      (current.data?.status === 200 ? current.data.data.fragment.uuid : undefined);
+      fragmentId ?? (current.data?.status === 200 ? current.data.data.fragment.uuid : undefined);
 
     if (currentFragmentId) {
-      setFragmentId(currentFragmentId);
       navigate({ search: { fragment: currentFragmentId } });
       return;
     }
 
     void loadNext();
+
     // Only run on mount
-  }, [current, fragmentId]);
+  }, [current, fragmentId, isLoadingNext]);
 
   const handleNext = useCallback(async () => {
     if (isLoadingNext) return;
@@ -79,13 +79,19 @@ export const SuggestionModePage = () => {
         return;
       }
     }
-    await loadNext(currentFragmentId ?? undefined);
+    await loadNext(currentFragmentId);
   }, [isLoadingNext, fragmentId, loadNext]);
+
+  const goBack = useCallback(() => {
+    router.history.back();
+  }, [navigate]);
 
   const commands = useCommands();
   useSuggestionModeCommands({
     isLoading: isLoadingNext,
+    hasPrevious: router.history.canGoBack(),
     onNext: () => void handleNext(),
+    onPrevious: () => void goBack(),
   });
 
   // fragmentId === undefined means initial load
@@ -97,6 +103,7 @@ export const SuggestionModePage = () => {
     );
   }
 
+  // TODO: no distinction between undefined and null anymore
   if (fragmentId === null) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
@@ -128,6 +135,14 @@ export const SuggestionModePage = () => {
         </div>
       )}
       <div className="flex shrink-0 items-center justify-end gap-2 border-border">
+        <Button
+          size="sm"
+          disabled={isLoadingNext}
+          onClick={() => commands.run("suggestion:previous")}
+          variant="secondary"
+        >
+          Previous
+        </Button>
         <Button size="sm" disabled={isLoadingNext} onClick={() => commands.run("suggestion:next")}>
           {isLoadingNext ? "Loading…" : "Next"}
         </Button>
