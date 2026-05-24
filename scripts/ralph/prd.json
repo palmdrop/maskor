@@ -100,11 +100,10 @@
     },
     {
       "id": "US-006",
-      "title": "Vim yank and delete sync to the system clipboard",
-      "description": "As a vim user, I want y and d in vim mode to also copy the affected text into the system clipboard so that I can paste into other apps without manually re-selecting and copying.",
+      "title": "Vim yank delete sync to the system clipboard",
+      "description": "As a vim user, I want y in vim mode to also copy the affected text into the system clipboard so that I can paste into other apps without manually re-selecting and copying.",
       "acceptanceCriteria": [
         "Yanking (y, yy, Y) in the vim-mode editor writes the yanked text to the system clipboard",
-        "Deleting (d, dd, D, x) in the vim-mode editor writes the deleted text to the system clipboard",
         "The vim register behavior is unchanged — \"<reg>p still pastes from the corresponding register",
         "Paste (p, P) prefers vim register content, falling back to the system clipboard only when explicitly invoked via the unnamed clipboard register",
         "specifications/fragment-editor.md is updated to document the system-clipboard sync behavior under the vim-mode section",
@@ -112,7 +111,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

@@ -7,6 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Typography from "@tiptap/extension-typography";
 import { ProseToolbar } from "./prose-toolbar";
+import { yankGenerator } from "../lib/vim/yank";
 
 type MarkdownStorage = {
   markdown: {
@@ -152,6 +153,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           onCreateEditor={(view) => {
             viewRef.current = view;
             Vim.defineEx("w", "", () => onSaveRef.current?.());
+            // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37
+            Vim.defineOperator("yank", yankGenerator(Vim.getRegisterController(), true));
           }}
           onChange={() => onChangeRef.current?.()}
           basicSetup={{ lineNumbers: false, foldGutter: false }}

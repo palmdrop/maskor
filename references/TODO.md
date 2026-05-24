@@ -21,10 +21,14 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [ ] investigate code changes required for small schema/manifest changes: commit hash 32bb4fa8320c62d0c6e38b551b52982d536746e2
   - intermediate manifest types, schemas, types that could be inferred, etc
 
-- [ ] back button for suggestion mode
+- [x] back button for suggestion mode
 - [ ] explicit search in suggestion mode
 
 - [ ] extract in suggestion, how should that work?
+
+- [ ] editor loses focus after command palette is opened and closed again
+
+- [ ] add project-wide setting for yanking to clipboard or not in vim mode
 
 - [ ] investigate spelling, language settings
 
