@@ -60,3 +60,17 @@ Started: [pending]
   - Orval-generated client files are gitignored. The `useGetProjectRebuildStatus` hook is generated from the OpenAPI spec after running `bun run codegen`.
   - Three alias files to update: tsconfig.app.json, vite.config.ts, vitest.config.ts.
 ---
+
+## 2026-05-25 - US-004
+- `Create <entity>…` palette commands now open a creation modal directly instead of navigating to the entity list
+- Created `packages/frontend/src/components/global-create-dialogs.tsx`: shell-level component with 4 creation dialogs (fragment, note, reference, aspect). After creation, navigates to the new entity.
+- Updated `useProjectShellCommands.ts`: accepts a `createHandlers` parameter with callbacks for each entity type; commands call these callbacks instead of navigating
+- Updated `ProjectShellLayout.tsx`: manages `activeCreate` state, passes handlers to `useProjectShellCommands`, renders `GlobalCreateDialogs`
+- Updated `specifications/command-palette.md`: documented modal-handoff pattern for create commands
+- Updated tests in `useProjectShellCommands.test.tsx`: 4 new tests verify callbacks are invoked; removed old navigate-assertion tests
+- **Learnings for future iterations:**
+  - `GlobalCreateDialogs` uses if/else rendering (not `Dialog open={false}`) — avoids mounting unnecessary query hooks
+  - The modal-handoff pattern is documented in command-palette.md Prior decisions: palette opens modal, modal owns creation, success navigates to new entity
+  - `@components` alias already exists; `@tanstack/react-query`'s `useQueryClient` must be imported separately from `@tanstack/react-router`
+  - Pre-existing test failure: `fragment-metadata-form.test.tsx` fails due to incomplete router mock — unrelated to this story
+---
