@@ -197,8 +197,13 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     ),
   });
 
-  const visibleAspects = useMemo(
+  const liveAspects = useMemo(
     () => Object.entries(aspectsField.value).filter(([key]) => knownAspectKeys.has(key)),
+    [aspectsField.value, knownAspectKeys],
+  );
+
+  const orphanedAspects = useMemo(
+    () => Object.entries(aspectsField.value).filter(([key]) => !knownAspectKeys.has(key)),
     [aspectsField.value, knownAspectKeys],
   );
 
@@ -277,7 +282,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     onAttachAspect: attachAspect,
     onDetachAspect: removeAspect,
     getAvailableAspects: () => projectAspects.map((aspect) => aspect.key),
-    getAttachedAspects: () => Object.keys(visibleAspects),
+    getAttachedAspects: () => Object.keys(aspectsField.value),
   });
 
   return (
@@ -362,7 +367,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
 
       <div className="flex flex-col gap-3">
         <Label>Aspects</Label>
-        {visibleAspects.map(([aspectKey, { weight }]) => (
+        {liveAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1">
             <span className="text-sm text-muted-foreground flex justify-between">
               <span className="flex items-center gap-1.5">
@@ -372,6 +377,36 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
                   aria-hidden="true"
                 />
                 {aspectKey} — {Math.round(weight * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
+                className="ml-1 text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </span>
+            <Slider
+              value={[Math.round(weight * 100)]}
+              onValueChange={([value]) => changeAspectWeight(aspectKey, value)}
+              min={0}
+              max={100}
+              step={1}
+            />
+          </div>
+        ))}
+        {orphanedAspects.map(([aspectKey, { weight }]) => (
+          <div key={aspectKey} className="flex flex-col gap-1 opacity-50">
+            <span className="text-sm text-muted-foreground flex justify-between">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-muted-foreground/50"
+                  aria-hidden="true"
+                />
+                {aspectKey} — {Math.round(weight * 100)}%
+                <span className="text-xs bg-muted px-1 rounded" aria-label="orphaned aspect">
+                  orphaned
+                </span>
               </span>
               <button
                 type="button"

@@ -11,6 +11,7 @@
 - 2026-05-09 — Metadata fields (notes, references, aspect weights, ready status) save instantly as the user edits each field; no explicit save action required for metadata. (plan: references/plans/entity-live-metadata-save.md)
 - 2026-05-10 — Users can configure font size and paragraph width per project; settings apply live across all editor modes. (plan: references/plans/editor-typography-settings.md)
 - 2026-05-19 — Prose content edits are mirrored to a `.maskor/swap/` file per entity. If the browser is closed or crashes before save, the next time the entity is opened the cached content is restored into the editor and a banner offers Restore-from-server. Applies to fragments, aspects, notes, and references. (plan: references/plans/entity-content-swap-files.md)
+- 2026-05-25 — Orphaned aspect entries (aspect keys present in fragment frontmatter whose definition no longer exists in the project) are rendered in the metadata editor with a muted style and "orphaned" badge. The user can detach orphaned aspects using the same × affordance as live aspects. (plan: scripts/ralph/archive/2026-05-16-small-improvements/)
 
 ---
 
@@ -85,6 +86,7 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 | Prose auto-save deferred; metadata instant-save is safe without version locking                    | `references/plans/fragment-editor.md` — version lock needed for prose; metadata writes are idempotent             |
 | Unknown aspect keys preserved on save                                                              | `references/plans/fragment-editor.md`                                                                             |
 | Case-only renames (e.g. `Chapter One` → `chapter one`) are supported on case-insensitive filesystems (macOS APFS, Windows NTFS). The storage layer uses a temp-file roundtrip to change the on-disk casing without data loss. | US-002 bug fix (`packages/storage/src/service/storage-service.ts`) |
+| Orphaned aspect entries are rendered in the metadata editor with a muted style and "orphaned" badge, and can be detached via the same × button. This makes orphans visible and removable — previously they were silently hidden (`visibleAspects` filtered on `knownAspectKeys`). | US-009 (`fragment-metadata-form.tsx`) |
 | Notes/references restricted to existing vault entries                                              | TODO.md (`[x] Only allow adding notes/references that already exist`)                                             |
 | Discard button on editor                                                                           | TODO.md (`[x] Fragment editor needs a discard button`)                                                            |
 | `fragment-detail.tsx` retained on project shell page; `fragment-editor.tsx` is `FragmentPage` only | `references/plans/fragment-editor.md`                                                                             |

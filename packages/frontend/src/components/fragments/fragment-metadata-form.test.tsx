@@ -3,9 +3,13 @@ import { render, screen, act, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    Link: ({ children }: { children: ReactNode }) => <>{children}</>,
+  };
+});
 
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import {
@@ -16,6 +20,7 @@ import { getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import { getListNotesQueryKey } from "@api/generated/notes/notes";
 import { getListReferencesQueryKey } from "@api/generated/references/references";
 import type { Fragment } from "@api/generated/maskorAPI.schemas";
+import { CommandsProvider } from "@lib/commands/CommandsProvider";
 
 const projectId = "project-1";
 
@@ -34,7 +39,9 @@ const baseFragment: Fragment = {
 
 const wrap = (queryClient: QueryClient) => {
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <CommandsProvider>{children}</CommandsProvider>
+    </QueryClientProvider>
   );
   return Wrapper;
 };
@@ -243,5 +250,97 @@ describe("FragmentMetadataForm — live metadata save", () => {
 
     // Error rendered beneath the failing field
     expect(screen.getByText(/Network down/i)).toBeInTheDocument();
+  });
+});
+
+describe("FragmentMetadataForm — orphaned aspects", () => {
+  let queryClient: QueryClient;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity, refetchOnMount: false },
+        mutations: { retry: false },
+      },
+    });
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    queryClient.clear();
+  });
+
+  const seedWithOrphan = (queryClient: QueryClient) => {
+    const fragment: Fragment = {
+      ...baseFragment,
+      aspects: { "deleted-aspect": { weight: 0.6 } },
+    };
+    const headers = new Headers();
+    queryClient.setQueryData(getGetFragmentQueryKey(projectId, fragment.uuid), {
+      data: fragment,
+      status: 200,
+      headers,
+    });
+    // Aspects list does NOT include "deleted-aspect" — it has been deleted from the project
+    queryClient.setQueryData(getListAspectsQueryKey(projectId), {
+      data: [],
+      status: 200,
+      headers,
+    });
+    queryClient.setQueryData(getListNotesQueryKey(projectId), { data: [], status: 200, headers });
+    queryClient.setQueryData(getListReferencesQueryKey(projectId), {
+      data: [],
+      status: 200,
+      headers,
+    });
+    return fragment;
+  };
+
+  it("renders orphaned aspect with orphaned indicator", () => {
+    const fragment = seedWithOrphan(queryClient);
+
+    render(<FragmentMetadataForm fragment={fragment} projectId={projectId} />, {
+      wrapper: wrap(queryClient),
+    });
+
+    expect(screen.getByText(/deleted-aspect/)).toBeInTheDocument();
+    expect(screen.getByText("orphaned")).toBeInTheDocument();
+  });
+
+  it("detaching an orphaned aspect removes it and fires PATCH", async () => {
+    const fragment = seedWithOrphan(queryClient);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ fragment: { ...fragment, aspects: {} }, warnings: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(<FragmentMetadataForm fragment={fragment} projectId={projectId} />, {
+      wrapper: wrap(queryClient),
+    });
+
+    expect(screen.getByText(/deleted-aspect/)).toBeInTheDocument();
+
+    const removeButton = screen.getByRole("button", { name: "×" });
+    act(() => {
+      fireEvent.click(removeButton);
+    });
+
+    expect(screen.queryByText(/deleted-aspect/)).not.toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await flushMicrotasks();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toEqual({ aspects: {} });
   });
 });
