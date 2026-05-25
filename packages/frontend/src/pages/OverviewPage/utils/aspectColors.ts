@@ -2,7 +2,7 @@
 // The palette is shared by the tile color bar and (next slice) the actual-arc
 // curves so the two views agree on colors per aspect key.
 
-const FALLBACK_PALETTE = [
+export const ASPECT_COLOR_PALETTE = [
   "#f97316", // orange-500
   "#22c55e", // green-500
   "#3b82f6", // blue-500
@@ -28,6 +28,5 @@ export const resolveAspectColor = (
   explicitColor: string | undefined,
 ): string => {
   if (explicitColor) return explicitColor;
-  const palette = FALLBACK_PALETTE;
-  return palette[hashAspectKey(aspectKey) % palette.length]!;
+  return ASPECT_COLOR_PALETTE[hashAspectKey(aspectKey) % ASPECT_COLOR_PALETTE.length]!;
 };

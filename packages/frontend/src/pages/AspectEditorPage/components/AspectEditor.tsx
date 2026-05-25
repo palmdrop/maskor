@@ -18,6 +18,10 @@ import { Label } from "@components/ui/label";
 import { EntityTag } from "@components/entity-tag";
 import { TagCombobox } from "@components/ui/tag-combobox";
 import { EntityEditorShell } from "@components/entity-editor-shell";
+import {
+  ASPECT_COLOR_PALETTE,
+  resolveAspectColor,
+} from "../../OverviewPage/utils/aspectColors";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -133,6 +137,11 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     save: makeSave<string>((value) => ({ category: value })),
   });
 
+  const colorField = useLiveFieldSave({
+    serverValue: aspect?.color ?? null,
+    save: makeSave<string | null>((value) => ({ color: value })),
+  });
+
   const notesField = useLiveFieldSave({
     serverValue: aspect?.notes ?? [],
     isEqual: stringSetEqual,
@@ -162,8 +171,41 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     </Link>
   );
 
+  const resolvedColor = useMemo(
+    () => resolveAspectColor(aspect.key, colorField.value ?? undefined),
+    [aspect.key, colorField.value],
+  );
+
   const sidebar = (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label>Color</Label>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {ASPECT_COLOR_PALETTE.map((paletteColor) => {
+            const isSelected = colorField.value === paletteColor;
+            return (
+              <button
+                key={paletteColor}
+                type="button"
+                aria-label={paletteColor}
+                aria-pressed={isSelected}
+                onClick={() => colorField.onChange(isSelected ? null : paletteColor)}
+                className={`w-6 h-6 rounded-full transition-transform ${
+                  isSelected ? "ring-2 ring-offset-1 ring-foreground scale-110" : "hover:scale-110"
+                }`}
+                style={{ backgroundColor: paletteColor }}
+              />
+            );
+          })}
+          <div
+            className="w-3 h-3 rounded-full ring-1 ring-border ml-1"
+            style={{ backgroundColor: resolvedColor }}
+            title={colorField.value ? colorField.value : "Fallback color (derived from key)"}
+            aria-label="Current resolved color"
+          />
+        </div>
+        {colorField.error && <p className="text-xs text-destructive">{colorField.error}</p>}
+      </div>
       <div className="flex flex-col gap-2">
         <Label>Category</Label>
         <Input

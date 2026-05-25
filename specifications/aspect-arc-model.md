@@ -48,6 +48,7 @@ Each aspect has:
 
 - A **key**: a unique human-readable slug that identifies it within the vault. The key is used everywhere aspects are referenced.
 - An optional **category**: a label for grouping aspects.
+- An optional **color**: a 6-digit hex color (e.g. `#f97316`) used to visually distinguish the aspect in the overview and fragment editor. When absent, a deterministic fallback color is derived from the aspect key using a stable hash, so all aspects always render with a consistent color without requiring explicit configuration.
 - An optional **description**: free-text prose explaining what the aspect means.
 - An optional list of **notes**: related note titles.
 
@@ -128,6 +129,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - **Orphaned keys preserved on save**: Maskor never auto-rewrites fragment files. Key drift is surfaced as a sync warning, not silently repaired. This protects user content from unintended modifications.
 - **Description is vault-only, not indexed in DB**: The aspect description is stored only in the vault file body. List endpoints return aspects without descriptions. A single-get reads the vault file and returns the full aspect including description.
 - **Aspect delete is a hard delete**: Deleting an aspect unlinks the vault file and soft-deletes the DB row. Fragment weights for that key become orphaned but are preserved. Aspects are structural labels, not creative content, so no `discarded/` concept applies.
+- **Aspect color is a constrained palette**: The color picker in the aspect editor offers a fixed 10-color palette. A deterministic hash-based fallback ensures all aspects (including those without explicit colors) render consistently. The `null` value in a PATCH clears the explicit color, falling back to the deterministic default. Full open-color-picker was rejected in favor of the constrained palette for visual coherence across aspects.
 - **Arc positions and fitting scores are DB-only**: These are computed values, not user-authored. They live in the DB and can be reconstructed by re-running the sequencer.
 - **Arc storage is vault-only**: Each arc lives in `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. User-authored intent is vault-stored, consistent with the vault-as-source-of-truth principle and interleaving config storage.
 - **Arc ↔ aspect cardinality is zero-or-one**: An aspect can have zero or one explicit arc. Arcs are strictly per-aspect; multiple aspects cannot share one arc.

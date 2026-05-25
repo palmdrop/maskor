@@ -28,7 +28,7 @@ export type AspectCreate = z.infer<typeof AspectCreateSchema>;
 export const AspectUpdateSchema = z.object({
   key: z.string().min(1).optional(),
   category: z.string().optional(),
-  color: AspectColorSchema.optional(),
+  color: AspectColorSchema.nullable().optional(),
   description: z.string().optional(),
   notes: z.array(z.string()).optional(),
 });

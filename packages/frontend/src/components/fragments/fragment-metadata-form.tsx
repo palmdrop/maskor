@@ -21,6 +21,7 @@ import { TagCombobox } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
 import { useFragmentMetadataCommands } from "../../lib/commands/catalog/useFragmentMetadataCommands";
 import { useCommands } from "../../lib/commands/useCommands";
+import { resolveAspectColor } from "../../pages/OverviewPage/utils/aspectColors";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -167,6 +168,14 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     () => new Set(projectAspects.map((a) => a.key)),
     [projectAspects],
   );
+
+  const colorByAspectKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const aspect of projectAspects) {
+      map.set(aspect.key, resolveAspectColor(aspect.key, aspect.color));
+    }
+    return map;
+  }, [projectAspects]);
 
   const normalizedAspects = useMemo<Record<string, { weight: number }>>(
     () =>
@@ -356,7 +365,12 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         {visibleAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1">
             <span className="text-sm text-muted-foreground flex justify-between">
-              <span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: colorByAspectKey.get(aspectKey) }}
+                  aria-hidden="true"
+                />
                 {aspectKey} — {Math.round(weight * 100)}%
               </span>
               <button

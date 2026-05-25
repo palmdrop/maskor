@@ -13,10 +13,12 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
     const descriptionChanged =
       patch.description !== undefined && patch.description !== existing.description;
     const categoryChanged = patch.category !== undefined && patch.category !== existing.category;
+    const resolvedColor = patch.color ?? undefined;
+    const colorChanged = patch.color !== undefined && resolvedColor !== existing.color;
     const notesChanged =
       patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
 
-    const anyNonKeyChanged = descriptionChanged || categoryChanged || notesChanged;
+    const anyNonKeyChanged = descriptionChanged || categoryChanged || colorChanged || notesChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: { aspect: existing, warnings: [] }, logEntries: [] };
@@ -69,6 +71,16 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
         actor: ctx.actor,
         target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
         payload: { from: existing.category, to: patch.category },
+        undoable: true,
+      });
+    }
+
+    if (colorChanged) {
+      logEntries.push({
+        type: "aspect:updated",
+        actor: ctx.actor,
+        target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+        payload: { changedFields: ["color"] },
         undoable: true,
       });
     }

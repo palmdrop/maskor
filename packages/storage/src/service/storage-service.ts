@@ -944,6 +944,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               ...current,
               ...(patch.key !== undefined && { key: patch.key }),
               ...(patch.category !== undefined && { category: patch.category }),
+              ...(patch.color !== undefined && { color: patch.color ?? undefined }),
               ...(patch.description !== undefined && { description: patch.description }),
               ...(patch.notes !== undefined && { notes: patch.notes }),
             };

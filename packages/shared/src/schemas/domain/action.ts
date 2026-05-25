@@ -131,7 +131,7 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("aspect:description-edited", empty),
   entry(
     "aspect:updated",
-    z.object({ changedFields: z.array(z.enum(["description", "category", "notes"])) }),
+    z.object({ changedFields: z.array(z.enum(["description", "category", "color", "notes"])) }),
   ),
   entry("aspect:renamed", renamed),
   entry("aspect:deleted", empty),

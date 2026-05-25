@@ -133,6 +133,76 @@ describe("PATCH /aspects/:aspectId — single-intent action types", () => {
   });
 });
 
+describe("PATCH /aspects/:aspectId — color field", () => {
+  it("sets a color and emits aspect:updated with changedFields: [color]", async () => {
+    const aspect = await findAspectByKey("city");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color: "#3b82f6" }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { aspect: { color?: string } };
+    expect(body.aspect.color).toBe("#3b82f6");
+
+    const entries = await tailEntries();
+    const entry = entries.find(
+      (e) =>
+        e.type === "aspect:updated" &&
+        e.target.uuid === aspect.uuid &&
+        Array.isArray(e.payload.changedFields) &&
+        (e.payload.changedFields as string[]).includes("color"),
+    );
+    expect(entry).toBeTruthy();
+  });
+
+  it("clears a color by sending null", async () => {
+    const aspect = await findAspectByKey("city");
+    // First set a color
+    await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color: "#a855f7" }),
+      },
+    );
+    // Then clear it
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color: null }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { aspect: { color?: string } };
+    expect(body.aspect.color).toBeUndefined();
+  });
+
+  it("persists color through index: list endpoint returns the set color", async () => {
+    const indexed = await findAspectByKey("grief");
+    await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${indexed.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color: "#ec4899" }),
+      },
+    );
+    const listResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects`,
+    );
+    const aspects = (await listResponse.json()) as Array<{ key: string; color?: string }>;
+    const grief = aspects.find((a) => a.key === "grief");
+    expect(grief?.color).toBe("#ec4899");
+  });
+});
+
 describe("PATCH /aspects/:aspectId — no-op and rename split", () => {
   it("emits no log entry for a no-op patch", async () => {
     const indexed = await findAspectByKey("grief");
