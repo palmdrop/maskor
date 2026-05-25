@@ -10,6 +10,9 @@
 - Generated frontend API client is gitignored — always run `bun run codegen` in packages/frontend after adding/changing API endpoints
 - To add a new path alias in frontend: update tsconfig.app.json paths, vite.config.ts alias, AND vitest.config.ts alias — all three are required
 - Status endpoints that must NOT await rebuild: register in `projectsRouter` (under `/projects` prefix), not in `projectScopedApp` (which uses `resolveProject` middleware)
+- Aspect color utilities live in `packages/frontend/src/pages/OverviewPage/utils/aspectColors.ts` — `ASPECT_COLOR_PALETTE` (exported) and `resolveAspectColor(key, explicitColor)` for consistent color resolution everywhere
+- `AspectUpdateSchema.color` accepts `null` to explicitly clear the color (falls back to deterministic hash); `undefined` means "don't change the color field"
+- `aspect:updated` changedFields enum includes `"color"` — add to it when adding new aspect fields that use the catch-all log type
 
 # Ralph Progress Log
 Started: [pending]
@@ -59,6 +62,24 @@ Started: [pending]
   - `projectsRouter` is mounted at `/projects` without `resolveProject` middleware — perfect for bypass routes. `projectScopedApp` runs `resolveProject` for ALL routes under `/projects/:projectId`.
   - Orval-generated client files are gitignored. The `useGetProjectRebuildStatus` hook is generated from the OpenAPI spec after running `bun run codegen`.
   - Three alias files to update: tsconfig.app.json, vite.config.ts, vitest.config.ts.
+---
+
+## 2026-05-25 - US-007
+- Added aspect color picker to the aspect editor (constrained 10-color palette)
+- Exported `ASPECT_COLOR_PALETTE` from `OverviewPage/utils/aspectColors.ts` for reuse
+- Fixed `storage-service.ts` aspects.update to apply `patch.color` (was missing)
+- Extended `AspectUpdateSchema.color` to `nullable().optional()` to support explicit color clearing (null = clear, undefined = no change)
+- Added `"color"` to `aspect:updated` changedFields enum in `action.ts`
+- Added `colorChanged` detection and `aspect:updated` log entry in `update-aspect.ts`
+- Updated `fragment-metadata-form.tsx` to show color dots next to aspect names
+- Added 3 API tests for color set, clear, and list persistence
+- Updated `specifications/aspect-arc-model.md` with color field docs and Prior decision
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - The storage-service aspect update was missing `color` in the patch spread — always check all optional fields are covered
+  - `useLiveFieldSave` with `string | null` serverValue works cleanly for nullable fields; use `null` not `""` for cleared state
+  - Sending `null` in the patch for a nullable schema field passes zod validation; `patch.color ?? undefined` converts null→undefined for the Aspect object
+  - Pre-existing `fragment-metadata-form.test.tsx` failure unrelated to this story (router mock issue)
 ---
 
 ## 2026-05-25 - US-004

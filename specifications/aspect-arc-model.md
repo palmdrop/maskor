@@ -9,6 +9,7 @@
 - 2026-05-06 — Fragments can be assigned aspect weights; the weight interface supports adding, removing, and editing values. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
 - 2026-05-09 — Aspect weight changes on fragments save immediately without a manual save step. (plan: references/plans/entity-live-metadata-save.md)
 - 2026-05-19 - Aspect actual arcs are visualized above a sequence in the overview page (plan: references/plans/overview-density-and-actual-arc.md)
+- 2026-05-25 — Aspect color picker added to the aspect editor (constrained 10-color palette); chosen color persisted on frontmatter; aspect color dots shown in fragment metadata editor; overview tile color bars and arc curves already used aspect colors. (plan: `scripts/ralph/archive/2026-05-25-ralph-small-improvements/`)
 
 ---
 
