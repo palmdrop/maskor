@@ -13,7 +13,11 @@ const selectionText = "The lights flickered at dusk.";
 
 type Item = { uuid: string; key: string; isDiscarded?: boolean };
 
-const makeBundle = (kind: EntityKind, list: Item[], mutateAsync: ReturnType<typeof vi.fn>): EntityKindBundle => {
+const makeBundle = (
+  kind: EntityKind,
+  list: Item[],
+  mutateAsync: ReturnType<typeof vi.fn>,
+): EntityKindBundle => {
   const allKeys = new Set<string>();
   const discardedKeys = new Set<string>();
   for (const item of list) {

@@ -14,7 +14,8 @@ export const ProjectConfigPage = () => {
   const { data: envelope, isLoading, isError } = useGetProject(projectId);
   const { isRebuilding } = useRebuildStatus();
 
-  if (isLoading && isRebuilding) return <p className="p-6 text-sm text-muted-foreground">Rebuilding project index…</p>;
+  if (isLoading && isRebuilding)
+    return <p className="p-6 text-sm text-muted-foreground">Rebuilding project index…</p>;
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (isError || !envelope)
     return <p className="p-6 text-sm text-muted-foreground">Failed to load project.</p>;

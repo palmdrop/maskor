@@ -162,14 +162,11 @@ describe("PATCH /aspects/:aspectId — color field", () => {
   it("clears a color by sending null", async () => {
     const aspect = await findAspectByKey("city");
     // First set a color
-    await testContext.app.request(
-      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ color: "#a855f7" }),
-      },
-    );
+    await testContext.app.request(`/projects/${project.projectUUID}/aspects/${aspect.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color: "#a855f7" }),
+    });
     // Then clear it
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
@@ -186,17 +183,12 @@ describe("PATCH /aspects/:aspectId — color field", () => {
 
   it("persists color through index: list endpoint returns the set color", async () => {
     const indexed = await findAspectByKey("grief");
-    await testContext.app.request(
-      `/projects/${project.projectUUID}/aspects/${indexed.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ color: "#ec4899" }),
-      },
-    );
-    const listResponse = await testContext.app.request(
-      `/projects/${project.projectUUID}/aspects`,
-    );
+    await testContext.app.request(`/projects/${project.projectUUID}/aspects/${indexed.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color: "#ec4899" }),
+    });
+    const listResponse = await testContext.app.request(`/projects/${project.projectUUID}/aspects`);
     const aspects = (await listResponse.json()) as Array<{ key: string; color?: string }>;
     const grief = aspects.find((a) => a.key === "grief");
     expect(grief?.color).toBe("#ec4899");

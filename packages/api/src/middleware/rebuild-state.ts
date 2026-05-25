@@ -9,10 +9,12 @@ const rebuildingProjects = new Set<string>();
 export const isProjectRebuilding = (projectUUID: string): boolean =>
   rebuildingProjects.has(projectUUID);
 
-export const hasRebuildRun = (projectUUID: string): boolean =>
-  rebuildPromises.has(projectUUID);
+export const hasRebuildRun = (projectUUID: string): boolean => rebuildPromises.has(projectUUID);
 
-export const registerRebuild = (projectUUID: string, rebuildFn: () => Promise<void>): Promise<void> => {
+export const registerRebuild = (
+  projectUUID: string,
+  rebuildFn: () => Promise<void>,
+): Promise<void> => {
   if (rebuildPromises.has(projectUUID)) {
     return rebuildPromises.get(projectUUID)!;
   }

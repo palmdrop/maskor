@@ -3,7 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateFragment, getListFragmentsQueryKey } from "@api/generated/fragments/fragments";
 import { useCreateNote, getListNotesQueryKey } from "@api/generated/notes/notes";
-import { useCreateReference, getListReferencesQueryKey } from "@api/generated/references/references";
+import {
+  useCreateReference,
+  getListReferencesQueryKey,
+} from "@api/generated/references/references";
 import { useCreateAspect, getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -32,7 +35,11 @@ type SimpleCreateFormState = {
 
 const initialSimpleForm: SimpleCreateFormState = { key: "", content: "", error: null };
 
-export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: GlobalCreateDialogsProps) => {
+export const GlobalCreateDialogs = ({
+  projectId,
+  activeCreate,
+  onClose,
+}: GlobalCreateDialogsProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -191,8 +198,12 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
               <Input
                 id="global-create-fragment-key"
                 value={simpleForm.key}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, key: event.target.value }))}
-                onKeyDown={(event) => { if (event.key === "Enter") void handleCreateFragment(); }}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleCreateFragment();
+                }}
                 disabled={isPending}
               />
             </div>
@@ -202,7 +213,9 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
                 id="global-create-fragment-content"
                 rows={6}
                 value={simpleForm.content}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, content: event.target.value }))}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
+                }
                 disabled={isPending}
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
@@ -234,8 +247,12 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
               <Input
                 id="global-create-note-key"
                 value={simpleForm.key}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, key: event.target.value }))}
-                onKeyDown={(event) => { if (event.key === "Enter") void handleCreateNote(); }}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleCreateNote();
+                }}
                 disabled={isPending}
               />
             </div>
@@ -245,7 +262,9 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
                 id="global-create-note-content"
                 rows={4}
                 value={simpleForm.content}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, content: event.target.value }))}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
+                }
                 disabled={isPending}
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
@@ -277,8 +296,12 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
               <Input
                 id="global-create-reference-key"
                 value={simpleForm.key}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, key: event.target.value }))}
-                onKeyDown={(event) => { if (event.key === "Enter") void handleCreateReference(); }}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleCreateReference();
+                }}
                 disabled={isPending}
               />
             </div>
@@ -288,7 +311,9 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
                 id="global-create-reference-content"
                 rows={4}
                 value={simpleForm.content}
-                onChange={(event) => setSimpleForm((previous) => ({ ...previous, content: event.target.value }))}
+                onChange={(event) =>
+                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
+                }
                 disabled={isPending}
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
@@ -321,7 +346,9 @@ export const GlobalCreateDialogs = ({ projectId, activeCreate, onClose }: Global
                 id="global-create-aspect-key"
                 value={aspectKey}
                 onChange={(event) => setAspectKey(event.target.value)}
-                onKeyDown={(event) => { if (event.key === "Enter") void handleCreateAspect(); }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleCreateAspect();
+                }}
                 disabled={isPending}
                 placeholder="e.g. tone"
               />

@@ -91,7 +91,7 @@ export const ExtractToEntityDialogCore = ({
         if (!next) onClose();
       }}
     >
-      <DialogContent showCloseButton={false}>
+      <DialogContent showCloseButton={false} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

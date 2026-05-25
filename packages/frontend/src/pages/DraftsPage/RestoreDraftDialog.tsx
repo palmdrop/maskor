@@ -78,7 +78,7 @@ export const RestoreDraftDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Restore draft</DialogTitle>
         </DialogHeader>

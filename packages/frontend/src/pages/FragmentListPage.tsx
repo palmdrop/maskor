@@ -72,9 +72,11 @@ export const FragmentListPage = () => {
     }
   };
 
-  if (isLoading && isRebuilding) return <p className="p-4 text-sm text-muted-foreground">Rebuilding project index…</p>;
+  if (isLoading && isRebuilding)
+    return <p className="p-4 text-sm text-muted-foreground">Rebuilding project index…</p>;
   if (isLoading) return <p className="p-4 text-sm text-muted-foreground">Loading fragments…</p>;
-  if (isError || !envelope) return <p className="p-4 text-sm text-muted-foreground">Failed to load fragments.</p>;
+  if (isError || !envelope)
+    return <p className="p-4 text-sm text-muted-foreground">Failed to load fragments.</p>;
 
   const fragments = envelope.status === 200 ? envelope.data : [];
   const discardedCount = fragments.reduce((count, f) => count + (f.isDiscarded ? 1 : 0), 0);
