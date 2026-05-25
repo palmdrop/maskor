@@ -11,19 +11,14 @@ export const fragmentMetadataScope = defineScope<FragmentMetadataContext>("fragm
   label: "Fragment metadata",
 });
 
-const attachAspect = defineScopeCommand<
-  "fragment-metadata",
-  "fragment-metadata:attach-aspect",
-  FragmentMetadataContext,
-  string
->(fragmentMetadataScope, {
+const attachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:attach-aspect",
   label: "Attach aspect",
   category: "attach",
   arg: (ctx) => ({
     items: ctx.getAvailableAspects(),
-    getKey: (item) => item,
-    getLabel: (item) => item,
+    getKey: (item: string) => item,
+    getLabel: (item: string) => item,
     placeholder: "Choose aspect…",
   }),
   run: (ctx, aspectKey) => {
@@ -32,19 +27,14 @@ const attachAspect = defineScopeCommand<
   },
 });
 
-const detachAspect = defineScopeCommand<
-  "fragment-metadata",
-  "fragment-metadata:detach-aspect",
-  FragmentMetadataContext,
-  string
->(fragmentMetadataScope, {
+const detachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:detach-aspect",
   label: "Detach aspect",
   category: "attach",
   arg: (ctx) => ({
     items: ctx.getAttachedAspects(),
-    getKey: (item) => item,
-    getLabel: (item) => item,
+    getKey: (item: string) => item,
+    getLabel: (item: string) => item,
     placeholder: "Choose aspect…",
   }),
   run: (ctx, aspectKey) => {

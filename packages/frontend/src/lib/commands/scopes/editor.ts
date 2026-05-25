@@ -105,12 +105,7 @@ const insertDisabled = ({ ctx, kind, directionNoun }: InsertDisabledArgs): strin
   return undefined;
 };
 
-const appendToFragment = defineScopeCommand<
-  "editor",
-  "editor.append-to-fragment",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const appendToFragment = defineScopeCommand(editorScope, {
   id: "editor.append-to-fragment",
   label: "Append to fragment",
   category: "other",
@@ -128,12 +123,7 @@ const appendToFragment = defineScopeCommand<
   },
 });
 
-const appendToNote = defineScopeCommand<
-  "editor",
-  "editor.append-to-note",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const appendToNote = defineScopeCommand(editorScope, {
   id: "editor.append-to-note",
   label: "Append to note",
   category: "other",
@@ -151,12 +141,7 @@ const appendToNote = defineScopeCommand<
   },
 });
 
-const appendToReference = defineScopeCommand<
-  "editor",
-  "editor.append-to-reference",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const appendToReference = defineScopeCommand(editorScope, {
   id: "editor.append-to-reference",
   label: "Append to reference",
   category: "other",
@@ -174,12 +159,7 @@ const appendToReference = defineScopeCommand<
   },
 });
 
-const appendToAspect = defineScopeCommand<
-  "editor",
-  "editor.append-to-aspect",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const appendToAspect = defineScopeCommand(editorScope, {
   id: "editor.append-to-aspect",
   label: "Append to aspect",
   category: "other",
@@ -197,12 +177,7 @@ const appendToAspect = defineScopeCommand<
   },
 });
 
-const prependToFragment = defineScopeCommand<
-  "editor",
-  "editor.prepend-to-fragment",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const prependToFragment = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-fragment",
   label: "Prepend to fragment",
   category: "other",
@@ -220,12 +195,7 @@ const prependToFragment = defineScopeCommand<
   },
 });
 
-const prependToNote = defineScopeCommand<
-  "editor",
-  "editor.prepend-to-note",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const prependToNote = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-note",
   label: "Prepend to note",
   category: "other",
@@ -243,12 +213,7 @@ const prependToNote = defineScopeCommand<
   },
 });
 
-const prependToReference = defineScopeCommand<
-  "editor",
-  "editor.prepend-to-reference",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const prependToReference = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-reference",
   label: "Prepend to reference",
   category: "other",
@@ -266,12 +231,7 @@ const prependToReference = defineScopeCommand<
   },
 });
 
-const prependToAspect = defineScopeCommand<
-  "editor",
-  "editor.prepend-to-aspect",
-  EditorContext,
-  InsertCommandTarget
->(editorScope, {
+const prependToAspect = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-aspect",
   label: "Prepend to aspect",
   category: "other",

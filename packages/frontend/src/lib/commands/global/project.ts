@@ -5,12 +5,12 @@ import type { Project, Sequence } from "@api/generated/maskorAPI.schemas";
 import { defineGlobalCommand } from "../define";
 import { getActiveProjectId } from "../router-helpers";
 
-const switchProject = defineGlobalCommand<"project:switch-project", Project>({
+const switchProject = defineGlobalCommand({
   id: "project:switch-project",
   label: "Switch project",
   category: "project",
   arg: {
-    items: async () => {
+    items: async (): Promise<Project[]> => {
       const response = await ListProjects();
       return response.status === 200 ? response.data : [];
     },
@@ -26,13 +26,13 @@ const switchProject = defineGlobalCommand<"project:switch-project", Project>({
   },
 });
 
-const switchSequence = defineGlobalCommand<"project:switch-sequence", Sequence>({
+const switchSequence = defineGlobalCommand({
   id: "project:switch-sequence",
   label: "Switch sequence",
   category: "project",
   disabled: () => (getActiveProjectId() ? undefined : "No active project"),
   arg: {
-    items: async () => {
+    items: async (): Promise<Sequence[]> => {
       const projectId = getActiveProjectId();
       if (!projectId) return [];
       const response = await ListSequences(projectId);
