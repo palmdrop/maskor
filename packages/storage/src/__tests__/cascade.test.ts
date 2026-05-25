@@ -254,3 +254,83 @@ describe("cascadeAspectKeyRename — via aspects.update", () => {
     ).resolves.toBeDefined();
   });
 });
+
+// --- Aspect delete cascade ---
+
+describe("cascadeAspectDelete — via aspects.delete", () => {
+  it("strips the deleted aspect key from attached fragment files on disk", async () => {
+    const { service, context, vault } = await setup();
+    const aspects = await service.aspects.readAll(context);
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
+
+    await service.aspects.delete(context, grief.uuid);
+
+    const bridge = await vault.fragments.read("the-bridge.md");
+    expect(bridge.aspects["grief"]).toBeUndefined();
+  });
+
+  it("returns cascaded fragment UUIDs in the result", async () => {
+    const { service, context } = await setup();
+    const aspects = await service.aspects.readAll(context);
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
+
+    const result = await service.aspects.delete(context, grief.uuid);
+
+    // Both the-bridge and harbour-lights have grief weights
+    expect(result.cascadedFragments).toContain(BRIDGE_FRAGMENT_UUID);
+    expect(result.cascadedFragments).toContain(HARBOUR_FRAGMENT_UUID);
+  });
+
+  it("returns empty cascadedFragments when no fragments reference the deleted aspect", async () => {
+    const { service, context } = await setup();
+
+    const newAspect = {
+      uuid: crypto.randomUUID(),
+      key: "standalone aspect",
+      notes: [],
+    };
+    await service.aspects.write(context, newAspect);
+
+    const aspects = await service.aspects.readAll(context);
+    const standalone = aspects.find((aspect) => aspect.key === "standalone aspect")!;
+
+    const result = await service.aspects.delete(context, standalone.uuid);
+
+    expect(result.cascadedFragments).toHaveLength(0);
+  });
+
+  it("deletes the associated arc file when one exists", async () => {
+    const { service, context } = await setup();
+
+    const arcsDir = join(vaultDir, ".maskor", "config", "arcs");
+    await mkdir(arcsDir, { recursive: true });
+    const arcUuid = crypto.randomUUID();
+    await Bun.write(
+      join(arcsDir, "grief.yaml"),
+      stringifyYaml({
+        uuid: arcUuid,
+        aspectKey: "grief",
+        points: [
+          { x: 0, y: 0.5 },
+          { x: 1, y: 0.5 },
+        ],
+      }),
+    );
+
+    const aspects = await service.aspects.readAll(context);
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
+
+    await service.aspects.delete(context, grief.uuid);
+
+    expect(await Bun.file(join(arcsDir, "grief.yaml")).exists()).toBe(false);
+  });
+
+  it("succeeds silently when no arc exists for the deleted aspect", async () => {
+    const { service, context } = await setup();
+    const aspects = await service.aspects.readAll(context);
+    const grief = aspects.find((aspect) => aspect.key === "grief")!;
+
+    // No arc file created — delete should succeed silently
+    await expect(service.aspects.delete(context, grief.uuid)).resolves.toBeDefined();
+  });
+});

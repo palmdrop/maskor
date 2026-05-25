@@ -14,8 +14,11 @@ export const renderAspectEntryText = (entry: LogEntry): string => {
     }
     case "aspect:renamed":
       return `Aspect renamed: "${entry.payload.oldKey}" → "${entry.payload.newKey}"`;
-    case "aspect:deleted":
-      return `Aspect "${key(entry)}" deleted`;
+    case "aspect:deleted": {
+      const count = entry.payload.cascadeFragmentCount;
+      const suffix = count > 0 ? ` (weights removed from ${count} fragment${count === 1 ? "" : "s"})` : "";
+      return `Aspect "${key(entry)}" deleted${suffix}`;
+    }
     case "aspect:category-changed": {
       const from = entry.payload.from ?? "none";
       const to = entry.payload.to ?? "none";

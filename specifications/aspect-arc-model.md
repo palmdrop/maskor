@@ -10,6 +10,7 @@
 - 2026-05-09 — Aspect weight changes on fragments save immediately without a manual save step. (plan: references/plans/entity-live-metadata-save.md)
 - 2026-05-19 - Aspect actual arcs are visualized above a sequence in the overview page (plan: references/plans/overview-density-and-actual-arc.md)
 - 2026-05-25 — Aspect color picker added to the aspect editor (constrained 10-color palette); chosen color persisted on frontmatter; aspect color dots shown in fragment metadata editor; overview tile color bars and arc curves already used aspect colors. (plan: `scripts/ralph/archive/2026-05-25-ralph-small-improvements/`)
+- 2026-05-25 — Aspect delete now cascades: deletes the arc file and strips the weight key from all fragment frontmatter atomically. The `aspect:deleted` action log entry records the count of affected fragments. (plan: `scripts/ralph/archive/2026-05-25-ralph-small-improvements/`)
 
 ---
 
@@ -129,7 +130,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - **Aspect key as join field, not UUID**: Fragment inline fields use a human-readable key so they remain legible in vault markdown and compatible with Obsidian's Dataview syntax. UUID-based joins would be opaque in raw files.
 - **Orphaned keys preserved on save**: Maskor never auto-rewrites fragment files. Key drift is surfaced as a sync warning, not silently repaired. This protects user content from unintended modifications.
 - **Description is vault-only, not indexed in DB**: The aspect description is stored only in the vault file body. List endpoints return aspects without descriptions. A single-get reads the vault file and returns the full aspect including description.
-- **Aspect delete is a hard delete**: Deleting an aspect unlinks the vault file and soft-deletes the DB row. Fragment weights for that key become orphaned but are preserved. Aspects are structural labels, not creative content, so no `discarded/` concept applies.
+- **Aspect delete cascades to fragment frontmatter**: Deleting an aspect removes the aspect file from the vault and strips the corresponding weight key from every fragment's frontmatter atomically. This is the same cascade pattern used for aspect key renames. Fragment weights cannot silently re-appear on re-index because the source files no longer carry them. The associated arc file (if any) is also deleted. The `aspect:deleted` action log entry includes a `cascadeFragmentCount` indicating how many fragments were updated. Aspects are structural labels, not creative content, so no `discarded/` concept applies.
 - **Aspect color is a constrained palette**: The color picker in the aspect editor offers a fixed 10-color palette. A deterministic hash-based fallback ensures all aspects (including those without explicit colors) render consistently. The `null` value in a PATCH clears the explicit color, falling back to the deterministic default. Full open-color-picker was rejected in favor of the constrained palette for visual coherence across aspects.
 - **Arc positions and fitting scores are DB-only**: These are computed values, not user-authored. They live in the DB and can be reconstructed by re-running the sequencer.
 - **Arc storage is vault-only**: Each arc lives in `<vault>/.maskor/config/arcs/<aspect-key>.yaml`. User-authored intent is vault-stored, consistent with the vault-as-source-of-truth principle and interleaving config storage.
@@ -157,7 +158,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 
 - A user can create, view, and delete aspects within a project.
 - A fragment can be assigned a weight for any aspect; the weight is stored in the fragment file and survives a full sync cycle.
-- If an aspect key referenced by a fragment is deleted or renamed, the fragment file is not modified; a sync warning is produced instead.
+- If an aspect key referenced by a fragment is **renamed**, the fragment file is updated to reflect the new key (cascade rename). If an aspect is **deleted**, the weight key is stripped from all fragment files that referenced it (cascade delete). No orphaned weights are left behind in either case.
 - An explicit arc can be defined for an aspect, expressing a target weight curve.
 - A fitting score is computable for any fragment at a given sequence position, given arc definitions.
 - A fragment with no weight for an aspect that has an arc produces a defined score (not an error).

@@ -134,7 +134,7 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
     z.object({ changedFields: z.array(z.enum(["description", "category", "color", "notes"])) }),
   ),
   entry("aspect:renamed", renamed),
-  entry("aspect:deleted", empty),
+  entry("aspect:deleted", z.object({ cascadeFragmentCount: z.number() })),
   entry(
     "aspect:category-changed",
     z.object({ from: z.string().optional(), to: z.string().optional() }),

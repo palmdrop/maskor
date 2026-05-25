@@ -418,6 +418,27 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     };
   };
 
+  const cascadeAspectDelete = async (
+    context: ProjectContext,
+    aspectKey: string,
+  ): Promise<{ fragments: string[]; commit: (tx: Transaction) => void }> => {
+    await deleteArc(context, aspectKey);
+    const vaultDatabase = getVaultDatabase(context);
+    const fragmentPayload = await cascadeFragments(
+      context,
+      findFragmentUuidsByAspectKey(vaultDatabase, aspectKey),
+      (fragment) => {
+        const updatedAspects = { ...fragment.aspects };
+        delete updatedAspects[aspectKey];
+        return { ...fragment, aspects: updatedAspects };
+      },
+    );
+    return {
+      fragments: fragmentPayload.touched,
+      commit: fragmentPayload.commit,
+    };
+  };
+
   // --- public API ---
 
   return {
@@ -884,7 +905,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
-      async delete(context: ProjectContext, uuid: string): Promise<void> {
+      async delete(
+        context: ProjectContext,
+        uuid: string,
+      ): Promise<{ cascadedFragments: string[] }> {
         return withVaultWriteLock(context.vaultPath, async () => {
           const indexer = getVaultIndexer(context);
           const indexed = await indexer.aspects.findByUUID(uuid);
@@ -896,6 +920,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               { uuid, reason: "UUID not present in vault index" },
             );
           }
+
+          const aspectKey = indexed.key;
+          const cascadePayload = await cascadeAspectDelete(context, aspectKey);
 
           try {
             await getVault(context).aspects.delete(indexed.filePath);
@@ -917,7 +944,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const vaultDatabase = getVaultDatabase(context);
           vaultDatabase.transaction((tx) => {
             deleteAspectByFilePath(tx, indexed.filePath);
+            cascadePayload.commit(tx);
           });
+
+          return { cascadedFragments: cascadePayload.fragments };
         });
       },
 
