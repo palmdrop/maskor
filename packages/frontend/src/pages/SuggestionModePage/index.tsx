@@ -4,7 +4,8 @@ import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
 import { useCommands } from "@lib/commands/useCommands";
-import { useSuggestionModeCommands } from "@lib/commands/catalog/useSuggestionModeCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { suggestionModeScope } from "@lib/commands/scopes/suggestion-mode";
 import { useGetCurrentSuggestion } from "../../api/generated/suggestion/suggestion";
 
 // TODO: this should be configured globally and not in a random FE-component
@@ -66,32 +67,19 @@ export const SuggestionModePage = () => {
     // Only run on mount
   }, [current, fragmentId, isLoadingNext]);
 
-  const handleNext = useCallback(async () => {
-    if (isLoadingNext) return;
-    const currentFragmentId = fragmentId;
-    if (editorRef.current) {
-      try {
-        await editorRef.current.save();
-      } catch (error) {
-        setSaveError(
-          error instanceof Error ? error.message : "Save failed. Fix errors before continuing.",
-        );
-        return;
-      }
-    }
-    await loadNext(currentFragmentId);
-  }, [isLoadingNext, fragmentId, loadNext]);
-
   const goBack = useCallback(() => {
     router.history.back();
-  }, [navigate]);
+  }, [router]);
 
   const commands = useCommands();
-  useSuggestionModeCommands({
+  useCommandScope(suggestionModeScope, {
+    fragmentId: fragmentId ?? null,
+    editorRef,
     isLoading: isLoadingNext,
     hasPrevious: router.history.canGoBack(),
-    onNext: () => void handleNext(),
-    onPrevious: () => void goBack(),
+    loadNext,
+    goBack,
+    setSaveError,
   });
 
   // fragmentId === undefined means initial load
