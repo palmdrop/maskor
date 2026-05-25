@@ -95,3 +95,19 @@ Started: [pending]
   - `@components` alias already exists; `@tanstack/react-query`'s `useQueryClient` must be imported separately from `@tanstack/react-router`
   - Pre-existing test failure: `fragment-metadata-form.test.tsx` fails due to incomplete router mock — unrelated to this story
 ---
+
+## 2026-05-25 - US-008
+- Implemented aspect delete cascade: deleting an aspect now strips its weight key from all fragment frontmatter atomically and deletes the associated arc file
+- Added `cascadeAspectDelete` helper in `packages/storage/src/service/storage-service.ts` (mirrors `cascadeAspectKeyRename` but removes the key rather than renaming it)
+- Changed `aspects.delete` return type from `Promise<void>` to `Promise<{ cascadedFragments: string[] }>`
+- Updated `packages/api/src/commands/aspects/delete-aspect.ts` to extract cascade result and include `cascadeFragmentCount` in the `aspect:deleted` log payload
+- Updated `packages/shared/src/schemas/domain/action.ts`: `aspect:deleted` payload changed from `empty` to `z.object({ cascadeFragmentCount: z.number() })`
+- Updated `packages/frontend/src/pages/ProjectHistoryPage/renderers/aspect.tsx`: `aspect:deleted` render now shows cascade count
+- Added 5 tests in `packages/storage/src/__tests__/cascade.test.ts` covering: strip on disk, cascade UUIDs returned, empty cascade, arc deletion, no arc (silent)
+- Updated `specifications/aspect-arc-model.md`: prior decision and acceptance criteria updated to document cascade-delete as the chosen path
+- **Learnings for future iterations:**
+  - `cascadeAspectDelete` follows the same pattern as `cascadeAspectKeyRename` — cascade fragments first, then delete the aspect entity and commit in one transaction
+  - The arc delete happens before the fragment cascade so any error there aborts before touching fragment files
+  - `fragment_aspects` DB rows are cleaned up automatically: `cascadeFragments` re-upserts all touched fragments, and `upsertFragment` re-syncs `fragment_aspects` from the (now-updated) fragment object
+  - The `aspect:deleted` schema change is backward-compatible in practice (no existing clients depend on the exact payload shape for this type)
+---
