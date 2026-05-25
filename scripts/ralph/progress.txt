@@ -111,3 +111,18 @@ Started: [pending]
   - `fragment_aspects` DB rows are cleaned up automatically: `cascadeFragments` re-upserts all touched fragments, and `upsertFragment` re-syncs `fragment_aspects` from the (now-updated) fragment object
   - The `aspect:deleted` schema change is backward-compatible in practice (no existing clients depend on the exact payload shape for this type)
 ---
+
+## 2026-05-25 - US-009
+- Rendered orphaned aspects (aspect keys on a fragment whose project definition was deleted) in the metadata editor with a muted style and "orphaned" badge
+- Changed `visibleAspects` → `liveAspects` (filtered to known project aspects) + added `orphanedAspects` (filtered to unknown keys) in `fragment-metadata-form.tsx`
+- Orphaned aspects render below live aspects with `opacity-50`, an empty circle (no color dot), the key + weight, an "orphaned" badge, and the same × detach button
+- Updated `getAttachedAspects` in the command hook call to include all attached keys (live + orphaned) so palette detach works on orphans too
+- Fixed pre-existing test failure in `fragment-metadata-form.test.tsx`: updated the `@tanstack/react-router` mock to use `importOriginal` so all router exports are available (prevents registry.ts import errors)
+- Added `CommandsProvider` to the test `wrap` function (required by `useCommands()` / `useFragmentMetadataCommands()`)
+- Added 2 new tests: orphaned aspect renders with badge; detaching an orphaned aspect removes it and fires the PATCH
+- Updated `specifications/fragment-editor.md`: added Shipped entry and Prior decision documenting orphan rendering
+- **Learnings for future iterations:**
+  - The `vi.mock("@tanstack/react-router")` in `fragment-metadata-form.test.tsx` was too narrow (only mocked `Link`), causing a suite-level error because `registry.ts` imports `createRootRouteWithContext`. Fix: use `importOriginal` + spread actual exports.
+  - Components using `useCommands()` or catalog command hooks require `CommandsProvider` in the test wrapper.
+  - Orphan indicator uses `opacity-50` + empty circle (no `backgroundColor`) + `"orphaned"` text badge — consistent with the muted treatment used elsewhere for deprecated/inactive items.
+---
