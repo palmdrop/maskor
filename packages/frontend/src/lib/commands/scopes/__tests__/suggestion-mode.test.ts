@@ -11,9 +11,7 @@ const makeEditorRef = (
   current: { save } as unknown as FragmentEditorHandle,
 });
 
-const makeContext = (
-  overrides: Partial<SuggestionModeContext> = {},
-): SuggestionModeContext => ({
+const makeContext = (overrides: Partial<SuggestionModeContext> = {}): SuggestionModeContext => ({
   fragmentId: "f-1",
   editorRef: makeEditorRef(),
   isLoading: false,
@@ -102,9 +100,7 @@ describe("scopes/suggestion-mode", () => {
     });
 
     it("is disabled when hasPrevious is false", () => {
-      expect(previous.disabled?.(makeContext({ hasPrevious: false }))).toBe(
-        "No previous fragment",
-      );
+      expect(previous.disabled?.(makeContext({ hasPrevious: false }))).toBe("No previous fragment");
       expect(previous.disabled?.(makeContext({ hasPrevious: true }))).toBeUndefined();
     });
   });

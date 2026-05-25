@@ -17,16 +17,15 @@ export type CommandId = AnyCommandInCatalog["id"];
 // then follows from the def's `arg` shape — `void` (no arg) or `CommandArg<A>`.
 type CommandById<Id extends CommandId> = Extract<AnyCommandInCatalog, { id: Id }>;
 
-export type ArgFor<Id extends CommandId> = CommandById<Id> extends GlobalCommandDef<Id, infer A>
-  ? A
-  : CommandById<Id> extends ScopeCommandDef<string, Id, infer A, unknown>
+export type ArgFor<Id extends CommandId> =
+  CommandById<Id> extends GlobalCommandDef<Id, infer A>
     ? A
-    : never;
+    : CommandById<Id> extends ScopeCommandDef<string, Id, infer A, unknown>
+      ? A
+      : never;
 
 // `commands.run(id, arg)` becomes `commands.run(id)` for void-arg commands
 // and `commands.run(id, arg)` for parameterized ones. The conditional in
 // `RunArgs` collapses the tuple so void-arg call sites don't have to pass
 // `undefined`.
-export type RunArgs<Id extends CommandId> = [ArgFor<Id>] extends [void]
-  ? []
-  : [arg: ArgFor<Id>];
+export type RunArgs<Id extends CommandId> = [ArgFor<Id>] extends [void] ? [] : [arg: ArgFor<Id>];

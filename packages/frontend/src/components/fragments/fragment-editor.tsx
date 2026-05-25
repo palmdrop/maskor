@@ -180,7 +180,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         size="sm"
         variant="outline"
         disabled={isActionPending}
-        onClick={fragment?.isDiscarded ? handleRestore : handleDiscard}
+        onClick={() =>
+          commands.run(fragment?.isDiscarded ? "fragment:restore" : "fragment:discard")
+        }
       >
         {fragment?.isDiscarded
           ? isRestorePending

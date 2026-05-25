@@ -34,12 +34,7 @@ interface ScopeCommandInput<Id extends string, A, Ctx> {
   run: (ctx: Ctx, arg: A) => void | Promise<void>;
 }
 
-export const defineScopeCommand = <
-  ScopeId extends string,
-  Id extends string,
-  Ctx,
-  A = void,
->(
+export const defineScopeCommand = <ScopeId extends string, Id extends string, Ctx, A = void>(
   scope: Scope<Ctx> & { id: ScopeId },
   def: ScopeCommandInput<Id, A, Ctx>,
 ): ScopeCommandDef<ScopeId, Id, A, Ctx> => ({

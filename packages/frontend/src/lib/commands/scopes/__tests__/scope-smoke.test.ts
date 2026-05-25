@@ -4,10 +4,7 @@ import { sequenceSidebarCommands, type SequenceSidebarContext } from "../sequenc
 import { fragmentEditorCommands, type FragmentEditorContext } from "../fragment-editor";
 import { fragmentImportCommands, type FragmentImportContext } from "../fragment-import";
 import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
-import {
-  projectManagementCommands,
-  type ProjectManagementContext,
-} from "../project-management";
+import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
 import { projectShellCommands, type ProjectShellContext } from "../project-shell";
 
 const find = <T extends { id: string }>(list: readonly T[], id: string): T =>
@@ -65,9 +62,9 @@ describe("scopes/sequence-sidebar", () => {
   });
 
   it("delete-sequence disables without a confirmed id", () => {
-    expect(
-      find(sequenceSidebarCommands, "overview:delete-sequence").disabled?.(ctx),
-    ).toMatch(/No sequence selected/);
+    expect(find(sequenceSidebarCommands, "overview:delete-sequence").disabled?.(ctx)).toMatch(
+      /No sequence selected/,
+    );
   });
 });
 
@@ -84,9 +81,7 @@ describe("scopes/fragment-editor", () => {
     cmd.run(baseCtx);
     expect(baseCtx.discard).toHaveBeenCalled();
     expect(cmd.disabled?.({ ...baseCtx, hasFragment: false })).toBe("No fragment to discard");
-    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe(
-      "Fragment is already discarded",
-    );
+    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe("Fragment is already discarded");
   });
 
   it("restore is disabled when nothing to restore", () => {

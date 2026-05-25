@@ -186,8 +186,7 @@ const renderShell = (children?: ReactNode) =>
     </CommandsProvider>,
   );
 
-const openPalette = () =>
-  fireEvent.keyDown(window, { key: "k", metaKey: true, bubbles: true });
+const openPalette = () => fireEvent.keyDown(window, { key: "k", metaKey: true, bubbles: true });
 
 describe("CommandPalette", () => {
   beforeEach(() => {

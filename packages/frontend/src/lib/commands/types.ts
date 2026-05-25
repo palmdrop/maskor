@@ -43,8 +43,7 @@ interface CommonCommandDef {
   readonly hotkey?: string;
 }
 
-export interface GlobalCommandDef<Id extends string = string, A = void>
-  extends CommonCommandDef {
+export interface GlobalCommandDef<Id extends string = string, A = void> extends CommonCommandDef {
   readonly kind: "global";
   readonly id: Id;
   readonly arg?: CommandArg<A>;
