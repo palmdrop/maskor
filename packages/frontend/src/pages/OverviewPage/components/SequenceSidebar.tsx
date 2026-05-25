@@ -9,7 +9,8 @@ import {
   getListSequencesQueryKey,
 } from "@api/generated/sequences/sequences";
 import { useCommands } from "@lib/commands/useCommands";
-import { useSequenceSidebarCommands } from "@lib/commands/catalog/useSequenceSidebarCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { sequenceSidebarScope } from "@lib/commands/scopes/sequence-sidebar";
 
 type Props = {
   sequences: Sequence[];
@@ -191,11 +192,11 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   const commands = useCommands();
 
-  useSequenceSidebarCommands({
+  useCommandScope(sequenceSidebarScope, {
     createSequencePending: createSequence.isPending,
-    onCreateSequence: handleCreate,
-    confirmingDeleteId,
-    onDeleteSequence: () => {
+    createSequence: handleCreate,
+    confirmingDeleteSequenceId: confirmingDeleteId,
+    deleteSequence: () => {
       if (confirmingDeleteId) handleConfirmDelete(confirmingDeleteId);
     },
   });

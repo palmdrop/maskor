@@ -16,7 +16,8 @@ import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { ReadonlyEditor } from "@components/readonly-editor";
 import { Button } from "@components/ui/button";
 import { useCommands } from "@lib/commands/useCommands";
-import { useFragmentImportCommands } from "@lib/commands/catalog/useFragmentImportCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { fragmentImportScope } from "@lib/commands/scopes/fragment-import";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import {
@@ -194,9 +195,9 @@ export const FragmentImportPage = () => {
   const pieceCount = previewResult?.pieces?.length ?? 0;
 
   const commands = useCommands();
-  useFragmentImportCommands({
+  useCommandScope(fragmentImportScope, {
     canImport: pieceCount > 0 && !isInFlight,
-    onImport: () => void handleImport(),
+    import: () => void handleImport(),
   });
 
   if (!file || !format) return null;

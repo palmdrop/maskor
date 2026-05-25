@@ -13,7 +13,8 @@ import { Slider } from "@components/ui/slider";
 import { Button } from "@components/ui/button";
 import { useRebuildIndex } from "@api/generated/index";
 import { useCommands } from "@lib/commands/useCommands";
-import { useProjectConfigCommands } from "@lib/commands/catalog/useProjectConfigCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { projectConfigScope } from "@lib/commands/scopes/project-config";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
@@ -21,9 +22,9 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const rebuildIndex = useRebuildIndex();
 
   const commands = useCommands();
-  useProjectConfigCommands({
+  useCommandScope(projectConfigScope, {
     rebuildIndexPending: rebuildIndex.isPending,
-    onRebuildIndex: () => rebuildIndex.mutate({ projectId: project.projectUUID }),
+    rebuildIndex: () => rebuildIndex.mutate({ projectId: project.projectUUID }),
   });
 
   const [editing, setEditing] = useState(false);

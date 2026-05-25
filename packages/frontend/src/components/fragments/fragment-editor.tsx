@@ -26,7 +26,8 @@ import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { Separator } from "@components/ui/separator";
 import { useCommands } from "../../lib/commands/useCommands";
-import { useFragmentEditorCommands } from "../../lib/commands/catalog/useFragmentEditorCommands";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
+import { fragmentEditorScope } from "../../lib/commands/scopes/fragment-editor";
 
 export type FragmentEditorHandle = {
   save: () => Promise<void>;
@@ -166,11 +167,11 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   }, [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog]);
 
   const commands = useCommands();
-  useFragmentEditorCommands({
+  useCommandScope(fragmentEditorScope, {
     hasFragment: !!fragment,
     isDiscarded: !!fragment?.isDiscarded,
-    onDiscard: handleDiscard,
-    onRestore: handleRestore,
+    discard: handleDiscard,
+    restore: handleRestore,
   });
 
   const extraActions = useMemo(() => {

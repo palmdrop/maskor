@@ -20,14 +20,13 @@ import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
-import { useEditorExtractAndInsertCommands } from "@lib/commands/catalog/useEditorExtractAndInsertCommands";
-import type { InsertCommandTarget } from "@lib/commands/catalog/useEditorInsertCommand";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { editorScope, type InsertCommandTarget } from "@lib/commands/scopes/editor";
 import { ExtractToEntityDialog } from "./extract-to-entity-dialog";
 import { AppendOrPrependDialog, type InsertDirection } from "./append-or-prepend-dialog";
 import { useInsertToggles } from "@lib/insert-toggles/InsertTogglesProvider";
 import { ENTITY_KINDS, type EntityKind } from "@lib/entity-kinds/registry";
 import { useEntityKindRegistry } from "@lib/entity-kinds/useEntityKindRegistry";
-import { useEditorSaveCommands } from "../lib/commands/catalog/useEditorSaveCommands";
 import { useCommands } from "../lib/commands/useCommands";
 
 export type EntityEditorShellHandle = {
@@ -351,16 +350,13 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     const commands = useCommands();
 
-    useEditorExtractAndInsertCommands({
+    useCommandScope(editorScope, {
       getSelection: getEditorSelection,
       eligibleByKind,
-      onExtract: handleExtractOpen,
-      onInsert: handleInsertOpen,
-    });
-
-    useEditorSaveCommands({
+      extractTo: handleExtractOpen,
+      insertTo: handleInsertOpen,
       canSave: isDirty && !isPending,
-      onSave: handleContentSave,
+      save: handleContentSave,
     });
 
     const handleProseChange = useCallback(() => {

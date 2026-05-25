@@ -1,0 +1,146 @@
+import { describe, it, expect, vi } from "vitest";
+import { overviewCommands, type OverviewContext } from "../overview";
+import { sequenceSidebarCommands, type SequenceSidebarContext } from "../sequence-sidebar";
+import { fragmentEditorCommands, type FragmentEditorContext } from "../fragment-editor";
+import { fragmentImportCommands, type FragmentImportContext } from "../fragment-import";
+import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
+import {
+  projectManagementCommands,
+  type ProjectManagementContext,
+} from "../project-management";
+import { projectShellCommands, type ProjectShellContext } from "../project-shell";
+
+const find = <T extends { id: string }>(list: readonly T[], id: string): T =>
+  list.find((c) => c.id === id)!;
+
+describe("scopes/overview", () => {
+  const ctx: OverviewContext = {
+    canDesignateMain: true,
+    designateMain: vi.fn(),
+    createSectionPending: false,
+    createSection: vi.fn(),
+    confirmingDeleteSectionId: null,
+    deleteSection: vi.fn(),
+  };
+
+  it("designate-main runs and disables when sequence is already main", () => {
+    const cmd = find(overviewCommands, "overview:designate-main");
+    cmd.run(ctx);
+    expect(ctx.designateMain).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, canDesignateMain: false })).toMatch(/already the main/);
+  });
+
+  it("add-section disables while pending", () => {
+    expect(
+      find(overviewCommands, "overview:add-section").disabled?.({
+        ...ctx,
+        createSectionPending: true,
+      }),
+    ).toBe("Adding section…");
+  });
+
+  it("delete-section disables when nothing is confirmed", () => {
+    expect(
+      find(overviewCommands, "overview:delete-section").disabled?.({
+        ...ctx,
+        confirmingDeleteSectionId: null,
+      }),
+    ).toMatch(/No section selected/);
+  });
+});
+
+describe("scopes/sequence-sidebar", () => {
+  const ctx: SequenceSidebarContext = {
+    createSequencePending: false,
+    createSequence: vi.fn(),
+    confirmingDeleteSequenceId: null,
+    deleteSequence: vi.fn(),
+  };
+
+  it("create-sequence runs and reports Creating… while pending", () => {
+    const cmd = find(sequenceSidebarCommands, "overview:create-sequence");
+    cmd.run(ctx);
+    expect(ctx.createSequence).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, createSequencePending: true })).toBe("Creating…");
+  });
+
+  it("delete-sequence disables without a confirmed id", () => {
+    expect(
+      find(sequenceSidebarCommands, "overview:delete-sequence").disabled?.(ctx),
+    ).toMatch(/No sequence selected/);
+  });
+});
+
+describe("scopes/fragment-editor", () => {
+  const baseCtx: FragmentEditorContext = {
+    hasFragment: true,
+    isDiscarded: false,
+    discard: vi.fn(),
+    restore: vi.fn(),
+  };
+
+  it("discard runs and is disabled in obvious bad states", () => {
+    const cmd = find(fragmentEditorCommands, "fragment:discard");
+    cmd.run(baseCtx);
+    expect(baseCtx.discard).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...baseCtx, hasFragment: false })).toBe("No fragment to discard");
+    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe(
+      "Fragment is already discarded",
+    );
+  });
+
+  it("restore is disabled when nothing to restore", () => {
+    const cmd = find(fragmentEditorCommands, "fragment:restore");
+    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: false })).toBe("Fragment is not discarded");
+    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBeUndefined();
+  });
+});
+
+describe("scopes/fragment-import", () => {
+  it("import runs and disables when canImport=false", () => {
+    const ctx: FragmentImportContext = { canImport: true, import: vi.fn() };
+    const cmd = find(fragmentImportCommands, "fragment-import:import");
+    cmd.run(ctx);
+    expect(ctx.import).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, canImport: false })).toBe("No fragments to import");
+  });
+});
+
+describe("scopes/project-config", () => {
+  it("rebuild-index runs and reports Rebuilding… while pending", () => {
+    const ctx: ProjectConfigContext = { rebuildIndexPending: false, rebuildIndex: vi.fn() };
+    const cmd = find(projectConfigCommands, "config:rebuild-index");
+    cmd.run(ctx);
+    expect(ctx.rebuildIndex).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, rebuildIndexPending: true })).toBe("Rebuilding…");
+  });
+});
+
+describe("scopes/project-management", () => {
+  it("save-settings runs and disables when canSaveSettings=false", () => {
+    const ctx: ProjectManagementContext = { canSaveSettings: true, saveSettings: vi.fn() };
+    const cmd = find(projectManagementCommands, "project-management:save-settings");
+    cmd.run(ctx);
+    expect(ctx.saveSettings).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, canSaveSettings: false })).toBe("No changes to save");
+  });
+});
+
+describe("scopes/project-shell", () => {
+  it("each create:* command calls openCreate with the matching kind", () => {
+    const openCreate = vi.fn();
+    const ctx: ProjectShellContext = { openCreate };
+
+    find(projectShellCommands, "create:fragment").run(ctx);
+    expect(openCreate).toHaveBeenLastCalledWith("fragment");
+
+    find(projectShellCommands, "create:note").run(ctx);
+    expect(openCreate).toHaveBeenLastCalledWith("note");
+
+    find(projectShellCommands, "create:reference").run(ctx);
+    expect(openCreate).toHaveBeenLastCalledWith("reference");
+
+    find(projectShellCommands, "create:aspect").run(ctx);
+    expect(openCreate).toHaveBeenLastCalledWith("aspect");
+  });
+});

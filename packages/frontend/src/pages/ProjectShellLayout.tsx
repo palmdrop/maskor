@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
-import { useProjectShellCommands } from "@lib/commands/catalog/useProjectShellCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project-shell";
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
 
@@ -12,12 +13,12 @@ export const ProjectShellLayout = () => {
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
 
   useVaultEvents(projectId);
-  useProjectShellCommands({
-    onCreateFragment: () => setActiveCreate("fragment"),
-    onCreateNote: () => setActiveCreate("note"),
-    onCreateReference: () => setActiveCreate("reference"),
-    onCreateAspect: () => setActiveCreate("aspect"),
-  });
+
+  const openCreate = useCallback((kind: CreateKind) => {
+    setActiveCreate(kind);
+  }, []);
+
+  useCommandScope(projectShellScope, { openCreate });
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
 

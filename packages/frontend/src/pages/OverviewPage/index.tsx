@@ -48,7 +48,8 @@ import { resolveAspectColor } from "./utils/aspectColors";
 import { computeSequenceLayout } from "./utils/layout";
 import { buildArcSeries, type ArcSeries } from "./utils/arcData";
 import { useCommands } from "@lib/commands/useCommands";
-import { useOverviewCommands } from "@lib/commands/catalog/useOverviewCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { overviewScope } from "@lib/commands/scopes/overview";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 
 const POOL_ZONE_ID = "pool-zone";
@@ -471,18 +472,18 @@ export const OverviewPage = () => {
 
   const commands = useCommands();
 
-  useOverviewCommands({
+  useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
-    onDesignateMain: () => {
+    designateMain: () => {
       if (sequence) designateMain.mutate({ projectId, sequenceId: sequence.uuid });
     },
     createSectionPending: createSection.isPending,
-    onCreateSection: () => {
+    createSection: () => {
       if (sequence)
         createSection.mutate({ projectId, sequenceId: sequence.uuid, data: { name: "" } });
     },
     confirmingDeleteSectionId,
-    onDeleteSection: () => {
+    deleteSection: () => {
       if (sequence && confirmingDeleteSectionId) {
         deleteSection.mutate({
           projectId,

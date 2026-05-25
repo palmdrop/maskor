@@ -7,7 +7,8 @@ import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useCommands } from "@lib/commands/useCommands";
-import { useProjectManagementCommands } from "@lib/commands/catalog/useProjectManagementCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { projectManagementScope } from "@lib/commands/scopes/project-management";
 
 export const SettingsSection = () => {
   const queryClient = useQueryClient();
@@ -51,9 +52,9 @@ export const SettingsSection = () => {
   };
 
   const commands = useCommands();
-  useProjectManagementCommands({
+  useCommandScope(projectManagementScope, {
     canSaveSettings: !!managedRootInput.trim() && !patchMutation.isPending,
-    onSaveSettings: handleSave,
+    saveSettings: handleSave,
   });
 
   if (isLoading) {

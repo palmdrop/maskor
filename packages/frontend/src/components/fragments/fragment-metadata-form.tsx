@@ -19,7 +19,8 @@ import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
 import { TagCombobox } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
-import { useFragmentMetadataCommands } from "../../lib/commands/catalog/useFragmentMetadataCommands";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
+import { fragmentMetadataScope } from "../../lib/commands/scopes/fragment-metadata";
 import { useCommands } from "../../lib/commands/useCommands";
 import { resolveAspectColor } from "../../pages/OverviewPage/utils/aspectColors";
 
@@ -278,9 +279,9 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   );
 
   const commands = useCommands();
-  useFragmentMetadataCommands({
-    onAttachAspect: attachAspect,
-    onDetachAspect: removeAspect,
+  useCommandScope(fragmentMetadataScope, {
+    attachAspect,
+    detachAspect: removeAspect,
     getAvailableAspects: () => projectAspects.map((aspect) => aspect.key),
     getAttachedAspects: () => Object.keys(aspectsField.value),
   });
