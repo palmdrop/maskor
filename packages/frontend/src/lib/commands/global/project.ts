@@ -10,7 +10,7 @@ const switchProject = defineGlobalCommand({
   label: "Switch project",
   category: "project",
   arg: {
-    items: async (): Promise<Project[]> => {
+    items: async (): Promise<readonly Project[]> => {
       const response = await ListProjects();
       return response.status === 200 ? response.data : [];
     },
@@ -32,7 +32,7 @@ const switchSequence = defineGlobalCommand({
   category: "project",
   disabled: () => (getActiveProjectId() ? undefined : "No active project"),
   arg: {
-    items: async (): Promise<Sequence[]> => {
+    items: async (): Promise<readonly Sequence[]> => {
       const projectId = getActiveProjectId();
       if (!projectId) return [];
       const response = await ListSequences(projectId);

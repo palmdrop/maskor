@@ -99,40 +99,44 @@ const lockedCmd = defineScopeCommand(testScope, {
   run: (ctx) => ctx.onRun("cmd:locked"),
 });
 
-const argCmd = defineScopeCommand<"test-kit", "cmd:with-arg", ArgCtx, Item>(testScope, {
+const argCmd = defineScopeCommand(testScope, {
   id: "cmd:with-arg",
   label: "Pick Something",
   category: "other",
-  arg: (ctx) => ({
-    items: ctx.staticItems ?? [],
+  arg: {
+    items: (ctx): readonly Item[] => ctx.staticItems ?? [],
     getKey: (item) => item.id,
     getLabel: (item) => item.name,
     placeholder: "Choose an item",
-  }),
+  },
   run: (ctx, item) => ctx.onRun("cmd:with-arg", item),
 });
 
-const asyncArgCmd = defineScopeCommand<"test-kit", "cmd:async-arg", ArgCtx, Item>(testScope, {
+const asyncArgCmd = defineScopeCommand(testScope, {
   id: "cmd:async-arg",
   label: "Async Pick",
   category: "other",
-  arg: (ctx) => ({
-    items: ctx.asyncItems ?? [],
+  arg: {
+    items: async (ctx): Promise<readonly Item[]> =>
+      ctx.asyncItems ? await ctx.asyncItems() : [],
     getKey: (item) => item.id,
     getLabel: (item) => item.name,
-  }),
+  },
   run: (ctx, item) => ctx.onRun("cmd:async-arg", item),
 });
 
-const emptyArgCmd = defineScopeCommand<"test-kit", "cmd:empty-arg", ArgCtx, Item>(testScope, {
+const emptyArgCmd = defineScopeCommand(testScope, {
   id: "cmd:empty-arg",
   label: "Empty Picker",
   category: "other",
-  arg: () => ({
-    items: [],
+  // Empty-arg auto-disable was dropped with the legacy CommandArg union; the
+  // command now reports its empty state via `disabled` directly.
+  disabled: () => "No items available",
+  arg: {
+    items: (): readonly Item[] => [],
     getKey: (item) => item.id,
     getLabel: (item) => item.name,
-  }),
+  },
   run: (ctx, item) => ctx.onRun("cmd:empty-arg", item),
 });
 

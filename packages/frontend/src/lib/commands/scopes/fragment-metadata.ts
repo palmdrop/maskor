@@ -15,12 +15,12 @@ const attachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:attach-aspect",
   label: "Attach aspect",
   category: "attach",
-  arg: (ctx) => ({
-    items: ctx.getAvailableAspects(),
-    getKey: (item: string) => item,
-    getLabel: (item: string) => item,
+  arg: {
+    items: (ctx): string[] => ctx.getAvailableAspects(),
+    getKey: (item) => item,
+    getLabel: (item) => item,
     placeholder: "Choose aspect…",
-  }),
+  },
   run: (ctx, aspectKey) => {
     if (!aspectKey) return;
     ctx.attachAspect(aspectKey);
@@ -31,12 +31,12 @@ const detachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:detach-aspect",
   label: "Detach aspect",
   category: "attach",
-  arg: (ctx) => ({
-    items: ctx.getAttachedAspects(),
-    getKey: (item: string) => item,
-    getLabel: (item: string) => item,
+  arg: {
+    items: (ctx): string[] => ctx.getAttachedAspects(),
+    getKey: (item) => item,
+    getLabel: (item) => item,
     placeholder: "Choose aspect…",
-  }),
+  },
   run: (ctx, aspectKey) => {
     if (!aspectKey) return;
     ctx.detachAspect(aspectKey);

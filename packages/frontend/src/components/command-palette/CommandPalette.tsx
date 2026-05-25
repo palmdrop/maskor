@@ -104,9 +104,10 @@ const ArgLoadingSkeleton = () => (
 
 const getEffectiveDisabledReason = (command: CommandDef): string | undefined => {
   if (command.disabledReason) return command.disabledReason;
-  if (command.arg && Array.isArray(command.arg.items) && command.arg.items.length === 0) {
-    return "No items available";
-  }
+  // `items` is always a thunk on the legacy view — possibly async — so we
+  // can't auto-detect empty arg sets here without invoking it on every
+  // render. Authors who want the "No items available" indicator return it
+  // from `disabled()` directly (cheap, sync, can read ctx).
   return undefined;
 };
 
@@ -258,10 +259,10 @@ export const CommandPalette = () => {
     setArgLoading(true);
 
     try {
-      const resolvedItems =
-        typeof command.arg.items === "function"
-          ? await (command.arg.items as () => unknown[] | Promise<unknown[]>)()
-          : (command.arg.items as unknown[]);
+      // `items` is always a parameterless thunk on the legacy view —
+      // scope-bound commands have their ctx already captured by the
+      // provider before this code runs.
+      const resolvedItems = (await command.arg.items()) as unknown[];
       if (argGenerationRef.current !== generation) return;
       setArgItems(resolvedItems);
     } catch (error) {

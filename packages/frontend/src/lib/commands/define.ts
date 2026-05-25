@@ -1,6 +1,7 @@
 import type {
   GlobalCommandDef,
   Scope,
+  ScopeCommandArg,
   ScopeCommandDef,
   ScopeMeta,
   CommandArg,
@@ -11,10 +12,14 @@ export const defineScope = <Ctx>(id: string, meta: { label: string }): Scope<Ctx
   ({ id, label: meta.label }) as Scope<Ctx>;
 
 // =====================================================================
-// defineGlobalCommand — two overloads so the arg type is inferred from
-// the `arg` field when present, and defaults to `void` when absent. The
-// overloads exist purely for call-site inference; the implementation is
-// the same in both shapes.
+// defineGlobalCommand
+//
+// Two overloads — with-arg (parameterized, A inferred from arg.items's
+// return type) and no-arg (A = void). `arg` is always a plain object with
+// `items` as a function — the earlier "function returning CommandArg<A>"
+// shape defeated inference because TS won't push a target type through a
+// callback whose return is itself a generic object literal. Flat-items
+// gives `A` a single inference site (`items: () => readonly A[] | …`).
 // =====================================================================
 
 interface GlobalCommandInputWithArg<Id extends string, A> {
@@ -43,16 +48,15 @@ export function defineGlobalCommand<Id extends string, A>(
 export function defineGlobalCommand<Id extends string>(
   def: GlobalCommandInputNoArg<Id>,
 ): GlobalCommandDef<Id, void>;
-export function defineGlobalCommand(
-  def: GlobalCommandInputWithArg<string, unknown> | GlobalCommandInputNoArg<string>,
-): GlobalCommandDef<string, unknown> {
-  return { kind: "global", ...def } as GlobalCommandDef<string, unknown>;
+// `any` impl signature — keeps the body compatible with each overload's
+// narrower return type (contravariance otherwise blocks the wider impl).
+export function defineGlobalCommand(def: any): any {
+  return { kind: "global", ...def };
 }
 
 // =====================================================================
-// defineScopeCommand — same overload trick. The parameterized overload
-// requires `arg` and infers A from it; the simple overload omits `arg`
-// and pins A to void so the run signature is `(ctx) => …`.
+// defineScopeCommand — same overload pattern; `arg.items` takes the
+// scope's ctx so commands can derive items from published state.
 // =====================================================================
 
 interface ScopeCommandInputWithArg<Id extends string, A, Ctx> {
@@ -60,7 +64,7 @@ interface ScopeCommandInputWithArg<Id extends string, A, Ctx> {
   label: string;
   category: CommandCategory;
   hotkey?: string;
-  arg: CommandArg<A> | ((ctx: Ctx) => CommandArg<A>);
+  arg: ScopeCommandArg<A, Ctx>;
   disabled?: (ctx: Ctx) => string | undefined;
   run: (ctx: Ctx, arg: A) => void | Promise<void>;
 }
@@ -83,16 +87,11 @@ export function defineScopeCommand<ScopeId extends string, Id extends string, Ct
   scope: Scope<Ctx> & { id: ScopeId },
   def: ScopeCommandInputNoArg<Id, Ctx>,
 ): ScopeCommandDef<ScopeId, Id, void, Ctx>;
-export function defineScopeCommand<ScopeId extends string, Ctx>(
-  scope: Scope<Ctx> & { id: ScopeId },
-  def:
-    | ScopeCommandInputWithArg<string, unknown, Ctx>
-    | ScopeCommandInputNoArg<string, Ctx>,
-): ScopeCommandDef<ScopeId, string, unknown, Ctx> {
+export function defineScopeCommand(scope: any, def: any): any {
   return {
     kind: "scope",
     scopeId: scope.id,
     scopeLabel: (scope as ScopeMeta).label,
     ...def,
-  } as ScopeCommandDef<ScopeId, string, unknown, Ctx>;
+  };
 }

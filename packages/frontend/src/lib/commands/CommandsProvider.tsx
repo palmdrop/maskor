@@ -73,11 +73,19 @@ const makeLegacyViewForScope = (
   scope: def.scopeLabel,
   category: def.category,
   hotkey: def.hotkey,
+  // Scope commands' `arg.items` takes ctx; the legacy view exposes a
+  // parameterless thunk by capturing getCtx() so the palette and binder
+  // don't need to know about ctx.
   get arg() {
     const argSource = def.arg;
     if (!argSource) return undefined;
-    if (typeof argSource === "function") return argSource(getCtx());
-    return argSource;
+    return {
+      items: () => argSource.items(getCtx()),
+      getKey: argSource.getKey,
+      getLabel: argSource.getLabel,
+      renderItem: argSource.renderItem,
+      placeholder: argSource.placeholder,
+    };
   },
   get disabledReason() {
     return def.disabled?.(getCtx());

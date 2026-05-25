@@ -6,11 +6,30 @@ import type { ReactNode } from "react";
 
 export type CommandCategory = "navigation" | "create" | "project" | "attach" | "other";
 
+// CommandArg shape used by the *legacy view* the palette and hotkey binder
+// read from. `items` is always a parameterless thunk here — scope commands'
+// ctx-taking items get curried with the current ctx at view-build time, so
+// downstream consumers never see ctx.
+//
+// `NoInfer<T>` on the getter/renderer params keeps `T` from being inferred
+// from those sites. When this type appears in a user-facing input position,
+// inference flows only from `items`, which is the single inference handle
+// authors actually want.
 export interface CommandArg<T = unknown> {
-  items: readonly T[] | (() => T[] | Promise<T[]>);
-  getKey: (item: T) => string;
-  getLabel: (item: T) => string;
-  renderItem?: (item: T) => ReactNode;
+  items: () => readonly T[] | Promise<readonly T[]>;
+  getKey: (item: NoInfer<T>) => string;
+  getLabel: (item: NoInfer<T>) => string;
+  renderItem?: (item: NoInfer<T>) => ReactNode;
+  placeholder?: string;
+}
+
+// Scope-command input shape — same as CommandArg except `items` takes the
+// scope's ctx so commands can derive their item set from published state.
+export interface ScopeCommandArg<T, Ctx> {
+  items: (ctx: Ctx) => readonly T[] | Promise<readonly T[]>;
+  getKey: (item: NoInfer<T>) => string;
+  getLabel: (item: NoInfer<T>) => string;
+  renderItem?: (item: NoInfer<T>) => ReactNode;
   placeholder?: string;
 }
 
@@ -43,12 +62,17 @@ interface CommonCommandDef {
   readonly hotkey?: string;
 }
 
+// `RunArgs` collapses the second-arg tuple to `[]` when A is void, so a
+// no-arg command's stored .run can be called as `cmd.run(ctx)` rather than
+// `cmd.run(ctx, undefined as never)`.
+type RunArgs<A> = [A] extends [void] ? [] : [arg: A];
+
 export interface GlobalCommandDef<Id extends string = string, A = void> extends CommonCommandDef {
   readonly kind: "global";
   readonly id: Id;
   readonly arg?: CommandArg<A>;
   readonly disabled?: () => string | undefined;
-  readonly run: (arg: A) => void | Promise<void>;
+  readonly run: (...args: RunArgs<A>) => void | Promise<void>;
 }
 
 export interface ScopeCommandDef<
@@ -61,9 +85,9 @@ export interface ScopeCommandDef<
   readonly id: Id;
   readonly scopeId: ScopeId;
   readonly scopeLabel: string;
-  readonly arg?: CommandArg<A> | ((ctx: Ctx) => CommandArg<A>);
+  readonly arg?: ScopeCommandArg<A, Ctx>;
   readonly disabled?: (ctx: Ctx) => string | undefined;
-  readonly run: (ctx: Ctx, arg: A) => void | Promise<void>;
+  readonly run: (ctx: Ctx, ...args: RunArgs<A>) => void | Promise<void>;
 }
 
 export type AnyCommandDef =

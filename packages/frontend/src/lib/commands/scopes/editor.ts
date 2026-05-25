@@ -110,12 +110,12 @@ const appendToFragment = defineScopeCommand(editorScope, {
   label: "Append to fragment",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "fragment", directionNoun: "append" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.fragment,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.fragment,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a fragment…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -128,12 +128,12 @@ const appendToNote = defineScopeCommand(editorScope, {
   label: "Append to note",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "note", directionNoun: "append" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.note,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.note,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a note…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -146,12 +146,12 @@ const appendToReference = defineScopeCommand(editorScope, {
   label: "Append to reference",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "reference", directionNoun: "append" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.reference,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.reference,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a reference…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -164,12 +164,12 @@ const appendToAspect = defineScopeCommand(editorScope, {
   label: "Append to aspect",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "aspect", directionNoun: "append" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.aspect,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.aspect,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose an aspect…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -182,12 +182,12 @@ const prependToFragment = defineScopeCommand(editorScope, {
   label: "Prepend to fragment",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "fragment", directionNoun: "prepend" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.fragment,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.fragment,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a fragment…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -200,12 +200,12 @@ const prependToNote = defineScopeCommand(editorScope, {
   label: "Prepend to note",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "note", directionNoun: "prepend" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.note,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.note,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a note…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -218,12 +218,12 @@ const prependToReference = defineScopeCommand(editorScope, {
   label: "Prepend to reference",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "reference", directionNoun: "prepend" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.reference,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.reference,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose a reference…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;
@@ -236,12 +236,12 @@ const prependToAspect = defineScopeCommand(editorScope, {
   label: "Prepend to aspect",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "aspect", directionNoun: "prepend" }),
-  arg: (ctx) => ({
-    items: ctx.eligibleByKind.aspect,
+  arg: {
+    items: (ctx) => ctx.eligibleByKind.aspect,
     getKey: (item) => item.uuid,
     getLabel: (item) => item.key,
     placeholder: "Choose an aspect…",
-  }),
+  },
   run: (ctx, target) => {
     const { text, isEmpty } = ctx.getSelection();
     if (isEmpty) return;

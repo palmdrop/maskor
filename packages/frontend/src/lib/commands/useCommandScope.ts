@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Scope, ContextOf } from "./types";
+import type { Scope } from "./types";
 import { useCommandsContext } from "./CommandsProvider";
 
 // Publishes a scope's context while the component is mounted. The provider keeps
@@ -20,7 +20,14 @@ import { useCommandsContext } from "./CommandsProvider";
 //
 // Singleton enforcement: if another mounted component already published this
 // scope, the provider warns in dev. Last-publish-wins in prod.
-export const useCommandScope = <S extends Scope<unknown>>(scope: S, ctx: ContextOf<S>) => {
+//
+// The generic infers `Ctx` directly from the scope rather than going through
+// `ContextOf<Scope<Ctx>>`. The phantom field on `Scope<Ctx>` is a
+// `(ctx: Ctx) => void` callback, which is contravariant in `Ctx`. That made
+// `Scope<ProjectShellContext>` *not* assignable to a `Scope<unknown>` bound,
+// so the prior `S extends Scope<unknown>` signature rejected every concrete
+// scope at the call site.
+export const useCommandScope = <Ctx>(scope: Scope<Ctx>, ctx: Ctx) => {
   const { publishScope } = useCommandsContext();
   const ctxRef = useRef<unknown>(ctx);
   ctxRef.current = ctx;

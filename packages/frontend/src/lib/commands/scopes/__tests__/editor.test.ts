@@ -71,8 +71,9 @@ describe("scopes/editor — insert", () => {
 
   it("arg.items pulls from ctx.eligibleByKind for the matching kind", () => {
     const ctx = makeCtx();
-    const arg = (find("editor.append-to-fragment").arg as (c: EditorContext) => unknown)(ctx);
-    expect((arg as { items: unknown[] }).items).toEqual(ctx.eligibleByKind.fragment);
+    const command = find("editor.append-to-fragment");
+    const items = command.arg!.items(ctx);
+    expect(items).toEqual(ctx.eligibleByKind.fragment);
   });
 
   it("disables when selection is empty", () => {
