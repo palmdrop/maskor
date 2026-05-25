@@ -12,7 +12,7 @@ export const ProjectShellLayout = () => {
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
 
   useVaultEvents(projectId);
-  useProjectShellCommands(projectId, {
+  useProjectShellCommands({
     onCreateFragment: () => setActiveCreate("fragment"),
     onCreateNote: () => setActiveCreate("note"),
     onCreateReference: () => setActiveCreate("reference"),

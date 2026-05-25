@@ -1,8 +1,8 @@
+import { navigationCommands } from "./navigation";
+import { projectCommands } from "./project";
+
 // Aggregates every `defineGlobalCommand` array exported from this directory.
 // Each command file exports a `const ... = [...] as const` tuple, which is
 // spread here so the resulting union preserves literal `id` types.
-//
-// To register a new global command, create a file in this directory and add
-// it to this list.
 
-export const globalCommands = [] as const;
+export const globalCommands = [...navigationCommands, ...projectCommands] as const;
