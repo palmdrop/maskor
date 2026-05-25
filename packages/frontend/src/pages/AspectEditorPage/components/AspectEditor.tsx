@@ -18,10 +18,7 @@ import { Label } from "@components/ui/label";
 import { EntityTag } from "@components/entity-tag";
 import { TagCombobox } from "@components/ui/tag-combobox";
 import { EntityEditorShell } from "@components/entity-editor-shell";
-import {
-  ASPECT_COLOR_PALETTE,
-  resolveAspectColor,
-} from "../../OverviewPage/utils/aspectColors";
+import { ASPECT_COLOR_PALETTE, resolveAspectColor } from "../../OverviewPage/utils/aspectColors";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -159,6 +156,11 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     [projectNotes, notesField.value],
   );
 
+  const resolvedColor = useMemo(
+    () => (!aspect ? undefined : resolveAspectColor(aspect.key, colorField.value ?? undefined)),
+    [aspect?.key, colorField.value],
+  );
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (isError || !aspect)
     return <p className="text-sm text-muted-foreground">Failed to load aspect.</p>;
@@ -169,11 +171,6 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
         <ArrowLeftIcon />
       </Button>
     </Link>
-  );
-
-  const resolvedColor = useMemo(
-    () => resolveAspectColor(aspect.key, colorField.value ?? undefined),
-    [aspect.key, colorField.value],
   );
 
   const sidebar = (

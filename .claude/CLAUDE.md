@@ -11,6 +11,7 @@ ALWAYS KEEP THESE THINGS IN MIND:
 - When you've changed the API and need the corresponding frontend queries/mutations, run `bun run codegen` in `packages/frontend`. Assume the API is already running, and start it if it is not.
 - Write tests when adding features or changing behavior.
 - Make note of `specifications` that are out of sync with the code or direction.
+- Whenever you implement a new feature, update the `Shipped` frontmatter section of any relevant `specifications`. If it is not clear which specification to update, pause and ask the developer.
 - When writing code, match the style of the already existing code.
 - When writing code, NEVER ABBREVIATE variable names (except iterators). `err` should be `error`. Fix whenever you encounter abbreviations.
 - Do not assume something is not implemented. Ask or check. Create re-usable functions. If you notice overlap, break out into a new function.

@@ -24,6 +24,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [x] back button for suggestion mode
 - [ ] explicit search in suggestion mode
 
+- [ ] sequences: auto-fill in order of fragments on import
+- [ ] sequences: pool is unnecessarily wide, includes too much
+- [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
+
 - [ ] extract in suggestion, how should that work?
 
 - [ ] editor loses focus after command palette is opened and closed again

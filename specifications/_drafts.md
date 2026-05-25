@@ -27,6 +27,7 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 - Same `Picker` primitive as the palette, or a distinct surface?
 - Recency / pinning support, or strictly fuzzy-search?
 - Does opening an entity replace the current editor, or compose with [[tabs / multiple open editors]]?
+- How does the feature work in different views? In suggestion mode, does quick-switch force-change the suggestion, or do we swap to the regular fragment editor?
 
 ---
 
@@ -104,7 +105,7 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 
 - Is this a new entity type, or are notes (per `notes.md`) sufficient with a `kind: 'todo'` convention?
 - If new: lifecycle (open / resolved / archived), surfacing (dedicated view, fragment-attached, both)?
-- Does this overlap with the action log (which captures *what happened*) — or is this distinct (*what to do next*)?
+- Does this overlap with the action log (which captures _what happened_) — or is this distinct (_what to do next_)?
 - Related to [[stub fragments]]; both deal with deferred content.
 
 ---
@@ -127,7 +128,7 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 
 ## Pin fragment for continuous writing
 
-**Why:** Early in a fragment's life, a writer wants to keep coming back to the *same* fragment across sessions instead of being prompted with a different one each time. Today the prompting mechanism surfaces a new fragment after each save; there's no "stay on this one" signal.
+**Why:** Early in a fragment's life, a writer wants to keep coming back to the _same_ fragment across sessions instead of being prompted with a different one each time. Today the prompting mechanism surfaces a new fragment after each save; there's no "stay on this one" signal.
 
 **Related specs:** `prompting.md`, `fragment-editor.md`, `navigation.md`
 
