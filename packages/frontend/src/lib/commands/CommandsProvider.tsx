@@ -27,21 +27,14 @@ export interface ActiveScope {
 }
 
 // =====================================================================
-// Context shape — public, used by useCommands and (legacy) palette/binder.
+// Context shape
 // =====================================================================
 
 export interface CommandsContextValue {
-  // v2: scope publication
   publishScope: (meta: ScopeMeta, ctxRef: MutableRefObject<unknown>) => () => void;
   getActiveScopes: () => readonly ActiveScope[];
-
-  // Unified runtime surface (both v2 catalog and v1 adapter)
   run: (id: string, arg?: unknown) => void;
   getMap: () => ReadonlyMap<string, CommandDef>;
-
-  // v1 adapter surface — kept until Phase 5 cleanup
-  register: (def: CommandDef) => void;
-  unregister: (id: string) => void;
 }
 
 export const CommandsContext = createContext<CommandsContextValue | null>(null);
@@ -53,9 +46,9 @@ export const useCommandsContext = (): CommandsContextValue => {
 };
 
 // =====================================================================
-// Legacy-shaped view of a v2 def — keeps palette/hotkey binder uniform.
-// Reads ctx lazily via getters so per-row state stays live (mirrors the
-// v1 Proxy trick).
+// Legacy-shaped view of a v2 def — keeps the palette and hotkey binder
+// reading one uniform shape. Lazy getters keep per-row state live as
+// ctx changes between renders.
 // =====================================================================
 
 const makeLegacyViewForGlobal = (def: GlobalCommandDef<string, unknown>): CommandDef => ({
@@ -96,41 +89,36 @@ const makeLegacyViewForScope = (
 // Provider
 // =====================================================================
 
-export const CommandsProvider = ({ children }: { children: ReactNode }) => {
-  // The merged map is the single mutable source consumers read. Globals from
-  // the catalog are inserted once at init; scope-command views are added when
-  // their scope publishes (and removed when it unpublishes); adapter-shim
-  // entries are added/removed by v1 `useCommand`.
-  const mergedMapRef = useRef<Map<string, CommandDef> | null>(null);
+interface CatalogEntry {
+  readonly def: AnyCommandDef;
+  readonly view: CommandDef;
+}
 
+export const CommandsProvider = ({ children }: { children: ReactNode }) => {
+  const catalogRef = useRef<Map<string, CatalogEntry> | null>(null);
+  const mergedMapRef = useRef<Map<string, CommandDef> | null>(null);
   const activeScopesRef = useRef<Map<string, ActiveScope>>(new Map());
   const mountCounterRef = useRef(0);
 
-  // Index of scope command defs by scopeId — used to add/remove views from
-  // mergedMap when scopes publish/unpublish.
-  const scopeCommandIndexRef = useRef<Map<
-    string,
-    readonly ScopeCommandDef<string, string, unknown, unknown>[]
-  > | null>(null);
-
   const initIfNeeded = useCallback(() => {
-    if (mergedMapRef.current) return;
+    if (catalogRef.current) return;
+    const catalog = new Map<string, CatalogEntry>();
     const merged = new Map<string, CommandDef>();
-    const byScope = new Map<
-      string,
-      ScopeCommandDef<string, string, unknown, unknown>[]
-    >();
     for (const def of allCommands as readonly AnyCommandDef[]) {
       if (def.kind === "global") {
-        merged.set(def.id, makeLegacyViewForGlobal(def));
+        const entry = { def, view: makeLegacyViewForGlobal(def) };
+        catalog.set(def.id, entry);
+        merged.set(def.id, entry.view);
       } else {
-        const list = byScope.get(def.scopeId) ?? [];
-        list.push(def);
-        byScope.set(def.scopeId, list);
+        const scopeId = def.scopeId;
+        const getCtx = () => activeScopesRef.current.get(scopeId)?.ctxRef.current;
+        catalog.set(def.id, { def, view: makeLegacyViewForScope(def, getCtx) });
+        // Scope command views are added to mergedMap only when their scope
+        // is published.
       }
     }
+    catalogRef.current = catalog;
     mergedMapRef.current = merged;
-    scopeCommandIndexRef.current = byScope;
   }, []);
 
   const publishScope = useCallback(
@@ -145,19 +133,19 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
       activeScopesRef.current.set(meta.id, { meta, mountOrder, ctxRef });
 
       const merged = mergedMapRef.current!;
-      const scopeDefs = scopeCommandIndexRef.current!.get(meta.id) ?? [];
-      const getCtx = () => activeScopesRef.current.get(meta.id)?.ctxRef.current;
-      for (const def of scopeDefs) {
-        merged.set(def.id, makeLegacyViewForScope(def, getCtx));
+      const addedIds: string[] = [];
+      for (const entry of catalogRef.current!.values()) {
+        if (entry.def.kind === "scope" && entry.def.scopeId === meta.id) {
+          merged.set(entry.def.id, entry.view);
+          addedIds.push(entry.def.id);
+        }
       }
 
       return () => {
         const current = activeScopesRef.current.get(meta.id);
         if (current?.mountOrder !== mountOrder) return;
         activeScopesRef.current.delete(meta.id);
-        for (const def of scopeDefs) {
-          mergedMapRef.current?.delete(def.id);
-        }
+        for (const id of addedIds) mergedMapRef.current?.delete(id);
       };
     },
     [initIfNeeded],
@@ -167,24 +155,6 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
     return Array.from(activeScopesRef.current.values()).sort(
       (a, b) => b.mountOrder - a.mountOrder, // innermost-first
     );
-  }, []);
-
-  const register = useCallback(
-    (def: CommandDef) => {
-      initIfNeeded();
-      const merged = mergedMapRef.current!;
-      if (import.meta.env.DEV && merged.has(def.id)) {
-        console.warn(
-          `[commands] Duplicate command id "${def.id}" registered. Previous registration will be overwritten.`,
-        );
-      }
-      merged.set(def.id, def);
-    },
-    [initIfNeeded],
-  );
-
-  const unregister = useCallback((id: string) => {
-    mergedMapRef.current?.delete(id);
   }, []);
 
   const getMap = useCallback((): ReadonlyMap<string, CommandDef> => {
@@ -209,8 +179,8 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const value = useMemo<CommandsContextValue>(
-    () => ({ publishScope, getActiveScopes, run, getMap, register, unregister }),
-    [publishScope, getActiveScopes, run, getMap, register, unregister],
+    () => ({ publishScope, getActiveScopes, run, getMap }),
+    [publishScope, getActiveScopes, run, getMap],
   );
 
   return <CommandsContext.Provider value={value}>{children}</CommandsContext.Provider>;

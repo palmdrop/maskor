@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-25
-**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7); `Create <entity>…` commands now open creation modal directly without navigating away — modal handoff pattern (phase 8).
+**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7); `Create <entity>…` commands now open creation modal directly without navigating away — modal handoff pattern (phase 8); **v2 typed scope-context refactor**: every command is statically defined in `commands/global/` or `commands/scopes/` via `defineGlobalCommand` / `defineScopeCommand`; views publish a typed context via `useCommandScope` and command logic lives in the command file (composition out of components); `commands.run(id, arg)` is fully typed with autocomplete and per-id arg inference; the palette shows active scopes innermost-first; legacy `useCommand` adapter and per-component catalog hooks removed.
 
 ---
 

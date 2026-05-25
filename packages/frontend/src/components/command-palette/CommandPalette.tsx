@@ -137,7 +137,7 @@ export const CommandPalette = () => {
   // current picker's state.
   const argGenerationRef = useRef(0);
 
-  const { getMap, run } = useCommandsContext();
+  const { getMap, run, getActiveScopes } = useCommandsContext();
 
   // Capture-phase listener intercepts Cmd+K and Cmd+Shift+P before editors see them.
   useEffect(() => {
@@ -177,14 +177,19 @@ export const CommandPalette = () => {
   const { viewScopedSections, globalSections } = useMemo(() => {
     const all = Array.from(getMap().values());
 
+    // Active scopes already arrive innermost-first; we render in that order
+    // so the most-recently-mounted scope appears at the top of the palette.
+    const activeScopes = getActiveScopes();
     const scopeMap = new Map<string, CommandDef[]>();
     for (const command of all) {
       if (command.scope === "global") continue;
       scopeMap.set(command.scope, [...(scopeMap.get(command.scope) ?? []), command]);
     }
-    const viewScopedSections = Array.from(scopeMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([scope, commands]) => ({ scope, commands: sortCommands(commands) }));
+    const viewScopedSections = activeScopes.flatMap((active) => {
+      const commands = scopeMap.get(active.meta.label);
+      if (!commands) return [];
+      return [{ scope: active.meta.label, commands: sortCommands(commands) }];
+    });
 
     const categoryMap = new Map<CommandCategory, CommandDef[]>(
       CATEGORY_ORDER.map((category) => [category, []]),
@@ -201,8 +206,8 @@ export const CommandPalette = () => {
     return { viewScopedSections, globalSections };
     // Snapshot-at-open: sections are computed once per palette opening so
     // section order doesn't reshuffle while the user is typing. Per-row state
-    // (disabledReason, arg) stays live because commands are Proxies into the
-    // registry; only the grouping/sort order is frozen.
+    // (disabledReason, arg) stays live because the legacy views into the v2
+    // catalog use getters that read ctx through ref on every access.
   }, [open]);
 
   const commandMap = useMemo(
