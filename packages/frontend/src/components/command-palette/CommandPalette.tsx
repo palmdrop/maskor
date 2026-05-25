@@ -174,7 +174,13 @@ export const CommandPalette = () => {
       return a.label.localeCompare(b.label);
     });
 
-  const { viewScopedSections, globalSections } = useMemo(() => {
+  // During an active search we collapse sections and render every command in
+  // a single flat list. cmdk then sorts by relevance across the whole catalog
+  // — section grouping is a *browsing* aid; once the user is typing they want
+  // ranking, not grouping. The grouped view is kept for the empty-query state.
+  const isSearching = query.trim().length > 0;
+
+  const { viewScopedSections, globalSections, flatCommands } = useMemo(() => {
     const all = Array.from(getMap().values());
 
     // Active scopes already arrive innermost-first; we render in that order
@@ -203,7 +209,12 @@ export const CommandPalette = () => {
       return commands.length > 0 ? [{ category, commands }] : [];
     });
 
-    return { viewScopedSections, globalSections };
+    const flatCommands = [
+      ...viewScopedSections.flatMap((section) => section.commands),
+      ...globalSections.flatMap((section) => section.commands),
+    ];
+
+    return { viewScopedSections, globalSections, flatCommands };
     // Snapshot-at-open: sections are computed once per palette opening so
     // section order doesn't reshuffle while the user is typing. Per-row state
     // (disabledReason, arg) stays live because the legacy views into the v2
@@ -351,19 +362,28 @@ export const CommandPalette = () => {
                   <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
                     No commands found.
                   </CommandEmpty>
-                  {viewScopedSections.map(({ scope, commands }) => (
-                    <CommandGroup key={scope} heading={<SectionHeading>{scope}</SectionHeading>}>
-                      {renderCommandItems(commands)}
-                    </CommandGroup>
-                  ))}
-                  {globalSections.map(({ category, commands }) => (
-                    <CommandGroup
-                      key={category}
-                      heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
-                    >
-                      {renderCommandItems(commands)}
-                    </CommandGroup>
-                  ))}
+                  {isSearching ? (
+                    renderCommandItems(flatCommands)
+                  ) : (
+                    <>
+                      {viewScopedSections.map(({ scope, commands }) => (
+                        <CommandGroup
+                          key={scope}
+                          heading={<SectionHeading>{scope}</SectionHeading>}
+                        >
+                          {renderCommandItems(commands)}
+                        </CommandGroup>
+                      ))}
+                      {globalSections.map(({ category, commands }) => (
+                        <CommandGroup
+                          key={category}
+                          heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
+                        >
+                          {renderCommandItems(commands)}
+                        </CommandGroup>
+                      ))}
+                    </>
+                  )}
                 </>
               ) : (
                 <>

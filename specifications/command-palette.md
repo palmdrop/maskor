@@ -2,7 +2,16 @@
 
 **Status**: Draft
 **Last updated**: 2026-05-25
-**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7); `Create <entity>…` commands now open creation modal directly without navigating away — modal handoff pattern (phase 8); **v2 typed scope-context refactor**: every command is statically defined in `commands/global/` or `commands/scopes/` via `defineGlobalCommand` / `defineScopeCommand`; views publish a typed context via `useCommandScope` and command logic lives in the command file (composition out of components); `commands.run(id, arg)` is fully typed with autocomplete and per-id arg inference; the palette shows active scopes innermost-first; legacy `useCommand` adapter and per-component catalog hooks removed.
+**Shipped**:
+
+- Command system foundation, `useCommand` hook, hotkey binder.
+- Shared `Picker` primitive (`cmdk` + Radix Dialog).
+- Palette UI: `Cmd/Ctrl+K` (+ `Cmd/Ctrl+Shift+P`) trigger from any focus, view-scoped + global category sections, hotkey badges, disabled-with-reason rows, two-step parameterized commands with arg picker, Esc-restores-query, async-arg skeletons + stale-resolution guard.
+- Initial global catalog: navigation (`Go to …`), create (`Create <entity>…`), parameterized `Switch project…` and `Switch sequence…`.
+- Chord nav removed; `useKeyboardNav.ts` deleted.
+- `Create <entity>…` modal-handoff pattern: palette opens a creation dialog instead of navigating; `GlobalCreateDialogs` mounted at `ProjectShellLayout`.
+- **v2 typed scope-context architecture**: every command is statically defined in `commands/global/` or `commands/scopes/` via `defineGlobalCommand` / `defineScopeCommand`. Views publish a typed context via `useCommandScope`; composed actions live in the command file, not in the component. `commands.run(id, arg)` is fully typed (autocomplete on `id`, arg inferred per command). Palette renders active scopes innermost-first. Legacy `useCommand` adapter and per-component catalog hooks removed.
+- **Flatten-on-search**: section grouping collapses the moment the user types. cmdk ranks the full catalog by relevance across scope boundaries, so the best match wins regardless of which scope it lives in. Empty-query state keeps the grouped browsing view.
 
 ---
 

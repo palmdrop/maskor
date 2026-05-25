@@ -270,6 +270,35 @@ describe("CommandPalette", () => {
     ).toBeTruthy();
   });
 
+  it("flattens sections and ranks by relevance once the user starts typing", async () => {
+    // Active scopes: Outer + Inner. Inner is innermost so it would normally
+    // render above Outer's "Outer Command" — yet typing "outer" must put
+    // "Outer Command" first because section grouping collapses during search.
+    const ctx = { onRun: vi.fn() };
+    renderShell(
+      <OuterPublisher ctx={ctx}>
+        <InnerPublisher ctx={ctx} />
+      </OuterPublisher>,
+    );
+    openPalette();
+
+    // Section headings are visible while query is empty.
+    expect(screen.getByText("Inner")).toBeInTheDocument();
+    expect(screen.getByText("Outer")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("combobox"), "outer");
+
+    // Headings disappear; remaining items are a flat list sorted by score.
+    expect(screen.queryByText("Inner")).not.toBeInTheDocument();
+    expect(screen.queryByText("Outer")).not.toBeInTheDocument();
+
+    const outerOption = screen.getByRole("option", { name: /Outer Command/ });
+    const innerOption = screen.queryByRole("option", { name: /Inner Command/ });
+    // Inner Command shouldn't match "outer" with any score, so it's gone.
+    expect(innerOption).not.toBeInTheDocument();
+    expect(outerOption).toBeInTheDocument();
+  });
+
   // --- Hotkey display ---
 
   it("renders hotkey badge with glyph for mod+k", () => {
