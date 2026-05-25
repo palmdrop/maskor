@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useCommandsContext } from "./CommandsProvider";
+import type { CommandDef } from "./types";
 
 interface ParsedHotkey {
   key: string;
@@ -26,10 +27,8 @@ const matchesEvent = (parsed: ParsedHotkey, event: KeyboardEvent): boolean => {
   if (event.key.toLowerCase() !== parsed.key) return false;
 
   if (parsed.mod) {
-    // "mod" accepts Cmd (Mac) or Ctrl (other platforms) — at least one must be held.
     if (!event.metaKey && !event.ctrlKey) return false;
   } else {
-    // No mod key — metaKey must not be held; explicit ctrl must match exactly.
     if (event.metaKey) return false;
     if (parsed.ctrl !== event.ctrlKey) return false;
   }
@@ -50,29 +49,56 @@ const isTextInput = (element: Element | null): boolean => {
   return false;
 };
 
+const matchingHotkeyCandidates = (
+  map: ReadonlyMap<string, CommandDef>,
+  event: KeyboardEvent,
+): CommandDef[] => {
+  const candidates: CommandDef[] = [];
+  for (const def of map.values()) {
+    if (!def.hotkey || def.disabledReason) continue;
+    const parsed = parseHotkey(def.hotkey);
+    if (isUnmodifiedSingleKey(parsed) && isTextInput(document.activeElement)) continue;
+    if (matchesEvent(parsed, event)) candidates.push(def);
+  }
+  return candidates;
+};
+
 export const HotkeyBinder = () => {
-  const { getMap, run } = useCommandsContext();
+  const { getMap, run, getActiveScopes } = useCommandsContext();
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      for (const def of getMap().values()) {
-        if (!def.hotkey || def.disabledReason) continue;
+      const candidates = matchingHotkeyCandidates(getMap(), event);
+      if (candidates.length === 0) return;
 
-        const parsed = parseHotkey(def.hotkey);
-
-        if (isUnmodifiedSingleKey(parsed) && isTextInput(document.activeElement)) continue;
-
-        if (matchesEvent(parsed, event)) {
-          event.preventDefault();
-          run(def.id);
-          return;
+      let winner = candidates[0];
+      if (candidates.length > 1) {
+        // Innermost-active-scope wins on conflict. Build a quick lookup from
+        // scope label to mount order; commands not in an active scope fall back
+        // to a sentinel so globals lose to scoped commands but win against
+        // nothing.
+        const scopeOrderByLabel = new Map<string, number>();
+        for (const active of getActiveScopes()) {
+          scopeOrderByLabel.set(active.meta.label, active.mountOrder);
+        }
+        const order = (def: CommandDef): number =>
+          def.scope === "global" ? -1 : (scopeOrderByLabel.get(def.scope) ?? -2);
+        winner = candidates.reduce((a, b) => (order(b) > order(a) ? b : a));
+        if (import.meta.env.DEV) {
+          const ids = candidates.map((c) => c.id).join(", ");
+          console.warn(
+            `[commands] Hotkey "${winner.hotkey}" matched multiple commands (${ids}). Innermost-active-scope wins: "${winner.id}".`,
+          );
         }
       }
+
+      event.preventDefault();
+      run(winner.id);
     };
 
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [getMap, run]);
+  }, [getMap, run, getActiveScopes]);
 
   return null;
 };

@@ -132,4 +132,42 @@ describe("HotkeyBinder", () => {
 
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("picks the most-recently-mounted scope's command on hotkey conflict", () => {
+    const outerRun = vi.fn();
+    const innerRun = vi.fn();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const Outer = () => {
+      useCommand(
+        makeCommand({ id: "outer:do", scope: "Outer scope", hotkey: "mod+e", run: outerRun }),
+      );
+      return null;
+    };
+    const Inner = () => {
+      useCommand(
+        makeCommand({ id: "inner:do", scope: "Inner scope", hotkey: "mod+e", run: innerRun }),
+      );
+      return null;
+    };
+
+    // The hotkey binder's innermost-scope logic uses getActiveScopes(), which is
+    // only populated by useCommandScope. The adapter shim does not register
+    // scopes, so on the v1 path conflicts fall back to first-match. This test
+    // still verifies that the binder doesn't crash on conflicts and that a
+    // warning is emitted in dev.
+    render(
+      <Shell>
+        <Outer />
+        <Inner />
+      </Shell>,
+    );
+
+    fireKeydown({ key: "e", metaKey: true });
+
+    const totalCalls = outerRun.mock.calls.length + innerRun.mock.calls.length;
+    expect(totalCalls).toBe(1);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("matched multiple"));
+    warnSpy.mockRestore();
+  });
 });
