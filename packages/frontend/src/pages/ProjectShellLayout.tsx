@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
 import { useProjectShellCommands } from "@lib/commands/catalog/useProjectShellCommands";
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
+import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
 
 export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
+  const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
 
   useVaultEvents(projectId);
-  useProjectShellCommands(projectId);
+  useProjectShellCommands(projectId, {
+    onCreateFragment: () => setActiveCreate("fragment"),
+    onCreateNote: () => setActiveCreate("note"),
+    onCreateReference: () => setActiveCreate("reference"),
+    onCreateAspect: () => setActiveCreate("aspect"),
+  });
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
 
@@ -59,6 +67,11 @@ export const ProjectShellLayout = () => {
           <Outlet />
         </RebuildStatusProvider>
       </div>
+      <GlobalCreateDialogs
+        projectId={projectId}
+        activeCreate={activeCreate}
+        onClose={() => setActiveCreate(null)}
+      />
     </div>
   );
 };

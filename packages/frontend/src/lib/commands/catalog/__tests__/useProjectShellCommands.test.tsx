@@ -23,8 +23,15 @@ vi.mock("@api/generated/sequences/sequences", () => ({
 
 const mockListSequences = vi.mocked(ListSequences);
 
+const mockCreateHandlers = {
+  onCreateFragment: vi.fn(),
+  onCreateNote: vi.fn(),
+  onCreateReference: vi.fn(),
+  onCreateAspect: vi.fn(),
+};
+
 function TestHook() {
-  useProjectShellCommands(PROJECT_ID);
+  useProjectShellCommands(PROJECT_ID, mockCreateHandlers);
   return null;
 }
 
@@ -44,6 +51,10 @@ function openPalette() {
 describe("useProjectShellCommands", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateHandlers.onCreateFragment.mockReset();
+    mockCreateHandlers.onCreateNote.mockReset();
+    mockCreateHandlers.onCreateReference.mockReset();
+    mockCreateHandlers.onCreateAspect.mockReset();
   });
 
   it("registers Go to Fragment list command under Navigation section", () => {
@@ -102,25 +113,36 @@ describe("useProjectShellCommands", () => {
     expect(screen.getByRole("option", { name: "Create aspect…" })).toBeInTheDocument();
   });
 
-  it("navigates to fragments when Create fragment… is selected", async () => {
+  it("calls onCreateFragment callback when Create fragment… is selected", async () => {
     renderWithShellCommands();
     openPalette();
     await userEvent.click(screen.getByRole("option", { name: "Create fragment…" }));
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/projects/$projectId/fragments",
-      params: { projectId: PROJECT_ID },
-    });
+    expect(mockCreateHandlers.onCreateFragment).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("navigates to config/notes tab when Create note… is selected", async () => {
+  it("calls onCreateNote callback when Create note… is selected", async () => {
     renderWithShellCommands();
     openPalette();
     await userEvent.click(screen.getByRole("option", { name: "Create note…" }));
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/projects/$projectId/config",
-      params: { projectId: PROJECT_ID },
-      search: { tab: "notes" },
-    });
+    expect(mockCreateHandlers.onCreateNote).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("calls onCreateReference callback when Create reference… is selected", async () => {
+    renderWithShellCommands();
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: "Create reference…" }));
+    expect(mockCreateHandlers.onCreateReference).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("calls onCreateAspect callback when Create aspect… is selected", async () => {
+    renderWithShellCommands();
+    openPalette();
+    await userEvent.click(screen.getByRole("option", { name: "Create aspect…" }));
+    expect(mockCreateHandlers.onCreateAspect).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("registers Switch sequence command; CommandRow appends ellipsis for arg commands", () => {

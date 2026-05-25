@@ -1,8 +1,8 @@
 # Spec: Command Palette
 
 **Status**: Draft
-**Last updated**: 2026-05-21
-**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7).
+**Last updated**: 2026-05-25
+**Shipped**: Command system foundation (phases 1–2); shared `Picker` primitive (phase 3); command palette UI with global trigger, grouping, hotkey display, disabled-with-reason, and two-step parameterized commands (phases 4–5); initial global command catalog — navigation, create, switch-project (parameterized), switch-sequence (parameterized) (phase 6); chord nav removed, `useKeyboardNav.ts` deleted (phase 7); `Create <entity>…` commands now open creation modal directly without navigating away — modal handoff pattern (phase 8).
 
 ---
 
@@ -128,7 +128,7 @@ Rules for where a command lives:
 - **cmdk is the library.** Already installed, shadcn-aligned, primitives-based, active maintenance, plays well with React Query data inside `Command.List`. Rationale: zero additional dependency, lowest-friction fit for the codebase's existing component vocabulary.
 - **No user rebinding in v1**, but the architecture is rebinding-ready: hotkeys are declared on commands, bound by a single layer, overridable later.
 - **No chord nav going forward.** `useKeyboardNav.ts` is legacy and will be removed in favor of command-bound hotkeys.
-- **Modal handoff for free-text and multi-field input.** The palette's argument step is closed-set-only by design. Commands needing free-text input (a new entity key, a description) or more than one field close the palette and open a dedicated modal owned by the command's `run`. The palette is the entry point; the modal is where typing happens. First established by `extract-selection.md` (four `Extract to …` commands handing off to an extraction modal). Reusable for any future command in the same shape — for example, the `document-links.md` "inline creation of new entity from a broken link" affordance when it ships.
+- **Modal handoff for free-text and multi-field input.** The palette's argument step is closed-set-only by design. Commands needing free-text input (a new entity key, a description) or more than one field close the palette and open a dedicated modal owned by the command's `run`. The palette is the entry point; the modal is where typing happens. First established by `extract-selection.md` (four `Extract to …` commands handing off to an extraction modal). Extended by `Create <entity>…` commands — selecting one from the palette opens a creation dialog without navigating away; on success the user is routed to the new entity. `GlobalCreateDialogs` is rendered at the `ProjectShellLayout` level and receives open-state callbacks from `useProjectShellCommands`.
 
 ---
 

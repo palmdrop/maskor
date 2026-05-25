@@ -3,7 +3,14 @@ import { useCommand } from "../useCommand";
 import { ListSequences } from "@api/generated/sequences/sequences";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 
-export const useProjectShellCommands = (projectId: string) => {
+type CreateHandlers = {
+  onCreateFragment: () => void;
+  onCreateNote: () => void;
+  onCreateReference: () => void;
+  onCreateAspect: () => void;
+};
+
+export const useProjectShellCommands = (projectId: string, createHandlers: CreateHandlers) => {
   const navigate = useNavigate();
 
   // Navigation — project-scoped routes
@@ -73,13 +80,13 @@ export const useProjectShellCommands = (projectId: string) => {
       }),
   });
 
-  // Create — navigate to the page that hosts the creation flow
+  // Create — open creation modal directly without leaving the current surface
   useCommand({
     id: "create:fragment",
     label: "Create fragment…",
     scope: "global",
     category: "create",
-    run: () => void navigate({ to: "/projects/$projectId/fragments", params: { projectId } }),
+    run: createHandlers.onCreateFragment,
   });
 
   useCommand({
@@ -87,12 +94,7 @@ export const useProjectShellCommands = (projectId: string) => {
     label: "Create note…",
     scope: "global",
     category: "create",
-    run: () =>
-      void navigate({
-        to: "/projects/$projectId/config",
-        params: { projectId },
-        search: { tab: "notes" },
-      }),
+    run: createHandlers.onCreateNote,
   });
 
   useCommand({
@@ -100,12 +102,7 @@ export const useProjectShellCommands = (projectId: string) => {
     label: "Create reference…",
     scope: "global",
     category: "create",
-    run: () =>
-      void navigate({
-        to: "/projects/$projectId/config",
-        params: { projectId },
-        search: { tab: "references" },
-      }),
+    run: createHandlers.onCreateReference,
   });
 
   useCommand({
@@ -113,12 +110,7 @@ export const useProjectShellCommands = (projectId: string) => {
     label: "Create aspect…",
     scope: "global",
     category: "create",
-    run: () =>
-      void navigate({
-        to: "/projects/$projectId/config",
-        params: { projectId },
-        search: { tab: "aspects" },
-      }),
+    run: createHandlers.onCreateAspect,
   });
 
   // Project — parameterized sequence switch
