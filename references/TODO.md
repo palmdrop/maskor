@@ -8,7 +8,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] Refactor command system, introduce strong types and reduce boilerplate
+- [x] Refactor command system, introduce strong types and reduce boilerplate
 
 - [ ] notification/banner component for communicating result of actions
 
@@ -22,9 +22,19 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - intermediate manifest types, schemas, types that could be inferred, etc
 
 - [x] back button for suggestion mode
-- [ ] explicit search in suggestion mode
+- [-] explicit search in suggestion mode
 
 - [ ] find a way to automatically create em-dashes etc
+
+- [x] italics and such flickers in editor when editing in vim/raw mode...
+
+- [ ] use command system to trigger quick-switcher and command palette too instead of custom keybind handlers in components
+
+- [ ] rework note system -- side by side view of note + fragment should be available
+  - also, possibly include with comment system.
+  - goal: a way to write general notes, but also annotate text, point to specific parts
+  - more granular than fragment? arrows that link to a section in the text? note-based, non-linear commenting/notation engine?
+  - graph structure pointing to other fragments using inline links or comments/references?
 
 - [ ] sequences: auto-fill in order of fragments on import
 - [ ] sequences: pool is unnecessarily wide, includes too much
@@ -33,6 +43,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [ ] extract in suggestion, how should that work?
 
 - [ ] editor loses focus after command palette is opened and closed again
+  - make modals (command palette, quick-switcher) set context state that indicate if they are open or not. Let editor request focus restoration when modal closes (iff editor was focused before modal opened).
+  - another option: create a focus manager that records focus before opening modal, then restores it to the relevant element when modal closes
+
+- [ ] specs claim command palette and quick-switcher use the same underlying picker component, but neither does. Instead, they define their own logic. There is a picker component, but it is never used in the code (except for test).
 
 - [ ] add project-wide setting for yanking to clipboard or not in vim mode
 
