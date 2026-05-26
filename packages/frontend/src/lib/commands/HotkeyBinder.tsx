@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useCommandsContext } from "./CommandsProvider";
-import type { CommandDef } from "./types";
+import type { MergedCommandView } from "./types";
 
 interface ParsedHotkey {
   key: string;
@@ -50,10 +50,10 @@ const isTextInput = (element: Element | null): boolean => {
 };
 
 const matchingHotkeyCandidates = (
-  map: ReadonlyMap<string, CommandDef>,
+  map: ReadonlyMap<string, MergedCommandView>,
   event: KeyboardEvent,
-): CommandDef[] => {
-  const candidates: CommandDef[] = [];
+): MergedCommandView[] => {
+  const candidates: MergedCommandView[] = [];
   for (const def of map.values()) {
     if (!def.hotkey) continue;
     const parsed = parseHotkey(def.hotkey);
@@ -83,15 +83,15 @@ export const HotkeyBinder = () => {
       let winner = enabledCandidates[0];
       if (enabledCandidates.length > 1) {
         // Innermost-active-scope wins on conflict. Build a quick lookup from
-        // scope label to mount order; commands not in an active scope fall back
+        // scope id to mount order; commands not in an active scope fall back
         // to a sentinel so globals lose to scoped commands but win against
         // nothing.
-        const scopeOrderByLabel = new Map<string, number>();
+        const scopeOrderById = new Map<string, number>();
         for (const active of getActiveScopes()) {
-          scopeOrderByLabel.set(active.meta.label, active.mountOrder);
+          scopeOrderById.set(active.meta.id, active.mountOrder);
         }
-        const order = (def: CommandDef): number =>
-          def.scope === "global" ? -1 : (scopeOrderByLabel.get(def.scope) ?? -2);
+        const order = (def: MergedCommandView): number =>
+          def.scope === "global" ? -1 : (scopeOrderById.get(def.scope) ?? -2);
         winner = enabledCandidates.reduce((a, b) => (order(b) > order(a) ? b : a));
         if (import.meta.env.DEV) {
           const ids = enabledCandidates.map((c) => c.id).join(", ");

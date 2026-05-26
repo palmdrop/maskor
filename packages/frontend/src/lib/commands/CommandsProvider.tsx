@@ -9,7 +9,7 @@ import {
 } from "react";
 import type {
   AnyCommandDef,
-  CommandDef,
+  MergedCommandView,
   GlobalCommandDef,
   ScopeCommandDef,
   ScopeMeta,
@@ -34,7 +34,7 @@ export interface CommandsContextValue {
   publishScope: (meta: ScopeMeta, ctxRef: RefObject<unknown>) => () => void;
   getActiveScopes: () => readonly ActiveScope[];
   run: (id: string, arg?: unknown) => void;
-  getMap: () => ReadonlyMap<string, CommandDef>;
+  getMap: () => ReadonlyMap<string, MergedCommandView>;
 }
 
 export const CommandsContext = createContext<CommandsContextValue | null>(null);
@@ -46,12 +46,11 @@ export const useCommandsContext = (): CommandsContextValue => {
 };
 
 // =====================================================================
-// Legacy-shaped view of a v2 def — keeps the palette and hotkey binder
-// reading one uniform shape. Lazy getters keep per-row state live as
-// ctx changes between renders.
+// Flattened views of v2 defs — uniform shape for the palette and binder.
+// Lazy getters keep per-row state live as ctx changes between renders.
 // =====================================================================
 
-const makeLegacyViewForGlobal = (def: GlobalCommandDef<string, unknown>): CommandDef => ({
+const makeViewForGlobal = (def: GlobalCommandDef<string, unknown>): MergedCommandView => ({
   id: def.id,
   label: def.label,
   scope: "global",
@@ -64,23 +63,26 @@ const makeLegacyViewForGlobal = (def: GlobalCommandDef<string, unknown>): Comman
   run: (arg) => def.run(arg as never),
 });
 
-const makeLegacyViewForScope = (
+const makeViewForScope = (
   def: ScopeCommandDef<string, string, unknown, unknown>,
   getCtx: () => unknown,
-): CommandDef => ({
+): MergedCommandView => ({
   id: def.id,
   label: def.label,
-  scope: def.scopeLabel,
+  scope: def.scopeId,
   category: def.category,
   hotkey: def.hotkey,
-  // Scope commands' `arg.items` takes ctx; the legacy view exposes a
-  // parameterless thunk by capturing getCtx() so the palette and binder
-  // don't need to know about ctx.
+  // Scope commands' `arg.items` takes ctx; the view exposes a parameterless
+  // thunk by capturing getCtx() so the palette and binder don't need ctx.
   get arg() {
     const argSource = def.arg;
     if (!argSource) return undefined;
     return {
-      items: () => argSource.items(getCtx()),
+      items: () => {
+        const ctx = getCtx();
+        if (ctx === undefined) return [];
+        return argSource.items(ctx);
+      },
       getKey: argSource.getKey,
       getLabel: argSource.getLabel,
       renderItem: argSource.renderItem,
@@ -88,7 +90,9 @@ const makeLegacyViewForScope = (
     };
   },
   get disabledReason() {
-    return def.disabled?.(getCtx());
+    const ctx = getCtx();
+    if (ctx === undefined) return undefined;
+    return def.disabled?.(ctx);
   },
   run: (arg) => def.run(getCtx(), arg as never),
 });
@@ -99,28 +103,28 @@ const makeLegacyViewForScope = (
 
 interface CatalogEntry {
   readonly def: AnyCommandDef;
-  readonly view: CommandDef;
+  readonly view: MergedCommandView;
 }
 
 export const CommandsProvider = ({ children }: { children: ReactNode }) => {
   const catalogRef = useRef<Map<string, CatalogEntry> | null>(null);
-  const mergedMapRef = useRef<Map<string, CommandDef> | null>(null);
+  const mergedMapRef = useRef<Map<string, MergedCommandView> | null>(null);
   const activeScopesRef = useRef<Map<string, ActiveScope>>(new Map());
   const mountCounterRef = useRef(0);
 
   const initIfNeeded = useCallback(() => {
     if (catalogRef.current) return;
     const catalog = new Map<string, CatalogEntry>();
-    const merged = new Map<string, CommandDef>();
+    const merged = new Map<string, MergedCommandView>();
     for (const def of allCommands as readonly AnyCommandDef[]) {
       if (def.kind === "global") {
-        const entry = { def, view: makeLegacyViewForGlobal(def) };
+        const entry = { def, view: makeViewForGlobal(def) };
         catalog.set(def.id, entry);
         merged.set(def.id, entry.view);
       } else {
         const scopeId = def.scopeId;
         const getCtx = () => activeScopesRef.current.get(scopeId)?.ctxRef.current;
-        catalog.set(def.id, { def, view: makeLegacyViewForScope(def, getCtx) });
+        catalog.set(def.id, { def, view: makeViewForScope(def, getCtx) });
         // Scope command views are added to mergedMap only when their scope
         // is published.
       }
@@ -165,7 +169,7 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
-  const getMap = useCallback((): ReadonlyMap<string, CommandDef> => {
+  const getMap = useCallback((): ReadonlyMap<string, MergedCommandView> => {
     initIfNeeded();
     return mergedMapRef.current!;
   }, [initIfNeeded]);

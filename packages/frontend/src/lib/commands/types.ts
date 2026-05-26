@@ -95,17 +95,16 @@ export type AnyCommandDef =
   | ScopeCommandDef<string, string, unknown, unknown>;
 
 // =====================================================================
-// v1 compatibility — kept so the adapter shim and legacy palette code
-// can still talk about a uniform command shape during migration.
-// Removed in Phase 5.
+// Flattened view consumed by the palette and hotkey binder.
+// Global commands have scope "global"; scope commands carry the scope id.
+// Lazy getters (disabledReason, arg.items) read live state through a ctx
+// ref so per-row state stays fresh without re-rendering.
 // =====================================================================
 
-export type CommandScope = "global" | string;
-
-export interface CommandDef<T = unknown> {
+export interface MergedCommandView<T = unknown> {
   id: string;
   label: string;
-  scope: CommandScope;
+  scope: string; // "global" or scope id
   category: CommandCategory;
   hotkey?: string;
   arg?: CommandArg<T>;

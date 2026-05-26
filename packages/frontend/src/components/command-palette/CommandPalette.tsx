@@ -3,7 +3,7 @@ import { CommandEmpty, CommandGroup, CommandItem, defaultFilter } from "cmdk";
 import { cn } from "@/lib/utils";
 import { Picker } from "@/components/picker/Picker";
 import { useCommandsContext } from "@lib/commands/CommandsProvider";
-import type { CommandCategory, CommandDef } from "@lib/commands/types";
+import type { CommandCategory, MergedCommandView } from "@lib/commands/types";
 
 // --- Hotkey formatting ---
 
@@ -53,7 +53,7 @@ const CommandRow = ({
   command,
   effectiveDisabledReason,
 }: {
-  command: CommandDef;
+  command: MergedCommandView;
   effectiveDisabledReason?: string;
 }) => (
   <div className="flex w-full items-center justify-between gap-4">
@@ -94,7 +94,7 @@ const ArgLoadingSkeleton = () => (
 
 // --- Effective disabled reason ---
 
-const getEffectiveDisabledReason = (command: CommandDef): string | undefined => {
+const getEffectiveDisabledReason = (command: MergedCommandView): string | undefined => {
   if (command.disabledReason) return command.disabledReason;
   // `items` is always a thunk on the legacy view — possibly async — so we
   // can't auto-detect empty arg sets here without invoking it on every
@@ -105,13 +105,12 @@ const getEffectiveDisabledReason = (command: CommandDef): string | undefined => 
 
 // --- Global category ordering ---
 
-const CATEGORY_ORDER: CommandCategory[] = ["navigation", "create", "project", "other"];
-const CATEGORY_LABELS: Record<CommandCategory, string> = {
+const CATEGORY_ORDER = ["navigation", "create", "project", "other"] as const satisfies CommandCategory[];
+const CATEGORY_LABELS: Record<(typeof CATEGORY_ORDER)[number], string> = {
   navigation: "Navigation",
   create: "Create",
   project: "Project",
   other: "Other",
-  attach: "Attach",
 };
 
 // --- CommandPalette ---
@@ -121,7 +120,7 @@ export const CommandPalette = () => {
   const [query, setQuery] = useState("");
   const [step, setStep] = useState<"commands" | "args">("commands");
   const [savedQuery, setSavedQuery] = useState("");
-  const [activeArgCommand, setActiveArgCommand] = useState<CommandDef | null>(null);
+  const [activeArgCommand, setActiveArgCommand] = useState<MergedCommandView | null>(null);
   const [argItems, setArgItems] = useState<unknown[]>([]);
   const [argLoading, setArgLoading] = useState(false);
   // Bumped on every transition out of an in-flight arg load (Esc, close, picking
@@ -129,6 +128,7 @@ export const CommandPalette = () => {
   // discarded so a slow promise from a prior selection can't clobber the
   // current picker's state.
   const argGenerationRef = useRef(0);
+  const hasMountedRef = useRef(false);
 
   const { getMap, run, getActiveScopes } = useCommandsContext();
 
@@ -148,6 +148,10 @@ export const CommandPalette = () => {
 
   // Reset all step state when palette closes.
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
     if (!open) {
       argGenerationRef.current++;
       setStep("commands");
@@ -159,7 +163,7 @@ export const CommandPalette = () => {
     }
   }, [open]);
 
-  const sortCommands = (commands: CommandDef[]): CommandDef[] =>
+  const sortCommands = (commands: MergedCommandView[]): MergedCommandView[] =>
     [...commands].sort((a, b) => {
       const aDisabled = getEffectiveDisabledReason(a) != null;
       const bDisabled = getEffectiveDisabledReason(b) != null;
@@ -179,18 +183,20 @@ export const CommandPalette = () => {
     // Active scopes already arrive innermost-first; we render in that order
     // so the most-recently-mounted scope appears at the top of the palette.
     const activeScopes = getActiveScopes();
-    const scopeMap = new Map<string, CommandDef[]>();
+    // scope field on MergedCommandView is the scope id; active.meta.id matches it.
+    const scopeMap = new Map<string, MergedCommandView[]>();
     for (const command of all) {
       if (command.scope === "global") continue;
       scopeMap.set(command.scope, [...(scopeMap.get(command.scope) ?? []), command]);
     }
     const viewScopedSections = activeScopes.flatMap((active) => {
-      const commands = scopeMap.get(active.meta.label);
+      const commands = scopeMap.get(active.meta.id);
       if (!commands) return [];
+      // label is display-only; id is the lookup key.
       return [{ scope: active.meta.label, commands: sortCommands(commands) }];
     });
 
-    const categoryMap = new Map<CommandCategory, CommandDef[]>(
+    const categoryMap = new Map<CommandCategory, MergedCommandView[]>(
       CATEGORY_ORDER.map((category) => [category, []]),
     );
     for (const command of all) {
@@ -231,7 +237,7 @@ export const CommandPalette = () => {
     [commandMap],
   );
 
-  const handleSelectCommand = async (command: CommandDef) => {
+  const handleSelectCommand = async (command: MergedCommandView) => {
     const effectiveDisabled = getEffectiveDisabledReason(command);
     if (effectiveDisabled) return;
 
@@ -287,7 +293,7 @@ export const CommandPalette = () => {
     }
   };
 
-  const renderCommandItems = (commands: CommandDef[]) =>
+  const renderCommandItems = (commands: MergedCommandView[]) =>
     commands.map((command) => {
       const effectiveDisabledReason = getEffectiveDisabledReason(command);
       return (

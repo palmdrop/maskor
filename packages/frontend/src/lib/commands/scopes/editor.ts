@@ -21,6 +21,8 @@ export interface EditorContext {
   save: () => void;
 }
 
+// Singleton scope — only one EntityEditorShell may be mounted at a time.
+// A split-pane or comparison view would require a parameterized variant.
 export const editorScope = defineScope<EditorContext>("editor", {
   label: "Editor",
 });
