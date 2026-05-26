@@ -1,29 +1,31 @@
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "cmdk";
+import { Command, CommandInput, CommandList } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export interface PickerProps<T> {
-  items: T[];
-  getKey: (item: T) => string;
-  getLabel: (item: T) => string;
-  renderItem?: (item: T) => ReactNode;
-  placeholder: string;
+export interface PickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (item: T) => void;
+  placeholder: string;
+  query: string;
+  onQueryChange: (query: string) => void;
+  filter?: (value: string, search: string, keywords?: string[]) => number;
+  title: string;
+  onEscapeKeyDown?: (event: Event) => void;
+  children: ReactNode;
 }
 
-export function Picker<T>({
-  items,
-  getKey,
-  getLabel,
-  renderItem,
-  placeholder,
+export function Picker({
   open,
   onOpenChange,
-  onSelect,
-}: PickerProps<T>) {
+  placeholder,
+  query,
+  onQueryChange,
+  filter,
+  title,
+  onEscapeKeyDown,
+  children,
+}: PickerProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -31,37 +33,23 @@ export function Picker<T>({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
+            "fixed top-[20%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2",
             "overflow-hidden rounded-xl bg-popover text-popover-foreground ring-1 ring-foreground/10",
             "duration-100 outline-none",
             "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
             "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           )}
+          onEscapeKeyDown={onEscapeKeyDown}
         >
-          <DialogPrimitive.Title className="sr-only">{placeholder}</DialogPrimitive.Title>
-          <Command loop>
+          <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+          <Command loop filter={filter}>
             <CommandInput
               placeholder={placeholder}
+              value={query}
+              onValueChange={onQueryChange}
               className="w-full border-b border-border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
             />
-            <CommandList className="max-h-72 overflow-y-auto p-1">
-              <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No items found.
-              </CommandEmpty>
-              {items.map((item) => (
-                <CommandItem
-                  key={getKey(item)}
-                  value={getLabel(item)}
-                  className="flex cursor-pointer items-center rounded px-2 py-1.5 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
-                  onSelect={() => {
-                    onSelect(item);
-                    onOpenChange(false);
-                  }}
-                >
-                  {renderItem ? renderItem(item) : getLabel(item)}
-                </CommandItem>
-              ))}
-            </CommandList>
+            <CommandList className="max-h-80 overflow-y-auto p-1">{children}</CommandList>
           </Command>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

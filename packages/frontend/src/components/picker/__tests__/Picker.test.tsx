@@ -1,40 +1,35 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { Picker, type PickerProps } from "../Picker";
+import { CommandEmpty, CommandItem } from "cmdk";
+import { Picker } from "../Picker";
 
-type Fruit = { id: string; name: string };
+const noop = () => {};
 
-const fruits: Fruit[] = [
-  { id: "apple", name: "Apple" },
-  { id: "banana", name: "Banana" },
-  { id: "cherry", name: "Cherry" },
-];
-
-function renderPicker(overrides: Partial<PickerProps<Fruit>> = {}) {
-  const onSelect = vi.fn();
+function renderPicker(overrides: Partial<Omit<Parameters<typeof Picker>[0], "children">> = {}) {
   const onOpenChange = vi.fn();
   const result = render(
     <Picker
-      items={fruits}
-      getKey={(item) => item.id}
-      getLabel={(item) => item.name}
-      placeholder="Search fruits…"
       open={true}
       onOpenChange={onOpenChange}
-      onSelect={onSelect}
+      placeholder="Search…"
+      query=""
+      onQueryChange={noop}
+      title="Test Picker"
       {...overrides}
-    />,
+    >
+      <CommandItem value="item-1">Item One</CommandItem>
+      <CommandItem value="item-2">Item Two</CommandItem>
+    </Picker>,
   );
-  return { onSelect, onOpenChange, ...result };
+  return { onOpenChange, ...result };
 }
 
 describe("Picker", () => {
-  it("renders all items when open", () => {
+  it("renders the input and children when open", () => {
     renderPicker();
-    expect(screen.getByRole("option", { name: "Apple" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Banana" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Cherry" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Item One" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Item Two" })).toBeInTheDocument();
   });
 
   it("renders nothing when closed", () => {
@@ -42,72 +37,69 @@ describe("Picker", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("filters items by query", async () => {
-    renderPicker();
-    const input = screen.getByRole("combobox");
-    await userEvent.type(input, "ban");
-    expect(screen.getByRole("option", { name: "Banana" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Apple" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Cherry" })).not.toBeInTheDocument();
+  it("renders the placeholder text in the input", () => {
+    renderPicker({ placeholder: "Jump to entity…" });
+    expect(screen.getByPlaceholderText("Jump to entity…")).toBeInTheDocument();
   });
 
-  it("shows empty state when no items match", async () => {
-    renderPicker();
-    const input = screen.getByRole("combobox");
-    await userEvent.type(input, "zzz");
-    expect(screen.getByText("No items found.")).toBeInTheDocument();
-  });
-
-  it("selects item via Enter and calls onSelect + onOpenChange(false)", async () => {
-    // cmdk pre-selects the first item (Apple) on mount; ArrowDown moves to Banana
-    const { onSelect, onOpenChange } = renderPicker();
-    const input = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.keyDown(input, { key: "ArrowDown" });
-    });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(onSelect).toHaveBeenCalledWith(fruits[1]);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  it("selects item via click and calls onSelect + onOpenChange(false)", async () => {
-    const { onSelect, onOpenChange } = renderPicker();
-    await userEvent.click(screen.getByRole("option", { name: "Banana" }));
-    expect(onSelect).toHaveBeenCalledWith(fruits[1]);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  it("closes on Escape", () => {
+  it("calls onOpenChange(false) on Escape", () => {
     const { onOpenChange } = renderPicker();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("renders custom renderItem content", () => {
-    renderPicker({
-      renderItem: (item) => <span data-testid={`custom-${item.id}`}>{item.name} (custom)</span>,
-    });
-    expect(screen.getByTestId("custom-apple")).toBeInTheDocument();
-    expect(screen.getByText("Apple (custom)")).toBeInTheDocument();
+  it("calls onEscapeKeyDown when provided; preventing default keeps the dialog open", () => {
+    const onOpenChange = vi.fn();
+    const onEscapeKeyDown = vi.fn((event: Event) => event.preventDefault());
+    render(
+      <Picker
+        open={true}
+        onOpenChange={onOpenChange}
+        placeholder="Search…"
+        query=""
+        onQueryChange={noop}
+        title="Test"
+        onEscapeKeyDown={onEscapeKeyDown}
+      >
+        <CommandItem value="x">X</CommandItem>
+      </Picker>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onEscapeKeyDown).toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("renders children including CommandEmpty", () => {
+    render(
+      <Picker
+        open={true}
+        onOpenChange={noop}
+        placeholder="Search…"
+        query="zzz"
+        onQueryChange={noop}
+        title="Test"
+      >
+        <CommandEmpty>Nothing here.</CommandEmpty>
+        <CommandItem value="item-1">Item One</CommandItem>
+      </Picker>,
+    );
+    expect(screen.getByText("Nothing here.")).toBeInTheDocument();
   });
 
   it("traps focus inside the picker when open and releases it on close", () => {
-    // Focus restoration to the exact prior element is handled by Radix Dialog
-    // and cannot be reliably verified in jsdom. This test verifies:
-    // 1. focus moves into the picker (away from the trigger) when it opens
-    // 2. the picker input is no longer in the document after close
     const TriggerAndPicker = ({ open }: { open: boolean }) => (
       <>
         <button data-testid="trigger">Trigger</button>
         <Picker
-          items={fruits}
-          getKey={(item) => item.id}
-          getLabel={(item) => item.name}
-          placeholder="Search fruits…"
           open={open}
           onOpenChange={vi.fn()}
-          onSelect={vi.fn()}
-        />
+          placeholder="Search…"
+          query=""
+          onQueryChange={noop}
+          title="Test"
+        >
+          <CommandItem value="x">X</CommandItem>
+        </Picker>
       </>
     );
 

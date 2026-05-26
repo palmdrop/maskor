@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  defaultFilter,
-} from "cmdk";
-import { Dialog as DialogPrimitive } from "radix-ui";
+import { CommandEmpty, CommandGroup, CommandItem, defaultFilter } from "cmdk";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Picker } from "@/components/picker/Picker";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
@@ -257,64 +248,46 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
   );
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-        <DialogPrimitive.Content
-          aria-describedby={undefined}
-          className={cn(
-            "fixed top-[20%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2",
-            "overflow-hidden rounded-xl bg-popover text-popover-foreground ring-1 ring-foreground/10",
-            "duration-100 outline-none",
-            "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
-            "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          )}
-        >
-          <DialogPrimitive.Title className="sr-only">Quick switcher</DialogPrimitive.Title>
-          <Command loop filter={entryFilter}>
-            <CommandInput
-              placeholder="Jump to entity…"
-              value={query}
-              onValueChange={setQuery}
-              className="w-full border-b border-border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <CommandList className="max-h-80 overflow-y-auto p-1">
-              {isLoading ? (
-                <SkeletonRows />
-              ) : isEmptyProject ? (
-                <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  This project is empty. Create a fragment, aspect, note, or reference to get
-                  started.
-                </div>
-              ) : (
-                <>
-                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No matches.
-                  </CommandEmpty>
-                  {isSearching
-                    ? allEntries.map(renderItem)
-                    : KIND_ORDER.flatMap((kind) => {
-                        const entries = entriesByKind.get(kind) ?? [];
-                        if (entries.length === 0) return [];
-                        return [
-                          <CommandGroup
-                            key={kind}
-                            heading={
-                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                                {KIND_LABELS[kind].plural}
-                              </div>
-                            }
-                          >
-                            {entries.map(renderItem)}
-                          </CommandGroup>,
-                        ];
-                      })}
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    <Picker
+      open={open}
+      onOpenChange={onOpenChange}
+      placeholder="Jump to entity…"
+      query={query}
+      onQueryChange={setQuery}
+      filter={entryFilter}
+      title="Quick switcher"
+    >
+      {isLoading ? (
+        <SkeletonRows />
+      ) : isEmptyProject ? (
+        <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+          This project is empty. Create a fragment, aspect, note, or reference to get started.
+        </div>
+      ) : (
+        <>
+          <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No matches.
+          </CommandEmpty>
+          {isSearching
+            ? allEntries.map(renderItem)
+            : KIND_ORDER.flatMap((kind) => {
+                const entries = entriesByKind.get(kind) ?? [];
+                if (entries.length === 0) return [];
+                return [
+                  <CommandGroup
+                    key={kind}
+                    heading={
+                      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                        {KIND_LABELS[kind].plural}
+                      </div>
+                    }
+                  >
+                    {entries.map(renderItem)}
+                  </CommandGroup>,
+                ];
+              })}
+        </>
+      )}
+    </Picker>
   );
 };

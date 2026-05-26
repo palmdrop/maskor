@@ -1,15 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  defaultFilter,
-} from "cmdk";
-import { Dialog as DialogPrimitive } from "radix-ui";
+import { CommandEmpty, CommandGroup, CommandItem, defaultFilter } from "cmdk";
 import { cn } from "@/lib/utils";
+import { Picker } from "@/components/picker/Picker";
 import { useCommandsContext } from "@lib/commands/CommandsProvider";
 import type { CommandCategory, CommandDef } from "@lib/commands/types";
 
@@ -331,73 +323,51 @@ export const CommandPalette = () => {
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-        <DialogPrimitive.Content
-          aria-describedby={undefined}
-          className={cn(
-            "fixed top-[20%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2",
-            "overflow-hidden rounded-xl bg-popover text-popover-foreground ring-1 ring-foreground/10",
-            "duration-100 outline-none",
-            "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
-            "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+    <Picker
+      open={open}
+      onOpenChange={setOpen}
+      placeholder={
+        step === "args" ? (activeArgCommand?.arg?.placeholder ?? "Select…") : "Search commands…"
+      }
+      query={query}
+      onQueryChange={setQuery}
+      filter={step === "commands" ? commandFilter : undefined}
+      title="Command palette"
+      onEscapeKeyDown={handleEscapeKeyDown}
+    >
+      {step === "commands" ? (
+        <>
+          <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No commands found.
+          </CommandEmpty>
+          {isSearching ? (
+            renderCommandItems(flatCommands)
+          ) : (
+            <>
+              {viewScopedSections.map(({ scope, commands }) => (
+                <CommandGroup key={scope} heading={<SectionHeading>{scope}</SectionHeading>}>
+                  {renderCommandItems(commands)}
+                </CommandGroup>
+              ))}
+              {globalSections.map(({ category, commands }) => (
+                <CommandGroup
+                  key={category}
+                  heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
+                >
+                  {renderCommandItems(commands)}
+                </CommandGroup>
+              ))}
+            </>
           )}
-          onEscapeKeyDown={handleEscapeKeyDown}
-        >
-          <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
-          <Command loop filter={step === "commands" ? commandFilter : undefined}>
-            <CommandInput
-              placeholder={
-                step === "args"
-                  ? (activeArgCommand?.arg?.placeholder ?? "Select…")
-                  : "Search commands…"
-              }
-              value={query}
-              onValueChange={setQuery}
-              className="w-full border-b border-border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <CommandList className="max-h-80 overflow-y-auto p-1">
-              {step === "commands" ? (
-                <>
-                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No commands found.
-                  </CommandEmpty>
-                  {isSearching ? (
-                    renderCommandItems(flatCommands)
-                  ) : (
-                    <>
-                      {viewScopedSections.map(({ scope, commands }) => (
-                        <CommandGroup
-                          key={scope}
-                          heading={<SectionHeading>{scope}</SectionHeading>}
-                        >
-                          {renderCommandItems(commands)}
-                        </CommandGroup>
-                      ))}
-                      {globalSections.map(({ category, commands }) => (
-                        <CommandGroup
-                          key={category}
-                          heading={<SectionHeading>{CATEGORY_LABELS[category]}</SectionHeading>}
-                        >
-                          {renderCommandItems(commands)}
-                        </CommandGroup>
-                      ))}
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No items found.
-                  </CommandEmpty>
-                  {renderArgItems()}
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+        </>
+      ) : (
+        <>
+          <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No items found.
+          </CommandEmpty>
+          {renderArgItems()}
+        </>
+      )}
+    </Picker>
   );
 };
