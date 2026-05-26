@@ -1431,7 +1431,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           if (
             excludeUuid &&
             cooldown.has(excludeUuid) &&
-            !cooldown.wasEditedWhileSurfaced(excludeUuid)
+            !cooldown.wasEditedWhileSurfaced(excludeUuid) &&
+            !cooldown.wasUserPicked(excludeUuid)
           ) {
             incrementAvoidance(vaultDatabase, excludeUuid);
           }
@@ -1493,6 +1494,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         await withVaultWriteLock(context.vaultPath, async () => {
           const vaultDatabase = getVaultDatabase(context);
           incrementVoluntaryOpen(vaultDatabase, fragmentUuid);
+        });
+      },
+
+      // Explicit user pick (e.g. quick-switcher). Bumps voluntary_open_count,
+      // adds the fragment to cooldown so the engine does not immediately
+      // re-surface it on Next, and marks it user-picked so the next
+      // getNext() call skips avoidance accounting for it.
+      async recordPick(context: ProjectContext, fragmentUuid: string): Promise<void> {
+        await withVaultWriteLock(context.vaultPath, async () => {
+          const vaultDatabase = getVaultDatabase(context);
+          const cooldown = getSuggestionCooldown(context);
+          incrementVoluntaryOpen(vaultDatabase, fragmentUuid);
+          cooldown.add(fragmentUuid);
+          cooldown.markUserPicked(fragmentUuid);
         });
       },
 

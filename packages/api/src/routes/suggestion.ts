@@ -6,6 +6,7 @@ import {
   SuggestionNextResponseSchema,
   SuggestionNextQuerySchema,
   SuggestionVisitParamSchema,
+  SuggestionPickParamSchema,
   SuggestionCurrentResponseSchema,
 } from "../schemas/suggestion";
 import { ErrorResponseSchema } from "../schemas/error";
@@ -58,7 +59,7 @@ const getNextSuggestionRoute = createRoute({
 const recordVisitRoute = createRoute({
   operationId: "recordFragmentVisit",
   method: "post",
-  path: "/visit/:fragmentId",
+  path: "/visit/{fragmentId}",
   tags: ["Suggestion"],
   summary: "Record a voluntary fragment open outside suggestion mode",
   request: {
@@ -66,6 +67,24 @@ const recordVisitRoute = createRoute({
   },
   responses: {
     204: { description: "Visit recorded" },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const recordPickRoute = createRoute({
+  operationId: "recordFragmentPick",
+  method: "post",
+  path: "/pick/{fragmentId}",
+  tags: ["Suggestion"],
+  summary: "Record an explicit user pick (e.g. quick-switcher): bumps voluntary_open_count, adds to cooldown, marks user-picked so the next getNext skips avoidance accounting for the picked fragment.",
+  request: {
+    params: SuggestionPickParamSchema,
+  },
+  responses: {
+    204: { description: "Pick recorded" },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Internal error",
@@ -123,6 +142,19 @@ suggestionRouter.openapi(recordVisitRoute, async (ctx) => {
     const { fragmentId } = ctx.req.valid("param");
 
     storageService.suggestion.recordVisit(projectContext, fragmentId);
+    return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+suggestionRouter.openapi(recordPickRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("param");
+
+    await storageService.suggestion.recordPick(projectContext, fragmentId);
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

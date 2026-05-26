@@ -43,6 +43,30 @@ describe("CooldownSet.markEdited / wasEditedWhileSurfaced", () => {
   });
 });
 
+describe("CooldownSet.markUserPicked / wasUserPicked", () => {
+  it("defaults to not user-picked", () => {
+    cooldown.add("a");
+    expect(cooldown.wasUserPicked("a")).toBe(false);
+  });
+
+  it("reflects true after marking", () => {
+    cooldown.add("a");
+    cooldown.markUserPicked("a");
+    expect(cooldown.wasUserPicked("a")).toBe(true);
+  });
+
+  it("returns false for unknown UUIDs", () => {
+    expect(cooldown.wasUserPicked("unknown")).toBe(false);
+  });
+
+  it("is independent of editedWhileSurfaced", () => {
+    cooldown.add("a");
+    cooldown.markUserPicked("a");
+    expect(cooldown.wasEditedWhileSurfaced("a")).toBe(false);
+    expect(cooldown.wasUserPicked("a")).toBe(true);
+  });
+});
+
 describe("CooldownSet.purgeExpired", () => {
   it("removes entries past the window", () => {
     cooldown.add("a");

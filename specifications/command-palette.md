@@ -8,6 +8,7 @@
 - Shared `Picker` primitive (`cmdk` + Radix Dialog).
 - Palette UI: `Cmd/Ctrl+K` (+ `Cmd/Ctrl+Shift+P`) trigger from any focus, view-scoped + global category sections, hotkey badges, disabled-with-reason rows, two-step parameterized commands with arg picker, Esc-restores-query, async-arg skeletons + stale-resolution guard.
 - Initial global catalog: navigation (`Go to …`), create (`Create <entity>…`), parameterized `Switch project…` and `Switch sequence…`.
+- 2026-05-26 — `Switch sequence…` removed from the catalog. A generic project-scoped `Switch to…` command takes its place; it opens the quick-switcher (see `quick-switcher.md`), which now owns sequence switching alongside the rest of entity navigation.
 - Chord nav removed; `useKeyboardNav.ts` deleted.
 - `Create <entity>…` modal-handoff pattern: palette opens a creation dialog instead of navigating; `GlobalCreateDialogs` mounted at `ProjectShellLayout`.
 - **v2 typed scope-context architecture**: every command is statically defined in `commands/global/` or `commands/scopes/` via `defineGlobalCommand` / `defineScopeCommand`. Views publish a typed context via `useCommandScope`; composed actions live in the command file, not in the component. `commands.run(id, arg)` is fully typed (autocomplete on `id`, arg inferred per command). Palette renders active scopes innermost-first. Legacy `useCommand` adapter and per-component catalog hooks removed.
@@ -64,7 +65,7 @@ The catalog is composed at open time from two sources:
 | Source | Lifetime | Examples |
 | --- | --- | --- |
 | **Static registry** (`commands/registry.ts`) | App lifetime | Go to Overview, Create fragment…, Switch project…, Export sequence… |
-| **`useCommand` hook** | View mount lifetime | Fragment editor: Save, Next fragment, Toggle vim mode. Overview: Toggle density, Switch sequence… |
+| **`useCommand` hook** | View mount lifetime | Fragment editor: Save, Next fragment, Toggle vim mode. Overview: Toggle density. |
 
 Rules for where a command lives:
 

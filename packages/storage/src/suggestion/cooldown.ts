@@ -5,13 +5,18 @@ export const COOLDOWN_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 type CooldownEntry = {
   surfacedAt: Date;
   editedWhileSurfaced: boolean;
+  userPicked: boolean;
 };
 
 export class CooldownSet {
   private readonly entries = new Map<string, CooldownEntry>();
 
   add(uuid: string): void {
-    this.entries.set(uuid, { surfacedAt: new Date(), editedWhileSurfaced: false });
+    this.entries.set(uuid, {
+      surfacedAt: new Date(),
+      editedWhileSurfaced: false,
+      userPicked: false,
+    });
   }
 
   markEdited(uuid: string): void {
@@ -21,12 +26,27 @@ export class CooldownSet {
     }
   }
 
+  // Flags an entry as having been loaded by an explicit user action (e.g. a
+  // quick-switcher pick). getNext consults this to skip avoidance accounting:
+  // a fragment the user actively sought out is not "engine-surfaced and
+  // rejected", so pressing Next on it must not count as avoidance.
+  markUserPicked(uuid: string): void {
+    const entry = this.entries.get(uuid);
+    if (entry) {
+      entry.userPicked = true;
+    }
+  }
+
   has(uuid: string): boolean {
     return this.entries.has(uuid);
   }
 
   wasEditedWhileSurfaced(uuid: string): boolean {
     return this.entries.get(uuid)?.editedWhileSurfaced ?? false;
+  }
+
+  wasUserPicked(uuid: string): boolean {
+    return this.entries.get(uuid)?.userPicked ?? false;
   }
 
   purgeExpired(now: Date = new Date(), windowMs: number = COOLDOWN_WINDOW_MS): void {

@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, defaultFilter } from "cmdk";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  defaultFilter,
+} from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -8,12 +16,11 @@ import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
 import { useListSequences } from "@api/generated/sequences/sequences";
+import { RecordFragmentPick } from "@api/generated/suggestion/suggestion";
 import { router } from "@/router";
-import { recordFragmentVisit } from "@api/suggestion";
+import { classifyRoute, resolveOpenTarget, type EntityKind } from "./resolve-open-target";
 
 // --- Types ---
-
-type EntityKind = "fragment" | "aspect" | "note" | "reference" | "sequence";
 
 interface QuickSwitcherEntry {
   kind: EntityKind;
@@ -23,36 +30,17 @@ interface QuickSwitcherEntry {
 
 const KIND_ORDER: EntityKind[] = ["fragment", "aspect", "note", "reference", "sequence"];
 
-const KIND_LABELS: Record<EntityKind, string> = {
-  fragment: "Fragments",
-  aspect: "Aspects",
-  note: "Notes",
-  reference: "References",
-  sequence: "Sequences",
-};
-
-const KIND_CHIP_LABELS: Record<EntityKind, string> = {
-  fragment: "Fragment",
-  aspect: "Aspect",
-  note: "Note",
-  reference: "Reference",
-  sequence: "Sequence",
+const KIND_LABELS: Record<EntityKind, { plural: string; singular: string }> = {
+  fragment: { plural: "Fragments", singular: "Fragment" },
+  aspect: { plural: "Aspects", singular: "Aspect" },
+  note: { plural: "Notes", singular: "Note" },
+  reference: { plural: "References", singular: "Reference" },
+  sequence: { plural: "Sequences", singular: "Sequence" },
 };
 
 // --- Helpers ---
 
 const entryId = (entry: QuickSwitcherEntry) => `${entry.kind}:${entry.uuid}`;
-
-const getCurrentRouteKind = (): "fragment-editor" | "suggestion-mode" | "aspect-editor" | "overview" | "other" => {
-  for (const match of router.state.matches) {
-    const { pathname } = match;
-    if (/\/fragments\/[^/]+$/.test(pathname)) return "fragment-editor";
-    if (pathname.endsWith("/suggestion")) return "suggestion-mode";
-    if (/\/aspects\/[^/]+$/.test(pathname)) return "aspect-editor";
-    if (pathname.endsWith("/overview")) return "overview";
-  }
-  return "other";
-};
 
 // --- Skeleton rows ---
 
@@ -73,7 +61,7 @@ const SkeletonRows = () => (
 
 const TypeChip = ({ kind }: { kind: EntityKind }) => (
   <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground">
-    {KIND_CHIP_LABELS[kind]}
+    {KIND_LABELS[kind].singular}
   </span>
 );
 
@@ -149,7 +137,11 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
       fragments.data?.status === 200
         ? fragments.data.data
             .filter((fragment) => !fragment.isDiscarded)
-            .map<QuickSwitcherEntry>((fragment) => ({ kind: "fragment", uuid: fragment.uuid, key: fragment.key }))
+            .map<QuickSwitcherEntry>((fragment) => ({
+              kind: "fragment",
+              uuid: fragment.uuid,
+              key: fragment.key,
+            }))
             .sort((a, b) => a.key.localeCompare(b.key))
         : [];
     map.set("fragment", fragmentData);
@@ -157,7 +149,11 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
     const aspectData =
       aspects.data?.status === 200
         ? aspects.data.data
-            .map<QuickSwitcherEntry>((aspect) => ({ kind: "aspect", uuid: aspect.uuid, key: aspect.key }))
+            .map<QuickSwitcherEntry>((aspect) => ({
+              kind: "aspect",
+              uuid: aspect.uuid,
+              key: aspect.key,
+            }))
             .sort((a, b) => a.key.localeCompare(b.key))
         : [];
     map.set("aspect", aspectData);
@@ -173,7 +169,11 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
     const referenceData =
       references.data?.status === 200
         ? references.data.data
-            .map<QuickSwitcherEntry>((reference) => ({ kind: "reference", uuid: reference.uuid, key: reference.key }))
+            .map<QuickSwitcherEntry>((reference) => ({
+              kind: "reference",
+              uuid: reference.uuid,
+              key: reference.key,
+            }))
             .sort((a, b) => a.key.localeCompare(b.key))
         : [];
     map.set("reference", referenceData);
@@ -181,7 +181,11 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
     const sequenceData =
       sequences.data?.status === 200
         ? sequences.data.data.sequences
-            .map<QuickSwitcherEntry>((sequence) => ({ kind: "sequence", uuid: sequence.uuid, key: sequence.name }))
+            .map<QuickSwitcherEntry>((sequence) => ({
+              kind: "sequence",
+              uuid: sequence.uuid,
+              key: sequence.name,
+            }))
             .sort((a, b) => a.key.localeCompare(b.key))
         : [];
     map.set("sequence", sequenceData);
@@ -218,46 +222,25 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
   const handleSelect = useCallback(
     (entry: QuickSwitcherEntry) => {
       onOpenChange(false);
-      const currentRoute = getCurrentRouteKind();
 
-      if (entry.kind === "fragment") {
-        if (currentRoute === "suggestion-mode") {
-          void router.navigate({
-            to: "/projects/$projectId/suggestion",
-            params: { projectId },
-            search: { fragment: entry.uuid },
-          });
-          void recordFragmentVisit(projectId, entry.uuid).catch(() => {
-            // Non-critical — ignore failures.
-          });
-        } else {
-          void router.navigate({
-            to: "/projects/$projectId/fragments/$fragmentId",
-            params: { projectId, fragmentId: entry.uuid },
-          });
-        }
-      } else if (entry.kind === "aspect") {
-        void router.navigate({
-          to: "/projects/$projectId/aspects/$aspectId",
-          params: { projectId, aspectId: entry.uuid },
-        });
-      } else if (entry.kind === "note") {
-        void router.navigate({
-          to: "/projects/$projectId/notes/$noteId",
-          params: { projectId, noteId: entry.uuid },
-        });
-      } else if (entry.kind === "reference") {
-        void router.navigate({
-          to: "/projects/$projectId/references/$referenceId",
-          params: { projectId, referenceId: entry.uuid },
-        });
-      } else if (entry.kind === "sequence") {
-        void router.navigate({
-          to: "/projects/$projectId/overview",
-          params: { projectId },
-          search: { sequence: entry.uuid, density: "full" },
+      const matchedRouteIds = router.state.matches.map((match) => match.routeId);
+      const currentRoute = classifyRoute(matchedRouteIds);
+
+      // Suggestion-mode fragment picks record a "pick" so the prompting engine
+      // treats the picked fragment as recently surfaced (cooldown) and skips
+      // avoidance accounting when the user later presses Next — without
+      // counting it as engine-rejected. recordPick also bumps
+      // voluntary_open_count. Outside suggestion mode, navigation to the
+      // fragment editor triggers FragmentPage's recordFragmentVisit, which
+      // covers voluntary_open_count for that path.
+      if (entry.kind === "fragment" && currentRoute === "suggestion-mode") {
+        void RecordFragmentPick(projectId, entry.uuid).catch(() => {
+          // Non-critical — stats / cooldown best-effort.
         });
       }
+
+      const target = resolveOpenTarget(currentRoute, entry, projectId);
+      void router.navigate(target);
     },
     [projectId, onOpenChange],
   );
@@ -300,33 +283,32 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
                 <SkeletonRows />
               ) : isEmptyProject ? (
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  This project is empty. Create a fragment, aspect, note, or reference to get started.
+                  This project is empty. Create a fragment, aspect, note, or reference to get
+                  started.
                 </div>
               ) : (
                 <>
                   <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
                     No matches.
                   </CommandEmpty>
-                  {isSearching ? (
-                    allEntries.map(renderItem)
-                  ) : (
-                    KIND_ORDER.flatMap((kind) => {
-                      const entries = entriesByKind.get(kind) ?? [];
-                      if (entries.length === 0) return [];
-                      return [
-                        <CommandGroup
-                          key={kind}
-                          heading={
-                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                              {KIND_LABELS[kind]}
-                            </div>
-                          }
-                        >
-                          {entries.map(renderItem)}
-                        </CommandGroup>,
-                      ];
-                    })
-                  )}
+                  {isSearching
+                    ? allEntries.map(renderItem)
+                    : KIND_ORDER.flatMap((kind) => {
+                        const entries = entriesByKind.get(kind) ?? [];
+                        if (entries.length === 0) return [];
+                        return [
+                          <CommandGroup
+                            key={kind}
+                            heading={
+                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                                {KIND_LABELS[kind].plural}
+                              </div>
+                            }
+                          >
+                            {entries.map(renderItem)}
+                          </CommandGroup>,
+                        ];
+                      })}
                 </>
               )}
             </CommandList>

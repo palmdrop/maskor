@@ -123,6 +123,110 @@ describe("POST /projects/:projectId/suggestion/visit/:fragmentId", () => {
   });
 });
 
+describe("POST /projects/:projectId/suggestion/pick/:fragmentId", () => {
+  it("returns 204 and bumps voluntary_open_count", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const fragment = fragments[0]!;
+
+    const before = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+
+    const response = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/pick/${fragment.uuid}`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(204);
+
+    const after = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+    expect(after.voluntaryOpenCount).toBe(before.voluntaryOpenCount + 1);
+
+    freshContext.cleanup();
+  });
+
+  it("a picked fragment is excluded from the next selection (cooldown applied)", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const active = fragments.filter((fragment) => !fragment.isDiscarded);
+    expect(active.length).toBeGreaterThan(1);
+    const pickedUuid = active[0]!.uuid;
+
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/pick/${pickedUuid}`,
+      { method: "POST" },
+    );
+
+    // Call getNext with NO exclude. Because the picked fragment is in cooldown
+    // and other eligible fragments exist, the engine must not return it on
+    // this fresh call. (Cooldown's all-cooled fallback only kicks in once
+    // every eligible fragment has been cooled — which is not the case here.)
+    const response = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/next`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as SuggestionNextResponse;
+    expect(body.fragment).not.toBeNull();
+    expect(body.fragment!.uuid).not.toBe(pickedUuid);
+
+    freshContext.cleanup();
+  });
+
+  it("avoidance_count is NOT incremented when Next is pressed after a pick", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const pickedUuid = fragments.find((fragment) => !fragment.isDiscarded)!.uuid;
+
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/pick/${pickedUuid}`,
+      { method: "POST" },
+    );
+
+    // Now press Next with the picked fragment as excludeUuid — simulates user
+    // picking a fragment via quick-switcher then skipping with Next.
+    const nextResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/next?exclude=${pickedUuid}`,
+    );
+    expect(nextResponse.status).toBe(200);
+
+    const stats = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      pickedUuid,
+    );
+    expect(stats.avoidanceCount).toBe(0);
+
+    freshContext.cleanup();
+  });
+});
+
 describe("GET /suggestion/next — avoidance_count increment", () => {
   it("increments avoidance_count when Next is called without editing", async () => {
     const freshContext = createTestApp();
