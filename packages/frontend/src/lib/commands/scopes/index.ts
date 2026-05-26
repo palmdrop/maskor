@@ -8,6 +8,8 @@ import { projectConfigCommands } from "./project-config";
 import { projectManagementCommands } from "./project-management";
 import { projectShellCommands } from "./project-shell";
 import { editorCommands } from "./editor";
+import { commandPaletteCommands } from "./command-palette";
+import { quickSwitcherCommands } from "./quick-switcher";
 
 // Aggregates every `defineScopeCommand` array exported from this directory.
 // Each scope file exports both its scope declaration (e.g. `suggestionModeScope`)
@@ -25,4 +27,6 @@ export const scopeCommands = [
   ...projectManagementCommands,
   ...projectShellCommands,
   ...editorCommands,
+  ...commandPaletteCommands,
+  ...quickSwitcherCommands,
 ] as const;

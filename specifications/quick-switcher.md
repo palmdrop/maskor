@@ -5,6 +5,7 @@
 **Shipped**:
 
 - 2026-05-26 — Cmd/Ctrl+O quick-switcher with unified catalog (fragments, aspects, notes, references, sequences), grouped empty-query / flat typed-query rendering, type chips, discarded-fragment filter. Open semantics extracted into a pure `resolveOpenTarget` covering every row of the open-semantics table. Suggestion-mode integration: a fragment pick swaps in place, bumps `voluntary_open_count`, enters cooldown, and is flagged user-picked so the next `Next` skips avoidance accounting. Replaces the standalone `Switch sequence…` palette command with a generic project-scoped `Switch to…` command. Sequence picks navigate to Overview with a merge-search so the user's density preference is preserved on same-route swaps.
+- 2026-05-26 - Defined a command scope for the quick switcher specifically, to ensure all hotkey binds are handled by the command system. Removed the `Switch to` command in favor of the new `Open Quick Switcher` command in the `Quick Switcher` scope.
 
 ---
 

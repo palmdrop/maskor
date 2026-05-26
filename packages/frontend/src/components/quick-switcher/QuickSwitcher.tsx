@@ -10,6 +10,9 @@ import { useListSequences } from "@api/generated/sequences/sequences";
 import { RecordFragmentPick } from "@api/generated/suggestion/suggestion";
 import { router } from "@/router";
 import { classifyRoute, resolveOpenTarget, type EntityKind } from "./resolve-open-target";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
+import { quickSwitcherScope } from "../../lib/commands/scopes/quick-switcher";
+import { useCommands } from "../../lib/commands/useCommands";
 
 // --- Types ---
 
@@ -69,14 +72,14 @@ const EntryRow = ({ entry }: { entry: QuickSwitcherEntry }) => (
 
 interface QuickSwitcherProps {
   projectId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
 }
 
-export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherProps) => {
+export const QuickSwitcher = ({ projectId }: QuickSwitcherProps) => {
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   // Capture-phase listener intercepts Cmd/Ctrl+O before editors see it.
+  /*
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!event.metaKey && !event.ctrlKey) return;
@@ -87,6 +90,7 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [onOpenChange]);
+  */
 
   const fragments = useListFragmentSummaries(projectId);
   const aspects = useListAspects(projectId);
@@ -108,13 +112,20 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
     references.isError ||
     sequences.isError;
 
+  const commands = useCommands();
+  useCommandScope(quickSwitcherScope, {
+    isOpen: () => open,
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  });
+
   // Close and show error toast if any query fails.
   useEffect(() => {
     if (open && hasError) {
-      onOpenChange(false);
+      commands.run("quick-switcher:close");
       toast.error("Failed to load entities. Please try again.");
     }
-  }, [open, hasError, onOpenChange]);
+  }, [open, hasError, commands]);
 
   // Reset query on close.
   useEffect(() => {
@@ -212,7 +223,7 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
 
   const handleSelect = useCallback(
     (entry: QuickSwitcherEntry) => {
-      onOpenChange(false);
+      commands.run("quick-switcher:close");
 
       const matchedRouteIds = router.state.matches.map((match) => match.routeId);
       const currentRoute = classifyRoute(matchedRouteIds);
@@ -233,7 +244,7 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
       const target = resolveOpenTarget(currentRoute, entry, projectId);
       void router.navigate(target);
     },
-    [projectId, onOpenChange],
+    [projectId, commands],
   );
 
   const renderItem = (entry: QuickSwitcherEntry) => (
@@ -250,7 +261,9 @@ export const QuickSwitcher = ({ projectId, open, onOpenChange }: QuickSwitcherPr
   return (
     <Picker
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(open) => {
+        commands.run(open ? "quick-switcher:open" : "quick-switcher:close");
+      }}
       placeholder="Jump to entity…"
       query={query}
       onQueryChange={setQuery}

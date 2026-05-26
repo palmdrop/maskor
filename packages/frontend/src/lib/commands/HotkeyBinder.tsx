@@ -55,10 +55,13 @@ const matchingHotkeyCandidates = (
 ): MergedCommandView[] => {
   const candidates: MergedCommandView[] = [];
   for (const def of map.values()) {
-    if (!def.hotkey) continue;
-    const parsed = parseHotkey(def.hotkey);
-    if (isUnmodifiedSingleKey(parsed) && isTextInput(document.activeElement)) continue;
-    if (matchesEvent(parsed, event)) candidates.push(def);
+    if (!def.hotkey || def.hotkey.length === 0) continue;
+    const hotkeys = typeof def.hotkey === "string" ? [def.hotkey] : def.hotkey;
+    hotkeys.forEach((hotkey) => {
+      const parsed = parseHotkey(hotkey);
+      if (isUnmodifiedSingleKey(parsed) && isTextInput(document.activeElement)) return;
+      if (matchesEvent(parsed, event)) candidates.push(def);
+    });
   }
   return candidates;
 };

@@ -4,7 +4,6 @@ export type CreateKind = "fragment" | "note" | "reference" | "aspect";
 
 export interface ProjectShellContext {
   openCreate: (kind: CreateKind) => void;
-  openQuickSwitcher: () => void;
 }
 
 // Active whenever a project is open (ProjectShellLayout is mounted). Hosts the
@@ -43,17 +42,9 @@ const createAspect = defineScopeCommand(projectShellScope, {
   run: (ctx) => ctx.openCreate("aspect"),
 });
 
-const switchTo = defineScopeCommand(projectShellScope, {
-  id: "project:switch-to",
-  label: "Switch to…",
-  category: "navigation",
-  run: (ctx) => ctx.openQuickSwitcher(),
-});
-
 export const projectShellCommands = [
   createFragment,
   createNote,
   createReference,
   createAspect,
-  switchTo,
 ] as const;

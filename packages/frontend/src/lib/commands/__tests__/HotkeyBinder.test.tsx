@@ -51,8 +51,18 @@ const modKDisabled = defineScopeCommand(scope, {
   },
 });
 
+const modOAndP = defineScopeCommand(scope, {
+  id: "test:mod-o+p",
+  label: "Mod+O and Mod+P",
+  category: "other",
+  hotkey: ["mod+o", "mod+p"],
+  run: () => {
+    ledger.runs.push("test:mod-o+p");
+  },
+});
+
 vi.mock("../catalog", () => ({
-  allCommands: [modK, plainF, modJ, modKDisabled] as const,
+  allCommands: [modK, plainF, modJ, modKDisabled, modOAndP] as const,
 }));
 
 const { CommandsProvider } = await import("../CommandsProvider");
@@ -159,5 +169,25 @@ describe("HotkeyBinder", () => {
     // check here without the enabled twin in the candidate set is covered
     // by the unit-level disabled tests in scope-smoke.test.ts.
     expect(modKDisabled.disabled?.({ marker: "x" })).toBe("not available");
+  });
+
+  it("invokes the matching command on all bound hotkeys", () => {
+    reset();
+    render(
+      <Shell>
+        <Publisher />
+      </Shell>,
+    );
+    fireKeydown({ key: "o", metaKey: true });
+    expect(ledger.runs).toContain("test:mod-o+p");
+
+    reset();
+    render(
+      <Shell>
+        <Publisher />
+      </Shell>,
+    );
+    fireKeydown({ key: "p", metaKey: true });
+    expect(ledger.runs).toContain("test:mod-o+p");
   });
 });

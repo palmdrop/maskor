@@ -11,6 +11,13 @@ import type {
 export const defineScope = <Ctx>(id: string, meta: { label: string }): Scope<Ctx> =>
   ({ id, label: meta.label }) as Scope<Ctx>;
 
+export interface CommandInputBase<Id extends string> {
+  id: Id;
+  label: string;
+  category: CommandCategory;
+  hotkey?: string | string[];
+}
+
 // =====================================================================
 // defineGlobalCommand
 //
@@ -22,21 +29,13 @@ export const defineScope = <Ctx>(id: string, meta: { label: string }): Scope<Ctx
 // gives `A` a single inference site (`items: () => readonly A[] | …`).
 // =====================================================================
 
-interface GlobalCommandInputWithArg<Id extends string, A> {
-  id: Id;
-  label: string;
-  category: CommandCategory;
-  hotkey?: string;
+interface GlobalCommandInputWithArg<Id extends string, A> extends CommandInputBase<Id> {
   arg: CommandArg<A>;
   disabled?: () => string | undefined;
   run: (arg: A) => void | Promise<void>;
 }
 
-interface GlobalCommandInputNoArg<Id extends string> {
-  id: Id;
-  label: string;
-  category: CommandCategory;
-  hotkey?: string;
+interface GlobalCommandInputNoArg<Id extends string> extends CommandInputBase<Id> {
   arg?: undefined;
   disabled?: () => string | undefined;
   run: () => void | Promise<void>;
@@ -60,21 +59,13 @@ export function defineGlobalCommand(def: any): any {
 // scope's ctx so commands can derive items from published state.
 // =====================================================================
 
-interface ScopeCommandInputWithArg<Id extends string, A, Ctx> {
-  id: Id;
-  label: string;
-  category: CommandCategory;
-  hotkey?: string;
+interface ScopeCommandInputWithArg<Id extends string, A, Ctx> extends CommandInputBase<Id> {
   arg: ScopeCommandArg<A, Ctx>;
   disabled?: (ctx: Ctx) => string | undefined;
   run: (ctx: Ctx, arg: A) => void | Promise<void>;
 }
 
-interface ScopeCommandInputNoArg<Id extends string, Ctx> {
-  id: Id;
-  label: string;
-  category: CommandCategory;
-  hotkey?: string;
+interface ScopeCommandInputNoArg<Id extends string, Ctx> extends CommandInputBase<Id> {
   arg?: undefined;
   disabled?: (ctx: Ctx) => string | undefined;
   run: (ctx: Ctx) => void | Promise<void>;

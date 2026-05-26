@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Picker } from "@/components/picker/Picker";
 import { useCommandsContext } from "@lib/commands/CommandsProvider";
 import type { CommandCategory, MergedCommandView } from "@lib/commands/types";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
+import { commandPaletteScope } from "../../lib/commands/scopes/command-palette";
 
 // --- Hotkey formatting ---
 
@@ -67,7 +69,12 @@ const CommandRow = ({
           {effectiveDisabledReason}
         </span>
       )}
-      {command.hotkey && <HotkeyBadge hotkey={command.hotkey} />}
+      {command.hotkey && (
+        /* TODO: Figure out how to display multiple hotkeys */
+        <HotkeyBadge
+          hotkey={typeof command.hotkey === "string" ? command.hotkey : command.hotkey[0]}
+        />
+      )}
     </div>
   </div>
 );
@@ -105,7 +112,13 @@ const getEffectiveDisabledReason = (command: MergedCommandView): string | undefi
 
 // --- Global category ordering ---
 
-const CATEGORY_ORDER = ["navigation", "create", "project", "other"] as const satisfies CommandCategory[];
+const CATEGORY_ORDER = [
+  "navigation",
+  "create",
+  "project",
+  "other",
+] as const satisfies CommandCategory[];
+
 const CATEGORY_LABELS: Record<(typeof CATEGORY_ORDER)[number], string> = {
   navigation: "Navigation",
   create: "Create",
@@ -132,19 +145,11 @@ export const CommandPalette = () => {
 
   const { getMap, run, getActiveScopes } = useCommandsContext();
 
-  // Capture-phase listener intercepts Cmd+K and Cmd+Shift+P before editors see them.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey && !event.ctrlKey) return;
-      const isK = !event.shiftKey && event.key.toLowerCase() === "k";
-      const isShiftP = event.shiftKey && event.key.toLowerCase() === "p";
-      if (!isK && !isShiftP) return;
-      event.preventDefault();
-      setOpen(true);
-    };
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, []);
+  useCommandScope(commandPaletteScope, {
+    isOpen: () => open,
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  });
 
   // Reset all step state when palette closes.
   useEffect(() => {
@@ -243,7 +248,7 @@ export const CommandPalette = () => {
 
     if (!command.arg) {
       run(command.id);
-      setOpen(false);
+      run("command-palette:close");
       return;
     }
 
@@ -266,7 +271,7 @@ export const CommandPalette = () => {
     } catch (error) {
       if (argGenerationRef.current !== generation) return;
       console.error("[command-palette] Failed to load arg items:", error);
-      setOpen(false);
+      run("command-palette:close");
     } finally {
       if (argGenerationRef.current === generation) {
         setArgLoading(false);
@@ -277,7 +282,7 @@ export const CommandPalette = () => {
   const handleSelectArg = (item: unknown) => {
     if (!activeArgCommand) return;
     run(activeArgCommand.id, item);
-    setOpen(false);
+    run("command-palette:close");
   };
 
   const handleEscapeKeyDown = (event: Event) => {
@@ -331,7 +336,9 @@ export const CommandPalette = () => {
   return (
     <Picker
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(open) => {
+        run(open ? "command-palette:open" : "command-palette:close");
+      }}
       placeholder={
         step === "args" ? (activeArgCommand?.arg?.placeholder ?? "Select…") : "Search commands…"
       }

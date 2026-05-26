@@ -12,7 +12,6 @@ export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
-  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
 
   useVaultEvents(projectId);
 
@@ -20,11 +19,7 @@ export const ProjectShellLayout = () => {
     setActiveCreate(kind);
   }, []);
 
-  const openQuickSwitcher = useCallback(() => {
-    setQuickSwitcherOpen(true);
-  }, []);
-
-  useCommandScope(projectShellScope, { openCreate, openQuickSwitcher });
+  useCommandScope(projectShellScope, { openCreate });
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
 
@@ -84,11 +79,7 @@ export const ProjectShellLayout = () => {
         activeCreate={activeCreate}
         onClose={() => setActiveCreate(null)}
       />
-      <QuickSwitcher
-        projectId={projectId}
-        open={quickSwitcherOpen}
-        onOpenChange={setQuickSwitcherOpen}
-      />
+      <QuickSwitcher projectId={projectId} />
     </div>
   );
 };

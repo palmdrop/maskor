@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { CommandInputBase } from "./define";
 
 // =====================================================================
 // Shared primitives
@@ -101,12 +102,8 @@ export type AnyCommandDef =
 // ref so per-row state stays fresh without re-rendering.
 // =====================================================================
 
-export interface MergedCommandView<T = unknown> {
-  id: string;
-  label: string;
+export interface MergedCommandView<T = unknown> extends CommandInputBase<string> {
   scope: string; // "global" or scope id
-  category: CommandCategory;
-  hotkey?: string;
   arg?: CommandArg<T>;
   disabledReason?: string;
   run: (arg?: T) => void | Promise<void>;
