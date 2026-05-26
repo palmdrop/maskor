@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { Command, CommandInput, CommandList } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ReactNode } from "react";
@@ -26,6 +27,16 @@ export function Picker({
   onEscapeKeyDown,
   children,
 }: PickerProps) {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  // useLayoutEffect fires before Radix's own useEffect focus trap activates,
+  // so document.activeElement is still the editor/button at capture time.
+  useLayoutEffect(() => {
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+  }, [open]);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -40,6 +51,11 @@ export function Picker({
             "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           )}
           onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            returnFocusRef.current?.focus();
+            returnFocusRef.current = null;
+          }}
         >
           <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
           <Command loop filter={filter}>
