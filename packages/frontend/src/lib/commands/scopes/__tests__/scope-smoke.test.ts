@@ -124,7 +124,8 @@ describe("scopes/project-management", () => {
 describe("scopes/project-shell", () => {
   it("each create:* command calls openCreate with the matching kind", () => {
     const openCreate = vi.fn();
-    const ctx: ProjectShellContext = { openCreate };
+    const openQuickSwitcher = vi.fn();
+    const ctx: ProjectShellContext = { openCreate, openQuickSwitcher };
 
     find(projectShellCommands, "create:fragment").run(ctx);
     expect(openCreate).toHaveBeenLastCalledWith("fragment");
@@ -137,5 +138,14 @@ describe("scopes/project-shell", () => {
 
     find(projectShellCommands, "create:aspect").run(ctx);
     expect(openCreate).toHaveBeenLastCalledWith("aspect");
+  });
+
+  it("project:switch-to calls openQuickSwitcher", () => {
+    const openCreate = vi.fn();
+    const openQuickSwitcher = vi.fn();
+    const ctx: ProjectShellContext = { openCreate, openQuickSwitcher };
+
+    find(projectShellCommands, "project:switch-to").run(ctx);
+    expect(openQuickSwitcher).toHaveBeenCalledOnce();
   });
 });

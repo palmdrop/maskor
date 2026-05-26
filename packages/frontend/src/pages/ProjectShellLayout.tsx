@@ -6,11 +6,13 @@ import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project-shell";
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
+import { QuickSwitcher } from "@components/quick-switcher/QuickSwitcher";
 
 export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
 
   useVaultEvents(projectId);
 
@@ -18,7 +20,11 @@ export const ProjectShellLayout = () => {
     setActiveCreate(kind);
   }, []);
 
-  useCommandScope(projectShellScope, { openCreate });
+  const openQuickSwitcher = useCallback(() => {
+    setQuickSwitcherOpen(true);
+  }, []);
+
+  useCommandScope(projectShellScope, { openCreate, openQuickSwitcher });
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
 
@@ -77,6 +83,11 @@ export const ProjectShellLayout = () => {
         projectId={projectId}
         activeCreate={activeCreate}
         onClose={() => setActiveCreate(null)}
+      />
+      <QuickSwitcher
+        projectId={projectId}
+        open={quickSwitcherOpen}
+        onOpenChange={setQuickSwitcherOpen}
       />
     </div>
   );

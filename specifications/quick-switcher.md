@@ -1,8 +1,8 @@
 # Spec: Quick-switcher
 
-**Status**: Draft
-**Last updated**: 2026-05-25
-**Shipped**:
+**Status**: Shipped
+**Last updated**: 2026-05-26
+**Shipped**: 2026-05-26
 
 ---
 
