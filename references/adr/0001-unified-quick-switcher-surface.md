@@ -1,0 +1,3 @@
+# Unified quick-switcher surface
+
+Maskor's entity quick-switcher (`Cmd/Ctrl+O`) is a single unified surface across all entity types — fragments, aspects, notes, references, sequences — rather than per-type surfaces in the VS Code "Go to File" vs "Go to Symbol" style. Writers think of these as peers ("jump to X" rarely begins with classifying X first); a unified surface lets the user type once and resolve to anything in the active project. Per-type entry points are intentionally cheap to add later (type-prefix filters like `f:`, type-scoped palette launchers) and far harder to undo if we had shipped them split first.

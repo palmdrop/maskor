@@ -70,14 +70,14 @@ The prompting engine reads per-fragment statistics from the DB. These stats are 
 
 | Stat                   | Description                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `voluntary_open_count` | How many times the user opened this fragment outside suggestion mode (via fragment list or overview tile).                                       |
+| `voluntary_open_count` | How many times the user explicitly chose this fragment via any user-initiated action (fragment list, overview tile, quick-switcher, deep link, …) — i.e. anything other than the prompting engine surfacing it. Counts in suggestion mode too: a quick-switcher pick while inside suggestion mode increments this stat.   |
 | `prompt_accept_count`  | How many times this fragment was loaded as a suggestion in suggestion mode.                                                                      |
-| `avoidance_count`      | How many times this fragment was loaded in suggestion mode and the user pressed Next without saving any edit (`FRAGMENT_UPDATE` did not follow). |
+| `avoidance_count`      | How many times this fragment was surfaced by the prompting engine in suggestion mode and the user pressed Next without saving any edit (`FRAGMENT_UPDATE` did not follow). Quick-switcher picks that are then skipped do not count — avoidance is specifically the signal that the engine's pick was rejected. |
 | `edit_count`           | Total number of saves that included a content or metadata change.                                                                                |
 
 Stats are updated synchronously as the relevant events occur (fragment opened, prompt accepted, edit saved, etc.). They are Maskor-internal — not written to vault files, not exposed in the fragment API response.
 
-**Voluntary open frequency**: A fragment the user frequently seeks out voluntarily is already receiving attention and should be deprioritized in prompting.
+**Voluntary open frequency**: A fragment the user frequently seeks out voluntarily — through any explicit choice, including a quick-switcher pick made from inside suggestion mode — is already receiving attention and should be deprioritized in prompting.
 
 **Avoidance**: Repeated load-and-skip-without-edit is a signal that the user either considers the fragment done or does not want to work on it. See `readyStatus nudge` below.
 

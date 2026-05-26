@@ -72,6 +72,8 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Export**: The operation that assembles fragments in sequence order into a single output file (Markdown, plain text, Word, or PDF), ending Maskor's responsibility for the content. _Avoid_: publish, output, render.
 
+**Quick-switcher**: The unified fuzzy-search surface for jumping to any existing entity within the active project — fragments, aspects, notes, references, sequences. Sibling to the command palette: the palette runs actions, the quick-switcher selects entities. Project-scoped: cross-project switching stays in the palette as `Switch project…`. Trigger verb: "switch to". _Avoid_: quick-open (VS Code term, file-centric), quick-switcher hyphen variants ("quickswitcher", "quick switch"), entity picker (Picker is the underlying primitive, not the feature).
+
 **Extract**: The act of creating a new entity (fragment, note, reference, or aspect) from a contiguous text selection inside another entity's body; the source body may keep, drop, or be replaced with a link to the new entity. _Avoid_: promote, lift, split, refactor.
 
 **Preview**: The read-only surface that renders any sequence as continuously assembled prose for reading and pre-export inspection, sharing assembly logic with export. _Avoid_: read view, draft view, export preview.

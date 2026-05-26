@@ -1,7 +1,7 @@
 # Spec Drafts
 
 **Status**: Drafts index
-**Last updated**: 2026-05-22
+**Last updated**: 2026-05-25
 
 ---
 
@@ -12,22 +12,6 @@ A parking lot for feature ideas that warrant their own spec — but are not yet 
 When an entry graduates, it becomes its own `specifications/<slug>.md` and its stub is removed from here.
 
 This file is not a roadmap. Entries are not prioritized; ordering is rough.
-
----
-
-## Quick-switching / entity quick-open
-
-**Why:** A writer working across many fragments, notes, and references needs a single fast surface to jump between them. Today the only ways to open an entity are the fragment list view, an overview tile, or the prompting flow. Named as a planned sibling spec in `command-palette.md` (the `Cmd/Ctrl+O` quick-open) but not yet specced in its own right.
-
-**Related specs:** `command-palette.md`, `navigation.md`
-
-**Initial questions:**
-
-- Single entity type per session, or unified (fragments + notes + refs + aspects + projects)?
-- Same `Picker` primitive as the palette, or a distinct surface?
-- Recency / pinning support, or strictly fuzzy-search?
-- Does opening an entity replace the current editor, or compose with [[tabs / multiple open editors]]?
-- How does the feature work in different views? In suggestion mode, does quick-switch force-change the suggestion, or do we swap to the regular fragment editor?
 
 ---
 
