@@ -1,123 +1,38 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import type { OverviewDensity } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  pointerWithin,
-  useDroppable,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
 
 import {
   useListSequences,
-  usePlaceFragment,
-  useMoveFragment,
-  useUnplaceFragment,
   useDesignateSequenceMain,
-  useCreateSection,
-  useRenameSection,
-  useDeleteSection,
   getListSequencesQueryKey,
-  type ListSequencesResponse,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
-import { Heading } from "@components/heading";
-import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
+import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { TileContent } from "./components/TileContent";
-import { SortableTile } from "./components/SortableTile";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
-import { ArcPanel, ARC_PANEL_HEIGHT } from "./components/ArcPanel";
+import { ArcPanel } from "./components/ArcPanel";
 import { ArcLegend } from "./components/ArcLegend";
-import { resolveAspectColor } from "./utils/aspectColors";
+import { PoolZone } from "./components/PoolZone";
+import { SortableTile } from "./components/SortableTile";
+import { SequenceHeader } from "./components/SequenceHeader";
+import { SequenceSections } from "./components/SequenceSections";
 import { computeSequenceLayout } from "./utils/layout";
-import { buildArcSeries, type ArcSeries } from "./utils/arcData";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
-
-const POOL_ZONE_ID = "pool-zone";
-
-const SectionZone = ({
-  children,
-  sectionId,
-  isEmpty,
-  fragmentUuids,
-  width,
-}: {
-  children: React.ReactNode;
-  sectionId: string;
-  isEmpty: boolean;
-  fragmentUuids: string[];
-  width: number;
-}) => {
-  const { setNodeRef, isOver } = useDroppable({ id: sectionId });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ width }}
-      className={`flex flex-row gap-3 min-h-36 p-4 rounded-lg border-2 border-dashed transition-colors ${
-        isOver ? "border-primary/50 bg-primary/5" : "border-border/50"
-      }`}
-    >
-      <SortableContext items={fragmentUuids} strategy={horizontalListSortingStrategy}>
-        {isEmpty && !isOver && (
-          <p className="text-sm text-muted-foreground self-center mx-auto">
-            Drag fragments here to build your sequence.
-          </p>
-        )}
-        {children}
-      </SortableContext>
-    </div>
-  );
-};
-
-const PoolZone = ({
-  children,
-  isEmpty,
-  poolFragmentUuids,
-}: {
-  children: React.ReactNode;
-  isEmpty: boolean;
-  poolFragmentUuids: string[];
-}) => {
-  const { setNodeRef, isOver } = useDroppable({ id: POOL_ZONE_ID });
-  return (
-    <div
-      ref={setNodeRef}
-      className={`min-h-36 p-4 rounded-lg border-2 border-dashed transition-colors ${
-        isOver ? "border-primary/50 bg-primary/5" : "border-border/50"
-      }`}
-    >
-      <SortableContext items={poolFragmentUuids} strategy={rectSortingStrategy}>
-        <div className="flex flex-wrap gap-3">
-          {isEmpty && !isOver && (
-            <p className="text-sm text-muted-foreground self-center mx-auto">
-              All fragments are placed in the sequence.
-            </p>
-          )}
-          {children}
-        </div>
-      </SortableContext>
-    </div>
-  );
-};
+import { useSectionManager } from "./hooks/useSectionManager";
+import { useSequenceDnD } from "./hooks/useSequenceDnD";
+import { useArcData } from "./hooks/useArcData";
 
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
@@ -134,21 +49,7 @@ export const OverviewPage = () => {
     });
   };
 
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedFragmentUuid, setSelectedFragmentUuid] = useState<string | null>(null);
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [editingSectionValue, setEditingSectionValue] = useState<string>("");
-  const [confirmingDeleteSectionId, setConfirmingDeleteSectionId] = useState<string | null>(null);
-  const [hiddenAspectKeys, setHiddenAspectKeys] = useState<Set<string>>(new Set());
-
-  const toggleAspectVisibility = useCallback((aspectKey: string) => {
-    setHiddenAspectKeys((previous) => {
-      const next = new Set(previous);
-      if (next.has(aspectKey)) next.delete(aspectKey);
-      else next.add(aspectKey);
-      return next;
-    });
-  }, []);
 
   const { isRebuilding } = useRebuildStatus();
 
@@ -171,26 +72,6 @@ export const OverviewPage = () => {
     bundle?.sequences.find((s) => s.isMain);
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
-
-  const colorByAspectKey = useMemo(() => {
-    const map = new Map<string, string>();
-    const seenKeys = new Set<string>();
-    for (const aspect of aspectList) {
-      map.set(aspect.key, resolveAspectColor(aspect.key, aspect.color));
-      seenKeys.add(aspect.key);
-    }
-    // Cover aspect keys present on fragments but not (yet) in the aspects index —
-    // fall back to the deterministic palette so the tile color matches the arc.
-    for (const fragment of allFragments) {
-      for (const aspectKey of Object.keys(fragment.aspects)) {
-        if (!seenKeys.has(aspectKey)) {
-          map.set(aspectKey, resolveAspectColor(aspectKey, undefined));
-          seenKeys.add(aspectKey);
-        }
-      }
-    }
-    return map;
-  }, [aspectList, allFragments]);
 
   const sectionsData = useMemo(() => {
     if (!sequence) return [];
@@ -233,41 +114,6 @@ export const OverviewPage = () => {
   const sequenceLayout = useMemo(
     () => computeSequenceLayout(sectionsData, density),
     [sectionsData, density],
-  );
-
-  // Stale-while-drag: hold the previously rendered arc series until the drag
-  // ends. The user's optimistic in-flight reorderings still update tile DOM
-  // positions, but the curve only catches up after `onDragEnd` clears
-  // `activeDragId`. Avoids per-frame recomputation while the user drags.
-  const arcSeriesCacheRef = useRef<ArcSeries[]>([]);
-
-  // Refs for syncing horizontal scroll between the sticky arc panel wrapper and
-  // the tile scroller. The arc wrapper uses overflow-x:hidden so the SVG is
-  // clipped to the viewport; its scrollLeft mirrors the tile scroller so the
-  // curves stay aligned with their tiles during horizontal scroll.
-  const tileScrollerRef = useRef<HTMLDivElement>(null);
-  const arcScrollerRef = useRef<HTMLDivElement>(null);
-  const handleTileScroll = useCallback(() => {
-    if (tileScrollerRef.current && arcScrollerRef.current) {
-      arcScrollerRef.current.scrollLeft = tileScrollerRef.current.scrollLeft;
-    }
-  }, []);
-  const arcSeries = useMemo<ArcSeries[]>(() => {
-    if (activeDragId !== null) return arcSeriesCacheRef.current;
-    const next = buildArcSeries(
-      sequenceLayout.sections.flatMap((section) => section.fragmentUuids),
-      fragmentByUuid,
-      sequenceLayout.centerByFragmentUuid,
-      ARC_PANEL_HEIGHT,
-    );
-    arcSeriesCacheRef.current = next;
-    return next;
-  }, [activeDragId, sequenceLayout, fragmentByUuid]);
-
-  const arcAspectKeys = useMemo(() => arcSeries.map((series) => series.aspectKey), [arcSeries]);
-  const visibleArcSeries = useMemo(
-    () => arcSeries.filter((series) => !hiddenAspectKeys.has(series.aspectKey)),
-    [arcSeries, hiddenAspectKeys],
   );
 
   const sequenceByUuid = useMemo(
@@ -326,92 +172,7 @@ export const OverviewPage = () => {
 
   const listQueryKey = getListSequencesQueryKey(projectId);
 
-  const placeFragment = usePlaceFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, data: { fragmentUuid, sectionUuid, position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticPlace(currentSequence, fragmentUuid, sectionUuid, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
-  });
-
-  const moveFragment = useMoveFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, fragmentUuid, data: { sectionUuid, position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticMove(currentSequence, fragmentUuid, sectionUuid, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
-  });
-
-  const unplaceFragment = useUnplaceFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, fragmentUuid }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticUnplace(currentSequence, fragmentUuid);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
-  });
+  const sequenceMutations = useSequenceMutations(listQueryKey);
 
   const designateMain = useDesignateSequenceMain({
     mutation: {
@@ -421,53 +182,23 @@ export const OverviewPage = () => {
     },
   });
 
-  const refreshActiveSequence = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: listQueryKey });
-  }, [queryClient, listQueryKey]);
+  const sectionManager = useSectionManager({ projectId, sequence, listQueryKey });
 
-  const createSection = useCreateSection({
-    mutation: {
-      onSuccess: (data) => {
-        if (data.status !== 200) return;
-        const updatedSeq = data.data.sequences.find(
-          (s) => s.uuid === (activeSequenceId ?? sequence?.uuid),
-        );
-        const newSection = updatedSeq?.sections[updatedSeq.sections.length - 1];
-        if (newSection) {
-          setEditingSectionId(newSection.uuid);
-          setEditingSectionValue("");
-        }
-        refreshActiveSequence();
-      },
-    },
+  const dnd = useSequenceDnD({
+    sequence,
+    projectId,
+    sectionsData,
+    poolFragmentUuids,
+    fragmentSectionMap,
+    mutations: sequenceMutations,
   });
 
-  const renameSection = useRenameSection({
-    mutation: {
-      onSuccess: () => {
-        refreshActiveSequence();
-      },
-    },
-  });
-
-  const handleSectionRenameCommit = (sectionId: string, newName: string) => {
-    if (!sequence) return;
-    renameSection.mutate({
-      projectId,
-      sequenceId: sequence.uuid,
-      sectionId,
-      data: { name: newName },
-    });
-    setEditingSectionId(null);
-  };
-
-  const deleteSection = useDeleteSection({
-    mutation: {
-      onSuccess: () => {
-        setConfirmingDeleteSectionId(null);
-        refreshActiveSequence();
-      },
-    },
+  const arcData = useArcData({
+    activeDragId: dnd.activeDragId,
+    sequenceLayout,
+    fragmentByUuid,
+    aspectList,
+    allFragments,
   });
 
   const commands = useCommands();
@@ -477,109 +208,28 @@ export const OverviewPage = () => {
     designateMain: () => {
       if (sequence) designateMain.mutate({ projectId, sequenceId: sequence.uuid });
     },
-    createSectionPending: createSection.isPending,
+    createSectionPending: sectionManager.createSection.isPending,
     createSection: () => {
       if (sequence)
-        createSection.mutate({ projectId, sequenceId: sequence.uuid, data: { name: "" } });
-    },
-    confirmingDeleteSectionId,
-    deleteSection: () => {
-      if (sequence && confirmingDeleteSectionId) {
-        deleteSection.mutate({
+        sectionManager.createSection.mutate({
           projectId,
           sequenceId: sequence.uuid,
-          sectionId: confirmingDeleteSectionId,
+          data: { name: "" },
+        });
+    },
+    confirmingDeleteSectionId: sectionManager.confirmingDeleteSectionId,
+    deleteSection: () => {
+      if (sequence && sectionManager.confirmingDeleteSectionId) {
+        sectionManager.deleteSection.mutate({
+          projectId,
+          sequenceId: sequence.uuid,
+          sectionId: sectionManager.confirmingDeleteSectionId,
         });
       }
     },
   });
 
-  const handleSectionRenameKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    sectionId: string,
-    originalName: string,
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSectionRenameCommit(sectionId, editingSectionValue);
-    } else if (e.key === "Escape") {
-      setEditingSectionId(null);
-      setEditingSectionValue(originalName);
-    }
-  };
-
-  const collisionDetection: CollisionDetection = useCallback((args) => {
-    const pointerCollisions = pointerWithin(args);
-    if (pointerCollisions.length > 0) return pointerCollisions;
-    return closestCenter(args);
-  }, []);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  const handleDragStart = ({ active }: DragStartEvent) => {
-    setActiveDragId(String(active.id));
-  };
-
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveDragId(null);
-    if (!over || !sequence) return;
-
-    const activeId = String(active.id);
-    const overId = String(over.id);
-
-    const isActiveInSequence = fragmentSectionMap.has(activeId);
-    const sectionIds = new Set(sectionsData.map((s) => s.uuid));
-    const isOverInSequence = sectionIds.has(overId) || fragmentSectionMap.has(overId);
-    const isOverInPool = poolFragmentUuids.includes(overId) || overId === POOL_ZONE_ID;
-
-    const targetSectionUuid = sectionIds.has(overId)
-      ? overId
-      : (fragmentSectionMap.get(overId) ?? sectionsData[0]?.uuid ?? "");
-
-    if (!isActiveInSequence && isOverInSequence) {
-      const targetSection = sectionsData.find((s) => s.uuid === targetSectionUuid);
-      const position = sectionIds.has(overId)
-        ? (targetSection?.fragmentUuids.length ?? 0)
-        : (targetSection?.fragmentUuids.indexOf(overId) ?? 0);
-      placeFragment.mutate({
-        projectId,
-        sequenceId: sequence.uuid,
-        data: { fragmentUuid: activeId, sectionUuid: targetSectionUuid, position },
-      });
-    } else if (isActiveInSequence && isOverInSequence && activeId !== overId) {
-      const targetSection = sectionsData.find((s) => s.uuid === targetSectionUuid);
-      if (!targetSection) return;
-
-      if (sectionIds.has(overId)) {
-        const position = targetSection.fragmentUuids.length;
-        moveFragment.mutate({
-          projectId,
-          sequenceId: sequence.uuid,
-          fragmentUuid: activeId,
-          data: { sectionUuid: targetSectionUuid, position },
-        });
-      } else {
-        const targetFragmentUuids = targetSection.fragmentUuids;
-        const targetIndex = targetFragmentUuids.indexOf(overId);
-        if (targetIndex !== -1) {
-          moveFragment.mutate({
-            projectId,
-            sequenceId: sequence.uuid,
-            fragmentUuid: activeId,
-            data: { sectionUuid: targetSectionUuid, position: targetIndex },
-          });
-        }
-      }
-    } else if (isActiveInSequence && (isOverInPool || (!isOverInSequence && !isOverInPool))) {
-      unplaceFragment.mutate({
-        projectId,
-        sequenceId: sequence.uuid,
-        fragmentUuid: activeId,
-      });
-    }
-  };
-
-  const activeDragFragment = activeDragId ? fragmentByUuid.get(activeDragId) : undefined;
+  const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -602,217 +252,67 @@ export const OverviewPage = () => {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>
-            <div className="flex items-center gap-3">
-              <Heading level={1}>{sequence?.name ?? "Overview"}</Heading>
-              {sequence && !sequence.isMain && (
-                <button
-                  type="button"
-                  onClick={() => commands.run("overview:designate-main")}
-                  disabled={designateMain.isPending}
-                  className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                >
-                  Make main
-                </button>
-              )}
-              {sequence?.isMain && (
-                <span className="text-xs px-2 py-1 rounded border border-border text-muted-foreground">
-                  Main
-                </span>
-              )}
-              <div
-                role="group"
-                aria-label="Tile density"
-                className="ml-auto flex items-center rounded border border-border overflow-hidden"
-              >
-                {(["full", "compact", "mini"] as const).map((tier) => {
-                  const isActive = density === tier;
-                  return (
-                    <button
-                      key={tier}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => handleDensityChange(tier)}
-                      className={`text-xs px-2 py-1 capitalize transition-colors ${
-                        isActive
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {tier}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <SequenceHeader
+              sequence={sequence}
+              density={density}
+              designateMainPending={designateMain.isPending}
+              onDesignateMain={() => commands.run("overview:designate-main")}
+              onDensityChange={handleDensityChange}
+            />
 
             <DndContext
-              sensors={sensors}
-              collisionDetection={collisionDetection}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
+              sensors={dnd.sensors}
+              collisionDetection={dnd.collisionDetection}
+              onDragStart={dnd.handleDragStart}
+              onDragEnd={dnd.handleDragEnd}
             >
-              {sequenceLayout.totalWidth > 0 && arcAspectKeys.length > 0 && (
+              {sequenceLayout.totalWidth > 0 && arcData.arcAspectKeys.length > 0 && (
                 <ArcLegend
-                  aspectKeys={arcAspectKeys}
-                  colorByAspectKey={colorByAspectKey}
-                  hiddenAspectKeys={hiddenAspectKeys}
-                  onToggle={toggleAspectVisibility}
+                  aspectKeys={arcData.arcAspectKeys}
+                  colorByAspectKey={arcData.colorByAspectKey}
+                  hiddenAspectKeys={arcData.hiddenAspectKeys}
+                  onToggle={arcData.toggleAspectVisibility}
                 />
               )}
 
               {sequenceLayout.totalWidth > 0 && (
-                <div ref={arcScrollerRef} className="overflow-x-hidden shrink-0 sticky top-0 z-10">
+                <div
+                  ref={arcData.arcScrollerRef}
+                  className="overflow-x-hidden shrink-0 sticky top-0 z-10"
+                >
                   <ArcPanel
                     width={sequenceLayout.totalWidth}
-                    series={visibleArcSeries}
-                    colorByAspectKey={colorByAspectKey}
+                    series={arcData.visibleArcSeries}
+                    colorByAspectKey={arcData.colorByAspectKey}
                   />
                 </div>
               )}
 
-              <div
-                ref={tileScrollerRef}
-                className="overflow-x-auto shrink-0"
-                onScroll={handleTileScroll}
-              >
-                <div
-                  className="flex flex-col gap-2"
-                  style={{ width: sequenceLayout.totalWidth || undefined, minWidth: "100%" }}
-                >
-                  <div className="flex flex-row gap-3 items-start">
-                    {sectionsData.map((sectionData, sectionIndex) => (
-                      <section
-                        key={sectionData.uuid}
-                        className="flex flex-col gap-2 shrink-0"
-                        style={{ width: sequenceLayout.sections[sectionIndex]?.width }}
-                      >
-                        {confirmingDeleteSectionId === sectionData.uuid ? (
-                          <div className="flex flex-col gap-1">
-                            <p className="text-sm text-muted-foreground">
-                              Delete section?{" "}
-                              {sectionData.fragmentUuids.length > 0 && (
-                                <span>
-                                  {sectionData.fragmentUuids.length} fragment
-                                  {sectionData.fragmentUuids.length !== 1 ? "s" : ""} will return to
-                                  the pool.
-                                </span>
-                              )}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => commands.run("overview:delete-section")}
-                                className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
-                              >
-                                Delete
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmingDeleteSectionId(null)}
-                                className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="group flex items-center gap-2">
-                            {editingSectionId === sectionData.uuid ? (
-                              <input
-                                autoFocus
-                                value={editingSectionValue}
-                                onChange={(e) => setEditingSectionValue(e.target.value)}
-                                onKeyDown={(e) =>
-                                  handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)
-                                }
-                                onBlur={() =>
-                                  handleSectionRenameCommit(sectionData.uuid, editingSectionValue)
-                                }
-                                className="text-sm font-medium text-muted-foreground uppercase tracking-wide bg-transparent border-b border-border focus:outline-none"
-                              />
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingSectionId(sectionData.uuid);
-                                  setEditingSectionValue(sectionData.name);
-                                }}
-                                className="text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground text-left"
-                              >
-                                {sectionData.name || (
-                                  <span className="italic">Untitled section</span>
-                                )}
-                              </button>
-                            )}
-                            <span className="text-sm font-medium text-muted-foreground tabular-nums">
-                              ({sectionData.fragmentUuids.length})
-                            </span>
-                            {sectionsData.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmingDeleteSectionId(sectionData.uuid)}
-                                className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                                aria-label={`Delete section "${sectionData.name || "Untitled section"}"`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6l-1 14H6L5 6" />
-                                  <path d="M10 11v6M14 11v6" />
-                                  <path d="M9 6V4h6v2" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        <SectionZone
-                          sectionId={sectionData.uuid}
-                          isEmpty={sectionData.fragmentUuids.length === 0}
-                          fragmentUuids={sectionData.fragmentUuids}
-                          width={sequenceLayout.sections[sectionIndex]?.width ?? 0}
-                        >
-                          {sectionData.fragmentUuids.map((uuid) => {
-                            const fragment = fragmentByUuid.get(uuid);
-                            if (!fragment) return null;
-                            return (
-                              <SortableTile
-                                key={uuid}
-                                fragment={fragment}
-                                density={density}
-                                colorByAspectKey={colorByAspectKey}
-                                violationTooltips={getViolationTooltips(uuid)}
-                                cycleTooltips={getCycleTooltips(uuid)}
-                                isSelected={selectedFragmentUuid === uuid}
-                                onSelect={setSelectedFragmentUuid}
-                              />
-                            );
-                          })}
-                        </SectionZone>
-                      </section>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {sequence && (
-                <button
-                  type="button"
-                  onClick={() => commands.run("overview:add-section")}
-                  disabled={createSection.isPending}
-                  className="text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50 self-start"
-                >
-                  + Add section
-                </button>
-              )}
+              <SequenceSections
+                ref={arcData.tileScrollerRef}
+                sectionsData={sectionsData}
+                sequenceLayout={sequenceLayout}
+                density={density}
+                colorByAspectKey={arcData.colorByAspectKey}
+                fragmentByUuid={fragmentByUuid}
+                selectedFragmentUuid={selectedFragmentUuid}
+                onSelectFragment={setSelectedFragmentUuid}
+                getViolationTooltips={getViolationTooltips}
+                getCycleTooltips={getCycleTooltips}
+                editingSectionId={sectionManager.editingSectionId}
+                setEditingSectionId={sectionManager.setEditingSectionId}
+                editingSectionValue={sectionManager.editingSectionValue}
+                setEditingSectionValue={sectionManager.setEditingSectionValue}
+                confirmingDeleteSectionId={sectionManager.confirmingDeleteSectionId}
+                setConfirmingDeleteSectionId={sectionManager.setConfirmingDeleteSectionId}
+                handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
+                handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
+                onDeleteSection={() => commands.run("overview:delete-section")}
+                hasSequence={!!sequence}
+                createSectionPending={sectionManager.createSection.isPending}
+                onAddSection={() => commands.run("overview:add-section")}
+                onScroll={arcData.handleTileScroll}
+              />
 
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -830,7 +330,7 @@ export const OverviewPage = () => {
                         key={uuid}
                         fragment={fragment}
                         density={density}
-                        colorByAspectKey={colorByAspectKey}
+                        colorByAspectKey={arcData.colorByAspectKey}
                         cycleTooltips={getCycleTooltips(uuid)}
                         isSelected={selectedFragmentUuid === uuid}
                         onSelect={setSelectedFragmentUuid}
@@ -845,7 +345,7 @@ export const OverviewPage = () => {
                   <TileContent
                     fragment={activeDragFragment}
                     density={density}
-                    colorByAspectKey={colorByAspectKey}
+                    colorByAspectKey={arcData.colorByAspectKey}
                   />
                 ) : null}
               </DragOverlay>
