@@ -55,7 +55,7 @@ const matchingHotkeyCandidates = (
 ): CommandDef[] => {
   const candidates: CommandDef[] = [];
   for (const def of map.values()) {
-    if (!def.hotkey || def.disabledReason) continue;
+    if (!def.hotkey) continue;
     const parsed = parseHotkey(def.hotkey);
     if (isUnmodifiedSingleKey(parsed) && isTextInput(document.activeElement)) continue;
     if (matchesEvent(parsed, event)) candidates.push(def);
@@ -71,8 +71,17 @@ export const HotkeyBinder = () => {
       const candidates = matchingHotkeyCandidates(getMap(), event);
       if (candidates.length === 0) return;
 
-      let winner = candidates[0];
-      if (candidates.length > 1) {
+      const enabledCandidates = candidates.filter((candidate) => !candidate.disabledReason);
+
+      // If a key-bind exists but the command is currently disabled, do nothing but still prevent default behavior.
+      // This ensures that unexpected browser behavior is not triggered, such as print/save dialogues.
+      if (enabledCandidates.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      let winner = enabledCandidates[0];
+      if (enabledCandidates.length > 1) {
         // Innermost-active-scope wins on conflict. Build a quick lookup from
         // scope label to mount order; commands not in an active scope fall back
         // to a sentinel so globals lose to scoped commands but win against
@@ -83,9 +92,9 @@ export const HotkeyBinder = () => {
         }
         const order = (def: CommandDef): number =>
           def.scope === "global" ? -1 : (scopeOrderByLabel.get(def.scope) ?? -2);
-        winner = candidates.reduce((a, b) => (order(b) > order(a) ? b : a));
+        winner = enabledCandidates.reduce((a, b) => (order(b) > order(a) ? b : a));
         if (import.meta.env.DEV) {
-          const ids = candidates.map((c) => c.id).join(", ");
+          const ids = enabledCandidates.map((c) => c.id).join(", ");
           console.warn(
             `[commands] Hotkey "${winner.hotkey}" matched multiple commands (${ids}). Innermost-active-scope wins: "${winner.id}".`,
           );

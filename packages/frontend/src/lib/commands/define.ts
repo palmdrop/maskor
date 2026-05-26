@@ -50,6 +50,7 @@ export function defineGlobalCommand<Id extends string>(
 ): GlobalCommandDef<Id, void>;
 // `any` impl signature — keeps the body compatible with each overload's
 // narrower return type (contravariance otherwise blocks the wider impl).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function defineGlobalCommand(def: any): any {
   return { kind: "global", ...def };
 }
@@ -87,6 +88,7 @@ export function defineScopeCommand<ScopeId extends string, Id extends string, Ct
   scope: Scope<Ctx> & { id: ScopeId },
   def: ScopeCommandInputNoArg<Id, Ctx>,
 ): ScopeCommandDef<ScopeId, Id, void, Ctx>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function defineScopeCommand(scope: any, def: any): any {
   return {
     kind: "scope",

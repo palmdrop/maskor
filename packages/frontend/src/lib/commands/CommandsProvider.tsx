@@ -4,8 +4,8 @@ import {
   useContext,
   useMemo,
   useRef,
-  type MutableRefObject,
   type ReactNode,
+  type RefObject,
 } from "react";
 import type {
   AnyCommandDef,
@@ -23,7 +23,7 @@ import { allCommands } from "./catalog";
 export interface ActiveScope {
   readonly meta: ScopeMeta;
   readonly mountOrder: number;
-  readonly ctxRef: MutableRefObject<unknown>;
+  readonly ctxRef: RefObject<unknown>;
 }
 
 // =====================================================================
@@ -31,7 +31,7 @@ export interface ActiveScope {
 // =====================================================================
 
 export interface CommandsContextValue {
-  publishScope: (meta: ScopeMeta, ctxRef: MutableRefObject<unknown>) => () => void;
+  publishScope: (meta: ScopeMeta, ctxRef: RefObject<unknown>) => () => void;
   getActiveScopes: () => readonly ActiveScope[];
   run: (id: string, arg?: unknown) => void;
   getMap: () => ReadonlyMap<string, CommandDef>;
@@ -130,7 +130,7 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const publishScope = useCallback(
-    (meta: ScopeMeta, ctxRef: MutableRefObject<unknown>) => {
+    (meta: ScopeMeta, ctxRef: RefObject<unknown>) => {
       initIfNeeded();
       if (import.meta.env.DEV && activeScopesRef.current.has(meta.id)) {
         console.warn(
