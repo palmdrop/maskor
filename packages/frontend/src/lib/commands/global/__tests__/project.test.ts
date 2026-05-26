@@ -20,7 +20,13 @@ vi.mock("@api/generated/sequences/sequences", () => ({ ListSequences: mockListSe
 
 const { projectCommands } = await import("../project");
 
-const byId = (id: string) => projectCommands.find((c) => c.id === id)!;
+// Narrow by id literal so `.run(arg)` accepts the specific A type for the
+// looked-up command rather than the intersection of all commands' Args.
+type ProjectCommand = (typeof projectCommands)[number];
+const byId = <Id extends ProjectCommand["id"]>(
+  id: Id,
+): Extract<ProjectCommand, { id: Id }> =>
+  projectCommands.find((c) => c.id === id) as Extract<ProjectCommand, { id: Id }>;
 
 describe("global/project", () => {
   beforeEach(() => {

@@ -32,7 +32,10 @@ const makeBundle = (
     discardedKeys,
     append: { mutateAsync: vi.fn(), isPending: false },
     prepend: { mutateAsync: vi.fn(), isPending: false },
-    extract: { mutateAsync, isPending: false },
+    // Vitest's `Mock<…>` return type is broader than the bundle's strict
+    // `(input: never) => Promise<unknown>` signature; cast at the test
+    // boundary so call-site checks stay strict.
+    extract: { mutateAsync: mutateAsync as never, isPending: false },
   };
 };
 

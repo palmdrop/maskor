@@ -2,7 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import { editorCommands, type EditorContext, type InsertCommandTarget } from "../editor";
 import type { EntityKind } from "@lib/entity-kinds/registry";
 
-const find = (id: string) => editorCommands.find((c) => c.id === id)!;
+// Narrow by id literal so `.run(ctx)` and `.run(ctx, arg)` accept the right
+// arity for the specific command — without narrowing, the union of all
+// editor commands' run types collapses to the broadest signature and
+// no-arg calls like `find("editor:save").run(ctx)` fail.
+type EditorCommand = (typeof editorCommands)[number];
+const find = <Id extends EditorCommand["id"]>(
+  id: Id,
+): Extract<EditorCommand, { id: Id }> =>
+  editorCommands.find((c) => c.id === id) as Extract<EditorCommand, { id: Id }>;
 
 const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({
   getSelection: () => ({ text: "snippet", isEmpty: false }),

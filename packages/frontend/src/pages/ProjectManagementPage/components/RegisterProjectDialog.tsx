@@ -40,8 +40,14 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
     folderListQuery.error instanceof ApiRequestError &&
     folderListQuery.error.statusCode === 404;
 
+  // Narrow the discriminated response union to FsListResponse — error cases
+  // are already surfaced via `pathDoesNotExist`/error-instance checks above.
   const entries =
-    pathDoesNotExist || folderPath === null ? [] : (folderListQuery.data?.data.entries ?? []);
+    pathDoesNotExist || folderPath === null
+      ? []
+      : folderListQuery.data?.status === 200
+        ? folderListQuery.data.data.entries
+        : [];
   const folderKind = detectFolderKind(entries);
   const nonMarkdownCount = countNonMarkdownFiles(entries);
   const showFolderInfo =

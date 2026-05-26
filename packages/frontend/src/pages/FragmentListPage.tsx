@@ -54,7 +54,11 @@ export const FragmentListPage = () => {
     void navigate({
       to: "/projects/$projectId/fragments/import",
       params: { projectId },
-      state: { file: selectedFile },
+      // TanStack Router's HistoryState type is strict by default; the import
+      // page reads this via `useRouterState` and casts to its own RouterState
+      // shape, so we mirror that cast here. Proper fix would be declaration-
+      // merging HistoryState globally with TanStack's module-augmentation API.
+      state: { file: selectedFile } as never,
     });
   };
 

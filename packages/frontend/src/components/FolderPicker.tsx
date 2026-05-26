@@ -64,7 +64,10 @@ export const FolderPicker = ({ onSelect, allowNonExistent = false }: FolderPicke
     navigate(joinPath(currentPath, trimmed));
   };
 
-  const fsData = listQuery.data?.data;
+  // Narrow the discriminated response union to FsListResponse so subsequent
+  // accesses to entries/parent/path are well-typed. ErrorResponse cases are
+  // already surfaced via `listError` above.
+  const fsData = listQuery.data?.status === 200 ? listQuery.data.data : undefined;
   const isLoading = homeQuery.isPending || listQuery.isFetching;
   const listError = listQuery.isError ? listQuery.error : null;
 

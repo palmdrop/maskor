@@ -87,7 +87,7 @@ export const ProjectStatsPage = () => {
           <StatTile label="Ready" value={globalStats.readyCount} />
           <StatTile
             label="Avg ready"
-            value={`${Math.round(globalStats.averageReadyStatus * 100)}%`}
+            value={`${Math.round(globalStats.averageReadiness * 100)}%`}
           />
           <StatTile label="Total words" value={globalStats.totalWordCount.toLocaleString()} />
           <StatTile

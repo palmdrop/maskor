@@ -35,7 +35,7 @@ import {
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
-import type { Sequence, Violation } from "@api/generated/maskorAPI.schemas";
+import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { Heading } from "@components/heading";
 import { optimisticMove, optimisticPlace, optimisticUnplace } from "./utils/sequences";
 import { TileContent } from "./components/TileContent";

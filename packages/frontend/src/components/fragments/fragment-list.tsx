@@ -17,7 +17,7 @@ export const FragmentList = ({ fragments, selectedId, onSelect }: Props) => {
           className={fragment.isDiscarded ? "opacity-50 line-through" : undefined}
         >
           <Button onClick={() => onSelect(fragment.uuid)}>
-            {fragment.title}
+            {fragment.key}
             {fragment.isDiscarded && (
               <span className="ml-1 rounded bg-muted px-1 text-xs text-muted-foreground">
                 Discarded

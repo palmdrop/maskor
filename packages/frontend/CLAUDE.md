@@ -68,6 +68,38 @@ When adding a new scope or global file, also import its `*Commands` const into `
 
 **Typing:**
 
-`commands.run(id, arg)` is fully typed. The catalog assembles `CommandId` from the literal `id` of every command in the barrel; `ArgFor<Id>` derives the second-arg type per command. Parameterized scope commands can declare `arg: (ctx) => ({ items, getKey, getLabel })` to pull items from the published context.
+`commands.run(id, arg)` is fully typed. The catalog assembles `CommandId` from the literal `id` of every command in the barrel; `ArgFor<Id>` derives the second-arg type per command.
+
+**Parameterized commands — flat-items arg shape (mandatory):**
+
+```ts
+// CORRECT — arg is a plain object; items is the function.
+defineScopeCommand(myScope, {
+  id: "my-view:pick",
+  label: "Pick…",
+  category: "other",
+  arg: {
+    items: (ctx) => ctx.eligible,           // (ctx) => readonly T[] | Promise<readonly T[]>
+    getKey: (item) => item.uuid,             // item is inferred — no explicit type
+    getLabel: (item) => item.label,
+    placeholder: "Pick one…",
+  },
+  run: (ctx, target) => ctx.attach(target),  // target is inferred
+});
+```
+
+**Do not** use the older `arg: (ctx) => ({ items, getKey, getLabel })` shape — TS won't infer `A` through a callback whose return is itself a generic object literal, and every `(item) => …` collapses to `unknown`. The flat shape (items is the only function, getters are siblings) gives `A` a single inference site and propagates it through to `run`'s second parameter. Globals follow the same shape but `items` is a parameterless thunk (no ctx): `arg: { items: async () => …, getKey, getLabel }`.
 
 Tests that render components using a scope must wrap with `<CommandsProvider>`. To inject a synthetic catalog for a test, `vi.mock("@lib/commands/catalog", () => ({ allCommands: [...] as const }))` before importing the provider.
+
+When narrowing a command from a list, use `Extract<…, { id: Id }>` to pin the specific arg type — otherwise `.run` collapses to the broadest union signature:
+
+```ts
+type MyCommand = (typeof myCommands)[number];
+const find = <Id extends MyCommand["id"]>(id: Id): Extract<MyCommand, { id: Id }> =>
+  myCommands.find((c) => c.id === id) as Extract<MyCommand, { id: Id }>;
+```
+
+## Typechecking
+
+`bun run typecheck` runs `tsc -b --pretty false`. **Don't change it to `tsc --noEmit`** — the frontend's root `tsconfig.json` has `"files": []` and only `references`, so `tsc --noEmit` checks zero files and silently reports success while VSCode catches real errors per-file via `tsconfig.app.json`. Run `bun run typecheck` before claiming a refactor compiles.

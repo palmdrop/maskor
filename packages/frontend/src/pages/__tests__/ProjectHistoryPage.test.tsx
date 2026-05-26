@@ -21,16 +21,20 @@ vi.mock("../../api/generated/references/references", () => ({ useListReferences:
 
 const emptyEntityResponse = () => ({ status: 200 as const, data: [] });
 
-const makeEntry = (overrides: Partial<LogEntry> & { id?: string } = {}): LogEntry => ({
-  id: overrides.id ?? crypto.randomUUID(),
-  type: "fragment:edited",
-  timestamp: "2026-01-01T12:00:00Z",
-  actor: "user",
-  target: { type: "fragment", uuid: FRAG_UUID, key: "test-fragment" },
-  payload: {},
-  undoable: true,
-  ...overrides,
-});
+// LogEntry is a 54-variant discriminated union; building one by spread of
+// Partial<LogEntry> can't satisfy the discriminator narrowing, so cast at
+// the helper boundary. Test consumers still get strict LogEntry typing.
+const makeEntry = (overrides: Partial<LogEntry> & { id?: string } = {}): LogEntry =>
+  ({
+    id: overrides.id ?? crypto.randomUUID(),
+    type: "fragment:edited",
+    timestamp: "2026-01-01T12:00:00Z",
+    actor: "user",
+    target: { type: "fragment", uuid: FRAG_UUID, key: "test-fragment" },
+    payload: {},
+    undoable: true,
+    ...overrides,
+  }) as LogEntry;
 
 const emptyExistence: ExistenceMaps = {
   fragment: new Set(),

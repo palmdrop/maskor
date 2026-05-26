@@ -10,6 +10,12 @@ const globalNoop = defineGlobalCommand({
   id: "test:global-noop",
   label: "Global noop",
   category: "other",
+  // Static items so the with-arg overload matches and A is inferred.
+  arg: {
+    items: () => [],
+    getKey: (item: unknown) => String(item),
+    getLabel: (item: unknown) => String(item),
+  },
   run: (arg: unknown) => {
     ledger.lastInvoked = { id: "test:global-noop", arg };
   },
@@ -30,7 +36,12 @@ const scopeACommand = defineScopeCommand(scopeA, {
   id: "scope-a:action",
   label: "Scope A action",
   category: "other",
-  run: (ctx, arg: unknown) => {
+  arg: {
+    items: () => [] as unknown[],
+    getKey: (item) => String(item),
+    getLabel: (item) => String(item),
+  },
+  run: (ctx, arg) => {
     ledger.lastInvoked = { id: "scope-a:action", arg, ctx };
   },
 });

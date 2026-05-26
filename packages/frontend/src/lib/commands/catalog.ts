@@ -17,10 +17,14 @@ export type CommandId = AnyCommandInCatalog["id"];
 // then follows from the def's `arg` shape — `void` (no arg) or `CommandArg<A>`.
 type CommandById<Id extends CommandId> = Extract<AnyCommandInCatalog, { id: Id }>;
 
+// The scope branch matches with `infer Ctx` (not `unknown`) because
+// ScopeCommandDef contains `(ctx: Ctx) => …` callbacks that are
+// contravariant in Ctx — matching against `unknown` rejects every
+// concrete context type. The inferred Ctx is discarded; we only want A.
 export type ArgFor<Id extends CommandId> =
   CommandById<Id> extends GlobalCommandDef<Id, infer A>
     ? A
-    : CommandById<Id> extends ScopeCommandDef<string, Id, infer A, unknown>
+    : CommandById<Id> extends ScopeCommandDef<string, Id, infer A, infer _Ctx>
       ? A
       : never;
 

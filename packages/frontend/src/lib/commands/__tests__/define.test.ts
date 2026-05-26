@@ -35,10 +35,15 @@ describe("defineGlobalCommand", () => {
 
   it("calls run with the provided arg", () => {
     let received: number | undefined;
-    const def = defineGlobalCommand<"test:with-arg", number>({
+    const def = defineGlobalCommand({
       id: "test:with-arg",
       label: "Test",
       category: "other",
+      arg: {
+        items: () => [1, 2, 3],
+        getKey: (n) => String(n),
+        getLabel: (n) => String(n),
+      },
       run: (n) => {
         received = n;
       },
@@ -74,7 +79,7 @@ describe("defineScopeCommand", () => {
         received = ctx.name;
       },
     });
-    void def.run({ name: "anton" }, undefined as never);
+    void def.run({ name: "anton" });
     expect(received).toBe("anton");
   });
 

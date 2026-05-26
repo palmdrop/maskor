@@ -50,7 +50,7 @@ export const FragmentDetail = ({ projectId, fragmentId }: Props) => {
 
   return (
     <div>
-      <Heading level={1}>{fragment.title}</Heading>
+      <Heading level={1}>{fragment.key}</Heading>
       <Separator />
       <FragmentMetadata fragment={fragment} />
       <Separator />

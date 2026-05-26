@@ -217,7 +217,7 @@ describe("AspectEditor — live metadata save", () => {
     seedQueries(queryClient, baseAspect);
 
     // PATCH fails (500); any incidental GET (from invalidate-on-error) returns the seeded aspect.
-    fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
       if (init.method === "PATCH") {
         return Promise.resolve(
           new Response(JSON.stringify({ message: "Network down" }), {

@@ -147,7 +147,11 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     void navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      search: { sequence: uuid },
+      // Preserve current density (required by validateSearch); a literal
+      // omitting density would fail the router's search-param type. The
+      // updater form's `prev` is the union of all sibling routes' search
+      // params, so we destructure only the keys the target route expects.
+      search: (prev) => ({ density: prev.density ?? "full", sequence: uuid }),
     });
   };
 
@@ -182,7 +186,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
             void navigate({
               to: "/projects/$projectId/overview",
               params: { projectId },
-              search: {},
+              search: (prev) => ({ density: prev.density ?? "full" }),
             });
           }
         },
@@ -215,7 +219,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
         void navigate({
           to: "/projects/$projectId/overview",
           params: { projectId },
-          search: { sequence: sequenceId },
+          search: (prev) => ({ density: prev.density ?? "full", sequence: sequenceId }),
         });
         return null;
       }

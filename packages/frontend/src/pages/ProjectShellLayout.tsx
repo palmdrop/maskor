@@ -44,7 +44,12 @@ export const ProjectShellLayout = () => {
         <Link to="/projects/$projectId/fragments" params={{ projectId }} className={linkClassName}>
           Fragments
         </Link>
-        <Link to="/projects/$projectId/overview" params={{ projectId }} className={linkClassName}>
+        <Link
+          to="/projects/$projectId/overview"
+          params={{ projectId }}
+          search={{ density: "full" }}
+          className={linkClassName}
+        >
           Overview
         </Link>
         <Link to="/projects/$projectId/suggestion" params={{ projectId }} className={linkClassName}>
