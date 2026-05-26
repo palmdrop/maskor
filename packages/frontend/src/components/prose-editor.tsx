@@ -22,6 +22,7 @@ export type ProseEditorHandle = {
   getContent: () => string;
   setContent: (value: string) => void;
   getSelection: () => SelectionCapture;
+  focus: () => void;
 };
 
 type Props = {
@@ -70,6 +71,13 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [fontSize],
   );
 
+  const vimExtensions = useMemo(
+    () => [markdown(), vim(), cmTheme, EditorView.lineWrapping],
+    [cmTheme],
+  );
+  const rawExtensions = useMemo(() => [markdown(), cmTheme], [cmTheme]);
+
+  // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -91,6 +99,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     if (!editor) {
       return;
     }
+
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
     if (content !== current) {
       editor.commands.setContent(content, { emitUpdate: false });
@@ -135,6 +144,15 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         const text = raw.trim();
         return { text, isEmpty: text.length === 0 };
       },
+      focus: () => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          view.focus();
+        } else {
+          editor.commands.focus();
+        }
+      },
     }),
     [vimMode, rawMarkdownMode, editor, content],
   );
@@ -149,7 +167,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
           value={content}
-          extensions={[markdown(), vim(), cmTheme, EditorView.lineWrapping]}
+          extensions={vimExtensions}
           onCreateEditor={(view) => {
             viewRef.current = view;
             Vim.defineEx("w", "", () => onSaveRef.current?.());
@@ -170,7 +188,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
           value={content}
-          extensions={[markdown(), cmTheme]}
+          extensions={rawExtensions}
           onCreateEditor={(view) => {
             viewRef.current = view;
           }}
