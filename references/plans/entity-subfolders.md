@@ -108,7 +108,7 @@ Goal: adopt-an-existing-vault works for pre-prepared nested vaults out of the bo
   - `specifications/storage-sync.md` — entity routing table updated; constraints updated; acceptance criteria expanded.
   - `specifications/project-management.md` — adoption paragraph distinguishes fragment import (manual) from nested aspects/notes/references (auto-discovered on rebuild).
 - [x] `bun run snapshot` so `references/CODEBASE_SNAPSHOT.md` reflects the new state. _(2026-05-27)_
-- [ ] `git commit` Phase 5. Open PR.
+- [x] `git commit` Phase 5. Open PR. _(2026-05-27)_
 
 ---
 
