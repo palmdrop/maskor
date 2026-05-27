@@ -131,6 +131,7 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 - Only operates on a single vault directory
 - Database is stored in the `<vault>/.maskor` directory
 - Fragment files are never auto-modified by Maskor for drift recovery
+- Fragment subdirectories beyond `discarded/` produce sync warnings and are not indexed.
 - Markdown format is Obsidian-compatible
 - `<vault>/.maskor/` is Maskor-owned territory. The watcher ignores all files inside it. Maskor may overwrite any file there at any time. Users should not edit these files directly unless they know what they are doing.
 - All other vault directories (`fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`) are safe for the user to edit directly outside of Maskor. The watcher will pick up any changes.
@@ -171,9 +172,13 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 ## Acceptance criteria
 
 - Full rebuild produces fragment/aspect/note/reference counts matching the vault file count
+- Full rebuild recursively discovers nested aspects/notes/references; category is derived from the subfolder path
 - An external file edit is reflected in the DB within ~250ms
 - An API write is immediately reflected in the DB with no stale-index window
-- A UUID is assigned and written back on first detection of any entity that lacks one
+- A UUID is assigned and written back on first watcher detection of any entity that lacks one
+- Moving an aspect/note/reference to a subfolder via the API updates `filePath` in the DB; no cascade rename occurs if the key is unchanged
+- Out-and-back returns within the in-memory tracker TTL preserve entity identity and emit `revived: true` on the `*:synced` event
+- Cross-entity-type returns (e.g. aspect file moved to `notes/`) create the destination entity with the UUID from frontmatter; the source row is deleted; no `revived` flag
 - Aspect key drift produces a warning; it does not block or abort sync
 - Watcher and rebuild cannot run concurrently — the mutex is enforced
 - Deleting a fragment file moves it to `fragments/discarded/` and soft-deletes the DB row

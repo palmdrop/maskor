@@ -84,7 +84,7 @@ The Project Management page exposes a single registration form. The form has a r
 
 - **Folder field filled, path does not exist.** A short confirmation indicates Maskor will create the folder. Submitting calls `POST /projects` with `mode: "create"`. Maskor `mkdir -p`s the path and writes the vault skeleton with a new UUID.
 
-Maskor never auto-imports existing markdown content during registration; the user uses the fragment import flow to bring fragments into the index.
+Maskor never auto-imports existing **fragment** markdown content during registration; the user uses the fragment import flow to bring fragments into the index. Aspects, notes, and references in pre-existing subfolders (e.g. `aspects/places/london.md`) are discovered automatically on the first rebuild that `resolveProject` triggers — category is derived from the subfolder path, and UUIDs are written back to frontmatter by the watcher on the first subsequent file event.
 
 ### Single registration endpoint
 

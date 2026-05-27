@@ -50,7 +50,7 @@ An aspect is a named structural dimension of the project — a place, character,
 Each aspect has:
 
 - A **key**: a unique human-readable slug that identifies it within the vault. The key is used everywhere aspects are referenced.
-- An optional **category**: a label for grouping aspects.
+- An optional **category**: the vault subfolder the aspect lives in (see **Category** in the glossary). Derived from `filePath`; not stored independently. `null` when the aspect sits at the `aspects/` root.
 - An optional **color**: a 6-digit hex color (e.g. `#f97316`) used to visually distinguish the aspect in the overview and fragment editor. When absent, a deterministic fallback color is derived from the aspect key using a stable hash, so all aspects always render with a consistent color without requiring explicit configuration.
 - An optional **description**: free-text prose explaining what the aspect means.
 - An optional list of **notes**: related note titles.
@@ -118,6 +118,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 - Implicit arcs are ephemeral sequencer inputs — not stored, not user-visible as a separate concept. They are only the actual arc used as a scoring target when no explicit arc exists.
 - Explicit arcs are vault-stored. Implicit arcs are not.
 - Aspect keys are unique within a vault.
+- Aspect category is derived from `filePath` (the subfolder relative to `aspects/`). The `category` frontmatter field is not read or written.
 - Fragment weights reference aspects by key. Key is the only join field — no UUID reference.
 - Orphaned aspect keys in fragment files must be preserved on save, never dropped silently.
 - Arc positions (where a fragment sits on an arc at its sequence index) and fitting scores are not stored in vault files. They are derived at runtime and can be lost if the DB is wiped.

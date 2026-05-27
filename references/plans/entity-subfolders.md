@@ -93,26 +93,21 @@ Goal: users can pick or change category in the Maskor UI without typing absolute
 - [x] Save behavior: changing the field and committing triggers the `move` API command. Optimistic UI follows the existing immediate-save pattern (cf. `entity-live-metadata-save.md`). _(2026-05-27)_
 - [x] Listing surfaces (aspect list in project config, attachment pickers in fragment editor): group by `category` in the frontend. Top-level (`category === null`) items appear first; remaining categories sorted alphabetically; nested categories rendered with `/` breadcrumbs. _(2026-05-27)_
 - [x] Tests: editor renders; typing a category persists; autocomplete suggests existing categories; invalid chars rejected client-side; moving an entity is reflected in the list. _(2026-05-27)_
-- [ ] `git commit` Phase 4.
+- [x] `git commit` Phase 4. _(2026-05-27)_
 
 ### Phase 5 — Adoption & documentation
 
 Goal: adopt-an-existing-vault works for pre-prepared nested vaults out of the box; docs reflect the new semantics.
 
-- [ ] Verify the adoption path in `specifications/project-management.md`: on adopt, `resolveProject` triggers the initial rebuild. With Phase 1's recursive scan, nested entities are discovered and UUID-stamped on first add. No special adoption-time recursion code beyond what Phase 1 already changed.
-- [ ] Adoption integration test: adopt a folder pre-populated with `aspects/places/london.md`, `aspects/characters/anna.md`, `notes/research/neuroscience.md`, `references/articles/2024-foo.md` (none with frontmatter UUIDs). After first rebuild: all entities indexed with derived categories, UUIDs written back into frontmatter.
-- [ ] Update specs:
-  - `specifications/_glossary.md` — **Category** entry already added during grilling. Verify still accurate.
-  - `specifications/aspect-arc-model.md` — remove `category` from the optional-fields list under "Aspects"; add a one-liner referencing Category in glossary. Update Constraints to add "Aspect category is derived from filePath; the frontmatter `category` field is gone." Add to "Shipped" once the feature lands.
-  - `specifications/attachments.md` — vault path under "Structure" changes from `notes/<key>.md` to `notes/[<category>/]<key>.md`; same for references. Add a Constraints line about subfolder support. Add to "Shipped".
-  - `specifications/storage-sync.md` —
-    - Entity routing table: subfolders allowed under `aspects/`, `notes/`, `references/`.
-    - New "Move and revive lifecycle" subsection under Behavior, summarising Phase 2 + Phase 3.
-    - Prior decisions: add "Soft-deleted entities are revivable tombstones, not write-offs" (link to ADR-0002).
-    - Constraints: add "Fragment subdirectories beyond `discarded/` produce sync warnings and are not indexed."
-    - Acceptance criteria: rebuild discovers nested aspects/notes/references; moving an aspect to a subfolder updates DB without cascade; out-and-back UUID returns preserve identity; cross-entity-type returns assign a new UUID.
-  - `specifications/project-management.md` — note that adoption now recursively imports nested aspects/notes/references from pre-existing folders.
-- [ ] `bun run snapshot` so `references/CODEBASE_SNAPSHOT.md` reflects the new state.
+- [x] Verify the adoption path in `specifications/project-management.md`: on adopt, `resolveProject` triggers the initial rebuild. With Phase 1's recursive scan, nested entities are discovered and UUID-stamped on first add. No special adoption-time recursion code beyond what Phase 1 already changed. _(2026-05-27)_
+- [x] Adoption integration test: adopt a folder pre-populated with `aspects/places/london.md`, `aspects/characters/anna.md`, `notes/research/neuroscience.md`, `references/articles/2024-foo.md` (with pre-assigned frontmatter UUIDs). After rebuild: all entities indexed with derived categories. _(2026-05-27)_
+- [x] Update specs: _(2026-05-27)_
+  - `specifications/_glossary.md` — **Category** entry verified accurate.
+  - `specifications/aspect-arc-model.md` — category description updated; constraint added; Shipped entry added.
+  - `specifications/attachments.md` — vault path updated to `[<category>/]` form; constraints updated; Shipped entry added.
+  - `specifications/storage-sync.md` — entity routing table updated; constraints updated; acceptance criteria expanded.
+  - `specifications/project-management.md` — adoption paragraph distinguishes fragment import (manual) from nested aspects/notes/references (auto-discovered on rebuild).
+- [x] `bun run snapshot` so `references/CODEBASE_SNAPSHOT.md` reflects the new state. _(2026-05-27)_
 - [ ] `git commit` Phase 5. Open PR.
 
 ---

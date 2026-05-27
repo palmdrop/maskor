@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { eq } from "drizzle-orm";
@@ -584,5 +584,77 @@ describe("StorageService integration", () => {
     const firstStats = await service.index.rebuild(context);
     const secondStats = await service.index.rebuild(context);
     expect(firstStats.fragments).toBe(secondStats.fragments);
+  });
+});
+
+// --- adoption of a pre-existing nested vault ---
+
+describe("adoption — nested entity discovery and category derivation", () => {
+  // Test vault is built fresh (no BASIC_VAULT copy) so we fully control the layout.
+  let adoptDir: string;
+
+  beforeEach(() => {
+    adoptDir = mkdtempSync(join(tmpdir(), "maskor-adopt-test-"));
+    // Minimal vault skeleton
+    for (const dir of [
+      "aspects/places",
+      "aspects/characters",
+      "notes/research",
+      "references/articles",
+      "fragments",
+    ]) {
+      mkdirSync(join(adoptDir, dir), { recursive: true });
+    }
+  });
+
+  afterEach(() => {
+    rmSync(adoptDir, { recursive: true, force: true });
+  });
+
+  it("rebuild discovers nested aspects/notes/references and derives categories from subfolder paths", async () => {
+    // Pre-populate vault with files that already have UUIDs — the common case when
+    // adopting a vault that was previously managed by Maskor (or has manual UUIDs).
+    await Bun.write(
+      join(adoptDir, "aspects/places/london.md"),
+      `---\nuuid: "aaaaaaaa-0000-0000-0000-000000000001"\nnotes: []\n---\n\nA grey city.\n`,
+    );
+    await Bun.write(
+      join(adoptDir, "aspects/characters/anna.md"),
+      `---\nuuid: "aaaaaaaa-0000-0000-0000-000000000002"\nnotes: []\n---\n\nProtagonist.\n`,
+    );
+    await Bun.write(
+      join(adoptDir, "notes/research/neuroscience.md"),
+      `---\nuuid: "bbbbbbbb-0000-0000-0000-000000000001"\nkey: "neuroscience"\n---\n\nMemory consolidation notes.\n`,
+    );
+    await Bun.write(
+      join(adoptDir, "references/articles/2024-foo.md"),
+      `---\nuuid: "cccccccc-0000-0000-0000-000000000001"\nkey: "2024-foo"\n---\n\nFoo et al., 2024.\n`,
+    );
+
+    const vault = createVault({ root: adoptDir });
+    const vaultDatabase = createVaultDatabase(adoptDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+
+    const stats = await indexer.rebuild();
+
+    expect(stats.aspects).toBe(2);
+    expect(stats.notes).toBe(1);
+    expect(stats.references).toBe(1);
+
+    const london = await indexer.aspects.findByKey("london");
+    expect(london).not.toBeNull();
+    expect(london?.category).toBe("places");
+
+    const anna = await indexer.aspects.findByKey("anna");
+    expect(anna).not.toBeNull();
+    expect(anna?.category).toBe("characters");
+
+    const neuroscience = await indexer.notes.findByKey("neuroscience");
+    expect(neuroscience).not.toBeNull();
+    expect(neuroscience?.category).toBe("research");
+
+    const fooRef = await indexer.references.findByKey("2024-foo");
+    expect(fooRef).not.toBeNull();
+    expect(fooRef?.category).toBe("articles");
   });
 });

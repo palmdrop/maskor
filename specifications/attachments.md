@@ -52,7 +52,7 @@ A note or reference is a named, free-text document. It has:
 - **`createdAt`** and **`updatedAt`** timestamps — managed by Maskor.
 - **Body content** — free-form markdown. No schema.
 
-Vault path: `notes/<key>.md` or `references/<key>.md`.
+Vault path: `notes/[<category>/]<key>.md` or `references/[<category>/]<key>.md`. Category is the slash-separated subfolder path relative to the entity-type root, or absent when the entity sits at the root.
 
 Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 
@@ -83,8 +83,10 @@ Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 
 ## Constraints
 
-- Notes are in `<vault>/notes/`. References are in `<vault>/references/`. File names must be unique within each directory.
+- Notes are in `<vault>/notes/` (any depth of subfolders). References are in `<vault>/references/` (any depth of subfolders). File names must be unique within each entity type globally, not just within a single directory.
 - The filename stem is the canonical key and the join between a fragment's frontmatter and the document. There is no UUID-based join and no separate key field in frontmatter.
+- The category of a note or reference is derived from the subfolder path relative to its entity-type root. It is not stored in frontmatter or as a separate DB column.
+- Changing a note or reference's category (by PATCHing it via the API) moves the vault file to the corresponding subfolder atomically.
 - Body content is never modified by Maskor.
 - The DB holds a derived index; the vault file is always authoritative.
 
