@@ -28,6 +28,12 @@ const readVaultManifest = async (vaultPath: string): Promise<ProjectManifest | n
   return file.json() as Promise<ProjectManifest>;
 };
 
+// Keys of the nested config sections in ProjectManifest. Extracted here so that
+// writeVaultManifest performs a deep merge over all of them without enumerating
+// them twice.
+const CONFIG_SECTION_KEYS = ["editor", "suggestion", "advanced", "preview"] as const;
+type ConfigSection = (typeof CONFIG_SECTION_KEYS)[number];
+
 const writeVaultManifest = async (
   vaultPath: string,
   patch: Partial<ProjectManifest> & { config?: Partial<ProjectManifest["config"]> },
@@ -41,66 +47,47 @@ const writeVaultManifest = async (
     registeredAt: new Date().toISOString(),
   };
 
+  const mergedSections = Object.fromEntries(
+    CONFIG_SECTION_KEYS.map((key) => [
+      key,
+      { ...existing.config?.[key as ConfigSection], ...patch.config?.[key as ConfigSection] },
+    ]),
+  );
+
   const updated: ProjectManifest = {
     ...existing,
     ...patch,
-    config: {
-      ...existing.config,
-      ...patch.config,
-      editor: {
-        ...existing.config?.editor,
-        ...patch.config?.editor,
-      },
-      suggestion: {
-        ...existing.config?.suggestion,
-        ...patch.config?.suggestion,
-      },
-      advanced: {
-        ...existing.config?.advanced,
-        ...patch.config?.advanced,
-      },
-      preview: {
-        ...existing.config?.preview,
-        ...patch.config?.preview,
-      },
-    },
+    config: { ...existing.config, ...patch.config, ...mergedSections },
   };
 
   await Bun.write(manifestPath(vaultPath), JSON.stringify(updated, null, 2));
 };
 
-const SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT = 0.95;
+const PROJECT_CONFIG_DEFAULTS = {
+  editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
+  suggestion: { readinessThreshold: 0.95 },
+  advanced: { showFragmentStats: false },
+  preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" as const },
+};
 
 const toProjectRecord = (
   row: typeof projectsTable.$inferSelect,
   manifest: ProjectManifest | null,
-): ProjectRecord => ({
-  projectUUID: row.uuid,
-  userUUID: row.userUuid,
-  name: manifest?.name ?? "",
-  vaultPath: row.vaultPath,
-  editor: {
-    vimMode: manifest?.config?.editor?.vimMode ?? false,
-    rawMarkdownMode: manifest?.config?.editor?.rawMarkdownMode ?? false,
-    fontSize: manifest?.config?.editor?.fontSize ?? 16,
-    maxParagraphWidth: manifest?.config?.editor?.maxParagraphWidth ?? 72,
-  },
-  suggestion: {
-    readinessThreshold:
-      manifest?.config?.suggestion?.readinessThreshold ?? SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT,
-    currentFragmentUUID: manifest?.config?.suggestion?.currentFragmentUUID,
-  },
-  advanced: {
-    showFragmentStats: manifest?.config?.advanced?.showFragmentStats ?? false,
-  },
-  preview: {
-    showTitles: manifest?.config?.preview?.showTitles ?? false,
-    showSectionHeadings: manifest?.config?.preview?.showSectionHeadings ?? true,
-    separator: manifest?.config?.preview?.separator ?? "blank-line",
-  },
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
-});
+): ProjectRecord => {
+  const config = manifest?.config;
+  return {
+    projectUUID: row.uuid,
+    userUUID: row.userUuid,
+    name: manifest?.name ?? "",
+    vaultPath: row.vaultPath,
+    editor: { ...PROJECT_CONFIG_DEFAULTS.editor, ...config?.editor },
+    suggestion: { ...PROJECT_CONFIG_DEFAULTS.suggestion, ...config?.suggestion },
+    advanced: { ...PROJECT_CONFIG_DEFAULTS.advanced, ...config?.advanced },
+    preview: { ...PROJECT_CONFIG_DEFAULTS.preview, ...config?.preview },
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+};
 
 export const createProjectRegistry = (database: RegistryDatabase) => {
   return {
@@ -136,13 +123,8 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
             ? {}
             : {
                 config: {
-                  editor: {
-                    vimMode: false,
-                    rawMarkdownMode: false,
-                    fontSize: 16,
-                    maxParagraphWidth: 72,
-                  },
-                  suggestion: { readinessThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+                  editor: PROJECT_CONFIG_DEFAULTS.editor,
+                  suggestion: PROJECT_CONFIG_DEFAULTS.suggestion,
                 },
               }),
         });
@@ -175,14 +157,8 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           name,
           registeredAt: now.toISOString(),
           config: {
-            // TODO: store default settings somewhere...
-            editor: {
-              vimMode: false,
-              rawMarkdownMode: false,
-              fontSize: 16,
-              maxParagraphWidth: 72,
-            },
-            suggestion: { readinessThreshold: SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT },
+            editor: PROJECT_CONFIG_DEFAULTS.editor,
+            suggestion: PROJECT_CONFIG_DEFAULTS.suggestion,
           },
         });
       }

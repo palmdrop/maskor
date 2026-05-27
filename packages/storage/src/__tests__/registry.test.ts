@@ -327,6 +327,28 @@ describe("registry preview defaults", () => {
   });
 });
 
+describe("registry config defaults", () => {
+  it("applies all section defaults when config is entirely absent from manifest", async () => {
+    const registry = makeRegistry();
+    const emptyVaultDir = join(tmpDir, "no-config-vault");
+    mkdirSync(emptyVaultDir, { recursive: true });
+    // Write a bare manifest with no config key
+    await Bun.write(
+      join(emptyVaultDir, ".maskor", "project.json"),
+      JSON.stringify({ projectUUID: crypto.randomUUID(), name: "Bare", registeredAt: new Date().toISOString() }),
+    );
+    await registry.registerProject("Bare", emptyVaultDir, "adopt");
+    const found = await registry.findByUUID(
+      (await Bun.file(join(emptyVaultDir, ".maskor", "project.json")).json()).projectUUID,
+    );
+    expect(found?.editor.vimMode).toBe(false);
+    expect(found?.editor.fontSize).toBe(16);
+    expect(found?.suggestion.readinessThreshold).toBe(0.95);
+    expect(found?.advanced.showFragmentStats).toBe(false);
+    expect(found?.preview.separator).toBe("blank-line");
+  });
+});
+
 describe("registry.removeProject", () => {
   it("removes the project from the registry", async () => {
     const registry = makeRegistry();
