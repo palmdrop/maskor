@@ -15,8 +15,8 @@ import type {
   VaultSyncEvent,
 } from "@maskor/shared";
 import { ArcSchema } from "@maskor/shared";
-import { mkdir, rename, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, rename, rmdir, unlink } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
@@ -251,6 +251,29 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     await unlink(arcPath).catch((error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT") throw error;
     });
+  };
+
+  // After a category move the old file's parent directories may be left empty
+  // (e.g. moving the last aspect out of aspects/theme/). Walk up to but not
+  // including entityRoot, removing every empty directory we encounter. rmdir
+  // fails with ENOTEMPTY for non-empty dirs; treat that and ENOENT as the stop
+  // condition. Any other error is logged and swallowed — cleanup is best-effort.
+  const pruneEmptyParents = async (entityRoot: string, fromAbsolutePath: string): Promise<void> => {
+    let directory = dirname(fromAbsolutePath);
+    while (directory.startsWith(entityRoot + "/") && directory !== entityRoot) {
+      try {
+        await rmdir(directory);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "ENOTEMPTY" || code === "ENOENT" || code === "EEXIST") return;
+        log.warn(
+          { directory, errorCode: code },
+          "category move cleanup: failed to remove empty parent directory",
+        );
+        return;
+      }
+      directory = dirname(directory);
+    }
   };
 
   // --- cascade helpers ---
@@ -997,6 +1020,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
                 }
                 throw error;
               });
+              await pruneEmptyParents(join(context.vaultPath, "aspects"), absoluteOldPath);
             }
 
             const absolutePath = join(context.vaultPath, "aspects", newFilePath);
@@ -1128,6 +1152,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
                 }
                 throw error;
               });
+              await pruneEmptyParents(join(context.vaultPath, "notes"), absoluteOldPath);
             }
 
             const absolutePath = join(context.vaultPath, "notes", newFilePath);
@@ -1302,6 +1327,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
                 }
                 throw error;
               });
+              await pruneEmptyParents(
+                join(context.vaultPath, "references"),
+                absoluteOldPath,
+              );
             }
 
             const absolutePath = join(context.vaultPath, "references", newFilePath);

@@ -55,11 +55,13 @@ export const CategoryField = ({ serverValue, existingCategories, onChange, error
     }
   }, [serverValue, isFocused]);
 
-  const filtered = existingCategories.filter((cat) =>
-    inputText.length === 0
-      ? true
-      : cat.toLowerCase().startsWith(inputText.toLowerCase()),
-  );
+  const filtered = existingCategories
+    .filter((category) =>
+      inputText.length === 0
+        ? true
+        : category.toLowerCase().startsWith(inputText.toLowerCase()),
+    )
+    .sort((a, b) => a.localeCompare(b));
 
   const handleChange = useCallback(
     (text: string) => {

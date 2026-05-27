@@ -106,6 +106,14 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
   // recently (within the tracker's TTL) and is now back. The flag rides on the
   // synced event so action-log consumers and observability tooling can
   // distinguish "this file returned" from "this is a fresh file."
+  //
+  // Cross-entity-type return note: the recently-deleted tracker is per
+  // entity-type and per watcher instance. When a file moves across entity-type
+  // roots (e.g. aspects/x.md → notes/x.md) within the rename-buffer window,
+  // the destination upserts immediately while the source row sticks around
+  // until the source-side rename-buffer expires. Both rows can hold the same
+  // UUID for up to ~RENAME_BUFFER_MS — UUID uniqueness across entity-type
+  // tables is *not* an invariant during that window. See ADR-0002.
   const revived = config.recentlyDeleted.consume(uuid);
 
   config.emit({ type: config.syncedEventType, uuid, ...(revived ? { revived: true } : {}) });

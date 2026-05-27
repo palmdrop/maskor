@@ -192,10 +192,10 @@ describe("AspectEditor — category PATCH debounce", () => {
     });
 
     expect(fetchMock).toHaveBeenCalled();
-    const patchCall = fetchMock.mock.calls.find(
-      ([url, init]: [string, RequestInit]) =>
-        url.includes(`/aspects/${ASPECT_ID}`) && init.method === "PATCH",
-    );
+    const patchCall = fetchMock.mock.calls.find((call) => {
+      const [url, init] = call as [string, RequestInit];
+      return url.includes(`/aspects/${ASPECT_ID}`) && init.method === "PATCH";
+    }) as [string, RequestInit] | undefined;
     expect(patchCall).toBeDefined();
     const [, patchInit] = patchCall!;
     expect(JSON.parse(patchInit.body as string)).toMatchObject({ category: "arcs" });

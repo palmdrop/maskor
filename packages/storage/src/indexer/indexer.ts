@@ -22,8 +22,13 @@ import type {
   SyncWarning,
   VaultIndexer,
 } from "./types";
-import { assembleAspect, assembleFragment, assembleSequence } from "./assemblers";
-import { deriveCategory } from "../utils/category";
+import {
+  assembleAspect,
+  assembleFragment,
+  assembleNote,
+  assembleReference,
+  assembleSequence,
+} from "./assemblers";
 import {
   upsertAspect,
   upsertFragment,
@@ -344,55 +349,23 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     notes: {
       async findAll() {
-        return vaultDatabase
-          .select()
-          .from(notesTable)
-          .all()
-          .map((row) => ({
-            uuid: row.uuid,
-            key: row.key,
-            category: deriveCategory(row.filePath),
-            filePath: row.filePath,
-          }));
+        return vaultDatabase.select().from(notesTable).all().map(assembleNote);
       },
 
       async findByKey(key: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.key, key)).get();
-
-        if (!row) return null;
-        return {
-          uuid: row.uuid,
-          key: row.key,
-          category: deriveCategory(row.filePath),
-          filePath: row.filePath,
-        };
+        return row ? assembleNote(row) : null;
       },
 
       async findByUUID(uuid: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
-
-        if (!row) return null;
-        return {
-          uuid: row.uuid,
-          key: row.key,
-          category: deriveCategory(row.filePath),
-          filePath: row.filePath,
-        };
+        return row ? assembleNote(row) : null;
       },
     },
 
     references: {
       async findAll() {
-        return vaultDatabase
-          .select()
-          .from(referencesTable)
-          .all()
-          .map((row) => ({
-            uuid: row.uuid,
-            key: row.key,
-            category: deriveCategory(row.filePath),
-            filePath: row.filePath,
-          }));
+        return vaultDatabase.select().from(referencesTable).all().map(assembleReference);
       },
 
       async findByKey(key: string) {
@@ -401,14 +374,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .from(referencesTable)
           .where(eq(referencesTable.key, key))
           .get();
-
-        if (!row) return null;
-        return {
-          uuid: row.uuid,
-          key: row.key,
-          category: deriveCategory(row.filePath),
-          filePath: row.filePath,
-        };
+        return row ? assembleReference(row) : null;
       },
 
       async findByUUID(uuid: string) {
@@ -417,14 +383,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .from(referencesTable)
           .where(eq(referencesTable.uuid, uuid))
           .get();
-
-        if (!row) return null;
-        return {
-          uuid: row.uuid,
-          key: row.key,
-          category: deriveCategory(row.filePath),
-          filePath: row.filePath,
-        };
+        return row ? assembleReference(row) : null;
       },
     },
 

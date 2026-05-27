@@ -4,10 +4,18 @@ import type {
   aspectsTable,
   fragmentPositionsTable,
   fragmentsTable,
+  notesTable,
+  referencesTable,
   sectionsTable,
   sequencesTable,
 } from "../db/vault/schema";
-import type { IndexedAspect, IndexedFragment, IndexedSequence } from "./types";
+import type {
+  IndexedAspect,
+  IndexedFragment,
+  IndexedNote,
+  IndexedReference,
+  IndexedSequence,
+} from "./types";
 import { deriveCategory } from "../utils/category";
 
 export const assembleFragment = (
@@ -47,6 +55,22 @@ export const assembleAspect = (
   color: row.color ?? undefined,
   filePath: row.filePath,
   notes: noteRows.map((note) => note.noteKey),
+});
+
+export const assembleNote = (row: typeof notesTable.$inferSelect): IndexedNote => ({
+  uuid: row.uuid,
+  key: row.key,
+  category: deriveCategory(row.filePath),
+  filePath: row.filePath,
+});
+
+export const assembleReference = (
+  row: typeof referencesTable.$inferSelect,
+): IndexedReference => ({
+  uuid: row.uuid,
+  key: row.key,
+  category: deriveCategory(row.filePath),
+  filePath: row.filePath,
 });
 
 export const assembleSequence = (

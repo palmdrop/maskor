@@ -45,10 +45,10 @@ export const createRecentlyDeletedTracker = (
     },
 
     consume(uuid) {
+      evictExpired();
       const entry = entries.get(uuid);
       if (!entry) return false;
       entries.delete(uuid);
-      if (entry.expiresAt <= Date.now()) return false;
       return true;
     },
 
