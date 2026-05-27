@@ -94,6 +94,31 @@ These have no mechanical correspondence to any schema or table. They represent s
 
 ---
 
-## Decision Needed Before Phase 2
+## Decision: `uuid` vs `projectUUID` on `ProjectSchema`
 
-**`uuid` vs `projectUUID` rename on `ProjectSchema`**: `ProjectSchema` uses `uuid`, but `ProjectRecord` uses `projectUUID`. Phase 3 requires deciding whether to rename the schema field or accept a one-line `Omit & { projectUUID }` derivation. Renaming is cleaner but touches more call sites.
+Chose `Omit<Project, 'uuid'|'notes'|'aspects'|'references'|'arcs'> & { projectUUID: string; userUUID: string }` for `ProjectRecord`. Renaming `uuid` → `projectUUID` on `ProjectSchema` would require touching every API response mapper, OpenAPI schema, and frontend generated type. The one-line derivation is the right tradeoff.
+
+## Decision: `XUpdateSchema` convention
+
+Written separately with explicit optional fields, not auto-derived via `deepPartial`. Reason: only a subset of fields is updatable in most domain types; auto-derivation would silently expose fields that should not be patchable via the API.
+
+---
+
+## Final Status (after implementation)
+
+| Entry | Result |
+|---|---|
+| `ProjectRecord` | ✅ Eliminated — `Omit<Project, uuid\|notes\|aspects\|references\|arcs> & { projectUUID, userUUID }` |
+| `ProjectManifest.config` | ✅ Eliminated — `Omit<ProjectUpdate, 'name'>` |
+| `FragmentStats` | ✅ Eliminated — `typeof fragmentStatsTable.$inferSelect` |
+| `IndexedFragment` | ✅ Eliminated — `Omit<Fragment, 'content'> & { filePath }` |
+| `IndexedFragmentAspect` | ✅ Removed — inlined through `Fragment['aspects']` (AspectWeights) |
+| `IndexedFragmentSummary` | ✅ Eliminated — `Pick<IndexedFragment, ...> & { excerpt }` |
+| `IndexedAspect` | ✅ Eliminated — `Omit<Aspect, 'description'> & { filePath }` |
+| `IndexedNote` | ✅ Eliminated — `Omit<Note, 'content'> & { filePath }` |
+| `IndexedReference` | ✅ Eliminated — `Omit<Reference, 'content'> & { filePath }` |
+| `IndexedSequence` | ✅ Eliminated — `Sequence & { filePath, contentHash }` |
+| Inline `updateProject` patch literal in `registry.ts` | ✅ Eliminated — uses `ProjectUpdate` from shared |
+| Inline `updateProject` patch literal in `storage-service.ts` | ✅ Eliminated — uses `ProjectUpdate` from shared |
+| `ProjectUpdateSchema` missing `currentFragmentUUID` | ✅ Fixed — added to suggestion sub-schema |
+| Scattered config defaults in `registry.ts` | ✅ Consolidated into `PROJECT_CONFIG_DEFAULTS` constant |
