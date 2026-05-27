@@ -4,8 +4,11 @@ import { Popover as PopoverPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
 
+export type OptionGroup = { label: string | null; options: string[] };
+
 type Props = {
-  availableOptions: string[];
+  availableOptions?: string[];
+  groups?: OptionGroup[];
   placeholder?: string;
   onSelect: (value: string) => void;
   onCreate?: (query: string) => void | Promise<void>;
@@ -13,6 +16,7 @@ type Props = {
 
 export function TagCombobox({
   availableOptions,
+  groups,
   placeholder = "Add — type to filter",
   onSelect,
   onCreate,
@@ -23,13 +27,33 @@ export function TagCombobox({
   const commandRef = useRef<HTMLDivElement>(null);
 
   const trimmedQuery = query.trim();
-  const filtered = availableOptions.filter((option) =>
-    option.toLowerCase().includes(query.toLowerCase()),
-  );
+
+  const allOptions = groups ? groups.flatMap((g) => g.options) : (availableOptions ?? []);
+
+  const filteredGroups: OptionGroup[] = groups
+    ? groups
+        .map((g) => ({
+          label: g.label,
+          options: g.options.filter((option) =>
+            option.toLowerCase().includes(query.toLowerCase()),
+          ),
+        }))
+        .filter((g) => g.options.length > 0)
+    : [
+        {
+          label: null,
+          options: (availableOptions ?? []).filter((option) =>
+            option.toLowerCase().includes(query.toLowerCase()),
+          ),
+        },
+      ];
+
   const showCreate =
     !!onCreate &&
     trimmedQuery.length > 0 &&
-    !availableOptions.some((option) => option.toLowerCase() === trimmedQuery.toLowerCase());
+    !allOptions.some((option) => option.toLowerCase() === trimmedQuery.toLowerCase());
+
+  const hasOptions = filteredGroups.some((g) => g.options.length > 0);
 
   function handleSelect(value: string) {
     onSelect(value);
@@ -69,11 +93,15 @@ export function TagCombobox({
               return;
             }
 
-            if (event.key === "Enter" && open && (showCreate || filtered.length === 1)) {
-              event.preventDefault();
-              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-              showCreate ? handleCreate() : handleSelect(filtered[0]);
-              return;
+            if (event.key === "Enter" && open) {
+              const firstOption = filteredGroups[0]?.options[0];
+              const singleOption = hasOptions && filteredGroups.flatMap((g) => g.options).length === 1;
+              if (showCreate || singleOption) {
+                event.preventDefault();
+                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                showCreate ? handleCreate() : firstOption && handleSelect(firstOption);
+                return;
+              }
             }
 
             if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key) && open) {
@@ -107,24 +135,48 @@ export function TagCombobox({
         >
           <Command ref={commandRef} shouldFilter={false}>
             <Command.List className="max-h-48 overflow-y-auto p-1">
-              {filtered.length === 0 && !showCreate && (
+              {!hasOptions && !showCreate && (
                 <Command.Empty className="py-2 px-3 text-sm text-muted-foreground">
                   No options available.
                 </Command.Empty>
               )}
-              {filtered.map((option) => (
-                <Command.Item
-                  key={option}
-                  value={option}
-                  onSelect={handleSelect}
-                  className={cn(
-                    "cursor-pointer rounded-md px-2 py-1.5 text-sm outline-none",
-                    "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
-                  )}
-                >
-                  {option}
-                </Command.Item>
-              ))}
+              {filteredGroups.map((group) =>
+                group.label ? (
+                  <Command.Group
+                    key={group.label}
+                    heading={group.label}
+                    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:font-mono"
+                  >
+                    {group.options.map((option) => (
+                      <Command.Item
+                        key={option}
+                        value={option}
+                        onSelect={handleSelect}
+                        className={cn(
+                          "cursor-pointer rounded-md px-2 py-1.5 text-sm outline-none",
+                          "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+                        )}
+                      >
+                        {option}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ) : (
+                  group.options.map((option) => (
+                    <Command.Item
+                      key={option}
+                      value={option}
+                      onSelect={handleSelect}
+                      className={cn(
+                        "cursor-pointer rounded-md px-2 py-1.5 text-sm outline-none",
+                        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+                      )}
+                    >
+                      {option}
+                    </Command.Item>
+                  ))
+                ),
+              )}
               {showCreate && (
                 <Command.Item
                   key="__create"

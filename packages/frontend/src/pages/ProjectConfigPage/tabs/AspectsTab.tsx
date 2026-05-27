@@ -21,6 +21,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { PenLineIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { ArcEditor } from "../components/ArcEditor";
+import { groupByCategory } from "@/utils/group-by-category";
 
 const AspectKeyInput = ({
   projectId,
@@ -125,6 +126,7 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
 
   const aspects = envelope?.status === 200 ? envelope.data : [];
+  const groupedAspects = groupByCategory(aspects, (a) => a.category);
 
   const handleCreate = async () => {
     const trimmed = keyValue.trim();
@@ -234,47 +236,54 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
       ) : aspects.length === 0 ? (
         <p className="text-sm text-muted-foreground">None yet.</p>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {aspects.map((aspect) => (
-            <li key={aspect.uuid} className="rounded-md border border-border/50 text-sm">
-              <div className="flex items-center justify-between px-3 py-2">
-                <div className="flex flex-col gap-0.5">
-                  <AspectKeyInput
-                    projectId={projectId}
-                    aspectId={aspect.uuid}
-                    currentKey={aspect.key}
-                    onRenamed={handleRenamed}
-                  />
-                  {aspect.category && (
-                    <span className="text-xs text-muted-foreground">{aspect.category}</span>
-                  )}
+        <div className="flex flex-col gap-3">
+          {groupedAspects.map(({ category, items }) => (
+            <div key={category ?? "__root__"}>
+              {category && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs text-muted-foreground font-mono">{category}</span>
+                  <div className="flex-1 h-px bg-border" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <Link
-                    to="/projects/$projectId/aspects/$aspectId"
-                    params={{ projectId, aspectId: aspect.uuid }}
-                  >
-                    <Button variant="ghost" size="icon-sm" aria-label={`Edit ${aspect.key}`}>
-                      <PenLineIcon />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => {
-                      setConfirmDeleteId(aspect.uuid);
-                      setConfirmDeleteKey(aspect.key);
-                    }}
-                    aria-label={`Delete ${aspect.key}`}
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-              </div>
-              <ArcEditor projectId={projectId} aspectId={aspect.uuid} />
-            </li>
+              )}
+              <ul className="flex flex-col gap-1">
+                {items.map((aspect) => (
+                  <li key={aspect.uuid} className="rounded-md border border-border/50 text-sm">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <AspectKeyInput
+                        projectId={projectId}
+                        aspectId={aspect.uuid}
+                        currentKey={aspect.key}
+                        onRenamed={handleRenamed}
+                      />
+                      <div className="flex items-center gap-1">
+                        <Link
+                          to="/projects/$projectId/aspects/$aspectId"
+                          params={{ projectId, aspectId: aspect.uuid }}
+                        >
+                          <Button variant="ghost" size="icon-sm" aria-label={`Edit ${aspect.key}`}>
+                            <PenLineIcon />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => {
+                            setConfirmDeleteId(aspect.uuid);
+                            setConfirmDeleteKey(aspect.key);
+                          }}
+                          aria-label={`Delete ${aspect.key}`}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </div>
+                    </div>
+                    <ArcEditor projectId={projectId} aspectId={aspect.uuid} />
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <Dialog

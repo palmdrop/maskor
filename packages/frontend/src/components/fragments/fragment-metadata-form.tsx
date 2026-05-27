@@ -17,8 +17,9 @@ import { useInvalidateActionLog } from "@api/action-log";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
-import { TagCombobox } from "@components/ui/tag-combobox";
+import { TagCombobox, type OptionGroup } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
+import { groupByCategory } from "@/utils/group-by-category";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentMetadataScope } from "../../lib/commands/scopes/fragment-metadata";
 import { useCommands } from "../../lib/commands/useCommands";
@@ -208,29 +209,33 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     [aspectsField.value, knownAspectKeys],
   );
 
-  const availableNotes = useMemo(
-    () =>
-      (notesEnvelope?.status === 200 ? notesEnvelope.data : [])
-        .filter((note) => !notesField.value.includes(note.key))
-        .map((note) => note.key),
-    [notesEnvelope, notesField.value],
-  );
+  const availableNoteGroups = useMemo((): OptionGroup[] => {
+    const notes = (notesEnvelope?.status === 200 ? notesEnvelope.data : []).filter(
+      (note) => !notesField.value.includes(note.key),
+    );
+    return groupByCategory(notes, (n) => n.category).map(({ category, items }) => ({
+      label: category,
+      options: items.map((n) => n.key),
+    }));
+  }, [notesEnvelope, notesField.value]);
 
-  const availableReferences = useMemo(
-    () =>
-      (referencesEnvelope?.status === 200 ? referencesEnvelope.data : [])
-        .filter((reference) => !referencesField.value.includes(reference.key))
-        .map((reference) => reference.key),
-    [referencesEnvelope, referencesField.value],
-  );
+  const availableReferenceGroups = useMemo((): OptionGroup[] => {
+    const references = (
+      referencesEnvelope?.status === 200 ? referencesEnvelope.data : []
+    ).filter((reference) => !referencesField.value.includes(reference.key));
+    return groupByCategory(references, (r) => r.category).map(({ category, items }) => ({
+      label: category,
+      options: items.map((r) => r.key),
+    }));
+  }, [referencesEnvelope, referencesField.value]);
 
-  const availableAspects = useMemo(
-    () =>
-      projectAspects
-        .filter((aspect) => !(aspect.key in aspectsField.value))
-        .map((aspect) => aspect.key),
-    [projectAspects, aspectsField.value],
-  );
+  const availableAspectGroups = useMemo((): OptionGroup[] => {
+    const aspects = projectAspects.filter((aspect) => !(aspect.key in aspectsField.value));
+    return groupByCategory(aspects, (a) => a.category).map(({ category, items }) => ({
+      label: category,
+      options: items.map((a) => a.key),
+    }));
+  }, [projectAspects, aspectsField.value]);
 
   const removeAspect = useCallback(
     (aspectKey: string) => {
@@ -324,7 +329,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           })}
         </div>
         <TagCombobox
-          availableOptions={availableNotes}
+          groups={availableNoteGroups}
           placeholder="Add note — type to filter"
           onSelect={(value) => notesField.onChange([...notesField.value, value])}
         />
@@ -357,7 +362,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           })}
         </div>
         <TagCombobox
-          availableOptions={availableReferences}
+          groups={availableReferenceGroups}
           placeholder="Add reference — type to filter"
           onSelect={(value) => referencesField.onChange([...referencesField.value, value])}
         />
@@ -427,7 +432,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           </div>
         ))}
         <TagCombobox
-          availableOptions={availableAspects}
+          groups={availableAspectGroups}
           placeholder="Add aspect — type to filter or create"
           onSelect={(value) => {
             setCreateAspectError(null);

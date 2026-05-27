@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetAspect,
   useUpdateAspect,
+  useListAspects,
   getGetAspectQueryKey,
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
@@ -16,6 +17,7 @@ import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { EntityTag } from "@components/entity-tag";
 import { TagCombobox } from "@components/ui/tag-combobox";
+import { CategoryField } from "@components/category-field";
 import { EntityEditorShell } from "@components/entity-editor-shell";
 import { ASPECT_COLOR_PALETTE, resolveAspectColor } from "../../OverviewPage/utils/aspectColors";
 
@@ -38,6 +40,7 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
   const { mutateAsync: updateAspect, isPending } = useUpdateAspect();
   const { mutateAsync: updateAspectMetadata } = useUpdateAspect();
   const { data: notesEnvelope } = useListNotes(projectId);
+  const { data: aspectsListEnvelope } = useListAspects(projectId);
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -133,6 +136,11 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     save: makeSave<string | null>((value) => ({ color: value })),
   });
 
+  const categoryField = useLiveFieldSave({
+    serverValue: aspect?.category ?? null,
+    save: makeSave<string | null>((value) => ({ category: value })),
+  });
+
   const notesField = useLiveFieldSave({
     serverValue: aspect?.notes ?? [],
     isEqual: stringSetEqual,
@@ -149,6 +157,11 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
       projectNotes.filter((note) => !notesField.value.includes(note.key)).map((note) => note.key),
     [projectNotes, notesField.value],
   );
+
+  const existingAspectCategories = useMemo(() => {
+    const aspects = aspectsListEnvelope?.status === 200 ? aspectsListEnvelope.data : [];
+    return [...new Set(aspects.map((a) => a.category).filter((c): c is string => !!c))];
+  }, [aspectsListEnvelope]);
 
   const resolvedColor = useMemo(
     () => (!aspect ? undefined : resolveAspectColor(aspect.key, colorField.value ?? undefined)),
@@ -197,12 +210,12 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
         </div>
         {colorField.error && <p className="text-xs text-destructive">{colorField.error}</p>}
       </div>
-      {aspect.category && (
-        <div className="flex flex-col gap-2">
-          <Label>Category</Label>
-          <p className="text-sm text-muted-foreground">{aspect.category}</p>
-        </div>
-      )}
+      <CategoryField
+        serverValue={categoryField.value}
+        existingCategories={existingAspectCategories}
+        onChange={categoryField.onChange}
+        error={categoryField.error}
+      />
       <div className="flex flex-col gap-2">
         <Label>Notes</Label>
         <div className="flex flex-wrap gap-1">

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { defineScope, defineGlobalCommand, defineScopeCommand } from "@lib/commands/define";
+import { commandPaletteCommands } from "@lib/commands/scopes/command-palette";
 
 // ---------------------------------------------------------------------
 // Fixture catalog
@@ -75,14 +76,6 @@ const appleCmd = defineScopeCommand(testScope, {
   run: (ctx) => ctx.onRun("cmd:apple"),
 });
 
-const hotkeyKCmd = defineScopeCommand(testScope, {
-  id: "cmd:hotkey-k",
-  label: "Foo",
-  category: "other",
-  hotkey: "mod+k",
-  run: () => {},
-});
-
 const hotkeyShiftPCmd = defineScopeCommand(testScope, {
   id: "cmd:hotkey-shift-p",
   label: "Bar",
@@ -117,8 +110,7 @@ const asyncArgCmd = defineScopeCommand(testScope, {
   label: "Async Pick",
   category: "other",
   arg: {
-    items: async (ctx): Promise<readonly Item[]> =>
-      ctx.asyncItems ? await ctx.asyncItems() : [],
+    items: async (ctx): Promise<readonly Item[]> => (ctx.asyncItems ? await ctx.asyncItems() : []),
     getKey: (item) => item.id,
     getLabel: (item) => item.name,
   },
@@ -148,18 +140,19 @@ vi.mock("@lib/commands/catalog", () => ({
     globalNav,
     enabledCmd,
     appleCmd,
-    hotkeyKCmd,
     hotkeyShiftPCmd,
     lockedCmd,
     argCmd,
     asyncArgCmd,
     emptyArgCmd,
+    ...commandPaletteCommands,
   ] as const,
 }));
 
 // Imports below run after the vi.mock hoist.
 const { CommandsProvider } = await import("@lib/commands/CommandsProvider");
 const { useCommandScope } = await import("@lib/commands/useCommandScope");
+const { HotkeyBinder } = await import("@lib/commands/HotkeyBinder");
 const { CommandPalette } = await import("../CommandPalette");
 
 const TestPublisher = ({ ctx }: { ctx: ArgCtx }) => {
@@ -185,12 +178,13 @@ const InnerPublisher = ({ ctx }: { ctx: RunCtx }) => {
 const renderShell = (children?: ReactNode) =>
   render(
     <CommandsProvider>
+      <HotkeyBinder />
       {children}
       <CommandPalette />
     </CommandsProvider>,
   );
 
-const openPalette = () => fireEvent.keyDown(window, { key: "k", metaKey: true, bubbles: true });
+const openPalette = () => fireEvent.keyDown(document, { key: "k", metaKey: true, bubbles: true });
 
 describe("CommandPalette", () => {
   beforeEach(() => {
@@ -208,13 +202,13 @@ describe("CommandPalette", () => {
 
   it("opens on Ctrl+K", () => {
     renderShell();
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true, bubbles: true });
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true, bubbles: true });
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
   it("opens on Cmd+Shift+P", () => {
     renderShell();
-    fireEvent.keyDown(window, { key: "p", metaKey: true, shiftKey: true, bubbles: true });
+    fireEvent.keyDown(document, { key: "p", metaKey: true, shiftKey: true, bubbles: true });
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
@@ -309,7 +303,7 @@ describe("CommandPalette", () => {
     const ctx: ArgCtx = { onRun: vi.fn() };
     renderShell(<TestPublisher ctx={ctx} />);
     openPalette();
-    expect(screen.getByText("K")).toBeInTheDocument();
+    expect(screen.getAllByText("K").length).toBeGreaterThan(0);
   });
 
   it("renders hotkey badge with shift glyph for mod+shift+p", () => {

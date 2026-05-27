@@ -78,20 +78,6 @@ export const QuickSwitcher = ({ projectId }: QuickSwitcherProps) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  // Capture-phase listener intercepts Cmd/Ctrl+O before editors see it.
-  /*
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey && !event.ctrlKey) return;
-      if (event.key.toLowerCase() !== "o") return;
-      event.preventDefault();
-      onOpenChange(true);
-    };
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [onOpenChange]);
-  */
-
   const fragments = useListFragmentSummaries(projectId);
   const aspects = useListAspects(projectId);
   const notes = useListNotes(projectId);

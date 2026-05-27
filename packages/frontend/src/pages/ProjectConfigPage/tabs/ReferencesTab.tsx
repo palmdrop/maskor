@@ -18,6 +18,7 @@ export const ReferencesTab = ({ projectId }: { projectId: string }) => {
       ? envelope.data.map((r) => ({
           uuid: r.uuid,
           label: r.key,
+          category: r.category,
           editTo: `/projects/${projectId}/references/${r.uuid}`,
         }))
       : [];

@@ -1,15 +1,19 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetReference,
   useUpdateReference,
+  useListReferences,
   getGetReferenceQueryKey,
   getListReferencesQueryKey,
 } from "@api/generated/references/references";
 import { useInvalidateActionLog } from "@api/action-log";
+import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
+import type { Reference, ReferenceUpdate } from "@api/generated/maskorAPI.schemas";
 import { Button } from "@components/ui/button";
+import { CategoryField } from "@components/category-field";
 import { EntityEditorShell } from "@components/entity-editor-shell";
 
 type Props = {
@@ -22,17 +26,74 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetReference(projectId, referenceId);
   const { mutateAsync: updateReference, isPending } = useUpdateReference();
+  const { mutateAsync: updateReferenceMetadata } = useUpdateReference();
+  const { data: referencesListEnvelope } = useListReferences(projectId);
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
   const reference = envelope?.status === 200 ? envelope.data : null;
 
+  const referenceQueryKey = useMemo(
+    () => getGetReferenceQueryKey(projectId, referenceId),
+    [projectId, referenceId],
+  );
+
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: getGetReferenceQueryKey(projectId, referenceId) });
+    queryClient.invalidateQueries({ queryKey: referenceQueryKey });
     queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
-  }, [queryClient, projectId, referenceId]);
+  }, [queryClient, referenceQueryKey, projectId]);
 
   const invalidateActionLog = useInvalidateActionLog(projectId);
+
+  const makeSave = useCallback(
+    <T,>(toPatch: (value: T) => ReferenceUpdate) =>
+      async (value: T) => {
+        type CacheEntry = { data: Reference; status: number };
+        const snapshot = queryClient.getQueryData<CacheEntry>(referenceQueryKey);
+        if (snapshot?.status === 200) {
+          queryClient.setQueryData(referenceQueryKey, {
+            ...snapshot,
+            data: { ...snapshot.data, ...toPatch(value) },
+          });
+        }
+        try {
+          const result = await updateReferenceMetadata({
+            projectId,
+            referenceId,
+            data: toPatch(value),
+          });
+          if (result.status !== 200) {
+            throw new Error((result.data as { message?: string }).message ?? "Save failed.");
+          }
+          if (snapshot !== undefined) {
+            queryClient.setQueryData(referenceQueryKey, {
+              ...snapshot,
+              data: result.data.reference,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
+        } catch (error) {
+          if (snapshot !== undefined) {
+            queryClient.setQueryData(referenceQueryKey, snapshot);
+          }
+          invalidate();
+          throw error;
+        } finally {
+          invalidateActionLog();
+        }
+      },
+    [queryClient, referenceQueryKey, updateReferenceMetadata, projectId, referenceId, invalidate, invalidateActionLog],
+  );
+
+  const categoryField = useLiveFieldSave({
+    serverValue: reference?.category ?? null,
+    save: makeSave<string | null>((value) => ({ category: value })),
+  });
+
+  const existingReferenceCategories = useMemo(() => {
+    const references = referencesListEnvelope?.status === 200 ? referencesListEnvelope.data : [];
+    return [...new Set(references.map((r) => r.category).filter((c): c is string => !!c))];
+  }, [referencesListEnvelope]);
 
   const onKeySave = useCallback(
     async (key: string) => {
@@ -78,6 +139,17 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
     </Link>
   );
 
+  const sidebar = (
+    <div className="flex flex-col gap-4">
+      <CategoryField
+        serverValue={categoryField.value}
+        existingCategories={existingReferenceCategories}
+        onChange={categoryField.onChange}
+        error={categoryField.error}
+      />
+    </div>
+  );
+
   return (
     <EntityEditorShell
       label="Reference"
@@ -96,6 +168,7 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
       onContentRevert={() => setIsDirty(false)}
       onKeySave={onKeySave}
       onContentSave={onContentSave}
+      sidebar={sidebar}
     />
   );
 };

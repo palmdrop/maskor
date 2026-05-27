@@ -87,12 +87,12 @@ Goal: out-and-back returns preserve identity. See ADR-0002.
 
 Goal: users can pick or change category in the Maskor UI without typing absolute paths or touching the filesystem.
 
-- [ ] Add a "Category" text field to the aspect editor, note editor, and reference editor. Free-text input, single line, value is the slash-separated path (or empty for root).
-- [ ] Autocomplete suggestions: source the distinct categories for that entity type from the list endpoint response; suggest matching prefixes as the user types. Allow typing new paths that don't match any suggestion.
-- [ ] Client-side validation mirrors the API rules (reject the same invalid char set). Show inline error before submit.
-- [ ] Save behavior: changing the field and committing triggers the `move` API command. Optimistic UI follows the existing immediate-save pattern (cf. `entity-live-metadata-save.md`).
-- [ ] Listing surfaces (aspect list in project config, attachment pickers in fragment editor): group by `category` in the frontend. Top-level (`category === null`) items appear first; remaining categories sorted alphabetically; nested categories rendered with `/` breadcrumbs.
-- [ ] Tests: editor renders; typing a category persists; autocomplete suggests existing categories; invalid chars rejected client-side; moving an entity is reflected in the list.
+- [x] Add a "Category" text field to the aspect editor, note editor, and reference editor. Free-text input, single line, value is the slash-separated path (or empty for root). _(2026-05-27)_
+- [x] Autocomplete suggestions: source the distinct categories for that entity type from the list endpoint response; suggest matching prefixes as the user types. Allow typing new paths that don't match any suggestion. _(2026-05-27)_
+- [x] Client-side validation mirrors the API rules (reject the same invalid char set). Show inline error before submit. _(2026-05-27)_
+- [x] Save behavior: changing the field and committing triggers the `move` API command. Optimistic UI follows the existing immediate-save pattern (cf. `entity-live-metadata-save.md`). _(2026-05-27)_
+- [x] Listing surfaces (aspect list in project config, attachment pickers in fragment editor): group by `category` in the frontend. Top-level (`category === null`) items appear first; remaining categories sorted alphabetically; nested categories rendered with `/` breadcrumbs. _(2026-05-27)_
+- [x] Tests: editor renders; typing a category persists; autocomplete suggests existing categories; invalid chars rejected client-side; moving an entity is reflected in the list. _(2026-05-27)_
 - [ ] `git commit` Phase 4.
 
 ### Phase 5 — Adoption & documentation

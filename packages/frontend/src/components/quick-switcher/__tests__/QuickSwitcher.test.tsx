@@ -63,11 +63,18 @@ vi.mock("@/router", () => ({
 }));
 
 const { QuickSwitcher } = await import("../QuickSwitcher");
+const { CommandsProvider } = await import("@lib/commands/CommandsProvider");
+const { HotkeyBinder } = await import("@lib/commands/HotkeyBinder");
 
-const renderSwitcher = (open = true) =>
+const renderSwitcher = () =>
   render(
-    <QuickSwitcher projectId="p-1" open={open} onOpenChange={() => {}} />,
+    <CommandsProvider>
+      <HotkeyBinder />
+      <QuickSwitcher projectId="p-1" />
+    </CommandsProvider>,
   );
+
+const openSwitcher = () => fireEvent.keyDown(document, { key: "o", metaKey: true, bubbles: true });
 
 const resetFixtures = () => {
   fragmentsResult.current = {
@@ -128,6 +135,7 @@ describe("QuickSwitcher — catalog and grouping", () => {
     };
 
     renderSwitcher();
+    openSwitcher();
 
     const headings = screen.getAllByText(/^(Fragments|Aspects|Notes|References|Sequences)$/);
     const headingTexts = headings.map((node) => node.textContent);
@@ -153,6 +161,7 @@ describe("QuickSwitcher — catalog and grouping", () => {
     };
 
     renderSwitcher();
+    openSwitcher();
 
     const input = screen.getByPlaceholderText("Jump to entity…");
     await userEvent.type(input, "ash");
@@ -170,6 +179,8 @@ describe("QuickSwitcher — catalog and grouping", () => {
     };
 
     renderSwitcher();
+    openSwitcher();
+
     const input = screen.getByPlaceholderText("Jump to entity…");
     await userEvent.type(input, "qqqqq");
 
@@ -190,6 +201,8 @@ describe("QuickSwitcher — catalog and grouping", () => {
     };
 
     renderSwitcher();
+    openSwitcher();
+
     expect(screen.getByText("river")).toBeInTheDocument();
     expect(screen.queryByText("discarded-one")).not.toBeInTheDocument();
   });
@@ -207,6 +220,7 @@ describe("QuickSwitcher — catalog and grouping", () => {
     };
 
     renderSwitcher();
+    openSwitcher();
 
     const rows = screen.getAllByText("river");
     expect(rows).toHaveLength(2);
@@ -216,9 +230,8 @@ describe("QuickSwitcher — catalog and grouping", () => {
 
   it("renders the empty-project state when all queries resolve empty", () => {
     renderSwitcher();
-    expect(
-      screen.getByText(/This project is empty\. Create a fragment/),
-    ).toBeInTheDocument();
+    openSwitcher();
+    expect(screen.getByText(/This project is empty\. Create a fragment/)).toBeInTheDocument();
   });
 });
 
@@ -235,6 +248,7 @@ describe("QuickSwitcher — open semantics integration", () => {
     ];
 
     renderSwitcher();
+    openSwitcher();
     await userEvent.click(screen.getByText("river"));
 
     expect(navigateMock).toHaveBeenCalledWith({
@@ -256,6 +270,7 @@ describe("QuickSwitcher — open semantics integration", () => {
     ];
 
     renderSwitcher();
+    openSwitcher();
     await userEvent.click(screen.getByText("river"));
 
     expect(navigateMock).toHaveBeenCalledWith({
@@ -278,6 +293,7 @@ describe("QuickSwitcher — open semantics integration", () => {
     ];
 
     renderSwitcher();
+    openSwitcher();
     await userEvent.click(screen.getByText("main"));
 
     expect(navigateMock).toHaveBeenCalledTimes(1);
@@ -299,40 +315,40 @@ describe("QuickSwitcher — global keybinding", () => {
   // The switcher is rendered in closed state for these tests; we only care
   // that Cmd/Ctrl+O calls onOpenChange(true) from any focus, including
   // contentEditable elements that editors install on.
-  it("Cmd+O fires onOpenChange(true) from body focus", () => {
-    const onOpenChange = vi.fn();
-    render(<QuickSwitcher projectId="p-1" open={false} onOpenChange={onOpenChange} />);
-    fireEvent.keyDown(window, { key: "o", metaKey: true, bubbles: true });
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+  it("Cmd+O opens the switcher from body focus", () => {
+    renderSwitcher();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    openSwitcher();
+    expect(screen.queryByRole("combobox")).toBeInTheDocument();
   });
 
-  it("Ctrl+O fires onOpenChange(true)", () => {
-    const onOpenChange = vi.fn();
-    render(<QuickSwitcher projectId="p-1" open={false} onOpenChange={onOpenChange} />);
-    fireEvent.keyDown(window, { key: "o", ctrlKey: true, bubbles: true });
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+  it("Ctrl+O opens the switcher", () => {
+    renderSwitcher();
+    fireEvent.keyDown(document, { key: "o", ctrlKey: true, bubbles: true });
+    expect(screen.queryByRole("combobox")).toBeInTheDocument();
   });
 
-  it("Cmd+O fires from inside a contentEditable (capture-phase preempts editor)", () => {
-    const onOpenChange = vi.fn();
+  it("Cmd+O fires from inside a contentEditable", () => {
     render(
       <>
-        <div data-testid="editor" contentEditable suppressContentEditableWarning>
-          editor
-        </div>
-        <QuickSwitcher projectId="p-1" open={false} onOpenChange={onOpenChange} />
+        <CommandsProvider>
+          <HotkeyBinder />
+          <div data-testid="editor" contentEditable suppressContentEditableWarning>
+            editor
+          </div>
+          <QuickSwitcher projectId="p-1" />
+        </CommandsProvider>
       </>,
     );
     const editor = screen.getByTestId("editor");
     act(() => editor.focus());
     fireEvent.keyDown(editor, { key: "o", metaKey: true, bubbles: true });
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole("combobox")).toBeInTheDocument();
   });
 
-  it("does not fire on plain 'o' without modifier", () => {
-    const onOpenChange = vi.fn();
-    render(<QuickSwitcher projectId="p-1" open={false} onOpenChange={onOpenChange} />);
-    fireEvent.keyDown(window, { key: "o", bubbles: true });
-    expect(onOpenChange).not.toHaveBeenCalled();
+  it("does not open on plain 'o' without modifier", () => {
+    renderSwitcher();
+    fireEvent.keyDown(document, { key: "o", bubbles: true });
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });
