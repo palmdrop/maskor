@@ -1,0 +1,114 @@
+# Backend Type Deduplication
+
+**Date**: 27-05-2026
+**Status**: In Progress
+
+---
+
+## Goal
+
+Adding or changing a field on a backend domain entity should require editing exactly one schema. After this refactor, the canonical zod schema in `@maskor/shared` (and `drizzle-zod`-derived schemas for row shapes) drive every downstream shape: `ProjectRecord`, `ProjectManifest`, `FragmentStats`, and the inline patch types on storage methods. No hand-written TS type may mirror a zod schema or a drizzle table without a documented semantic reason.
+
+---
+
+## Context
+
+This plan continues the work begun in `zod-first-shared-schemas.md` (Done, 2026-04-21), which made zod the source of truth for **domain** types but explicitly left drizzle row types and storage-internal intermediate types alone. The cost of that boundary is now visible: the commit `32bb4fa` added a single optional field (`suggestion.currentFragmentUUID`) and had to edit four parallel shapes — `ProjectSchema` (zod), `ProjectManifest` (TS), `ProjectRecord` (TS, with the developer's own TODO "couldn't this be inferred from the schema?"), and the inline `updateProject` patch literal. `ProjectUpdateSchema` in shared was *not* updated to match, so the public update contract has already silently drifted from the internal one.
+
+A grep also confirms `FragmentStats` (`packages/storage/src/suggestion/stats-repo.ts:5-13`) duplicates `fragmentStatsTable.$inferSelect`, and `drizzle-zod` is not in use anywhere in the repo. The pattern is pervasive, not isolated.
+
+**Out of scope for this plan**:
+
+- Moving `currentFragmentUUID` out of the project manifest into a `suggestion_state` table. Tracked in `references/suggestions.md` as a separate concern; will be handled in its own plan once the type infrastructure here is in place.
+- API request/response schemas that genuinely differ from domain (e.g. `SuggestionCurrentResponseSchema` returning a full `Fragment`). These stay as endpoint-specific zod objects; the plan only targets shapes that *mechanically* mirror a canonical source.
+- Frontend types. Orval codegen already derives those from the OpenAPI spec.
+
+---
+
+## Tasks
+
+### Phase 1 — Branch and audit
+
+- [x] Create branch `backend-type-deduplication` from `main`
+- [x] Inventory every hand-written TS type in `packages/storage/src/**` and `packages/api/src/**` that overlaps with a zod schema or drizzle table. For each, record:
+  - file:line
+  - canonical source it mirrors (zod schema path, drizzle table name)
+  - classification: **mechanical** (rename, partial, defaults, omit/pick) or **semantic** (genuinely different fields / constraints)
+  - if mechanical, the smallest zod operation that would produce it (`.partial()`, `.pick()`, `.omit().extend()`, `createSelectSchema(...)`, etc.)
+- [x] Write the inventory to `references/plans/backend-type-deduplication-audit.md` as a table. This artefact informs every subsequent phase — if the inventory shows mostly semantic differences, the plan's scope shrinks.
+- [ ] Pause for developer review of the audit before proceeding to Phase 2. The audit may reveal the listed "known offenders" below are not the highest-leverage targets.
+
+### Phase 2 — Adopt drizzle-zod and add derivation helpers
+
+- [ ] Add `drizzle-zod` to `packages/storage`
+- [ ] In `packages/shared/src/schemas/`, add a small helpers module with: `deepPartial(schema)` (recursive `.partial()` for nested object schemas), `withDefaults(schema, defaults)` (apply a defaults object during parse), and any other primitive the audit identified as common. Keep this module small — these are utilities, not a framework.
+- [ ] Add tests for the helpers (round-trip a known nested schema through `deepPartial` and `withDefaults`, confirm types and runtime parse behaviour)
+- [ ] `git commit`
+
+### Phase 3 — Replace `ProjectRecord` and `ProjectManifest`
+
+The most-touched offender, and the one that motivated this plan.
+
+- [ ] Decide on the `uuid` vs `projectUUID` rename. Either rename the field on the domain `ProjectSchema` to `projectUUID` so `ProjectRecord` derives cleanly via `z.infer`, or accept a one-line `Omit & { projectUUID: string }` derivation. Document the decision in the audit file.
+- [ ] Derive `ProjectManifest`'s `config` shape from `ProjectSchema.pick({ editor, suggestion, advanced, preview })` via `deepPartial`. The envelope (`projectUUID`, `name`, `registeredAt`, `config?`) stays as a literal.
+- [ ] Replace the hand-written `ProjectRecord` in `packages/storage/src/registry/types.ts` with a derivation from `ProjectSchema`.
+- [ ] Remove the `// TODO: couldn't this be inferred from the schema?` comment.
+- [ ] Verify `toProjectRecord` still typechecks; simplify if the rename made the mapping trivial.
+- [ ] Run `bun run typecheck` and `bun run test` for `packages/storage`. Fix any drift.
+- [ ] `git commit`
+
+### Phase 4 — Replace `FragmentStats` with `drizzle-zod`
+
+- [ ] Generate `FragmentStatsSchema` via `createSelectSchema(fragmentStatsTable)` and derive `type FragmentStats = z.infer<...>`.
+- [ ] Delete the hand-written type in `packages/storage/src/suggestion/stats-repo.ts:5-13`. Keep `defaultStats(...)` (runtime values, not a type).
+- [ ] Verify all callers still typecheck.
+- [ ] Apply the same treatment to any other hand-written types the audit flagged as drizzle-row mirrors.
+- [ ] Run tests, `git commit`.
+
+### Phase 5 — Replace inline `updateX` patch literals with `XUpdate` from shared
+
+- [ ] Update `packages/shared/src/schemas/domain/project.ts` so `ProjectUpdateSchema` includes every updatable field on `ProjectSchema` — today it omits `currentFragmentUUID` despite the schema and the inline storage patch including it.
+- [ ] Type `registry.updateProject(projectUUID, patch)` with `ProjectUpdate` (`z.infer<typeof ProjectUpdateSchema>`). Remove the inline literal at `registry.ts:262-279`.
+- [ ] Apply the same pattern to any other storage methods the audit flagged with inline patch types.
+- [ ] Decide a convention: are domain `XUpdateSchema`s derived from `XSchema` (e.g. `XSchema.deepPartial().pick(...)`) or written separately? Pick one, apply consistently, document in the audit file. Derived is preferable when the update surface is "everything optional"; separate is preferable when only a subset of fields is updatable.
+- [ ] Run tests, `git commit`.
+
+### Phase 6 — Centralise config defaults
+
+Currently defaults live in two places: `toProjectRecord` (`?? 16`, `?? false`, `?? SUGGESTION_READY_STATUS_THRESHOLD_DEFAULT`, ...) and `registerProject` (hard-coded `{ vimMode: false, fontSize: 16, ... }` literal in two branches). The TODO `// store default settings somewhere...` at `registry.ts:196` already flags this.
+
+- [ ] Embed defaults in `ProjectSchema` via `.default(...)` on each leaf field, OR define a single `PROJECT_CONFIG_DEFAULTS` constant typed against the schema. Pick whichever the audit recommended.
+- [ ] Refactor `toProjectRecord` to delegate to `ProjectSchema.parse(manifest.config ?? {})` (or the equivalent helper). The function may collapse to one or two lines.
+- [ ] Refactor `registerProject` so the initial-config literal references the same default source. No more parallel hard-codes.
+- [ ] Generalise `writeVaultManifest`'s hand-written per-section spread (`editor`, `suggestion`, `advanced`, `preview`) into a generic merge over the known config keys, so a new config section doesn't require editing this function.
+- [ ] Run tests, `git commit`.
+
+### Phase 7 — Verify and close
+
+- [ ] `bun run verify` from repo root. Fix any failures.
+- [ ] Update the audit file with a final "after" snapshot: which entries were eliminated, which remain (with reason).
+- [ ] Set plan status to Done.
+
+---
+
+## Testing
+
+ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests already exist.
+
+Type-level changes need compile-time verification — relying on `bun run typecheck` is the baseline. Where runtime behaviour changes (defaults shifting from `??` chains to `.default()`-via-`parse()`, or `writeVaultManifest` merge logic generalising), add or extend tests in `packages/storage/src/__tests__/registry.test.ts` to confirm parity with the previous behaviour, especially:
+
+- Reading a manifest with missing config fields applies the same defaults as before.
+- Writing a partial config patch merges into the on-disk manifest exactly as before (round-trip a manifest through write+read and assert deep equality).
+- An update patch typed as `ProjectUpdate` is accepted by `updateProject` and an unknown field is rejected (or stripped, depending on the existing convention — confirm in the audit).
+
+## Notes
+
+DO NOT IMPLEMENT until clearly stated by the developer.
+
+The audit (Phase 1) is the most important phase. If the inventory shows most hand-written types are semantically distinct from their apparent canonical source, the plan should shrink to only the genuine mechanical duplicates. Do not force unification where the shapes differ for a real reason — that introduces accidental coupling and obscures intent. Push back if Phase 2+ start to feel like reaching.
+
+When clearly stated to implement, create a new branch based on the plan title, and proceed with development in that branch.
+
+Once a phase, or sensible set of changes, is done, check off the relevant tasks, make a `git commit` and describe what has been added.
+
+When the plan is implemented, fully or partially, set the plan status to `Done`, or `In Progress`. No spec updates are expected — this is internal type plumbing with no user-facing surface.
