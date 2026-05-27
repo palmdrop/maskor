@@ -3,6 +3,7 @@ import { z } from "zod";
 export const ReferenceSchema = z.object({
   uuid: z.uuid(),
   key: z.string(),
+  category: z.string().optional(),
   content: z.string(),
 });
 

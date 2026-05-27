@@ -238,7 +238,10 @@ describe("rename buffer — aspect external rename", () => {
       },
     });
 
-    renameSync(join(vaultDir, "aspects", "grief.md"), join(vaultDir, "aspects", "sorrow.md"));
+    renameSync(
+      join(vaultDir, "aspects", "theme", "grief.md"),
+      join(vaultDir, "aspects", "theme", "sorrow.md"),
+    );
 
     await waitFor(() => calls.length > 0);
     expect(calls).toHaveLength(1);

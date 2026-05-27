@@ -13,7 +13,6 @@ import { useInvalidateActionLog } from "@api/action-log";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import type { Aspect, AspectUpdate } from "@api/generated/maskorAPI.schemas";
 import { Button } from "@components/ui/button";
-import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { EntityTag } from "@components/entity-tag";
 import { TagCombobox } from "@components/ui/tag-combobox";
@@ -129,11 +128,6 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     [updateAspect, projectId, aspectId, invalidate, invalidateActionLog],
   );
 
-  const categoryField = useLiveFieldSave({
-    serverValue: aspect?.category ?? "",
-    save: makeSave<string>((value) => ({ category: value })),
-  });
-
   const colorField = useLiveFieldSave({
     serverValue: aspect?.color ?? null,
     save: makeSave<string | null>((value) => ({ color: value })),
@@ -203,15 +197,12 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
         </div>
         {colorField.error && <p className="text-xs text-destructive">{colorField.error}</p>}
       </div>
-      <div className="flex flex-col gap-2">
-        <Label>Category</Label>
-        <Input
-          value={categoryField.value}
-          onChange={(event) => categoryField.onChange(event.target.value)}
-          placeholder="Enter category"
-        />
-        {categoryField.error && <p className="text-xs text-destructive">{categoryField.error}</p>}
-      </div>
+      {aspect.category && (
+        <div className="flex flex-col gap-2">
+          <Label>Category</Label>
+          <p className="text-sm text-muted-foreground">{aspect.category}</p>
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <Label>Notes</Label>
         <div className="flex flex-wrap gap-1">

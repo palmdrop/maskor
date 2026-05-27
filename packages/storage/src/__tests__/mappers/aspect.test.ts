@@ -11,7 +11,6 @@ import type { Aspect } from "@maskor/shared";
 const PARSED_ASPECT: ParsedFile = {
   frontmatter: {
     uuid: "aspect-0001-0000-0000-000000000001",
-    category: "theme",
     notes: [],
   },
   inlineFields: {},
@@ -23,7 +22,6 @@ describe("aspect.fromFile", () => {
     const aspect = fromFile(PARSED_ASPECT, "grief.md");
     expect(aspect.uuid as string).toBe("aspect-0001-0000-0000-000000000001");
     expect(aspect.key).toBe("grief");
-    expect(aspect.category).toBe("theme");
     expect(aspect.notes).toEqual([]);
   });
 
@@ -37,13 +35,19 @@ describe("aspect.fromFile", () => {
     expect(aspect.description).toBeUndefined();
   });
 
-  it("sets category to undefined when missing", () => {
-    const parsed: ParsedFile = {
-      ...PARSED_ASPECT,
-      frontmatter: { ...PARSED_ASPECT.frontmatter, category: undefined },
-    };
-    const aspect = fromFile(parsed, "grief.md");
+  it("derives category as undefined at the entity-type root", () => {
+    const aspect = fromFile(PARSED_ASPECT, "grief.md");
     expect(aspect.category).toBeUndefined();
+  });
+
+  it("derives category from single-level subfolder", () => {
+    const aspect = fromFile(PARSED_ASPECT, "themes/grief.md");
+    expect(aspect.category).toBe("themes");
+  });
+
+  it("derives category from nested subfolders", () => {
+    const aspect = fromFile(PARSED_ASPECT, "world/places/london.md");
+    expect(aspect.category).toBe("world/places");
   });
 
   it("reads color from frontmatter when present", () => {
@@ -65,7 +69,7 @@ describe("aspect.toFile", () => {
   const aspect: Aspect = {
     uuid: "aspect-0001-0000-0000-000000000001",
     key: "grief",
-    category: "theme",
+    category: "themes",
     description: "The presence of loss.",
     notes: [],
   };
@@ -76,13 +80,8 @@ describe("aspect.toFile", () => {
     expect(frontmatter.notes).toEqual([]);
   });
 
-  it("writes category when present", () => {
+  it("does not write category to frontmatter — category is derived from path", () => {
     const { frontmatter } = toFile(aspect);
-    expect(frontmatter.category).toBe("theme");
-  });
-
-  it("omits category when undefined", () => {
-    const { frontmatter } = toFile({ ...aspect, category: undefined });
     expect("category" in frontmatter).toBe(false);
   });
 

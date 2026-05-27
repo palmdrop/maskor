@@ -10,6 +10,8 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Aspect**: A named structural dimension of a project — a character, theme, place, emotion, or any user-defined concept — to which fragments can be assigned weights. _Avoid_: tag, dimension, category (category is a property of an aspect, not an aspect itself), theme (too narrow).
 
+**Category**: The vault subfolder (relative to the entity-type root) an aspect, note, or reference lives in — a slash-separated path string, or `null` when the entity sits at the entity-type root. Derived from `filePath`, not stored independently. Applies only to aspects, notes, and references; fragments are always at the root of `fragments/` (or `fragments/discarded/`). _Avoid_: folder (implementation), tag, group, namespace.
+
 **Weight**: A 0–1 float expressing how strongly an entity embodies a given aspect. On a fragment: how strongly it expresses that aspect. On an arc control point: the target expression level at that position. _Avoid_: intensity (use weight for both fragment values and arc targets), score, rating.
 
 **Arc**: A user-authored curve expressing how a given aspect's target weight should rise and fall across the sequence, defined as sparse control points with normalized positions and weights. _Avoid_: storyline, trajectory, plot arc (too narrative-specific), curve (use only informally).

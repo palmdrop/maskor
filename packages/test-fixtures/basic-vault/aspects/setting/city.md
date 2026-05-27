@@ -1,7 +1,5 @@
 ---
 uuid: "e7760c99-eb4f-499d-a634-badf2b75314a"
-key: "city"
-category: "setting"
 notes: []
 ---
 

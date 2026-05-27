@@ -11,6 +11,7 @@ import * as sequenceMapper from "./mappers/sequence";
 import { initFragment } from "./init";
 import { rename, unlink, mkdir } from "node:fs/promises";
 import { join, basename, sep, resolve } from "node:path";
+import { joinCategoryPath } from "../../utils/category";
 
 // --- helpers ---
 
@@ -83,14 +84,20 @@ export const createVault = (config: VaultConfig): Vault => {
       child: () => log,
     } as unknown as Logger);
 
-  // Returns filenames relative to absoluteDirectory (e.g. "the-bridge.md", not a full path).
-  const listMarkdownFiles = async (absoluteDirectory: string): Promise<string[]> => {
-    const glob = new Bun.Glob("*.md");
+  // Returns paths relative to absoluteDirectory. With `recursive: true` paths may include
+  // subdirectories (e.g. "places/london.md"); with `recursive: false` only top-level
+  // filenames are returned (e.g. "the-bridge.md").
+  const listMarkdownFiles = async (
+    absoluteDirectory: string,
+    { recursive = false }: { recursive?: boolean } = {},
+  ): Promise<string[]> => {
+    const glob = new Bun.Glob(recursive ? "**/*.md" : "*.md");
     const entries: string[] = [];
 
     try {
       for await (const fileName of glob.scan({ cwd: absoluteDirectory, onlyFiles: true })) {
-        entries.push(fileName);
+        // Normalize to POSIX separators so DB rows and derived categories stay portable.
+        entries.push(fileName.split(sep).join("/"));
       }
     } catch (error) {
       log.error(
@@ -242,12 +249,12 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAll() {
-        const files = await listMarkdownFiles(vaultPath("aspects"));
+        const files = await listMarkdownFiles(vaultPath("aspects"), { recursive: true });
         return Promise.all(files.map((file) => this.read(file)));
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("aspects"));
+        const files = await listMarkdownFiles(vaultPath("aspects"), { recursive: true });
         return Promise.all(
           files.map(async (filePath) => {
             const absolutePath = toAbsoluteAspect(filePath);
@@ -260,10 +267,14 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(aspect: Aspect) {
         const { frontmatter, body } = aspectMapper.toFile(aspect);
-        const absoluteFilePath = toAbsoluteAspect(`${aspect.key}.md`);
+        const entityRelativePath = joinCategoryPath(aspect.category, aspect.key);
+        const absoluteFilePath = toAbsoluteAspect(entityRelativePath);
 
+        if (aspect.category) {
+          await mkdir(join(resolve(vaultPath("aspects")), aspect.category), { recursive: true });
+        }
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
-        log.debug({ filePath: basename(absoluteFilePath) }, "aspect written");
+        log.debug({ filePath: entityRelativePath }, "aspect written");
       },
 
       async delete(filePath: string) {
@@ -295,12 +306,12 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAll() {
-        const files = await listMarkdownFiles(vaultPath("notes"));
+        const files = await listMarkdownFiles(vaultPath("notes"), { recursive: true });
         return Promise.all(files.map((file) => this.read(file)));
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("notes"));
+        const files = await listMarkdownFiles(vaultPath("notes"), { recursive: true });
         return Promise.all(
           files.map(async (filePath) => {
             const absolutePath = toAbsoluteNote(filePath);
@@ -313,10 +324,14 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(note: Note) {
         const { frontmatter, body } = noteMapper.toFile(note);
-        const absoluteFilePath = toAbsoluteNote(`${note.key}.md`);
+        const entityRelativePath = joinCategoryPath(note.category, note.key);
+        const absoluteFilePath = toAbsoluteNote(entityRelativePath);
 
+        if (note.category) {
+          await mkdir(join(resolve(vaultPath("notes")), note.category), { recursive: true });
+        }
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
-        log.debug({ filePath: basename(absoluteFilePath) }, "note written");
+        log.debug({ filePath: entityRelativePath }, "note written");
       },
 
       async delete(filePath: string) {
@@ -346,12 +361,12 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAll() {
-        const files = await listMarkdownFiles(vaultPath("references"));
+        const files = await listMarkdownFiles(vaultPath("references"), { recursive: true });
         return Promise.all(files.map((file) => this.read(file)));
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("references"));
+        const files = await listMarkdownFiles(vaultPath("references"), { recursive: true });
         return Promise.all(
           files.map(async (filePath) => {
             const absolutePath = toAbsoluteReference(filePath);
@@ -364,10 +379,16 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async write(reference: Reference) {
         const { frontmatter, body } = referenceMapper.toFile(reference);
-        const absoluteFilePath = toAbsoluteReference(`${reference.key}.md`);
+        const entityRelativePath = joinCategoryPath(reference.category, reference.key);
+        const absoluteFilePath = toAbsoluteReference(entityRelativePath);
 
+        if (reference.category) {
+          await mkdir(join(resolve(vaultPath("references")), reference.category), {
+            recursive: true,
+          });
+        }
         await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
-        log.debug({ filePath: basename(absoluteFilePath) }, "reference written");
+        log.debug({ filePath: entityRelativePath }, "reference written");
       },
 
       async delete(filePath: string) {

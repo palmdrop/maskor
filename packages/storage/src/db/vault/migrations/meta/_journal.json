@@ -113,6 +113,13 @@
       "when": 1747872000000,
       "tag": "20260520_rename_ready_status_to_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1748390400000,
+      "tag": "20260526_drop_aspect_category",
+      "breakpoints": true
     }
   ]
 }

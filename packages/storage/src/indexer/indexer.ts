@@ -23,6 +23,7 @@ import type {
   VaultIndexer,
 } from "./types";
 import { assembleAspect, assembleFragment, assembleSequence } from "./assemblers";
+import { deriveCategory } from "../utils/category";
 import {
   upsertAspect,
   upsertFragment,
@@ -350,6 +351,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .map((row) => ({
             uuid: row.uuid,
             key: row.key,
+            category: deriveCategory(row.filePath),
             filePath: row.filePath,
           }));
       },
@@ -358,14 +360,24 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.key, key)).get();
 
         if (!row) return null;
-        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
+        return {
+          uuid: row.uuid,
+          key: row.key,
+          category: deriveCategory(row.filePath),
+          filePath: row.filePath,
+        };
       },
 
       async findByUUID(uuid: string) {
         const row = vaultDatabase.select().from(notesTable).where(eq(notesTable.uuid, uuid)).get();
 
         if (!row) return null;
-        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
+        return {
+          uuid: row.uuid,
+          key: row.key,
+          category: deriveCategory(row.filePath),
+          filePath: row.filePath,
+        };
       },
     },
 
@@ -378,6 +390,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .map((row) => ({
             uuid: row.uuid,
             key: row.key,
+            category: deriveCategory(row.filePath),
             filePath: row.filePath,
           }));
       },
@@ -390,7 +403,12 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row) return null;
-        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
+        return {
+          uuid: row.uuid,
+          key: row.key,
+          category: deriveCategory(row.filePath),
+          filePath: row.filePath,
+        };
       },
 
       async findByUUID(uuid: string) {
@@ -401,7 +419,12 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .get();
 
         if (!row) return null;
-        return { uuid: row.uuid, key: row.key, filePath: row.filePath };
+        return {
+          uuid: row.uuid,
+          key: row.key,
+          category: deriveCategory(row.filePath),
+          filePath: row.filePath,
+        };
       },
     },
 

@@ -59,6 +59,7 @@ import {
 } from "../indexer/upserts";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
+import { joinCategoryPath } from "../utils/category";
 import { ensureVaultSkeleton } from "../utils/vault-skeleton";
 import { parseFile } from "../vault/markdown/parse";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
@@ -317,10 +318,11 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       }
       const updated = updateFn(await vault.aspects.read(indexed.filePath));
       await vault.aspects.write(updated);
+      const newFilePath = joinCategoryPath(updated.category, updated.key);
       const rawContent = await Bun.file(
-        join(context.vaultPath, "aspects", `${updated.key}.md`),
+        join(context.vaultPath, "aspects", newFilePath),
       ).text();
-      cascaded.push({ aspect: updated, filePath: indexed.filePath, rawContent });
+      cascaded.push({ aspect: updated, filePath: newFilePath, rawContent });
       touched.push(uuid);
     }
 
@@ -894,7 +896,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           await getVault(context).aspects.write(aspect);
 
           // Inline DB update — closes the stale-index window for API-originated writes.
-          const entityRelativePath = `${aspect.key}.md`;
+          const entityRelativePath = joinCategoryPath(aspect.category, aspect.key);
           const absolutePath = join(context.vaultPath, "aspects", entityRelativePath);
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
@@ -973,7 +975,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const updated: Aspect = {
               ...current,
               ...(patch.key !== undefined && { key: patch.key }),
-              ...(patch.category !== undefined && { category: patch.category }),
               ...(patch.color !== undefined && { color: patch.color ?? undefined }),
               ...(patch.description !== undefined && { description: patch.description }),
               ...(patch.notes !== undefined && { notes: patch.notes }),
@@ -981,7 +982,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
             await getVault(context).aspects.write(updated);
 
-            const newFilePath = `${updated.key}.md`;
+            const newFilePath = joinCategoryPath(updated.category, updated.key);
 
             if (indexed.filePath !== newFilePath) {
               const absoluteOldPath = join(context.vaultPath, "aspects", indexed.filePath);
@@ -1073,7 +1074,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           await getVault(context).notes.write(note);
 
           // Inline DB update — closes the stale-index window for API-originated writes.
-          const entityRelativePath = `${note.key}.md`;
+          const entityRelativePath = joinCategoryPath(note.category, note.key);
           const absolutePath = join(context.vaultPath, "notes", entityRelativePath);
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
@@ -1111,7 +1112,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
             await getVault(context).notes.write(updated);
 
-            const newFilePath = `${updated.key}.md`;
+            const newFilePath = joinCategoryPath(updated.category, updated.key);
 
             if (indexed.filePath !== newFilePath) {
               const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
@@ -1246,7 +1247,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           await getVault(context).references.write(reference);
 
           // Inline DB update — closes the stale-index window for API-originated writes.
-          const entityRelativePath = `${reference.key}.md`;
+          const entityRelativePath = joinCategoryPath(reference.category, reference.key);
           const absolutePath = join(context.vaultPath, "references", entityRelativePath);
           const rawContent = await Bun.file(absolutePath).text();
           const vaultDatabase = getVaultDatabase(context);
@@ -1284,7 +1285,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
             await getVault(context).references.write(updated);
 
-            const newFilePath = `${updated.key}.md`;
+            const newFilePath = joinCategoryPath(updated.category, updated.key);
 
             if (indexed.filePath !== newFilePath) {
               const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);

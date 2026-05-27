@@ -51,12 +51,14 @@ export type IndexedAspect = {
 export type IndexedNote = {
   uuid: string;
   key: string;
+  category?: string;
   filePath: string;
 };
 
 export type IndexedReference = {
   uuid: string;
   key: string;
+  category?: string;
   filePath: string;
 };
 

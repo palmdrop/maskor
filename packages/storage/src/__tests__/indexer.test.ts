@@ -323,7 +323,7 @@ describe("hard-delete on rebuild", () => {
 
     expect(await indexer.aspects.findByKey("grief")).not.toBeNull();
 
-    unlinkSync(join(vaultDir, "aspects", "grief.md"));
+    unlinkSync(join(vaultDir, "aspects", "theme", "grief.md"));
     await indexer.rebuild();
 
     expect(await indexer.aspects.findByKey("grief")).toBeNull();

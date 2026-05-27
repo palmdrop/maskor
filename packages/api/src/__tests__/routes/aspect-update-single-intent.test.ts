@@ -68,13 +68,13 @@ describe("PATCH /aspects/:aspectId — single-intent action types", () => {
 
   it("emits 'aspect:updated' catch-all when description changes via programmatic patch", async () => {
     const aspect = await findAspectByKey("memory");
-    // Description + category in same patch → programmatic → aspect:updated
+    // Description + notes in same patch → programmatic → aspect:updated
     const response = await testContext.app.request(
       `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: "Changed desc.", category: "test-category" }),
+        body: JSON.stringify({ description: "Changed desc.", notes: ["scratch"] }),
       },
     );
     expect(response.status).toBe(200);
@@ -85,31 +85,11 @@ describe("PATCH /aspects/:aspectId — single-intent action types", () => {
     );
     // Should NOT produce aspect:description-edited — mixed patch is programmatic
     expect(descEdited).toBeUndefined();
-    // Should produce aspect:updated AND aspect:category-changed
+    // Should produce aspect:updated alongside the note-attached entry
     const updated = entries.find(
       (e) => e.type === "aspect:updated" && e.target.uuid === aspect.uuid,
     );
     expect(updated).toBeTruthy();
-  });
-
-  it("emits 'aspect:category-changed' with from/to when category changes", async () => {
-    const aspect = await findAspectByKey("grief");
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: "emotional" }),
-      },
-    );
-    expect(response.status).toBe(200);
-
-    const entries = await tailEntries();
-    const entry = entries.find(
-      (e) => e.type === "aspect:category-changed" && e.target.uuid === aspect.uuid,
-    );
-    expect(entry).toBeTruthy();
-    expect(entry?.payload.to).toBe("emotional");
   });
 
   it("emits 'aspect:note-attached' when a note is added to an aspect", async () => {
@@ -209,7 +189,6 @@ describe("PATCH /aspects/:aspectId — no-op and rename split", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: aspect.description,
-          category: aspect.category,
           notes: aspect.notes,
         }),
       },

@@ -91,7 +91,7 @@ describe("cascadeNoteKeyRename — via notes.update", () => {
     const result = await service.notes.update(context, bridgeNote.uuid, { key: "bridge notes" });
 
     expect(result.warnings.aspects).toContain(grief.uuid);
-    const updatedGrief = await vault.aspects.read("grief.md");
+    const updatedGrief = await vault.aspects.read("theme/grief.md");
     expect(updatedGrief.notes).toContain("bridge notes");
     expect(updatedGrief.notes).not.toContain("bridge observation");
   });

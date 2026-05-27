@@ -116,7 +116,6 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [keyValue, setKeyValue] = useState("");
-  const [categoryValue, setCategoryValue] = useState("");
   const [descriptionValue, setDescriptionValue] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -139,14 +138,12 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
         projectId,
         data: {
           key: trimmed,
-          category: categoryValue.trim() || undefined,
           description: descriptionValue.trim() || undefined,
         },
       });
       queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
       setCreateOpen(false);
       setKeyValue("");
-      setCategoryValue("");
       setDescriptionValue("");
     } catch (error) {
       // setCreateError("Failed to create aspect.");
@@ -157,7 +154,6 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
   const handleCreateOpenChange = (next: boolean) => {
     if (!next) {
       setKeyValue("");
-      setCategoryValue("");
       setDescriptionValue("");
       setCreateError(null);
     }
@@ -212,15 +208,6 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
                     if (e.key === "Enter") handleCreate();
                   }}
                   placeholder="e.g. tone"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="aspect-category">Category (optional)</Label>
-                <Input
-                  id="aspect-category"
-                  value={categoryValue}
-                  onChange={(e) => setCategoryValue(e.target.value)}
-                  placeholder="e.g. style"
                 />
               </div>
               <div className="flex flex-col gap-1.5">

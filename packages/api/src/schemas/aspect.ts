@@ -35,14 +35,12 @@ export const AspectUUIDParamSchema = z.object({
 
 export const AspectCreateSchema = DomainAspectCreateSchema.extend({
   key: z.string().min(1).openapi({ example: "tone" }),
-  category: z.string().optional().openapi({ example: "style" }),
   color: z.string().optional().openapi(ColorExample),
   notes: z.array(z.string()).default([]),
 }).openapi("AspectCreate");
 
 export const AspectUpdateSchema = DomainAspectUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "tone" }),
-  category: z.string().optional().openapi({ example: "style" }),
   color: AspectColorSchema.nullable().optional().openapi(ColorExample),
 }).openapi("AspectUpdate");
 

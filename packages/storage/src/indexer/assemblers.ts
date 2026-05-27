@@ -8,6 +8,7 @@ import type {
   sequencesTable,
 } from "../db/vault/schema";
 import type { IndexedAspect, IndexedFragment, IndexedSequence } from "./types";
+import { deriveCategory } from "../utils/category";
 
 export const assembleFragment = (
   row: typeof fragmentsTable.$inferSelect,
@@ -42,7 +43,7 @@ export const assembleAspect = (
 ): IndexedAspect => ({
   uuid: row.uuid,
   key: row.key,
-  category: row.category ?? undefined,
+  category: deriveCategory(row.filePath),
   color: row.color ?? undefined,
   filePath: row.filePath,
   notes: noteRows.map((note) => note.noteKey),

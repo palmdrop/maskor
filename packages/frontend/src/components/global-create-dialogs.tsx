@@ -50,14 +50,12 @@ export const GlobalCreateDialogs = ({
 
   const [simpleForm, setSimpleForm] = useState<SimpleCreateFormState>(initialSimpleForm);
   const [aspectKey, setAspectKey] = useState("");
-  const [aspectCategory, setAspectCategory] = useState("");
   const [aspectDescription, setAspectDescription] = useState("");
   const [aspectError, setAspectError] = useState<string | null>(null);
 
   const resetSimpleForm = () => setSimpleForm(initialSimpleForm);
   const resetAspectForm = () => {
     setAspectKey("");
-    setAspectCategory("");
     setAspectDescription("");
     setAspectError(null);
   };
@@ -166,7 +164,6 @@ export const GlobalCreateDialogs = ({
         projectId,
         data: {
           key,
-          category: aspectCategory.trim() || undefined,
           description: aspectDescription.trim() || undefined,
         },
       });
@@ -351,16 +348,6 @@ export const GlobalCreateDialogs = ({
                 }}
                 disabled={isPending}
                 placeholder="e.g. tone"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-aspect-category">Category (optional)</Label>
-              <Input
-                id="global-create-aspect-category"
-                value={aspectCategory}
-                onChange={(event) => setAspectCategory(event.target.value)}
-                disabled={isPending}
-                placeholder="e.g. style"
               />
             </div>
             <div className="flex flex-col gap-1.5">

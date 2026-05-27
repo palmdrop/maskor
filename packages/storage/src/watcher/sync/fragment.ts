@@ -23,6 +23,20 @@ export const syncFragment = async (
   absolutePath: string,
   entityRelativePath: string,
 ): Promise<void> => {
+  // Fragments must live at fragments/<key>.md or fragments/discarded/<key>.md.
+  // Any other nesting is invalid; surface as a warning and skip indexing so the
+  // file stays on disk but does not pollute the index.
+  const normalizedPath = entityRelativePath.replace(/\\/g, "/");
+  const isDiscarded = normalizedPath.startsWith("discarded/");
+  const segmentCount = normalizedPath.split("/").length;
+  if (segmentCount > 1 && !(isDiscarded && segmentCount === 2)) {
+    log.warn(
+      { filePath: entityRelativePath },
+      "watcher: nested fragment rejected — fragments must be at root or in discarded/",
+    );
+    return;
+  }
+
   const rawContentOrNull = await readFileWithEnoentGuard(absolutePath, "fragment", log);
   if (rawContentOrNull === null) return;
 

@@ -55,7 +55,7 @@ describe("POST /projects/:projectId/aspects", () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/aspects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "pacing", category: "style", notes: [] }),
+      body: JSON.stringify({ key: "pacing", notes: [] }),
     });
     expect(response.status).toBe(201);
     const body = (await response.json()) as EntityShape & { key: string };
@@ -67,7 +67,7 @@ describe("POST /projects/:projectId/aspects", () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/aspects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category: "style" }),
+      body: JSON.stringify({}),
     });
     expect(response.status).toBe(400);
   });

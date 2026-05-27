@@ -12,6 +12,7 @@ export const IndexedNoteSchema = DomainNoteSchema.pick({ uuid: true, key: true }
   .extend({
     uuid: z.uuid().openapi({ example: "n1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     key: z.string().openapi({ example: "On solitude" }),
+    category: z.string().optional().openapi({ example: "research" }),
     filePath: z.string(),
   })
   .openapi("IndexedNote");
@@ -20,6 +21,7 @@ export const IndexedNoteSchema = DomainNoteSchema.pick({ uuid: true, key: true }
 export const NoteSchema = DomainNoteSchema.extend({
   uuid: z.uuid().openapi({ example: "n1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
   key: z.string().openapi({ example: "On solitude" }),
+  category: z.string().optional().openapi({ example: "research" }),
 }).openapi("Note");
 
 export const NoteUUIDParamSchema = z.object({

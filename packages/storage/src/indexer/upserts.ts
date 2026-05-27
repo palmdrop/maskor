@@ -60,7 +60,6 @@ export const upsertAspect = (
     .values({
       uuid: aspect.uuid,
       key: aspect.key,
-      category: aspect.category ?? null,
       color: aspect.color ?? null,
       contentHash,
       filePath,
@@ -70,7 +69,6 @@ export const upsertAspect = (
       target: aspectsTable.uuid,
       set: {
         key: aspect.key,
-        category: aspect.category ?? null,
         color: aspect.color ?? null,
         contentHash,
         filePath,

@@ -33,11 +33,10 @@ import { resolveSourceKey } from "../helpers/resolve-source-key";
 
 const classifyAspectSource = (patch: {
   description?: unknown;
-  category?: unknown;
   notes?: unknown;
 }): UpdateSource => {
   const hasDescription = patch.description !== undefined;
-  const hasMetadata = patch.category !== undefined || patch.notes !== undefined;
+  const hasMetadata = patch.notes !== undefined;
   if (hasDescription && !hasMetadata) return "user-content-save";
   if (!hasDescription && hasMetadata) return "user-metadata";
   return "programmatic";
@@ -232,7 +231,7 @@ const updateAspectRoute = createRoute({
   method: "patch",
   path: "/{aspectId}",
   tags: ["Aspects"],
-  summary: "Update an aspect's key, description, category, or notes",
+  summary: "Update an aspect's key, description, or notes",
   request: {
     params: AspectUUIDParamSchema,
     body: { content: { "application/json": { schema: AspectUpdateSchema } }, required: true },
@@ -422,7 +421,7 @@ aspectsRouter.openapi(getAspectRoute, async (ctx) => {
 });
 
 aspectsRouter.openapi(createAspectRoute, async (ctx) => {
-  const { key: rawKey, category, description, notes } = ctx.req.valid("json");
+  const { key: rawKey, description, notes } = ctx.req.valid("json");
   let key: string;
   try {
     key = validateEntityKey(rawKey);
@@ -438,7 +437,7 @@ aspectsRouter.openapi(createAspectRoute, async (ctx) => {
       actor: "user",
       logger: ctx.get("logger"),
     };
-    const aspect: Aspect = { uuid: randomUUID(), key, category, description, notes: notes ?? [] };
+    const aspect: Aspect = { uuid: randomUUID(), key, description, notes: notes ?? [] };
     const result = await executeCommand(createAspectCommand, commandContext, aspect);
     return ctx.json(result, 201);
   } catch (error) {

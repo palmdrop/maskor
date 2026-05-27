@@ -115,15 +115,36 @@ describe("vault.aspects.readAll", () => {
 });
 
 describe("vault.aspects.write", () => {
-  it("writes and reads back an aspect", async () => {
+  it("writes a new aspect at the root and reads it back", async () => {
     const vault = createVault(config);
-    const aspects = await vault.aspects.readAll();
-    const grief = aspects.find((aspect) => aspect.key === "grief")!;
-    const modified = { ...grief, category: "emotion" };
+    const newAspect = {
+      uuid: "00000000-1111-2222-3333-444444444444",
+      key: "new-aspect",
+      description: "Bare aspect at root.",
+      notes: [],
+    };
+    await vault.aspects.write(newAspect);
 
-    await vault.aspects.write(modified);
-    const reread = await vault.aspects.read("grief.md");
-    expect(reread.category).toBe("emotion");
+    const reread = await vault.aspects.read("new-aspect.md");
+    expect(reread.key).toBe("new-aspect");
+    expect(reread.category).toBeUndefined();
+    expect(reread.description).toBe("Bare aspect at root.");
+  });
+
+  it("writes an aspect with a category into the matching subfolder", async () => {
+    const vault = createVault(config);
+    const newAspect = {
+      uuid: "00000000-1111-2222-3333-555555555555",
+      key: "rooftops",
+      category: "setting",
+      description: "Cityscape detail.",
+      notes: [],
+    };
+    await vault.aspects.write(newAspect);
+
+    const reread = await vault.aspects.read("setting/rooftops.md");
+    expect(reread.category).toBe("setting");
+    expect(reread.key).toBe("rooftops");
   });
 });
 

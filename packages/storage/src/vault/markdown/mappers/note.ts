@@ -1,6 +1,7 @@
 import type { Note } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { basename } from "node:path";
+import { deriveCategory } from "../../../utils/category";
 
 export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
   const frontmatter = parsed.frontmatter;
@@ -9,6 +10,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Note => {
   return {
     uuid: frontmatter.uuid as string,
     key,
+    category: deriveCategory(filePath),
     content: parsed.body,
   };
 };
