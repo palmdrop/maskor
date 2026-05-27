@@ -20,7 +20,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] edit counter seems off in suggestion mode. Should only count every session that results in a change, not every save
 
-- [ ] investigate code changes required for small schema/manifest changes: commit hash 32bb4fa8320c62d0c6e38b551b52982d536746e2
+- [x] investigate code changes required for small schema/manifest changes: commit hash 32bb4fa8320c62d0c6e38b551b52982d536746e2
   - intermediate manifest types, schemas, types that could be inferred, etc
 
 - [x] back button for suggestion mode
@@ -30,7 +30,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] italics and such flickers in editor when editing in vim/raw mode...
 
-- [ ] use command system to trigger quick-switcher and command palette too instead of custom keybind handlers in components
+- [x] use command system to trigger quick-switcher and command palette too instead of custom keybind handlers in components
 
 - [ ] rework note system -- side by side view of note + fragment should be available
   - also, possibly include with comment system.
@@ -38,23 +38,23 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - more granular than fragment? arrows that link to a section in the text? note-based, non-linear commenting/notation engine?
   - graph structure pointing to other fragments using inline links or comments/references?
 
+- [ ] fragment-specific notes, viewing fragment and comments/notes side by side in same view
+
 - [ ] sequences: auto-fill in order of fragments on import
 - [ ] sequences: pool is unnecessarily wide, includes too much
 - [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
 - [ ] extract in suggestion, how should that work?
 
-- [ ] editor loses focus after command palette is opened and closed again
+- [x] editor loses focus after command palette is opened and closed again
   - make modals (command palette, quick-switcher) set context state that indicate if they are open or not. Let editor request focus restoration when modal closes (iff editor was focused before modal opened).
   - another option: create a focus manager that records focus before opening modal, then restores it to the relevant element when modal closes
 
-- [ ] specs claim command palette and quick-switcher use the same underlying picker component, but neither does. Instead, they define their own logic. There is a picker component, but it is never used in the code (except for test).
+- [x] specs claim command palette and quick-switcher use the same underlying picker component, but neither does. Instead, they define their own logic. There is a picker component, but it is never used in the code (except for test).
 
 - [ ] add project-wide setting for yanking to clipboard or not in vim mode
 
 - [ ] investigate spelling, language settings
-
-- [ ] fragment-specific notes, viewing fragment and comments/notes side by side in same view
 
 ## Workflow / tooling
 
