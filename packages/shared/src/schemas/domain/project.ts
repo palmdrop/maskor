@@ -52,6 +52,7 @@ export const ProjectUpdateSchema = z.object({
   suggestion: z
     .object({
       readinessThreshold: z.number().min(0).max(1).optional(),
+      currentFragmentUUID: z.uuid().optional(),
     })
     .optional(),
   advanced: z

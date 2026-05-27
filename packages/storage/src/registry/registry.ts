@@ -11,31 +11,13 @@ import {
   ExistingVaultManifestError,
 } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
+import type { ProjectUpdate } from "@maskor/shared";
 
 type ProjectManifest = {
   projectUUID: string;
   name: string;
   registeredAt: string;
-  config?: {
-    editor?: {
-      vimMode?: boolean;
-      rawMarkdownMode?: boolean;
-      fontSize?: number;
-      maxParagraphWidth?: number;
-    };
-    suggestion?: {
-      readinessThreshold?: number;
-      currentFragmentUUID?: string;
-    };
-    advanced?: {
-      showFragmentStats?: boolean;
-    };
-    preview?: {
-      showTitles?: boolean;
-      showSectionHeadings?: boolean;
-      separator?: "blank-line" | "horizontal-rule" | "none";
-    };
-  };
+  config?: Omit<ProjectUpdate, "name">;
 };
 
 const manifestPath = (vaultPath: string) => join(vaultPath, ".maskor", "project.json");
@@ -259,25 +241,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
       return toProjectRecord(rows[0], manifest);
     },
 
-    async updateProject(
-      projectUUID: string,
-      patch: {
-        name?: string;
-        editor?: {
-          vimMode?: boolean;
-          rawMarkdownMode?: boolean;
-          fontSize?: number;
-          maxParagraphWidth?: number;
-        };
-        suggestion?: { readinessThreshold?: number; currentFragmentUUID?: string };
-        advanced?: { showFragmentStats?: boolean };
-        preview?: {
-          showTitles?: boolean;
-          showSectionHeadings?: boolean;
-          separator?: "blank-line" | "horizontal-rule" | "none";
-        };
-      },
-    ): Promise<ProjectRecord> {
+    async updateProject(projectUUID: string, patch: ProjectUpdate): Promise<ProjectRecord> {
       const rows = await database
         .select()
         .from(projectsTable)

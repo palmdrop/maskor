@@ -8,6 +8,7 @@ import type {
   Note,
   NoteUpdate,
   NoteUpdateResponse,
+  ProjectUpdate,
   Reference,
   ReferenceUpdate,
   ReferenceUpdateResponse,
@@ -501,20 +502,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       log.info({ projectUUID }, "project removed");
     },
 
-    async updateProject(
-      projectUUID: string,
-      patch: {
-        name?: string;
-        editor?: { vimMode?: boolean; rawMarkdownMode?: boolean };
-        suggestion?: { readinessThreshold?: number };
-        advanced?: { showFragmentStats?: boolean };
-        preview?: {
-          showTitles?: boolean;
-          showSectionHeadings?: boolean;
-          separator?: "blank-line" | "horizontal-rule" | "none";
-        };
-      },
-    ): Promise<ProjectRecord> {
+    async updateProject(projectUUID: string, patch: ProjectUpdate): Promise<ProjectRecord> {
       const record = await registry.updateProject(projectUUID, patch);
       log.info({ projectUUID, patch }, "project updated");
       return record;
