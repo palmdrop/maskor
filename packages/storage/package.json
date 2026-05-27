@@ -15,7 +15,6 @@
     "@maskor/shared": "workspace:*",
     "chokidar": "^5.0.0",
     "drizzle-orm": "^0.45.2",
-    "drizzle-zod": "^0.8.3",
     "gray-matter": "^4.0.3",
     "yaml": "^2.8.3"
   },
