@@ -18,6 +18,8 @@ export type ReferenceCreate = z.infer<typeof ReferenceCreateSchema>;
 
 export const ReferenceUpdateSchema = z.object({
   key: z.string().min(1).optional(),
+  // `null` clears the category (moves to entity-type root); `undefined` leaves it unchanged.
+  category: z.string().nullable().optional(),
   content: z.string().optional(),
 });
 

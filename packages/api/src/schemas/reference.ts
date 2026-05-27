@@ -36,6 +36,7 @@ export const ReferenceCreateSchema = DomainReferenceCreateSchema.extend({
 
 export const ReferenceUpdateSchema = DomainReferenceUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "The Old Man and the Sea" }),
+  category: z.string().nullable().optional().openapi({ example: "novels" }),
   content: z.string().optional().openapi({ example: "Hemingway. Santiago. Marlin." }),
 }).openapi("ReferenceUpdate");
 

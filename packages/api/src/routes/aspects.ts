@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import type { Aspect, Arc } from "@maskor/shared";
-import { validateEntityKey } from "@maskor/shared";
+import { validateCategoryPath, validateEntityKey } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -33,10 +33,11 @@ import { resolveSourceKey } from "../helpers/resolve-source-key";
 
 const classifyAspectSource = (patch: {
   description?: unknown;
+  category?: unknown;
   notes?: unknown;
 }): UpdateSource => {
   const hasDescription = patch.description !== undefined;
-  const hasMetadata = patch.notes !== undefined;
+  const hasMetadata = patch.category !== undefined || patch.notes !== undefined;
   if (hasDescription && !hasMetadata) return "user-content-save";
   if (!hasDescription && hasMetadata) return "user-metadata";
   return "programmatic";
@@ -231,7 +232,7 @@ const updateAspectRoute = createRoute({
   method: "patch",
   path: "/{aspectId}",
   tags: ["Aspects"],
-  summary: "Update an aspect's key, description, or notes",
+  summary: "Update an aspect's key, description, category, or notes",
   request: {
     params: AspectUUIDParamSchema,
     body: { content: { "application/json": { schema: AspectUpdateSchema } }, required: true },
@@ -475,10 +476,18 @@ aspectsRouter.openapi(updateAspectRoute, async (ctx) => {
   let patch = rawPatch;
   if (rawPatch.key !== undefined) {
     try {
-      patch = { ...rawPatch, key: validateEntityKey(rawPatch.key) };
+      patch = { ...patch, key: validateEntityKey(rawPatch.key) };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid key";
       return ctx.json({ error: "INVALID_KEY", message }, 400);
+    }
+  }
+  if (rawPatch.category !== undefined && rawPatch.category !== null) {
+    try {
+      patch = { ...patch, category: validateCategoryPath(rawPatch.category) ?? null };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid category";
+      return ctx.json({ error: "INVALID_CATEGORY", message }, 400);
     }
   }
 

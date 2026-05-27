@@ -92,6 +92,71 @@ describe("PATCH /aspects/:aspectId — single-intent action types", () => {
     expect(updated).toBeTruthy();
   });
 
+  it("emits 'aspect:category-changed' with from/to and relocates the file when category is patched", async () => {
+    const aspect = await findAspectByKey("grief");
+    const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+    const indexedBefore = await testContext.storageService.aspects.readAll(projectContext);
+    const griefBefore = indexedBefore.find((a) => a.uuid === aspect.uuid)!;
+    expect(griefBefore.filePath).toBe("theme/grief.md");
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "themes-v2" }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const entries = await tailEntries();
+    const entry = entries.find(
+      (e) => e.type === "aspect:category-changed" && e.target.uuid === aspect.uuid,
+    );
+    expect(entry).toBeTruthy();
+    expect(entry?.payload.from).toBe("theme");
+    expect(entry?.payload.to).toBe("themes-v2");
+
+    const indexedAfter = await testContext.storageService.aspects.readAll(projectContext);
+    const griefAfter = indexedAfter.find((a) => a.uuid === aspect.uuid)!;
+    expect(griefAfter.filePath).toBe("themes-v2/grief.md");
+    expect(griefAfter.category).toBe("themes-v2");
+  });
+
+  it("clears the category (moves to root) when patched with null", async () => {
+    const aspect = await findAspectByKey("memory");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: null }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+    const indexedAfter = await testContext.storageService.aspects.readAll(projectContext);
+    const memoryAfter = indexedAfter.find((a) => a.uuid === aspect.uuid)!;
+    expect(memoryAfter.filePath).toBe("memory.md");
+    expect(memoryAfter.category).toBeUndefined();
+  });
+
+  it("rejects an invalid category path with 400", async () => {
+    const aspect = await findAspectByKey("city");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/aspects/${aspect.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "themes/../escape" }),
+      },
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("INVALID_CATEGORY");
+  });
+
   it("emits 'aspect:note-attached' when a note is added to an aspect", async () => {
     const aspect = await findAspectByKey("city");
     const response = await testContext.app.request(

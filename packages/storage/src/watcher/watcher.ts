@@ -78,7 +78,11 @@ export const createVaultWatcher = (
     cascadeRename: cascadeCallbacks?.onAspectRename,
     queryStoredRow: (uuid) =>
       vaultDatabase
-        .select({ key: aspectsTable.key, contentHash: aspectsTable.contentHash })
+        .select({
+          key: aspectsTable.key,
+          contentHash: aspectsTable.contentHash,
+          filePath: aspectsTable.filePath,
+        })
         .from(aspectsTable)
         .where(eq(aspectsTable.uuid, uuid))
         .get(),
@@ -102,7 +106,11 @@ export const createVaultWatcher = (
     cascadeRename: cascadeCallbacks?.onNoteRename,
     queryStoredRow: (uuid) =>
       vaultDatabase
-        .select({ key: notesTable.key, contentHash: notesTable.contentHash })
+        .select({
+          key: notesTable.key,
+          contentHash: notesTable.contentHash,
+          filePath: notesTable.filePath,
+        })
         .from(notesTable)
         .where(eq(notesTable.uuid, uuid))
         .get(),
@@ -126,7 +134,11 @@ export const createVaultWatcher = (
     cascadeRename: cascadeCallbacks?.onReferenceRename,
     queryStoredRow: (uuid) =>
       vaultDatabase
-        .select({ key: referencesTable.key, contentHash: referencesTable.contentHash })
+        .select({
+          key: referencesTable.key,
+          contentHash: referencesTable.contentHash,
+          filePath: referencesTable.filePath,
+        })
         .from(referencesTable)
         .where(eq(referencesTable.uuid, uuid))
         .get(),

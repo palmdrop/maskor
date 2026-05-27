@@ -10,8 +10,11 @@ export const updateNoteCommand: Command<UpdateNoteInput, NoteUpdateResponse> = {
 
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
     const contentChanged = patch.content !== undefined && patch.content !== existing.content;
+    const resolvedCategory = patch.category ?? undefined;
+    const categoryChanged =
+      patch.category !== undefined && resolvedCategory !== existing.category;
 
-    if (!keyChanged && !contentChanged) {
+    if (!keyChanged && !contentChanged && !categoryChanged) {
       return {
         result: { note: existing, warnings: { fragments: [], aspects: [] } },
         logEntries: [],
@@ -28,6 +31,16 @@ export const updateNoteCommand: Command<UpdateNoteInput, NoteUpdateResponse> = {
         actor: ctx.actor,
         target: { type: "note", uuid: noteId, key: existing.key },
         payload: { oldKey: existing.key, newKey: patch.key },
+        undoable: true,
+      });
+    }
+
+    if (categoryChanged) {
+      logEntries.push({
+        type: "note:category-changed",
+        actor: ctx.actor,
+        target: { type: "note", uuid: noteId, key: updateResult.note.key },
+        payload: { from: existing.category, to: resolvedCategory },
         undoable: true,
       });
     }

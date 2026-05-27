@@ -9,8 +9,9 @@ import { createVaultWatcher } from "../watcher/watcher";
 import type { VaultWatcher } from "../watcher/types";
 import type { VaultSyncEvent } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
-import { notesTable } from "../db/vault/schema";
+import { aspectsTable, notesTable } from "../db/vault/schema";
 import { eq } from "drizzle-orm";
+import { mkdirSync } from "node:fs";
 
 // Chokidar awaitWriteFinish.stabilityThreshold is 200ms; poll until callback fires
 // or time out after 2s.
@@ -246,6 +247,44 @@ describe("rename buffer — aspect external rename", () => {
     await waitFor(() => calls.length > 0);
     expect(calls).toHaveLength(1);
     expect(calls[0]).toEqual(["grief", "sorrow"]);
+  });
+});
+
+describe("syncAspect — external folder move", () => {
+  it("updates DB filePath without calling cascadeRename when an aspect file moves between subfolders", async () => {
+    const calls: [string, string][] = [];
+    const { vaultDatabase } = await rebuildAndWatch({
+      onAspectRename: async (oldKey, newKey) => {
+        calls.push([oldKey, newKey]);
+      },
+    });
+
+    const oldPath = join(vaultDir, "aspects", "theme", "grief.md");
+    const newDir = join(vaultDir, "aspects", "feelings");
+    const newPath = join(newDir, "grief.md");
+    mkdirSync(newDir, { recursive: true });
+    renameSync(oldPath, newPath);
+
+    await waitFor(() => {
+      const row = vaultDatabase
+        .select({ filePath: aspectsTable.filePath })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.key, "grief"))
+        .get();
+      return row?.filePath === "feelings/grief.md";
+    });
+
+    // The same key under a new category must not trigger a cascade rename of
+    // fragment frontmatter — key did not change.
+    expect(calls).toHaveLength(0);
+
+    const row = vaultDatabase
+      .select({ uuid: aspectsTable.uuid, filePath: aspectsTable.filePath })
+      .from(aspectsTable)
+      .where(eq(aspectsTable.key, "grief"))
+      .get();
+    expect(row?.uuid).toBe("51e530a1-d980-438c-8b1d-cf8101fef75a");
+    expect(row?.filePath).toBe("feelings/grief.md");
   });
 });
 
@@ -495,6 +534,39 @@ describe("syncReference — hash guard", () => {
         event.type === "reference:synced" && event.uuid === "abc3df51-514c-460f-b981-6f2e91965000",
     );
     expect(referenceSynced.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("syncFragment — nested fragment rejection", () => {
+  it("skips a fragment dropped into a non-discarded subfolder under fragments/", async () => {
+    const { fragmentsTable } = await import("../db/vault/schema");
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const nestedDir = join(vaultDir, "fragments", "chapter-1");
+    mkdirSync(nestedDir, { recursive: true });
+    await Bun.write(
+      join(nestedDir, "intro.md"),
+      '---\nuuid: "00000000-0000-0000-0000-000000000abc"\n---\n\nNested fragment body.\n',
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const row = made.vaultDatabase
+      .select({ uuid: fragmentsTable.uuid })
+      .from(fragmentsTable)
+      .where(eq(fragmentsTable.key, "intro"))
+      .get();
+
+    expect(row).toBeUndefined();
+    expect(events.filter((event) => event.type === "fragment:synced")).toHaveLength(0);
   });
 });
 

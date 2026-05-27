@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import type { Note } from "@maskor/shared";
-import { validateEntityKey } from "@maskor/shared";
+import { validateCategoryPath, validateEntityKey } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import {
@@ -434,10 +434,18 @@ notesRouter.openapi(updateNoteRoute, async (ctx) => {
   let patch = rawPatch;
   if (rawPatch.key !== undefined) {
     try {
-      patch = { ...rawPatch, key: validateEntityKey(rawPatch.key) };
+      patch = { ...patch, key: validateEntityKey(rawPatch.key) };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid key";
       return ctx.json({ error: "INVALID_KEY", message }, 400);
+    }
+  }
+  if (rawPatch.category !== undefined && rawPatch.category !== null) {
+    try {
+      patch = { ...patch, category: validateCategoryPath(rawPatch.category) ?? null };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid category";
+      return ctx.json({ error: "INVALID_CATEGORY", message }, 400);
     }
   }
 

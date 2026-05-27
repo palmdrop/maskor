@@ -41,6 +41,7 @@ export const AspectCreateSchema = DomainAspectCreateSchema.extend({
 
 export const AspectUpdateSchema = DomainAspectUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "tone" }),
+  category: z.string().nullable().optional().openapi({ example: "style" }),
   color: AspectColorSchema.nullable().optional().openapi(ColorExample),
 }).openapi("AspectUpdate");
 

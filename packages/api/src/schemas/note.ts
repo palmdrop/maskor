@@ -36,6 +36,7 @@ export const NoteCreateSchema = DomainNoteCreateSchema.extend({
 
 export const NoteUpdateSchema = DomainNoteUpdateSchema.extend({
   key: z.string().min(1).optional().openapi({ example: "On solitude" }),
+  category: z.string().nullable().optional().openapi({ example: "research" }),
   content: z.string().optional().openapi({ example: "A note body..." }),
 }).openapi("NoteUpdate");
 

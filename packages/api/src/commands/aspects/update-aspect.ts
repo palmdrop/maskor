@@ -12,12 +12,16 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
     const descriptionChanged =
       patch.description !== undefined && patch.description !== existing.description;
+    const resolvedCategory = patch.category ?? undefined;
+    const categoryChanged =
+      patch.category !== undefined && resolvedCategory !== existing.category;
     const resolvedColor = patch.color ?? undefined;
     const colorChanged = patch.color !== undefined && resolvedColor !== existing.color;
     const notesChanged =
       patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
 
-    const anyNonKeyChanged = descriptionChanged || colorChanged || notesChanged;
+    const anyNonKeyChanged =
+      descriptionChanged || categoryChanged || colorChanged || notesChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: { aspect: existing, warnings: [] }, logEntries: [] };
@@ -53,7 +57,7 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
       } else {
         // Description has no programmatic single-intent type, so it routes to
         // the *:updated catch-all. Other fields with single-intent types
-        // (notes) emit their own entries alongside.
+        // (category, notes) emit their own entries alongside.
         logEntries.push({
           type: "aspect:updated",
           actor: ctx.actor,
@@ -62,6 +66,16 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
           undoable: true,
         });
       }
+    }
+
+    if (categoryChanged) {
+      logEntries.push({
+        type: "aspect:category-changed",
+        actor: ctx.actor,
+        target: { type: "aspect", uuid: aspectId, key: updateResult.aspect.key },
+        payload: { from: existing.category, to: resolvedCategory },
+        undoable: true,
+      });
     }
 
     if (colorChanged) {

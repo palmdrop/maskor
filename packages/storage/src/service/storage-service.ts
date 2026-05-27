@@ -975,6 +975,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const updated: Aspect = {
               ...current,
               ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.category !== undefined && { category: patch.category ?? undefined }),
               ...(patch.color !== undefined && { color: patch.color ?? undefined }),
               ...(patch.description !== undefined && { description: patch.description }),
               ...(patch.notes !== undefined && { notes: patch.notes }),
@@ -1107,6 +1108,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const updated: Note = {
               ...current,
               ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.category !== undefined && { category: patch.category ?? undefined }),
               ...(patch.content !== undefined && { content: patch.content }),
             };
 
@@ -1280,6 +1282,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             const updated: Reference = {
               ...current,
               ...(patch.key !== undefined && { key: patch.key }),
+              ...(patch.category !== undefined && { category: patch.category ?? undefined }),
               ...(patch.content !== undefined && { content: patch.content }),
             };
 

@@ -17,8 +17,10 @@ export type EntityConfig<TEntity extends { uuid: string; key: string }> = {
   upsert: (tx: Transaction, entity: TEntity, filePath: string, rawContent: string) => void;
   deleteByFilePath: (tx: Transaction, filePath: string) => void;
   cascadeRename?: (oldKey: string, newKey: string) => Promise<void>;
-  // Query by UUID — used for hash guard and DB-rename detection.
-  queryStoredRow: (uuid: string) => { key: string; contentHash: string } | undefined;
+  // Query by UUID — used for hash guard, DB-rename detection, and move detection.
+  queryStoredRow: (
+    uuid: string,
+  ) => { key: string; contentHash: string; filePath: string } | undefined;
   // Query by filePath — used by unlink to populate the rename buffer.
   queryRowByFilePath: (filePath: string) => { uuid: string; key: string } | undefined;
   syncedEventType: "aspect:synced" | "note:synced" | "reference:synced";
@@ -56,12 +58,15 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
   }
 
   const isBufferRename = renameCheck?.kind === "rename";
-  if (isBufferRename && config.cascadeRename) {
+  // Cascade only when the key actually changed. A pure folder move keeps the
+  // same key, so fragment frontmatter does not need rewriting.
+  if (isBufferRename && renameCheck.oldKey !== filenameKey && config.cascadeRename) {
     await config.cascadeRename(renameCheck.oldKey, filenameKey);
   }
 
-  // DB lookup only when no buffer rename was detected — needed for hash guard and
-  // as a fallback for edge cases (e.g. Maskor-internal rename after a rebuild).
+  // DB lookup only when no buffer rename was detected — needed for hash guard,
+  // DB-rename detection (Maskor-internal rename after a rebuild), and move
+  // detection (filePath changed but hash and key are unchanged).
   if (!isBufferRename) {
     const storedRow = config.queryStoredRow(uuid);
     const isDbRename = storedRow !== undefined && storedRow.key !== filenameKey;
@@ -70,12 +75,22 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
       await config.cascadeRename(storedRow.key, filenameKey);
     }
 
-    if (!isDbRename && storedRow?.contentHash === hashContent(rawContent)) {
-      log.debug(
-        { filePath: entityRelativePath },
-        `watcher: ${config.label} unchanged (hash match) — skipping`,
-      );
-      return;
+    if (!isDbRename && storedRow !== undefined) {
+      const hashMatches = storedRow.contentHash === hashContent(rawContent);
+      const pathMatches = storedRow.filePath === entityRelativePath;
+      if (hashMatches && pathMatches) {
+        log.debug(
+          { filePath: entityRelativePath },
+          `watcher: ${config.label} unchanged (hash match) — skipping`,
+        );
+        return;
+      }
+      if (hashMatches && !pathMatches) {
+        log.debug(
+          { filePath: entityRelativePath, oldFilePath: storedRow.filePath },
+          `watcher: ${config.label} moved — updating filePath, no cascade`,
+        );
+      }
     }
   }
 

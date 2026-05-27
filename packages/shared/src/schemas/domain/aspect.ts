@@ -26,6 +26,8 @@ export type AspectCreate = z.infer<typeof AspectCreateSchema>;
 
 export const AspectUpdateSchema = z.object({
   key: z.string().min(1).optional(),
+  // `null` clears the category (moves to entity-type root); `undefined` leaves it unchanged.
+  category: z.string().nullable().optional(),
   color: AspectColorSchema.nullable().optional(),
   description: z.string().optional(),
   notes: z.array(z.string()).optional(),

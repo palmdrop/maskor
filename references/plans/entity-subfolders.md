@@ -60,16 +60,14 @@ Goal: existing vaults with nested aspect/note/reference files are picked up on r
 
 Goal: moving an entity through the API or watcher updates the DB filePath correctly, without falsely triggering cascade renames.
 
-- [ ] In `packages/storage/src/watcher/sync/keyed-entity.ts`, distinguish three cases inside `syncKeyedEntity` when the UUID is known and not a rename:
-  1. Hash matches and `filePath` matches → no-op (current behavior).
-  2. Hash matches but `filePath` differs → upsert with new `filePath` only; no content reparse needed (or reparse cheaply — content is identical). No `cascadeRename`.
-  3. Hash differs → upsert as today.
-- [ ] Add a "move" entrypoint to `storageService.aspects` / `notes` / `references`: `move(uuid, newCategory)`. Computes the new `filePath`, performs the atomic rename inside `withVaultWriteLock`, creates intermediate directories as needed, upserts DB row. Emits `<type>:category-changed` action log event.
-- [ ] Extend `aspect:category-changed` payload to include `from` and `to` categories. Add equivalent `note:category-changed` and `reference:category-changed` event types and log entries.
-- [ ] Wire `move` into a new API command `move-aspect.ts` / `move-note.ts` / `move-reference.ts` in `packages/api/src/commands/`. Route handler exposes a `PATCH` operation that accepts `{ category }`. (May be folded into the existing update endpoint if the update path already handles arbitrary patches — verify.)
-- [ ] Validate filesystem character constraint on the API boundary: reject `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`, control chars, leading/trailing slashes/dots, `..` segments. Reuse the existing filename validator from `packages/storage/src/utils/` if one exists; otherwise add a shared `validateCategoryPath` helper.
-- [ ] Tests: move an aspect via API → DB row updated, file on disk in new path, action log entry; move + simultaneous key rename → cascade rename behaves as today; external Obsidian-style move (drop in / drop out simulation through chokidar fixtures) → rename-buffer correlates by UUID.
-- [ ] `git commit` Phase 2.
+- [x] In `packages/storage/src/watcher/sync/keyed-entity.ts`, distinguish the three cases (hash+path match → no-op; hash matches but path differs → upsert without cascade; hash differs → upsert as today). Cascade is also gated on `oldKey !== filenameKey` in the buffer-rename branch so a folder-only move does not cascade. _(2026-05-27)_
+- [-] Dedicated `move` entrypoint on storage-service — folded into the existing `update` path: patching `category` on aspect/note/reference now moves the file. The plan acknowledged this as the preferred option when the update path already handles arbitrary patches.
+- [x] Extend `aspect:category-changed` payload (was already present); add `note:category-changed` and `reference:category-changed` event types in `packages/shared/src/schemas/domain/action.ts`; commands emit them with `{ from, to }`. _(2026-05-27)_
+- [x] Folded `move` into the existing PATCH update endpoints — `AspectUpdate`/`NoteUpdate`/`ReferenceUpdate` schemas all accept `category: string | null | undefined`. _(2026-05-27)_
+- [x] `validateCategoryPath` added in `packages/shared/src/utils/`; route handlers validate before passing to commands; `INVALID_CATEGORY` 400 on bad input. _(2026-05-27)_
+- [x] Tests added: API category-changed event + file relocation; category cleared to root via `null`; invalid category rejected; external (chokidar) folder move preserves identity without cascade; nested fragment under non-discarded folder rejected by watcher. _(2026-05-27)_
+- [x] `bun run typecheck` and full backend test suite green (707 tests). _(2026-05-27)_
+- [x] `git commit` Phase 2. _(2026-05-27)_
 
 ### Phase 3 — UUID revival on return
 
