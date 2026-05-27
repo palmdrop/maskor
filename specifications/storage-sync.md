@@ -80,20 +80,30 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 - Full-file hash guard (frontmatter + body) before every upsert; makes all watcher events idempotent for API-originated writes
 - Entity routing by relative path prefix:
 
-| Path prefix                         | Handling                                        |
-| ----------------------------------- | ----------------------------------------------- |
-| `fragments/`                        | sync fragment                                   |
-| `fragments/discarded/`              | sync fragment (`isDiscarded` derived from path) |
-| `aspects/`                          | sync aspect                                     |
-| `notes/`                            | sync note                                       |
-| `references/`                       | sync reference                                  |
-| `pieces/`                           | per-file consume                                |
-| `.maskor/`, `.obsidian/`, non-`.md` | ignored                                         |
+| Path prefix                                                 | Handling                                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `fragments/`                                                | sync fragment (root only)                                                |
+| `fragments/discarded/`                                      | sync fragment (`isDiscarded` derived from path)                          |
+| `fragments/<other-subfolder>/`                              | rejected with warning — fragments are root-only beyond `discarded/`      |
+| `aspects/[<category>/]`                                     | sync aspect (category derived from subfolder path)                       |
+| `notes/[<category>/]`                                       | sync note (category derived from subfolder path)                         |
+| `references/[<category>/]`                                  | sync reference (category derived from subfolder path)                    |
+| `pieces/`                                                   | per-file consume                                                         |
+| `.maskor/`, `.obsidian/`, non-`.md`                         | ignored                                                                  |
 
 - On `add` with missing UUID: write UUID to frontmatter, then upsert; the second watcher event from the write-back hash-guards to a no-op
-- On `add` with colliding UUID: assign a new UUID, write back, log warning
-- On `unlink`: soft-delete in DB; fragments are also moved to `fragments/discarded/`
+- On `add` with colliding UUID for **fragments**: assign a new UUID, write back, log warning
+- On `add` with same UUID at a different path (within the same entity-type subtree): treat as a move — update `filePath`, no cascade rename, no UUID change
+- On `add` with a UUID recently removed from this entity-type table: emit the resulting `*:synced` event with `revived: true` (in-memory tracker per watcher instance, ~24h TTL); identity is preserved through the upsert regardless of whether the flag is set
+- On `unlink`: rename-buffer correlates close-in-time renames/moves; on buffer expiry, the row is hard-deleted and the UUID is recorded in the recently-deleted tracker
 - `pieces/` add: single-file consume — not batch `consumeAll`
+
+### Move and revival lifecycle
+
+- **Move within entity type, same key**: any combination of category/folder change is treated as a path update. No cascade, no new UUID. Identity preserved through the UUID in frontmatter.
+- **Rename within entity type (key change)**: the rename-buffer correlates the unlink+add by UUID. Cascade rewrites every fragment frontmatter reference from the old key to the new.
+- **Slow out-and-back return** (file removed, edited externally for longer than the rename-buffer window, then dropped back): the row is hard-deleted on buffer expiry. The returning add carries the original UUID from frontmatter; the upsert inserts a new row with that UUID. If the deletion is still within the in-memory recently-deleted tracker's window, the resulting `*:synced` event carries `revived: true`. See ADR-0002.
+- **Cross-entity-type returns** (e.g. `aspects/x.md` → `notes/x.md`): not preserved as the same logical entity. The source-type row is hard-deleted; the destination-type entity is created with the UUID from frontmatter. Fragment frontmatter that referenced the original entity is left untouched and surfaces as a `SyncWarning` on the next rebuild (e.g. `UNKNOWN_ASPECT_KEY`).
 
 ### Aspect key resolution
 

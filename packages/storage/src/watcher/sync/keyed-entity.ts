@@ -5,6 +5,7 @@ import type { ParsedFile } from "../../vault/markdown/parse";
 import { parseFile } from "../../vault/markdown/parse";
 import type { Transaction } from "../../indexer/upserts";
 import type { RenameBuffer } from "../utils/rename-buffer";
+import type { RecentlyDeletedTracker } from "../utils/recently-deleted";
 import { hashContent } from "../../utils/hash";
 import { ensureUuid } from "../utils/uuid";
 import { readFileWithEnoentGuard } from "../utils/file";
@@ -13,6 +14,7 @@ import { readFileWithEnoentGuard } from "../utils/file";
 export type EntityConfig<TEntity extends { uuid: string; key: string }> = {
   label: string;
   renameBuffer: RenameBuffer;
+  recentlyDeleted: RecentlyDeletedTracker;
   fromFile: (parsed: ParsedFile, entityRelativePath: string) => TEntity;
   upsert: (tx: Transaction, entity: TEntity, filePath: string, rawContent: string) => void;
   deleteByFilePath: (tx: Transaction, filePath: string) => void;
@@ -100,8 +102,19 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
     config.upsert(tx, entity, entityRelativePath, rawContent);
   });
 
-  config.emit({ type: config.syncedEventType, uuid });
-  log.debug({ filePath: entityRelativePath }, `watcher: ${config.label} synced`);
+  // A returning entity: the UUID was deleted from this entity-type's table
+  // recently (within the tracker's TTL) and is now back. The flag rides on the
+  // synced event so action-log consumers and observability tooling can
+  // distinguish "this file returned" from "this is a fresh file."
+  const revived = config.recentlyDeleted.consume(uuid);
+
+  config.emit({ type: config.syncedEventType, uuid, ...(revived ? { revived: true } : {}) });
+  log.debug(
+    { filePath: entityRelativePath, revived },
+    revived
+      ? `watcher: ${config.label} revived after recent deletion`
+      : `watcher: ${config.label} synced`,
+  );
 };
 
 export const unlinkKeyedEntity = <TEntity extends { uuid: string; key: string }>(
@@ -116,6 +129,7 @@ export const unlinkKeyedEntity = <TEntity extends { uuid: string; key: string }>
     vaultDatabase.transaction((tx) => {
       config.deleteByFilePath(tx, entityRelativePath);
     });
+    config.recentlyDeleted.record(storedRow.uuid);
     config.emit({ type: config.deletedEventType, filePath: entityRelativePath });
   });
 };

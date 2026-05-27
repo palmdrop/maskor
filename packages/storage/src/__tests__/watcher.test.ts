@@ -313,6 +313,160 @@ describe("rename buffer — true deletion", () => {
   });
 });
 
+describe("syncAspect — revival after rename-buffer expiry", () => {
+  it("re-adds the same UUID at the same path after the buffer expires and emits revived: true", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const griefPath = join(vaultDir, "aspects", "theme", "grief.md");
+    const griefContent = await Bun.file(griefPath).text();
+
+    unlinkSync(griefPath);
+    // Wait past the 500ms rename buffer window so the row is hard-deleted.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    expect(
+      made.vaultDatabase
+        .select({ uuid: aspectsTable.uuid })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.key, "grief"))
+        .get(),
+    ).toBeUndefined();
+
+    await Bun.write(griefPath, griefContent);
+
+    await waitFor(() =>
+      events.some(
+        (event) => event.type === "aspect:synced" && (event as { revived?: boolean }).revived,
+      ),
+    );
+
+    const row = made.vaultDatabase
+      .select({ uuid: aspectsTable.uuid, filePath: aspectsTable.filePath })
+      .from(aspectsTable)
+      .where(eq(aspectsTable.key, "grief"))
+      .get();
+    expect(row?.uuid).toBe("51e530a1-d980-438c-8b1d-cf8101fef75a");
+    expect(row?.filePath).toBe("theme/grief.md");
+  });
+
+  it("revives at a different path within the same entity-type root", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const griefPath = join(vaultDir, "aspects", "theme", "grief.md");
+    const griefContent = await Bun.file(griefPath).text();
+
+    unlinkSync(griefPath);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const newDir = join(vaultDir, "aspects", "emotions");
+    mkdirSync(newDir, { recursive: true });
+    await Bun.write(join(newDir, "grief.md"), griefContent);
+
+    await waitFor(() => {
+      const row = made.vaultDatabase
+        .select({ filePath: aspectsTable.filePath })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.key, "grief"))
+        .get();
+      return row?.filePath === "emotions/grief.md";
+    });
+
+    const revivedEvent = events.find(
+      (event) => event.type === "aspect:synced" && (event as { revived?: boolean }).revived,
+    );
+    expect(revivedEvent).toBeTruthy();
+
+    const row = made.vaultDatabase
+      .select({ uuid: aspectsTable.uuid, filePath: aspectsTable.filePath })
+      .from(aspectsTable)
+      .where(eq(aspectsTable.key, "grief"))
+      .get();
+    expect(row?.uuid).toBe("51e530a1-d980-438c-8b1d-cf8101fef75a");
+    expect(row?.filePath).toBe("emotions/grief.md");
+  });
+
+  it("cross-entity-type return: aspect file lands in notes/ — note created (revival flag not set), aspect row gone", async () => {
+    const events: VaultSyncEvent[] = [];
+    const made = makeWatcher({});
+    const indexer = createVaultIndexer(made.vaultDatabase, made.vault);
+    await indexer.rebuild();
+
+    made.subscribe((event) => events.push(event));
+    made.watcher.start();
+    watcher = made.watcher;
+    await new Promise((resolve) => setTimeout(resolve, WATCHER_READY_DELAY_MS));
+
+    const griefPath = join(vaultDir, "aspects", "theme", "grief.md");
+    const griefContent = await Bun.file(griefPath).text();
+
+    unlinkSync(griefPath);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    expect(
+      made.vaultDatabase
+        .select({ uuid: aspectsTable.uuid })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.key, "grief"))
+        .get(),
+    ).toBeUndefined();
+
+    await Bun.write(join(vaultDir, "notes", "grief.md"), griefContent);
+
+    await waitFor(() => {
+      const row = made.vaultDatabase
+        .select({ uuid: notesTable.uuid })
+        .from(notesTable)
+        .where(eq(notesTable.key, "grief"))
+        .get();
+      return row !== undefined;
+    });
+
+    const noteRow = made.vaultDatabase
+      .select({ uuid: notesTable.uuid })
+      .from(notesTable)
+      .where(eq(notesTable.key, "grief"))
+      .get();
+    // Identity preserved across the type boundary (UUID came from frontmatter)
+    // but the note entity is conceptually new — the aspect-side recently-deleted
+    // tracker is not consulted by the notes sync path, so `revived` is not set.
+    expect(noteRow?.uuid).toBe("51e530a1-d980-438c-8b1d-cf8101fef75a");
+
+    const noteRevivedEvent = events.find(
+      (event) =>
+        event.type === "note:synced" &&
+        event.uuid === "51e530a1-d980-438c-8b1d-cf8101fef75a" &&
+        (event as { revived?: boolean }).revived,
+    );
+    expect(noteRevivedEvent).toBeUndefined();
+
+    // The aspect row is gone — fragments that referenced it as an aspect key
+    // will surface UNKNOWN_ASPECT_KEY warnings on the next rebuild.
+    expect(
+      made.vaultDatabase
+        .select({ uuid: aspectsTable.uuid })
+        .from(aspectsTable)
+        .where(eq(aspectsTable.key, "grief"))
+        .get(),
+    ).toBeUndefined();
+  });
+});
+
 describe("rename buffer — key collision", () => {
   it("allows a new note with the same key as a just-deleted note to be indexed", async () => {
     const calls: [string, string][] = [];

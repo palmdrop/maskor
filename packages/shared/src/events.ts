@@ -1,11 +1,11 @@
 export type VaultSyncEvent =
   | { type: "fragment:synced"; uuid: string }
   | { type: "fragment:deleted"; filePath: string }
-  | { type: "aspect:synced"; uuid: string }
+  | { type: "aspect:synced"; uuid: string; revived?: boolean }
   | { type: "aspect:deleted"; filePath: string }
-  | { type: "note:synced"; uuid: string }
+  | { type: "note:synced"; uuid: string; revived?: boolean }
   | { type: "note:deleted"; filePath: string }
-  | { type: "reference:synced"; uuid: string }
+  | { type: "reference:synced"; uuid: string; revived?: boolean }
   | { type: "reference:deleted"; filePath: string }
   | { type: "pieces:consumed"; count: number }
   | { type: "vault:restored"; draftUuid: string };

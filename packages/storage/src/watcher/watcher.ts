@@ -18,6 +18,7 @@ import {
 import { eq } from "drizzle-orm";
 import { createRenameBuffer } from "./utils/rename-buffer";
 import { createInFlightTracker } from "./utils/in-flight-tracker";
+import { createRecentlyDeletedTracker } from "./utils/recently-deleted";
 import type { CascadeCallbacks, VaultWatcher } from "./types";
 import {
   FRAGMENT_PREFIX,
@@ -67,11 +68,16 @@ export const createVaultWatcher = (
   const referenceRenameBuffer = createRenameBuffer();
   const aspectRenameBuffer = createRenameBuffer();
 
+  const aspectRecentlyDeleted = createRecentlyDeletedTracker();
+  const noteRecentlyDeleted = createRecentlyDeletedTracker();
+  const referenceRecentlyDeleted = createRecentlyDeletedTracker();
+
   // --- entity configs ---
 
   const aspectConfig: EntityConfig<Aspect> = {
     label: "aspect",
     renameBuffer: aspectRenameBuffer,
+    recentlyDeleted: aspectRecentlyDeleted,
     fromFile: aspectMapper.fromFile,
     upsert: upsertAspect,
     deleteByFilePath: deleteAspectByFilePath,
@@ -100,6 +106,7 @@ export const createVaultWatcher = (
   const noteConfig: EntityConfig<Note> = {
     label: "note",
     renameBuffer: noteRenameBuffer,
+    recentlyDeleted: noteRecentlyDeleted,
     fromFile: noteMapper.fromFile,
     upsert: upsertNote,
     deleteByFilePath: deleteNoteByFilePath,
@@ -128,6 +135,7 @@ export const createVaultWatcher = (
   const referenceConfig: EntityConfig<Reference> = {
     label: "reference",
     renameBuffer: referenceRenameBuffer,
+    recentlyDeleted: referenceRecentlyDeleted,
     fromFile: referenceMapper.fromFile,
     upsert: upsertReference,
     deleteByFilePath: deleteReferenceByFilePath,

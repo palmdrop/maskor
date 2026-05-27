@@ -73,17 +73,15 @@ Goal: moving an entity through the API or watcher updates the DB filePath correc
 
 Goal: out-and-back returns preserve identity. See ADR-0002.
 
-- [ ] Add `storageService.<type>.revive(uuid, newFilePath, parsedContent)` for aspects, notes, references. Clears `deletedAt`, updates `filePath`, upserts content, recomputes content hash. Wrap in `withVaultWriteLock`.
-- [ ] In `syncKeyedEntity`, on `add` with a known UUID, branch:
-  - Old DB-recorded `filePath` resolves to an existing file on disk → existing "collision" path (assign new UUID, warn).
-  - Old DB-recorded `filePath` is gone from disk **or** row has non-null `deletedAt` → call `revive`. Emit `<type>:synced` with `revived: true` in the payload.
-- [ ] On cross-entity-type returns, the lookup in step above is keyed by entity-type table. UUID known in `aspects` and now `add` fires in `notes/` → notes-table lookup misses → standard new-entity path. Original aspect row stays soft-deleted; document this explicitly in `storage-sync.md`.
-- [ ] Tests:
-  - Delete via filesystem unlink + wait past rename-buffer timeout + re-add same UUID at same path → row revived, single UUID, `revived: true` in event.
-  - Same, but re-added at a different path under the same entity-type root → row revived with new filePath.
-  - Same, but re-added in a different entity-type root → original stays soft-deleted; destination gets a new UUID; warning logged.
-  - True collision (two live files claiming the same UUID) → still assigns new UUID to the newcomer, no revive.
-- [ ] `git commit` Phase 3.
+- [-] Dedicated `storageService.<type>.revive()` and a `deletedAt` column — the soft-delete model was deferred in favour of the existing hard-delete + frontmatter-UUID identity preservation. Identity already survives the full cycle because the UUID is anchored in frontmatter, the upsert is keyed on UUID, and `onConflictDoUpdate` reinserts the row cleanly. The `revived` signal is delivered via an in-memory tracker instead of a DB column. _(ADR-0002 updated to record this divergence.)_
+- [x] In-memory `RecentlyDeletedTracker` (per watcher instance, per entity-type, ~24h TTL): when the rename-buffer expiry hard-deletes a row, the UUID is recorded; when a subsequent `add` with that UUID arrives, the resulting `*:synced` event carries `revived: true`. _(2026-05-27)_
+- [x] `VaultSyncEvent` extended: `aspect:synced` / `note:synced` / `reference:synced` now carry an optional `revived?: boolean`. _(2026-05-27)_
+- [x] Cross-entity-type returns documented: aspect→note flips end with the aspect row hard-deleted and a note created with the UUID from frontmatter; the destination's `revived` flag is **not** set because each entity-type has its own tracker. Fragment frontmatter is untouched; orphan keys surface on the next rebuild. _(2026-05-27)_
+- [x] Tests added: same-path revival emits `revived: true` and preserves UUID; different-path-within-entity-type revival preserves identity and emits the flag; cross-entity-type return creates the destination entity with the UUID from frontmatter, no `revived` flag, source row gone. _(2026-05-27)_
+- [-] True collision detection for keyed entities — not added in Phase 3. Current behavior (the most recently processed file wins the DB row, keyed on UUID) is preserved. Adding a dedicated collision branch parallel to `findFragmentUuidCollision` is tracked as a future improvement.
+- [x] `bun run typecheck` and full backend test suite green (710 tests). _(2026-05-27)_
+- [x] `storage-sync.md` updated with the "Move and revival lifecycle" section and the revised entity-routing table. ADR-0002 updated to reflect the implemented (hard-delete) model. _(2026-05-27)_
+- [x] `git commit` Phase 3. _(2026-05-27)_
 
 ### Phase 4 — Frontend category field and autocomplete
 
