@@ -2,15 +2,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import type { VaultDatabase } from "../db/vault";
 import { fragmentStatsTable, fragmentsTable } from "../db/vault/schema";
 
-export type FragmentStats = {
-  fragmentUuid: string;
-  voluntaryOpenCount: number;
-  promptAcceptCount: number;
-  avoidanceCount: number;
-  editCount: number;
-  wordCount: number;
-  lastSurfacedAt: Date | null;
-};
+export type FragmentStats = typeof fragmentStatsTable.$inferSelect;
 
 export type FragmentStatsSummary = {
   fragmentUuid: string;

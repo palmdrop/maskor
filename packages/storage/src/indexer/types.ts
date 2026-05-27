@@ -1,3 +1,5 @@
+import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
+
 export type SyncWarning = {
   kind: "UNKNOWN_ASPECT_KEY";
   aspectKey: string;
@@ -14,71 +16,20 @@ export type RebuildStats = {
   warnings: SyncWarning[];
 };
 
-export type IndexedFragmentAspect = {
-  weight: number;
-};
+export type IndexedFragment = Omit<Fragment, "content"> & { filePath: string };
 
-export type IndexedFragment = {
-  uuid: string;
-  key: string;
-  isDiscarded: boolean;
-  readiness: number;
-  contentHash: string;
-  filePath: string;
-  updatedAt: Date;
-  notes: string[];
-  references: string[];
-  aspects: Record<string, IndexedFragmentAspect>;
-};
+export type IndexedFragmentSummary = Pick<
+  IndexedFragment,
+  "uuid" | "key" | "isDiscarded" | "aspects"
+> & { excerpt: string | null };
 
-export type IndexedFragmentSummary = {
-  uuid: string;
-  key: string;
-  isDiscarded: boolean;
-  excerpt: string | null;
-  aspects: Record<string, IndexedFragmentAspect>;
-};
+export type IndexedAspect = Omit<Aspect, "description"> & { filePath: string };
 
-export type IndexedAspect = {
-  uuid: string;
-  key: string;
-  category?: string;
-  color?: string;
-  filePath: string;
-  notes: string[];
-};
+export type IndexedNote = Omit<Note, "content"> & { filePath: string };
 
-export type IndexedNote = {
-  uuid: string;
-  key: string;
-  category?: string;
-  filePath: string;
-};
+export type IndexedReference = Omit<Reference, "content"> & { filePath: string };
 
-export type IndexedReference = {
-  uuid: string;
-  key: string;
-  category?: string;
-  filePath: string;
-};
-
-export type IndexedSequence = {
-  uuid: string;
-  name: string;
-  isMain: boolean;
-  projectUuid: string;
-  filePath: string;
-  contentHash: string;
-  sections: Array<{
-    uuid: string;
-    name: string;
-    fragments: Array<{
-      uuid: string;
-      fragmentUuid: string;
-      position: number;
-    }>;
-  }>;
-};
+export type IndexedSequence = Sequence & { filePath: string; contentHash: string };
 
 export interface VaultIndexer {
   rebuild(): Promise<RebuildStats>;
