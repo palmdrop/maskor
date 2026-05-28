@@ -12,6 +12,7 @@
 - 2026-05-09 — Attaching or detaching a note/reference from a fragment is committed immediately (optimistic UI, 400ms debounce) and recorded in the action log. (plan: references/plans/entity-live-metadata-save.md)
 - 2026-05-27 — Notes and references can be assigned a category (slash-separated path) from their respective editors; changing the category moves the vault file and is reflected immediately in the config lists (grouped) and the fragment attachment picker (grouped). Category autocompletes from existing categories of that entity type. Client-side validation mirrors the API rules. (plan: references/plans/entity-subfolders.md)
 - 2026-05-28 - Document editor remembers cursor position for each entity and restores it on load. Users can leave the editor and when they return, easily pick up their work. Cursor state is persistent in local storage.
+- 2026-05-28 - In vim mode, the editor ignores all keyboard events that also trigger a command using the command system, see `specifications/command-palette.md`, to avoid an expected command also triggering a vim binding at the same time.
 
 ---
 

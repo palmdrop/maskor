@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import CodeMirror, { EditorView } from "@uiw/react-codemirror";
+import CodeMirror, { EditorView, keymap, Prec } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -17,6 +17,7 @@ import Typography from "@tiptap/extension-typography";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
+import { useHandleCommandEvent } from "../lib/commands/useHandleCommandEvent";
 
 type MarkdownStorage = {
   markdown: {
@@ -121,8 +122,38 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [],
   );
 
+  const checkIsBoundCommand = useHandleCommandEvent({});
+
   const vimExtensions = useMemo(
-    () => [markdown(), vim(), cmTheme, EditorView.lineWrapping, selectionListener],
+    () => [
+      markdown(),
+      // This extension ensures that CodeMirror does not execute in-editor commands at the same time as the command system executes a command
+      // TODO: Create a test for this
+      Prec.high(
+        keymap.of([
+          {
+            any: (_, event) => {
+              // Do not intercept unless a modifier key is pressed
+              if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey)
+                return false;
+
+              // Check if the event is bound to a command in the command system
+              const commandId = checkIsBoundCommand(event);
+
+              // If yes, tell CodeMirror to ignore the event
+              if (commandId) return true;
+
+              // Otherwise, tell CodeMirror to handle the event
+              return false;
+            },
+          },
+        ]),
+      ),
+      vim(),
+      cmTheme,
+      EditorView.lineWrapping,
+      selectionListener,
+    ],
     [cmTheme, selectionListener],
   );
   const rawExtensions = useMemo(
@@ -241,38 +272,21 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // and the container width detaches from the actual line length.
   const widthStyle = { maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` };
 
-  if (vimMode) {
+  if (vimMode || rawMarkdownMode) {
     return (
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
           value={content}
           selection={initialSelection}
-          extensions={vimExtensions}
+          extensions={vimMode ? vimExtensions : rawExtensions}
           onCreateEditor={(view) => {
             viewRef.current = view;
+
             Vim.defineEx("w", "", () => onSaveRef.current?.());
             // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37
-            Vim.defineOperator("yank", yankGenerator(Vim.getRegisterController(), true));
-            focusAndCenterCaret(view);
-          }}
-          onChange={() => onChangeRef.current?.()}
-          basicSetup={{ lineNumbers: false, foldGutter: false }}
-          className="h-full"
-        />
-      </div>
-    );
-  }
-
-  // TODO: can this and the case above get merged? only diff is vim plugin and Vim.defineEx
-  if (rawMarkdownMode) {
-    return (
-      <div className="h-full mx-auto w-full" style={widthStyle}>
-        <CodeMirror
-          value={content}
-          selection={initialSelection}
-          extensions={rawExtensions}
-          onCreateEditor={(view) => {
-            viewRef.current = view;
+            if (vimMode) {
+              Vim.defineOperator("yank", yankGenerator(Vim.getRegisterController(), true));
+            }
             focusAndCenterCaret(view);
           }}
           onChange={() => onChangeRef.current?.()}
