@@ -126,3 +126,19 @@ Started: [pending]
   - Components using `useCommands()` or catalog command hooks require `CommandsProvider` in the test wrapper.
   - Orphan indicator uses `opacity-50` + empty circle (no `backgroundColor`) + `"orphaned"` text badge — consistent with the muted treatment used elsewhere for deprecated/inactive items.
 ---
+
+## 2026-05-28 - US-010
+- Added `fragment:imported` action type to `packages/shared/src/schemas/domain/action.ts` with payload `{ sourceFileName, fragmentCount, format, delimiter?, headingLevel? }`
+- Updated `ImportInput` type in `import.ts` command to include `sourceFileName: string` in all three variants
+- Changed import command to emit a single `fragment:imported` entry instead of N individual `fragment:created` entries (no longer pushes `pieceLogEntries` from sub-calls to `createFragmentCommand.execute`)
+- Updated `packages/api/src/routes/import.ts` and `import-preview.ts` to pass `sourceFileName: file.name` in the input
+- Added `fragment:imported` case to `packages/frontend/src/pages/ProjectHistoryPage/renderers/fragment.tsx`
+- Added `fragment:imported` to `TERMINAL_TYPES` set in `renderers/registry.ts` (synthetic UUID target, not linkable)
+- Added tests in `packages/api/src/__tests__/routes/import.test.ts`: verifies single entry with correct payload, verifies no individual `fragment:created` entries emitted
+- Updated `packages/api/src/__tests__/commands/import.test.ts` and `preview-import.test.ts`: added `sourceFileName` to all command calls, updated log-entry test to expect one `fragment:imported` entry
+- Updated `specifications/action-log.md` and `specifications/import-pipeline.md` with the new action type
+- **Learnings for future iterations:**
+  - `ImportInput` is shared by both `import.ts` and `preview-import.ts` commands — changes to it require updating both routes and all tests that call `command.execute` directly
+  - The `TERMINAL_TYPES` set in `renderers/registry.ts` is for entries whose target uuid doesn't resolve to a real entity — add batch/synthetic-target types there
+  - Test isolation: action log accumulates across tests in the same file — filter by a unique `sourceFileName` rather than counting total `fragment:imported` entries
+---
