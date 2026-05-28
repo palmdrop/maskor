@@ -78,7 +78,8 @@ const overviewRoute = createRoute({
   ): { sequence?: string; density?: OverviewDensity } => ({
     sequence: typeof search.sequence === "string" ? search.sequence : undefined,
     density:
-      typeof search.density === "string" && validDensities.includes(search.density as OverviewDensity)
+      typeof search.density === "string" &&
+      validDensities.includes(search.density as OverviewDensity)
         ? (search.density as OverviewDensity)
         : undefined,
   }),

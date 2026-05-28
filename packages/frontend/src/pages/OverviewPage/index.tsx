@@ -11,7 +11,11 @@ import {
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
-import { useGetProject, useUpdateProject, getGetProjectQueryKey } from "@api/generated/projects/projects";
+import {
+  useGetProject,
+  useUpdateProject,
+  getGetProjectQueryKey,
+} from "@api/generated/projects/projects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { TileContent } from "./components/TileContent";
