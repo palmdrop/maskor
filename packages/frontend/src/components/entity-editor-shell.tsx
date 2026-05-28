@@ -9,12 +9,21 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  useUpdateProject,
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+} from "@api/generated/projects/projects";
 import { ProseEditor, type ProseEditorHandle, type SelectionCapture } from "./prose-editor";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
+import { Slider } from "./ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -95,11 +104,75 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     },
     ref,
   ) {
+    const queryClient = useQueryClient();
+    const updateProject = useUpdateProject();
+
     const editorConfig = useProjectEditorConfig(projectId);
     // Cursor position is persisted per editing mode — switching mode reads that
     // mode's own slot (or starts from the top), and offsets aren't comparable
     // across the CodeMirror/ProseMirror backends anyway.
     const editorMode = editorConfig.vimMode ? "vim" : editorConfig.rawMarkdownMode ? "raw" : "rich";
+
+    const [localFontSize, setLocalFontSize] = useState(editorConfig.fontSize);
+    const [localMaxParagraphWidth, setLocalMaxParagraphWidth] = useState(
+      editorConfig.maxParagraphWidth,
+    );
+
+    useEffect(() => {
+      setLocalFontSize(editorConfig.fontSize);
+    }, [editorConfig.fontSize]);
+
+    useEffect(() => {
+      setLocalMaxParagraphWidth(editorConfig.maxParagraphWidth);
+    }, [editorConfig.maxParagraphWidth]);
+
+    const invalidateProject = useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    }, [queryClient, projectId]);
+
+    const persistFontSize = useCallback(
+      async (value: number) => {
+        await updateProject.mutateAsync({ projectId, data: { editor: { fontSize: value } } });
+        invalidateProject();
+      },
+      [updateProject, projectId, invalidateProject],
+    );
+
+    const persistMaxParagraphWidth = useCallback(
+      async (value: number) => {
+        await updateProject.mutateAsync({
+          projectId,
+          data: { editor: { maxParagraphWidth: value } },
+        });
+        invalidateProject();
+      },
+      [updateProject, projectId, invalidateProject],
+    );
+
+    const handleIncreaseFontSize = useCallback(() => {
+      const next = Math.min(editorConfig.fontSize + 1, 24);
+      setLocalFontSize(next);
+      void persistFontSize(next);
+    }, [editorConfig.fontSize, persistFontSize]);
+
+    const handleDecreaseFontSize = useCallback(() => {
+      const next = Math.max(editorConfig.fontSize - 1, 12);
+      setLocalFontSize(next);
+      void persistFontSize(next);
+    }, [editorConfig.fontSize, persistFontSize]);
+
+    const handleIncreaseMargin = useCallback(() => {
+      const next = Math.min(editorConfig.maxParagraphWidth + 4, 120);
+      setLocalMaxParagraphWidth(next);
+      void persistMaxParagraphWidth(next);
+    }, [editorConfig.maxParagraphWidth, persistMaxParagraphWidth]);
+
+    const handleDecreaseMargin = useCallback(() => {
+      const next = Math.max(editorConfig.maxParagraphWidth - 4, 40);
+      setLocalMaxParagraphWidth(next);
+      void persistMaxParagraphWidth(next);
+    }, [editorConfig.maxParagraphWidth, persistMaxParagraphWidth]);
     const cursor = usePersistedCursor(
       `maskor:cursor:${projectId}:${entityKind}:${entityUUID}:${editorMode}`,
     );
@@ -365,6 +438,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       insertTo: handleInsertOpen,
       canSave: isDirty && !isPending,
       save: handleContentSave,
+      fontSize: localFontSize,
+      maxParagraphWidth: localMaxParagraphWidth,
+      increaseFontSize: handleIncreaseFontSize,
+      decreaseFontSize: handleDecreaseFontSize,
+      increaseMargin: handleIncreaseMargin,
+      decreaseMargin: handleDecreaseMargin,
     });
 
     const handleProseChange = useCallback(() => {
@@ -409,6 +488,47 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           </div>
           <div className="flex items-center gap-2">
             {extraActions}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="ghost" title="Display settings" aria-label="Display settings">
+                  Aa
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Font size</Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {localFontSize}px
+                    </span>
+                  </div>
+                  <Slider
+                    min={12}
+                    max={24}
+                    step={1}
+                    value={[localFontSize]}
+                    onValueChange={([value]) => setLocalFontSize(value!)}
+                    onValueCommit={([value]) => void persistFontSize(value!)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Paragraph width</Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {localMaxParagraphWidth}ch
+                    </span>
+                  </div>
+                  <Slider
+                    min={40}
+                    max={120}
+                    step={4}
+                    value={[localMaxParagraphWidth]}
+                    onValueChange={([value]) => setLocalMaxParagraphWidth(value!)}
+                    onValueCommit={([value]) => void persistMaxParagraphWidth(value!)}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               size="sm"
               disabled={isPending || !isDirty}
@@ -462,8 +582,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               content={content}
               vimMode={editorConfig.vimMode}
               rawMarkdownMode={editorConfig.rawMarkdownMode}
-              fontSize={editorConfig.fontSize}
-              maxParagraphWidth={editorConfig.maxParagraphWidth}
+              fontSize={localFontSize}
+              maxParagraphWidth={localMaxParagraphWidth}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
               cursor={cursor}

@@ -19,6 +19,12 @@ export interface EditorContext {
   ) => void;
   canSave: boolean;
   save: () => void;
+  fontSize: number;
+  maxParagraphWidth: number;
+  increaseFontSize: () => void;
+  decreaseFontSize: () => void;
+  increaseMargin: () => void;
+  decreaseMargin: () => void;
 }
 
 // Singleton scope — only one EntityEditorShell may be mounted at a time.
@@ -251,6 +257,47 @@ const prependToAspect = defineScopeCommand(editorScope, {
   },
 });
 
+// --- Display config (font size + margin) ---
+
+const FONT_SIZE_MIN = 12;
+const FONT_SIZE_MAX = 24;
+const MARGIN_MIN = 40;
+const MARGIN_MAX = 120;
+
+const increaseFontSize = defineScopeCommand(editorScope, {
+  id: "editor:increase-font-size",
+  label: "Increase font size",
+  category: "other",
+  disabled: (ctx) => (ctx.fontSize >= FONT_SIZE_MAX ? "Font size is at maximum" : undefined),
+  run: (ctx) => ctx.increaseFontSize(),
+});
+
+const decreaseFontSize = defineScopeCommand(editorScope, {
+  id: "editor:decrease-font-size",
+  label: "Decrease font size",
+  category: "other",
+  disabled: (ctx) => (ctx.fontSize <= FONT_SIZE_MIN ? "Font size is at minimum" : undefined),
+  run: (ctx) => ctx.decreaseFontSize(),
+});
+
+const increaseMargin = defineScopeCommand(editorScope, {
+  id: "editor:increase-margin",
+  label: "Increase paragraph width",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.maxParagraphWidth >= MARGIN_MAX ? "Paragraph width is at maximum" : undefined,
+  run: (ctx) => ctx.increaseMargin(),
+});
+
+const decreaseMargin = defineScopeCommand(editorScope, {
+  id: "editor:decrease-margin",
+  label: "Decrease paragraph width",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.maxParagraphWidth <= MARGIN_MIN ? "Paragraph width is at minimum" : undefined,
+  run: (ctx) => ctx.decreaseMargin(),
+});
+
 export const editorCommands = [
   save,
   extractToFragment,
@@ -265,4 +312,8 @@ export const editorCommands = [
   prependToNote,
   prependToReference,
   prependToAspect,
+  increaseFontSize,
+  decreaseFontSize,
+  increaseMargin,
+  decreaseMargin,
 ] as const;

@@ -15,6 +15,21 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   };
 });
 
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  };
+});
+
+vi.mock("@api/generated/projects/projects", () => ({
+  useUpdateProject: () => ({ mutateAsync: vi.fn().mockResolvedValue({ status: 200 }) }),
+  getGetProjectQueryKey: () => ["project"],
+  getListProjectsQueryKey: () => ["projects"],
+}));
+
 // ---- Stubs ----
 
 const proseGetContentMock = vi.fn(() => "current editor content");

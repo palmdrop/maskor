@@ -22,6 +22,12 @@ const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({
   insertTo: vi.fn(),
   canSave: true,
   save: vi.fn(),
+  fontSize: 16,
+  maxParagraphWidth: 72,
+  increaseFontSize: vi.fn(),
+  decreaseFontSize: vi.fn(),
+  increaseMargin: vi.fn(),
+  decreaseMargin: vi.fn(),
   ...overrides,
 });
 
