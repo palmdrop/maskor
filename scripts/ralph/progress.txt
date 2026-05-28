@@ -172,3 +172,18 @@ Started: [pending]
   - Local state for slider values + `onValueCommit` for persistence follows the GeneralTab pattern exactly
   - The `EditorContext` in `editor.ts` must be extended for any new data/callbacks that palette commands need; update `makeCtx` in the test file to include defaults for new fields
 ---
+
+## 2026-05-28 - US-013
+- Added ArrowLeft/ArrowRight keyboard reordering for fragment tiles in the overview
+- Modified `SortableTile.tsx`: added `onFocus={() => onSelect?.(fragment.uuid)}` so tabbing to a tile sets the selection state (tiles already have `tabIndex={0}` via `{...attributes}` from `useSortable`)
+- Modified `OverviewPage/index.tsx`: added `handleFragmentKeyboardMove(direction: "prev" | "next")` using `useCallback`; added `handleMainKeyDown` to guard against INPUT/TEXTAREA targets and delegate ArrowLeft/ArrowRight; added `data-testid="overview-main-content"` to the main div; added `onKeyDown={handleMainKeyDown}` to the same div
+- Added 7 keyboard movement tests to `OverviewPage.test.tsx`: within-section forward, within-section backward, cross-section forward (to next section start), cross-section backward (to prev section end), no-op at absolute first, no-op at absolute last, no-op with no selection, and input-guard test
+- Updated `specifications/overview.md`: Shipped entry, Rearrangement section (ArrowLeft/ArrowRight behavior + cross-section boundary), removed from deferred list, Prior decisions (ArrowLeft/Right choice rationale)
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - Only `PointerSensor` is registered in the DnD context — no `KeyboardSensor` — so dnd-kit's arrow-key drag navigation doesn't conflict with custom arrow-key handlers
+  - `{...listeners}` from `useSortable` only contains pointer events when only PointerSensor is configured; safe to add custom `onFocus`/`onKeyDown` to the tile div
+  - Arrow keys bubbling up from a focused SortableTile reach the outer `onKeyDown` handler; guard with `target.tagName === "INPUT"` prevents accidental moves when a section name input has focus
+  - For keyboard tests: add `data-testid` to the container div so tests can `fireEvent.keyDown` on it without selector magic
+  - `makeMultiSectionBundleResponse` helper needed for cross-section move tests; added alongside existing `makeBundleResponse`
+---
