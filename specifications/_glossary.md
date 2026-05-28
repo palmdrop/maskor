@@ -4,7 +4,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 ## Language
 
-**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: piece (has a distinct meaning in Maskor), chunk, entry, node.
+**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: chunk, entry, node, piece (former import intermediary — concept removed; a raw markdown file dropped into `fragments/` is now adopted directly as a fragment).
 
 **Key**: The filename stem of any vault entity (fragment, aspect, note, reference), serving as both its unique identifier and its display title; applies uniformly across all entity types. _Avoid_: title (old spec language for notes), name (old spec language for references), slug (an implementation concern, not a synonym).
 
@@ -46,7 +46,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Vault**: The directory on disk containing all of a project's markdown files (fragments, aspects, notes, references) and Maskor-managed config; the source of truth for all user-authored content. _Avoid_: workspace, project folder, repository.
 
-**Piece**: A transient, in-memory raw writing file without metadata, UUID, or aspect properties — an intermediate step before being converted into a fragment. Likely to be removed in a future iteration. _Avoid_: raw fragment, import item, draft fragment.
+**Warning**: A recorded, non-fatal vault condition surfaced to the user for inspection — either an unresolved-state problem the user can fix (a wrong-format file sitting in an entity folder, an unknown aspect key referenced by a fragment) or a notable auto-resolved event (a UUID collision). State warnings clear once the underlying problem is fixed; event warnings persist until dismissed. _Avoid_: error (warnings are advisory and non-fatal, not thrown failures), diagnostic, alert.
 
 **Note**: A named, free-text vault document representing the user's own thinking or observations, attachable to fragments. _Avoid_: annotation, comment (has a future specific meaning in Maskor), memo.
 
@@ -89,8 +89,6 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 **"Sequence" (main vs. any)** — "sequence" should mean any named ordering; "main sequence" is the designated export target. Informal uses of "sequence" meaning the main sequence persist across specs. Use the qualified form when the distinction matters.
 
 **"Prompting" vs. "suggestion mode"** — "prompting" is the underlying engine/mechanism name; "suggestion mode" is the developer-facing surface name. The user-facing label is still undecided. Keep the two distinct; do not conflate in specs.
-
-**"Piece" (dual sense)** — used for both the filesystem drop-zone file in `pieces/` and the in-memory import intermediary. Distinct origins; both transient. Likely removed soon; no resolution required.
 
 **"Arc" (plain noun)** — informally refers to both the explicit arc entity and the visual curve rendered in the overview (which may overlay both actual and explicit arcs). Use qualified forms ("explicit arc", "actual arc") when precision matters.
 

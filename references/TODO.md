@@ -8,13 +8,17 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] fix lint errors
+
 - [x] Refactor command system, introduce strong types and reduce boilerplate
 
 - [ ] notification/banner component for communicating result of actions
 
+- [ ] Ctrl+k etc triggers BOTH quick-switcher AND the editor, triggering a vim cut action. This could result in accidentally deleting text without noticing. Make sure command system triggers first and prevents the events from reaching the editor.
+
 - [ ] suggestion.currentFragmentUUID is state rather than config and should prob not be stored in project manifest. Investigate and move to a table instead
 
-- [ ] subfolders for organizing aspects/arcs
+- [x] subfolders for organizing aspects/arcs
   - do not duplicate obsidian functionality... make this a companion app for obsidian, a layer above, not a replacement? at least for now.
   - focus on adding features that make the gap seamless
 
