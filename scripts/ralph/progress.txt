@@ -157,3 +157,18 @@ Started: [pending]
   - The `TERMINAL_TYPES` set in `renderers/registry.ts` is for entries whose target uuid doesn't resolve to a real entity — add batch/synthetic-target types there
   - Test isolation: action log accumulates across tests in the same file — filter by a unique `sourceFileName` rather than counting total `fragment:imported` entries
 ---
+
+## 2026-05-28 - US-012
+- Added inline font size and paragraph width controls to the entity editor shell
+- Created `packages/frontend/src/components/ui/popover.tsx` wrapping Radix `Popover` primitive (mirrors `dropdown-menu.tsx` pattern)
+- Updated `packages/frontend/src/lib/commands/scopes/editor.ts`: added `fontSize`, `maxParagraphWidth`, `increaseFontSize`, `decreaseFontSize`, `increaseMargin`, `decreaseMargin` to `EditorContext`; added 4 new palette commands (`editor:increase-font-size`, `editor:decrease-font-size`, `editor:increase-margin`, `editor:decrease-margin`)
+- Updated `packages/frontend/src/components/entity-editor-shell.tsx`: imports `useUpdateProject`, local state for font size and margin, `persistFontSize`/`persistMaxParagraphWidth` handlers, an "Aa" popover button with sliders in the toolbar header, ProseEditor now uses local state values for immediate visual feedback
+- Updated `entity-editor-shell.test.tsx` and `scopes/__tests__/editor.test.ts` to add mocks/defaults for new fields
+- Updated `specifications/fragment-editor.md` with Shipped entry and Prior decision
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - Radix `Popover` is available via the `radix-ui` package (same import pattern as `DropdownMenu`); create a `popover.tsx` wrapper in `src/components/ui/`
+  - The `entity-editor-shell.test.tsx` needs mocks for `@api/generated/projects/projects` and `@tanstack/react-query` `useQueryClient` whenever the shell imports project-update hooks
+  - Local state for slider values + `onValueCommit` for persistence follows the GeneralTab pattern exactly
+  - The `EditorContext` in `editor.ts` must be extended for any new data/callbacks that palette commands need; update `makeCtx` in the test file to include defaults for new fields
+---
