@@ -126,7 +126,7 @@ describe("AspectEditor — category field (rendering)", () => {
     expect(screen.getByText("world/characters")).toBeInTheDocument();
   });
 
-  it("invalid chars show an inline error", async () => {
+  it("invalid chars show an inline error", () => {
     const queryClient = makeQueryClient();
     seedAspect(queryClient, baseAspect);
 
@@ -134,8 +134,11 @@ describe("AspectEditor — category field (rendering)", () => {
       wrapper: wrap(queryClient),
     });
 
+    // Set the full invalid value in one shot: typing char-by-char would push
+    // valid prefixes ("b", "ba", "bad") through the live-save debounce and fire
+    // real PATCHes. We only care that an invalid value surfaces the error.
     const input = screen.getByPlaceholderText(/empty for root/);
-    await userEvent.type(input, "bad?input");
+    fireEvent.change(input, { target: { value: "bad?input" } });
 
     expect(
       screen.getByText(/letters, numbers, spaces, hyphens, and underscores/),
