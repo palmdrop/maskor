@@ -12,6 +12,7 @@
 - 2026-05-10 — Users can configure font size and paragraph width per project; settings apply live across all editor modes. (plan: references/plans/editor-typography-settings.md)
 - 2026-05-19 — Prose content edits are mirrored to a `.maskor/swap/` file per entity. If the browser is closed or crashes before save, the next time the entity is opened the cached content is restored into the editor and a banner offers Restore-from-server. Applies to fragments, aspects, notes, and references. (plan: references/plans/entity-content-swap-files.md)
 - 2026-05-25 — Orphaned aspect entries (aspect keys present in fragment frontmatter whose definition no longer exists in the project) are rendered in the metadata editor with a muted style and "orphaned" badge. The user can detach orphaned aspects using the same × affordance as live aspects. (plan: scripts/ralph/archive/2026-05-16-small-improvements/)
+- 2026-05-28 - Editor remembers cursor position for each entity and restores it on load. Users can leave the editor and when they return, easily pick up their work. Cursor state is persistent in local storage.
 
 ---
 
