@@ -1,10 +1,11 @@
 # Spec: Import Pipeline
 
 **Status**: Stable
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-28
 **Shipped**:
 - 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
 - 2026-05-16 — Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-2/`)
+- 2026-05-28 — Piece removal + full-frontmatter adoption. The `pieces/` staging folder has been removed; raw `.md` dropped into `fragments/` is now the sole external-edit adoption path, and the watcher writes back a complete canonical frontmatter (uuid, updatedAt, readiness, notes, references) on first detection. (plan: `references/plans/remove-piece-concept-and-vault-warnings.md`)
 
 > **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, folder import is out of Stage 1, and source files are not archived.
 
@@ -30,7 +31,6 @@ A user can take an existing document — a Word file, a markdown file, or a fold
 
 ### Out of scope
 
-- The `<vault>/pieces/` drop zone — this is a manual filesystem bypass, not part of the importer
 - Fragment metadata assignment during import — aspect weights, notes, and references are set post-import in the fragment editor
 - OCR and image-based import
 - PDF import
@@ -70,10 +70,19 @@ A user can take an existing document — a Word file, a markdown file, or a fold
 
 If a fragment with the derived title already exists, a numeric suffix is appended: `fragment`, `fragment_1`, `fragment_2`, etc.
 
-### Piece transience
+### Fragment adoption via raw file drop
 
-- Pieces are transient in-memory intermediaries — no UUID, no aspect properties, no frontmatter
-- A piece is discarded immediately after the corresponding fragment is successfully created
+A raw `.md` file dropped directly into `fragments/` is auto-adopted by the watcher on first detection:
+- A UUID is minted and written back along with complete canonical frontmatter (`updatedAt`, `readiness`, `notes`, `references`)
+- Any fields already present in the file (e.g. `readiness: 0.5`) are preserved; only missing fields are defaulted
+- The key is derived from the filename (stem, without `.md`)
+- This is the only external-edit adoption path; the `pieces/` staging folder no longer exists
+
+### In-memory pieces (importer only)
+
+Within the import pipeline, the importer's internal `Piece`/`RawPiece` types represent transient in-memory split results:
+- No UUID, no aspect properties, no frontmatter — purely an in-memory intermediary
+- A piece is discarded immediately after the corresponding fragment is successfully created via `createFragmentCommand`
 - If creation fails, the error is logged and the piece is not silently dropped
 
 ---
@@ -87,7 +96,7 @@ If a fragment with the derived title already exists, a numeric suffix is appende
 
 ## Prior decisions
 
-- **Piece is transient**: Pieces are in-memory intermediaries only. Not written to disk by the importer.
+- **Pieces are in-memory only**: The importer's `Piece`/`RawPiece` types are transient split results; they are never written to disk. The `pieces/` staging folder has been removed; raw `.md` dropped into `fragments/` is the only external-edit adoption path and is handled entirely by the watcher.
 - **No metadata on import**: Pieces carry only `title` and `content`. Aspect assignment happens post-import.
 - **Delimiter configured during import**: The user picks the delimiter in the import UI, not in project config.
 - **Title conflict resolution**: Numeric suffix appended to avoid collisions — no error, no abort.

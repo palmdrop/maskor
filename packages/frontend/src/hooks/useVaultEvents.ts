@@ -11,7 +11,6 @@ const VAULT_SYNC_EVENT_TYPES = [
   "note:deleted",
   "reference:synced",
   "reference:deleted",
-  "pieces:consumed",
   "vault:restored",
 ];
 

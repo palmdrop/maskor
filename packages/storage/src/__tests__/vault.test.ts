@@ -268,23 +268,3 @@ describe("vault.sequences.delete", () => {
     await expect(vault.sequences.delete("nonexistent.yaml")).rejects.toThrow(VaultError);
   });
 });
-
-// --- pieces ---
-
-describe("vault.pieces.consumeAll", () => {
-  it("converts pieces to fragments and removes source files", async () => {
-    const vault = createVault(config);
-    const fragments = await vault.pieces.consumeAll();
-
-    expect(fragments.length).toBe(1);
-    expect(fragments[0]?.isDiscarded).toBe(false);
-
-    // source file should be gone
-    const pieceFile = Bun.file(join(tmpDir, "pieces", "raw-memory.md"));
-    expect(await pieceFile.exists()).toBe(false);
-
-    // fragment file should exist
-    const fragFile = Bun.file(join(tmpDir, "fragments", "raw-memory.md"));
-    expect(await fragFile.exists()).toBe(true);
-  });
-});

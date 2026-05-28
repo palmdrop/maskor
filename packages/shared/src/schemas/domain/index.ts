@@ -3,7 +3,6 @@ export * from "./fragment";
 export * from "./note";
 export * from "./project";
 export * from "./reference";
-export * from "./piece";
 export * from "./arc";
 export * from "./sequence";
 export * from "./interleaving";

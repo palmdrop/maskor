@@ -7,7 +7,6 @@ export type VaultSyncEvent =
   | { type: "note:deleted"; filePath: string }
   | { type: "reference:synced"; uuid: string; revived?: boolean }
   | { type: "reference:deleted"; filePath: string }
-  | { type: "pieces:consumed"; count: number }
   | { type: "vault:restored"; draftUuid: string };
 
 // Compile-time guard — if a new variant is added to VaultSyncEvent but not this array, TypeScript errors.
@@ -20,6 +19,5 @@ export const VAULT_SYNC_EVENT_TYPES = [
   "note:deleted",
   "reference:synced",
   "reference:deleted",
-  "pieces:consumed",
   "vault:restored",
 ] as const satisfies VaultSyncEvent["type"][];

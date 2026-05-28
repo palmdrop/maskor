@@ -14,7 +14,6 @@ export type VaultErrorCode =
   | "PATH_OUT_OF_BOUNDS"
   | "FRAGMENT_NOT_FOUND"
   | "ENTITY_NOT_FOUND"
-  | "PIECE_CONSUME_FAILED"
   | "STALE_INDEX"
   | "FRAGMENT_NOT_DISCARDED"
   | "KEY_CONFLICT"
@@ -76,10 +75,6 @@ export type Vault = {
     read(filePath: string): Promise<Reference>;
     write(reference: Reference): Promise<void>;
     delete(filePath: string): Promise<void>;
-  };
-  pieces: {
-    consumeAll(): Promise<Fragment[]>;
-    consume(filePath: string): Promise<Fragment | null>;
   };
   sequences: {
     readAll(): Promise<Sequence[]>;

@@ -9,7 +9,8 @@ import { createVaultWatcher } from "../watcher/watcher";
 import type { VaultWatcher } from "../watcher/types";
 import type { VaultSyncEvent } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
-import { aspectsTable, notesTable } from "../db/vault/schema";
+import { aspectsTable, notesTable, fragmentsTable } from "../db/vault/schema";
+import { parseFile } from "../vault/markdown/parse";
 import { eq } from "drizzle-orm";
 import { mkdirSync } from "node:fs";
 
@@ -464,6 +465,86 @@ describe("syncAspect — revival after rename-buffer expiry", () => {
         .where(eq(aspectsTable.key, "grief"))
         .get(),
     ).toBeUndefined();
+  });
+});
+
+// --- Fragment adoption (raw .md drop) ---
+
+describe("syncFragment — raw drop adoption", () => {
+  it("adopts a body-only .md drop: mints uuid, writes full frontmatter, indexes, emits fragment:synced", async () => {
+    const events: VaultSyncEvent[] = [];
+    const { watcher: w, vaultDatabase, subscribe } = await rebuildAndWatch({});
+    watcher = w;
+    subscribe((event) => events.push(event));
+
+    await Bun.write(
+      join(vaultDir, "fragments", "raw-drop-plain.md"),
+      "She crossed it every morning.\n",
+    );
+
+    await waitFor(() => events.some((e) => e.type === "fragment:synced"));
+
+    const raw = await Bun.file(join(vaultDir, "fragments", "raw-drop-plain.md")).text();
+    const parsed = parseFile(raw);
+
+    expect(typeof parsed.frontmatter.uuid).toBe("string");
+    expect(parsed.frontmatter.readiness).toBe(0);
+    expect(Array.isArray(parsed.frontmatter.notes)).toBe(true);
+    expect(Array.isArray(parsed.frontmatter.references)).toBe(true);
+    expect(typeof parsed.frontmatter.updatedAt).toBe("string");
+
+    const row = vaultDatabase
+      .select({ uuid: fragmentsTable.uuid, key: fragmentsTable.key })
+      .from(fragmentsTable)
+      .where(eq(fragmentsTable.key, "raw-drop-plain"))
+      .get();
+    expect(row?.uuid).toBe(parsed.frontmatter.uuid as string);
+    expect(row?.key).toBe("raw-drop-plain");
+  });
+
+  it("preserves user-supplied readiness when adopting a partial-frontmatter drop", async () => {
+    const events: VaultSyncEvent[] = [];
+    const { watcher: w, vaultDatabase, subscribe } = await rebuildAndWatch({});
+    watcher = w;
+    subscribe((event) => events.push(event));
+
+    await Bun.write(
+      join(vaultDir, "fragments", "raw-drop-partial.md"),
+      "---\nreadiness: 0.5\n---\n\nThe cold had a particular quality.\n",
+    );
+
+    await waitFor(() => events.some((e) => e.type === "fragment:synced"));
+
+    const raw = await Bun.file(join(vaultDir, "fragments", "raw-drop-partial.md")).text();
+    const parsed = parseFile(raw);
+
+    expect(parsed.frontmatter.readiness).toBe(0.5);
+    expect(typeof parsed.frontmatter.uuid).toBe("string");
+    expect(Array.isArray(parsed.frontmatter.notes)).toBe(true);
+    expect(Array.isArray(parsed.frontmatter.references)).toBe(true);
+
+    const row = vaultDatabase
+      .select({ readiness: fragmentsTable.readiness })
+      .from(fragmentsTable)
+      .where(eq(fragmentsTable.key, "raw-drop-partial"))
+      .get();
+    expect(row?.readiness).toBe(0.5);
+  });
+
+  it("leaves file untouched when dropped .md already has a uuid", async () => {
+    const events: VaultSyncEvent[] = [];
+    const { watcher: w, subscribe } = await rebuildAndWatch({});
+    watcher = w;
+    subscribe((event) => events.push(event));
+
+    const existingUuid = crypto.randomUUID();
+    const originalContent = `---\nuuid: "${existingUuid}"\nreadiness: 0\nnotes: []\nreferences: []\nupdatedAt: "2026-01-01T00:00:00.000Z"\n---\n\nExisting content.\n`;
+    await Bun.write(join(vaultDir, "fragments", "raw-drop-canonical.md"), originalContent);
+
+    await waitFor(() => events.some((e) => e.type === "fragment:synced"));
+
+    const raw = await Bun.file(join(vaultDir, "fragments", "raw-drop-canonical.md")).text();
+    expect(raw).toBe(originalContent);
   });
 });
 

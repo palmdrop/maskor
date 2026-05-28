@@ -1,4 +1,4 @@
-import type { Aspect, Fragment, Logger, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Logger, Note, Reference, Sequence } from "@maskor/shared";
 import type { Vault, VaultConfig } from "../types";
 import { VaultError } from "../types";
 import { parseFile } from "./parse";
@@ -8,7 +8,6 @@ import * as aspectMapper from "./mappers/aspect";
 import * as noteMapper from "./mappers/note";
 import * as referenceMapper from "./mappers/reference";
 import * as sequenceMapper from "./mappers/sequence";
-import { initFragment } from "./init";
 import { rename, unlink, mkdir } from "node:fs/promises";
 import { join, basename, sep, resolve } from "node:path";
 import { joinCategoryPath } from "../../utils/category";
@@ -70,7 +69,6 @@ export const createVault = (config: VaultConfig): Vault => {
   const toAbsoluteAspect = makeToAbsolute(resolve(vaultPath("aspects")));
   const toAbsoluteNote = makeToAbsolute(resolve(vaultPath("notes")));
   const toAbsoluteReference = makeToAbsolute(resolve(vaultPath("references")));
-  const toAbsolutePiece = makeToAbsolute(resolve(vaultPath("pieces")));
   const sequencesDir = resolve(vaultPath(".maskor", "sequences"));
   const toAbsoluteSequence = makeToAbsolute(sequencesDir);
 
@@ -469,86 +467,6 @@ export const createVault = (config: VaultConfig): Vault => {
           throw cause;
         }
         log.debug({ filename }, "sequence deleted");
-      },
-    },
-
-    pieces: {
-      async consume(filePath: string) {
-        const absolutePath = toAbsolutePiece(filePath);
-        if (!(await Bun.file(absolutePath).exists())) return null;
-
-        const content = await Bun.file(absolutePath).text();
-        const key = basename(filePath).replace(/\.md$/, "");
-        const fragment = await initFragment(config, { key, content });
-
-        const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
-        const absoluteFragmentPath = toAbsoluteFragment(`${fragment.key}.md`);
-        await writeMarkdown(
-          absoluteFragmentPath,
-          serializeFile({ frontmatter, inlineFields, body }),
-        );
-
-        try {
-          await unlink(absolutePath);
-        } catch (cause) {
-          throw new VaultError(
-            "FILE_DELETE_FAILED",
-            `Failed to delete piece file "${filePath}" after consuming`,
-            { filePath, reason: "fs.unlink failed" },
-            { cause },
-          );
-        }
-
-        log.info({ filePath, fragmentKey: fragment.key }, "piece consumed");
-        return fragment;
-      },
-
-      async consumeAll() {
-        const files = await listMarkdownFiles(vaultPath("pieces"));
-        const results: Fragment[] = [];
-
-        for (const fileName of files) {
-          try {
-            const absolutePath = toAbsolutePiece(fileName);
-            const content = await Bun.file(absolutePath).text();
-            const key = fileName.replace(/\.md$/, "");
-            const fragment = await initFragment(config, { key, content });
-
-            // Write the fragment to fragments/ so the watcher can re-read it for hashing.
-            const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
-            const absoluteFragmentPath = toAbsoluteFragment(`${fragment.key}.md`);
-            await writeMarkdown(
-              absoluteFragmentPath,
-              serializeFile({ frontmatter, inlineFields, body }),
-            );
-
-            results.push(fragment);
-
-            try {
-              await unlink(absolutePath);
-            } catch (cause) {
-              throw new VaultError(
-                "FILE_DELETE_FAILED",
-                `Failed to delete piece file "${fileName}" after consuming`,
-                { filePath: fileName, reason: "fs.unlink failed" },
-                { cause },
-              );
-            }
-
-            log.info({ filePath: fileName, fragmentKey: fragment.key }, "piece consumed");
-          } catch (error) {
-            log.error(
-              {
-                filePath: fileName,
-                errorCode: error instanceof VaultError ? error.code : undefined,
-                errorMessage: error instanceof Error ? error.message : String(error),
-              },
-              "failed to consume piece — skipping",
-            );
-          }
-        }
-
-        return results;
       },
     },
   };

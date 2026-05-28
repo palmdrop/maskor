@@ -118,7 +118,6 @@ describe("registry.registerProject", () => {
     expect(existsSync(join(newPath, "fragments", "discarded"))).toBe(true);
     expect(existsSync(join(newPath, "notes"))).toBe(true);
     expect(existsSync(join(newPath, "references"))).toBe(true);
-    expect(existsSync(join(newPath, "pieces"))).toBe(true);
   });
 
   it("mode create writes .maskor/project.json with correct contents", async () => {
@@ -335,7 +334,11 @@ describe("registry config defaults", () => {
     // Write a bare manifest with no config key
     await Bun.write(
       join(emptyVaultDir, ".maskor", "project.json"),
-      JSON.stringify({ projectUUID: crypto.randomUUID(), name: "Bare", registeredAt: new Date().toISOString() }),
+      JSON.stringify({
+        projectUUID: crypto.randomUUID(),
+        name: "Bare",
+        registeredAt: new Date().toISOString(),
+      }),
     );
     await registry.registerProject("Bare", emptyVaultDir, "adopt");
     const found = await registry.findByUUID(

@@ -7,7 +7,6 @@ export const VAULT_SKELETON_DIRS = [
   "aspects",
   "notes",
   "references",
-  "pieces",
 ] as const;
 
 // Idempotent — safe to call on startup to repair vaults missing skeleton dirs.

@@ -50,7 +50,8 @@
 
 **Sync rules (external edits)**
 
-- File created outside Maskor: DB record created, UUID assigned + written back if missing
+- File created outside Maskor (fragment): UUID minted + full canonical frontmatter (uuid, updatedAt, readiness, notes, references) written back; any user-supplied fields preserved
+- File created outside Maskor (aspect/note/reference): DB record created, UUID assigned + written back if missing
 - File edited outside: contentHash comparison detects change, re-syncs frontmatter and inline fields
 - File renamed: UUID-tracked, only DB `filePath` updated; other entities' frontmatter title refs are not rewritten
 - File deleted: fragment moved to `discarded/` folder; notes/references soft-deleted in DB
@@ -98,7 +99,7 @@
 
 7. **`pieces/` single-file routing** — `consumeAll()` is not a valid per-file handler. Need either a `vault.pieces.consume(filePath)` method or route all `pieces/` add events to `consumeAll()` and document the trade-off. _(vault-watcher plan)_
 
-- ANSWER: A per-file handler is better. The pieces does not have to be consumed all at once. A step by step consumption is better to preserve memory. In the future, Redis or other queuing system can be introduced as a middle-layer, if needed.
+- MOOT: The `pieces/` folder and all `vault.pieces.*` machinery have been removed (2026-05-28). Raw `.md` dropped into `fragments/` is now the only external-edit adoption path; the watcher handles it with full canonical frontmatter writeback. See plan `references/plans/remove-piece-concept-and-vault-warnings.md`.
 
 8. **Sequences/Sections schema** — all sequence data is DB-only but no tables exist in `vault/schema.ts` yet. _(ARCHITECTURE.md)_
 

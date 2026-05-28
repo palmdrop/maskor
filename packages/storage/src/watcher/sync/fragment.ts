@@ -2,6 +2,7 @@ import type { Logger, VaultSyncEvent } from "@maskor/shared";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentsTable } from "../../db/vault/schema";
 import { parseFile } from "../../vault/markdown/parse";
+import { serializeFile } from "../../vault/markdown/serialize";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
 import { hashContent } from "../../utils/hash";
 import {
@@ -69,6 +70,15 @@ export const syncFragment = async (
       resolvedUuid = newUuid;
       resolvedRawContent = newRawContent;
     }
+  } else {
+    // New fragment adoption: write back complete canonical frontmatter.
+    // fragmentMapper.fromFile derives read-time defaults (readiness, notes, references, etc.),
+    // preserving any fields the user already supplied. The UUID was already assigned above.
+    const adoptedFragment = fragmentMapper.fromFile(parsed, entityRelativePath);
+    const { frontmatter, inlineFields, body } = fragmentMapper.toFile(adoptedFragment);
+    const canonicalContent = serializeFile({ frontmatter, inlineFields, body });
+    await Bun.write(absolutePath, canonicalContent);
+    resolvedRawContent = canonicalContent;
   }
 
   const storedRow = vaultDatabase

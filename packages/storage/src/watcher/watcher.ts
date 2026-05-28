@@ -20,18 +20,11 @@ import { createRenameBuffer } from "./utils/rename-buffer";
 import { createInFlightTracker } from "./utils/in-flight-tracker";
 import { createRecentlyDeletedTracker } from "./utils/recently-deleted";
 import type { CascadeCallbacks, VaultWatcher } from "./types";
-import {
-  FRAGMENT_PREFIX,
-  ASPECT_PREFIX,
-  NOTE_PREFIX,
-  REFERENCE_PREFIX,
-  PIECE_PREFIX,
-} from "./utils/constants";
+import { FRAGMENT_PREFIX, ASPECT_PREFIX, NOTE_PREFIX, REFERENCE_PREFIX } from "./utils/constants";
 import { createChokidarConfig } from "./chokidar-config";
 import type { EntityConfig } from "./sync/keyed-entity";
 import { syncKeyedEntity, unlinkKeyedEntity } from "./sync/keyed-entity";
 import { syncFragment, unlinkFragment } from "./sync/fragment";
-import { syncPieces } from "./sync/pieces";
 
 type Route = {
   prefix: string;
@@ -213,16 +206,6 @@ export const createVaultWatcher = (
       handleUnlink: (vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(REFERENCE_PREFIX.length);
         unlinkKeyedEntity(referenceConfig, vaultDatabase, entityRelativePath);
-      },
-    },
-    {
-      prefix: PIECE_PREFIX,
-      handleAddOrChange: (_absolutePath, vaultRelativePath) => {
-        const pieceFileName = vaultRelativePath.slice(PIECE_PREFIX.length);
-        return syncPieces(vaultDatabase, vault, emit, log, pieceFileName);
-      },
-      handleUnlink: (_vaultRelativePath) => {
-        // Pieces are consumed and removed by vault.pieces.consume — no unlink handling.
       },
     },
   ];

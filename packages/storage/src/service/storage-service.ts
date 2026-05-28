@@ -343,9 +343,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       const updated = updateFn(await vault.aspects.read(indexed.filePath));
       await vault.aspects.write(updated);
       const newFilePath = joinCategoryPath(updated.category, updated.key);
-      const rawContent = await Bun.file(
-        join(context.vaultPath, "aspects", newFilePath),
-      ).text();
+      const rawContent = await Bun.file(join(context.vaultPath, "aspects", newFilePath)).text();
       cascaded.push({ aspect: updated, filePath: newFilePath, rawContent });
       touched.push(uuid);
     }
@@ -1315,10 +1313,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
                 }
                 throw error;
               });
-              await pruneEmptyParents(
-                join(context.vaultPath, "references"),
-                absoluteOldPath,
-              );
+              await pruneEmptyParents(join(context.vaultPath, "references"), absoluteOldPath);
             }
 
             const absolutePath = join(context.vaultPath, "references", newFilePath);
@@ -1400,14 +1395,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
       delete: async (context: ProjectContext, aspectKey: string): Promise<void> => {
         return withVaultWriteLock(context.vaultPath, () => deleteArc(context, aspectKey));
-      },
-    },
-
-    // Piece operations
-
-    pieces: {
-      async consumeAll(context: ProjectContext): Promise<Fragment[]> {
-        return withVaultWriteLock(context.vaultPath, () => getVault(context).pieces.consumeAll());
       },
     },
 
