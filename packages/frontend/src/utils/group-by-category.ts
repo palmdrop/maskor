@@ -1,6 +1,6 @@
 export type CategoryGroup<T> = { category: string | null; items: T[] };
 
-export const groupByCategory = <T,>(
+export const groupByCategory = <T>(
   items: T[],
   getCategory: (item: T) => string | null | undefined,
 ): CategoryGroup<T>[] => {

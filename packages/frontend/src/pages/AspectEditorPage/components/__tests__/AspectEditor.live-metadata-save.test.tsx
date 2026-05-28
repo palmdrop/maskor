@@ -17,13 +17,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 // For this test we only care about the sidebar wiring and isPending propagation —
 // stub the shell to expose those as plain DOM and skip the editor surface.
 vi.mock("@components/entity-editor-shell", () => ({
-  EntityEditorShell: ({
-    sidebar,
-    isPending,
-  }: {
-    sidebar?: ReactNode;
-    isPending: boolean;
-  }) => (
+  EntityEditorShell: ({ sidebar, isPending }: { sidebar?: ReactNode; isPending: boolean }) => (
     <div>
       <div data-testid="is-pending">{isPending ? "pending" : "idle"}</div>
       <div>{sidebar}</div>
@@ -36,10 +30,7 @@ vi.mock("@api/action-log", () => ({
 }));
 
 import { AspectEditor } from "../AspectEditor";
-import {
-  getGetAspectQueryKey,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { getGetAspectQueryKey, getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import { getListNotesQueryKey } from "@api/generated/notes/notes";
 import type { Aspect } from "@api/generated/maskorAPI.schemas";
 

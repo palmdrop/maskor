@@ -220,9 +220,9 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   }, [notesEnvelope, notesField.value]);
 
   const availableReferenceGroups = useMemo((): OptionGroup[] => {
-    const references = (
-      referencesEnvelope?.status === 200 ? referencesEnvelope.data : []
-    ).filter((reference) => !referencesField.value.includes(reference.key));
+    const references = (referencesEnvelope?.status === 200 ? referencesEnvelope.data : []).filter(
+      (reference) => !referencesField.value.includes(reference.key),
+    );
     return groupByCategory(references, (r) => r.category).map(({ category, items }) => ({
       label: category,
       options: items.map((r) => r.key),

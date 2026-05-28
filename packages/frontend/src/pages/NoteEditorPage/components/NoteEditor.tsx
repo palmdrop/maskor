@@ -79,7 +79,15 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
           invalidateActionLog();
         }
       },
-    [queryClient, noteQueryKey, updateNoteMetadata, projectId, noteId, invalidate, invalidateActionLog],
+    [
+      queryClient,
+      noteQueryKey,
+      updateNoteMetadata,
+      projectId,
+      noteId,
+      invalidate,
+      invalidateActionLog,
+    ],
   );
 
   const categoryField = useLiveFieldSave({

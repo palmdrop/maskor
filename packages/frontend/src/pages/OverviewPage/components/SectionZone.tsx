@@ -9,7 +9,13 @@ interface SectionZoneProps {
   width: number;
 }
 
-export const SectionZone = ({ children, sectionId, isEmpty, fragmentUuids, width }: SectionZoneProps) => {
+export const SectionZone = ({
+  children,
+  sectionId,
+  isEmpty,
+  fragmentUuids,
+  width,
+}: SectionZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: sectionId });
   return (
     <div

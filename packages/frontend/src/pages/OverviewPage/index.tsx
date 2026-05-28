@@ -2,10 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import type { OverviewDensity } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  DndContext,
-  DragOverlay,
-} from "@dnd-kit/core";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 
 import {
   useListSequences,

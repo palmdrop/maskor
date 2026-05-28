@@ -57,9 +57,7 @@ export const CategoryField = ({ serverValue, existingCategories, onChange, error
 
   const filtered = existingCategories
     .filter((category) =>
-      inputText.length === 0
-        ? true
-        : category.toLowerCase().startsWith(inputText.toLowerCase()),
+      inputText.length === 0 ? true : category.toLowerCase().startsWith(inputText.toLowerCase()),
     )
     .sort((a, b) => a.localeCompare(b));
 

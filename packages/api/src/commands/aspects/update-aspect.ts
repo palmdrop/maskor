@@ -13,15 +13,13 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
     const descriptionChanged =
       patch.description !== undefined && patch.description !== existing.description;
     const resolvedCategory = patch.category ?? undefined;
-    const categoryChanged =
-      patch.category !== undefined && resolvedCategory !== existing.category;
+    const categoryChanged = patch.category !== undefined && resolvedCategory !== existing.category;
     const resolvedColor = patch.color ?? undefined;
     const colorChanged = patch.color !== undefined && resolvedColor !== existing.color;
     const notesChanged =
       patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
 
-    const anyNonKeyChanged =
-      descriptionChanged || categoryChanged || colorChanged || notesChanged;
+    const anyNonKeyChanged = descriptionChanged || categoryChanged || colorChanged || notesChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: { aspect: existing, warnings: [] }, logEntries: [] };

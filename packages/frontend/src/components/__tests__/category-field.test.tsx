@@ -5,9 +5,7 @@ import { CategoryField } from "../category-field";
 
 describe("CategoryField — rendering", () => {
   it("renders with the server value pre-filled", () => {
-    render(
-      <CategoryField serverValue="world/places" existingCategories={[]} onChange={vi.fn()} />,
-    );
+    render(<CategoryField serverValue="world/places" existingCategories={[]} onChange={vi.fn()} />);
     expect(screen.getByDisplayValue("world/places")).toBeInTheDocument();
   });
 

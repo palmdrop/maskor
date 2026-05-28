@@ -82,7 +82,15 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
           invalidateActionLog();
         }
       },
-    [queryClient, referenceQueryKey, updateReferenceMetadata, projectId, referenceId, invalidate, invalidateActionLog],
+    [
+      queryClient,
+      referenceQueryKey,
+      updateReferenceMetadata,
+      projectId,
+      referenceId,
+      invalidate,
+      invalidateActionLog,
+    ],
   );
 
   const categoryField = useLiveFieldSave({

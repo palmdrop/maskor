@@ -17,9 +17,7 @@ const { projectCommands } = await import("../project");
 // Narrow by id literal so `.run(arg)` accepts the specific A type for the
 // looked-up command rather than the intersection of all commands' Args.
 type ProjectCommand = (typeof projectCommands)[number];
-const byId = <Id extends ProjectCommand["id"]>(
-  id: Id,
-): Extract<ProjectCommand, { id: Id }> =>
+const byId = <Id extends ProjectCommand["id"]>(id: Id): Extract<ProjectCommand, { id: Id }> =>
   projectCommands.find((c) => c.id === id) as Extract<ProjectCommand, { id: Id }>;
 
 describe("global/project", () => {

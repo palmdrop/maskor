@@ -34,9 +34,7 @@ export function TagCombobox({
     ? groups
         .map((g) => ({
           label: g.label,
-          options: g.options.filter((option) =>
-            option.toLowerCase().includes(query.toLowerCase()),
-          ),
+          options: g.options.filter((option) => option.toLowerCase().includes(query.toLowerCase())),
         }))
         .filter((g) => g.options.length > 0)
     : [
@@ -95,7 +93,8 @@ export function TagCombobox({
 
             if (event.key === "Enter" && open) {
               const firstOption = filteredGroups[0]?.options[0];
-              const singleOption = hasOptions && filteredGroups.flatMap((g) => g.options).length === 1;
+              const singleOption =
+                hasOptions && filteredGroups.flatMap((g) => g.options).length === 1;
               if (showCreate || singleOption) {
                 event.preventDefault();
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions

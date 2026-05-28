@@ -13,7 +13,11 @@ interface UseSectionManagerParams {
   listQueryKey: readonly unknown[];
 }
 
-export const useSectionManager = ({ projectId, sequence, listQueryKey }: UseSectionManagerParams) => {
+export const useSectionManager = ({
+  projectId,
+  sequence,
+  listQueryKey,
+}: UseSectionManagerParams) => {
   const queryClient = useQueryClient();
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionValue, setEditingSectionValue] = useState<string>("");

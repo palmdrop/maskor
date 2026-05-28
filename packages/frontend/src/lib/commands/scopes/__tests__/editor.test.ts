@@ -7,9 +7,7 @@ import type { EntityKind } from "@lib/entity-kinds/registry";
 // editor commands' run types collapses to the broadest signature and
 // no-arg calls like `find("editor:save").run(ctx)` fail.
 type EditorCommand = (typeof editorCommands)[number];
-const find = <Id extends EditorCommand["id"]>(
-  id: Id,
-): Extract<EditorCommand, { id: Id }> =>
+const find = <Id extends EditorCommand["id"]>(id: Id): Extract<EditorCommand, { id: Id }> =>
   editorCommands.find((c) => c.id === id) as Extract<EditorCommand, { id: Id }>;
 
 const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({

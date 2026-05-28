@@ -79,7 +79,8 @@ const recordPickRoute = createRoute({
   method: "post",
   path: "/pick/{fragmentId}",
   tags: ["Suggestion"],
-  summary: "Record an explicit user pick (e.g. quick-switcher): bumps voluntary_open_count, adds to cooldown, marks user-picked so the next getNext skips avoidance accounting for the picked fragment.",
+  summary:
+    "Record an explicit user pick (e.g. quick-switcher): bumps voluntary_open_count, adds to cooldown, marks user-picked so the next getNext skips avoidance accounting for the picked fragment.",
   request: {
     params: SuggestionPickParamSchema,
   },

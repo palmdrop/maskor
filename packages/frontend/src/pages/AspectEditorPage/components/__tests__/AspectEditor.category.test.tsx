@@ -25,10 +25,7 @@ vi.mock("@api/action-log", () => ({
 }));
 
 import { AspectEditor } from "../AspectEditor";
-import {
-  getGetAspectQueryKey,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { getGetAspectQueryKey, getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import { getListNotesQueryKey } from "@api/generated/notes/notes";
 import type { Aspect } from "@api/generated/maskorAPI.schemas";
 

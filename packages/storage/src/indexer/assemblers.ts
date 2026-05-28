@@ -64,9 +64,7 @@ export const assembleNote = (row: typeof notesTable.$inferSelect): IndexedNote =
   filePath: row.filePath,
 });
 
-export const assembleReference = (
-  row: typeof referencesTable.$inferSelect,
-): IndexedReference => ({
+export const assembleReference = (row: typeof referencesTable.$inferSelect): IndexedReference => ({
   uuid: row.uuid,
   key: row.key,
   category: deriveCategory(row.filePath),

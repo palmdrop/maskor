@@ -86,6 +86,7 @@ export const CreateDraftDialog = ({
               id="create-draft-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               onKeyDown={(event) => {
                 if (event.key === "Enter") handleSubmit();

@@ -11,8 +11,7 @@ export const updateReferenceCommand: Command<UpdateReferenceInput, ReferenceUpda
     const keyChanged = patch.key !== undefined && patch.key !== existing.key;
     const contentChanged = patch.content !== undefined && patch.content !== existing.content;
     const resolvedCategory = patch.category ?? undefined;
-    const categoryChanged =
-      patch.category !== undefined && resolvedCategory !== existing.category;
+    const categoryChanged = patch.category !== undefined && resolvedCategory !== existing.category;
 
     if (!keyChanged && !contentChanged && !categoryChanged) {
       return {
