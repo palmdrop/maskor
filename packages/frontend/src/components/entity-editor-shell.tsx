@@ -19,6 +19,7 @@ import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { usePersistedCursor } from "@hooks/usePersistedCursor";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { editorScope, type InsertCommandTarget } from "@lib/commands/scopes/editor";
@@ -95,6 +96,13 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     ref,
   ) {
     const editorConfig = useProjectEditorConfig(projectId);
+    // Cursor position is persisted per editing mode — switching mode reads that
+    // mode's own slot (or starts from the top), and offsets aren't comparable
+    // across the CodeMirror/ProseMirror backends anyway.
+    const editorMode = editorConfig.vimMode ? "vim" : editorConfig.rawMarkdownMode ? "raw" : "rich";
+    const cursor = usePersistedCursor(
+      `maskor:cursor:${projectId}:${entityKind}:${entityUUID}:${editorMode}`,
+    );
     const navigate = useNavigate();
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
@@ -458,6 +466,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               maxParagraphWidth={editorConfig.maxParagraphWidth}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
+              cursor={cursor}
             />
           </main>
         </div>

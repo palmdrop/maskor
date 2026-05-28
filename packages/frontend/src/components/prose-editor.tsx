@@ -1,4 +1,12 @@
-import { useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
@@ -8,6 +16,7 @@ import { Markdown } from "tiptap-markdown";
 import Typography from "@tiptap/extension-typography";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
+import type { PersistedCursor } from "@hooks/usePersistedCursor";
 
 type MarkdownStorage = {
   markdown: {
@@ -33,15 +42,42 @@ type Props = {
   maxParagraphWidth: number;
   onSave?: () => void;
   onChange?: () => void;
+  cursor?: PersistedCursor;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, rawMarkdownMode, fontSize, maxParagraphWidth, onSave, onChange },
+  { content, vimMode, rawMarkdownMode, fontSize, maxParagraphWidth, onSave, onChange, cursor },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
+  // Identity of the cursor target the rich editor has already restored, so
+  // restore runs once and never fights the user's caret while editing.
+  const restoredCursorRef = useRef<PersistedCursor | null>(null);
+  // CodeMirror caret is restored at state-creation time via the `selection`
+  // prop below — atomic with the doc, so nothing (vim init, @uiw value sync,
+  // StrictMode double-mount) can reset it afterward. Read once: the editor
+  // subtree is keyed per entity and content is already loaded at mount, so the
+  // offset clamps against the real document.
+  const [initialSelection] = useState(() => {
+    const offset = cursor?.read() ?? 0;
+    return { anchor: Math.min(Math.max(offset, 0), content.length) };
+  });
+
+  // The `selection` prop places the caret on the initial state; this focuses
+  // the fresh view and centers that caret in the viewport (like vim `zz`).
+  const focusAndCenterCaret = useCallback(
+    (view: EditorView) => {
+      view.focus();
+      view.dispatch({
+        effects: EditorView.scrollIntoView(initialSelection.anchor, { y: "center" }),
+      });
+    },
+    [initialSelection],
+  );
   // onSave is closed into Vim.defineEx at editor-create time, which only fires once.
   // Without a ref the :w handler keeps the initial onSave whose closure sees a stale
   // isDirty=false, and the save short-circuits.
@@ -71,11 +107,28 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [fontSize],
   );
 
-  const vimExtensions = useMemo(
-    () => [markdown(), vim(), cmTheme, EditorView.lineWrapping],
-    [cmTheme],
+  // Persist the caret on every user-driven selection change so a refresh or
+  // navigation can restore it. The focus guard skips programmatic/init/teardown
+  // selections (e.g. vim's setup) that would otherwise clobber the saved slot.
+  // Reads the callback off a ref so the extension stays stable.
+  const selectionListener = useMemo(
+    () =>
+      EditorView.updateListener.of((update) => {
+        if (update.selectionSet && update.view.hasFocus) {
+          cursorRef.current?.save(update.state.selection.main.head);
+        }
+      }),
+    [],
   );
-  const rawExtensions = useMemo(() => [markdown(), cmTheme], [cmTheme]);
+
+  const vimExtensions = useMemo(
+    () => [markdown(), vim(), cmTheme, EditorView.lineWrapping, selectionListener],
+    [cmTheme, selectionListener],
+  );
+  const rawExtensions = useMemo(
+    () => [markdown(), cmTheme, selectionListener],
+    [cmTheme, selectionListener],
+  );
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
@@ -87,6 +140,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     ],
     content,
     onUpdate: () => onChangeRef.current?.(),
+    onSelectionUpdate: ({ editor: tiptapEditor }) => {
+      if (tiptapEditor.isFocused) cursorRef.current?.save(tiptapEditor.state.selection.head);
+    },
     editorProps: {
       attributes: {
         class:
@@ -95,16 +151,39 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     },
   });
 
+  // Sync server content into the rich editor, then restore the persisted caret.
+  // Restoring here — rather than in a separate effect — guarantees the document
+  // already holds the loaded content, so the saved offset lands correctly
+  // instead of clamping against an empty doc on refresh.
   useEffect(() => {
-    if (!editor) {
-      return;
-    }
+    if (!editor) return;
 
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
-    if (content !== current) {
+    // setContent collapses the selection to the doc end, so we must re-place the
+    // caret whenever it runs — not just on first sight of a target. It only runs
+    // on load/navigation (the content prop is stable while typing), so this
+    // never fights the user's caret mid-edit.
+    const didSyncContent = content !== current;
+    if (didSyncContent) {
       editor.commands.setContent(content, { emitUpdate: false });
     }
-  }, [content, editor]);
+
+    if (vimMode || rawMarkdownMode) return;
+    if (!cursor) return;
+    const isNewTarget = restoredCursorRef.current !== cursor;
+    if (!isNewTarget && !didSyncContent) return;
+    restoredCursorRef.current = cursor;
+
+    // An offset past the doc end is snapped to the nearest valid spot. Focus
+    // only when arriving at a new entity/mode, so a content re-sync doesn't
+    // steal focus back from elsewhere.
+    const chain = editor
+      .chain()
+      .setTextSelection(cursor.read() ?? 0)
+      .scrollIntoView();
+    if (isNewTarget) chain.focus();
+    chain.run();
+  }, [content, editor, cursor, vimMode, rawMarkdownMode]);
 
   useImperativeHandle(
     ref,
@@ -167,12 +246,14 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
           value={content}
+          selection={initialSelection}
           extensions={vimExtensions}
           onCreateEditor={(view) => {
             viewRef.current = view;
             Vim.defineEx("w", "", () => onSaveRef.current?.());
             // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37
             Vim.defineOperator("yank", yankGenerator(Vim.getRegisterController(), true));
+            focusAndCenterCaret(view);
           }}
           onChange={() => onChangeRef.current?.()}
           basicSetup={{ lineNumbers: false, foldGutter: false }}
@@ -188,9 +269,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
           value={content}
+          selection={initialSelection}
           extensions={rawExtensions}
           onCreateEditor={(view) => {
             viewRef.current = view;
+            focusAndCenterCaret(view);
           }}
           onChange={() => onChangeRef.current?.()}
           basicSetup={{ lineNumbers: false, foldGutter: false }}
