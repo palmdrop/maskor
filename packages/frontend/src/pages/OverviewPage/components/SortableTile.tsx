@@ -35,6 +35,7 @@ export const SortableTile = ({
         transition: isDragging ? undefined : transition,
         opacity: isDragging ? 0.4 : 1,
       }}
+      onFocus={() => onSelect?.(fragment.uuid)}
       onClick={(e) => {
         e.stopPropagation();
         onSelect?.(fragment.uuid);

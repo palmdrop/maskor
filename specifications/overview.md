@@ -8,6 +8,7 @@
 - 2026-05-12 — Users can arrange fragments on the overview: all non-discarded fragments appear as draggable tiles in two zones (sequence + unassigned pool); dragging between zones places or unplaces a fragment; dragging within the sequence reorders it; all changes survive a reload. (plan: references/plans/sequencer-manual-placement.md)
 - 2026-05-19 — Density tiers (`full`/`compact`/`mini`) drive tile content and width via a `?density=` URL search param; a sticky arc panel above the tile row renders one Catmull-Rom-smoothed curve per aspect (actual arcs derived client-side from `FragmentSummary.aspects`); a chip-row legend toggles aspects on/off; aspect color metadata is round-tripped through vault frontmatter with a deterministic palette fallback. (plan: references/plans/overview-density-and-actual-arc.md)
 - 2026-05-28 — Overview density choice persists across navigation and page reloads via `project.overview.density` in project.json; URL param (`?density=`) is now optional and serves as a per-session override that seeds the URL on change; absence of the URL param falls back to the persisted value. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
+- 2026-05-28 — Arrow-key rearrangement for fragment tiles: focused tiles sync selection state; ArrowLeft/ArrowRight move the selected fragment one position forward or back. Moving past a section boundary reassigns the fragment to the adjacent section. Uses the same `moveFragment` API call as drag-and-drop so the action log records the same entry type. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
 
 ---
 
@@ -91,10 +92,11 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 ### Rearrangement
 
 - The user can reorder fragments by dragging tiles to new positions.
-- Arrow-key rearrangement moves a selected tile one position forward or back.
+- Arrow-key rearrangement moves a selected tile one position forward or back. **ArrowLeft** moves the fragment one position earlier; **ArrowRight** moves it one position later. Matches the horizontal tile layout within sections.
 - Moving a tile within a section updates its intra-section position.
-- Moving a tile to a different section reassigns it to that section.
+- Moving a tile past the start or end of a section reassigns it to the adjacent section's boundary (to the end of the previous section, or the start of the next section respectively).
 - All rearrangements are persisted via API calls to sequence position data in the DB. No vault files are modified.
+- Arrow-key moves use the same `moveFragment` API call as drag-and-drop, so the action log records the same entry type.
 
 ### Sequence selection
 
@@ -124,7 +126,6 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 - Explicit-arc overlays (the user-authored target curves; require an arc data endpoint — see `aspect-arc-model.md` and the open question below)
 - Sections UI (data model and storage are ready; UI labels and reordering are deferred)
 - Secondary sequences picker
-- Arrow-key rearrangement
 - Aspect color-coding by selected aspect / weight-threshold filter panel on tiles (legend toggles only hide arcs, not tiles)
 - Fitting score visualisation on tiles
 - User-configurable curve interpolation (currently hard-coded Catmull-Rom)
@@ -138,6 +139,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 - **HTML + SVG, not canvas/WebGL**: Tile content is rendered with HTML/CSS and the arc panel is inline SVG in the same DOM tree. Chosen to preserve text selection and browser accessibility. SVG is essential for the arc layer and is the prescribed renderer there.
 - **Density tiers replace continuous zoom**: The user picks a fixed legibility tier (`full`/`compact`/`mini`) instead of zooming continuously. Layout is deterministic at each tier, which lets the arc panel compute x-coordinates from a shared formula without DOM measurement.
 - **Density persisted to project.json, not only URL**: The chosen density tier is saved to `project.overview.density` so it survives navigation away-and-back and page reloads. The `?density=` URL param is now optional: when present it overrides the persisted value (useful for sharing a link at a specific tier); when absent the page falls back to the stored value. Any user-initiated change saves to project.json and updates the URL param simultaneously.
+- **Arrow-key direction is ArrowLeft/ArrowRight, not ArrowUp/ArrowDown**: Tiles within a section are laid out in a `flex-row` (horizontal), so left/right matches the spatial arrangement. Moving past a section boundary wraps to the adjacent section's end or start rather than stopping.
 
 ---
 

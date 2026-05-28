@@ -141,6 +141,37 @@ const makeBundleResponse = (fragmentUuids: string[] = []) => ({
   },
 });
 
+const SECTION_UUID_2 = "sec-2";
+
+const makeMultiSectionBundleResponse = (
+  sections: { uuid: string; fragmentUuids: string[] }[],
+) => ({
+  status: 200 as const,
+  data: {
+    sequences: [
+      {
+        uuid: SEQUENCE_UUID,
+        name: "Main",
+        isMain: true,
+        projectUuid: PROJECT_ID,
+        filePath: `${SEQUENCE_UUID}.yaml`,
+        contentHash: "hash",
+        sections: sections.map((s) => ({
+          uuid: s.uuid,
+          name: s.uuid,
+          fragments: s.fragmentUuids.map((uuid, index) => ({
+            uuid: `pos-${s.uuid}-${index}`,
+            fragmentUuid: uuid,
+            position: index,
+          })),
+        })),
+      },
+    ],
+    violations: [],
+    cycles: [],
+  },
+});
+
 const makeFragment = (
   uuid: string,
   key: string,
@@ -729,6 +760,178 @@ describe("OverviewPage — arc legend and toggles", () => {
     expect(
       screen.getByTestId("arc-panel").querySelector('[data-aspect-key="grief"]'),
     ).not.toBeNull();
+  });
+});
+
+describe("OverviewPage — keyboard fragment movement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+  });
+
+  it("ArrowRight moves selected fragment one position forward in its section", () => {
+    mockSequence([FRAG_A, FRAG_B, FRAG_C]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Select FRAG_A by clicking its tile key text
+    fireEvent.click(screen.getByText("alpha"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+      data: { sectionUuid: SECTION_UUID, position: 1 },
+    });
+  });
+
+  it("ArrowLeft moves selected fragment one position backward in its section", () => {
+    mockSequence([FRAG_A, FRAG_B, FRAG_C]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("gamma"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowLeft" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_C,
+      data: { sectionUuid: SECTION_UUID, position: 1 },
+    });
+  });
+
+  it("ArrowRight at last position in a section moves to start of next section", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A, FRAG_B] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_C] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // FRAG_B is at position 1 (last) in section 1
+    fireEvent.click(screen.getByText("beta"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_B,
+      data: { sectionUuid: SECTION_UUID_2, position: 0 },
+    });
+  });
+
+  it("ArrowLeft at first position in a section moves to end of previous section", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A, FRAG_B] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_C] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // FRAG_C is at position 0 (first) in section 2
+    fireEvent.click(screen.getByText("gamma"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowLeft" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_C,
+      data: { sectionUuid: SECTION_UUID, position: 2 },
+    });
+  });
+
+  it("ArrowLeft at absolute first position is a no-op", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("alpha"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowLeft" });
+
+    expect(moveMutate).not.toHaveBeenCalled();
+  });
+
+  it("ArrowRight at absolute last position is a no-op", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("beta"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight" });
+
+    expect(moveMutate).not.toHaveBeenCalled();
+  });
+
+  it("does not move when no fragment is selected", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight" });
+
+    expect(moveMutate).not.toHaveBeenCalled();
+  });
+
+  it("ignores arrow keys fired from an input element", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("alpha"));
+
+    // Fire keyDown from an input (simulates typing in section name input)
+    const input = document.createElement("input");
+    const container = screen.getByTestId("overview-main-content");
+    container.appendChild(input);
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+
+    expect(moveMutate).not.toHaveBeenCalled();
   });
 });
 

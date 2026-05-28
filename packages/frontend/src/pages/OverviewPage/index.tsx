@@ -210,6 +210,66 @@ export const OverviewPage = () => {
     mutations: sequenceMutations,
   });
 
+  const handleFragmentKeyboardMove = useCallback(
+    (direction: "prev" | "next") => {
+      if (!selectedFragmentUuid || !sequence || dnd.activeDragId) return;
+
+      const currentSectionIndex = sectionsData.findIndex((s) =>
+        s.fragmentUuids.includes(selectedFragmentUuid),
+      );
+      if (currentSectionIndex === -1) return;
+
+      const currentSection = sectionsData[currentSectionIndex];
+      const currentPositionInSection = currentSection.fragmentUuids.indexOf(selectedFragmentUuid);
+
+      let targetSectionIndex: number;
+      let targetPosition: number;
+
+      if (direction === "prev") {
+        if (currentPositionInSection > 0) {
+          targetSectionIndex = currentSectionIndex;
+          targetPosition = currentPositionInSection - 1;
+        } else if (currentSectionIndex > 0) {
+          targetSectionIndex = currentSectionIndex - 1;
+          targetPosition = sectionsData[targetSectionIndex].fragmentUuids.length;
+        } else {
+          return;
+        }
+      } else {
+        if (currentPositionInSection < currentSection.fragmentUuids.length - 1) {
+          targetSectionIndex = currentSectionIndex;
+          targetPosition = currentPositionInSection + 1;
+        } else if (currentSectionIndex < sectionsData.length - 1) {
+          targetSectionIndex = currentSectionIndex + 1;
+          targetPosition = 0;
+        } else {
+          return;
+        }
+      }
+
+      const targetSection = sectionsData[targetSectionIndex];
+      sequenceMutations.moveFragment.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        fragmentUuid: selectedFragmentUuid,
+        data: { sectionUuid: targetSection.uuid, position: targetPosition },
+      });
+    },
+    [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
+  );
+
+  const handleMainKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      handleFragmentKeyboardMove("prev");
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      handleFragmentKeyboardMove("next");
+    }
+  };
+
   const arcData = useArcData({
     activeDragId: dnd.activeDragId,
     sequenceLayout,
@@ -262,7 +322,9 @@ export const OverviewPage = () => {
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
+        data-testid="overview-main-content"
         onClick={() => setSelectedFragmentUuid(null)}
+        onKeyDown={handleMainKeyDown}
       >
         {(bundleLoading || summariesLoading) && isRebuilding ? (
           <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
