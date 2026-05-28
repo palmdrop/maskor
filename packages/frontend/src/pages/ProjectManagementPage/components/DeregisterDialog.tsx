@@ -107,6 +107,7 @@ export const DeregisterDialog = ({
                   value={nameConfirmation}
                   onChange={(e) => setNameConfirmation(e.target.value)}
                   placeholder={projectName}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleConfirm();

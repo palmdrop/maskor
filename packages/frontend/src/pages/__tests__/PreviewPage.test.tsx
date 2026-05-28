@@ -18,6 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
 });
@@ -86,9 +87,11 @@ const makeSequenceBundle = (
 
 const wrap = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) => (
+  const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+
+  return wrapper;
 };
 
 const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");

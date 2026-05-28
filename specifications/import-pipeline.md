@@ -3,6 +3,7 @@
 **Status**: Stable
 **Last updated**: 2026-05-28
 **Shipped**:
+
 - 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
 - 2026-05-16 — Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-2/`)
 - 2026-05-28 — Piece removal + full-frontmatter adoption. The `pieces/` staging folder has been removed; raw `.md` dropped into `fragments/` is now the sole external-edit adoption path, and the watcher writes back a complete canonical frontmatter (uuid, updatedAt, readiness, notes, references) on first detection. (plan: `references/plans/remove-piece-concept-and-vault-warnings.md`)

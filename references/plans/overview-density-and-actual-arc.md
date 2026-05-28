@@ -45,6 +45,7 @@ These resolve open questions from the design session and from `overview.md`:
 ### Phase 2 — Per-tier tile content and width
 
 > Tile content matrix:
+>
 > - `full`: key + excerpt + aspect chips (current behavior).
 > - `compact`: key + thin aspect color bar (no excerpt).
 > - `mini`: aspect color bar only (no text).

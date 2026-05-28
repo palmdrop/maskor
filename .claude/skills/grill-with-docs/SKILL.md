@@ -24,7 +24,7 @@ During codebase exploration, also look for existing documentation:
 This project has a single domain. Canonical locations:
 
 - **Glossary**: `specifications/_glossary.md` — defines domain terms. Pure language, no implementation.
-- **Specifications**: `specifications/*.md` — design docs that *use* the language defined in the glossary.
+- **Specifications**: `specifications/*.md` — design docs that _use_ the language defined in the glossary.
 - **ADRs**: `references/adr/NNNN-slug.md` — sequentially numbered decision records.
 - **Codebase snapshot**: `references/CODEBASE_SNAPSHOT.md` — read this before traversing source.
 

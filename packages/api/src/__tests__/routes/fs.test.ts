@@ -37,7 +37,9 @@ afterAll(() => {
   // Restore permissions before cleanup
   try {
     chmodSync(restrictedDirectory, 0o755);
-  } catch {}
+  } catch {
+    // Ignore
+  }
   rmSync(temporaryDirectory, { recursive: true, force: true });
   testContext.cleanup();
 });

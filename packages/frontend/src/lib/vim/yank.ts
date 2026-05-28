@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/main/src/yank.ts
 
 /**

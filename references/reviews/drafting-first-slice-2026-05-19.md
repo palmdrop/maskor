@@ -104,7 +104,9 @@ Either add a disk check to `drafts.restore` (mirroring `checkAvailableSpace`) or
 `packages/api/src/commands/drafts/restore-draft.ts:19`:
 
 ```ts
-const logEntries: Awaited<ReturnType<Command<RestoreDraftInput, RestoreDraftResult>["execute"]>>["logEntries"] = [];
+const logEntries: Awaited<
+  ReturnType<Command<RestoreDraftInput, RestoreDraftResult>["execute"]>
+>["logEntries"] = [];
 ```
 
 A `LogEntry[]` annotation (or pulling out a `type CommandResult = ...`) reads better and matches how other commands declare their return type.
@@ -126,5 +128,5 @@ A `LogEntry[]` annotation (or pulling out a `type CommandResult = ...`) reads be
 - **Subscriber bus moved from watcher to storage service.** Necessary so SSE clients survive the watcher teardown during restore. Confirmed in the service's `eventSubscribers` map and the events route which subscribes through `storageService.watcher.subscribe`.
 - **`directorySize` skipping `.maskor/drafts/` from the pre-check.** Correct — including existing drafts would inflate `required` and pointlessly refuse creation.
 - **Per-vault `withDraftMutex` rather than a queue.** Spec is explicit: concurrent attempts should return `DRAFT_OPERATION_IN_PROGRESS`, not queue.
-- **`closeRawVaultDatabase` called after `restoreDraft` rather than before.** The bun:sqlite handle survives an `fs.rename` of its backing file on macOS/Linux; closing after the copy is fine *as long as nothing else writes to that handle* (see bug #1 for the actual concern).
-- **Snapshot deliberately includes the DB even though restore rebuilds.** Kept on purpose for the future per-draft preview surface — see bug #5 for the unrelated waste in the *restore* path.
+- **`closeRawVaultDatabase` called after `restoreDraft` rather than before.** The bun:sqlite handle survives an `fs.rename` of its backing file on macOS/Linux; closing after the copy is fine _as long as nothing else writes to that handle_ (see bug #1 for the actual concern).
+- **Snapshot deliberately includes the DB even though restore rebuilds.** Kept on purpose for the future per-draft preview surface — see bug #5 for the unrelated waste in the _restore_ path.

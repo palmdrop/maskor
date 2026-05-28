@@ -21,9 +21,9 @@ The visible surface ships and behaves as the spec describes for the common path:
 
 `packages/frontend/src/components/quick-switcher/QuickSwitcher.tsx:218-263`, `packages/storage/src/service/storage-service.ts:1421-1490`
 
-Plan Phase 5 requires: *"pressing `Next` after a quick-switcher pick must enter the picked fragment into cooldown — same behavior as engine-surfaced picks."* Spec acceptance criterion: *"Pressing `Next` after a quick-switcher pick in suggestion mode applies the same cooldown to the picked fragment as any engine-surfaced fragment would receive."*
+Plan Phase 5 requires: _"pressing `Next` after a quick-switcher pick must enter the picked fragment into cooldown — same behavior as engine-surfaced picks."_ Spec acceptance criterion: _"Pressing `Next` after a quick-switcher pick in suggestion mode applies the same cooldown to the picked fragment as any engine-surfaced fragment would receive."_
 
-`cooldown.add(uuid)` is only called inside `storageService.suggestion.getNext()` for the *selected* (newly chosen) fragment. A quick-switcher pick navigates directly via the URL search param and never touches cooldown. Concrete sequence:
+`cooldown.add(uuid)` is only called inside `storageService.suggestion.getNext()` for the _selected_ (newly chosen) fragment. A quick-switcher pick navigates directly via the URL search param and never touches cooldown. Concrete sequence:
 
 ```
 user picks fragment A via quick-switcher  → URL search.fragment = A
@@ -32,9 +32,9 @@ press Next → loadNext(excludeUuid=A) → getNext(exclude=A)
   → A is in the eligible pool again on the *next* Next
 ```
 
-So fragment A can be immediately re-surfaced by the prompting engine, violating the spec's *"cooldown is mode-agnostic"* invariant.
+So fragment A can be immediately re-surfaced by the prompting engine, violating the spec's _"cooldown is mode-agnostic"_ invariant.
 
-Note that the *no-avoidance* behavior currently passes only because `cooldown.has(A)` is false (`storage-service.ts:1431-1437` gates avoidance on cooldown membership). Once cooldown is added (as required), avoidance would start firing for picked fragments too. The fix needs both: (a) add the picked fragment to cooldown on pick, and (b) introduce a "user-picked" flag parallel to `wasEditedWhileSurfaced` so the avoidance check can branch on it.
+Note that the _no-avoidance_ behavior currently passes only because `cooldown.has(A)` is false (`storage-service.ts:1431-1437` gates avoidance on cooldown membership). Once cooldown is added (as required), avoidance would start firing for picked fragments too. The fix needs both: (a) add the picked fragment to cooldown on pick, and (b) introduce a "user-picked" flag parallel to `wasEditedWhileSurfaced` so the avoidance check can branch on it.
 
 Fix: add a `recordPick`-style API that calls `cooldown.add(uuid)` and marks the entry as user-picked; have `QuickSwitcher.handleSelect` invoke it on every fragment pick (not just inside suggestion mode); update `getNext`'s avoidance check to skip user-picked entries.
 
@@ -55,16 +55,17 @@ Fix: extract a pure module taking the matched route id (from `router.state.match
 `packages/frontend/src/components/quick-switcher/` has no test file.
 
 Plan Phase 7 enumerated nine specific test cases. None exist:
+
 - No `QuickSwitcher.test.tsx` (rendering, grouping, key-collision disambiguation, discarded filter, ready-status inclusion)
 - No `resolveOpenTarget` unit tests (the function itself isn't extracted)
 - No suggestion-mode integration tests (swap-in-place, `voluntary_open_count++`, no-avoidance, cooldown, eligibility bypass)
 - No editor-extension regression test for `Cmd/Ctrl+O` (the existing `Cmd/Ctrl+K` analog at `packages/frontend/src/components/command-palette/__tests__/CommandPalette.test.tsx:229` is the pattern)
 
-Project CLAUDE.md: *"Write tests when adding features or changing behavior."*
+Project CLAUDE.md: _"Write tests when adding features or changing behavior."_
 
 ### 4. `specifications/command-palette.md` not updated
 
-`specifications/command-palette.md:10` still reads *"parameterized `Switch project…` and `Switch sequence…`"* despite `Switch sequence…` being removed in this commit and replaced by `Switch to…`. Plan Phase 6 required this update inline with the implementation.
+`specifications/command-palette.md:10` still reads _"parameterized `Switch project…` and `Switch sequence…`"_ despite `Switch sequence…` being removed in this commit and replaced by `Switch to…`. Plan Phase 6 required this update inline with the implementation.
 
 ### 5. Spec marked `Shipped` while Phase 5 + 7 are incomplete
 
@@ -80,15 +81,15 @@ The plan markdown still has all checkboxes unchecked, contradicting the spec fro
 
 `packages/frontend/src/components/quick-switcher/QuickSwitcher.tsx:254-260`
 
-`handleSelect` passes `search: { sequence: entry.uuid, density: "full" }`. If the user was on `density: "compact"`, the pick silently resets their tile density. The removed `switchSequence` global command had the same behavior (also hardcoded `"full"`), so this is not a regression — but the spec only says *"swap active sequence in place"*, not *"reset density"*. Prefer the partial-merge pattern used at `packages/frontend/src/pages/OverviewPage/index.tsx:133`:
+`handleSelect` passes `search: { sequence: entry.uuid, density: "full" }`. If the user was on `density: "compact"`, the pick silently resets their tile density. The removed `switchSequence` global command had the same behavior (also hardcoded `"full"`), so this is not a regression — but the spec only says _"swap active sequence in place"_, not _"reset density"_. Prefer the partial-merge pattern used at `packages/frontend/src/pages/OverviewPage/index.tsx:133`:
 
 ```ts
-search: (previous) => ({ ...previous, sequence: entry.uuid })
+search: (previous) => ({ ...previous, sequence: entry.uuid });
 ```
 
 ### 7. CLAUDE.md typo
 
-`.claude/CLAUDE.md:11` (commit `66ef7e1`) reads *"you usually do not have start it yourself"* — missing "to". Should be *"you usually do not have **to** start it yourself"*.
+`.claude/CLAUDE.md:11` (commit `66ef7e1`) reads _"you usually do not have start it yourself"_ — missing "to". Should be _"you usually do not have **to** start it yourself"_.
 
 ### 8. Five list hooks fire eagerly on every project mount
 
@@ -106,13 +107,13 @@ Because the switcher is mounted unconditionally inside `ProjectShellLayout`, `us
 
 `packages/frontend/src/components/quick-switcher/QuickSwitcher.tsx:230-232`
 
-`void recordFragmentVisit(...).catch(() => { /* Non-critical — ignore failures. */ })`. Stat-tracking failures will be silently invisible in dev. Matches the existing pattern at `packages/frontend/src/pages/FragmentPage.tsx:19-21`, so consistent — but the project's CLAUDE.md says *"If you ever encounter anything surprising in the code base, notify the developer"* and a silently-failing stat increment qualifies. Consider at least a `console.warn`.
+`void recordFragmentVisit(...).catch(() => { /* Non-critical — ignore failures. */ })`. Stat-tracking failures will be silently invisible in dev. Matches the existing pattern at `packages/frontend/src/pages/FragmentPage.tsx:19-21`, so consistent — but the project's CLAUDE.md says _"If you ever encounter anything surprising in the code base, notify the developer"_ and a silently-failing stat increment qualifies. Consider at least a `console.warn`.
 
 ### 11. `recordFragmentVisit` uses hand-rolled `customFetch`, not the generated client
 
 `packages/frontend/src/api/suggestion.ts:21-25`
 
-Pre-existing (also used in `FragmentPage.tsx`), so not introduced here — but the frontend CLAUDE.md says *"Use the generated orval client for every API call. Do not hand-roll … against `customFetch`"*. The generated `useRecordFragmentVisit` already exists at `packages/frontend/src/api/generated/suggestion/suggestion.ts:337`. Worth opening as a separate cleanup item.
+Pre-existing (also used in `FragmentPage.tsx`), so not introduced here — but the frontend CLAUDE.md says _"Use the generated orval client for every API call. Do not hand-roll … against `customFetch`"_. The generated `useRecordFragmentVisit` already exists at `packages/frontend/src/api/generated/suggestion/suggestion.ts:337`. Worth opening as a separate cleanup item.
 
 ---
 

@@ -889,6 +889,8 @@ describe("DELETE /projects/:projectId/sequences/:sequenceId/sections/:sectionId"
     ).json()) as SequenceBundle;
     const sequence = createBundle.sequences.find((s) => s.name === "Compaction Test Seq")!;
 
+    // TODO: Figure out why this is unused
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const after1 = (await (
       await testContext.app.request(`${baseUrl()}/${sequence.uuid}/sections`, {
         method: "POST",

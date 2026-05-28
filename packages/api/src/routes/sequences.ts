@@ -1,4 +1,4 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { computeViolations, detectCycles } from "@maskor/sequencer";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";

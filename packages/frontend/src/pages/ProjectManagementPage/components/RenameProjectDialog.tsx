@@ -66,6 +66,7 @@ export const RenameProjectDialog = ({
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="Project name"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSubmit();

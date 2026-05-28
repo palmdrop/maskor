@@ -10,6 +10,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] fix lint errors
 
+- [ ] finish remove piece plan (see worktree)
+
+- [ ] finish persist cursor position implementation
+
 - [x] Refactor command system, introduce strong types and reduce boilerplate
 
 - [ ] notification/banner component for communicating result of actions

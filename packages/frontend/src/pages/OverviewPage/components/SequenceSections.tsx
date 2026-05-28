@@ -114,6 +114,7 @@ export const SequenceSections = forwardRef<HTMLDivElement, SequenceSectionsProps
                   <div className="group flex items-center gap-2">
                     {editingSectionId === sectionData.uuid ? (
                       <input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
                         autoFocus
                         value={editingSectionValue}
                         onChange={(e) => setEditingSectionValue(e.target.value)}

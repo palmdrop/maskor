@@ -10,7 +10,7 @@
 
 The plan is faithfully executed and the headline win is real: `ProjectRecord`, `ProjectManifest`, `FragmentStats`, and the `Indexed*` family now derive from canonical zod/drizzle sources, and the inline `updateProject` patch literal — the original motivating offender — is replaced with `ProjectUpdate`. `ProjectUpdateSchema` was also updated to include `suggestion.currentFragmentUUID`, closing the drift that commit `32bb4fa` introduced. The audit doc is thorough and correctly identifies the semantic types to leave alone. Tests and typecheck pass cleanly.
 
-The main concern is that Phase 2 over-built: `drizzle-zod` was added as a dependency but is never imported, and both `deepPartial` and `withDefaults` helpers have zero production callers — the convention recorded in Phase 5 actively argues *against* using `deepPartial`. These are speculative abstractions with tests but no consumers, which CLAUDE.md explicitly cautions against.
+The main concern is that Phase 2 over-built: `drizzle-zod` was added as a dependency but is never imported, and both `deepPartial` and `withDefaults` helpers have zero production callers — the convention recorded in Phase 5 actively argues _against_ using `deepPartial`. These are speculative abstractions with tests but no consumers, which CLAUDE.md explicitly cautions against.
 
 ---
 

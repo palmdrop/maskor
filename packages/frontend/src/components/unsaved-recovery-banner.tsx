@@ -32,7 +32,7 @@ export const UnsavedRecoveryBanner = ({ cachedAt, onDismiss }: Props) => {
       className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm"
     >
       <span className="text-muted-foreground">
-        You have unsaved changes from {formatRelativeTime(cachedAt)}. They've been restored.
+        You have unsaved changes from {formatRelativeTime(cachedAt)}. They&apos;ve been restored.
       </span>
       <Button variant="ghost" size="sm" onClick={onDismiss}>
         Restore from server

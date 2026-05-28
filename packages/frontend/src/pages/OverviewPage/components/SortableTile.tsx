@@ -27,6 +27,7 @@ export const SortableTile = ({
     id: fragment.uuid,
   });
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       ref={setNodeRef}
       style={{

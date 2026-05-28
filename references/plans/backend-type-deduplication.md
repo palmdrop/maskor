@@ -13,14 +13,14 @@ Adding or changing a field on a backend domain entity should require editing exa
 
 ## Context
 
-This plan continues the work begun in `zod-first-shared-schemas.md` (Done, 2026-04-21), which made zod the source of truth for **domain** types but explicitly left drizzle row types and storage-internal intermediate types alone. The cost of that boundary is now visible: the commit `32bb4fa` added a single optional field (`suggestion.currentFragmentUUID`) and had to edit four parallel shapes — `ProjectSchema` (zod), `ProjectManifest` (TS), `ProjectRecord` (TS, with the developer's own TODO "couldn't this be inferred from the schema?"), and the inline `updateProject` patch literal. `ProjectUpdateSchema` in shared was *not* updated to match, so the public update contract has already silently drifted from the internal one.
+This plan continues the work begun in `zod-first-shared-schemas.md` (Done, 2026-04-21), which made zod the source of truth for **domain** types but explicitly left drizzle row types and storage-internal intermediate types alone. The cost of that boundary is now visible: the commit `32bb4fa` added a single optional field (`suggestion.currentFragmentUUID`) and had to edit four parallel shapes — `ProjectSchema` (zod), `ProjectManifest` (TS), `ProjectRecord` (TS, with the developer's own TODO "couldn't this be inferred from the schema?"), and the inline `updateProject` patch literal. `ProjectUpdateSchema` in shared was _not_ updated to match, so the public update contract has already silently drifted from the internal one.
 
 A grep also confirms `FragmentStats` (`packages/storage/src/suggestion/stats-repo.ts:5-13`) duplicates `fragmentStatsTable.$inferSelect`, and `drizzle-zod` is not in use anywhere in the repo. The pattern is pervasive, not isolated.
 
 **Out of scope for this plan**:
 
 - Moving `currentFragmentUUID` out of the project manifest into a `suggestion_state` table. Tracked in `references/suggestions.md` as a separate concern; will be handled in its own plan once the type infrastructure here is in place.
-- API request/response schemas that genuinely differ from domain (e.g. `SuggestionCurrentResponseSchema` returning a full `Fragment`). These stay as endpoint-specific zod objects; the plan only targets shapes that *mechanically* mirror a canonical source.
+- API request/response schemas that genuinely differ from domain (e.g. `SuggestionCurrentResponseSchema` returning a full `Fragment`). These stay as endpoint-specific zod objects; the plan only targets shapes that _mechanically_ mirror a canonical source.
 - Frontend types. Orval codegen already derives those from the OpenAPI spec.
 
 ---
@@ -62,7 +62,7 @@ The most-touched offender, and the one that motivated this plan.
 - [x] Replace `FragmentStats` with `typeof fragmentStatsTable.$inferSelect` — trivial one-liner.
 - [x] Delete the hand-written type in `packages/storage/src/suggestion/stats-repo.ts:5-13`. Keep `defaultStats(...)` (runtime values, not a type).
 - [x] Verify all callers still typecheck.
-- [x] Apply same derivation pattern to all Indexed* types in `indexer/types.ts`: each is now `Omit<DomainType, field> & { filePath }` or `DomainType & { filePath, contentHash }`.
+- [x] Apply same derivation pattern to all Indexed\* types in `indexer/types.ts`: each is now `Omit<DomainType, field> & { filePath }` or `DomainType & { filePath, contentHash }`.
 - [x] Removed `IndexedFragmentAspect` — now inlined through `Fragment['aspects']` (AspectWeights).
 - [x] Run tests, `git commit`.
 

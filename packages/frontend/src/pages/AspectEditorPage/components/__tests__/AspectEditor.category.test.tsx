@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,

@@ -23,7 +23,7 @@ The lifecycle features land: adopt/create/maskor-managed registration, rename, l
 mkdir(vaultPath) → mkdir(aspects/) → writeVaultManifest(.maskor/project.json) → database.insert(projects)
 ```
 
-If the insert throws (most realistically `UNIQUE constraint failed: projects.vault_path` when the path is already registered, but any DB-level failure qualifies), the four prior steps have already written to disk. The user sees an error, but the folder, `aspects/`, and `.maskor/project.json` are all on disk with a fresh UUID, unowned by the registry. Re-trying with `mode: "create"` then hits the "existing manifest" branch (line 154-157) and silently adopts the orphan with the *previous* UUID — masking the original failure.
+If the insert throws (most realistically `UNIQUE constraint failed: projects.vault_path` when the path is already registered, but any DB-level failure qualifies), the four prior steps have already written to disk. The user sees an error, but the folder, `aspects/`, and `.maskor/project.json` are all on disk with a fresh UUID, unowned by the registry. Re-trying with `mode: "create"` then hits the "existing manifest" branch (line 154-157) and silently adopts the orphan with the _previous_ UUID — masking the original failure.
 
 ```
 mkdir vault    →  OK
@@ -65,7 +65,7 @@ Fix: start the API, re-run codegen, then replace the four custom mutations and t
 
 Failure mode: two windows open simultaneously, both type the same name, both see `~/Documents/Maskor/my-novel` as free, both submit. First request wins; second request's `mkdir -p` succeeds against the now-existing directory, `writeVaultManifest` re-uses the existing UUID via the `existingManifest` branch (bug #5 below), and `database.insert` rejects with a `UNIQUE constraint failed: projects.vault_path` 409. The spec at line 91 says collisions should resolve "silently" with `-2`, `-3` — that contract is broken by any concurrent submission or by a stale `useFsList` cache.
 
-Fix: move slug derivation + suffix loop into `registerProject` (or a dedicated `commands/create-managed-project.ts`) so the resolution is atomic with the registry insert. The frontend can still preview the *expected* path but should not be the source of truth.
+Fix: move slug derivation + suffix loop into `registerProject` (or a dedicated `commands/create-managed-project.ts`) so the resolution is atomic with the registry insert. The frontend can still preview the _expected_ path but should not be the source of truth.
 
 ---
 

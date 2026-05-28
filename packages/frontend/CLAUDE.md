@@ -79,12 +79,12 @@ defineScopeCommand(myScope, {
   label: "Pick…",
   category: "other",
   arg: {
-    items: (ctx) => ctx.eligible,           // (ctx) => readonly T[] | Promise<readonly T[]>
-    getKey: (item) => item.uuid,             // item is inferred — no explicit type
+    items: (ctx) => ctx.eligible, // (ctx) => readonly T[] | Promise<readonly T[]>
+    getKey: (item) => item.uuid, // item is inferred — no explicit type
     getLabel: (item) => item.label,
     placeholder: "Pick one…",
   },
-  run: (ctx, target) => ctx.attach(target),  // target is inferred
+  run: (ctx, target) => ctx.attach(target), // target is inferred
 });
 ```
 

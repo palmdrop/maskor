@@ -80,16 +80,16 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 - Full-file hash guard (frontmatter + body) before every upsert; makes all watcher events idempotent for API-originated writes
 - Entity routing by relative path prefix:
 
-| Path prefix                                                 | Handling                                                                 |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `fragments/`                                                | sync fragment (root only)                                                |
-| `fragments/discarded/`                                      | sync fragment (`isDiscarded` derived from path)                          |
-| `fragments/<other-subfolder>/`                              | rejected with warning — fragments are root-only beyond `discarded/`      |
-| `aspects/[<category>/]`                                     | sync aspect (category derived from subfolder path)                       |
-| `notes/[<category>/]`                                       | sync note (category derived from subfolder path)                         |
-| `references/[<category>/]`                                  | sync reference (category derived from subfolder path)                    |
-| `pieces/`                                                   | per-file consume                                                         |
-| `.maskor/`, `.obsidian/`, non-`.md`                         | ignored                                                                  |
+| Path prefix                         | Handling                                                            |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| `fragments/`                        | sync fragment (root only)                                           |
+| `fragments/discarded/`              | sync fragment (`isDiscarded` derived from path)                     |
+| `fragments/<other-subfolder>/`      | rejected with warning — fragments are root-only beyond `discarded/` |
+| `aspects/[<category>/]`             | sync aspect (category derived from subfolder path)                  |
+| `notes/[<category>/]`               | sync note (category derived from subfolder path)                    |
+| `references/[<category>/]`          | sync reference (category derived from subfolder path)               |
+| `pieces/`                           | per-file consume                                                    |
+| `.maskor/`, `.obsidian/`, non-`.md` | ignored                                                             |
 
 - On `add` with missing UUID: write UUID to frontmatter, then upsert; the second watcher event from the write-back hash-guards to a no-op
 - On `add` with colliding UUID for **fragments**: assign a new UUID, write back, log warning

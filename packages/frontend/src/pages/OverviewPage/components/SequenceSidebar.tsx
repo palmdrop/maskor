@@ -257,7 +257,9 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                 />
               ) : isConfirmingDelete ? (
                 <div className="px-3 py-1.5 flex flex-col gap-1">
-                  <p className="text-xs text-muted-foreground truncate">Delete "{seq.name}"?</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Delete &quot;{seq.name}&quot;?
+                  </p>
                   <div className="flex gap-1">
                     <button
                       type="button"

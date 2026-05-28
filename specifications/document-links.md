@@ -54,12 +54,12 @@ This feature is the foundation for a later **comments** spec, where each comment
 
 ### Linkable entity types
 
-| Type         | Vault folder    | Linkable | Inline-creates metadata attachment |
-| ------------ | --------------- | -------- | ----------------------------------- |
-| `fragments`  | `fragments/`    | Yes      | No (fragments are not attached to other fragments via metadata) |
-| `notes`      | `notes/`        | Yes      | Yes (added to fragment's note list at weight n/a) |
-| `references` | `references/`   | Yes      | Yes (added to fragment's reference list) |
-| `aspects`    | `aspects/`      | Yes      | Yes (added at weight 0; user must use the metadata form to set a real weight) |
+| Type         | Vault folder  | Linkable | Inline-creates metadata attachment                                            |
+| ------------ | ------------- | -------- | ----------------------------------------------------------------------------- |
+| `fragments`  | `fragments/`  | Yes      | No (fragments are not attached to other fragments via metadata)               |
+| `notes`      | `notes/`      | Yes      | Yes (added to fragment's note list at weight n/a)                             |
+| `references` | `references/` | Yes      | Yes (added to fragment's reference list)                                      |
+| `aspects`    | `aspects/`    | Yes      | Yes (added at weight 0; user must use the metadata form to set a real weight) |
 
 Subfolders inside these directories are not supported. The filename stem remains the unique key within each type.
 
@@ -88,7 +88,7 @@ When a fragment is saved, its body is parsed and the link table is updated. Inli
   - Notes: added to the fragment's note list.
   - References: added to the fragment's reference list.
   - Aspects: added to the fragment's aspect map at weight `0`. The user must use the metadata form to set a meaningful weight.
-- **Removing** an inline link from a fragment body does *not* automatically remove the metadata attachment, with one exception:
+- **Removing** an inline link from a fragment body does _not_ automatically remove the metadata attachment, with one exception:
   - Aspects with weight `0` and no remaining inline references are removed on save. Aspects with any weight > 0 are preserved (the user committed to them deliberately via the form).
 - Multiple inline references to the same target count as a single attachment. The metadata entry is preserved as long as at least one inline reference remains.
 - The metadata form's X-button is **disabled** for any attachment that has at least one inline link in the fragment body. The form shows a hint explaining that the link must be removed from the body first. (This behaviour is deliberately conservative — see Open Questions.)

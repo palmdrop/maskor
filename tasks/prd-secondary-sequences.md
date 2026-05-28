@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Allow a Maskor project to hold multiple sequences. Exactly one sequence is designated as the **main** sequence (the export target). All other sequences are **secondaries** — real fragment arrangements in their own right that also *project their internal order as soft pairwise ordering constraints onto the main sequence*. Violations of those constraints are surfaced as visual indicators in the UI; they do not block manual placement.
+Allow a Maskor project to hold multiple sequences. Exactly one sequence is designated as the **main** sequence (the export target). All other sequences are **secondaries** — real fragment arrangements in their own right that also _project their internal order as soft pairwise ordering constraints onto the main sequence_. Violations of those constraints are surfaced as visual indicators in the UI; they do not block manual placement.
 
 A fragment can appear in any number of sequences but at most once per sequence. Each sequence has its own independent unassigned pool, sections, and ordering. This is slice 2 of the sequencer feature; slice 1 (single-main manual placement) is already shipped (`2026-05-12`).
 

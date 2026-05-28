@@ -17,7 +17,7 @@ The slice ships everything the plan lists: URL-driven density tiers, per-density
 
 ### 1. Arc panel is not actually sticky on vertical scroll
 
-`packages/frontend/src/pages/OverviewPage/index.tsx:621`, `packages/frontend/src/pages/OverviewPage/components/ArcPanel.tsx:21` — the plan (§ "scope decisions") and `specifications/overview.md:85-86` require the arc panel to stick to the top of the sequence container during *vertical* page scroll, with horizontal scroll moving the tile row beneath it. The arc panel uses `position: sticky; top: 0`, but it sits inside `<div className="overflow-x-auto shrink-0">`. That ancestor is the nearest scroll container, but it has no vertical overflow — its content height matches the contained tile row plus panel — so `top: 0` has nothing to anchor against vertically. The actual vertical scroll lives on the outer `flex-1 ... overflow-y-auto` (line 556), which is a different (and farther) scroll container.
+`packages/frontend/src/pages/OverviewPage/index.tsx:621`, `packages/frontend/src/pages/OverviewPage/components/ArcPanel.tsx:21` — the plan (§ "scope decisions") and `specifications/overview.md:85-86` require the arc panel to stick to the top of the sequence container during _vertical_ page scroll, with horizontal scroll moving the tile row beneath it. The arc panel uses `position: sticky; top: 0`, but it sits inside `<div className="overflow-x-auto shrink-0">`. That ancestor is the nearest scroll container, but it has no vertical overflow — its content height matches the contained tile row plus panel — so `top: 0` has nothing to anchor against vertically. The actual vertical scroll lives on the outer `flex-1 ... overflow-y-auto` (line 556), which is a different (and farther) scroll container.
 
 ```
 user scrolls page vertically
@@ -44,6 +44,7 @@ Fix: move the sticky element out of the horizontal scroller, or restructure so t
 Spec implication: `specifications/aspect-arc-model.md` currently says "Fragments with no weight for an arc'd aspect are ignored in scoring," and the plan repeats this. That wording is ambiguous and the implementation took it to include zero. Both the spec and the comment in `arcData.ts:10-13` should be updated to spell out: "no weight" means the aspect key is absent from `fragment.aspects`; an explicit `weight: 0` is a valid point and is plotted at the floor of the panel.
 
 Fix:
+
 - Update `arcData.ts:32` to `if (weight === undefined) continue;` and let the clamp at line 33 handle anything outside `[0, 1]`.
 - Update `specifications/aspect-arc-model.md` to disambiguate "no weight" vs. "explicit zero".
 - Update the comment block at `arcData.ts:10-17` to match the new contract.

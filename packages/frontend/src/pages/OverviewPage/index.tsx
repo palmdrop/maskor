@@ -239,6 +239,7 @@ export const OverviewPage = () => {
         />
       )}
 
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
         onClick={() => setSelectedFragmentUuid(null)}

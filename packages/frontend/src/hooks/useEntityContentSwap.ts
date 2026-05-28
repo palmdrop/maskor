@@ -77,7 +77,6 @@ export const useEntityContentSwap = (
     if (swapQuery.isLoading || swapQuery.isFetching) return;
 
     if (swapQuery.error) {
-      // eslint-disable-next-line no-console
       console.warn("[useEntityContentSwap] swap read failed", swapQuery.error);
       setHasSeeded(true);
       return;
@@ -137,7 +136,7 @@ export const useEntityContentSwap = (
           onError: (error) => {
             if (warnedRef.current) return;
             warnedRef.current = true;
-            // eslint-disable-next-line no-console
+
             console.warn("[useEntityContentSwap] swap write failed", error);
           },
         },

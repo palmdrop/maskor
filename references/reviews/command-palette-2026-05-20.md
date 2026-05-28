@@ -48,7 +48,7 @@ Fix: capture the active command at call time and bail before `setArgItems` if `a
 
 `packages/frontend/src/components/command-palette/CommandPalette.tsx:169-199` — `viewScopedSections`, `globalSections`, and `commandMap` all memoize on `[open]`. That works because the palette closes after every action, so the next open recomputes. But two side effects:
 
-- Commands registered *after* the palette opens never show up. Plausible scenario: user lands on a route, the host's `useEffect` (from a `useCommand`) hasn't flushed yet, user immediately hits Cmd+K. Generally fine because React mount effects flush before user input, but the contract is invisible.
+- Commands registered _after_ the palette opens never show up. Plausible scenario: user lands on a route, the host's `useEffect` (from a `useCommand`) hasn't flushed yet, user immediately hits Cmd+K. Generally fine because React mount effects flush before user input, but the contract is invisible.
 - Sort order (disabled-at-end) is frozen at open. If a command becomes disabled mid-session — e.g. `confirmingDeleteSectionId` flips — the row's reason updates live (good, getter) but the section ordering is stale. Minor in practice; flagging because the snapshot semantics aren't documented in code.
 
 If snapshot-at-open is intentional, leave it but add a one-line comment explaining the contract. Otherwise track the map via `useSyncExternalStore` so the palette is live.
@@ -95,7 +95,7 @@ If snapshot-at-open is intentional, leave it but add a one-line comment explaini
 
 - **`CommandPalette` uses a capture-phase listener and bypasses `HotkeyBinder` for `Cmd+K`/`Cmd+Shift+P`.** Intentional and documented — editors check `defaultPrevented`, so capture-phase `preventDefault()` is the simplest way to win over Tiptap/CodeMirror.
 - **`HotkeyBinder` uses non-capture-phase listeners.** Means editor hotkeys (e.g. CodeMirror's own `Cmd+Enter`) can still win, but the only command-bound hotkey right now is `mod+enter` on `Suggestion mode → Next fragment`, which matches the previous in-page listener's priority exactly. No regression.
-- **`mod` matches metaKey *or* ctrlKey on both platforms** (`HotkeyBinder.tsx:38-44`). Means Ctrl+K also opens the palette on Mac, which is non-standard but harmless and matches the explicit Cmd+K handler in `CommandPalette` for consistency.
+- **`mod` matches metaKey _or_ ctrlKey on both platforms** (`HotkeyBinder.tsx:38-44`). Means Ctrl+K also opens the palette on Mac, which is non-standard but harmless and matches the explicit Cmd+K handler in `CommandPalette` for consistency.
 - **`commandFilter` returns `score * 0.1` for disabled commands instead of 0.** Disabled rows still match the query but rank below enabled ones in cmdk's own ordering. Combined with the disabled-last sort, this just means the disabled rows surface when the user explicitly searches for them.
 - **Static registry only has two commands (`Go to Project management`, `Switch project…`)**, not the 8 navigation entries listed in the plan's Phase 6. Phase 6 explicitly resolved this: project-route nav lives in `useProjectShellCommands` because it needs `projectId`. The spec open question is closed accordingly (`command-palette.md:138`).
 - **No toast on command failure.** Phase 5 acknowledges this — there's no toast library in the codebase yet; failures `console.error` and close the palette. Tracked in `SUGGESTIONS.md`.

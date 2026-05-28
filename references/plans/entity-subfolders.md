@@ -17,7 +17,7 @@ Aspects, notes, and references can live in arbitrary subfolders inside their ent
 
 Resolved during the grilling session that produced this plan. Repeated here so the plan is self-contained.
 
-1. **Folder *is* category.** The aspect `category` frontmatter field and `aspects.category` DB column are removed. Category is `path.dirname(entity-relative path)` for any aspect/note/reference, or `null` at the entity-type root.
+1. **Folder _is_ category.** The aspect `category` frontmatter field and `aspects.category` DB column are removed. Category is `path.dirname(entity-relative path)` for any aspect/note/reference, or `null` at the entity-type root.
 2. **Arbitrary nesting.** `aspects/world/places/london.md` is valid; category is `"world/places"`.
 3. **Category shape.** Single string with `/` separators, or `null`. Property on the entity type, derived from `filePath`. Not stored independently.
 4. **Key uniqueness.** Stays globally unique within each entity type. Cross-folder duplicates (`aspects/places/london.md` and `aspects/characters/london.md`) surface as sync warnings, not auto-resolved.

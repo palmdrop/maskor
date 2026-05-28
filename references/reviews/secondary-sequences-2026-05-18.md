@@ -119,7 +119,7 @@ Project convention is arrow functions unless a hoist is required.
 
 ### 9. Inline-rename "create then rename" exposes the default name on cancel
 
-`packages/frontend/src/pages/OverviewPage/components/SequenceSidebar.tsx:152-171` — `handleCreate` calls `createSequence.mutate` with the default name *first*, then enters inline-rename mode. If the user presses Escape, the sequence is left in the project with the default name ("New sequence"). PRD US-013 AC says "pressing Escape reverts to the default name", which the current code technically satisfies, but the UX implication is that escape leaves a half-named row behind. Not a bug, just worth being aware of.
+`packages/frontend/src/pages/OverviewPage/components/SequenceSidebar.tsx:152-171` — `handleCreate` calls `createSequence.mutate` with the default name _first_, then enters inline-rename mode. If the user presses Escape, the sequence is left in the project with the default name ("New sequence"). PRD US-013 AC says "pressing Escape reverts to the default name", which the current code technically satisfies, but the UX implication is that escape leaves a half-named row behind. Not a bug, just worth being aware of.
 
 ### 10. `handleCommitRename` reinvents `mutateAsync`
 
@@ -142,4 +142,3 @@ Project convention is arrow functions unless a hoist is required.
 - **Sections don't have an explicit `position` field on the YAML** — Order is implicit in the array. Matches the existing schema and the section-position-from-array-index convention used in the indexer.
 - **`useNavigate` from the sidebar omits `from`** — Absolute `to` paths don't require it. The navigation works correctly; the earlier report of "sidebar doesn't switch sequences" was a misreading of the UI.
 - **Section CRUD commands don't emit `logEntries`** — Sections aren't on the action log spec yet. Consistent with how other section-grain mutations are handled.
-

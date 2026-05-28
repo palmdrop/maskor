@@ -25,7 +25,7 @@ user sets project fontSize=20, maxParagraphWidth=80
 → opens import preview  → 16px (Tailwind prose default), full width   ✗
 ```
 
-Fix: call `useProjectEditorConfig(projectId)` in `FragmentImportPage`, pass `fontSize` and `maxParagraphWidth` to `ReadonlyEditor`, wrap `<EditorContent>` in `<div className="mx-auto w-full" style={{ fontSize: \`${fontSize}px\`, maxWidth: \`${maxParagraphWidth}ch\` }}>` to match the `ProseEditor` non-vim branch.
+Fix: call `useProjectEditorConfig(projectId)` in `FragmentImportPage`, pass `fontSize` and `maxParagraphWidth` to `ReadonlyEditor`, wrap `<EditorContent>` in `<div className="mx-auto w-full" style={{ fontSize: \`${fontSize}px\`, maxWidth: \`${maxParagraphWidth}ch\` }}>`to match the`ProseEditor` non-vim branch.
 
 ### 2. No prominent loader during initial preview of large docs
 
@@ -67,13 +67,13 @@ Fix: after `setContent` finishes, walk the rendered DOM and tag the Nth banner `
 
 ### 4. Reload-redirect path relies on `File` not surviving history.state
 
-`packages/frontend/src/pages/FragmentImportPage.tsx:86-87, 104-111` — the page reads `useRouterState({ select: s => s.location.state })` and redirects if `file` is missing. TanStack Router persists `location.state` into `history.state`, which goes through structured-clone serialization on actual browser reload. `File` does survive structured clone in modern browsers, so reload may *not* redirect — the file would re-appear and the page would try to preview a hydrated `File`. AC requires reload → redirect to fragment list.
+`packages/frontend/src/pages/FragmentImportPage.tsx:86-87, 104-111` — the page reads `useRouterState({ select: s => s.location.state })` and redirects if `file` is missing. TanStack Router persists `location.state` into `history.state`, which goes through structured-clone serialization on actual browser reload. `File` does survive structured clone in modern browsers, so reload may _not_ redirect — the file would re-appear and the page would try to preview a hydrated `File`. AC requires reload → redirect to fragment list.
 
 The Ralph progress note flagged that browser verification wasn't available in the sandbox. Worth one manual check: open preview → reload → confirm redirect fires. If the `File` does survive, either guard explicitly (`window.performance.getEntriesByType("navigation")[0].type === "reload"` → redirect) or stash a session-only token instead of the `File` and look it up from a `useRef` registry that resets on hard reload.
 
 ### 5. `previewError` shape buckets all failures as "please try again"
 
-`FragmentImportPage.tsx:130-134` — both non-200 responses and network errors collapse to a single string. The corrupt-docx 500 path returns `body.message` (verified in `routes/import-preview.test.ts:212-230`); surfacing that to the user would explain *why* the preview failed (e.g. "not a valid .docx"). Cheap improvement, not a defect.
+`FragmentImportPage.tsx:130-134` — both non-200 responses and network errors collapse to a single string. The corrupt-docx 500 path returns `body.message` (verified in `routes/import-preview.test.ts:212-230`); surfacing that to the user would explain _why_ the preview failed (e.g. "not a valid .docx"). Cheap improvement, not a defect.
 
 ### 6. Mount-only initial preview suppresses lint rule
 

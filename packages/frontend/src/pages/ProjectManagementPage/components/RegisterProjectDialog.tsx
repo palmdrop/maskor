@@ -145,6 +145,7 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
                   if (e.key === "Enter") handleSubmit();
                 }}
                 placeholder="My novel"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
               />
             </div>

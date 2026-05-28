@@ -257,7 +257,7 @@ Add ability to mark tasks with different statuses.
 
 ### Why `.last-branch` matters
 
-`ralph.sh` has its own auto-archive logic. It reads `.last-branch`, compares to `prd.json`'s `branchName`, and if they differ it archives — copying *whatever is currently in* `prd.json` and `progress.txt` into `archive/YYYY-MM-DD-<old-branch>/`.
+`ralph.sh` has its own auto-archive logic. It reads `.last-branch`, compares to `prd.json`'s `branchName`, and if they differ it archives — copying _whatever is currently in_ `prd.json` and `progress.txt` into `archive/YYYY-MM-DD-<old-branch>/`.
 
 If this skill archives manually but leaves `.last-branch` pointing at the OLD branch, the script's next run sees a mismatch and "re-archives" — but at that point `prd.json` already holds the NEW content. The script overwrites the correct archive with the new prd.json + the empty progress.txt. Stage-N archive content is lost.
 
