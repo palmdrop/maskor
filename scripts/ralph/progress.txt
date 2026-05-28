@@ -13,6 +13,7 @@
 - Aspect color utilities live in `packages/frontend/src/pages/OverviewPage/utils/aspectColors.ts` — `ASPECT_COLOR_PALETTE` (exported) and `resolveAspectColor(key, explicitColor)` for consistent color resolution everywhere
 - `AspectUpdateSchema.color` accepts `null` to explicitly clear the color (falls back to deterministic hash); `undefined` means "don't change the color field"
 - `aspect:updated` changedFields enum includes `"color"` — add to it when adding new aspect fields that use the catch-all log type
+- Project config sections (editor, suggestion, advanced, preview, overview) follow one pattern: add to `CONFIG_SECTION_KEYS`, `PROJECT_CONFIG_DEFAULTS`, `toProjectRecord`, and the `updateProject` conditional in `registry.ts`; also add to `ProjectSchema` and `ProjectUpdateSchema` in shared
 
 # Ralph Progress Log
 Started: [pending]
@@ -125,6 +126,20 @@ Started: [pending]
   - The `vi.mock("@tanstack/react-router")` in `fragment-metadata-form.test.tsx` was too narrow (only mocked `Link`), causing a suite-level error because `registry.ts` imports `createRootRouteWithContext`. Fix: use `importOriginal` + spread actual exports.
   - Components using `useCommands()` or catalog command hooks require `CommandsProvider` in the test wrapper.
   - Orphan indicator uses `opacity-50` + empty circle (no `backgroundColor`) + `"orphaned"` text badge — consistent with the muted treatment used elsewhere for deprecated/inactive items.
+---
+
+## 2026-05-28 - US-011
+- Persisted overview density toggle to `project.overview.density` in project.json
+- Added `overview` field to `ProjectSchema` and `ProjectUpdateSchema` in `packages/shared/src/schemas/domain/project.ts`
+- Added `"overview"` to `CONFIG_SECTION_KEYS`, `PROJECT_CONFIG_DEFAULTS`, and `toProjectRecord` in `packages/storage/src/registry/registry.ts`; wired up `updateProject` to write `patch.overview` to manifest
+- Made `?density=` URL param optional (no default) in `packages/frontend/src/router.ts` — absence falls back to project.json value
+- Updated `packages/frontend/src/pages/OverviewPage/index.tsx` to read `project.overview.density` via `useGetProject` and save via `useUpdateProject` on change; URL param still serves as a per-session override
+- Added 2 registry tests: overlay density update + default fallback
+- Updated `specifications/overview.md` with Shipped entry, navigation section, and Prior decision
+- **Learnings for future iterations:**
+  - Project config sections all follow the same registry pattern — one place to add each new section (CONFIG_SECTION_KEYS, defaults, toProjectRecord, updateProject); now documented in Codebase Patterns
+  - `ProjectManifest.config` is typed as `Omit<ProjectUpdate, "name">` — adding to `ProjectUpdateSchema` automatically makes the manifest accept the new field
+  - The generated `Project` type from orval requires the new field, so any test that mocks a full `Project` object needs updating (found and fixed `PreviewPage.test.tsx`)
 ---
 
 ## 2026-05-28 - US-010
