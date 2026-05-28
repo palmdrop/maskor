@@ -8,7 +8,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] fix lint errors
+- [x] fix lint errors
 
 - [ ] finish remove piece plan (see worktree)
 
