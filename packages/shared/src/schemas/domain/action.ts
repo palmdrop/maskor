@@ -58,6 +58,7 @@ export const ActionTypeSchema = z.enum([
   "draft:created",
   "draft:deleted",
   "draft:restored",
+  "fragment:imported",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
@@ -173,6 +174,16 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry(
     "draft:restored",
     z.object({ name: z.string(), preRestoreDraftUuid: z.string().optional() }),
+  ),
+  entry(
+    "fragment:imported",
+    z.object({
+      sourceFileName: z.string(),
+      fragmentCount: z.number().int(),
+      format: z.string(),
+      delimiter: z.string().optional(),
+      headingLevel: z.number().int().optional(),
+    }),
   ),
 ]);
 

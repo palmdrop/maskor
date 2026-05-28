@@ -6,6 +6,8 @@ import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 import type { ImportResult } from "../../commands/fragments/import";
 
+type LogEntry = { id: string; type: string; timestamp: string; payload: Record<string, unknown> };
+
 type ApiError = { error: string; message: string };
 
 const docxFixturePath = join(
@@ -202,6 +204,62 @@ describe("POST /projects/:projectId/import — empty piece reporting", () => {
     const body = (await response.json()) as ImportResult;
     // "Real content here." should be created; empty segments are already filtered by splitPlainText
     expect(body.created.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("POST /projects/:projectId/import — action log", () => {
+  it("records a single fragment:imported entry with correct payload after import", async () => {
+    const content = "# Alpha\n\nAlpha content.\n\n# Beta\n\nBeta content.\n\n# Gamma\n\nGamma content.";
+    const file = new File([content], "my-novel.md", { type: "text/markdown" });
+
+    const importResponse = await makeImportRequest(testContext.app, project.projectUUID, file, {
+      format: "markdown",
+      headingLevel: 1,
+    });
+    expect(importResponse.status).toBe(200);
+    const importBody = (await importResponse.json()) as ImportResult;
+    expect(importBody.created).toHaveLength(3);
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    expect(logResponse.status).toBe(200);
+    const entries = (await logResponse.json()) as LogEntry[];
+
+    const importEntries = entries.filter(
+      (entry) => entry.type === "fragment:imported" && entry.payload.sourceFileName === "my-novel.md",
+    );
+    expect(importEntries).toHaveLength(1);
+
+    const importEntry = importEntries[0]!;
+    expect(importEntry.payload.sourceFileName).toBe("my-novel.md");
+    expect(importEntry.payload.fragmentCount).toBe(3);
+    expect(importEntry.payload.format).toBe("markdown");
+    expect(importEntry.payload.headingLevel).toBe(1);
+  });
+
+  it("does not record individual fragment:created entries for imported pieces", async () => {
+    const beforeLog = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=100`,
+    );
+    const beforeEntries = (await beforeLog.json()) as LogEntry[];
+    const createdBefore = beforeEntries.filter((e) => e.type === "fragment:created").length;
+
+    const content = "# PieceOne\n\nContent.\n\n# PieceTwo\n\nContent.";
+    const file = new File([content], "pieces.md", { type: "text/markdown" });
+    const importResponse = await makeImportRequest(testContext.app, project.projectUUID, file, {
+      format: "markdown",
+      headingLevel: 1,
+    });
+    expect(importResponse.status).toBe(200);
+
+    const afterLog = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=100`,
+    );
+    const afterEntries = (await afterLog.json()) as LogEntry[];
+    const createdAfter = afterEntries.filter((e) => e.type === "fragment:created").length;
+
+    expect(createdAfter).toBe(createdBefore);
   });
 });
 

@@ -56,6 +56,7 @@ describe("createImportCommand - markdown", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(markdownContent),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -64,7 +65,7 @@ describe("createImportCommand - markdown", () => {
     expect(result.errors.length).toBe(0);
   });
 
-  it("returns log entries for each created fragment", async () => {
+  it("emits a single fragment:imported log entry for the whole batch", async () => {
     const ctx = await makeCommandContext();
     const markdownContent = `# Alpha\n\nAlpha body.\n\n# Beta\n\nBeta body.`;
     const command = createImportCommand(makeStubConverter(""));
@@ -72,13 +73,19 @@ describe("createImportCommand - markdown", () => {
     const { result, logEntries } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(markdownContent),
+      sourceFileName: "my-book.md",
       format: "markdown",
       headingLevel: 1,
     });
 
     expect(result.created.length).toBe(2);
-    expect(logEntries.length).toBe(2);
-    expect(logEntries.every((e) => e.type === "fragment:created")).toBe(true);
+    expect(logEntries.length).toBe(1);
+    expect(logEntries[0]!.type).toBe("fragment:imported");
+    const payload = logEntries[0]!.payload as Record<string, unknown>;
+    expect(payload.sourceFileName).toBe("my-book.md");
+    expect(payload.fragmentCount).toBe(2);
+    expect(payload.format).toBe("markdown");
+    expect(payload.headingLevel).toBe(1);
   });
 });
 
@@ -91,6 +98,7 @@ describe("createImportCommand - plaintext", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.txt",
       format: "plaintext",
       delimiter: "---",
     });
@@ -109,6 +117,7 @@ describe("createImportCommand - plaintext", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.txt",
       format: "plaintext",
       delimiter: "---",
     });
@@ -127,6 +136,7 @@ describe("createImportCommand - docx", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: new Uint8Array([1, 2, 3]),
+      sourceFileName: "sample.docx",
       format: "docx",
       headingLevel: 2,
     });
@@ -151,6 +161,7 @@ describe("createImportCommand - docx", () => {
     await command.execute(ctx, {
       projectId: project.projectUUID,
       file: fileBytes,
+      sourceFileName: "sample.docx",
       format: "docx",
       headingLevel: 1,
     });
@@ -172,6 +183,7 @@ describe("createImportCommand - key collision", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.txt",
       format: "plaintext",
       delimiter: "---",
     });
@@ -190,6 +202,7 @@ describe("createImportCommand - key collision", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -219,6 +232,7 @@ describe("createImportCommand - partial failure", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -249,6 +263,7 @@ describe("createImportCommand - KEY_CONFLICT from storage", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });

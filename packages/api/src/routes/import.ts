@@ -87,6 +87,7 @@ importRouter.openapi(importRoute, async (ctx) => {
     input = {
       projectId,
       file: fileBytes,
+      sourceFileName: file.name,
       format: "plaintext",
       delimiter: parsedOptions.delimiter,
     };
@@ -94,6 +95,7 @@ importRouter.openapi(importRoute, async (ctx) => {
     input = {
       projectId,
       file: fileBytes,
+      sourceFileName: file.name,
       format: parsedOptions.format,
       headingLevel: parsedOptions.headingLevel,
     };

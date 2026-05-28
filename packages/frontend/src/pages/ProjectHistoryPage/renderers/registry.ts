@@ -33,12 +33,13 @@ export const renderEntryText = (entry: LogEntry): string => {
   }
 };
 
-// Entries whose nature is "the entity no longer exists" — never render a link
-// even if the uuid happens to still be in the indexed list (it shouldn't be).
+// Entries whose nature is "the entity no longer exists" or "no single entity target"
+// — never render a link.
 const TERMINAL_TYPES = new Set<LogEntry["type"]>([
   "aspect:deleted",
   "note:deleted",
   "reference:deleted",
+  "fragment:imported",
 ]);
 
 export const isLinkable = (entry: LogEntry): boolean => {

@@ -9,18 +9,21 @@ export type ImportInput =
   | {
       projectId: string;
       file: Uint8Array;
+      sourceFileName: string;
       format: "markdown";
       headingLevel: HeadingLevel;
     }
   | {
       projectId: string;
       file: Uint8Array;
+      sourceFileName: string;
       format: "docx";
       headingLevel: HeadingLevel;
     }
   | {
       projectId: string;
       file: Uint8Array;
+      sourceFileName: string;
       format: "plaintext";
       delimiter: string;
     };
@@ -59,7 +62,6 @@ export const createImportCommand = (
 
     const created: string[] = [];
     const errors: ImportError[] = [];
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [];
 
     for (let index = 0; index < pieces.length; index++) {
       const piece = pieces[index]!;
@@ -82,15 +84,28 @@ export const createImportCommand = (
       };
 
       try {
-        const { result: fragment, logEntries: pieceLogEntries } =
-          await createFragmentCommand.execute(ctx, draft);
+        const { result: fragment } = await createFragmentCommand.execute(ctx, draft);
         created.push(fragment.uuid);
-        logEntries.push(...pieceLogEntries);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         errors.push({ pieceIndex, pieceKey: key, error: message });
       }
     }
+
+    const importPayload =
+      input.format === "plaintext"
+        ? { sourceFileName: input.sourceFileName, fragmentCount: created.length, format: input.format, delimiter: input.delimiter }
+        : { sourceFileName: input.sourceFileName, fragmentCount: created.length, format: input.format, headingLevel: input.headingLevel };
+
+    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [
+      {
+        type: "fragment:imported",
+        actor: "user",
+        target: { type: "fragment", uuid: randomUUID(), key: input.sourceFileName, title: input.sourceFileName },
+        payload: importPayload,
+        undoable: false,
+      },
+    ];
 
     return { result: { created, errors }, logEntries };
   },

@@ -56,6 +56,7 @@ describe("createPreviewImportCommand - markdown", () => {
     const { result, logEntries } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(markdownContent),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -74,6 +75,7 @@ describe("createPreviewImportCommand - markdown", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(markdownContent),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -89,6 +91,7 @@ describe("createPreviewImportCommand - markdown", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(markdownContent),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -107,6 +110,7 @@ describe("createPreviewImportCommand - plaintext", () => {
     const { result, logEntries } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.txt",
       format: "plaintext",
       delimiter: "---",
     });
@@ -126,6 +130,7 @@ describe("createPreviewImportCommand - docx", () => {
     const { result, logEntries } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: new Uint8Array([1, 2, 3]),
+      sourceFileName: "sample.docx",
       format: "docx",
       headingLevel: 2,
     });
@@ -155,6 +160,7 @@ describe("createPreviewImportCommand - key collision", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });
@@ -174,6 +180,7 @@ describe("createPreviewImportCommand - zero-piece case", () => {
     const { result } = await command.execute(ctx, {
       projectId: project.projectUUID,
       file: encode(content),
+      sourceFileName: "test.md",
       format: "markdown",
       headingLevel: 1,
     });

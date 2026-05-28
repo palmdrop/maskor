@@ -36,6 +36,10 @@ export const renderFragmentEntryText = (entry: LogEntry): string => {
       return `Aspect "${entry.payload.aspectKey}" detached from fragment "${key(entry)}"`;
     case "fragment:aspect-weight-changed":
       return `${entry.payload.aspectKey} weight on fragment "${key(entry)}": ${Math.round(entry.payload.from * 100)}% → ${Math.round(entry.payload.to * 100)}%`;
+    case "fragment:imported": {
+      const count = entry.payload.fragmentCount;
+      return `Imported ${count} fragment${count !== 1 ? "s" : ""} from "${entry.payload.sourceFileName}"`;
+    }
     default:
       return `Fragment action on "${key(entry)}"`;
   }
