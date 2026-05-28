@@ -26,6 +26,9 @@ export const ProjectSchema = z.object({
     showSectionHeadings: z.boolean(),
     separator: z.enum(["blank-line", "horizontal-rule", "none"]),
   }),
+  overview: z.object({
+    density: z.enum(["full", "compact", "mini"]),
+  }),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -65,6 +68,11 @@ export const ProjectUpdateSchema = z.object({
       showTitles: z.boolean().optional(),
       showSectionHeadings: z.boolean().optional(),
       separator: z.enum(["blank-line", "horizontal-rule", "none"]).optional(),
+    })
+    .optional(),
+  overview: z
+    .object({
+      density: z.enum(["full", "compact", "mini"]).optional(),
     })
     .optional(),
 });

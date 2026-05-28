@@ -75,9 +75,12 @@ const overviewRoute = createRoute({
   component: OverviewPage,
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sequence?: string; density: OverviewDensity } => ({
+  ): { sequence?: string; density?: OverviewDensity } => ({
     sequence: typeof search.sequence === "string" ? search.sequence : undefined,
-    density: parseOverviewDensity(search.density),
+    density:
+      typeof search.density === "string" && validDensities.includes(search.density as OverviewDensity)
+        ? (search.density as OverviewDensity)
+        : undefined,
   }),
 });
 

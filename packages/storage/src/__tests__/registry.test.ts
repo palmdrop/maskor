@@ -306,6 +306,19 @@ describe("registry.updateProject", () => {
     expect(manifest.config.preview.showTitles).toBe(true);
     expect(manifest.config.preview.separator).toBe("horizontal-rule");
   });
+
+  it("updates overview density and persists to manifest", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+    const updated = await registry.updateProject(record.projectUUID, {
+      overview: { density: "compact" },
+    });
+
+    expect(updated.overview.density).toBe("compact");
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.config.overview.density).toBe("compact");
+  });
 });
 
 describe("registry preview defaults", () => {
@@ -323,6 +336,22 @@ describe("registry preview defaults", () => {
     expect(found?.preview.showTitles).toBe(false);
     expect(found?.preview.showSectionHeadings).toBe(true);
     expect(found?.preview.separator).toBe("blank-line");
+  });
+});
+
+describe("registry overview defaults", () => {
+  it("returns overview defaults when project.json has no overview field", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+
+    // Remove overview config from manifest to simulate an older project.json
+    const manifestPath = join(vaultDir, ".maskor", "project.json");
+    const manifest = await Bun.file(manifestPath).json();
+    if (manifest.config) delete manifest.config.overview;
+    await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const found = await registry.findByUUID(record.projectUUID);
+    expect(found?.overview.density).toBe("full");
   });
 });
 

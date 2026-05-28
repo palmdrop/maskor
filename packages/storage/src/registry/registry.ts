@@ -31,7 +31,7 @@ const readVaultManifest = async (vaultPath: string): Promise<ProjectManifest | n
 // Keys of the nested config sections in ProjectManifest. Extracted here so that
 // writeVaultManifest performs a deep merge over all of them without enumerating
 // them twice.
-const CONFIG_SECTION_KEYS = ["editor", "suggestion", "advanced", "preview"] as const;
+const CONFIG_SECTION_KEYS = ["editor", "suggestion", "advanced", "preview", "overview"] as const;
 type ConfigSection = (typeof CONFIG_SECTION_KEYS)[number];
 
 const writeVaultManifest = async (
@@ -68,6 +68,7 @@ const PROJECT_CONFIG_DEFAULTS = {
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" as const },
+  overview: { density: "full" as const },
 };
 
 const toProjectRecord = (
@@ -84,6 +85,7 @@ const toProjectRecord = (
     suggestion: { ...PROJECT_CONFIG_DEFAULTS.suggestion, ...config?.suggestion },
     advanced: { ...PROJECT_CONFIG_DEFAULTS.advanced, ...config?.advanced },
     preview: { ...PROJECT_CONFIG_DEFAULTS.preview, ...config?.preview },
+    overview: { ...PROJECT_CONFIG_DEFAULTS.overview, ...config?.overview },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -236,13 +238,15 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         patch.editor !== undefined ||
         patch.suggestion !== undefined ||
         patch.advanced !== undefined ||
-        patch.preview !== undefined
+        patch.preview !== undefined ||
+        patch.overview !== undefined
       ) {
         manifestPatch.config = {
           ...(patch.editor !== undefined ? { editor: patch.editor } : {}),
           ...(patch.suggestion !== undefined ? { suggestion: patch.suggestion } : {}),
           ...(patch.advanced !== undefined ? { advanced: patch.advanced } : {}),
           ...(patch.preview !== undefined ? { preview: patch.preview } : {}),
+          ...(patch.overview !== undefined ? { overview: patch.overview } : {}),
         };
       }
 

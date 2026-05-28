@@ -7,6 +7,7 @@
 
 - 2026-05-12 — Users can arrange fragments on the overview: all non-discarded fragments appear as draggable tiles in two zones (sequence + unassigned pool); dragging between zones places or unplaces a fragment; dragging within the sequence reorders it; all changes survive a reload. (plan: references/plans/sequencer-manual-placement.md)
 - 2026-05-19 — Density tiers (`full`/`compact`/`mini`) drive tile content and width via a `?density=` URL search param; a sticky arc panel above the tile row renders one Catmull-Rom-smoothed curve per aspect (actual arcs derived client-side from `FragmentSummary.aspects`); a chip-row legend toggles aspects on/off; aspect color metadata is round-tripped through vault frontmatter with a deterministic palette fallback. (plan: references/plans/overview-density-and-actual-arc.md)
+- 2026-05-28 — Overview density choice persists across navigation and page reloads via `project.overview.density` in project.json; URL param (`?density=`) is now optional and serves as a per-session override that seeds the URL on change; absence of the URL param falls back to the persisted value. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
 
 ---
 
@@ -84,7 +85,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 - X-axis navigation is via horizontal scroll on a single sequence container shared by the tile row and the arc panel; the panel translates with the tiles on horizontal scroll so both share the same x-axis.
 - The arc panel sticks to the top of the sequence container during vertical scroll; horizontal scroll moves the tile row beneath it.
-- Tile size is controlled by a density tier (`full`, `compact`, or `mini`) selectable in the page header and reflected in the `?density=` URL search param. This replaces a zoom/pan model — the user picks a fixed legibility tier rather than zooming continuously.
+- Tile size is controlled by a density tier (`full`, `compact`, or `mini`) selectable in the page header. The chosen density is persisted to `project.overview.density` in project.json and is also reflected in the optional `?density=` URL search param. The URL param serves as a per-session override; when absent, the page reads from project.json. This means density survives navigation away-and-back and page reloads without any manual action from the user.
 - Rendered with HTML/CSS and inline SVG (no canvas or WebGL) to preserve text selection and browser accessibility.
 
 ### Rearrangement
@@ -135,7 +136,8 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 ## Prior decisions
 
 - **HTML + SVG, not canvas/WebGL**: Tile content is rendered with HTML/CSS and the arc panel is inline SVG in the same DOM tree. Chosen to preserve text selection and browser accessibility. SVG is essential for the arc layer and is the prescribed renderer there.
-- **Density tiers replace continuous zoom**: The user picks a fixed legibility tier (`full`/`compact`/`mini`) via the URL search param `?density=`, instead of zooming continuously. Layout is deterministic at each tier, which lets the arc panel compute x-coordinates from a shared formula without DOM measurement.
+- **Density tiers replace continuous zoom**: The user picks a fixed legibility tier (`full`/`compact`/`mini`) instead of zooming continuously. Layout is deterministic at each tier, which lets the arc panel compute x-coordinates from a shared formula without DOM measurement.
+- **Density persisted to project.json, not only URL**: The chosen density tier is saved to `project.overview.density` so it survives navigation away-and-back and page reloads. The `?density=` URL param is now optional: when present it overrides the persisted value (useful for sharing a link at a specific tier); when absent the page falls back to the stored value. Any user-initiated change saves to project.json and updates the URL param simultaneously.
 
 ---
 

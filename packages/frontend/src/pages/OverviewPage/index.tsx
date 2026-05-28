@@ -11,6 +11,7 @@ import {
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
+import { useGetProject, useUpdateProject, getGetProjectQueryKey } from "@api/generated/projects/projects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { TileContent } from "./components/TileContent";
@@ -34,11 +35,26 @@ import { useArcData } from "./hooks/useArcData";
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
   const { projectId } = useParams({ from });
-  const { sequence: sequenceParam, density } = useSearch({ from });
+  const { sequence: sequenceParam, density: urlDensity } = useSearch({ from });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const { data: projectEnvelope } = useGetProject(projectId);
+  const project = projectEnvelope?.status === 200 ? projectEnvelope.data : undefined;
+  const persistedDensity = project?.overview?.density as OverviewDensity | undefined;
+
+  const density: OverviewDensity = urlDensity ?? persistedDensity ?? "full";
+
+  const { mutate: updateProject } = useUpdateProject({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      },
+    },
+  });
+
   const handleDensityChange = (next: OverviewDensity) => {
+    updateProject({ projectId, data: { overview: { density: next } } });
     void navigate({
       to: from,
       params: { projectId },
