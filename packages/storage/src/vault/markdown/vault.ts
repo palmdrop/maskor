@@ -85,35 +85,16 @@ export const createVault = (config: VaultConfig): Vault => {
   // Returns paths relative to absoluteDirectory. With `recursive: true` paths may include
   // subdirectories (e.g. "places/london.md"); with `recursive: false` only top-level
   // filenames are returned (e.g. "the-bridge.md").
-  const listMarkdownFiles = async (
+  // Scans a directory for files matching the glob. A missing directory yields an empty list
+  // silently — Maskor adopts external vaults that may not yet contain every entity/.maskor dir,
+  // and the watcher creates files lazily, so absence is normal rather than an error. Any other
+  // failure (permissions, etc.) is logged and also yields an empty list.
+  const scanFiles = async (
+    pattern: string,
     absoluteDirectory: string,
-    { recursive = false }: { recursive?: boolean } = {},
+    label: string,
   ): Promise<string[]> => {
-    const glob = new Bun.Glob(recursive ? "**/*.md" : "*.md");
-    const entries: string[] = [];
-
-    try {
-      for await (const fileName of glob.scan({ cwd: absoluteDirectory, onlyFiles: true })) {
-        // Normalize to POSIX separators so DB rows and derived categories stay portable.
-        entries.push(fileName.split(sep).join("/"));
-      }
-    } catch (error) {
-      log.error(
-        {
-          directory: absoluteDirectory,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        },
-        "failed to list markdown files in directory",
-      );
-      return [];
-    }
-
-    return entries;
-  };
-
-  // Returns filenames relative to absoluteDirectory (e.g. "<uuid>.yaml", not a full path).
-  const listYamlFiles = async (absoluteDirectory: string): Promise<string[]> => {
-    const glob = new Bun.Glob("*.yaml");
+    const glob = new Bun.Glob(pattern);
     const entries: string[] = [];
 
     try {
@@ -121,18 +102,34 @@ export const createVault = (config: VaultConfig): Vault => {
         entries.push(fileName);
       }
     } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return [];
+      }
       log.error(
         {
           directory: absoluteDirectory,
           errorMessage: error instanceof Error ? error.message : String(error),
         },
-        "failed to list yaml files in directory",
+        `failed to list ${label} files in directory`,
       );
       return [];
     }
 
     return entries;
   };
+
+  const listMarkdownFiles = async (
+    absoluteDirectory: string,
+    { recursive = false }: { recursive?: boolean } = {},
+  ): Promise<string[]> => {
+    const entries = await scanFiles(recursive ? "**/*.md" : "*.md", absoluteDirectory, "markdown");
+    // Normalize to POSIX separators so DB rows and derived categories stay portable.
+    return entries.map((fileName) => fileName.split(sep).join("/"));
+  };
+
+  // Returns filenames relative to absoluteDirectory (e.g. "<uuid>.yaml", not a full path).
+  const listYamlFiles = (absoluteDirectory: string): Promise<string[]> =>
+    scanFiles("*.yaml", absoluteDirectory, "yaml");
 
   return {
     root: config.root,

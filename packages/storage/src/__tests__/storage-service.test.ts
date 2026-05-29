@@ -69,6 +69,8 @@ describe("StorageService.resolveProject", () => {
     expect(existsSync(join(minimalVaultDir, "aspects"))).toBe(true);
     expect(existsSync(join(minimalVaultDir, "notes"))).toBe(true);
     expect(existsSync(join(minimalVaultDir, "references"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, ".maskor", "sequences"))).toBe(true);
+    expect(existsSync(join(minimalVaultDir, ".maskor", "config"))).toBe(true);
   });
 });
 

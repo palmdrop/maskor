@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import type { Logger } from "@maskor/shared";
 import { createVault } from "../vault/markdown/vault";
 import type { VaultConfig } from "../vault/types";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
@@ -266,5 +267,48 @@ describe("vault.sequences.delete", () => {
     const { VaultError } = await import("../vault/types");
 
     await expect(vault.sequences.delete("nonexistent.yaml")).rejects.toThrow(VaultError);
+  });
+});
+
+// --- listing a vault whose dirs do not yet exist (fresh adoption) ---
+
+describe("vault listing — missing directories", () => {
+  const makeSpyLogger = () => {
+    const error = mock(() => {});
+    const logger = {
+      info: () => {},
+      warn: () => {},
+      error,
+      debug: () => {},
+      child: () => logger,
+    } as unknown as Logger;
+    return { logger, error };
+  };
+
+  it("returns [] and logs no error when .maskor/sequences is absent", async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), "maskor-empty-vault-"));
+    try {
+      const { logger, error } = makeSpyLogger();
+      const vault = createVault({ root: emptyDir, logger, projectUuid: TEST_PROJECT_UUID });
+      expect(await vault.sequences.readAll()).toEqual([]);
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns [] and logs no error when entity dirs are absent", async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), "maskor-empty-vault-"));
+    try {
+      const { logger, error } = makeSpyLogger();
+      const vault = createVault({ root: emptyDir, logger });
+      expect(await vault.aspects.readAll()).toEqual([]);
+      expect(await vault.notes.readAll()).toEqual([]);
+      expect(await vault.references.readAll()).toEqual([]);
+      expect(await vault.fragments.readAll()).toEqual([]);
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });

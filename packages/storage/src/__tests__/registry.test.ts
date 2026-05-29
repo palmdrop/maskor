@@ -118,6 +118,8 @@ describe("registry.registerProject", () => {
     expect(existsSync(join(newPath, "fragments", "discarded"))).toBe(true);
     expect(existsSync(join(newPath, "notes"))).toBe(true);
     expect(existsSync(join(newPath, "references"))).toBe(true);
+    expect(existsSync(join(newPath, ".maskor", "sequences"))).toBe(true);
+    expect(existsSync(join(newPath, ".maskor", "config"))).toBe(true);
   });
 
   it("mode create writes .maskor/project.json with correct contents", async () => {

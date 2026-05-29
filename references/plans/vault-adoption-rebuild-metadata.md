@@ -35,12 +35,12 @@ Confirmed decisions:
 
 Self-contained; ships alone.
 
-- [ ] Create branch `vault-adoption-rebuild-metadata` based on `main`.
-- [ ] Add `join(".maskor", "sequences")` and `join(".maskor", "config")` to `VAULT_SKELETON_DIRS` (`packages/storage/src/utils/vault-skeleton.ts`). `ensureVaultSkeleton` is idempotent and already runs on register (`registry.ts:147`) and on resolve (`storage-service.ts:540`), so this covers create + adopt + repair of older vaults.
-- [ ] Confirm creating `.maskor/sequences|config` does not trigger watcher events — chokidar `ignored` regex already excludes dotfiles. No change expected; verify.
-- [ ] Make `listMarkdownFiles` and `listYamlFiles` (`vault.ts`) treat a missing directory (ENOENT) as an empty result **without** logging an error. Keep error logging for genuine failures (permissions, etc.).
-- [ ] Tests: skeleton creates both `.maskor/` subdirs; listing a non-existent entity/sequences dir returns `[]` and emits no error log.
-- [ ] `git commit` Phase 1.
+- [x] Create branch `vault-adoption-rebuild-metadata` based on `main`. _(2026-05-29)_
+- [x] Add `join(".maskor", "sequences")` and `join(".maskor", "config")` to `VAULT_SKELETON_DIRS` (`packages/storage/src/utils/vault-skeleton.ts`). `ensureVaultSkeleton` is idempotent and already runs on register (`registry.ts:147`) and on resolve (`storage-service.ts:540`), so this covers create + adopt + repair of older vaults. _(2026-05-29)_
+- [x] Confirm creating `.maskor/sequences|config` does not trigger watcher events — chokidar `ignored` regex already excludes dotfiles. No change expected; verify. _(2026-05-29 — chokidar-config `ignored: /(^|[/\\])\..+/` excludes all dotfiles incl. `.maskor/`)_
+- [x] Make `listMarkdownFiles` and `listYamlFiles` (`vault.ts`) treat a missing directory (ENOENT) as an empty result **without** logging an error. Keep error logging for genuine failures (permissions, etc.). _(2026-05-29 — extracted shared `scanFiles` helper; ENOENT → quiet `[]`)_
+- [x] Tests: skeleton creates both `.maskor/` subdirs; listing a non-existent entity/sequences dir returns `[]` and emits no error log. _(2026-05-29 — registry + storage-service skeleton assertions; vault.test.ts missing-directory suite with a spy logger)_
+- [x] `git commit` Phase 1. _(2026-05-29)_
 
 ### Phase 2 — Extract shared mint + writeback helpers (refactor, no behavior change)
 
