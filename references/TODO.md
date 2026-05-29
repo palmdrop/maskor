@@ -10,7 +10,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] fix lint errors
 
-- [ ] finish remove piece plan (see worktree)
+- [x] finish remove piece plan (see worktree)
 
 - [ ] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
 
@@ -20,7 +20,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] notification/banner component for communicating result of actions
 
-- [ ] Ctrl+k etc triggers BOTH quick-switcher AND the editor, triggering a vim cut action. This could result in accidentally deleting text without noticing. Make sure command system triggers first and prevents the events from reaching the editor.
+- [x] Ctrl+k etc triggers BOTH quick-switcher AND the editor, triggering a vim cut action. This could result in accidentally deleting text without noticing. Make sure command system triggers first and prevents the events from reaching the editor.
 
 - [ ] suggestion.currentFragmentUUID is state rather than config and should prob not be stored in project manifest. Investigate and move to a table instead
 

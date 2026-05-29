@@ -48,7 +48,6 @@ A draft is a complete copy of the vault directory at the moment of creation. It 
 - All aspect files (`aspects/`)
 - All note files (`notes/`)
 - All reference files (`references/`)
-- Unconsumed pieces (`pieces/`)
 - Maskor configuration and per-vault state (`.maskor/sequences/`, `.maskor/config/`, `.maskor/vault.db`, `.maskor/project.json`, `.maskor/action-log.jsonl`)
 - A `manifest.json` with the draft's UUID, name, creation date, optional note, and entity counts
 
@@ -77,7 +76,7 @@ Draft creation is a stop-the-world operation:
 2. Acquire the storage write lock; drain in-flight write handlers.
 3. Pause the vault watcher.
 4. Stage the new draft in `<vault>/.maskor/drafts/.staging/<uuid>/`:
-   - Copy `fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/project.json`, `.maskor/action-log.jsonl` into the staging directory.
+   - Copy `fragments/`, `aspects/`, `notes/`, `references/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/project.json`, `.maskor/action-log.jsonl` into the staging directory.
    - Produce a consistent DB snapshot via `VACUUM INTO` targeting the staging directory.
    - Write `manifest.json`.
 5. Atomically rename the staging directory to `<vault>/.maskor/drafts/<slug>-<short-uuid>/`.
@@ -115,7 +114,7 @@ Restore is destructive: it overwrites the current vault state with the snapshot'
 2. If the checkbox is on: a regular draft creation runs first (same path as normal creation, including disk space check). If it fails, restore aborts before touching the live vault.
 3. Acquire the storage write lock; drain in-flight write handlers.
 4. Pause the vault watcher.
-5. For each top-level vault subdirectory being replaced (`fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/vault.db`): rename the live copy to `<vault>/.maskor/drafts/.restore-aside/<original-name>/`, then copy the snapshot's version into the live location. `.maskor/project.json` and `.maskor/action-log.jsonl` are deliberately excluded — see below.
+5. For each top-level vault subdirectory being replaced (`fragments/`, `aspects/`, `notes/`, `references/`, `.maskor/sequences/`, `.maskor/config/`, `.maskor/vault.db`): rename the live copy to `<vault>/.maskor/drafts/.restore-aside/<original-name>/`, then copy the snapshot's version into the live location. `.maskor/project.json` and `.maskor/action-log.jsonl` are deliberately excluded — see below.
 6. If any step fails, roll back by renaming the aside copies back into their original locations. Surface a clear error.
 7. On success, delete `.restore-aside/`.
 8. Trigger a full DB rebuild from the restored vault files. The snapshotted `vault.db` is present, but is not trusted as the live DB — vault remains source of truth.

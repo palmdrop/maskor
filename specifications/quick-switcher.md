@@ -35,7 +35,7 @@ The user can press a single key-bind from anywhere in the active project and jum
 - **Pinning.** Deferred — not enough use case yet.
 - **Type-prefix filtering** (`f:river`, `a:melancholy`). Deferred; the unified ranked list is the v1 experience.
 - **Modifier-based open variants** (`Cmd+Enter` for new tab, etc.). Depends on the future [[tabs / multiple open editors]] spec.
-- **Sections, drafts, arcs, pieces.** Not selectable through this surface — they are not navigable entities in their own right (sections live inside sequences, drafts are snapshots, arcs are owned by aspects, pieces are transient).
+- **Sections, drafts, arcs.** Not selectable through this surface — they are not navigable entities in their own right (sections live inside sequences, drafts are snapshots, arcs are owned by aspects).
 - **Discarded fragments.** Excluded from the candidate set — honoring the user's "out of mind" signal. Resurrection paths exist elsewhere (fragment list "show discarded" toggle).
 
 ---
@@ -62,7 +62,7 @@ The catalog is composed at open time from the active project's vault contents.
 | **Reference** | All references in the project.                                                  | Vault DB |
 | **Sequence**  | All sequences in the project (main and secondary).                              | Vault DB |
 
-Excluded by design: projects, sections, drafts, arcs, pieces. See Scope.
+Excluded by design: projects, sections, drafts, arcs. See Scope.
 
 ### Match field
 

@@ -1,7 +1,7 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-29
 
 **Shipped**:
 
@@ -26,7 +26,7 @@ A fragment is the atomic unit of a writing project. The user creates, enriches, 
 - Ready status semantics
 - Aspect properties on fragments (weights)
 - Notes and references attached to fragments
-- Piece → Fragment conversion path
+- Raw markdown adoption path (file dropped into `fragments/`)
 - Fragment identity and rename behavior
 - Discard and restore behavior
 
@@ -59,7 +59,7 @@ A fragment is a UUID-identified piece of writing. It has:
 
 ### Lifecycle
 
-1. **Creation** — a fragment is created by the user via the UI (key + content required), or automatically from a Piece dropped into the vault's `pieces/` directory.
+1. **Creation** — a fragment is created by the user via the UI (key + content required), or automatically by dropping a raw markdown file into the vault's `fragments/` directory: the watcher adopts it, minting a UUID and writing back full canonical frontmatter (see `specifications/storage-sync.md`).
 
 2. **Editing** — the user edits content in the fragment editor. Metadata (`readyStatus`, notes, references, aspect properties) is edited through the metadata panel. `key` is edited via rename.
 
@@ -98,9 +98,9 @@ Weights are set by the user via the metadata panel.
 
 - A fragment's UUID is its stable identity. Renaming a fragment changes the filename but not the UUID.
 
-### Piece → Fragment conversion
+### Raw markdown adoption
 
-A Piece is a raw writing file without metadata. Maskor detects these files (placed in a certain `pieces` directory) and converts them to fragments automatically.
+A raw markdown file is a writing file without Maskor metadata. When one is dropped into the `fragments/` directory, the watcher detects it and adopts it as a fragment automatically — minting a UUID and writing back full canonical frontmatter. The file is adopted in place; there is no separate staging folder. See `specifications/storage-sync.md` for the sync mechanics.
 
 ---
 
@@ -121,7 +121,7 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 - **Folder-based discard**: Discard state is determined solely by file location (`fragments/discarded/`). No frontmatter flag. This eliminates the possibility of the frontmatter and filesystem location disagreeing.
 - **`version` removed**: The `version` frontmatter field served no user-facing purpose.
 - **Fragment owns note/reference relationships**: Fragment frontmatter lists note titles and reference names. Notes and references carry no back-reference. Keeps notes and references self-contained, with fragments as the attachment point.
-- **Piece is transient**: A piece has no UUID and no full metadata. On conversion, the piece file is deleted. There is no conversion back.
+- **Piece concept removed**: The former Piece staging mechanism (a metadata-less file dropped into `pieces/`, consumed and deleted on conversion) was removed. A raw markdown file dropped into `fragments/` is now adopted in place — the file is not deleted; a UUID is minted and full frontmatter written back. See `specifications/storage-sync.md` (Removed concepts). Do not re-introduce.
 - **Only existing notes/references can be attached**: Adding a note or reference that does not yet exist in the vault is not allowed from the fragment editor.
 - **`contentHash` computed at write time**: `storageService.fragments.write()` computes the hash from the serialized file and returns the fragment with the correct hash. Route handlers use the return value — no empty hashes are exposed to callers.
 - **`title` removed**: The `title` field was removed entirely. `key` (the filename stem) is the single identity field, consistent with notes, references, and aspects. The create flow now accepts `key` directly; no slugification step. See `references/plans/drop-fragment-title.md`.
@@ -147,4 +147,4 @@ A Piece is a raw writing file without metadata. Maskor detects these files (plac
 - A fragment's UUID does not change on rename.
 - `readyStatus` values outside 0–1 are rejected.
 - Notes and references can only reference titles/names that already exist in the vault.
-- A piece file dropped into `pieces/` is converted to a fragment and the piece file is deleted.
+- A raw markdown file dropped into `fragments/` is adopted as a fragment in place: a UUID is minted and full canonical frontmatter is written back; the file is not deleted.

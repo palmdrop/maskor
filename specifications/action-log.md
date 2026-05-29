@@ -104,7 +104,7 @@ A rename cascades through related entities (e.g. renaming an aspect updates ever
 
 #### Out of scope for v1
 
-- **System actions** (no entries): piece auto-conversion, prompt surfacing/acceptance/dismissal, project registration, fragment-opened reads. These may be added later under `actor: "system"`; not logged in v1.
+- **System actions** (no entries): raw markdown adoption (file dropped into `fragments/`), prompt surfacing/acceptance/dismissal, project registration, fragment-opened reads. These may be added later under `actor: "system"`; not logged in v1.
 - **External vault edits** are never logged. The action log only covers actions taken through the Maskor API.
 
 ### Payload depth (v1)

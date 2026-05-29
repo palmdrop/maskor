@@ -1,7 +1,7 @@
 # Spec: Storage Sync
 
 **Status**: Stable
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-29
 
 **Shipped**:
 
@@ -15,6 +15,8 @@
 - 2026-05-04 — Filename stem is the sole authoritative key for all vault entities; the `key:` frontmatter field is removed. Watcher cascades rename propagation automatically. (plan: references/plans/filename-as-key-source-of-truth.md)
 - 2026-05-07 — The watcher syncs individual vault files immediately after each change; a full-file hash guard makes all events idempotent, including API-originated writes. (plan: references/plans/vault-watcher.md)
 - 2026-05-14 — Fragment discard state is derived entirely from filesystem location (`fragments/discarded/`); no frontmatter flag can drift out of sync. (plan: references/plans/remove-pool-concept.md)
+- 2026-05-28 — The `pieces/` staging folder is removed. A raw `.md` dropped into `fragments/` is now the sole external-edit adoption path: on first detection the watcher mints a UUID and writes back complete canonical frontmatter (uuid, updatedAt, readiness, notes, references), preserving any fields the user supplied. (plan: references/plans/remove-piece-concept-and-vault-warnings.md)
+- 2026-05-29 — Vault warnings store. Sync surfaces three warning kinds to a `vault_warnings` table: `WRONG_FORMAT_FILE` and `UNKNOWN_ASPECT_KEY` (state warnings, re-detected on every rebuild and cleared when fixed) and `UUID_COLLISION` (event warning, recorded by the watcher on a resolved collision and persisted until dismissed). The watcher updates warnings incrementally and emits a `vault:warning` SSE event on any change. (plan: references/plans/remove-piece-concept-and-vault-warnings.md)
 
 ---
 
@@ -38,7 +40,7 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 - Inline DB update on API writes (closes stale-index window immediately)
 - SSE change event emission after each watcher transaction
 - Rebuild mutex: watcher paused or gated during rebuild
-- Per-file piece consumption on `pieces/` add events
+- Vault warning detection (wrong-format files, unknown aspect keys, resolved UUID collisions) recorded to a warnings store
 
 ### Out of scope
 
@@ -88,15 +90,15 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 | `aspects/[<category>/]`             | sync aspect (category derived from subfolder path)                  |
 | `notes/[<category>/]`               | sync note (category derived from subfolder path)                    |
 | `references/[<category>/]`          | sync reference (category derived from subfolder path)               |
-| `pieces/`                           | per-file consume                                                    |
-| `.maskor/`, `.obsidian/`, non-`.md` | ignored                                                             |
+| non-`.md` under an entity folder    | recorded as a `WRONG_FORMAT_FILE` warning; not indexed              |
+| `.maskor/`, `.obsidian/`, dotfiles  | ignored                                                             |
 
 - On `add` with missing UUID: write UUID to frontmatter, then upsert; the second watcher event from the write-back hash-guards to a no-op
 - On `add` with colliding UUID for **fragments**: assign a new UUID, write back, log warning
 - On `add` with same UUID at a different path (within the same entity-type subtree): treat as a move — update `filePath`, no cascade rename, no UUID change
 - On `add` with a UUID recently removed from this entity-type table: emit the resulting `*:synced` event with `revived: true` (in-memory tracker per watcher instance, ~24h TTL); identity is preserved through the upsert regardless of whether the flag is set
 - On `unlink`: rename-buffer correlates close-in-time renames/moves; on buffer expiry, the row is hard-deleted and the UUID is recorded in the recently-deleted tracker
-- `pieces/` add: single-file consume — not batch `consumeAll`
+- On a non-`.md` file added under an entity folder: record a `WRONG_FORMAT_FILE` state warning and emit `vault:warning`; on its `unlink`, clear that warning
 
 ### Move and revival lifecycle
 
@@ -111,6 +113,18 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 - Fragments are linked to aspects using their unique key
 - Missing aspects are flagged
 - Maskor never auto-rewrites fragment files to fix drift; user must rename the aspect or update the inline field in the fragment
+
+### Vault warnings
+
+Sync records warnings the user can inspect (surfaced on the project-config Diagnostics tab — see `specifications/project-config.md`). Three kinds, split into two categories:
+
+- **State warnings** — re-detectable from the vault, cleared automatically when the underlying problem is fixed:
+  - `WRONG_FORMAT_FILE` — a non-`.md`, non-dotfile sitting under an entity folder. Never auto-converted (conversion stays in the import pipeline).
+  - `UNKNOWN_ASPECT_KEY` — a fragment references an aspect key that does not exist in the aspects table; aggregated per key with the set of referencing fragment UUIDs.
+- **Event warnings** — recorded at the moment they occur, auto-resolved, persist until the user dismisses them, never re-derived on rebuild:
+  - `UUID_COLLISION` — the watcher detected a fragment file whose UUID already belonged to another file, minted a new UUID, and wrote it back.
+
+Rebuild is authoritative for state warnings: it deletes all state-warning rows then re-detects them in the same pass, while preserving event-warning rows. The watcher keeps state warnings current incrementally between rebuilds and records `UUID_COLLISION` events as they happen. Any warning-table change emits a `vault:warning` SSE event.
 
 ### Name and file uniqueness
 
@@ -134,7 +148,7 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 - Fragment subdirectories beyond `discarded/` produce sync warnings and are not indexed.
 - Markdown format is Obsidian-compatible
 - `<vault>/.maskor/` is Maskor-owned territory. The watcher ignores all files inside it. Maskor may overwrite any file there at any time. Users should not edit these files directly unless they know what they are doing.
-- All other vault directories (`fragments/`, `aspects/`, `notes/`, `references/`, `pieces/`) are safe for the user to edit directly outside of Maskor. The watcher will pick up any changes.
+- All other vault directories (`fragments/`, `aspects/`, `notes/`, `references/`) are safe for the user to edit directly outside of Maskor. The watcher will pick up any changes.
 
 ---
 
@@ -148,7 +162,6 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 - **Full-file hash guard**: Hash must cover frontmatter + body — hashing only the body would incorrectly skip the second watcher event after a UUID write-back.
 - **No automatic file rewrites on drift**: Maskor surfaces `SyncWarning` for unresolved aspect keys; it does not auto-fix fragment files.
 - **Aspect key as stable reference, not UUID**: Aspect names are unique within a vault, so `aspect_key` is sufficient as the join column in `fragment_properties`. A nullable `aspect_uuid` column adds resolution complexity without benefit — drift is captured equally well by checking whether the key exists in the aspects table.
-- **Per-file piece consumption**: `vault.pieces.consume(filePath)` preferred over `consumeAll` for memory efficiency and incremental processing. A future queuing layer can be added if needed.
 - **`version` field removed**: Served no user-facing purpose and added frontmatter noise. Removed entirely.
 - **`isDiscarded` derived from path**: After pool concept removal, discarded state is determined solely by whether `filePath.startsWith("discarded/")`. No frontmatter field; no DB column that needs external input.
 - **Watcher started in `resolveProject` middleware**: Side effect in middleware is acknowledged; deferred to a more explicit startup mechanism when project lifecycle management is formalised.
@@ -157,6 +170,7 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 
 ## Removed concepts
 
+- **Piece / `pieces/` staging folder**: The `pieces/` drop-zone and its per-file consume path were removed. A raw `.md` file dropped into `fragments/` is adopted directly by the watcher (UUID minted, full canonical frontmatter written back), so the staging folder was redundant. The shared `Piece` type, `vault.pieces.*`, `syncPieces`, the `PIECE_PREFIX` route, and the `pieces:consumed` event were all deleted. A `.md` left in a leftover `pieces/` folder now matches no watcher route and is silently ignored. References to pieces in older plans are historical. Do not re-introduce. (The importer's internal in-memory `Piece`/`RawPiece` split-result types are unrelated and retained — see `specifications/import-pipeline.md`.)
 - **Pool** (`unprocessed`, `incomplete`, `unplaced`, `discarded`): The pool lifecycle concept was removed. Fragments no longer carry a `pool` field. References to pool in older plans (`vault-watcher.md`, `vault-content-index.md`, etc.) are historical. Do not re-introduce.
 - **`aspect_uuid` in `fragment_properties`**: The `fragment_properties` table no longer has an `aspect_uuid` column. Fragment→aspect relationships are joined on `aspect_key`. References to `aspect_uuid` in older plans (`vault-content-index.md`, `vault-watcher.md`) are historical. Do not re-introduce.
 

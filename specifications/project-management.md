@@ -84,7 +84,9 @@ The Project Management page exposes a single registration form. The form has a r
 
 - **Folder field filled, path does not exist.** A short confirmation indicates Maskor will create the folder. Submitting calls `POST /projects` with `mode: "create"`. Maskor `mkdir -p`s the path and writes the vault skeleton with a new UUID.
 
-Maskor never auto-imports existing **fragment** markdown content during registration; the user uses the fragment import flow to bring fragments into the index. Aspects, notes, and references in pre-existing subfolders (e.g. `aspects/places/london.md`) are discovered automatically on the first rebuild that `resolveProject` triggers — category is derived from the subfolder path, and UUIDs are written back to frontmatter by the watcher on the first subsequent file event.
+Maskor never auto-imports existing **fragment** markdown content during registration; the user uses the fragment import flow to bring fragments into the index. Aspects, notes, and references in pre-existing subfolders (e.g. `aspects/places/london.md`) are intended to be discovered automatically on the first rebuild that `resolveProject` triggers, with category derived from the subfolder path.
+
+> **Known gap (2026-05-29):** Adopting a vault whose entity files lack frontmatter UUIDs currently fails. The initial rebuild reads those files but does **not** mint UUIDs — only the watcher does (via `ensureUuid`), and the watcher ignores the initial scan (`ignoreInitial: true`), so it never sees pre-existing files. The rebuild upsert then violates the `uuid` primary-key (NOT NULL) constraint. The earlier claim that "UUIDs are written back by the watcher on the first subsequent file event" was wrong for adoption — there is no such event for files already on disk at adopt time. Fix tracked: rebuild must mint and write back UUIDs (and full canonical frontmatter for fragments) using the same logic as the watcher. Separately, `.maskor/sequences/` and `.maskor/config/` are not created on adopt, so listing them logs a "no such file or directory" error.
 
 ### Single registration endpoint
 
@@ -105,7 +107,6 @@ Maskor never auto-imports existing **fragment** markdown content during registra
   - `fragments/discarded/` directory
   - `notes/` directory
   - `references/` directory
-  - `pieces/` directory
 - On first access of any existing project (`resolveProject`), the same skeleton dirs are created idempotently, repairing vaults that predate full skeleton bootstrap.
 - Other vault structure (arcs config, vault DB) is still created lazily by the features that own it.
 

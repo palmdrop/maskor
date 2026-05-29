@@ -31,38 +31,6 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 
 ---
 
-## Pieces removal refactor
-
-**Why:** The `pieces/` drop zone is a transient filesystem bypass that has accumulated its own concept, UI, and lifecycle. `_glossary.md` flags Piece as "likely to be removed in a future iteration." Proposal: drop a partial-data file directly into `fragments/`, and let Maskor auto-fill missing metadata (UUID, timestamps, frontmatter) on watcher pickup.
-
-**Related specs:** `fragment-model.md`, `import-pipeline.md`, `_glossary.md`, `storage-sync.md`
-
-**Initial questions:**
-
-- What is the minimum file shape that auto-promotes to a Fragment? (Body only? Body + key from filename?)
-- How does this interact with the importer, which also produces fragments from external files?
-- Migration path for the existing `pieces/` folder and any in-flight pieces — drain on upgrade?
-- Does the `piece` term and its UI surface disappear entirely, or stay as a label for "fragments awaiting first save"?
-- All glossary mentions and spec references need a coordinated sweep.
-
----
-
-## File auto-metadata & importing capabilities
-
-**Why:** Today a file dropped into `fragments/`, `notes/`, etc. without proper frontmatter does not become a first-class entity. Proposal: any file in a recognized folder that is missing metadata or UUID gets auto-completed on watcher pickup. Enables drag-and-drop from another project's vault as a poor-man's import.
-
-**Related specs:** `import-pipeline.md`, `fragment-model.md`, `attachments.md`, `storage-sync.md`
-
-**Initial questions:**
-
-- Which folders are eligible for auto-metadata (fragments, aspects, notes, references — all four)?
-- Conflict resolution if the file already has a UUID that collides with an existing entity?
-- How does this overlap with the existing import pipeline — is import still a distinct flow, or does it dissolve into "just drop the file in the right folder"?
-- Does this enable a real cross-project import (drag from one vault to another and have Maskor reconcile)?
-- Related to [[pieces removal refactor]] — both touch the "file shape that auto-promotes" question.
-
----
-
 ## Inspiration manager
 
 **Why:** A writer collects visual references — images, screenshots, mood-board fragments — alongside their text work. Today there's no surface for this. Could be a floating panel of pinned images over the project, or could be a separate app entirely (digital are.na frame).
