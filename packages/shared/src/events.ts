@@ -7,7 +7,10 @@ export type VaultSyncEvent =
   | { type: "note:deleted"; filePath: string }
   | { type: "reference:synced"; uuid: string; revived?: boolean }
   | { type: "reference:deleted"; filePath: string }
-  | { type: "vault:restored"; draftUuid: string };
+  | { type: "vault:restored"; draftUuid: string }
+  // Signals that the vault-warnings table changed (added/cleared/dismissed). Carries no
+  // payload — clients refetch the warnings list.
+  | { type: "vault:warning" };
 
 // Compile-time guard — if a new variant is added to VaultSyncEvent but not this array, TypeScript errors.
 export const VAULT_SYNC_EVENT_TYPES = [
@@ -20,4 +23,5 @@ export const VAULT_SYNC_EVENT_TYPES = [
   "reference:synced",
   "reference:deleted",
   "vault:restored",
+  "vault:warning",
 ] as const satisfies VaultSyncEvent["type"][];

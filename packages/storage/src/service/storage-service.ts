@@ -80,6 +80,8 @@ import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 import { createActionLogWriter, readRecentEntries } from "../action-log";
 import type { ActionLogWriter } from "../action-log";
+import { listWarnings, dismissWarning } from "../warnings/warnings-repo";
+import type { StoredWarning, DismissResult } from "../warnings/warnings-repo";
 import { createSwapStorage } from "../swap";
 import type { SwapEntityType, SwapFile, SwapListEntry, SwapStorage } from "../swap";
 import type { DraftManifest, LogEntry } from "@maskor/shared";
@@ -1789,6 +1791,27 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         } finally {
           watcher.resume();
         }
+      },
+    },
+
+    // Warning operations
+
+    warnings: {
+      list(context: ProjectContext): StoredWarning[] {
+        return listWarnings(getVaultDatabase(context));
+      },
+
+      // Dismisses an event warning. State warnings cannot be dismissed (they clear by fixing
+      // the cause) — returns "not_event" for them and "not_found" for an unknown id. Wrapped in
+      // the vault write lock since it mutates vault.db, which draft snapshots capture.
+      async dismiss(context: ProjectContext, id: string): Promise<DismissResult> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const result = dismissWarning(getVaultDatabase(context), id);
+          if (result === "dismissed") {
+            emitVaultEvent(context.projectUUID, { type: "vault:warning" });
+          }
+          return result;
+        });
       },
     },
 

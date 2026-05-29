@@ -1,10 +1,14 @@
 import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
 
-export type SyncWarning = {
-  kind: "UNKNOWN_ASPECT_KEY";
-  aspectKey: string;
-  fragmentUuids: string[];
-};
+// A detected vault warning (content only — the stored form adds id/category/timestamps,
+// see warnings/warnings-repo.ts). Discriminated on `kind`.
+export type SyncWarning =
+  | { kind: "UNKNOWN_ASPECT_KEY"; aspectKey: string; fragmentUuids: string[] }
+  | { kind: "WRONG_FORMAT_FILE"; filePath: string }
+  | { kind: "UUID_COLLISION"; filePath: string; collidingPath: string; newUuid: string };
+
+// The only warning kind produced during fragment upsert / rebuild's stats payload.
+export type UnknownAspectKeyWarning = Extract<SyncWarning, { kind: "UNKNOWN_ASPECT_KEY" }>;
 
 export type RebuildStats = {
   fragments: number;
@@ -13,7 +17,7 @@ export type RebuildStats = {
   references: number;
   sequences: number;
   durationMs: number;
-  warnings: SyncWarning[];
+  warnings: UnknownAspectKeyWarning[];
 };
 
 export type IndexedFragment = Omit<Fragment, "content"> & { filePath: string };

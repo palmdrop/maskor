@@ -81,7 +81,7 @@ const overviewRoute = createRoute({
   }),
 });
 
-const validTabs = ["general", "aspects", "notes", "references"] as const;
+const validTabs = ["general", "aspects", "notes", "references", "diagnostics"] as const;
 type ConfigTab = (typeof validTabs)[number];
 
 const projectConfigRoute = createRoute({

@@ -6,6 +6,8 @@ import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ReferencesTab } from "./tabs/ReferencesTab";
 import { AspectsTab } from "./tabs/AspectsTab";
+import { DiagnosticsTab } from "./tabs/DiagnosticsTab";
+import { useWarnings } from "@hooks/useWarnings";
 
 export const ProjectConfigPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/config" });
@@ -13,6 +15,7 @@ export const ProjectConfigPage = () => {
   const navigate = useNavigate({ from: "/projects/$projectId/config" });
   const { data: envelope, isLoading, isError } = useGetProject(projectId);
   const { isRebuilding } = useRebuildStatus();
+  const { warnings } = useWarnings(projectId);
 
   if (isLoading && isRebuilding)
     return <p className="p-6 text-sm text-muted-foreground">Rebuilding project index…</p>;
@@ -35,6 +38,14 @@ export const ProjectConfigPage = () => {
           <TabsTrigger value="aspects">Aspects</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="references">References</TabsTrigger>
+          <TabsTrigger value="diagnostics">
+            Diagnostics
+            {warnings.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 text-xs text-amber-600">
+                {warnings.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="general">
           <GeneralTab project={project} />
@@ -47,6 +58,9 @@ export const ProjectConfigPage = () => {
         </TabsContent>
         <TabsContent value="references">
           <ReferencesTab projectId={projectId} />
+        </TabsContent>
+        <TabsContent value="diagnostics">
+          <DiagnosticsTab projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>

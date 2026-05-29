@@ -67,3 +67,6 @@ export { deleteDraftCommand } from "./drafts/delete-draft";
 export type { DeleteDraftInput } from "./drafts/delete-draft";
 export { restoreDraftCommand } from "./drafts/restore-draft";
 export type { RestoreDraftInput, RestoreDraftResult } from "./drafts/restore-draft";
+
+export { dismissWarningCommand } from "./warnings/dismiss-warning";
+export type { DismissWarningInput } from "./warnings/dismiss-warning";

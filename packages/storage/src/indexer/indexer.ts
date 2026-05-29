@@ -19,7 +19,7 @@ import type {
   IndexedFragment,
   IndexedSequence,
   RebuildStats,
-  SyncWarning,
+  UnknownAspectKeyWarning,
   VaultIndexer,
 } from "./types";
 import {
@@ -38,6 +38,26 @@ import {
 } from "./upserts";
 import { setWordCount } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
+import { deleteStateWarnings, insertWarning, STATE_WARNING_KINDS } from "../warnings/warnings-repo";
+import { detectWrongFormatFiles } from "../warnings/wrong-format";
+
+// Multiple fragments may reference the same unknown aspect key. Collapse the per-fragment
+// warnings into one row per key, merging the affected fragment UUIDs.
+const aggregateUnknownAspectWarnings = (
+  warnings: UnknownAspectKeyWarning[],
+): UnknownAspectKeyWarning[] => {
+  const fragmentUuidsByKey = new Map<string, Set<string>>();
+  for (const warning of warnings) {
+    const existing = fragmentUuidsByKey.get(warning.aspectKey) ?? new Set<string>();
+    for (const uuid of warning.fragmentUuids) existing.add(uuid);
+    fragmentUuidsByKey.set(warning.aspectKey, existing);
+  }
+  return [...fragmentUuidsByKey].map(([aspectKey, uuids]) => ({
+    kind: "UNKNOWN_ASPECT_KEY",
+    aspectKey,
+    fragmentUuids: [...uuids],
+  }));
+};
 
 // --- indexer factory ---
 
@@ -65,7 +85,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
     // rebuild is interrupted. It also batches all fsyncs for a significant performance win.
-    const fragmentWarnings: SyncWarning[] = [];
+    const fragmentWarnings: UnknownAspectKeyWarning[] = [];
 
     vaultDatabase.transaction((tx) => {
       // 1. Upsert aspects.
@@ -139,6 +159,16 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Idempotent: overwrites any existing value with the recomputed one.
     for (const { entity: fragment } of fragmentEntries) {
       setWordCount(vaultDatabase, fragment.uuid as string, computeWordCount(fragment.content));
+    }
+
+    // Refresh state warnings: wipe the re-detectable kinds, then re-insert from this rebuild.
+    // Event warnings (UUID_COLLISION) are deliberately preserved — they are never re-derived.
+    deleteStateWarnings(vaultDatabase, STATE_WARNING_KINDS);
+    for (const warning of detectWrongFormatFiles(vault.root)) {
+      insertWarning(vaultDatabase, warning);
+    }
+    for (const warning of aggregateUnknownAspectWarnings(fragmentWarnings)) {
+      insertWarning(vaultDatabase, warning);
     }
 
     return {

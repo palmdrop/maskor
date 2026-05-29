@@ -50,3 +50,18 @@ export type { Settings, SettingsService, SettingsReadResult } from "./settings";
 
 export { DraftError } from "./drafts";
 export type { DraftErrorCode, ListedDraft } from "./drafts";
+
+export type {
+  StoredWarning,
+  WarningKind,
+  WarningCategory,
+  DismissResult,
+} from "./warnings/warnings-repo";
+export {
+  STATE_WARNING_KINDS,
+  insertWarning,
+  listWarnings,
+  deleteStateWarnings,
+  deleteStateWarningByKey,
+  dismissWarning,
+} from "./warnings/warnings-repo";

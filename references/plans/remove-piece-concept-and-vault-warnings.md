@@ -1,7 +1,7 @@
 # Remove the Piece concept; auto-adopt raw markdown; vault warnings inspector
 
 **Date**: 28-05-2026
-**Status**: In progress (Part 1 done; Part 2 pending)
+**Status**: Done (Part 1 + Part 2 complete)
 **Specs**: `specifications/import-pipeline.md`, `references/dumps/storage-sync.md`, `specifications/_glossary.md`
 
 ---
@@ -10,7 +10,7 @@
 
 Remove the `pieces/` folder mechanism entirely. A raw markdown file dropped into `fragments/`
 is already adopted as a fragment by the watcher (`syncFragment` → `ensureUuid`); this plan makes
-that the *only* adoption path, deletes the redundant `pieces/` staging machinery, and strengthens
+that the _only_ adoption path, deletes the redundant `pieces/` staging machinery, and strengthens
 adoption so a freshly-dropped file gets a complete canonical frontmatter written back.
 
 Wrong-format files (non-`.md`) are never auto-converted — conversion stays in the import pipeline.
@@ -74,7 +74,7 @@ Ships first so the enhanced adoption is in place before the redundant path is re
 - [x] `specifications/_glossary.md` — already updated this session (Piece removed, **Warning** added, dual-sense ambiguity dropped). No further action unless Part 2 naming changes.
 - [x] `specifications/import-pipeline.md`: remove the `pieces/` drop-zone out-of-scope line; rewrite the "Piece transience" section and the "Piece is transient" prior decision to reflect that import creates fragments directly and raw `.md` dropped into `fragments/` is auto-adopted with full frontmatter written back. Update `Shipped`.
 - [x] `references/dumps/storage-sync.md`: mark open question #7 (`pieces/` single-file routing) moot — resolved by removal. Strengthen the external-edit rule: "File created outside Maskor → for fragments, full default frontmatter written back" (not just UUID).
-- [ ] Add a `references/SUGGESTIONS.md` entry only if a genuine surprise surfaces during implementation.
+- [x] Add a `references/SUGGESTIONS.md` entry only if a genuine surprise surfaces during implementation.
 
 > Phase 3 docs may ship in the same PR as Phase 2 if preferred.
 
@@ -88,37 +88,37 @@ clear when fixed): `WRONG_FORMAT_FILE`, `UNKNOWN_ASPECT_KEY`. One is an **event 
 
 ### Phase 4 — Warnings store (storage / DB)
 
-- [ ] New `vault_warnings` table (migration under `packages/storage/src/db/vault/migrations/`): `id`, `kind` (`WRONG_FORMAT_FILE | UNKNOWN_ASPECT_KEY | UUID_COLLISION`), `category` (`state | event`), `payload` (JSON: `filePath`, `aspectKey`, `fragmentUuids`, `collidingPath`, `newUuid`, etc.), `createdAt`, `dismissedAt` (nullable).
-- [ ] Extend the `SyncWarning` union (`packages/storage/src/indexer/types.ts`) with the two new kinds.
-- [ ] Warnings repo module: `insertWarning`, `listWarnings` (exclude dismissed), `deleteStateWarnings(kinds)`, `deleteStateWarningByKey(...)`, `dismissWarning(id)`.
-- [ ] Rebuild integration (`indexer`): at the start of a rebuild, `DELETE` all **state** rows; then re-detect:
-  - `WRONG_FORMAT_FILE` — scan entity folders for non-`.md`, non-dotfile files → insert one row each.
-  - `UNKNOWN_ASPECT_KEY` — the warnings already returned by `upsertFragment` get inserted (currently only logged).
-  - **Preserve** `UUID_COLLISION` (event) rows — rebuild must not wipe them.
-- [ ] Tests: rebuild clears+rebuilds state warnings, preserves event warnings; dismissed rows excluded from list.
+- [x] New `vault_warnings` table (migration under `packages/storage/src/db/vault/migrations/`): `id`, `kind` (`WRONG_FORMAT_FILE | UNKNOWN_ASPECT_KEY | UUID_COLLISION`), `category` (`state | event`), `dedupKey` (per-key dedup for state warnings; NULL for event), `payload` (JSON `SyncWarning`), `createdAt`, `dismissedAt` (nullable). Unique index on `(kind, dedupKey)`.
+- [x] Extend the `SyncWarning` union (`packages/storage/src/indexer/types.ts`) with the two new kinds (`WRONG_FORMAT_FILE`, `UUID_COLLISION`). Added `UnknownAspectKeyWarning = Extract<…>` so `upsertFragment` / `RebuildStats.warnings` stay narrowed and the existing rebuild API schema is unaffected.
+- [x] Warnings repo module (`packages/storage/src/warnings/warnings-repo.ts`): `insertWarning`, `listWarnings` (exclude dismissed), `deleteStateWarnings(kinds)`, `deleteStateWarningByKey(...)`, `dismissWarning(id)` (returns `dismissed | not_found | not_event`).
+- [x] Rebuild integration (`indexer`): after the entity transaction, `deleteStateWarnings(STATE_WARNING_KINDS)`; then re-detect:
+  - `WRONG_FORMAT_FILE` — `detectWrongFormatFiles` (`warnings/wrong-format.ts`) scans entity folders for non-`.md`, non-dotfile files → insert one row each (vault-root-relative path).
+  - `UNKNOWN_ASPECT_KEY` — warnings returned by `upsertFragment`, aggregated per key (merging fragmentUuids), inserted.
+  - **Preserve** `UUID_COLLISION` (event) rows — only state kinds are deleted.
+- [x] Tests (`packages/storage/src/__tests__/warnings.test.ts`): repo insert/list/dedup/dismiss/delete; rebuild clears+rebuilds state warnings, preserves event warnings, dedups unknown-aspect; dismissed rows excluded.
 
 ### Phase 5 — Incremental warning updates in the watcher
 
-- [ ] `syncFragment`: on a resolved UUID collision (`fragment.ts:57–71`), insert a `UUID_COLLISION` event warning (`collidingPath`, `newUuid`). On unknown aspect key, upsert a `UNKNOWN_ASPECT_KEY` state warning (de-duplicated per key); on a clean re-sync, remove it.
-- [ ] `watcher.ts`: make the `if (!absolutePath.endsWith(".md")) return;` guard (line 234) **route-aware** — a non-`.md`, non-dotfile file added under an entity folder records a `WRONG_FORMAT_FILE` state warning instead of being silently dropped; its unlink removes the warning.
-- [ ] New SSE event `vault:warning` added to `VaultSyncEvent` + `VAULT_SYNC_EVENT_TYPES`; emitted after warning-table changes.
-- [ ] Tests: dropping a `.docx` in `fragments/` records a warning + emits `vault:warning`; removing it clears the warning; collision records an event warning.
+- [x] `syncFragment`: on a resolved UUID collision, insert a `UUID_COLLISION` event warning (vault-relative `filePath` + `collidingPath`, `newUuid`) and emit `vault:warning`. After upsert, reconcile `UNKNOWN_ASPECT_KEY` state warnings across every aspect key the fragment touched (previous ∪ new): unknown+referenced → upsert (with current referencing UUIDs); known or unreferenced → clear. Emits `vault:warning` on any change. Rebuild stays authoritative.
+- [x] `watcher.ts`: the non-`.md` guard in both `handleAddOrChange`/`handleUnlink` is **route-aware** — a non-`.md` file under an entity folder records (add) / clears (unlink) a `WRONG_FORMAT_FILE` state warning and emits `vault:warning`. Chokidar already filters dotfiles via its `ignored` regex.
+- [x] New SSE event `vault:warning` (no payload) added to `VaultSyncEvent` + `VAULT_SYNC_EVENT_TYPES`; emitted after warning-table changes.
+- [x] Tests (`packages/storage/src/__tests__/warnings-watcher.test.ts`): `.docx` drop records warning + emits `vault:warning`; removal clears it; collision records an event warning; unknown aspect key recorded then cleared on clean re-sync.
 
 ### Phase 6 — API endpoints + codegen
 
-- [ ] `GET /projects/:projectId/warnings` → list of current (non-dismissed) warnings.
-- [ ] `POST /projects/:projectId/warnings/:id/dismiss` → dismiss an **event** warning; reject/no-op for state warnings (they clear by fixing the cause).
-- [ ] OpenAPI annotations; `bun run codegen` in `packages/frontend`.
-- [ ] Wire `vault:warning` through the SSE route/`useVaultEvents` plumbing.
-- [ ] Integration tests: list, dismiss event warning, dismiss-state-warning rejected, missing project.
+- [x] `GET /projects/:projectId/warnings` → list of current (non-dismissed) warnings (`packages/api/src/routes/warnings.ts`). Storage exposes `warnings.list` / `warnings.dismiss`; repo functions re-exported from `@maskor/storage`.
+- [x] `POST /projects/:projectId/warnings/{id}/dismiss` → dismisses an **event** warning (200 + remaining list); state warning → 400; unknown id → 404. Goes through `dismissWarningCommand` (no action-log entry, like swap) per the commands convention.
+- [x] OpenAPI annotations (`schemas/warnings.ts`, discriminated-union `VaultWarning`); `bun run codegen` ran against a temporarily-started API → generated `useListWarnings` / `useDismissWarning` + `VaultWarning` union model.
+- [x] `vault:warning` SSE: the SSE route (`routes/events.ts`) streams all `VaultSyncEvent` types generically, so no route change was needed; `useVaultEvents` handling lands in Phase 7.
+- [x] Integration tests (`packages/api/src/__tests__/routes/warnings.test.ts`): list empty, list state warning after rebuild, missing project 404; dismiss event warning 200, dismiss-state-warning 400, unknown id 404.
 
 ### Phase 7 — Frontend warnings inspector
 
-- [ ] New `DiagnosticsTab.tsx` under `packages/frontend/src/pages/ProjectConfigPage/tabs/` (sibling to General/Aspects/Notes/References).
-- [ ] `useWarnings` hook (orval-generated query), invalidated by `useVaultEvents` on `vault:warning`.
-- [ ] Render grouped by kind, each row showing context (file path / aspect key / colliding path) and a short fix hint. Event warnings (`UUID_COLLISION`) get a Dismiss button; state warnings do not.
-- [ ] Optional: a count badge on the config nav. Sidepanel surface deferred.
-- [ ] Tests: renders warnings, dismiss button only on event warnings, live update on `vault:warning`.
+- [x] New `DiagnosticsTab.tsx` under `packages/frontend/src/pages/ProjectConfigPage/tabs/` (sibling to General/Aspects/Notes/References); registered in `ProjectConfigPage/index.tsx` and the `diagnostics` tab added to `validTabs` in `router.ts`.
+- [x] `useWarnings` hook (`src/hooks/useWarnings.ts`, wraps orval `useListWarnings`), live-invalidated by `useVaultEvents` — `vault:warning` added to its event-type list (broad project-scoped invalidation).
+- [x] Renders grouped by kind, each row showing context (file path / aspect key + fragment count / colliding path) and a short fix hint. `UUID_COLLISION` (event) rows get a Dismiss button; state warnings do not. Dismiss goes through `useDismissWarning` directly (per-item list action, consistent with existing config-tab mutations).
+- [x] Count badge on the Diagnostics tab trigger.
+- [x] Tests (`tabs/__tests__/DiagnosticsTab.test.tsx`): healthy empty state, renders grouped warnings with context, Dismiss only on event warnings, dismiss calls mutation with the warning id.
 
 ---
 

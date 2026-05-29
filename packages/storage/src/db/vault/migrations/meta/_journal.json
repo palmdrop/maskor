@@ -120,6 +120,13 @@
       "when": 1748390400000,
       "tag": "20260526_drop_aspect_category",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1748476800000,
+      "tag": "20260528_create_vault_warnings",
+      "breakpoints": true
     }
   ]
 }

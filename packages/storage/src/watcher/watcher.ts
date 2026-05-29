@@ -15,6 +15,7 @@ import {
   deleteNoteByFilePath,
   deleteReferenceByFilePath,
 } from "../indexer/upserts";
+import { insertWarning, deleteStateWarningByKey } from "../warnings/warnings-repo";
 import { eq } from "drizzle-orm";
 import { createRenameBuffer } from "./utils/rename-buffer";
 import { createInFlightTracker } from "./utils/in-flight-tracker";
@@ -212,9 +213,45 @@ export const createVaultWatcher = (
 
   // --- chokidar event handlers ---
 
+  // True when the path sits under an entity folder (fragments/aspects/notes/references).
+  // Chokidar already filters dotfiles, so any non-`.md` path matching a route is a wrong-format
+  // file the user dropped in by mistake.
+  const matchesEntityRoute = (vaultRelativePath: string): boolean =>
+    routes.some((route) => vaultRelativePath.startsWith(route.prefix));
+
+  // Vault-root-relative, forward-slash key — matches the keys produced by the rebuild scan
+  // (warnings/wrong-format.ts) so add/unlink reconcile against the same row.
+  const toWarningKey = (vaultRelativePath: string): string =>
+    vaultRelativePath.split(path.sep).join("/");
+
   const handleAddOrChange = async (absolutePath: string): Promise<void> => {
     if (isPaused) return;
-    if (!absolutePath.endsWith(".md")) return;
+    if (!absolutePath.endsWith(".md")) {
+      const vaultRelativePath = path.relative(vaultRoot, absolutePath);
+      if (!matchesEntityRoute(vaultRelativePath)) return;
+      // Routed through inFlight + try/catch like the .md path so pause()/stop() drains it and a
+      // late teardown event (DB file already gone) logs rather than throwing an unhandled error.
+      inFlight.enter();
+      try {
+        insertWarning(vaultDatabase, {
+          kind: "WRONG_FORMAT_FILE",
+          filePath: toWarningKey(vaultRelativePath),
+        });
+        emit({ type: "vault:warning" });
+        log.warn({ filePath: vaultRelativePath }, "watcher: wrong-format file in entity folder");
+      } catch (error) {
+        log.error(
+          {
+            filePath: absolutePath,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          "watcher: unhandled error recording wrong-format warning — skipping",
+        );
+      } finally {
+        inFlight.exit();
+      }
+      return;
+    }
     log.info({ filePath: absolutePath }, "watcher: add or change");
 
     const vaultRelativePath = path.relative(vaultRoot, absolutePath);
@@ -239,7 +276,33 @@ export const createVaultWatcher = (
 
   const handleUnlink = async (absolutePath: string): Promise<void> => {
     if (isPaused) return;
-    if (!absolutePath.endsWith(".md")) return;
+    if (!absolutePath.endsWith(".md")) {
+      const vaultRelativePath = path.relative(vaultRoot, absolutePath);
+      if (!matchesEntityRoute(vaultRelativePath)) return;
+      inFlight.enter();
+      try {
+        if (
+          deleteStateWarningByKey(
+            vaultDatabase,
+            "WRONG_FORMAT_FILE",
+            toWarningKey(vaultRelativePath),
+          )
+        ) {
+          emit({ type: "vault:warning" });
+        }
+      } catch (error) {
+        log.error(
+          {
+            filePath: absolutePath,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          "watcher: unhandled error clearing wrong-format warning — skipping",
+        );
+      } finally {
+        inFlight.exit();
+      }
+      return;
+    }
 
     const vaultRelativePath = path.relative(vaultRoot, absolutePath);
     const route = routes.find((r) => vaultRelativePath.startsWith(r.prefix));

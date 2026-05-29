@@ -155,6 +155,27 @@ export const sectionsTable = sqliteTable(
   ],
 );
 
+// Vault warnings surfaced to the user on the project config diagnostics tab.
+// `category` distinguishes state warnings (re-detectable on rebuild, cleared when fixed)
+// from event warnings (auto-resolved, persist until dismissed, never re-derived).
+// `dedupKey` deduplicates state warnings per natural key (filePath / aspectKey); event
+// warnings store NULL so multiple rows coexist. `payload` is the JSON SyncWarning.
+export const vaultWarningsTable = sqliteTable(
+  "vault_warnings",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(), // WRONG_FORMAT_FILE | UNKNOWN_ASPECT_KEY | UUID_COLLISION
+    category: text("category").notNull(), // state | event
+    dedupKey: text("dedup_key"),
+    payload: text("payload", { mode: "json" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    dismissedAt: integer("dismissed_at", { mode: "timestamp" }),
+  },
+  // SQLite treats NULLs as distinct in a unique index, so event warnings (dedupKey NULL)
+  // are never deduplicated; only state warnings collide on (kind, dedupKey).
+  (table) => [uniqueIndex("vault_warnings_kind_dedup_unique").on(table.kind, table.dedupKey)],
+);
+
 export const fragmentPositionsTable = sqliteTable(
   "fragment_positions",
   {

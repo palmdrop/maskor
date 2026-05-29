@@ -18,7 +18,7 @@ import {
 } from "../db/vault/schema";
 import type * as schema from "../db/vault/schema";
 import type { VaultDatabase } from "../db/vault";
-import type { SyncWarning } from "./types";
+import type { UnknownAspectKeyWarning } from "./types";
 import { hashContent } from "../utils/hash";
 
 // Loads all aspect keys from the DB.
@@ -158,7 +158,7 @@ export const upsertFragment = (
   filePath: string,
   rawContent: string,
   knownAspectKeys: Set<string>,
-): SyncWarning[] => {
+): UnknownAspectKeyWarning[] => {
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
 
@@ -218,7 +218,7 @@ export const upsertFragment = (
   // Eager stats row creation — every fragment gets a row on first index/upsert.
   tx.insert(fragmentStatsTable).values({ fragmentUuid: fragment.uuid }).onConflictDoNothing().run();
 
-  return aspectEntries.reduce<SyncWarning[]>((acc, [aspectKey]) => {
+  return aspectEntries.reduce<UnknownAspectKeyWarning[]>((acc, [aspectKey]) => {
     if (knownAspectKeys.has(aspectKey)) {
       return acc;
     }
