@@ -40,7 +40,7 @@ export const ProjectConfigPage = () => {
           <TabsTrigger value="references">References</TabsTrigger>
           <TabsTrigger value="diagnostics">
             Diagnostics
-            {warnings.length > 0 && (
+            {!!warnings.length && (
               <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 text-xs text-amber-600">
                 {warnings.length}
               </span>

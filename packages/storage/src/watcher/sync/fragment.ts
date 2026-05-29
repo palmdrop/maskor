@@ -1,4 +1,4 @@
-import type { Logger, VaultSyncEvent } from "@maskor/shared";
+import type { Fragment, Logger, VaultSyncEvent } from "@maskor/shared";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
 import { parseFile } from "../../vault/markdown/parse";
@@ -9,9 +9,9 @@ import {
   loadKnownAspectKeys,
   upsertFragment,
   deleteFragmentByFilePath,
-  findFragmentUuidsByAspectKey,
 } from "../../indexer/upserts";
-import { insertWarning, deleteStateWarningByKey } from "../../warnings/warnings-repo";
+import { insertWarning } from "../../warnings/warnings-repo";
+import { reconcileUnknownAspectKeyWarnings } from "../../warnings/reconcile";
 import { eq } from "drizzle-orm";
 import { findFragmentUuidCollision } from "../utils/fragments";
 import { readFileWithEnoentGuard } from "../utils/file";
@@ -56,6 +56,9 @@ export const syncFragment = async (
   // Collision check only needed when UUID was already present (not freshly minted).
   let resolvedUuid = uuid;
   let resolvedRawContent = rawContent;
+  // Set during adoption so the DB upsert below reuses the exact fragment that was serialized to
+  // disk — avoids a second fromFile() call whose fresh `new Date()` would drift updatedAt apart.
+  let adoptedFragment: Fragment | null = null;
   if (!wasAssigned) {
     const collision = findFragmentUuidCollision(vaultDatabase, uuid, entityRelativePath);
     if (collision) {
@@ -85,7 +88,7 @@ export const syncFragment = async (
     // New fragment adoption: write back complete canonical frontmatter.
     // fragmentMapper.fromFile derives read-time defaults (readiness, notes, references, etc.),
     // preserving any fields the user already supplied. The UUID was already assigned above.
-    const adoptedFragment = fragmentMapper.fromFile(parsed, entityRelativePath);
+    adoptedFragment = fragmentMapper.fromFile(parsed, entityRelativePath);
     const { frontmatter, inlineFields, body } = fragmentMapper.toFile(adoptedFragment);
     const canonicalContent = serializeFile({ frontmatter, inlineFields, body });
     await Bun.write(absolutePath, canonicalContent);
@@ -106,7 +109,7 @@ export const syncFragment = async (
     return;
   }
 
-  const fragment = fragmentMapper.fromFile(parsed, entityRelativePath);
+  const fragment = adoptedFragment ?? fragmentMapper.fromFile(parsed, entityRelativePath);
   const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
   // Aspect keys this fragment referenced before the upsert. Combined with its new keys, these
@@ -133,31 +136,15 @@ export const syncFragment = async (
     );
   }
 
-  // Reconcile UNKNOWN_ASPECT_KEY state warnings for every key this fragment touched. A key that
-  // is still unknown and referenced by ≥1 fragment keeps a warning (with the current referencing
-  // UUIDs); a key that became known or is no longer referenced has its warning cleared. Rebuild
-  // remains authoritative — this is best-effort incremental upkeep.
+  // Reconcile UNKNOWN_ASPECT_KEY state warnings for every key this fragment touched (previous ∪
+  // new). Rebuild remains authoritative — this is best-effort incremental upkeep.
   const affectedAspectKeys = new Set<string>([
     ...previousAspectKeys,
     ...Object.keys(fragment.aspects),
   ]);
-  let warningsChanged = false;
-  for (const aspectKey of affectedAspectKeys) {
-    const referencingUuids = knownAspectKeys.has(aspectKey)
-      ? []
-      : findFragmentUuidsByAspectKey(vaultDatabase, aspectKey);
-    if (referencingUuids.length > 0) {
-      insertWarning(vaultDatabase, {
-        kind: "UNKNOWN_ASPECT_KEY",
-        aspectKey,
-        fragmentUuids: referencingUuids,
-      });
-      warningsChanged = true;
-    } else if (deleteStateWarningByKey(vaultDatabase, "UNKNOWN_ASPECT_KEY", aspectKey)) {
-      warningsChanged = true;
-    }
+  if (reconcileUnknownAspectKeyWarnings(vaultDatabase, affectedAspectKeys, knownAspectKeys)) {
+    emit({ type: "vault:warning" });
   }
-  if (warningsChanged) emit({ type: "vault:warning" });
 
   log.debug({ filePath: entityRelativePath }, "watcher: fragment synced");
 };
@@ -167,8 +154,32 @@ export const unlinkFragment = (
   emit: (event: VaultSyncEvent) => void,
   entityRelativePath: string,
 ): void => {
+  // Capture the aspect keys this fragment referenced before deleting it, so we can reconcile their
+  // UNKNOWN_ASPECT_KEY warnings afterwards: a removed fragment may have been the last referencer of
+  // an unknown key, which should clear the warning.
+  const storedRow = vaultDatabase
+    .select({ uuid: fragmentsTable.uuid })
+    .from(fragmentsTable)
+    .where(eq(fragmentsTable.filePath, entityRelativePath))
+    .get();
+
+  const previousAspectKeys = storedRow
+    ? vaultDatabase
+        .select({ aspectKey: fragmentAspectsTable.aspectKey })
+        .from(fragmentAspectsTable)
+        .where(eq(fragmentAspectsTable.fragmentUuid, storedRow.uuid))
+        .all()
+        .map((row) => row.aspectKey)
+    : [];
+
   vaultDatabase.transaction((tx) => {
     deleteFragmentByFilePath(tx, entityRelativePath);
   });
+
   emit({ type: "fragment:deleted", filePath: entityRelativePath });
+
+  const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+  if (reconcileUnknownAspectKeyWarnings(vaultDatabase, previousAspectKeys, knownAspectKeys)) {
+    emit({ type: "vault:warning" });
+  }
 };

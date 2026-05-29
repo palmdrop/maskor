@@ -58,7 +58,9 @@ const WarningRow = ({ projectId, warning }: { projectId: string; warning: VaultW
   const dismissWarning = useDismissWarning();
 
   const handleDismiss = async () => {
-    if (dismissWarning.isPending) return;
+    if (dismissWarning.isPending) {
+      return;
+    }
     await dismissWarning.mutateAsync({ projectId, id: warning.id });
     await queryClient.invalidateQueries({ queryKey: getListWarningsQueryKey(projectId) });
   };
@@ -87,7 +89,7 @@ export const DiagnosticsTab = ({ projectId }: { projectId: string }) => {
     return <p className="p-4 text-sm text-muted-foreground">Loading…</p>;
   }
 
-  if (warnings.length === 0) {
+  if (!warnings.length) {
     return <p className="p-4 text-sm text-muted-foreground">No warnings. The vault is healthy.</p>;
   }
 
@@ -95,7 +97,9 @@ export const DiagnosticsTab = ({ projectId }: { projectId: string }) => {
     <div className="flex flex-col gap-6 p-4">
       {KIND_ORDER.map((kind) => {
         const group = warnings.filter((warning) => warning.kind === kind);
-        if (group.length === 0) return null;
+        if (!group.length) {
+          return null;
+        }
         const meta = KIND_META[kind];
         const Icon = meta.icon;
         return (

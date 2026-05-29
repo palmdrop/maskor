@@ -10,6 +10,7 @@ import type { VaultWatcher } from "../watcher/types";
 import type { VaultSyncEvent } from "@maskor/shared";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 import { listWarnings } from "../warnings/warnings-repo";
+import { loadKnownAspectKeys, findFragmentUuidsByAspectKey } from "../indexer/upserts";
 
 const waitFor = (predicate: () => boolean, timeoutMs = 2000): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -150,5 +151,91 @@ describe("watcher — unknown aspect key", () => {
     expect(
       listWarnings(vaultDatabase).filter((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
     ).toHaveLength(0);
+  });
+
+  it("clears the warning when the missing aspect is created (no fragment edit needed)", async () => {
+    const { vault, vaultDatabase } = await rebuildAndWatch();
+
+    const target = (await vault.fragments.readAll())[0]!;
+    await vault.fragments.write({
+      ...target,
+      aspects: { ...target.aspects, "phantom-aspect": { weight: 0.5 } },
+    });
+    await waitFor(() =>
+      listWarnings(vaultDatabase).some((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    );
+
+    // Creating the matching aspect makes the key known → the warning clears on the aspect sync,
+    // without touching the referencing fragment.
+    await vault.aspects.write({ uuid: crypto.randomUUID(), key: "phantom-aspect", notes: [] });
+    await waitFor(
+      () => !listWarnings(vaultDatabase).some((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    );
+
+    expect(
+      listWarnings(vaultDatabase).filter((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    ).toHaveLength(0);
+  });
+
+  it("clears the warning when the only fragment referencing the unknown key is deleted", async () => {
+    const { vault, vaultDatabase } = await rebuildAndWatch();
+
+    const base = (await vault.fragments.readAll())[0]!;
+    await vault.fragments.write({
+      ...base,
+      uuid: crypto.randomUUID(),
+      key: "delete-me",
+      aspects: { "phantom-aspect": { weight: 0.5 } },
+    });
+    await waitFor(() =>
+      listWarnings(vaultDatabase).some((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    );
+
+    unlinkSync(join(vaultDir, "fragments", "delete-me.md"));
+    await waitFor(
+      () => !listWarnings(vaultDatabase).some((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    );
+
+    expect(
+      listWarnings(vaultDatabase).filter((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    ).toHaveLength(0);
+  });
+
+  it("records the warning when a referenced aspect is deleted", async () => {
+    const { vault, vaultDatabase } = await rebuildAndWatch();
+
+    // A fresh aspect plus a fragment referencing it — both known, so no warning yet.
+    await vault.aspects.write({ uuid: crypto.randomUUID(), key: "temp-aspect", notes: [] });
+    await waitFor(() => loadKnownAspectKeys(vaultDatabase).has("temp-aspect"));
+
+    const base = (await vault.fragments.readAll())[0]!;
+    await vault.fragments.write({
+      ...base,
+      uuid: crypto.randomUUID(),
+      key: "refs-temp",
+      aspects: { "temp-aspect": { weight: 0.5 } },
+    });
+    await waitFor(() => !!findFragmentUuidsByAspectKey(vaultDatabase, "temp-aspect").length);
+    expect(
+      listWarnings(vaultDatabase).filter((warning) => warning.kind === "UNKNOWN_ASPECT_KEY"),
+    ).toHaveLength(0);
+
+    // Deleting the aspect makes the key unknown again while a fragment still references it.
+    // The delete commits after the rename buffer expires (~500ms), then onDeleted reconciles.
+    unlinkSync(join(vaultDir, "aspects", "temp-aspect.md"));
+    await waitFor(
+      () =>
+        listWarnings(vaultDatabase).some(
+          (warning) =>
+            warning.kind === "UNKNOWN_ASPECT_KEY" && warning.aspectKey === "temp-aspect",
+        ),
+      3000,
+    );
+
+    const unknown = listWarnings(vaultDatabase).filter(
+      (warning) => warning.kind === "UNKNOWN_ASPECT_KEY",
+    );
+    expect(unknown).toHaveLength(1);
+    expect(unknown[0]).toMatchObject({ aspectKey: "temp-aspect" });
   });
 });

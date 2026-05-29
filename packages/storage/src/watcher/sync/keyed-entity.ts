@@ -28,6 +28,10 @@ export type EntityConfig<TEntity extends { uuid: string; key: string }> = {
   syncedEventType: "aspect:synced" | "note:synced" | "reference:synced";
   deletedEventType: "aspect:deleted" | "note:deleted" | "reference:deleted";
   emit: (event: VaultSyncEvent) => void;
+  // Optional post-commit hooks. Aspects use these to reconcile UNKNOWN_ASPECT_KEY warnings when a
+  // key becomes known (onSynced) or unknown (onDeleted); notes/references leave them unset.
+  onSynced?: (entity: TEntity) => void;
+  onDeleted?: (deletedKey: string) => void;
 };
 
 export const syncKeyedEntity = async <TEntity extends { uuid: string; key: string }>(
@@ -102,6 +106,8 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
     config.upsert(tx, entity, entityRelativePath, rawContent);
   });
 
+  config.onSynced?.(entity);
+
   // A returning entity: the UUID was deleted from this entity-type's table
   // recently (within the tracker's TTL) and is now back. The flag rides on the
   // synced event so action-log consumers and observability tooling can
@@ -139,5 +145,8 @@ export const unlinkKeyedEntity = <TEntity extends { uuid: string; key: string }>
     });
     config.recentlyDeleted.record(storedRow.uuid);
     config.emit({ type: config.deletedEventType, filePath: entityRelativePath });
+    // Fires only when the deletion actually commits — a rename cancels this callback, so an
+    // aspect's key disappearing here is genuine and may now leave fragments referencing it.
+    config.onDeleted?.(storedRow.key);
   });
 };

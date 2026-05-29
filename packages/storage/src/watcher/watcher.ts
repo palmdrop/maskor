@@ -8,6 +8,7 @@ import * as aspectMapper from "../vault/markdown/mappers/aspect";
 import * as noteMapper from "../vault/markdown/mappers/note";
 import * as referenceMapper from "../vault/markdown/mappers/reference";
 import {
+  loadKnownAspectKeys,
   upsertAspect,
   upsertNote,
   upsertReference,
@@ -16,6 +17,7 @@ import {
   deleteReferenceByFilePath,
 } from "../indexer/upserts";
 import { insertWarning, deleteStateWarningByKey } from "../warnings/warnings-repo";
+import { reconcileUnknownAspectKeyWarnings } from "../warnings/reconcile";
 import { eq } from "drizzle-orm";
 import { createRenameBuffer } from "./utils/rename-buffer";
 import { createInFlightTracker } from "./utils/in-flight-tracker";
@@ -66,6 +68,16 @@ export const createVaultWatcher = (
   const noteRecentlyDeleted = createRecentlyDeletedTracker();
   const referenceRecentlyDeleted = createRecentlyDeletedTracker();
 
+  // Reconcile UNKNOWN_ASPECT_KEY warnings for a single aspect key after the aspects table changed
+  // (an aspect was created — key now known — or deleted — key now unknown). Reads the fresh known
+  // set so the membership check reflects the committed state.
+  const reconcileAspectKey = (aspectKey: string): void => {
+    const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+    if (reconcileUnknownAspectKeyWarnings(vaultDatabase, [aspectKey], knownAspectKeys)) {
+      emit({ type: "vault:warning" });
+    }
+  };
+
   // --- entity configs ---
 
   const aspectConfig: EntityConfig<Aspect> = {
@@ -95,6 +107,8 @@ export const createVaultWatcher = (
     syncedEventType: "aspect:synced",
     deletedEventType: "aspect:deleted",
     emit,
+    onSynced: (aspect) => reconcileAspectKey(aspect.key),
+    onDeleted: (deletedKey) => reconcileAspectKey(deletedKey),
   };
 
   const noteConfig: EntityConfig<Note> = {
@@ -224,9 +238,16 @@ export const createVaultWatcher = (
   const toWarningKey = (vaultRelativePath: string): string =>
     vaultRelativePath.split(path.sep).join("/");
 
-  const handleAddOrChange = async (absolutePath: string): Promise<void> => {
+  const handleAddOrChange = async (
+    absolutePath: string,
+    eventType: "add" | "change",
+  ): Promise<void> => {
     if (isPaused) return;
     if (!absolutePath.endsWith(".md")) {
+      // A wrong-format file is flagged once, on `add`. Editing an already-flagged file fires
+      // `change` and needs no new row — skip it to avoid redundant upserts and `vault:warning`
+      // churn. Pre-existing wrong-format files are caught by the rebuild scan instead.
+      if (eventType === "change") return;
       const vaultRelativePath = path.relative(vaultRoot, absolutePath);
       if (!matchesEntityRoute(vaultRelativePath)) return;
       // Routed through inFlight + try/catch like the .md path so pause()/stop() drains it and a
@@ -332,8 +353,8 @@ export const createVaultWatcher = (
       const { watched, ...chokidarOptions } = createChokidarConfig(vaultRoot);
       watcher = chokidar.watch(watched, chokidarOptions);
 
-      watcher.on("add", handleAddOrChange);
-      watcher.on("change", handleAddOrChange);
+      watcher.on("add", (changedPath) => handleAddOrChange(changedPath, "add"));
+      watcher.on("change", (changedPath) => handleAddOrChange(changedPath, "change"));
       watcher.on("unlink", handleUnlink);
 
       watcher.on("error", (error) => {
