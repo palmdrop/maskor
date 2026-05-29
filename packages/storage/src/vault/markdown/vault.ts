@@ -1,8 +1,10 @@
 import type { Aspect, Logger, Note, Reference, Sequence } from "@maskor/shared";
-import type { Vault, VaultConfig } from "../types";
+import type { Vault, VaultConfig, WithFilePath } from "../types";
 import { VaultError } from "../types";
+import type { ParsedFile } from "./parse";
 import { parseFile } from "./parse";
 import { serializeFile } from "./serialize";
+import { ensureUuid, writeBackFragmentFrontmatter } from "./adopt";
 import * as fragmentMapper from "./mappers/fragment";
 import * as aspectMapper from "./mappers/aspect";
 import * as noteMapper from "./mappers/note";
@@ -131,6 +133,31 @@ export const createVault = (config: VaultConfig): Vault => {
   const listYamlFiles = (absoluteDirectory: string): Promise<string[]> =>
     scanFiles("*.yaml", absoluteDirectory, "yaml");
 
+  // Reads every markdown file under a keyed-entity subdir (aspects/notes/references), adopting any
+  // that lack Maskor metadata: a missing UUID is minted and written back to frontmatter. Keyed
+  // entities need nothing beyond the UUID — their read-time mappers default every other field.
+  // Used only by readAllWithFilePaths (the rebuild input); the watcher handles incremental adoption
+  // itself. The returned rawContent reflects what is on disk after any writeback, so the indexer
+  // stores a contentHash the hash-guard will match on the next watcher event.
+  const readAdoptedKeyedEntities = async <TEntity extends { uuid: string }>(
+    subdir: string,
+    toAbsolute: (relativePath: string) => string,
+    fromFile: (parsed: ParsedFile, filePath: string) => TEntity,
+    label: string,
+  ): Promise<Array<WithFilePath<TEntity>>> => {
+    const files = await listMarkdownFiles(vaultPath(subdir), { recursive: true });
+    return Promise.all(
+      files.map(async (filePath) => {
+        const absolutePath = toAbsolute(filePath);
+        const initialRawContent = await readMarkdown(absolutePath);
+        const parsed = parseFile(initialRawContent);
+        const { rawContent } = await ensureUuid(parsed, absolutePath, initialRawContent, log, label);
+        const entity = fromFile(parsed, filePath);
+        return { entity, filePath, rawContent };
+      }),
+    );
+  };
+
   return {
     root: config.root,
     fragments: {
@@ -159,10 +186,24 @@ export const createVault = (config: VaultConfig): Vault => {
         return Promise.all(
           [...active, ...discarded].map(async (filePath) => {
             const absolutePath = toAbsoluteFragment(filePath);
-            const rawContent = await readMarkdown(absolutePath);
-            const parsed = parseFile(rawContent);
+            const initialRawContent = await readMarkdown(absolutePath);
+            const parsed = parseFile(initialRawContent);
+            const { wasAssigned, rawContent: afterUuid } = await ensureUuid(
+              parsed,
+              absolutePath,
+              initialRawContent,
+              log,
+              "fragment",
+            );
+            // Freshly adopted fragment: write back the full canonical frontmatter, mirroring the
+            // watcher's adoption path. Reuse the returned fragment so the upsert's updatedAt matches
+            // what was serialized to disk.
+            if (wasAssigned) {
+              const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, filePath);
+              return { entity: adopted.fragment, filePath, rawContent: adopted.rawContent };
+            }
             const entity = fragmentMapper.fromFile(parsed, filePath);
-            return { entity, filePath, rawContent };
+            return { entity, filePath, rawContent: afterUuid };
           }),
         );
       },
@@ -249,15 +290,7 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("aspects"), { recursive: true });
-        return Promise.all(
-          files.map(async (filePath) => {
-            const absolutePath = toAbsoluteAspect(filePath);
-            const rawContent = await readMarkdown(absolutePath);
-            const entity = aspectMapper.fromFile(parseFile(rawContent), filePath);
-            return { entity, filePath, rawContent };
-          }),
-        );
+        return readAdoptedKeyedEntities("aspects", toAbsoluteAspect, aspectMapper.fromFile, "aspect");
       },
 
       async write(aspect: Aspect) {
@@ -306,15 +339,7 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("notes"), { recursive: true });
-        return Promise.all(
-          files.map(async (filePath) => {
-            const absolutePath = toAbsoluteNote(filePath);
-            const rawContent = await readMarkdown(absolutePath);
-            const entity = noteMapper.fromFile(parseFile(rawContent), filePath);
-            return { entity, filePath, rawContent };
-          }),
-        );
+        return readAdoptedKeyedEntities("notes", toAbsoluteNote, noteMapper.fromFile, "note");
       },
 
       async write(note: Note) {
@@ -361,14 +386,11 @@ export const createVault = (config: VaultConfig): Vault => {
       },
 
       async readAllWithFilePaths() {
-        const files = await listMarkdownFiles(vaultPath("references"), { recursive: true });
-        return Promise.all(
-          files.map(async (filePath) => {
-            const absolutePath = toAbsoluteReference(filePath);
-            const rawContent = await readMarkdown(absolutePath);
-            const entity = referenceMapper.fromFile(parseFile(rawContent), filePath);
-            return { entity, filePath, rawContent };
-          }),
+        return readAdoptedKeyedEntities(
+          "references",
+          toAbsoluteReference,
+          referenceMapper.fromFile,
+          "reference",
         );
       },
 

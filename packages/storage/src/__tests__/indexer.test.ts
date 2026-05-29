@@ -1,9 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { eq } from "drizzle-orm";
 import { createVault } from "../vault/markdown";
+import { parseFile } from "../vault/markdown/parse";
 import { createVaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import { upsertAspect, upsertNote, upsertReference } from "../indexer/upserts";
@@ -656,5 +665,74 @@ describe("adoption — nested entity discovery and category derivation", () => {
     const fooRef = await indexer.references.findByKey("2024-foo");
     expect(fooRef).not.toBeNull();
     expect(fooRef?.category).toBe("articles");
+  });
+
+  it("rebuild mints and writes back metadata for files lacking UUIDs (Obsidian-style adoption)", async () => {
+    // Files with NO frontmatter UUID and no .maskor/ — the real adoption case for a hand-prepared
+    // Obsidian vault. The earlier test cheated by pre-assigning UUIDs.
+    writeFileSync(join(adoptDir, "fragments/intro.md"), "# Intro\n\nThe beginning.\n");
+    writeFileSync(join(adoptDir, "aspects/places/london.md"), '---\ncolor: "#abcdef"\n---\n\nA grey city.\n');
+    writeFileSync(join(adoptDir, "aspects/characters/anna.md"), "Protagonist.\n");
+    writeFileSync(join(adoptDir, "notes/research/neuroscience.md"), "Memory notes.\n");
+    writeFileSync(join(adoptDir, "references/articles/2024-foo.md"), "Foo et al.\n");
+
+    const vault = createVault({ root: adoptDir });
+    const vaultDatabase = createVaultDatabase(adoptDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+
+    // Must not throw on the uuid NOT NULL constraint.
+    const stats = await indexer.rebuild();
+    expect(stats.fragments).toBe(1);
+    expect(stats.aspects).toBe(2);
+    expect(stats.notes).toBe(1);
+    expect(stats.references).toBe(1);
+
+    // Every file now carries a UUID on disk.
+    const fragmentFrontmatter = parseFile(
+      readFileSync(join(adoptDir, "fragments/intro.md"), "utf8"),
+    ).frontmatter;
+    expect(fragmentFrontmatter.uuid).toBeTruthy();
+    // Fragments get full canonical frontmatter.
+    expect(fragmentFrontmatter).toHaveProperty("updatedAt");
+    expect(fragmentFrontmatter.readiness).toBe(0);
+    expect(fragmentFrontmatter).toHaveProperty("notes");
+    expect(fragmentFrontmatter).toHaveProperty("references");
+
+    // Keyed entity: UUID minted, user-supplied field preserved.
+    const londonFrontmatter = parseFile(
+      readFileSync(join(adoptDir, "aspects/places/london.md"), "utf8"),
+    ).frontmatter;
+    expect(londonFrontmatter.uuid).toBeTruthy();
+    expect(londonFrontmatter.color).toBe("#abcdef");
+
+    // Body-only keyed entity also adopted.
+    const annaFrontmatter = parseFile(
+      readFileSync(join(adoptDir, "aspects/characters/anna.md"), "utf8"),
+    ).frontmatter;
+    expect(annaFrontmatter.uuid).toBeTruthy();
+
+    // All entities indexed with categories derived from their subfolder paths.
+    expect((await indexer.aspects.findByKey("london"))?.category).toBe("places");
+    expect((await indexer.notes.findByKey("neuroscience"))?.category).toBe("research");
+    expect((await indexer.references.findByKey("2024-foo"))?.category).toBe("articles");
+    expect(await indexer.fragments.findByUUID(fragmentFrontmatter.uuid as string)).not.toBeNull();
+  });
+
+  it("rebuild is idempotent — a second pass writes nothing for already-stamped files", async () => {
+    writeFileSync(join(adoptDir, "fragments/intro.md"), "# Intro\n\nThe beginning.\n");
+    writeFileSync(join(adoptDir, "aspects/places/london.md"), "A grey city.\n");
+
+    const vault = createVault({ root: adoptDir });
+    const vaultDatabase = createVaultDatabase(adoptDir);
+    const indexer = createVaultIndexer(vaultDatabase, vault);
+
+    await indexer.rebuild();
+    const fragmentAfterFirst = readFileSync(join(adoptDir, "fragments/intro.md"), "utf8");
+    const aspectAfterFirst = readFileSync(join(adoptDir, "aspects/places/london.md"), "utf8");
+
+    await indexer.rebuild();
+    // Second rebuild sees existing UUIDs → no writeback → byte-identical files.
+    expect(readFileSync(join(adoptDir, "fragments/intro.md"), "utf8")).toBe(fragmentAfterFirst);
+    expect(readFileSync(join(adoptDir, "aspects/places/london.md"), "utf8")).toBe(aspectAfterFirst);
   });
 });

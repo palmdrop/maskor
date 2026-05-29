@@ -52,13 +52,13 @@ Self-contained; ships alone.
 
 ### Phase 3 — Rebuild mints missing metadata (fixes failure #2)
 
-- [ ] In `rebuild()` Phase 1 (the async read), for every entity (fragment, aspect, note, reference) whose file lacks a frontmatter UUID, mint + write back using the Phase 2 helpers, and feed the **rewritten raw content** (and the post-writeback entity) into the upsert so the stored `contentHash` matches what is on disk.
-- [ ] Apply to all four entity types, including fragments (per the adopt-all decision). Keep rebuild's single transaction for the DB writes; file write-backs happen in the async read phase, before the transaction.
-- [ ] Files that already carry a UUID are left untouched on disk (DB upsert only) — no normalization churn, consistent with the watcher.
-- [ ] Confirm lock safety: `rebuild()` is intentionally outside `withVaultWriteLock` (runs in `resolveProject` before any user write, and inside `drafts.restore` which already holds the lock). Writing back during rebuild is safe in both; document the reasoning where the write-back is introduced.
-- [ ] Idempotence: a second rebuild over a now-stamped vault performs no file writes (every file has a UUID); the hash-guard makes any later watcher event a no-op.
-- [ ] Tests: see Testing section.
-- [ ] `git commit` Phase 3.
+- [x] In `rebuild()` Phase 1 (the async read), for every entity (fragment, aspect, note, reference) whose file lacks a frontmatter UUID, mint + write back using the Phase 2 helpers, and feed the **rewritten raw content** (and the post-writeback entity) into the upsert so the stored `contentHash` matches what is on disk. _(2026-05-29 — implemented in the vault `readAllWithFilePaths` methods (the rebuild's only input); the vault owns FS paths + parsing, so the indexer stays free of FS/adoption logic)_
+- [x] Apply to all four entity types, including fragments (per the adopt-all decision). Keep rebuild's single transaction for the DB writes; file write-backs happen in the async read phase, before the transaction. _(2026-05-29 — shared `readAdoptedKeyedEntities` helper for aspect/note/reference; fragments get full canonical frontmatter via `writeBackFragmentFrontmatter`. Sequences excluded — Maskor-owned.)_
+- [x] Files that already carry a UUID are left untouched on disk (DB upsert only) — no normalization churn, consistent with the watcher. _(2026-05-29 — `ensureUuid` returns `wasAssigned: false` and the original raw content untouched)_
+- [x] Confirm lock safety: `rebuild()` is intentionally outside `withVaultWriteLock` (runs in `resolveProject` before any user write, and inside `drafts.restore` which already holds the lock). Writing back during rebuild is safe in both; document the reasoning where the write-back is introduced. _(2026-05-29 — no change to lock model; initial rebuild runs before the watcher starts, restore holds the lock)_
+- [x] Idempotence: a second rebuild over a now-stamped vault performs no file writes (every file has a UUID); the hash-guard makes any later watcher event a no-op. _(2026-05-29 — test asserts byte-identical files across two rebuilds)_
+- [x] Tests: see Testing section. _(2026-05-29 — no-UUID adoption + idempotence cases added to `indexer.test.ts`; full backend suite green)_
+- [x] `git commit` Phase 3. _(2026-05-29)_
 
 ### Phase 4 — Spec + docs reconciliation
 
