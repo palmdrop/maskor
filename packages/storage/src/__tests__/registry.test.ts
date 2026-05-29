@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, mkdirSync, existsSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createRegistryDatabase } from "../db/registry";
@@ -7,6 +7,9 @@ import { createProjectRegistry } from "../registry/registry";
 import { LOCAL_USER_UUID } from "../registry/types";
 import { ProjectConflictError, ExistingVaultManifestError } from "../registry/errors";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
+
+// Arbitrary fixed UUID used to assert the adopt path reuses the manifest's UUID verbatim.
+const KNOWN_MANIFEST_UUID = "19a2045a-5902-435b-9a8b-adff93e6eef2";
 
 let tmpDir: string;
 let vaultDir: string;
@@ -83,9 +86,21 @@ describe("registry.registerProject", () => {
 
   it("reuses manifest UUID when adopting vault with existing project.json", async () => {
     const registry = makeRegistry();
-    const record = await registry.registerProject("My Project", vaultDir, "adopt");
-    // BASIC_VAULT has .maskor/project.json with a known UUID
-    expect(record.projectUUID).toBe("19a2045a-5902-435b-9a8b-adff93e6eef2");
+    // `.maskor/` is gitignored, so the shared fixture cannot carry a tracked manifest — a fresh
+    // clone would lose it. Build a manifest-bearing vault inline so the test is self-contained.
+    const manifestVaultDir = join(tmpDir, "manifest-vault");
+    mkdirSync(join(manifestVaultDir, ".maskor"), { recursive: true });
+    writeFileSync(
+      join(manifestVaultDir, ".maskor", "project.json"),
+      JSON.stringify({
+        projectUUID: KNOWN_MANIFEST_UUID,
+        name: "Existing Project",
+        registeredAt: new Date().toISOString(),
+      }),
+    );
+
+    const record = await registry.registerProject("My Project", manifestVaultDir, "adopt");
+    expect(record.projectUUID).toBe(KNOWN_MANIFEST_UUID);
   });
 
   it("assigns new UUID when adopting vault without existing project.json", async () => {
@@ -94,8 +109,8 @@ describe("registry.registerProject", () => {
     mkdirSync(emptyVaultDir, { recursive: true });
     const record = await registry.registerProject("No Manifest Project", emptyVaultDir, "adopt");
     expect(record.projectUUID).toBeTruthy();
-    // A UUID was generated — it won't match the BASIC_VAULT manifest UUID
-    expect(record.projectUUID).not.toBe("19a2045a-5902-435b-9a8b-adff93e6eef2");
+    // A UUID was generated — it won't match a manifest UUID
+    expect(record.projectUUID).not.toBe(KNOWN_MANIFEST_UUID);
   });
 
   it("creates directory when registering with mode create on missing path", async () => {
