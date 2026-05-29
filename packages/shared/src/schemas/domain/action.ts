@@ -55,6 +55,7 @@ export const ActionTypeSchema = z.enum([
   "sequence:renamed",
   "sequence:deleted",
   "sequence:set-main",
+  "sequence:section-reordered",
   "draft:created",
   "draft:deleted",
   "draft:restored",
@@ -169,6 +170,7 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("sequence:renamed", renamed),
   entry("sequence:deleted", empty),
   entry("sequence:set-main", empty),
+  entry("sequence:section-reordered", z.object({ sectionName: z.string() })),
   entry("draft:created", z.object({ name: z.string(), note: z.string().optional() })),
   entry("draft:deleted", z.object({ name: z.string() })),
   entry(

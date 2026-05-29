@@ -4,6 +4,7 @@ import {
   computeViolations,
   createDefaultSequence,
   detectCycles,
+  moveSection,
   placeFragment,
   moveFragment,
   unplaceFragment,
@@ -573,5 +574,65 @@ describe("validateSequenceInvariants", () => {
       ],
     };
     expect(() => validateSequenceInvariants(duplicateSequence)).toThrow();
+  });
+});
+
+describe("moveSection", () => {
+  function makeThreeSectionSequence(): Sequence {
+    const sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] };
+    const sec3 = { uuid: "33333333-0000-0000-0000-000000000001", name: "Act 3", fragments: [] };
+    return { ...sequence, sections: [sequence.sections[0]!, sec2, sec3] };
+  }
+
+  it("moves a section forward to a new index", () => {
+    const sequence = makeThreeSectionSequence();
+    const sec0 = sequence.sections[0]!;
+    const result = moveSection(sequence, sec0.uuid, 2);
+    expect(result.sections.map((s) => s.uuid)).toEqual([
+      sequence.sections[1]!.uuid,
+      sequence.sections[2]!.uuid,
+      sec0.uuid,
+    ]);
+  });
+
+  it("moves a section backward to a new index", () => {
+    const sequence = makeThreeSectionSequence();
+    const sec2 = sequence.sections[2]!;
+    const result = moveSection(sequence, sec2.uuid, 0);
+    expect(result.sections.map((s) => s.uuid)).toEqual([
+      sec2.uuid,
+      sequence.sections[0]!.uuid,
+      sequence.sections[1]!.uuid,
+    ]);
+  });
+
+  it("returns the same sequence when target index equals current index", () => {
+    const sequence = makeThreeSectionSequence();
+    const sec1 = sequence.sections[1]!;
+    const result = moveSection(sequence, sec1.uuid, 1);
+    expect(result).toBe(sequence);
+  });
+
+  it("clamps to the last valid index when position is out of bounds", () => {
+    const sequence = makeThreeSectionSequence();
+    const sec0 = sequence.sections[0]!;
+    const result = moveSection(sequence, sec0.uuid, 999);
+    expect(result.sections[result.sections.length - 1]!.uuid).toBe(sec0.uuid);
+  });
+
+  it("preserves fragment data in all sections after move", () => {
+    let sequence = makeThreeSectionSequence();
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[1]!.uuid, 0);
+    const sec0Uuid = sequence.sections[0]!.uuid;
+    const result = moveSection(sequence, sec0Uuid, 2);
+    const movedSection = result.sections.find((s) => s.uuid === sec0Uuid)!;
+    expect(movedSection.fragments.map((f) => f.fragmentUuid)).toContain(FA);
+  });
+
+  it("throws when section UUID does not exist", () => {
+    const sequence = makeThreeSectionSequence();
+    expect(() => moveSection(sequence, "nonexistent-uuid", 0)).toThrow();
   });
 });

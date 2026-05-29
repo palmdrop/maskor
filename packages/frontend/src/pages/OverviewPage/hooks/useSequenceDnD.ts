@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import type { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { isSectionDragId, fromSectionDragId } from "../components/SequenceSections";
 import { POOL_ZONE_ID } from "../constants";
 
 interface UseSequenceDnDParams {
@@ -50,6 +51,25 @@ export const useSequenceDnD = ({
 
     const activeId = String(active.id);
     const overId = String(over.id);
+
+    // Section reorder: both active and over are section drag IDs
+    if (isSectionDragId(activeId) && isSectionDragId(overId) && activeId !== overId) {
+      const sourceSectionUuid = fromSectionDragId(activeId);
+      const targetSectionUuid = fromSectionDragId(overId);
+      const targetIndex = sectionsData.findIndex((s) => s.uuid === targetSectionUuid);
+      if (targetIndex !== -1) {
+        mutations.moveSection.mutate({
+          projectId,
+          sequenceId: sequence.uuid,
+          sectionId: sourceSectionUuid,
+          data: { position: targetIndex },
+        });
+      }
+      return;
+    }
+
+    // Non-section drags — ignore section drag IDs that land on tile zones or vice versa
+    if (isSectionDragId(activeId) || isSectionDragId(overId)) return;
 
     const isActiveInSequence = fragmentSectionMap.has(activeId);
     const sectionIds = new Set(sectionsData.map((s) => s.uuid));

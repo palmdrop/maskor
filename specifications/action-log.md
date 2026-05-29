@@ -92,8 +92,9 @@ The naming convention is `domain:verb`. The full v1 set:
 | `reference:updated`              | Yes      | Catch-all for programmatic content patches. Payload: `{ changedFields }`.                                         |
 | `reference:renamed`              | Yes      | Key change; cascades through fragments are implicit                                                               |
 | `reference:deleted`              | Yes      |                                                                                                                   |
-| `sequence:fragment-placed`       | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                     |
-| `sequence:fragment-moved`        | Yes      | Defined for spec parity — sequencing API does not exist in v1                                                     |
+| `sequence:fragment-placed`       | Yes      |                                                                                                                   |
+| `sequence:fragment-moved`        | Yes      |                                                                                                                   |
+| `sequence:section-reordered`     | Yes      | Emitted per drag-and-drop or keyboard section move. Payload: `{ sectionName }`.                                   |
 
 #### Cascade behavior
 

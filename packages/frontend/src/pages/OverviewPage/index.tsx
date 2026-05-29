@@ -258,13 +258,40 @@ export const OverviewPage = () => {
     [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
   );
 
+  const handleSectionKeyboardMove = useCallback(
+    (direction: "prev" | "next") => {
+      if (!selectedFragmentUuid || !sequence || dnd.activeDragId) return;
+      const currentSectionIndex = sectionsData.findIndex((s) =>
+        s.fragmentUuids.includes(selectedFragmentUuid),
+      );
+      if (currentSectionIndex === -1) return;
+      const targetIndex =
+        direction === "prev" ? currentSectionIndex - 1 : currentSectionIndex + 1;
+      if (targetIndex < 0 || targetIndex >= sectionsData.length) return;
+      const sectionId = sectionsData[currentSectionIndex]!.uuid;
+      sequenceMutations.moveSection.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        sectionId,
+        data: { position: targetIndex },
+      });
+    },
+    [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
+  );
+
   const handleMainKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-    if (event.key === "ArrowLeft") {
+    if (event.shiftKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      handleSectionKeyboardMove("prev");
+    } else if (event.shiftKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      handleSectionKeyboardMove("next");
+    } else if (!event.shiftKey && event.key === "ArrowLeft") {
       event.preventDefault();
       handleFragmentKeyboardMove("prev");
-    } else if (event.key === "ArrowRight") {
+    } else if (!event.shiftKey && event.key === "ArrowRight") {
       event.preventDefault();
       handleFragmentKeyboardMove("next");
     }

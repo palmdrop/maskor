@@ -79,12 +79,14 @@ vi.mock("@dnd-kit/sortable", async (importOriginal) => {
 const placeMutate = vi.fn();
 const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
+const moveSectionMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
   useListSequences: vi.fn(() => ({ data: undefined, isLoading: false })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
+  useReorderSection: vi.fn(() => ({ mutate: moveSectionMutate })),
   useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
@@ -932,6 +934,121 @@ describe("OverviewPage — keyboard fragment movement", () => {
     fireEvent.keyDown(input, { key: "ArrowRight" });
 
     expect(moveMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("OverviewPage — keyboard section movement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnDragEnd = undefined;
+    currentSearch = { sequence: undefined, density: "full" };
+  });
+
+  it("Shift+ArrowRight moves the section containing the selected fragment forward", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("alpha"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
+
+    expect(moveSectionMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      sectionId: SECTION_UUID,
+      data: { position: 1 },
+    });
+  });
+
+  it("Shift+ArrowLeft moves the section containing the selected fragment backward", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("beta"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowLeft", shiftKey: true });
+
+    expect(moveSectionMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      sectionId: SECTION_UUID_2,
+      data: { position: 0 },
+    });
+  });
+
+  it("Shift+ArrowLeft at the first section is a no-op", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("alpha"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowLeft", shiftKey: true });
+
+    expect(moveSectionMutate).not.toHaveBeenCalled();
+  });
+
+  it("Shift+ArrowRight at the last section is a no-op", () => {
+    (useListSequences as Mock).mockReturnValue({
+      data: makeMultiSectionBundleResponse([
+        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
+        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
+      ]),
+      isLoading: false,
+    });
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("beta"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
+
+    expect(moveSectionMutate).not.toHaveBeenCalled();
+  });
+
+  it("Shift+Arrow does not trigger fragment move, only plain Arrow does", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.click(screen.getByText("alpha"));
+
+    const container = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
+
+    // No fragment move since Shift was held
+    expect(moveMutate).not.toHaveBeenCalled();
+    // No section move since single section
+    expect(moveSectionMutate).not.toHaveBeenCalled();
   });
 });
 

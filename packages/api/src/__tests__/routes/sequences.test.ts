@@ -1023,6 +1023,70 @@ describe("sequence fragment action log entries", () => {
     expect((entry!.payload as { fragmentKey: string }).fragmentKey).toBe(placedFragment.key);
   });
 
+  it("reorder section moves it to the target position and logs section-reordered", async () => {
+    // Create a fresh secondary sequence to avoid shared-state interference
+    const uniqueName = `Reorder Test ${Date.now()}`;
+    const createResp = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: uniqueName, isMain: false, projectUuid: project.projectUUID }),
+    });
+    expect(createResp.status).toBe(201);
+    const createBundle = (await createResp.json()) as SequenceBundle;
+    const seq = createBundle.sequences.find((s) => s.name === uniqueName)!;
+
+    // Add a second section
+    const afterCreate = (await (
+      await testContext.app.request(`${baseUrl()}/${seq.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Act Two" }),
+      })
+    ).json()) as SequenceBundle;
+
+    const sequence = afterCreate.sequences.find((s) => s.uuid === seq.uuid)!;
+    expect(sequence.sections).toHaveLength(2);
+
+    const firstSection = sequence.sections[0]!; // "Main"
+    const reorderResponse = await testContext.app.request(
+      `${baseUrl()}/${seq.uuid}/sections/${firstSection.uuid}/position`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position: 1 }),
+      },
+    );
+    expect(reorderResponse.status).toBe(200);
+    const bundle = (await reorderResponse.json()) as SequenceBundle;
+    const reordered = bundle.sequences.find((s) => s.uuid === seq.uuid)!;
+    // Original first section should now be at index 1
+    expect(reordered.sections[1]?.uuid).toBe(firstSection.uuid);
+    expect(reordered.sections[0]?.name).toBe("Act Two");
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=5`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const logEntry = entries.find((e) => e.type === "sequence:section-reordered");
+    expect(logEntry).toBeDefined();
+    expect((logEntry!.payload as { sectionName: string }).sectionName).toBe(firstSection.name);
+  });
+
+  it("reorder section returns 404 for unknown section", async () => {
+    const main = (await (
+      await testContext.app.request(`${baseUrl()}/main`)
+    ).json()) as SequenceFull;
+    const response = await testContext.app.request(
+      `${baseUrl()}/${main.uuid}/sections/00000000-0000-0000-0000-000000000000/position`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position: 0 }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+
   it("unplace records target.title and payload.fragmentKey", async () => {
     const main = (await (
       await testContext.app.request(`${baseUrl()}/main`)

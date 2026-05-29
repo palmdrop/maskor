@@ -336,6 +336,19 @@ export function computeViolations(main: Sequence, secondaries: Sequence[]): Viol
   return violations;
 }
 
+export function moveSection(sequence: Sequence, sectionUuid: string, newIndex: number): Sequence {
+  const currentIndex = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
+  if (currentIndex === -1) {
+    throw new Error(`Section ${sectionUuid} not found in sequence "${sequence.name}".`);
+  }
+  const clamped = Math.max(0, Math.min(newIndex, sequence.sections.length - 1));
+  if (currentIndex === clamped) return sequence;
+  const sections = [...sequence.sections];
+  const [section] = sections.splice(currentIndex, 1);
+  sections.splice(clamped, 0, section!);
+  return { ...sequence, sections };
+}
+
 export function getUnassignedFragmentUuids(
   sequence: Sequence,
   allFragmentUuids: string[],

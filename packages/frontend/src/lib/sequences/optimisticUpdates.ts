@@ -1,6 +1,19 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 
+export function optimisticMoveSection(
+  sequence: Sequence,
+  sectionUuid: string,
+  newIndex: number,
+): Sequence {
+  const currentIndex = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
+  if (currentIndex === -1) return sequence;
+  const sections = [...sequence.sections];
+  const [section] = sections.splice(currentIndex, 1);
+  sections.splice(Math.max(0, Math.min(newIndex, sections.length)), 0, section!);
+  return { ...sequence, sections };
+}
+
 export function optimisticPlace(
   sequence: Sequence,
   fragmentUuid: string,

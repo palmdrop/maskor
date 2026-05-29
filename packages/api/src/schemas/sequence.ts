@@ -82,6 +82,10 @@ export const SectionRenameSchema = z
   .object({ name: z.string().openapi({ example: "Act One" }) })
   .openapi("SectionRename");
 
+export const SectionReorderSchema = z
+  .object({ position: z.number().int().min(0).openapi({ example: 1 }) })
+  .openapi("SectionReorder");
+
 export const SectionUUIDParamSchema = z.object({
   projectId: z.uuid(),
   sequenceId: z.uuid(),

@@ -12,7 +12,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] finish remove piece plan (see worktree)
 
-- [ ] finish persist cursor position implementation
+- [ ] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
+
+- [x] finish persist cursor position implementation
 
 - [x] Refactor command system, introduce strong types and reduce boilerplate
 
