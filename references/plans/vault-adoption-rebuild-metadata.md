@@ -44,11 +44,11 @@ Self-contained; ships alone.
 
 ### Phase 2 — Extract shared mint + writeback helpers (refactor, no behavior change)
 
-- [ ] Extract the fragment adoption writeback (currently inline in `syncFragment`, the `wasAssigned` branch) into a shared helper alongside `ensureUuid`: given a parsed file with a freshly-minted UUID, serialize the **full canonical frontmatter** via `fragmentMapper.toFile` and write it back, returning the rewritten raw content. The keyed-entity case already reduces to `ensureUuid` (UUID-only writeback) — keep using it.
-- [ ] Refactor `syncFragment` to call the extracted helper so the watcher and rebuild share one implementation. No behavior change for the watcher.
-- [ ] Decide the helper's home (e.g. `watcher/utils/uuid.ts` is watcher-scoped; consider a neutral location both the watcher and indexer import without a layering smell). Note any module-boundary concern.
-- [ ] Tests: existing watcher adoption tests stay green; add a direct unit test of the extracted helper (mint → full frontmatter for fragments; mint → UUID-only for keyed entities; returned raw content hashes consistently).
-- [ ] `git commit` Phase 2.
+- [x] Extract the fragment adoption writeback (currently inline in `syncFragment`, the `wasAssigned` branch) into a shared helper alongside `ensureUuid`: given a parsed file with a freshly-minted UUID, serialize the **full canonical frontmatter** via `fragmentMapper.toFile` and write it back, returning the rewritten raw content. The keyed-entity case already reduces to `ensureUuid` (UUID-only writeback) — keep using it. _(2026-05-29 — `writeBackFragmentFrontmatter` returns `{ fragment, rawContent }` so callers reuse the same entity for the upsert)_
+- [x] Refactor `syncFragment` to call the extracted helper so the watcher and rebuild share one implementation. No behavior change for the watcher. _(2026-05-29 — adoption branch now one call; removed the now-unused `serializeFile` import)_
+- [x] Decide the helper's home (e.g. `watcher/utils/uuid.ts` is watcher-scoped; consider a neutral location both the watcher and indexer import without a layering smell). Note any module-boundary concern. _(2026-05-29 — moved `ensureUuid`/`assignNewUuid` + the new helper into `vault/markdown/adopt.ts`; the markdown layer is imported by both watcher and indexer, avoiding an indexer→watcher dependency. Deleted `watcher/utils/uuid.ts`.)_
+- [x] Tests: existing watcher adoption tests stay green; add a direct unit test of the extracted helper (mint → full frontmatter for fragments; mint → UUID-only for keyed entities; returned raw content hashes consistently). _(2026-05-29 — `__tests__/adopt.test.ts`; full storage suite 349 pass)_
+- [x] `git commit` Phase 2. _(2026-05-29)_
 
 ### Phase 3 — Rebuild mints missing metadata (fixes failure #2)
 

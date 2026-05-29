@@ -7,7 +7,7 @@ import type { Transaction } from "../../indexer/upserts";
 import type { RenameBuffer } from "../utils/rename-buffer";
 import type { RecentlyDeletedTracker } from "../utils/recently-deleted";
 import { hashContent } from "../../utils/hash";
-import { ensureUuid } from "../utils/uuid";
+import { ensureUuid } from "../../vault/markdown/adopt";
 import { readFileWithEnoentGuard } from "../utils/file";
 
 // EntityConfig is an implementation detail of the sync layer, not the public watcher interface.

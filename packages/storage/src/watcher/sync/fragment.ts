@@ -2,7 +2,6 @@ import type { Fragment, Logger, VaultSyncEvent } from "@maskor/shared";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
 import { parseFile } from "../../vault/markdown/parse";
-import { serializeFile } from "../../vault/markdown/serialize";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
 import { hashContent } from "../../utils/hash";
 import {
@@ -15,7 +14,7 @@ import { reconcileUnknownAspectKeyWarnings } from "../../warnings/reconcile";
 import { eq } from "drizzle-orm";
 import { findFragmentUuidCollision } from "../utils/fragments";
 import { readFileWithEnoentGuard } from "../utils/file";
-import { ensureUuid, assignNewUuid } from "../utils/uuid";
+import { ensureUuid, assignNewUuid, writeBackFragmentFrontmatter } from "../../vault/markdown/adopt";
 import { setWordCount } from "../../suggestion/stats-repo";
 import { computeWordCount } from "../../suggestion/word-count";
 
@@ -85,14 +84,12 @@ export const syncFragment = async (
       resolvedRawContent = newRawContent;
     }
   } else {
-    // New fragment adoption: write back complete canonical frontmatter.
-    // fragmentMapper.fromFile derives read-time defaults (readiness, notes, references, etc.),
-    // preserving any fields the user already supplied. The UUID was already assigned above.
-    adoptedFragment = fragmentMapper.fromFile(parsed, entityRelativePath);
-    const { frontmatter, inlineFields, body } = fragmentMapper.toFile(adoptedFragment);
-    const canonicalContent = serializeFile({ frontmatter, inlineFields, body });
-    await Bun.write(absolutePath, canonicalContent);
-    resolvedRawContent = canonicalContent;
+    // New fragment adoption: write back complete canonical frontmatter. The shared helper derives
+    // read-time defaults (readiness, notes, references, etc.), preserving any fields the user
+    // already supplied. The UUID was already assigned above. Shared with the indexer rebuild.
+    const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, entityRelativePath);
+    adoptedFragment = adopted.fragment;
+    resolvedRawContent = adopted.rawContent;
   }
 
   const storedRow = vaultDatabase
