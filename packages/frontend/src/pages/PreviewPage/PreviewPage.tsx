@@ -14,6 +14,7 @@ import { PreviewSidebar } from "./PreviewSidebar";
 import { PreviewProse } from "./PreviewProse";
 import {
   ProjectPreviewSeparator,
+  type GetAssembledSequenceParams,
   type ProjectUpdatePreviewSeparator as SeparatorType,
 } from "@api/generated/maskorAPI.schemas";
 
@@ -65,9 +66,20 @@ export const PreviewPage = () => {
     updateProject({ projectId, data: { preview: patch } });
   };
 
-  const { data: assembledEnvelope } = useGetAssembledSequence(projectId, activeSequenceUuid ?? "", {
-    query: { enabled: !!activeSequenceUuid },
-  });
+  // Toggles drive the request: options are applied server-side, so flipping one
+  // changes the query key and refetches the re-assembled markdown.
+  const previewParams: GetAssembledSequenceParams = {
+    showTitles: preview.showTitles ? "true" : "false",
+    showSectionHeadings: preview.showSectionHeadings ? "true" : "false",
+    separator: preview.separator,
+  };
+
+  const { data: assembledEnvelope } = useGetAssembledSequence(
+    projectId,
+    activeSequenceUuid ?? "",
+    previewParams,
+    { query: { enabled: !!activeSequenceUuid } },
+  );
 
   const assembled = assembledEnvelope?.status === 200 ? assembledEnvelope.data : null;
 
@@ -102,7 +114,7 @@ export const PreviewPage = () => {
         onPatch={handlePreviewPatch}
       />
       <div className="flex flex-1 min-h-0">
-        <PreviewSidebar assembled={assembled} />
+        <PreviewSidebar sections={assembled.sections} />
         <main className="flex-1 overflow-y-auto">
           {allFragments.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -110,10 +122,7 @@ export const PreviewPage = () => {
             </div>
           ) : (
             <PreviewProse
-              assembled={assembled}
-              showTitles={preview.showTitles}
-              showSectionHeadings={preview.showSectionHeadings}
-              separator={preview.separator}
+              markdown={assembled.markdown}
               fontSize={fontSize}
               maxParagraphWidth={maxParagraphWidth}
             />

@@ -8,12 +8,12 @@ import {
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
 import type {
-  PreviewImportResult,
-  PreviewPiece,
+  PreviewResult,
+  PreviewNavFragment,
   ImportResult,
 } from "@api/generated/maskorAPI.schemas";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
-import { ReadonlyEditor } from "@components/readonly-editor";
+import { ReadonlyProse } from "@components/readonly-prose";
 import { Button } from "@components/ui/button";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -39,21 +39,16 @@ function formatFromExtension(filename: string): Format | null {
   return null;
 }
 
-function buildPreviewMarkdown(pieces: PreviewPiece[]): string {
-  if (pieces.length === 0) return "";
-  return pieces
-    .map((piece) => `**${piece.pieceIndex}. ${piece.derivedKey}**\n\n${piece.content}`)
-    .join("\n\n---\n\n");
-}
-
 function formatContextLabel(format: Format, headingLevel: HeadingLevel, delimiter: string): string {
   if (format === "markdown") return `Format: markdown · split on H${headingLevel}`;
   if (format === "docx") return `Format: docx · split on H${headingLevel}`;
   return `Format: plaintext · split on \`${delimiter}\``;
 }
 
-function getPieceAnchor(piece: PreviewPiece) {
-  return `${piece.pieceIndex}. ${piece.derivedKey}`;
+// The nav fragment uuid is the piece index (as a string); the assembled markdown
+// carries an anchor rendering id="fragment-<index>" for each piece.
+function pieceLabel(fragment: PreviewNavFragment) {
+  return `${fragment.uuid}. ${fragment.key}`;
 }
 
 type RouterState = {
@@ -70,11 +65,10 @@ export const FragmentImportPage = () => {
 
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>("1");
   const [delimiter, setDelimiter] = useState("---");
-  const [previewResult, setPreviewResult] = useState<PreviewImportResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [partialFailureResult, setPartialFailureResult] = useState<ImportResult | null>(null);
-  const mainAreaRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const format: Format | null = file ? formatFromExtension(file.name) : null;
@@ -179,20 +173,16 @@ export const FragmentImportPage = () => {
     }
   };
 
-  // TODO: I do not like this at all. Use proper anchor tags instead
-  const scrollToPiece = (piece: PreviewPiece) => {
-    if (!mainAreaRef.current) return;
-    const elements = mainAreaRef.current.querySelectorAll("strong");
-    for (const element of elements) {
-      if (element.textContent?.startsWith(getPieceAnchor(piece))) {
-        element.scrollIntoView({ behavior: "instant", block: "start" });
-        return;
-      }
-    }
+  const scrollToPiece = (fragment: PreviewNavFragment) => {
+    document
+      .getElementById(`fragment-${fragment.uuid}`)
+      ?.scrollIntoView({ behavior: "instant", block: "start" });
   };
 
+  const pieces: PreviewNavFragment[] =
+    previewResult?.sections.flatMap((section) => section.fragments) ?? [];
   const isInFlight = isPreviewPending || isCommitPending;
-  const pieceCount = previewResult?.pieces?.length ?? 0;
+  const pieceCount = pieces.length;
 
   const commands = useCommands();
   useCommandScope(fragmentImportScope, {
@@ -245,10 +235,8 @@ export const FragmentImportPage = () => {
     );
   }
 
-  const pieces = previewResult?.pieces ?? [];
   const showHeadingLevel = format === "markdown" || format === "docx";
   const showDelimiter = format === "plaintext";
-  const previewMarkdown = buildPreviewMarkdown(pieces);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -311,13 +299,13 @@ export const FragmentImportPage = () => {
           {pieceCount > 0 && (
             <ul className="flex flex-col gap-1">
               {pieces.map((piece) => (
-                <li key={piece.pieceIndex}>
+                <li key={piece.uuid}>
                   <button
                     type="button"
                     className="text-left w-full text-sm px-2 py-1 rounded hover:bg-muted truncate"
                     onClick={() => scrollToPiece(piece)}
                   >
-                    {getPieceAnchor(piece)}
+                    {pieceLabel(piece)}
                   </button>
                 </li>
               ))}
@@ -327,7 +315,6 @@ export const FragmentImportPage = () => {
 
         {/* Main content area */}
         <main
-          ref={mainAreaRef}
           className={["flex-1 min-h-0 overflow-y-auto p-6", isPreviewPending ? "opacity-60" : ""]
             .join(" ")
             .trim()}
@@ -349,8 +336,8 @@ export const FragmentImportPage = () => {
                 : "No fragments matched. Try a different heading level."}
             </p>
           ) : (
-            <ReadonlyEditor
-              content={previewMarkdown}
+            <ReadonlyProse
+              content={previewResult?.markdown ?? ""}
               fontSize={fontSize}
               maxParagraphWidth={maxParagraphWidth}
             />

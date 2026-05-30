@@ -1,0 +1,97 @@
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import type { PreviewResult } from "@api/generated/maskorAPI.schemas";
+
+const PROJECT_ID = "project-uuid-1";
+
+const importFile = new File(["# A\n\nbody"], "doc.md", { type: "text/markdown" });
+
+vi.mock("@tanstack/react-router", () => ({
+  useParams: () => ({ projectId: PROJECT_ID }),
+  useNavigate: () => vi.fn(),
+  useRouterState: () => ({ file: importFile }),
+}));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
+});
+
+vi.mock("@hooks/useProjectEditorConfig", () => ({
+  useProjectEditorConfig: () => ({ fontSize: 16, maxParagraphWidth: 72 }),
+}));
+
+// Stub the shared renderer — exercised for real in readonly-prose.test.tsx.
+vi.mock("@components/readonly-prose", () => ({
+  ReadonlyProse: ({ content }: { content: string }) => <div data-testid="prose">{content}</div>,
+}));
+
+vi.mock("@lib/commands/useCommands", () => ({ useCommands: () => ({ run: vi.fn() }) }));
+vi.mock("@lib/commands/useCommandScope", () => ({ useCommandScope: vi.fn() }));
+
+vi.mock("@api/generated/fragments/fragments", () => ({
+  usePreviewImportFragments: vi.fn(),
+  useImportFragments: vi.fn(),
+  getListFragmentsQueryKey: vi.fn(() => ["fragments", PROJECT_ID]),
+}));
+
+const makeImportPreview = (): PreviewResult => ({
+  markdown: "### 1. intro\n\nFirst.\n\n---\n\n### 2. body\n\nSecond.",
+  sections: [
+    {
+      uuid: "",
+      name: "",
+      fragments: [
+        { uuid: "1", key: "intro" },
+        { uuid: "2", key: "body" },
+      ],
+    },
+  ],
+});
+
+const { usePreviewImportFragments, useImportFragments } = await import(
+  "@api/generated/fragments/fragments"
+);
+const { FragmentImportPage } = await import("../FragmentImportPage");
+
+const wrap = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+describe("FragmentImportPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (usePreviewImportFragments as Mock).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ status: 200, data: makeImportPreview() }),
+      isPending: false,
+    });
+    (useImportFragments as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  });
+
+  it("lists pieces in the sidebar and renders the assembled markdown", async () => {
+    render(<FragmentImportPage />, { wrapper: wrap() });
+    expect(await screen.findByText("1. intro")).toBeInTheDocument();
+    expect(screen.getByText("2. body")).toBeInTheDocument();
+    expect(screen.getByTestId("prose").textContent).toContain("First.");
+  });
+
+  it("sidebar click scrolls to the piece anchor by id", async () => {
+    const scrollIntoView = vi.fn();
+    document.getElementById = vi.fn().mockImplementation((id) => {
+      if (id === "fragment-2") return { scrollIntoView };
+      return null;
+    });
+
+    render(<FragmentImportPage />, { wrapper: wrap() });
+    fireEvent.click(await screen.findByText("2. body"));
+
+    expect(document.getElementById).toHaveBeenCalledWith("fragment-2");
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+  });
+});

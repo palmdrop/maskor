@@ -1,54 +1,22 @@
-import type { AssembledSequence } from "@api/generated/maskorAPI.schemas";
-import type { ProjectPreviewSeparator } from "@api/generated/maskorAPI.schemas";
-import { StaticMarkdown } from "@components/static-markdown";
+import { ReadonlyProse } from "@components/readonly-prose";
 
 type Props = {
-  assembled: AssembledSequence;
-  showTitles: boolean;
-  showSectionHeadings: boolean;
-  separator: ProjectPreviewSeparator;
+  markdown: string;
   fontSize: number;
   maxParagraphWidth: number;
 };
 
-const FragmentSeparator = ({ separator }: { separator: ProjectPreviewSeparator }) => {
-  if (separator === "horizontal-rule") return <hr className="my-4 border-border" />;
-  if (separator === "blank-line") return <div className="h-6" />;
-  return null;
-};
-
-export const PreviewProse = ({
-  assembled,
-  showTitles,
-  showSectionHeadings,
-  separator,
-  fontSize,
-  maxParagraphWidth,
-}: Props) => {
+// The assembled markdown is produced server-side with toggles already applied
+// and anchor sentinels embedded. Rendering is the shared read-only Tiptap
+// renderer — the same one the import preview uses.
+export const PreviewProse = ({ markdown, fontSize, maxParagraphWidth }: Props) => {
   return (
-    <div
-      className="mx-auto w-full py-6 px-6"
-      style={{ fontSize: `${fontSize}px`, maxWidth: `${maxParagraphWidth}ch` }}
-    >
-      {assembled.sections.map((section, sectionIndex) => (
-        <div key={section.uuid}>
-          {sectionIndex > 0 && <div className="h-10" />}
-          {showSectionHeadings && section.name && (
-            <h2 className="text-xl font-semibold mb-4">{section.name}</h2>
-          )}
-          {section.fragments.map((fragment, fragmentIndex) => (
-            <div key={fragment.uuid}>
-              {fragmentIndex > 0 && <FragmentSeparator separator={separator} />}
-              <div id={`fragment-${fragment.uuid}`}>
-                {showTitles && fragment.key && (
-                  <h3 className="text-base font-medium mb-2">{fragment.key}</h3>
-                )}
-                <StaticMarkdown content={fragment.content} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
+    <div className="py-6 px-6">
+      <ReadonlyProse
+        content={markdown}
+        fontSize={fontSize}
+        maxParagraphWidth={maxParagraphWidth}
+      />
     </div>
   );
 };

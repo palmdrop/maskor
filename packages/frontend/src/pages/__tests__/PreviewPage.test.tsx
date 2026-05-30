@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type {
-  AssembledSequence,
+  PreviewResult,
   Project,
   SequenceBundledResponse,
 } from "@api/generated/maskorAPI.schemas";
@@ -30,6 +30,15 @@ vi.mock("@hooks/useProjectEditorConfig", () => ({
     fontSize: 16,
     maxParagraphWidth: 72,
   }),
+}));
+
+// The shared renderer is a real Tiptap instance, exercised in
+// readonly-prose.test.tsx. Here we stub it to a plain element so the page test
+// stays focused on wiring (sidebar, toggles, refetch) and deterministic.
+vi.mock("@components/readonly-prose", () => ({
+  ReadonlyProse: ({ content }: { content: string }) => (
+    <div data-testid="prose">{content}</div>
+  ),
 }));
 
 vi.mock("@api/generated/projects/projects", () => ({
@@ -61,17 +70,15 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
   ...overrides,
 });
 
-const makeAssembledSequence = (overrides?: Partial<AssembledSequence>): AssembledSequence => ({
-  sequenceUuid: SEQUENCE_UUID,
-  sequenceName: "Main",
-  isMain: true,
+const makePreviewResult = (overrides?: Partial<PreviewResult>): PreviewResult => ({
+  markdown: "## Chapter One\n\nThe river was wide.\n\nThey crossed at dawn.",
   sections: [
     {
       uuid: "section-1",
       name: "Chapter One",
       fragments: [
-        { uuid: "frag-1", key: "opening", content: "The river was wide." },
-        { uuid: "frag-2", key: "crossing", content: "They crossed at dawn." },
+        { uuid: "frag-1", key: "opening" },
+        { uuid: "frag-2", key: "crossing" },
       ],
     },
   ],
@@ -103,11 +110,11 @@ const { PreviewPage } = await import("../PreviewPage");
 const mockMutate = vi.fn();
 
 const setupMocks = (overrides?: {
-  assembled?: AssembledSequence | null;
+  assembled?: PreviewResult | null;
   statusCode?: 200 | 404;
 }) => {
   const assembled =
-    overrides?.assembled !== undefined ? overrides.assembled : makeAssembledSequence();
+    overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
   const statusCode = overrides?.statusCode ?? 200;
 
   (useGetProject as Mock).mockReturnValue({
@@ -129,28 +136,31 @@ const setupMocks = (overrides?: {
   }
 };
 
+// The toggle params the page passed on its most recent render.
+const lastQueryParams = () => (useGetAssembledSequence as Mock).mock.calls.at(-1)?.[2];
+
 describe("PreviewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders fragment keys in sidebar", () => {
+  it("renders fragment keys in the sidebar", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
     expect(screen.getByText("opening")).toBeInTheDocument();
     expect(screen.getByText("crossing")).toBeInTheDocument();
   });
 
-  it("renders fragment content via static markdown", () => {
+  it("renders the assembled markdown via the shared renderer", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
-    expect(screen.getByText("The river was wide.")).toBeInTheDocument();
-    expect(screen.getByText("They crossed at dawn.")).toBeInTheDocument();
+    expect(screen.getByTestId("prose").textContent).toContain("The river was wide.");
   });
 
   it("shows 'Sequence empty.' when the assembled sequence has no fragments", () => {
     setupMocks({
-      assembled: makeAssembledSequence({
+      assembled: makePreviewResult({
+        markdown: "",
         sections: [{ uuid: "sec-1", name: "Empty", fragments: [] }],
       }),
     });
@@ -164,7 +174,7 @@ describe("PreviewPage", () => {
     expect(screen.getByText("This sequence no longer exists.")).toBeInTheDocument();
   });
 
-  it("sidebar click triggers scrollIntoView on the fragment element", () => {
+  it("sidebar click triggers scrollIntoView on the fragment anchor element", () => {
     setupMocks();
     const scrollIntoView = vi.fn();
     document.getElementById = vi.fn().mockImplementation((id) => {
@@ -177,11 +187,10 @@ describe("PreviewPage", () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
   });
 
-  it("toggling showTitles calls useUpdateProject with the right patch", () => {
+  it("persists a toggle change via useUpdateProject", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
-    const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
-    fireEvent.click(toggleButton);
+    fireEvent.click(screen.getByRole("switch", { name: /fragment titles/i }));
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: PROJECT_ID,
@@ -190,18 +199,18 @@ describe("PreviewPage", () => {
     );
   });
 
-  it("toggling showTitles applies the change immediately in the prose", () => {
+  it("flipping a toggle refetches with the new option sent to the endpoint", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
-    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
+    expect(lastQueryParams()).toMatchObject({ showTitles: "false", separator: "blank-line" });
 
-    const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
-    fireEvent.click(toggleButton);
-
-    expect(screen.getByRole("heading", { level: 3, name: /opening/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: /fragment titles/i }));
+    // The page re-renders with the optimistic override and requests re-assembly
+    // with titles on.
+    expect(lastQueryParams()).toMatchObject({ showTitles: "true" });
   });
 
-  it("rolls back localOverride when the mutation fails", () => {
+  it("reverts the requested option when the persist mutation fails", () => {
     let capturedOnError: (() => void) | undefined;
     (useGetProject as Mock).mockReturnValue({
       data: { status: 200 as const, data: makeProject() },
@@ -214,22 +223,19 @@ describe("PreviewPage", () => {
       data: { status: 200 as const, data: makeSequenceBundle() },
     });
     (useGetAssembledSequence as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeAssembledSequence() },
+      data: { status: 200 as const, data: makePreviewResult() },
     });
 
     render(<PreviewPage />, { wrapper: wrap() });
 
-    // Apply optimistic toggle: showTitles becomes true via localOverride
-    const toggleButton = screen.getByRole("switch", { name: /fragment titles/i });
-    fireEvent.click(toggleButton);
-    expect(screen.getByRole("heading", { level: 3, name: /opening/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: /fragment titles/i }));
+    expect(lastQueryParams()).toMatchObject({ showTitles: "true" });
 
-    // Simulate mutation failure: onError should clear localOverride and revert
     expect(capturedOnError).toBeDefined();
     act(() => {
       capturedOnError!();
     });
 
-    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
+    expect(lastQueryParams()).toMatchObject({ showTitles: "false" });
   });
 });

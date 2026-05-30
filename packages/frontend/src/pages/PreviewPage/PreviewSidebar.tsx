@@ -1,27 +1,24 @@
-import type { AssembledSequence } from "@api/generated/maskorAPI.schemas";
+import type { PreviewNavSection } from "@api/generated/maskorAPI.schemas";
 
 type Props = {
-  assembled: AssembledSequence;
+  sections: PreviewNavSection[];
 };
 
-export const PreviewSidebar = ({ assembled }: Props) => {
+export const PreviewSidebar = ({ sections }: Props) => {
   const scrollToFragment = (uuid: string) => {
     document
       .getElementById(`fragment-${uuid}`)
       ?.scrollIntoView({ behavior: "instant", block: "start" });
   };
 
-  const totalFragments = assembled.sections.reduce(
-    (sum, section) => sum + section.fragments.length,
-    0,
-  );
+  const totalFragments = sections.reduce((sum, section) => sum + section.fragments.length, 0);
 
   return (
     <aside className="flex flex-col w-60 shrink-0 border-r border-border overflow-y-auto">
       <div className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         {totalFragments} fragment{totalFragments !== 1 ? "s" : ""}
       </div>
-      {assembled.sections.map((section) => (
+      {sections.map((section) => (
         <div key={section.uuid}>
           {section.name && (
             <div className="px-4 py-1 text-xs font-semibold text-muted-foreground truncate">
