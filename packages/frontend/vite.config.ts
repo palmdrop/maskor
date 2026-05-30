@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import fs from "fs";
 
 const API_PREFIX_REGEX = /^\/api/;
 
@@ -22,9 +23,15 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
+    allowedHosts: ["desk.ssh"],
+		https: {
+      cert: fs.readFileSync(path.resolve(__dirname, '../../certs/desk.ssh+2.pem')),
+      key: fs.readFileSync(path.resolve(__dirname, '../../certs/desk.ssh+2-key.pem')),
+    },
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        target: "http://127.0.0.1:3001",
         changeOrigin: true,
         rewrite: (path) => path.replace(API_PREFIX_REGEX, ""),
       },
