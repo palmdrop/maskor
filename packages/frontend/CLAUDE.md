@@ -2,11 +2,18 @@ Use the generated orval client for every API call. Do not hand-roll `useMutation
 
 Generated hooks live under `src/api/generated/<tag>/<tag>.ts` (one file per OpenAPI tag), e.g. `useCreateProject`, `useUpdateProject`. Schemas live in `src/api/generated/maskorAPI.schemas.ts`.
 
-When you add or change an API route (new endpoint, new field, new mode), regenerate the client:
+When you add or change an API route (new endpoint, new field, new mode), regenerate the client. The simplest path is a single command from the repo root:
+
+```
+bun run codegen
+```
+
+This refreshes the committed snapshot from `packages/api` and then runs orval here — no server needed. To run the two steps individually instead:
 
 1. In `packages/api`, run `bun run generate-openapi` to refresh the committed snapshot (`src/api/openapi.json`). No server needed — the spec is generated in-process from the route definitions.
 2. From `packages/frontend`, run `bun run codegen`. It runs orval against the committed snapshot — the API does not need to be running.
-3. Use the regenerated hook in the frontend. Delete any hand-rolled mutation that the regenerated hook replaces.
+
+Then use the regenerated hook in the frontend, and delete any hand-rolled mutation it replaces.
 
 If a hook you expect isn't generated, the route is either missing from the OpenAPI spec or the snapshot wasn't regenerated after the route change — fix that first (re-run step 1); don't work around it with a custom mutation. `bun run verify` fails if the snapshot drifts from the routes.
 

@@ -16,6 +16,7 @@
     "dev:api": "bun run --cwd packages/api dev",
     "dev:frontend": "bun run --cwd packages/frontend dev",
     "snapshot": "bunx repomix --compress",
+    "codegen": "bun run --cwd packages/api generate-openapi && bun run --cwd packages/frontend codegen",
     "verify:openapi": "bun run --cwd packages/api verify:openapi",
     "verify": "bun run typecheck && bun run verify:openapi && bun run test"
   },
