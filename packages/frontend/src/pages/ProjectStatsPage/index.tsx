@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useGetProjectStats } from "@api/generated/stats/stats";
@@ -31,15 +32,25 @@ const FragmentRow = ({
   fragment: FragmentStatsSummary;
   projectId: string;
 }) => (
-  <tr className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+  <tr
+    className={`border-b border-border last:border-0 transition-colors ${
+      fragment.isDiscarded
+        ? "opacity-50 hover:opacity-70"
+        : "hover:bg-muted/30"
+    }`}
+  >
     <td className="py-2 pr-4">
-      <Link
-        to="/projects/$projectId/fragments/$fragmentId"
-        params={{ projectId, fragmentId: fragment.fragmentUuid }}
-        className="text-sm hover:underline"
-      >
-        {fragment.key}
-      </Link>
+      {fragment.isDiscarded ? (
+        <span className="text-sm line-through text-muted-foreground">{fragment.key}</span>
+      ) : (
+        <Link
+          to="/projects/$projectId/fragments/$fragmentId"
+          params={{ projectId, fragmentId: fragment.fragmentUuid }}
+          className="text-sm hover:underline"
+        >
+          {fragment.key}
+        </Link>
+      )}
     </td>
     <td className="py-2 pr-4 text-sm tabular-nums text-right">{fragment.wordCount}</td>
     <td className="py-2 pr-4 text-sm text-right text-muted-foreground">
@@ -54,6 +65,7 @@ const FragmentRow = ({
 export const ProjectStatsPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/stats" });
   const { data: envelope, isLoading } = useGetProjectStats(projectId);
+  const [includeDiscarded, setIncludeDiscarded] = useState(false);
 
   if (isLoading) {
     return (
@@ -72,6 +84,10 @@ export const ProjectStatsPage = () => {
   }
 
   const { global: globalStats, fragments } = envelope.data;
+
+  const visibleFragments = includeDiscarded
+    ? fragments
+    : fragments.filter((fragment) => !fragment.isDiscarded);
 
   const histogramMax = Math.max(...globalStats.readinessHistogram, 1);
 
@@ -112,10 +128,21 @@ export const ProjectStatsPage = () => {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Fragments
-        </h2>
-        {fragments.length === 0 ? (
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Fragments
+          </h2>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeDiscarded}
+              onChange={(event) => setIncludeDiscarded(event.target.checked)}
+              className="rounded"
+            />
+            Include discarded
+          </label>
+        </div>
+        {visibleFragments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No fragments yet.</p>
         ) : (
           <table className="w-full text-left">
@@ -136,7 +163,7 @@ export const ProjectStatsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {fragments.map((fragment) => (
+              {visibleFragments.map((fragment) => (
                 <FragmentRow
                   key={fragment.fragmentUuid}
                   fragment={fragment}

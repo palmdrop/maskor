@@ -8,6 +8,7 @@
 - 2026-05-08 — User can view a dedicated Stats page per project with global aggregates (fragment counts, readyStatus histogram, total and average word counts) and an alphabetical per-fragment overview table. (plan: references/plans/project-statistics.md)
 - 2026-05-08 — Fragment word counts are persisted to the database and recomputed automatically on save or watcher-detected content change. (plan: references/plans/project-statistics.md)
 - 2026-05-08 — A read-only fragment stats inspector panel (prompting counters) is available in the editor sidebar, toggled per project from the Advanced section of the General tab. (plan: references/plans/project-statistics.md)
+- 2026-05-30 — Stats page per-fragment table has an "Include discarded" toggle (session-local, default off). When on, discarded fragments appear in the table with strikethrough key and muted styling; global aggregates are unaffected.
 
 ---
 
@@ -71,7 +72,7 @@ The inspector panel is a developer/power-user surface for inspecting Maskor's in
 
 - Columns: `key` (linked to the fragment editor), word count, last edited, `readyStatus` (rendered as a percentage)
 - Sort: alphabetical ascending by `key`. Locked in v1.
-- Discarded fragments excluded in v1.
+- Discarded fragments excluded by default. An "Include discarded" toggle above the table (session-local, default off) adds discarded rows to the table. Discarded rows render with strikethrough key and muted opacity; the key is not linked (navigating to a discarded fragment is unsupported from the Stats page).
 - Empty state when the project has no fragments.
 
 ### Word count persistence
@@ -128,6 +129,8 @@ The inspector panel is a developer/power-user surface for inspecting Maskor's in
 - **`updatedAt` over filesystem mtime**: The DB timestamp is the consistent source of truth across UI surfaces; mtime is brittle across vault sync, exports, and external tools.
 - **Sort by `key` only in v1**: The fragment list already uses key-based sort. A sort/filter UI on the stats table can wait for actual user need.
 - **Dedicated stats endpoint**: Keeps `fragment_stats` out of the standard fragment payload and gives the Stats page a single batch read it can cache independently.
+- **Discarded fragment toggle is session-local**: The preference to see discarded rows is transient — not persisted to project.json. It is a debugging/review affordance, not part of the normal writing workflow.
+- **API returns all fragments, frontend filters**: The stats endpoint now includes discarded fragments with `isDiscarded: true`. The frontend hides them by default. Global aggregate fields remain non-discarded only.
 
 ---
 
@@ -135,7 +138,7 @@ The inspector panel is a developer/power-user surface for inspecting Maskor's in
 
 - [ ] 2026-05-07 — Word count tokenisation rules. Initial proposal: strip code fences and link URLs (`[text](url)` → `text`), then count whitespace-separated tokens. Markdown-aware lexing is overkill in v1.
 - [ ] 2026-05-07 — `fragment_stats` row creation timing once `wordCount` lands. Eager on fragment insert (every fragment has a row immediately) vs. lazy on first stat write. Eager simplifies the Stats query; lazy keeps the existing policy.
-- [ ] 2026-05-07 — Should the per-fragment table optionally include discarded fragments behind a toggle? V1 says no.
+- [x] 2026-05-07 — Should the per-fragment table optionally include discarded fragments behind a toggle? **Resolved 2026-05-30**: Yes. A session-local "Include discarded" checkbox above the table shows discarded rows with strikethrough styling. Global aggregates remain non-discarded only.
 - [ ] 2026-05-07 — Final label for the advanced toggle. Initial proposal: "Show fragment stats panel in editor".
 - [ ] 2026-05-07 — Inspector panel placement within the editor sidebar (top, bottom, beneath aspects, etc.). Visual call, deferred to implementation.
 

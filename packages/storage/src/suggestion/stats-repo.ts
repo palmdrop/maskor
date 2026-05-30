@@ -109,7 +109,7 @@ export const getStatsForProject = (database: VaultDatabase): ProjectStats => {
 
   const averageWordCount = nonDiscarded.length > 0 ? totalWordCount / nonDiscarded.length : 0;
 
-  const fragmentSummaries: FragmentStatsSummary[] = nonDiscarded
+  const fragmentSummaries: FragmentStatsSummary[] = fragments
     .map((fragment) => {
       const stats = statsByUuid.get(fragment.uuid);
       return {

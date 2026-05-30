@@ -84,10 +84,13 @@ describe("GET /projects/:projectId/stats", () => {
     expect(keys).toEqual(sorted);
   });
 
-  it("fragments list excludes discarded fragments", async () => {
+  it("fragments list includes discarded fragments with isDiscarded flag", async () => {
     const response = await testContext.app.request(`/projects/${project.projectUUID}/stats`);
     const body = (await response.json()) as ApiProjectStats;
-    expect(body.fragments.every((fragment) => !fragment.isDiscarded)).toBe(true);
+    const discarded = body.fragments.filter((fragment) => fragment.isDiscarded);
+    const nonDiscarded = body.fragments.filter((fragment) => !fragment.isDiscarded);
+    expect(discarded.length).toBeGreaterThan(0);
+    expect(nonDiscarded.length).toBe(body.global.totalCount);
   });
 });
 
