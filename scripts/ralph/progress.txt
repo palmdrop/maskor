@@ -210,3 +210,17 @@ Started: [pending]
   - Drag handle should be rendered as a separate `<button>` that receives `{...attributes}` and `{...listeners}` — do NOT spread those onto the section `<section>` element itself, or the whole section header becomes a drag initiator and conflicts with click-to-rename
   - Shift+Arrow for sections vs plain Arrow for fragments: modifier key chosen for consistency with spatial layout and to avoid conflict with fragment-level arrow keys
 ---
+
+## 2026-05-30 - US-015
+- Added "Include discarded" checkbox toggle above the per-fragment table on the Stats page
+- Updated `packages/storage/src/suggestion/stats-repo.ts`: changed `getStatsForProject` to include ALL fragments (discarded + non-discarded) in the `fragments` array; `isDiscarded` flag already existed on `FragmentStatsSummary`
+- Updated `packages/frontend/src/pages/ProjectStatsPage/index.tsx`: added `useState(false)` for `includeDiscarded`; filters `visibleFragments` from the full list; discarded rows render with `line-through` key and `opacity-50` row class; key cell is a plain `<span>` (not a link) for discarded rows; toggle is a checkbox label above the table header
+- Updated `packages/api/src/__tests__/routes/stats.test.ts`: updated "fragments list excludes discarded fragments" test to instead assert discarded fragments are returned with `isDiscarded: true` and non-discarded count matches `global.totalCount`
+- Created `packages/frontend/src/pages/__tests__/ProjectStatsPage.test.tsx`: 4 tests covering hide-by-default, show-on-toggle, strikethrough styling, and global stats immutability
+- Updated `specifications/project-statistics.md`: added Shipped entry, resolved open question, updated Per-fragment table behavior section, added two Prior decisions
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - The `FragmentStatsSummary` type and API schema already had `isDiscarded: boolean` — the storage layer just excluded discarded from the array. Changing to include all fragments was a one-line change in `getStatsForProject`.
+  - For discarded fragment rows, don't link the key — the fragment editor route resolves by UUID regardless of discard state, but navigating to a discarded fragment is confusing UX. Plain text with strikethrough is sufficient.
+  - `getByText("1")` is ambiguous when multiple tiles show the same number — use `getAllByText` or query by a more specific label when testing global stat tiles.
+---
