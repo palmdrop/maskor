@@ -14,6 +14,8 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
 
+- [ ] reordering sections does not work properly with arrow keys, works when dragging and dropping
+
 - [x] finish persist cursor position implementation
 
 - [x] Refactor command system, introduce strong types and reduce boilerplate
