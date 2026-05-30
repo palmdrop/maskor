@@ -8,7 +8,7 @@ ALWAYS KEEP THESE THINGS IN MIND:
 - Add suggestions to `@references/SUGGESTIONS.md` when encountering issues or surprises that are not immediately fixed.
 - Be succinct. Short sentences, no fluff. Skip filler words. Sentence fragments are fine.
 - Reference `@references/CODEBASE_SNAPSHOT.md` instead of traversing the codebase. `grep` to locate symbols, keywords and code snippets. Regenerate with `bun run snapshot`.
-- When you've changed the API and need the corresponding frontend queries/mutations, run `bun run codegen` in `packages/frontend`. Assume the API is already running, you usually do not have to start it yourself.
+- When you've changed an API route and need the corresponding frontend queries/mutations: first regenerate the OpenAPI snapshot with `bun run generate-openapi` in `packages/api`, then run `bun run codegen` in `packages/frontend`. Codegen reads the committed snapshot (`packages/frontend/src/api/openapi.json`) — no running API is needed. `bun run verify` fails if the snapshot is out of sync with the routes.
 - Write tests when adding features or changing behavior.
 - Make note of `specifications` that are out of sync with the code or direction.
 - Whenever you implement a new feature, update the `Shipped` frontmatter section of any relevant `specifications`. If it is not clear which specification to update, pause and ask the developer.

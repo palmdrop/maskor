@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { createSettingsService, DEFAULT_CONFIG_DIRECTORY } from "@maskor/storage";
 import type { StorageService, ProjectContext, SettingsService } from "@maskor/storage";
+import { OPENAPI_DOCUMENT_CONFIG } from "./openapi-config";
 import { resolveProject } from "./middleware/resolve-project";
 import { projectsRouter } from "./routes/projects";
 import { fragmentsRouter } from "./routes/fragments";
@@ -107,10 +108,7 @@ export const createApp = (
   // and context inheritance would break.
   app.route("/projects/:projectId", projectScopedApp);
 
-  app.doc("/doc", {
-    openapi: "3.1.0",
-    info: { title: "Maskor API", version: "0.1.0" },
-  });
+  app.doc("/doc", OPENAPI_DOCUMENT_CONFIG);
 
   app.get("/ui", swaggerUI({ url: "/doc" }));
 

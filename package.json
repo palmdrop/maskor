@@ -16,7 +16,8 @@
     "dev:api": "bun run --cwd packages/api dev",
     "dev:frontend": "bun run --cwd packages/frontend dev",
     "snapshot": "bunx repomix --compress",
-    "verify": "bun run typecheck && bun run test"
+    "verify:openapi": "bun run --cwd packages/api verify:openapi",
+    "verify": "bun run typecheck && bun run verify:openapi && bun run test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -4,11 +4,11 @@ Generated hooks live under `src/api/generated/<tag>/<tag>.ts` (one file per Open
 
 When you add or change an API route (new endpoint, new field, new mode), regenerate the client:
 
-1. First, assume the API is already running. Check. If it is not, start it with `bun run dev` in `packages/api`.
-2. From `packages/frontend`, run `bun run codegen`.
+1. In `packages/api`, run `bun run generate-openapi` to refresh the committed snapshot (`src/api/openapi.json`). No server needed — the spec is generated in-process from the route definitions.
+2. From `packages/frontend`, run `bun run codegen`. It runs orval against the committed snapshot — the API does not need to be running.
 3. Use the regenerated hook in the frontend. Delete any hand-rolled mutation that the regenerated hook replaces.
 
-If a hook you expect isn't generated, the route is either missing from the OpenAPI spec or codegen wasn't re-run against an up-to-date server — fix that first; don't work around it with a custom mutation.
+If a hook you expect isn't generated, the route is either missing from the OpenAPI spec or the snapshot wasn't regenerated after the route change — fix that first (re-run step 1); don't work around it with a custom mutation. `bun run verify` fails if the snapshot drifts from the routes.
 
 Example to mirror: `RenameProjectDialog.tsx` uses `useUpdateProject` from the generated client.
 

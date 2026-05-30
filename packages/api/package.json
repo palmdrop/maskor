@@ -8,7 +8,9 @@
     "dev": "bun --watch run ./src/index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "generate-openapi": "bun run ./src/scripts/generate-openapi.ts",
+    "verify:openapi": "bun run ./src/scripts/generate-openapi.ts /tmp/maskor-openapi-check.json && git diff --no-index --exit-code ../frontend/src/api/openapi.json /tmp/maskor-openapi-check.json"
   },
   "devDependencies": {
     "@maskor/test-fixtures": "workspace:*",

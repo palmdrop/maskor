@@ -9,3 +9,7 @@ Example to mirror:
 - Plumbing: `src/commands/types.ts` (`Command`, `CommandContext`, `executeCommand`)
 
 Exception: `swap.*` routes call `storageService.swap.*` directly. Swap files are a transient unsaved-content cache (see `references/plans/entity-content-swap-files.md`); they're not user actions and intentionally do not emit action log entries, so the commands pipeline adds no value.
+
+## OpenAPI snapshot
+
+This package owns the committed OpenAPI snapshot the frontend's orval codegen consumes. After you add or change a route (or its request/response schema), run `bun run generate-openapi` to refresh `packages/frontend/src/api/openapi.json`, then commit it. The snapshot is generated in-process from the route definitions (`src/scripts/generate-openapi.ts`) — no running server. `bun run verify:openapi` (also part of root `bun run verify`) regenerates to a temp file and fails if it differs from the committed snapshot, so stale snapshots can't merge.

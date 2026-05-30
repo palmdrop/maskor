@@ -1,9 +1,9 @@
 # Offline OpenAPI codegen for the frontend
 
 **Date**: 30-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `references/plans/openapi-swagger.md` (origin of the OpenAPI surface; not a `specifications/` doc)
-**Closed**:
+**Closed**: 30-05-2026
 
 ---
 
@@ -39,36 +39,36 @@ Established-solution research (web): a standalone script calling `getOpenAPIDocu
 
 ### Phase 1 — Generator + shared doc config
 
-- [ ] Create branch `offline-openapi-codegen` from the plan title.
-- [ ] Extract the OpenAPI doc config (`openapi: "3.1.0"`, `info: { title: "Maskor API", version: "0.1.0" }`) into a single shared constant in `packages/api/src/` so `app.ts`'s `app.doc()` call and the new generator cannot drift. Point `app.doc()` at it.
-- [ ] Add `packages/api/src/scripts/generate-openapi.ts`: build the app via `createApp({} as StorageService)`, call `getOpenAPIDocument(<shared config>)`, write `packages/frontend/src/api/openapi.json` (pretty-printed, trailing newline to match prettier).
-- [ ] Add a `generate-openapi` script to `packages/api/package.json` that runs the generator under bun.
-- [ ] Generate and commit the initial `packages/frontend/src/api/openapi.json` snapshot.
+- [x] Create branch `offline-openapi-codegen` from the plan title.
+- [x] Extract the OpenAPI doc config (`openapi: "3.1.0"`, `info: { title: "Maskor API", version: "0.1.0" }`) into a single shared constant in `packages/api/src/` so `app.ts`'s `app.doc()` call and the new generator cannot drift. Point `app.doc()` at it.
+- [x] Add `packages/api/src/scripts/generate-openapi.ts`: build the app via `createApp({} as StorageService)`, call `getOpenAPIDocument(<shared config>)`, write `packages/frontend/src/api/openapi.json` (pretty-printed, trailing newline to match prettier).
+- [x] Add a `generate-openapi` script to `packages/api/package.json` that runs the generator under bun.
+- [x] Generate and commit the initial `packages/frontend/src/api/openapi.json` snapshot.
 
 ### Phase 2 — Point orval at the snapshot
 
-- [ ] `packages/frontend/orval.config.ts`: change `input` to `"src/api/openapi.json"`; remove the localhost TODO comment (line 3).
-- [ ] Run `bun run codegen` from `packages/frontend` with **no server running**; confirm the generated client is byte-identical to the pre-change output (the snapshot was produced from the same code path).
-- [ ] Commit.
+- [x] `packages/frontend/orval.config.ts`: change `input` to `"src/api/openapi.json"`; remove the localhost TODO comment (line 3).
+- [x] Run `bun run codegen` from `packages/frontend` with **no server running**; confirm the generated client is byte-identical to the pre-change output (the snapshot was produced from the same code path).
+- [x] Commit.
 
 ### Phase 3 — Verify guard
 
-- [ ] Add a verify-guard script to `packages/api/package.json`: regenerate the spec to a temp path, `git diff --exit-code` (or equivalent content compare) against the committed `openapi.json`, fail non-zero on any difference, clean up the temp file. Decide the script name (suggest `verify:openapi`).
-- [ ] Wire the guard into the repo-level check. The API package currently has no `verify`/`typecheck` script and root `verify` is `tsc --noEmit && test`. Recommended: invoke the API guard from the root `verify` script so `bun run verify` catches drift. Confirm placement with the developer if it complicates ordering.
-- [ ] Verify the guard fails when a route changes without the snapshot being regenerated, and passes when they match.
-- [ ] Commit.
+- [x] Add a verify-guard script to `packages/api/package.json`: regenerate the spec to a temp path, `git diff --exit-code` (or equivalent content compare) against the committed `openapi.json`, fail non-zero on any difference, clean up the temp file. Decide the script name (suggest `verify:openapi`).
+- [x] Wire the guard into the repo-level check. The API package currently has no `verify`/`typecheck` script and root `verify` is `tsc --noEmit && test`. Recommended: invoke the API guard from the root `verify` script so `bun run verify` catches drift. Confirm placement with the developer if it complicates ordering.
+- [x] Verify the guard fails when a route changes without the snapshot being regenerated, and passes when they match.
+- [x] Commit.
 
 ### Phase 4 — Docs
 
 Update every durable instruction source that references the codegen pattern so all of them describe the new serverless flow consistently. (Point-in-time records — `references/plans/*`, `references/reviews/*`, `.claude/PROMPT.md` — are **not** updated; they document history.)
 
-- [ ] **`.claude/CLAUDE.md` (root, line 11)**: rewrite the codegen instruction. Today it says "run `bun run codegen` in `packages/frontend`. Assume the API is already running, you usually do not have to start it yourself." Replace with: codegen reads a committed snapshot and needs no running API; when you change a route, regenerate the snapshot from `packages/api` first. This line is the primary source of the "is the API running?" agent confusion — it is the highest-priority doc fix.
-- [ ] **`packages/frontend/CLAUDE.md`**: drop "assume the API is already running / start it with `bun run dev`" from the codegen steps; replace with the serverless flow (snapshot is committed; `bun run codegen` runs orval against `src/api/openapi.json`; regenerate the snapshot from `packages/api` when routes change).
-- [ ] **`packages/api/CLAUDE.md`**: add a short instruction — the API package owns the committed OpenAPI snapshot; after adding or changing a route, run `bun run generate-openapi` to refresh `packages/frontend/src/api/openapi.json`, and note the verify guard fails if it drifts.
-- [ ] **`references/suggestions.md`**: tick / remove the "saved OpenAPI snapshot for offline codegen" entry (line 35), noting it shipped as code-generated rather than `curl`-captured.
-- [ ] Confirm no `specifications/` doc documents the codegen *procedure* (only `specifications/quick-switcher.md:138` references the orval client, which stays accurate) — no spec edit expected; verify during implementation.
-- [ ] Flag the `app.doc()` 3.1.0-label-on-V3-document quirk to the developer (see below) — record-only, not fixed here.
-- [ ] Commit.
+- [x] **`.claude/CLAUDE.md` (root, line 11)**: rewrite the codegen instruction. Today it says "run `bun run codegen` in `packages/frontend`. Assume the API is already running, you usually do not have to start it yourself." Replace with: codegen reads a committed snapshot and needs no running API; when you change a route, regenerate the snapshot from `packages/api` first. This line is the primary source of the "is the API running?" agent confusion — it is the highest-priority doc fix.
+- [x] **`packages/frontend/CLAUDE.md`**: drop "assume the API is already running / start it with `bun run dev`" from the codegen steps; replace with the serverless flow (snapshot is committed; `bun run codegen` runs orval against `src/api/openapi.json`; regenerate the snapshot from `packages/api` when routes change).
+- [x] **`packages/api/CLAUDE.md`**: add a short instruction — the API package owns the committed OpenAPI snapshot; after adding or changing a route, run `bun run generate-openapi` to refresh `packages/frontend/src/api/openapi.json`, and note the verify guard fails if it drifts.
+- [x] **`references/suggestions.md`**: tick / remove the "saved OpenAPI snapshot for offline codegen" entry (line 35), noting it shipped as code-generated rather than `curl`-captured.
+- [x] Confirm no `specifications/` doc documents the codegen *procedure* (only `specifications/quick-switcher.md:138` references the orval client, which stays accurate) — no spec edit expected; verify during implementation.
+- [x] Flag the `app.doc()` 3.1.0-label-on-V3-document quirk to the developer (see below) — record-only, not fixed here.
+- [x] Commit.
 
 ---
 

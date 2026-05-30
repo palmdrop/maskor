@@ -1,12 +1,14 @@
 import { defineConfig } from "orval";
 
-// TODO: codegen requires the API to be running at localhost:3001. Run `bun run start` in packages/api first.
+// Reads a committed OpenAPI snapshot, so codegen needs no running API server.
+// Regenerate the snapshot from packages/api with `bun run generate-openapi`
+// whenever you add or change a route. See references/plans/offline-openapi-codegen.md.
 
 const capitalizeFirst = (string_: string) => string_.charAt(0).toUpperCase() + string_.slice(1);
 
 export default defineConfig({
   maskor: {
-    input: "http://localhost:3001/doc",
+    input: "src/api/openapi.json",
     output: {
       mode: "tags-split",
       target: "src/api/generated",
