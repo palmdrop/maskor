@@ -2279,61 +2279,6 @@
           "error"
         ]
       },
-      "PreviewImportResult": {
-        "type": "object",
-        "properties": {
-          "pieces": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PreviewPiece"
-            }
-          },
-          "format": {
-            "type": "string",
-            "enum": [
-              "markdown",
-              "docx",
-              "plaintext"
-            ],
-            "example": "markdown"
-          },
-          "convertedMarkdown": {
-            "type": "string",
-            "example": "# Heading\n\nContent."
-          }
-        },
-        "required": [
-          "pieces",
-          "format",
-          "convertedMarkdown"
-        ]
-      },
-      "PreviewPiece": {
-        "type": "object",
-        "properties": {
-          "pieceIndex": {
-            "type": "integer",
-            "example": 1
-          },
-          "title": {
-            "type": "string",
-            "example": "My Heading"
-          },
-          "derivedKey": {
-            "type": "string",
-            "example": "My Heading"
-          },
-          "content": {
-            "type": "string",
-            "example": "Some content here."
-          }
-        },
-        "required": [
-          "pieceIndex",
-          "derivedKey",
-          "content"
-        ]
-      },
       "PreviewResult": {
         "type": "object",
         "properties": {
@@ -12061,6 +12006,7 @@
           "Fragments"
         ],
         "summary": "Preview how a .md, .txt, or .docx file would be split into fragments",
+        "description": "Returns the proposed pieces assembled into a single markdown string (with per-piece anchors) plus a lean nav payload — the same { markdown, sections } shape as sequence preview.",
         "parameters": [
           {
             "schema": {
@@ -12099,11 +12045,11 @@
         },
         "responses": {
           "200": {
-            "description": "Preview result — pieces that would be created",
+            "description": "Assembled markdown + per-piece nav for the fragments that would be created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PreviewImportResult"
+                  "$ref": "#/components/schemas/PreviewResult"
                 }
               }
             }

@@ -32,22 +32,9 @@ export const ImportResultSchema = z
   })
   .openapi("ImportResult");
 
-const PreviewPieceSchema = z
-  .object({
-    pieceIndex: z.number().int().openapi({ example: 1 }),
-    title: z.string().optional().openapi({ example: "My Heading" }),
-    derivedKey: z.string().openapi({ example: "My Heading" }),
-    content: z.string().openapi({ example: "Some content here." }),
-  })
-  .openapi("PreviewPiece");
-
-export const PreviewImportResultSchema = z
-  .object({
-    pieces: z.array(PreviewPieceSchema),
-    format: z.enum(["markdown", "docx", "plaintext"]).openapi({ example: "markdown" }),
-    convertedMarkdown: z.string().openapi({ example: "# Heading\n\nContent." }),
-  })
-  .openapi("PreviewImportResult");
+// The import preview response is the shared { markdown, sections } shape — see
+// `PreviewResultSchema` in ./preview. The route assembles the command's pieces
+// through the same exporter core as sequence preview.
 
 export const ImportBodySchema = z.object({
   file: z.any().openapi({

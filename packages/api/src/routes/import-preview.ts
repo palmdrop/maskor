@@ -1,15 +1,13 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { MammothConverter } from "@maskor/importer";
+import { assemblePieces } from "@maskor/exporter";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { projectIdParamSchema } from "../schemas/shared";
 import { ErrorResponseSchema } from "../schemas/error";
-import {
-  ImportBodySchema,
-  ImportOptionsSchema,
-  PreviewImportResultSchema,
-} from "../schemas/import";
+import { ImportBodySchema, ImportOptionsSchema } from "../schemas/import";
 import type { ImportOptions } from "../schemas/import";
+import { PreviewResultSchema } from "../schemas/preview";
 import { createPreviewImportCommand, executeCommand, type ImportInput } from "../commands";
 import type { CommandContext } from "../commands";
 
@@ -19,6 +17,8 @@ const importPreviewRoute = createRoute({
   path: "/",
   tags: ["Fragments"],
   summary: "Preview how a .md, .txt, or .docx file would be split into fragments",
+  description:
+    "Returns the proposed pieces assembled into a single markdown string (with per-piece anchors) plus a lean nav payload — the same { markdown, sections } shape as sequence preview.",
   request: {
     params: projectIdParamSchema,
     body: {
@@ -32,8 +32,8 @@ const importPreviewRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: PreviewImportResultSchema } },
-      description: "Preview result — pieces that would be created",
+      content: { "application/json": { schema: PreviewResultSchema } },
+      description: "Assembled markdown + per-piece nav for the fragments that would be created",
     },
     400: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -107,7 +107,10 @@ importPreviewRouter.openapi(importPreviewRoute, async (ctx) => {
 
   try {
     const result = await executeCommand(command, commandContext, input);
-    return ctx.json(result, 200);
+    // Map pieces -> blocks -> assembled markdown via the shared exporter core, so
+    // import preview and sequence preview render through the same renderer.
+    const assembled = assemblePieces(result.pieces);
+    return ctx.json(assembled, 200);
   } catch (error) {
     return throwStorageError(error);
   }

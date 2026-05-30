@@ -4,9 +4,14 @@ import { join } from "node:path";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
-import type { PreviewImportResult } from "../../commands/fragments/preview-import";
 
 type ApiError = { error: string; message: string };
+type PreviewNavFragment = { uuid: string; key: string };
+type PreviewNavSection = { uuid: string; name: string; fragments: PreviewNavFragment[] };
+type PreviewResult = { markdown: string; sections: PreviewNavSection[] };
+
+const pieceNav = (body: PreviewResult): PreviewNavFragment[] =>
+  body.sections.flatMap((section) => section.fragments);
 
 const docxFixturePath = join(
   import.meta.dir,
@@ -44,7 +49,7 @@ afterAll(() => {
 });
 
 describe("POST /projects/:projectId/import/preview — markdown", () => {
-  it("returns preview pieces for a markdown file", async () => {
+  it("returns markdown + single-section nav with one entry per piece", async () => {
     const content = "# First\n\nContent of first.\n\n# Second\n\nContent of second.";
     const file = new File([content], "test.md", { type: "text/markdown" });
 
@@ -54,32 +59,54 @@ describe("POST /projects/:projectId/import/preview — markdown", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces).toHaveLength(2);
-    expect(body.format).toBe("markdown");
-    expect(body.convertedMarkdown).toBe(content);
-    expect(body.pieces[0]?.pieceIndex).toBe(1);
-    expect(body.pieces[1]?.pieceIndex).toBe(2);
-    body.pieces.forEach((p) => expect(typeof p.derivedKey).toBe("string"));
+    const body = (await response.json()) as PreviewResult;
+    expect(body.sections).toHaveLength(1);
+    const nav = pieceNav(body);
+    expect(nav).toHaveLength(2);
+    // Anchor ids are piece indices; titles drive the markdown headings.
+    expect(nav.map((f) => f.uuid)).toEqual(["1", "2"]);
+    expect(body.markdown).toContain("### 1. ");
+    expect(body.markdown).toContain("### 2. ");
+    expect(body.markdown).toContain("Content of first.");
+    expect(body.markdown).toContain("Content of second.");
   });
 
-  it("respects heading level option", async () => {
-    const content = "# H1\n\nH1 content.\n\n## H2\n\nH2 content.";
+  it("embeds a per-piece anchor sentinel encoding the piece index", async () => {
+    const content = "# Only\n\nBody here.";
     const file = new File([content], "test.md", { type: "text/markdown" });
 
     const response = await makePreviewRequest(testContext.app, project.projectUUID, file, {
       format: "markdown",
+      headingLevel: 1,
+    });
+
+    const body = (await response.json()) as PreviewResult;
+    const nav = pieceNav(body);
+    expect(nav).toHaveLength(1);
+    // The sentinel carries the piece index "1", matching the nav uuid.
+    expect(body.markdown).toContain(nav[0]!.uuid);
+  });
+
+  it("reflects heading-level changes in the nav", async () => {
+    const content = "# H1\n\nH1 content.\n\n## H2\n\nH2 content.";
+    const file = new File([content], "test.md", { type: "text/markdown" });
+
+    const atLevelOne = await makePreviewRequest(testContext.app, project.projectUUID, file, {
+      format: "markdown",
+      headingLevel: 1,
+    });
+    const atLevelTwo = await makePreviewRequest(testContext.app, project.projectUUID, file, {
+      format: "markdown",
       headingLevel: 2,
     });
 
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces).toHaveLength(2);
+    expect(pieceNav((await atLevelOne.json()) as PreviewResult)).toHaveLength(1);
+    expect(pieceNav((await atLevelTwo.json()) as PreviewResult)).toHaveLength(2);
   });
 });
 
 describe("POST /projects/:projectId/import/preview — plaintext", () => {
-  it("returns preview pieces split by delimiter", async () => {
+  it("reflects delimiter splits in the nav", async () => {
     const content = "First piece of content.\n---\nSecond piece.\n---\nThird piece.";
     const file = new File([content], "test.txt", { type: "text/plain" });
 
@@ -89,9 +116,8 @@ describe("POST /projects/:projectId/import/preview — plaintext", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces).toHaveLength(3);
-    expect(body.format).toBe("plaintext");
+    const body = (await response.json()) as PreviewResult;
+    expect(pieceNav(body)).toHaveLength(3);
   });
 });
 
@@ -115,15 +141,14 @@ describe("POST /projects/:projectId/import/preview — docx", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces.length).toBeGreaterThan(0);
-    expect(body.format).toBe("docx");
-    expect(typeof body.convertedMarkdown).toBe("string");
+    const body = (await response.json()) as PreviewResult;
+    expect(pieceNav(body).length).toBeGreaterThan(0);
+    expect(typeof body.markdown).toBe("string");
   });
 });
 
 describe("POST /projects/:projectId/import/preview — key collision", () => {
-  it("returns suffixed key when fragment already exists with that key", async () => {
+  it("returns suffixed key in the nav when a fragment already exists with that key", async () => {
     const uniqueKey = `preview-collision-${Date.now()}`;
     await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
       method: "POST",
@@ -140,14 +165,15 @@ describe("POST /projects/:projectId/import/preview — key collision", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces).toHaveLength(1);
-    expect(body.pieces[0]?.derivedKey).toMatch(/_1$/);
+    const body = (await response.json()) as PreviewResult;
+    const nav = pieceNav(body);
+    expect(nav).toHaveLength(1);
+    expect(nav[0]?.key).toMatch(/_1$/);
   });
 });
 
 describe("POST /projects/:projectId/import/preview — zero-piece case", () => {
-  it("returns empty pieces array when document has no matchable sections", async () => {
+  it("returns empty markdown and an empty nav when no sections match", async () => {
     const content = "# Heading Only\n\n";
     const file = new File([content], "test.md", { type: "text/markdown" });
 
@@ -157,9 +183,9 @@ describe("POST /projects/:projectId/import/preview — zero-piece case", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as PreviewImportResult;
-    expect(body.pieces).toHaveLength(0);
-    expect(body.convertedMarkdown).toBe(content);
+    const body = (await response.json()) as PreviewResult;
+    expect(pieceNav(body)).toHaveLength(0);
+    expect(body.markdown).toBe("");
   });
 });
 
