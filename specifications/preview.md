@@ -1,10 +1,11 @@
 # Spec: Preview
 
 **Status**: Partial
-**Last updated**: 2026-05-18
-**Shipped**: Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
+**Last updated**: 2026-05-30
+**Shipped**:
 
-> **Rendering refactor (2026-05-30, in progress):** Preview is moving off the per-fragment `StaticMarkdown` (`dangerouslySetInnerHTML`) onto a shared read-only Tiptap renderer that also serves the import preview, sharing typography/margin settings with the editable `ProseEditor` (not the full editing shell). Assembly moves fully server-side: `@maskor/exporter` returns a complete assembled **markdown string** with toggles applied in the backend, plus optional invisible anchor sentinels for sidebar navigation (a custom markdown-it rule + Tiptap node; `html` stays `false`). This supersedes the "Static markdown for preview, Tiptap for import" prior decision and the `StaticMarkdown` constraint below. Plan TBD; novel-scale rendering risk tracked in `references/suggestions.md`.
+- Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
+- 2026-05-30 — Rendering refactor: preview and import render through one shared read-only Tiptap renderer fed by a complete server-assembled **markdown string** from `@maskor/exporter`. Toggles apply server-side (sent as request options); sidebar navigation uses invisible anchor sentinels (a custom markdown-it rule + schema-modeled Tiptap node rendering `id="fragment-<id>"`, `html` stays `false`). `StaticMarkdown` / `dangerouslySetInnerHTML` removed. (plan: `references/plans/preview-import-shared-renderer.md`)
 
 ---
 
@@ -58,9 +59,11 @@ Selection is driven by the URL (`/projects/:projectId/preview?sequence=<uuid>`).
 
 ### Assembly
 
-Sequence assembly happens server-side via the `@maskor/exporter` package — the same code path as file export. The frontend calls a preview endpoint with the current sequence; the backend returns a structured `AssembledSequence` payload (sections → fragments with content and stable uuids). The frontend renders this payload directly: fragment content via a static markdown renderer, anchors via per-fragment wrapper divs, with toggle state controlling section/title visibility and the inter-fragment separator. Typography uses project settings from `useProjectEditorConfig`.
+Sequence assembly happens server-side via the `@maskor/exporter` package — the same code path as file export. The frontend calls a preview endpoint with the current sequence **and the toggle options** (titles, section headings, separator); the backend assembles the sequence into a complete **markdown string** with those options already applied, plus a lean navigation payload (`sections → fragments` with stable uuids and display keys, **no content**). The response shape is `{ markdown, sections }`. The frontend renders `markdown` through the shared read-only Tiptap renderer; the `sections` drive the sidebar. Typography uses project settings from `useProjectEditorConfig`.
 
-Assembly is deterministic: the same sequence always produces the same `AssembledSequence`, regardless of whether the consumer is preview or export. The structured payload is the shared contract; preview and export each apply their own toggle-driven presentation on top.
+Anchors for sidebar navigation are emitted inline in the markdown as collision-safe sentinel tokens (off for file export, on for preview/import). A custom markdown-it rule maps each sentinel to an invisible, schema-modeled Tiptap node rendering `id="fragment-<uuid>"`. `html` stays `false` everywhere.
+
+Assembly is deterministic: the same sequence and options always produce the same markdown, regardless of whether the consumer is preview or export. The exporter is the shared contract; the only byte difference between a preview document and an exported file is the anchor sentinels.
 
 ### Toolbar
 
@@ -112,8 +115,8 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - Preview is read-only. It never modifies vault files, the DB, sequences, or any other project state.
 - Assembly logic lives in `@maskor/exporter` — single source of truth shared with export.
 - Toolbar state is project-scoped, stored in `project.json` under `preview`. Not stored in the URL, not stored globally.
-- Fragment content in the preview is rendered via a lightweight static markdown component (`StaticMarkdown`), not via a per-fragment Tiptap editor — preview is read-only and editor instances per fragment would blow up at novel-sized sequences. The `ReadonlyEditor` Tiptap wrapper remains for the import flow, where only one instance renders the entire preview.
-- Anchors used for sidebar navigation are stable DOM ids (`fragment-<uuid>`) emitted by the frontend around each rendered fragment, not derived through text matching.
+- The entire assembled document renders in a **single** read-only Tiptap instance shared with the import flow — not per-fragment renderers. One instance avoids the per-fragment editor explosion the original design feared; novel-scale rendering (one ProseMirror instance holding 100k+ words, no virtualization) is the tracked risk, with a static-HTML-from-the-same-schema fallback in `references/suggestions.md`.
+- Anchors used for sidebar navigation are stable DOM ids (`fragment-<uuid>`) produced by the exporter's anchor sentinels and a schema-modeled Tiptap node, not derived through text matching.
 - Updates are user-driven via the refresh banner — preview never auto-reflows during reading.
 
 ---
@@ -128,7 +131,8 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - **Sidebar grouping is decoupled from prose toggles**: The sidebar is a navigation TOC; toggles are presentation. Section grouping in the sidebar persists regardless of the section-heading prose toggle.
 - **Toggle state persists in `project.json`**: Writers form preferences. URL params or in-memory state would force re-configuration each session. Storing per-project (not per-sequence) keeps the model simple.
 - **Out-of-sequence badge for main only**: For alternate sequences, partial placement is normal. The badge would create noise.
-- **Static markdown for preview, Tiptap for import**: Preview is pure reading — a single Tiptap editor per fragment would create hundreds of editor instances for a novel-sized sequence. The preview uses `StaticMarkdown` (markdown-it → HTML, no editor) per fragment instead. Import's preview keeps `ReadonlyEditor` (one instance, full content) because it shows "what will be created from this file" in a single blob.
+- **One shared read-only Tiptap renderer for preview and import** (supersedes the earlier "static markdown for preview, Tiptap for import" split): the original concern was per-fragment editor instances exploding at novel scale. Assembling the whole sequence into a single markdown string server-side means the preview is one Tiptap instance, not hundreds — so preview and import can share the exact same renderer and config (no drift), and `dangerouslySetInnerHTML` is removed entirely. Anchors move to exporter-emitted sentinels + a Tiptap node rather than frontend wrapper divs. See `references/adr/0003-preview-anchor-sentinels.md`.
+- **Toggles apply server-side**: assembly options (titles, section headings, separator) are sent to the preview endpoint and applied by `@maskor/exporter`, not re-applied as JSX presentation on the client. Flipping a toggle refetches. This keeps preview byte-aligned with file export and removes a second, divergent assembly path on the frontend.
 
 ---
 
@@ -156,4 +160,4 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - Previewing the main sequence shows a badge with the count of fragments not placed in main; previewing any other sequence hides the badge.
 - An empty sequence renders the `Sequence empty.` message; a deleted sequence renders the `This sequence no longer exists.` message on the next refresh.
 - The preview never writes to the vault or DB. Repeated preview operations produce no log entries.
-- Preview and export operate on the same `AssembledSequence` payload produced by `@maskor/exporter` for a given sequence — divergence in rendered output is a presentation-layer concern, never an assembly-layer one.
+- Preview and export assemble through the same `@maskor/exporter` core for a given sequence and options; the preview wire payload is `{ markdown, sections }` (the markdown is the assembled document, the sections are lean navigation only). The sole byte difference between preview markdown and an exported file is the anchor sentinels (`includeAnchors`).

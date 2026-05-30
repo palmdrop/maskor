@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { assembleSequence, assemblePieces } from "../assemble";
+import type { AssemblySeparator } from "../assemble-markdown";
 import { ANCHOR_SENTINEL_PATTERN, anchorSentinel } from "../sentinel";
 import type { Fragment } from "@maskor/shared";
 
@@ -143,7 +144,7 @@ describe("assembleSequence — nav payload", () => {
 });
 
 describe("assembleSequence — markdown assembly", () => {
-  const twoFragmentSection = (overrides?: { separator?: typeof baseOptions.separator }) =>
+  const twoFragmentSection = (overrides?: { separator?: AssemblySeparator }) =>
     assembleSequence(
       {
         ...mainSequenceBase,

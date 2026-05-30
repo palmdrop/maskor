@@ -5,6 +5,7 @@
 **Shipped**:
 
 - 18-05-2026: Basic sequence assembly used for the `specifications/preview.md` feature: consumes a sequence and a set of fragments and returns a sequential list of sections and fragments.
+- 30-05-2026: `@maskor/exporter` markdown assembler core landed — a neutral block model + `assembleMarkdown(blocks, options)` lowering a sequence (or import pieces) to a single markdown string, with the full export-superset separator set, title/section-heading toggles, and optional collision-safe anchor sentinels (`includeAnchors`, off for file export). Drives preview and import preview today; no user-facing file-export UI yet. (plan: `references/plans/preview-import-shared-renderer.md`)
 
 ---
 
