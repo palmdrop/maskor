@@ -2334,41 +2334,30 @@
           "content"
         ]
       },
-      "AssembledSequence": {
+      "PreviewResult": {
         "type": "object",
         "properties": {
-          "sequenceUuid": {
+          "markdown": {
             "type": "string",
-            "format": "uuid",
-            "example": "c3d4e5f6-a7b8-9012-cdef-123456789012"
-          },
-          "sequenceName": {
-            "type": "string",
-            "example": "Main Sequence"
-          },
-          "isMain": {
-            "type": "boolean"
+            "example": "## Part One\n\n### the-crossing\n\nThe river was wide that morning."
           },
           "sections": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AssembledSection"
+              "$ref": "#/components/schemas/PreviewNavSection"
             }
           }
         },
         "required": [
-          "sequenceUuid",
-          "sequenceName",
-          "isMain",
+          "markdown",
           "sections"
         ]
       },
-      "AssembledSection": {
+      "PreviewNavSection": {
         "type": "object",
         "properties": {
           "uuid": {
             "type": "string",
-            "format": "uuid",
             "example": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
           },
           "name": {
@@ -2378,7 +2367,7 @@
           "fragments": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AssembledFragment"
+              "$ref": "#/components/schemas/PreviewNavFragment"
             }
           }
         },
@@ -2388,27 +2377,21 @@
           "fragments"
         ]
       },
-      "AssembledFragment": {
+      "PreviewNavFragment": {
         "type": "object",
         "properties": {
           "uuid": {
             "type": "string",
-            "format": "uuid",
             "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
           },
           "key": {
             "type": "string",
             "example": "the-crossing"
-          },
-          "content": {
-            "type": "string",
-            "example": "The river was wide that morning."
           }
         },
         "required": [
           "uuid",
-          "key",
-          "content"
+          "key"
         ]
       },
       "Draft": {
@@ -12154,7 +12137,7 @@
         "tags": [
           "Preview"
         ],
-        "summary": "Assemble a sequence into ordered prose payload",
+        "summary": "Assemble a sequence into a markdown string plus lean nav payload",
         "parameters": [
           {
             "schema": {
@@ -12173,15 +12156,55 @@
             "required": true,
             "name": "sequenceId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false"
+            },
+            "required": false,
+            "name": "showTitles",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "true"
+            },
+            "required": false,
+            "name": "showSectionHeadings",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "none",
+                "blank-line",
+                "horizontal-rule"
+              ],
+              "default": "blank-line"
+            },
+            "required": false,
+            "name": "separator",
+            "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "Assembled sequence",
+            "description": "Assembled markdown + navigation sections",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AssembledSequence"
+                  "$ref": "#/components/schemas/PreviewResult"
                 }
               }
             }

@@ -3,7 +3,11 @@ import { assembleSequence } from "@maskor/exporter";
 import type { Fragment } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
-import { AssembledSequenceSchema, PreviewSequenceUUIDParamSchema } from "../schemas/preview";
+import {
+  PreviewResultSchema,
+  PreviewSequenceQuerySchema,
+  PreviewSequenceUUIDParamSchema,
+} from "../schemas/preview";
 import { ErrorResponseSchema } from "../schemas/error";
 
 export const previewRouter = new OpenAPIHono<{ Variables: AppVariables }>();
@@ -13,12 +17,15 @@ const getAssembledSequenceRoute = createRoute({
   method: "get",
   path: "/{sequenceId}",
   tags: ["Preview"],
-  summary: "Assemble a sequence into ordered prose payload",
-  request: { params: PreviewSequenceUUIDParamSchema },
+  summary: "Assemble a sequence into a markdown string plus lean nav payload",
+  request: {
+    params: PreviewSequenceUUIDParamSchema,
+    query: PreviewSequenceQuerySchema,
+  },
   responses: {
     200: {
-      content: { "application/json": { schema: AssembledSequenceSchema } },
-      description: "Assembled sequence",
+      content: { "application/json": { schema: PreviewResultSchema } },
+      description: "Assembled markdown + navigation sections",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -36,6 +43,7 @@ previewRouter.openapi(getAssembledSequenceRoute, async (context) => {
     const storageService = context.get("storageService");
     const projectContext = context.get("projectContext")!;
     const { sequenceId } = context.req.valid("param");
+    const { showTitles, showSectionHeadings, separator } = context.req.valid("query");
 
     const sequence = await storageService.sequences.read(projectContext, sequenceId);
 
@@ -52,7 +60,13 @@ previewRouter.openapi(getAssembledSequenceRoute, async (context) => {
       result.status === "fulfilled" ? [result.value] : [],
     );
 
-    const assembled = assembleSequence(sequence, fragments);
+    const assembled = assembleSequence(sequence, fragments, {
+      showTitles,
+      showSectionHeadings,
+      separator,
+      includeAnchors: true,
+    });
+
     return context.json(assembled, 200);
   } catch (error) {
     return throwStorageError(error);
