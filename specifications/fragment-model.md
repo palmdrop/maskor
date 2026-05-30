@@ -1,7 +1,7 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-05-29
+**Last updated**: 2026-05-30
 
 **Shipped**:
 
@@ -100,7 +100,7 @@ Weights are set by the user via the metadata panel.
 
 ### Raw markdown adoption
 
-A raw markdown file is a writing file without Maskor metadata. When one is dropped into the `fragments/` directory, the watcher detects it and adopts it as a fragment automatically — minting a UUID and writing back full canonical frontmatter. The file is adopted in place; there is no separate staging folder. See `specifications/storage-sync.md` for the sync mechanics.
+A raw markdown file is a writing file without Maskor metadata. When one appears in the `fragments/` directory, Maskor adopts it as a fragment automatically — minting a UUID and writing back full canonical frontmatter, in place (no separate staging folder). This happens via the watcher when a file is dropped into a live project, and via the initial rebuild for files already present when a vault is adopted (the watcher ignores the initial scan, so rebuild is the path that canonicalizes pre-existing files). See `specifications/storage-sync.md` for the sync mechanics and `specifications/project-management.md` for the adoption-vs-import distinction.
 
 ---
 

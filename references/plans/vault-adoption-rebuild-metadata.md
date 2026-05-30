@@ -1,8 +1,9 @@
 # Fix vault adoption — rebuild mints missing metadata + eager Maskor dirs
 
 **Date**: 29-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/storage-sync.md`, `specifications/project-management.md`, `specifications/fragment-model.md`
+**Closed**: 30-05-2026
 
 ---
 
@@ -62,12 +63,12 @@ Self-contained; ships alone.
 
 ### Phase 4 — Spec + docs reconciliation
 
-- [ ] `specifications/project-management.md`: remove the **Known gap (2026-05-29)** note added this session; update the adoption paragraph to state that all entity types (incl. fragments) are adopted on the first rebuild with UUIDs minted + written back; revise the "Folder content is never auto-imported" prior decision to distinguish **adoption** (files already in the entity folders, incl. `fragments/`) from **import** (external documents); add `.maskor/sequences/` and `.maskor/config/` to the "Init on create" skeleton list; update the "lazily created" wording. Add a `Shipped` entry.
-- [ ] `specifications/storage-sync.md`: state that rebuild mints + writes back UUIDs (full canonical frontmatter for fragments, UUID-only for keyed entities) for files lacking one; update the skeleton/dir-creation note (no longer fully lazy); expand acceptance criteria (adoption of a no-UUID vault succeeds; rebuild is idempotent). Add a `Shipped` entry.
-- [ ] `specifications/fragment-model.md`: align the "Raw markdown adoption" wording so it also covers adoption via the initial rebuild, not only the watcher. Add a `Shipped` entry if behavior changed materially.
-- [ ] `references/plans/entity-subfolders.md`: the **Correction (2026-05-29)** note added this session can reference this plan as the fix.
-- [ ] `bun run snapshot` to refresh `references/CODEBASE_SNAPSHOT.md`.
-- [ ] Set this plan's `Status` to `Done`; `git commit` Phase 4. Open PR.
+- [x] `specifications/project-management.md`: remove the **Known gap (2026-05-29)** note added this session; update the adoption paragraph to state that all entity types (incl. fragments) are adopted on the first rebuild with UUIDs minted + written back; revise the "Folder content is never auto-imported" prior decision to distinguish **adoption** (files already in the entity folders, incl. `fragments/`) from **import** (external documents); add `.maskor/sequences/` and `.maskor/config/` to the "Init on create" skeleton list; update the "lazily created" wording. Add a `Shipped` entry. _(2026-05-30)_
+- [x] `specifications/storage-sync.md`: state that rebuild mints + writes back UUIDs (full canonical frontmatter for fragments, UUID-only for keyed entities) for files lacking one; update the skeleton/dir-creation note (no longer fully lazy); expand acceptance criteria (adoption of a no-UUID vault succeeds; rebuild is idempotent). Add a `Shipped` entry. _(2026-05-30)_
+- [x] `specifications/fragment-model.md`: align the "Raw markdown adoption" wording so it also covers adoption via the initial rebuild, not only the watcher. Add a `Shipped` entry if behavior changed materially. _(2026-05-30 — wording aligned; no separate Shipped entry, the model itself is unchanged — mechanics live in storage-sync)_
+- [x] `references/plans/entity-subfolders.md`: the **Correction (2026-05-29)** note added this session can reference this plan as the fix. _(2026-05-30)_
+- [x] `bun run snapshot` to refresh `references/CODEBASE_SNAPSHOT.md`. _(2026-05-30)_
+- [x] Set this plan's `Status` to `Done`; `git commit` Phase 4. Open PR. _(2026-05-30)_
 
 ---
 

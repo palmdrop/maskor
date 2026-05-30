@@ -1,13 +1,14 @@
 # Spec: Project Management
 
 **Status**: Draft
-**Last updated**: 2026-05-17
+**Last updated**: 2026-05-30
 
 **Shipped**:
 
 - 2026-05-16 — Baseline registration lifecycle migrated from `project-config.md`: manual name + absolute-path registration via `POST /projects`, UUID assignment and `.maskor/project.json` manifest written at `<vault>/.maskor/`, registry list backed by `~/.config/maskor/registry.db`, deregister via `DELETE /projects/:projectId` leaving vault files untouched, `vaultPath` uniqueness enforced, and project rename via `PATCH /projects/:projectId` (`storageService.updateProject` + `registry.updateProject`, exercised from the project config tabbed UI). (plan: pre-existing; not produced by a Ralph run.)
 - 2026-05-17 — Project Management - Replace ProjectSelectionPage with a full ProjectManagementPage that lets users register (adopt/create/maskor-managed), rename, locate moved vaults, and deregister projects without typing filesystem paths. Backed by a directory-browse endpoint, settings file, trash helper, and wired-up PATCH rename route. (plan: `scripts/ralph/archive/2026-05-17-project-management/`)
 - 2026-05-17 - Project Management - Redesign registration system (previously one button and flow for adopt, one for create and one for maskor-managed) to use a single "Register" button for all three flows, inferring the right action based on if the user does not input a folder (maskor-managed), inputs an existing maskor-project folder path (adopt), or a new non-maskor folder (create). (review: `references/reviews/project-management-2026-05-17.md`)
+- 2026-05-30 — Adopting an Obsidian-format vault with no Maskor metadata works end to end: the first rebuild mints and writes back UUIDs for every entity file that lacks one (full canonical frontmatter for fragments, UUID-only for aspects/notes/references), idempotently, and `.maskor/sequences/` + `.maskor/config/` are created with the vault skeleton so listing them no longer errors. (plan: `references/plans/vault-adoption-rebuild-metadata.md`)
 
 ---
 
@@ -84,9 +85,9 @@ The Project Management page exposes a single registration form. The form has a r
 
 - **Folder field filled, path does not exist.** A short confirmation indicates Maskor will create the folder. Submitting calls `POST /projects` with `mode: "create"`. Maskor `mkdir -p`s the path and writes the vault skeleton with a new UUID.
 
-Maskor never auto-imports existing **fragment** markdown content during registration; the user uses the fragment import flow to bring fragments into the index. Aspects, notes, and references in pre-existing subfolders (e.g. `aspects/places/london.md`) are intended to be discovered automatically on the first rebuild that `resolveProject` triggers, with category derived from the subfolder path.
+On the first rebuild that `resolveProject` triggers, Maskor adopts every entity file already present in the vault's entity folders — `fragments/`, `aspects/`, `notes/`, `references/` (including nested subfolders for the keyed types; category is derived from the subfolder path). A file lacking Maskor metadata is adopted in place: a UUID is minted and written back to frontmatter — full canonical frontmatter for fragments (uuid, updatedAt, readiness, notes, references), UUID-only for aspects/notes/references whose other fields default at read time. Adoption is idempotent: files that already carry a UUID are left untouched on disk. See `specifications/storage-sync.md` for the mechanics.
 
-> **Known gap (2026-05-29):** Adopting a vault whose entity files lack frontmatter UUIDs currently fails. The initial rebuild reads those files but does **not** mint UUIDs — only the watcher does (via `ensureUuid`), and the watcher ignores the initial scan (`ignoreInitial: true`), so it never sees pre-existing files. The rebuild upsert then violates the `uuid` primary-key (NOT NULL) constraint. The earlier claim that "UUIDs are written back by the watcher on the first subsequent file event" was wrong for adoption — there is no such event for files already on disk at adopt time. Fix tracked: rebuild must mint and write back UUIDs (and full canonical frontmatter for fragments) using the same logic as the watcher. Separately, `.maskor/sequences/` and `.maskor/config/` are not created on adopt, so listing them logs a "no such file or directory" error.
+Adoption is distinct from **import**: the fragment import flow brings _external_ documents into the vault, splitting them into `fragments/`. Adoption only canonicalizes files already sitting in the entity folders; it never reaches outside the vault.
 
 ### Single registration endpoint
 
@@ -107,8 +108,10 @@ Maskor never auto-imports existing **fragment** markdown content during registra
   - `fragments/discarded/` directory
   - `notes/` directory
   - `references/` directory
+  - `.maskor/sequences/` directory
+  - `.maskor/config/` directory
 - On first access of any existing project (`resolveProject`), the same skeleton dirs are created idempotently, repairing vaults that predate full skeleton bootstrap.
-- Other vault structure (arcs config, vault DB) is still created lazily by the features that own it.
+- The vault DB and arc files within `.maskor/config/` are still created lazily by the features that own them; the `.maskor/sequences/` and `.maskor/config/` directories themselves are created eagerly so listing them during the first rebuild does not error.
 
 ### Name handling
 
@@ -167,7 +170,7 @@ Maskor never auto-imports existing **fragment** markdown content during registra
 - **Unique-vaultPath check runs before filesystem writes.** A pre-check in the registration path prevents the partial-failure mode where `mkdir`/`writeManifest` succeed but the registry insert is rejected, leaving orphan folders on disk.
 - **Backend-driven directory browser, not `window.showDirectoryPicker()`.** The browser API returns an opaque `FileSystemDirectoryHandle`, not an absolute path; the registry needs paths. A backend endpoint also works cross-browser and is straightforward to swap for a native dialog if a desktop shell is added later.
 - **Manifest re-use closes the re-register gap.** The existing `storage-service.ts` note that manifests cannot currently be used to re-register is treated as a bug, not a deliberate limitation. Adoption reuses UUIDs.
-- **Folder content is never auto-imported.** Adopting a folder with markdown does not pull those files into the fragment index. Existing import flows remain the only path into the index.
+- **Adoption canonicalizes in place; import brings external content in.** Files already sitting in the vault's entity folders (`fragments/`, `aspects/`, `notes/`, `references/`) are adopted on the first rebuild — UUID minted and written back, no file moved or copied. The fragment **import** flow is separate: it brings _external_ documents into the vault, splitting them into `fragments/`. Adoption never reaches outside the vault, and import remains the only path for files that are not already in an entity folder. (This supersedes the earlier "folder content is never auto-imported" stance, which predated raw-markdown adoption and conflated the two.)
 - **No filesystem move on rename.** Renaming a project updates the registry and manifest only. Moving files would require updating every internal link and external reference, breaking Obsidian's mental model.
 - **Settings as a JSON file, not a DB table.** Human-readable, hand-editable during development, and matches the vault-side principle that human-readable storage wins where possible. The registry DB stays scoped to project records.
 - **This spec owns lifecycle; `project-config.md` owns per-project content.** `project-config.md` retains aspects, arcs, interleaving, notes, references, typography. Its existing "Project registration" subsection becomes a redirect to this spec.

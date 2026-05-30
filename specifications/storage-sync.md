@@ -1,7 +1,7 @@
 # Spec: Storage Sync
 
 **Status**: Stable
-**Last updated**: 2026-05-29
+**Last updated**: 2026-05-30
 
 **Shipped**:
 
@@ -17,6 +17,7 @@
 - 2026-05-14 — Fragment discard state is derived entirely from filesystem location (`fragments/discarded/`); no frontmatter flag can drift out of sync. (plan: references/plans/remove-pool-concept.md)
 - 2026-05-28 — The `pieces/` staging folder is removed. A raw `.md` dropped into `fragments/` is now the sole external-edit adoption path: on first detection the watcher mints a UUID and writes back complete canonical frontmatter (uuid, updatedAt, readiness, notes, references), preserving any fields the user supplied. (plan: references/plans/remove-piece-concept-and-vault-warnings.md)
 - 2026-05-29 — Vault warnings store. Sync surfaces three warning kinds to a `vault_warnings` table: `WRONG_FORMAT_FILE` and `UNKNOWN_ASPECT_KEY` (state warnings, re-detected on every rebuild and cleared when fixed) and `UUID_COLLISION` (event warning, recorded by the watcher on a resolved collision and persisted until dismissed). The watcher updates warnings incrementally and emits a `vault:warning` SSE event on any change. (plan: references/plans/remove-piece-concept-and-vault-warnings.md)
+- 2026-05-30 — Rebuild adopts on read: entity files lacking a frontmatter UUID are minted + written back during the scan (full canonical frontmatter for fragments, UUID-only for keyed entities) using the watcher's helpers, idempotently. This makes adopting an externally-prepared vault work end to end, since the watcher ignores the initial scan. `.maskor/sequences/` and `.maskor/config/` are created with the vault skeleton, and directory listers treat a missing directory as empty without logging an error. (plan: references/plans/vault-adoption-rebuild-metadata.md)
 
 ---
 
@@ -71,6 +72,8 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 ### Rebuild
 
 - Full O(n) vault scan; all data held in memory; committed in a single SQLite transaction
+- **Adoption on read**: during the scan, any entity file (fragment, aspect, note, reference) lacking a frontmatter UUID is adopted — a UUID is minted and written back to disk before the DB upsert, using the same helpers as the watcher. Fragments get full canonical frontmatter (uuid, updatedAt, readiness, notes, references); keyed entities get a UUID only (their other fields default at read time). The rewritten content's hash is what gets stored, so the follow-up watcher event hash-guards to a no-op. Files that already carry a UUID are left untouched on disk. This is what makes adopting an externally-prepared (e.g. Obsidian) vault work — the watcher ignores the initial scan, so rebuild is the only path that sees pre-existing files. Sequences are excluded (Maskor-owned, always written with a UUID).
+- Adoption write-backs happen in the async read phase, before the transaction. Rebuild stays outside the vault write lock: the startup rebuild runs in `resolveProject` before any user write, and the restore-time rebuild runs inside `drafts.restore`, which already holds the lock.
 - Entities absent from the vault are soft-deleted (`deletedAt` set to current timestamp)
 - Fragments absent from vault are never hard-deleted — they are moved to `fragments/discarded/` and soft-deleted in DB
 - Watcher must be paused or mutex-gated for the full duration of rebuild; a watcher upsert mid-rebuild would be overwritten by the stale in-memory snapshot on transaction commit
@@ -190,6 +193,8 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 - An external file edit is reflected in the DB within ~250ms
 - An API write is immediately reflected in the DB with no stale-index window
 - A UUID is assigned and written back on first watcher detection of any entity that lacks one
+- Rebuilding a vault whose entity files lack frontmatter UUIDs succeeds (no constraint failure); a UUID is minted and written back to each file (full canonical frontmatter for fragments, UUID-only for keyed entities), and all entities are indexed
+- A second rebuild over an already-stamped vault writes no files (idempotent); entity files are byte-identical
 - Moving an aspect/note/reference to a subfolder via the API updates `filePath` in the DB; no cascade rename occurs if the key is unchanged
 - Out-and-back returns within the in-memory tracker TTL preserve entity identity and emit `revived: true` on the `*:synced` event
 - Cross-entity-type returns (e.g. aspect file moved to `notes/`) create the destination entity with the UUID from frontmatter; the source row is deleted; no `revived` flag
