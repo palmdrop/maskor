@@ -11,9 +11,7 @@ import CodeMirror, { EditorView, keymap, Prec } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
-import Typography from "@tiptap/extension-typography";
+import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
@@ -163,12 +161,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Markdown.configure({ html: false, transformPastedText: true }),
-      // Link.configure({ openOnClick: false }),
-      Typography,
-    ],
+    extensions: buildSharedProseExtensions(),
     content,
     onUpdate: () => onChangeRef.current?.(),
     onSelectionUpdate: ({ editor: tiptapEditor }) => {
@@ -176,8 +169,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     },
     editorProps: {
       attributes: {
-        class:
-          "prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[200px] px-1 py-2",
+        class: `${proseClassName} focus:outline-none min-h-[200px] px-1 py-2`,
       },
     },
   });
