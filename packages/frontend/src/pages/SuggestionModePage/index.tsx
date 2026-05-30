@@ -55,7 +55,7 @@ export const SuggestionModePage = () => {
     }
 
     const currentFragmentId =
-      fragmentId ?? (current.data?.status === 200 ? current.data.data.fragment.uuid : undefined);
+      fragmentId ?? (current.data?.status === 200 ? current.data.data.fragment?.uuid : undefined);
 
     if (currentFragmentId) {
       navigate({ search: { fragment: currentFragmentId } });
