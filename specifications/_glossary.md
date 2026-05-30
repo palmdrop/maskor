@@ -4,7 +4,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 ## Language
 
-**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: chunk, entry, node, piece (former import intermediary — concept removed; a raw markdown file dropped into `fragments/` is now adopted directly as a fragment).
+**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: chunk, entry, node, piece (a fragment is never a "piece"; "piece" is valid only as the importer's transient in-memory split unit — never a vault entity, and the `pieces/` staging folder is gone. A raw markdown file dropped into `fragments/` is adopted directly as a fragment).
 
 **Key**: The filename stem of any vault entity (fragment, aspect, note, reference), serving as both its unique identifier and its display title; applies uniformly across all entity types. _Avoid_: title (old spec language for notes), name (old spec language for references), slug (an implementation concern, not a synonym).
 

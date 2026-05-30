@@ -4,6 +4,8 @@
 **Last updated**: 2026-05-18
 **Shipped**: Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
 
+> **Rendering refactor (2026-05-30, in progress):** Preview is moving off the per-fragment `StaticMarkdown` (`dangerouslySetInnerHTML`) onto a shared read-only Tiptap renderer that also serves the import preview, sharing typography/margin settings with the editable `ProseEditor` (not the full editing shell). Assembly moves fully server-side: `@maskor/exporter` returns a complete assembled **markdown string** with toggles applied in the backend, plus optional invisible anchor sentinels for sidebar navigation (a custom markdown-it rule + Tiptap node; `html` stays `false`). This supersedes the "Static markdown for preview, Tiptap for import" prior decision and the `StaticMarkdown` constraint below. Plan TBD; novel-scale rendering risk tracked in `references/suggestions.md`.
+
 ---
 
 ## Outcome
@@ -136,6 +138,7 @@ For alternate sequences, the badge is hidden — fragments not in an alternate s
 - [ ] 2026-05-18 — Should the sidebar show fragment counts per section (e.g. `Chapter 1 (8)`) when the sequence has many sections? Useful for orientation but adds visual weight.
 - [ ] 2026-05-18 — Should the preview page support keyboard shortcuts for sidebar navigation (j/k or arrows)? Worth considering once basic preview is shipped.
 - [ ] 2026-05-18 — Click-to-edit-fragment in the prose is deferred — when re-evaluating, decide whether anchor IDs from assembly are sufficient or if a richer per-fragment wrapper is needed.
+- [ ] 2026-05-30 — Novel-scale rendering: the planned shared read-only Tiptap renderer holds the entire assembled sequence in one ProseMirror instance (no virtualization). Validate at 100k+ words; fall back to static HTML generated from the same Tiptap schema if the live instance is too heavy. See `references/suggestions.md`.
 
 ---
 
