@@ -10,7 +10,7 @@
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "generate-openapi": "bun run ./src/scripts/generate-openapi.ts",
-    "verify:openapi": "bun run ./src/scripts/generate-openapi.ts /tmp/maskor-openapi-check.json && git diff --no-index --exit-code ../frontend/src/api/openapi.json /tmp/maskor-openapi-check.json"
+    "verify:openapi": "bun run ./src/scripts/verify-openapi.ts"
   },
   "devDependencies": {
     "@maskor/test-fixtures": "workspace:*",

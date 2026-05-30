@@ -11,22 +11,33 @@
 // endpoint exactly by using getOpenAPIDocument (OpenApiGeneratorV3) with the
 // shared OPENAPI_DOCUMENT_CONFIG.
 import { writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import type { StorageService } from "@maskor/storage";
 import { createApp } from "../app";
 import { OPENAPI_DOCUMENT_CONFIG } from "../openapi-config";
 
-const DEFAULT_OUTPUT_PATH = new URL("../../../frontend/src/api/openapi.json", import.meta.url)
-  .pathname;
+export const SNAPSHOT_PATH = fileURLToPath(
+  new URL("../../../frontend/src/api/openapi.json", import.meta.url),
+);
 
-const generateOpenAPIDocument = (): unknown => {
+// Renders the snapshot file contents exactly as written to disk: pretty-printed
+// JSON with a trailing newline (matches prettier). Pure — no filesystem access —
+// so the verify guard can compare against the committed file without a temp file.
+export const renderOpenAPISnapshot = (): string => {
   const app = createApp({} as StorageService);
-  return app.getOpenAPIDocument(OPENAPI_DOCUMENT_CONFIG);
+  const document = app.getOpenAPIDocument(OPENAPI_DOCUMENT_CONFIG);
+
+  return `${JSON.stringify(document, null, 2)}\n`;
 };
 
-const main = async (): Promise<void> => {
-  const outputPath = process.argv[2] ?? DEFAULT_OUTPUT_PATH;
-  const document = generateOpenAPIDocument();
-  await writeFile(outputPath, `${JSON.stringify(document, null, 2)}\n`, "utf-8");
+const writeSnapshot = async (): Promise<void> => {
+  const outputPath = process.argv[2] ?? SNAPSHOT_PATH;
+
+  await writeFile(outputPath, renderOpenAPISnapshot(), "utf-8");
 };
 
-await main();
+// Only write when run directly (`bun run generate-openapi`). Importing this
+// module from the verify guard must not have filesystem side effects.
+if (import.meta.main) {
+  await writeSnapshot();
+}
