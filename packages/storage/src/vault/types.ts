@@ -44,11 +44,15 @@ export class VaultError extends Error {
 
 export type WithFilePath<T> = { entity: T; filePath: string; rawContent: string };
 
+// Passed to readAllWithFilePaths. `adopt` opts into write-back canonicalization (mint missing
+// UUIDs to disk) and is only set by the indexer rebuild; plain reads leave it false and stay pure.
+export type ReadAllOptions = { adopt?: boolean };
+
 export type Vault = {
   root: string;
   fragments: {
     readAll(): Promise<Fragment[]>;
-    readAllWithFilePaths(): Promise<Array<WithFilePath<Fragment>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Fragment>>>;
     read(filePath: string): Promise<Fragment>;
     write(fragment: Fragment): Promise<void>;
     discard(filePath: string): Promise<void>;
@@ -57,21 +61,21 @@ export type Vault = {
   };
   aspects: {
     readAll(): Promise<Aspect[]>;
-    readAllWithFilePaths(): Promise<Array<WithFilePath<Aspect>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Aspect>>>;
     read(filePath: string): Promise<Aspect>;
     write(aspect: Aspect): Promise<void>;
     delete(filePath: string): Promise<void>;
   };
   notes: {
     readAll(): Promise<Note[]>;
-    readAllWithFilePaths(): Promise<Array<WithFilePath<Note>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Note>>>;
     read(filePath: string): Promise<Note>;
     write(note: Note): Promise<void>;
     delete(filePath: string): Promise<void>;
   };
   references: {
     readAll(): Promise<Reference[]>;
-    readAllWithFilePaths(): Promise<Array<WithFilePath<Reference>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Reference>>>;
     read(filePath: string): Promise<Reference>;
     write(reference: Reference): Promise<void>;
     delete(filePath: string): Promise<void>;

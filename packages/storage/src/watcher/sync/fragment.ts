@@ -44,12 +44,16 @@ export const syncFragment = async (
 
   const parsed = parseFile(rawContentOrNull);
 
+  // writeBack: false — when the UUID is freshly minted the adoption branch below writes the full
+  // canonical frontmatter, so a UUID-only write here would just be overwritten. When the UUID
+  // already exists no write happens either way.
   const { uuid, rawContent, wasAssigned } = await ensureUuid(
     parsed,
     absolutePath,
     rawContentOrNull,
     log,
     "fragment",
+    { writeBack: false },
   );
 
   // Collision check only needed when UUID was already present (not freshly minted).

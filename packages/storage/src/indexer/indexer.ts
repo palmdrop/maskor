@@ -72,10 +72,13 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // this may become a concern. Consider chunked writes if needed (see suggestions.md).
     const [aspectEntries, noteEntries, referenceEntries, fragmentEntries, sequenceEntries] =
       await Promise.all([
-        vault.aspects.readAllWithFilePaths(),
-        vault.notes.readAllWithFilePaths(),
-        vault.references.readAllWithFilePaths(),
-        vault.fragments.readAllWithFilePaths(),
+        // adopt: mint + write back UUIDs for any entity file lacking one. The watcher ignores the
+        // initial scan, so rebuild is the only path that canonicalizes pre-existing files.
+        // Sequences are Maskor-owned and always carry a UUID, so they are read without adoption.
+        vault.aspects.readAllWithFilePaths({ adopt: true }),
+        vault.notes.readAllWithFilePaths({ adopt: true }),
+        vault.references.readAllWithFilePaths({ adopt: true }),
+        vault.fragments.readAllWithFilePaths({ adopt: true }),
         vault.sequences.readAllWithFilePaths(),
       ]);
 

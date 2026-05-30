@@ -18,12 +18,19 @@ export type EnsureUuidResult = {
 // Returns the existing UUID untouched, or mints one and writes it back to frontmatter. Generic
 // across all entity types — keyed entities (aspect/note/reference) need nothing more than this, as
 // their read-time mappers default every other field.
+//
+// `writeBack: false` mints the UUID into `parsed.frontmatter` in memory but skips the disk write.
+// Fragment adoption uses this: it follows up with a full canonical write via
+// writeBackFragmentFrontmatter, so serializing UUID-only frontmatter here would be an immediately
+// overwritten wasted write. In that case the returned `rawContent` is the unchanged original — the
+// caller takes its canonical raw content from the follow-up writeback.
 export const ensureUuid = async (
   parsed: ParsedFile,
   absolutePath: string,
   rawContent: string,
   log: Logger,
   label: string,
+  { writeBack = true }: { writeBack?: boolean } = {},
 ): Promise<EnsureUuidResult> => {
   const existing = parsed.frontmatter.uuid as string | undefined;
   if (existing) {
@@ -32,6 +39,11 @@ export const ensureUuid = async (
 
   const uuid = crypto.randomUUID();
   parsed.frontmatter.uuid = uuid;
+
+  if (!writeBack) {
+    return { uuid, rawContent, wasAssigned: true };
+  }
+
   const rewritten = serializeFile({
     frontmatter: parsed.frontmatter,
     inlineFields: parsed.inlineFields,

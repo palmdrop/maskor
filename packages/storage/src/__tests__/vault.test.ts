@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import type { Logger } from "@maskor/shared";
 import { createVault } from "../vault/markdown/vault";
 import type { VaultConfig } from "../vault/types";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
@@ -310,5 +310,51 @@ describe("vault listing — missing directories", () => {
     } finally {
       rmSync(emptyDir, { recursive: true, force: true });
     }
+  });
+});
+
+// --- adoption is opt-in: readAllWithFilePaths stays a pure read unless { adopt: true } ---
+
+describe("vault readAllWithFilePaths — adopt gating", () => {
+  // Unique body content so the gray-matter parse cache (keyed by raw string) cannot be polluted by
+  // another test adopting an identically-worded fixture. See suggestions.md (shared parse cache).
+  const FRAGMENT_BODY = "# Adopt gating fragment\n\nUnique body for adopt-gating coverage.\n";
+  const ASPECT_BODY = "Unique aspect body for adopt-gating coverage.\n";
+
+  it("does not mint or write back UUIDs without { adopt: true }", async () => {
+    writeFileSync(join(tmpDir, "fragments/no-uuid.md"), FRAGMENT_BODY);
+    writeFileSync(join(tmpDir, "aspects/no-uuid.md"), ASPECT_BODY);
+    const vault = createVault(config);
+
+    const fragments = await vault.fragments.readAllWithFilePaths();
+    const aspects = await vault.aspects.readAllWithFilePaths();
+
+    // No file was rewritten — the metadata-less files are untouched on disk.
+    expect(readFileSync(join(tmpDir, "fragments/no-uuid.md"), "utf8")).toBe(FRAGMENT_BODY);
+    expect(readFileSync(join(tmpDir, "aspects/no-uuid.md"), "utf8")).toBe(ASPECT_BODY);
+    // The entity reads with an undefined UUID rather than a freshly minted one.
+    expect(fragments.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid).toBeUndefined();
+    expect(aspects.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid).toBeUndefined();
+  });
+
+  it("mints and writes back UUIDs once with { adopt: true }", async () => {
+    writeFileSync(join(tmpDir, "fragments/no-uuid.md"), FRAGMENT_BODY);
+    writeFileSync(join(tmpDir, "aspects/no-uuid.md"), ASPECT_BODY);
+    const vault = createVault(config);
+
+    const fragments = await vault.fragments.readAllWithFilePaths({ adopt: true });
+    const aspects = await vault.aspects.readAllWithFilePaths({ adopt: true });
+
+    const fragmentEntry = fragments.find(({ filePath }) => filePath === "no-uuid.md");
+    const aspectEntry = aspects.find(({ filePath }) => filePath === "no-uuid.md");
+    if (!fragmentEntry || !aspectEntry) {
+      throw new Error("adopted entries not found");
+    }
+    expect(fragmentEntry.entity.uuid).toBeTruthy();
+    expect(aspectEntry.entity.uuid).toBeTruthy();
+
+    // The returned rawContent is exactly what landed on disk (single canonical write per file).
+    expect(readFileSync(join(tmpDir, "fragments/no-uuid.md"), "utf8")).toBe(fragmentEntry.rawContent);
+    expect(readFileSync(join(tmpDir, "aspects/no-uuid.md"), "utf8")).toBe(aspectEntry.rawContent);
   });
 });
