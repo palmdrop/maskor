@@ -75,6 +75,39 @@ key: "grief"
     expect(result.body).toContain("Just raw content");
   });
 
+  it("returns an independent frontmatter object for identical content (no shared cache leak)", () => {
+    // gray-matter caches by input string and returns the same `.data` object for identical content.
+    // parseFile must clone so a caller mutating one parse (e.g. adoption minting a uuid) does not
+    // pollute another file's parse of the same bytes.
+    const rawContent = "Body-only file with no frontmatter.\n";
+
+    const first = parseFile(rawContent);
+    const second = parseFile(rawContent);
+    expect(first.frontmatter).not.toBe(second.frontmatter);
+
+    first.frontmatter.uuid = "minted-into-first";
+    expect(second.frontmatter.uuid).toBeUndefined();
+  });
+
+  it("deep-clones nested frontmatter so mutating a nested array does not leak (no shared cache)", () => {
+    // A shallow copy would still share the `notes` array reference with gray-matter's cache. Mutating
+    // it on one parse must not surface in another file's parse of identical content.
+    const rawContent = `---
+notes:
+  - "first note"
+---
+
+Shared-content body.
+`;
+
+    const first = parseFile(rawContent);
+    const second = parseFile(rawContent);
+    expect(first.frontmatter.notes).not.toBe(second.frontmatter.notes);
+
+    (first.frontmatter.notes as string[]).push("leaked note");
+    expect(second.frontmatter.notes).toEqual(["first note"]);
+  });
+
   it("stops collecting inline fields at first non-matching line", () => {
     const file = `---
 title: "Test"

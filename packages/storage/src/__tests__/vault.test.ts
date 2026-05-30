@@ -316,8 +316,8 @@ describe("vault listing — missing directories", () => {
 // --- adoption is opt-in: readAllWithFilePaths stays a pure read unless { adopt: true } ---
 
 describe("vault readAllWithFilePaths — adopt gating", () => {
-  // Unique body content so the gray-matter parse cache (keyed by raw string) cannot be polluted by
-  // another test adopting an identically-worded fixture. See suggestions.md (shared parse cache).
+  // Unique body content per fixture — good hygiene now that parseFile shallow-copies frontmatter
+  // (see parse.test.ts "independent frontmatter object" — the shared-cache leak it guards against).
   const FRAGMENT_BODY = "# Adopt gating fragment\n\nUnique body for adopt-gating coverage.\n";
   const ASPECT_BODY = "Unique aspect body for adopt-gating coverage.\n";
 

@@ -11,7 +11,13 @@ export const INLINE_FIELD_REGEX = new RegExp(`^([${ENTITY_KEY_CHAR_CLASS}]+):: (
 
 export const parseFile = (rawFile: string): ParsedFile => {
   const parsed = matter(rawFile);
-  const frontmatter = parsed.data as Record<string, unknown>;
+  // gray-matter caches by input string and returns the SAME `.data` object for byte-identical
+  // content. Callers mutate frontmatter in place (adoption mints `uuid`; future edits could push
+  // into nested `notes`/`references` arrays), so a shared object would let one file's mutation leak
+  // into another identical-content file's parse (silent UUID collapse on adopt, or worse for nested
+  // values). Deep-clone — a shallow copy would still share the nested arrays/objects. Frontmatter is
+  // YAML-derived plain data (strings, numbers, arrays, objects, dates), all structuredClone-safe.
+  const frontmatter = structuredClone(parsed.data) as Record<string, unknown>;
 
   const lines = parsed.content.split("\n");
   const inlineFields: Record<string, string> = {};
