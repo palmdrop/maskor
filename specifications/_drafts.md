@@ -1,7 +1,7 @@
 # Spec Drafts
 
 **Status**: Drafts index
-**Last updated**: 2026-05-25
+**Last updated**: 2026-05-31
 
 ---
 
@@ -91,6 +91,23 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 - Could this be subsumed by "Maskor remembers where you were working last and returns you there" (no explicit pin), or is the explicit signal valuable?
 - Visual indicator that a fragment is pinned?
 - Unpin on what trigger — explicit user action, hitting `readyStatus === 1.0`, manual save-and-next?
+
+---
+
+## Novel-scale preview rendering (pagination / chapter-style)
+
+**Why:** Preview and import now render the entire assembled document in a single read-only Tiptap/ProseMirror instance. ProseMirror does not virtualize, so a novel-sized sequence (100k+ words) lives in the DOM at once — a real risk of stutter on scroll/render that has not yet been validated at scale. Rather than holding the whole document live, a "paginated" or chapter-style rendering could render only the visible/nearby slice, keeping the surface responsive regardless of manuscript length.
+
+**Related specs:** `preview.md`, `export.md`; see also `references/adr/0003-preview-anchor-sentinels.md` and the novel-scale risk + static-HTML fallback in `references/suggestions.md`.
+
+**Initial questions:**
+
+- What's the unit of pagination — section/chapter (natural, sequence-derived), a fixed word/block budget, or viewport-driven windowing (render slices around the scroll position)?
+- Does the exporter need to emit slice boundaries (e.g. per-section markdown chunks) so the frontend can lazily render/mount them, or does the frontend slice a single markdown string client-side?
+- How do sidebar anchors and `getElementById('fragment-<id>')` scrolling work when the target slice isn't mounted yet — pre-mount on navigation, or keep a lightweight always-present anchor map?
+- Interaction with browser-native Cmd+F (a deliberate non-feature to replace): windowing breaks find-in-page for unmounted content. Acceptable, or a blocker?
+- Is the deferred static-HTML-from-the-same-Tiptap-schema fallback (`generateHTML(doc, sharedExtensions)`) the cheaper first move before true pagination — measure first, then decide?
+- Does chapter-style rendering bleed into a reading/navigation UX (prev/next chapter, "you are here") or stay a pure performance optimization invisible to the user?
 
 ---
 
