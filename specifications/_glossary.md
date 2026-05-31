@@ -30,7 +30,15 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Main sequence**: The single sequence designated for export at any given time; the default view in the overview. _Avoid_: primary sequence, master sequence, default sequence.
 
-**Secondary sequence**: A user-authored partial ordering of specific fragments or fragments constrained to a section, consumed by the sequencer as a hard constraint; does not cover the full fragment set. _Avoid_: subsequence, alternate sequence.
+**Secondary sequence**: Any non-main sequence; a partial ordering that does not cover the full fragment set, consumed by the sequencer as an ordering constraint only while active. Typically user-authored, but also includes auto-created import-sequences. _Avoid_: subsequence, alternate sequence.
+
+**Active**: The state of a non-main sequence being currently consumed by the sequencer as an ordering constraint; user-authored secondary sequences are active by default, import-sequences inactive. _Avoid_: enabled, on, included.
+
+**Import-sequence**: An editable secondary sequence auto-created by an import to record the fragments' original import order; carries an origin and is created inactive. _Avoid_: import order, import snapshot (the durable snapshot is the import archive, not this).
+
+**Import archive**: The original, unmodified file an import was created from, stored byte-for-byte under `.maskor/imports/`; the durable record of imported content, referenced by a sequence's origin. _Avoid_: backup, source file, archived source.
+
+**Origin**: Optional provenance on a sequence pointing to its import archive, with the original file name, format, and import time. _Avoid_: source (reserved as an avoided synonym for Reference), provenance, import metadata.
 
 **Section**: A named container within a sequence owning a subset of fragments with its own internal ordering; the unit of coarse reordering. _Avoid_: chapter (too narrative-specific), group, bucket.
 
@@ -91,5 +99,9 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 **"Prompting" vs. "suggestion mode"** — "prompting" is the underlying engine/mechanism name; "suggestion mode" is the developer-facing surface name. The user-facing label is still undecided. Keep the two distinct; do not conflate in specs.
 
 **"Arc" (plain noun)** — informally refers to both the explicit arc entity and the visual curve rendered in the overview (which may overlay both actual and explicit arcs). Use qualified forms ("explicit arc", "actual arc") when precision matters.
+
+**"Hard" vs "soft" constraint** — `sequencer.md` calls secondary-sequence constraints "soft" (shipped log) in one place and "hard" (behavior section) in another. The shipped code does neither strictly: it detects and reports violations/cycles against the main sequence rather than preventing placement — i.e. advisory. Treat secondary-sequence constraints as advisory-and-reported until an enforcing placement engine exists, and reconcile the spec wording.
+
+**"Source"** — reserved as an avoided synonym for Reference. Import provenance uses origin, never "source", to avoid the overload.
 
 **"Key" vs. "title/name" in specs** — the codebase already uses `key` uniformly for notes and references. `attachments.md` still says "title (notes) or name (references)". Spec update tracked in `references/plans/glossary-alignment.md`.

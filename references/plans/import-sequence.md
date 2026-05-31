@@ -1,0 +1,123 @@
+# Import-sequence
+
+**Date**: 31-05-2026
+**Status**: Todo
+**Specs**: `specifications/import-pipeline.md`, `specifications/sequencer.md`, `specifications/overview.md`
+
+---
+
+## Goal
+
+> Importing a document creates one editable, non-main "import-sequence" that records the imported fragments in their original order; it carries an `origin` pointing to the original file archived byte-for-byte under `.maskor/imports/`, is created inactive so it does not constrain the main sequence until the user opts in, and re-importing a file whose name was imported before surfaces a warning in the preview that the user can proceed past.
+
+---
+
+## Background
+
+Resolved through a grilling session (see glossary terms **Import-sequence**, **Active**, **Origin**, **Import archive**, and `references/adr/0004` + `0005`). Key decisions:
+
+- An import-sequence is a **normal editable `Sequence`**, non-main — no new entity, no discriminator.
+- A new `active` flag on **every** sequence gates whether the sequencer consumes it as a constraint. User-authored sequences default `active: true` (preserves today's behavior); import-sequences are created `active: false`.
+- The original uploaded file is archived **byte-for-byte** under `.maskor/imports/`; the sequence's optional `origin` references it. This reverses `import-pipeline.md`'s "source discarded" resolution.
+- Import does **not** seed the main sequence; fragments land in the main pool unplaced as today, and the order lives only in the import-sequence.
+- The pool is unchanged (shown everywhere).
+- Re-import of the same file name is allowed but warned.
+
+---
+
+## Tasks
+
+### Phase 1 — Data model: `active` + `origin`
+
+- [ ] Create a branch `import-sequence` based on this plan title.
+- [ ] Add `active: boolean` and optional `origin` to the domain schema in `packages/shared/src/schemas/domain/sequence.ts` (`SequenceSchema`; `SequenceCreateSchema` with `active` defaulting to `true`; `SequenceUpdateSchema` with `active` optional). `origin` shape: `{ fileName, archivePath, format, importedAt }`, all required within the object, object itself optional.
+- [ ] Round-trip `active` and `origin` through the vault file mapper `packages/storage/src/vault/markdown/mappers/sequence.ts` (read with a safe default of `active: true` for pre-existing files that lack the field).
+- [ ] Add an `active` column (boolean, default `true`) and an `origin` JSON column (nullable) to `sequencesTable` in `packages/storage/src/db/vault/schema.ts`, plus a migration file under the same directory as `20260512_add_sequences.sql` (existing rows backfill to `active = true`, `origin = null`).
+- [ ] Persist `active`/`origin` in `packages/storage/src/indexer/upserts.ts` (`upsertSequence`) and surface them on `IndexedSequence` in `packages/storage/src/indexer/assemblers.ts`.
+- [ ] Update `createSequenceCommand` (`packages/api/src/commands/sequences/create-sequence.ts`) and `updateSequenceCommand` to accept/pass `active` (and `origin` on create); preserve existing default-active behavior for user-created sequences.
+- [ ] Run `bun run codegen` to regenerate the OpenAPI snapshot + frontend client.
+- [ ] Tests: mapper round-trips `active`/`origin`; indexer rebuild preserves them; `createSequence` defaults `active: true`; `updateSequence` toggles `active`.
+- [ ] `git commit`.
+
+### Phase 2 — Sequencer active-gating
+
+- [ ] Change the secondaries filter at `packages/api/src/routes/sequences.ts:47` from `!s.isMain` to `!s.isMain && s.active` for both `detectCycles` and `computeViolations`.
+- [ ] Defensively confirm `@maskor/sequencer` does not need its own filter; if any other caller assembles secondaries, gate them the same way.
+- [ ] Reconcile the soft/hard-constraint wording flagged in the glossary while here (note in spec update, Phase 6).
+- [ ] Tests: an inactive non-main sequence does not contribute violations/cycles; flipping it active makes it contribute.
+- [ ] `git commit`.
+
+### Phase 3 — Archival + import-sequence creation
+
+- [ ] Add a storage-service method to write the original bytes under `.maskor/imports/` (mirror the `.maskor/sequences/` write path around `storage-service.ts:1620`; wrap in `withVaultWriteLock`). Archive filename keyed to the import-sequence UUID to guarantee uniqueness across re-imports; return the vault-relative `archivePath`.
+- [ ] Extend the import command (`packages/api/src/commands/fragments/import.ts`): after fragments are created, build one `Sequence` with a single section holding the created fragments in import (piece) order, `isMain: false`, `active: false`, and `origin` populated from the archived file. Derive a unique sequence name `Import: <sourceFileName>` with a numeric suffix on collision (the storage write throws `KEY_CONFLICT` on duplicate names — compute the suffix against existing sequence names before writing, mirroring `deriveKey`).
+- [ ] Skip fragments that failed to create (only place successfully created UUIDs).
+- [ ] Record the created import-sequence UUID on the existing `fragment:imported` action-log payload rather than emitting a separate entry (keeps the single-entry import convention).
+- [ ] Tests: import creates one inactive non-main sequence; fragments appear in import order in one section; `origin` populated; archive file exists under `.maskor/imports/`; partial-failure import places only successful fragments; name collision produces a suffixed name.
+- [ ] `git commit`.
+
+### Phase 4 — Re-import warning
+
+- [ ] Extend the preview command (`packages/api/src/commands/fragments/preview-import.ts`) and its result schema to include an optional `priorImport` (e.g. `{ sequenceName, importedAt }`) when an existing sequence's `origin.fileName` matches the incoming `sourceFileName`.
+- [ ] Run `bun run codegen`.
+- [ ] Tests: preview returns `priorImport` when a matching prior import exists; absent otherwise. Import itself still succeeds regardless (no server-side block).
+- [ ] `git commit`.
+
+### Phase 5 — Frontend
+
+- [ ] Import preview page: render a non-blocking warning banner when `priorImport` is present ("You already imported a file named X on …"), leaving the Import action enabled.
+- [ ] Sequence picker / sidebar: surface the `active` state with a toggle that calls `updateSequence`; indicate import-origin (e.g. an icon/label) and show `origin` provenance for sequences that have one.
+- [ ] Confirm import-sequences appear in the picker like any other sequence (they are normal sequences — no special listing needed beyond the indicator).
+- [ ] Run `bun run codegen` if any schema changed.
+- [ ] Tests: warning banner renders on `priorImport`; active toggle issues the update and reflects state.
+- [ ] `git commit`.
+
+### Phase 6 — Formatting & verification
+
+- [ ] `bun run format` then `bun run verify`; fix lint/test/snapshot issues.
+- [ ] `git commit`.
+
+### Phase 7 — Spec updates (drift + Shipped)
+
+> These are not optional clean-up. The design here reverses a documented decision and resolves a known spec inconsistency, so the spec bodies must change alongside the code — not just the `Shipped` log.
+
+- [ ] `specifications/import-pipeline.md`:
+  - [ ] Reverse the resolved open question "Should the original source file be archived…? Resolved 2026-05-15: Discarded." — re-open/replace with the new resolution (archived byte-for-byte under `.maskor/imports/`, referenced by the import-sequence's `origin`).
+  - [ ] Update the matching **Prior decisions** entry that asserts no archival.
+  - [ ] Add a **Behavior** subsection: import creates an inactive non-main import-sequence recording piece order, and archives the original bytes.
+  - [ ] Add a `Shipped` entry once implemented.
+- [ ] `specifications/sequencer.md`:
+  - [ ] Add `active` to the `sequences` row in the **DB schema** table and note `origin` on the sequence model; mention the `.maskor/imports/` archive.
+  - [ ] Update the **Secondary sequences** behavior to state that secondaries constrain only while `active`, and that import-sequences are auto-created inactive.
+  - [ ] Reconcile the soft/hard-constraint wording (shipped log line ~10 says "soft", behavior line ~72 says "hard"): state that constraints are advisory (detected + reported), gated by `active`. Clear the corresponding glossary "Flagged ambiguity" once the spec is consistent.
+  - [ ] Add a `Shipped` entry once implemented.
+- [ ] `specifications/overview.md`:
+  - [ ] Document that the sequence picker lists import-sequences, exposes an active/inactive toggle, and indicates import provenance (`origin`).
+  - [ ] Add a `Shipped` entry once implemented.
+- [ ] Set this plan's Status to `Done` (or `In Progress` if partial) and add `Closed` date.
+- [ ] Final `git commit`.
+
+---
+
+## Open questions / decisions to confirm during implementation
+
+- **`origin` in DB**: stored as a JSON column on `sequencesTable` so the picker can show provenance without reading the vault file. Confirm `IndexedSequence` is the right carrier (it is assembled from DB rows in `assemblers.ts`).
+- **Archive filename scheme**: `<sequenceUuid>.<ext>` keeps re-imports from colliding and ties the archive to its sequence; `origin.fileName` preserves the original display name. Confirm this over name-based filenames.
+- **`active` for the main sequence**: irrelevant (the main sequence is the constraint target, not a constraint). Left `true`; the sequencer only filters non-main sequences.
+- **Draft size**: `.maskor/imports/` is swept into Draft snapshots (ADR-0005). No mitigation planned now; flag if it bites.
+
+---
+
+## Testing
+
+ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests already exist.
+
+## Notes
+
+DO NOT IMPLEMENT until clearly stated by the developer.
+
+When clearly stated to implement, create a new branch based on the plan title, and proceed with development in that branch.
+
+Once a phase, or sensible set of changes, is done, check off the relevant tasks, make a `git commit` and describe what has been added.
+
+When the plan is implemented, fully or partially, set the plan status to `Done`, or `In Progress`. ALSO, update the relevant frontmatter of the relevant specs. Add an item to the `shipped` frontmatter property with the features implemented. Do not include implementation details or granular tasks.
