@@ -8,6 +8,7 @@
 - 2026-05-12 — Users can manually arrange fragments into an ordered main sequence. Non-discarded fragments not yet placed appear in an unassigned pool. Fragments can be dragged from the pool into the sequence, reordered within it, or dragged back out to unplace them; the arrangement survives a reload. (plan: references/plans/sequencer-manual-placement.md)
 - 2026-05-18 — Sequence placement, move, and unplace actions log the sequence name and fragment key for human-readable action log rendering. (plan: references/plans/sequence-action-log-human-readable.md)
 - 2026-05-18 - Secondary sequences as soft constraints, sequence CRUD, violation and cycle detection, sidebar for switching between sequences. (prd: tasks/prd-secondary-sequences.md)
+- 2026-05-29 - Users can re-order sections within a sequence by dragging and dropping.
 
 ---
 

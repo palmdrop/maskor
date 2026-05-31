@@ -16,4 +16,4 @@ ALWAYS KEEP THESE THINGS IN MIND:
 - When writing code, NEVER ABBREVIATE variable names (except iterators). `err` should be `error`. Fix whenever you encounter abbreviations.
 - Do not assume something is not implemented. Ask or check. Create re-usable functions. If you notice overlap, break out into a new function.
 - DO NOT IMPLEMENT unless clearly stated. When asking about an issue, do not immediately fix. Discuss first. Implement when asked.
-- After large changes, run `bun run verify`. If tests fail or type issues are reported, fix before stopping.
+- After large changes, run `bun run format` and then `bun run verify`. Fix lint issues or test errors before stopping.

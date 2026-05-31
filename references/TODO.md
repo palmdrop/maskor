@@ -16,6 +16,30 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] reordering sections does not work properly with arrow keys, works when dragging and dropping
 
+- [ ] start designing UI, see: https://www.are.na/anton-hildingsson/maskor-inspiration
+  - want it aesthetic, minimal, graphlike, vague, generic, specific, all at once
+
+- [ ] sticky fragment titles showing which fragment we are in during import/preview/export
+  - even when fragment titles are hidden
+  - redesign, make more minimal, closer to have a document actually looks
+
+- [ ] case-only rename of reference (and probably also note, aspect and fragment) creates a sync/naming collision error that ends up deleting the file entirely...
+
+- [ ] add commands for attaching and detaching references and notes to fragment
+
+- [ ] in-line editing of fragments in preview mode
+  - make it possible to click a fragment and edit it directly in the preview
+
+- [ ] investigate/design graph view: dynamic frontend view where all pages/components/concepts can be viewed, side by side, connected
+  - a fragment with connected notes and comments floating beside
+  - a sequence with arcs as lines and entity documents
+  - previews that can be focused, editing fragments in-line
+  - zoom and focus different parts
+  - connect entities with annotated graph links
+  - fadeout surroundings when focusing a fragment/sequence for editing
+  - show sidebars with action log, other views - make UI fully composable, customizable
+  - define own flows, concepts, structures?
+
 - [x] finish persist cursor position implementation
 
 - [x] Refactor command system, introduce strong types and reduce boilerplate

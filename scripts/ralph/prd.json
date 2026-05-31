@@ -269,23 +269,6 @@
       "priority": 15,
       "passes": true,
       "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-016",
-      "title": "Drag-and-drop performance pass on sequence rearrangement",
-      "description": "As a writer rearranging a long sequence, I expect drag-and-drop to feel responsive. Currently it lags noticeably and the drop target indicator drifts. Start with a profiling pass before changing code; the cause may be a stale render path fixable without an architectural change.",
-      "acceptanceCriteria": [
-        "Investigate the dnd implementation; identify the dominant cost (re-renders, layout thrash, server round-trips per drag-over) and record findings in the PR description",
-        "Drag-over indicator updates within one frame of pointer movement on a 200-fragment sequence on a typical laptop",
-        "Drop commits within 250ms of release on the same sequence size",
-        "No new full-sequence re-render fires during the drag — only the affected positions update",
-        "No spec update required unless the investigation surfaces a behaviour change",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 16,
-      "passes": false,
-      "notes": ""
     }
   ]
 }
