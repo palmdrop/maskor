@@ -237,15 +237,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     }));
   }, [projectAspects, aspectsField.value]);
 
-  const removeAspect = useCallback(
-    (aspectKey: string) => {
-      const next = { ...aspectsField.value };
-      delete next[aspectKey];
-      aspectsField.onChange(next);
-    },
-    [aspectsField],
-  );
-
   const changeAspectWeight = useCallback(
     (aspectKey: string, displayWeight: number) => {
       aspectsField.onChange({
@@ -263,6 +254,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     [aspectsField],
   );
 
+  // TODO: add command palette command for this
   const createAndAttachAspect = useCallback(
     async (aspectKey: string) => {
       setCreateAspectError(null);
@@ -285,10 +277,54 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
 
   const commands = useCommands();
   useCommandScope(fragmentMetadataScope, {
-    attachAspect,
-    detachAspect: removeAspect,
-    getAvailableAspects: () => projectAspects.map((aspect) => aspect.key),
-    getAttachedAspects: () => Object.keys(aspectsField.value),
+    attachEntity: (kind, key) => {
+      switch (kind) {
+        case "note":
+          return notesField.onChange([...notesField.value, key]);
+        case "reference":
+          return referencesField.onChange([...referencesField.value, key]);
+        case "aspect":
+        default:
+          return attachAspect(key);
+      }
+    },
+    detachEntity: (kind, key) => {
+      switch (kind) {
+        case "note":
+          return notesField.onChange(notesField.value.filter((n) => n !== key));
+        case "reference":
+          return referencesField.onChange(referencesField.value.filter((r) => r !== key));
+        case "aspect":
+        default: {
+          const next = { ...aspectsField.value };
+          delete next[key];
+          aspectsField.onChange(next);
+          return;
+        }
+      }
+    },
+    getAvailableEntities: (kind) => {
+      switch (kind) {
+        case "note":
+          return availableNoteGroups.flatMap((g) => g.options);
+        case "reference":
+          return availableReferenceGroups.flatMap((g) => g.options);
+        case "aspect":
+        default:
+          return availableAspectGroups.flatMap((g) => g.options);
+      }
+    },
+    getAttachedEntities: (kind) => {
+      switch (kind) {
+        case "note":
+          return notesField.value;
+        case "reference":
+          return referencesField.value;
+        case "aspect":
+        default:
+          return Object.keys(aspectsField.value);
+      }
+    },
   });
 
   return (
@@ -323,7 +359,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
                       }
                     : undefined
                 }
-                onRemove={() => notesField.onChange(notesField.value.filter((n) => n !== noteKey))}
+                onRemove={() => commands.run("fragment-metadata:detach-note", noteKey)}
               />
             );
           })}
@@ -331,7 +367,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         <TagCombobox
           groups={availableNoteGroups}
           placeholder="Add note — type to filter"
-          onSelect={(value) => notesField.onChange([...notesField.value, value])}
+          onSelect={(value) => commands.run("fragment-metadata:attach-note", value)}
         />
         {notesField.error && <p className="text-xs text-destructive">{notesField.error}</p>}
       </div>
@@ -354,9 +390,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
                       }
                     : undefined
                 }
-                onRemove={() =>
-                  referencesField.onChange(referencesField.value.filter((r) => r !== referenceKey))
-                }
+                onRemove={() => commands.run("fragment-metadata:detach-reference", referenceKey)}
               />
             );
           })}
@@ -364,7 +398,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         <TagCombobox
           groups={availableReferenceGroups}
           placeholder="Add reference — type to filter"
-          onSelect={(value) => referencesField.onChange([...referencesField.value, value])}
+          onSelect={(value) => commands.run("fragment-metadata:attach-reference", value)}
         />
         {referencesField.error && (
           <p className="text-xs text-destructive">{referencesField.error}</p>
