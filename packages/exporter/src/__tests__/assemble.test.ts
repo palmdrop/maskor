@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { assembleSequence, assemblePieces } from "../assemble";
 import type { AssemblySeparator } from "../assemble-markdown";
-import { ANCHOR_SENTINEL_PATTERN, anchorSentinel } from "../sentinel";
+import { ANCHOR_SENTINEL_PATTERN, anchorSentinel } from "@maskor/shared/sentinel";
 import type { Fragment } from "@maskor/shared";
 
 const makeFragment = (overrides: Partial<Fragment> & { uuid: string; key: string }): Fragment => ({

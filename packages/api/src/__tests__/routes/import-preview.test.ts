@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { anchorSentinel } from "@maskor/exporter";
+import { anchorSentinel } from "@maskor/shared/sentinel";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";

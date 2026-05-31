@@ -7,6 +7,7 @@
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./events": "./src/events.ts",
+    "./sentinel": "./src/sentinel/index.ts",
     "./logger": "./src/logger/index.ts"
   },
   "devDependencies": {

@@ -1,7 +1,4 @@
-// TODO: ENTITY_KEY_REGEX duplicates @maskor/shared/utils/validate-entity-key. The barrel re-exports a
-// pino-based logger that references `process.stdout`, so any value import from @maskor/shared crashes
-// in the browser. See SUGGESTIONS.md ("@maskor/shared barrel exports a Node-only logger").
-const ENTITY_KEY_REGEX = /^[\p{L}\p{N} _-]+$/u;
+import { ENTITY_KEY_REGEX } from "@maskor/shared";
 
 type EntityType = "fragment" | "note" | "reference" | "aspect";
 

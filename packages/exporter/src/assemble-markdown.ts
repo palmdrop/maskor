@@ -1,4 +1,4 @@
-import { anchorSentinel, stripSentinelChars } from "./sentinel";
+import { anchorSentinel, stripSentinelChars } from "@maskor/shared/sentinel";
 
 // The neutral block model: a flat, ordered list. This is the single source of
 // truth for heading levels, separator handling, and sentinel format. Both the

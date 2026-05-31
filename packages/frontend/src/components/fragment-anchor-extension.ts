@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type MarkdownIt from "markdown-it";
-import { anchorSentinel, ANCHOR_SENTINEL_LINE_PATTERN } from "./anchor-sentinel";
+import { anchorSentinel, ANCHOR_SENTINEL_LINE_PATTERN } from "@maskor/shared/sentinel";
 
 // A schema-modeled, invisible anchor node. The exporter embeds collision-safe
 // sentinel tokens in the assembled markdown (preview/import only); a markdown-it

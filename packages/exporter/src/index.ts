@@ -6,9 +6,6 @@ export {
   type AssemblySeparator,
 } from "./assemble-markdown";
 export type { AssembledDocument, NavSection, NavFragment } from "./types";
-export {
-  anchorSentinel,
-  ANCHOR_SENTINEL_PATTERN,
-  SENTINEL_CHARS,
-  stripSentinelChars,
-} from "./sentinel";
+// The anchor-sentinel protocol lives in `@maskor/shared/sentinel` — the single
+// definition shared by this emitter and the frontend parser. Import it directly
+// from there rather than through this barrel.

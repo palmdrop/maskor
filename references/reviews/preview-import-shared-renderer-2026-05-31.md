@@ -33,7 +33,7 @@ None.
 
 Consequence: a one-sided edit to either file is undetectable by the suite. Fix: add one test that imports the exporter's `anchorSentinel` (it's a pure string builder, safe to import in a test even if not in the bundle) and asserts the frontend's `ANCHOR_SENTINEL_LINE_PATTERN` matches it — or assert the two mirrors are byte-identical.
 
-**Fixed 2026-05-31** — `packages/frontend/src/components/anchor-sentinel.test.ts` imports the exporter's canonical `anchorSentinel` straight from its source (`sentinel.ts` has zero imports, so no Node-only logger is pulled and no `@maskor/exporter` barrel is touched) and asserts (a) the frontend mirror builds byte-identical tokens, and (b) the frontend's `ANCHOR_SENTINEL_LINE_PATTERN` matches an exporter-emitted token and captures its id. A one-sided edit to either file now fails this test. The test lives in the frontend, which runs under `bun run verify`.
+**Fixed 2026-05-31** — initially with a frontend drift-guard test, then **superseded by eliminating the duplication outright**. The sentinel is a producer↔consumer contract (exporter emits, frontend parses), structurally identical to `VaultSyncEvent`, so the canonical definition was moved to `@maskor/shared/sentinel` — a single, browser-safe, zero-import module that both packages already depend on. The exporter's `sentinel.ts` and the frontend's `anchor-sentinel.ts` mirror were both deleted; the exporter (`assemble-markdown.ts`), the frontend anchor extension, and all tests now import from `@maskor/shared/sentinel`. There is no longer a seam to guard, so the drift-guard test was removed as moot. (This was enabled by the prior commit that gave `@maskor/shared` subpath exports + a browser-safe barrel.)
 
 ---
 

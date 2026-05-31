@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { ReadonlyProse } from "./readonly-prose";
-import { anchorSentinel } from "./anchor-sentinel";
+import { anchorSentinel } from "@maskor/shared/sentinel";
 
 const renderProse = (content: string) =>
   render(<ReadonlyProse content={content} fontSize={16} maxParagraphWidth={72} />);
