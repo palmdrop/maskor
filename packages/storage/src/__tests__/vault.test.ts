@@ -189,6 +189,7 @@ const makeTestSequence = () => ({
   uuid: TEST_SEQUENCE_UUID,
   name: "Main",
   isMain: true,
+  active: true,
   projectUuid: TEST_PROJECT_UUID,
   sections: [
     {

@@ -1,5 +1,5 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import type { Sequence } from "@maskor/shared";
+import type { Sequence, SequenceOrigin } from "@maskor/shared";
 
 export const fromFile = (rawYaml: string, projectUuid: string): Sequence => {
   const data = parseYaml(rawYaml) as Record<string, unknown>;
@@ -7,6 +7,9 @@ export const fromFile = (rawYaml: string, projectUuid: string): Sequence => {
     uuid: data.uuid as string,
     name: data.name as string,
     isMain: data.isMain as boolean,
+    // Sequences written before the active flag existed default to active.
+    active: data.active === undefined ? true : (data.active as boolean),
+    ...(data.origin ? { origin: data.origin as SequenceOrigin } : {}),
     projectUuid,
     sections: (data.sections as Array<Record<string, unknown>>).map((section) => ({
       uuid: section.uuid as string,
@@ -25,6 +28,8 @@ export const toFile = (sequence: Sequence): string => {
     uuid: sequence.uuid,
     name: sequence.name,
     isMain: sequence.isMain,
+    active: sequence.active,
+    ...(sequence.origin ? { origin: sequence.origin } : {}),
     sections: sequence.sections.map((section) => ({
       uuid: section.uuid,
       name: section.name,

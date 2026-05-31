@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { SequenceOrigin } from "@maskor/shared";
 
 export const fragmentsTable = sqliteTable(
   "fragments",
@@ -128,6 +129,8 @@ export const sequencesTable = sqliteTable(
     name: text("name").notNull(),
     projectUuid: text("project_uuid").notNull(),
     isMain: integer("is_main", { mode: "boolean" }).notNull().default(false),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    origin: text("origin", { mode: "json" }).$type<SequenceOrigin>(),
     filePath: text("file_path").notNull().unique(),
     contentHash: text("content_hash").notNull(),
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),

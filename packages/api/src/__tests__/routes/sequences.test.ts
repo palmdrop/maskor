@@ -4,7 +4,13 @@ import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 import type { LogEntry } from "@maskor/shared";
 
-type SequenceSummary = { uuid: string; name: string; isMain: boolean; filePath: string };
+type SequenceSummary = {
+  uuid: string;
+  name: string;
+  isMain: boolean;
+  active: boolean;
+  filePath: string;
+};
 type Section = {
   uuid: string;
   name: string;
@@ -83,6 +89,7 @@ describe("POST /projects/:projectId/sequences", () => {
     const created = body.sequences.find((s) => s.name === "Draft Order");
     expect(created).toBeDefined();
     expect(created?.isMain).toBe(false);
+    expect(created?.active).toBe(true);
   });
 
   it("returns 409 when name conflicts with existing sequence", async () => {
@@ -177,6 +184,32 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
     const body = (await response.json()) as SequenceBundle;
     const renamed = body.sequences.find((s) => s.uuid === created.uuid);
     expect(renamed?.name).toBe("Renamed");
+  });
+
+  it("toggles the active flag", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Toggle Active",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "Toggle Active")!;
+    expect(created.active).toBe(true);
+
+    const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: false }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceBundle;
+    const updated = body.sequences.find((s) => s.uuid === created.uuid);
+    expect(updated?.active).toBe(false);
   });
 
   it("rejects renaming to a name that collides with another sequence", async () => {

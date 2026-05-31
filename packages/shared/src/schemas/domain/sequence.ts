@@ -38,12 +38,23 @@ export const SectionSchema = z
 
 export type Section = z.infer<typeof SectionSchema>;
 
+export const SequenceOriginSchema = z.object({
+  fileName: z.string(),
+  archivePath: z.string(),
+  format: z.enum(["markdown", "docx", "plaintext"]),
+  importedAt: z.string(),
+});
+
+export type SequenceOrigin = z.infer<typeof SequenceOriginSchema>;
+
 export const SequenceSchema = z.object({
   uuid: z.uuid(),
   name: z.string(),
   isMain: z.boolean(),
+  active: z.boolean(),
   projectUuid: z.string().uuid(),
   sections: z.array(SectionSchema),
+  origin: SequenceOriginSchema.optional(),
 });
 
 export type Sequence = z.infer<typeof SequenceSchema>;
@@ -51,7 +62,9 @@ export type Sequence = z.infer<typeof SequenceSchema>;
 export const SequenceCreateSchema = z.object({
   name: z.string().min(1),
   isMain: z.boolean().default(false),
+  active: z.boolean().default(true),
   projectUuid: z.string().uuid(),
+  origin: SequenceOriginSchema.optional(),
 });
 
 export type SequenceCreate = z.infer<typeof SequenceCreateSchema>;
@@ -59,6 +72,7 @@ export type SequenceCreate = z.infer<typeof SequenceCreateSchema>;
 export const SequenceUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   isMain: z.boolean().optional(),
+  active: z.boolean().optional(),
 });
 
 export type SequenceUpdate = z.infer<typeof SequenceUpdateSchema>;

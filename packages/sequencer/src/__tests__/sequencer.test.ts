@@ -330,6 +330,7 @@ describe("computeViolations", () => {
       uuid,
       name,
       isMain: false,
+      active: true,
       projectUuid: PROJECT_UUID,
       sections: [{ uuid: sectionUuid, name: "", fragments: [] }],
     };
@@ -448,6 +449,7 @@ describe("detectCycles", () => {
       uuid,
       name,
       isMain: false,
+      active: true,
       projectUuid: PROJECT_UUID,
       sections: [{ uuid: sectionUuid, name: "", fragments: [] }],
     };

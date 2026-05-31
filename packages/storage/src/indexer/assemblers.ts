@@ -79,6 +79,8 @@ export const assembleSequence = (
   uuid: row.uuid,
   name: row.name,
   isMain: row.isMain,
+  active: row.active,
+  ...(row.origin ? { origin: row.origin } : {}),
   projectUuid: row.projectUuid,
   filePath: row.filePath,
   contentHash: row.contentHash,

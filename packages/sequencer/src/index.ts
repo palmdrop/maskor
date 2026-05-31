@@ -33,6 +33,7 @@ export function createDefaultSequence(projectUuid: string, name: string): Sequen
     uuid: crypto.randomUUID(),
     name,
     isMain: true,
+    active: true,
     projectUuid,
     sections: [
       {

@@ -2130,9 +2130,41 @@
             "type": "boolean",
             "default": false
           },
+          "active": {
+            "type": "boolean",
+            "default": true
+          },
           "projectUuid": {
             "type": "string",
             "format": "uuid"
+          },
+          "origin": {
+            "type": "object",
+            "properties": {
+              "fileName": {
+                "type": "string"
+              },
+              "archivePath": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "markdown",
+                  "docx",
+                  "plaintext"
+                ]
+              },
+              "importedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fileName",
+              "archivePath",
+              "format",
+              "importedAt"
+            ]
           }
         },
         "required": [
@@ -2149,6 +2181,9 @@
             "example": "Revised Order"
           },
           "isMain": {
+            "type": "boolean"
+          },
+          "active": {
             "type": "boolean"
           }
         }
@@ -10522,6 +10557,144 @@
                             "type": "string",
                             "enum": [
                               "sequence:set-main"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "sequence:activated"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "sequence:deactivated"
                             ]
                           },
                           "payload": {

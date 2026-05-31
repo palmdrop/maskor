@@ -29,14 +29,14 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 1 — Data model: `active` + `origin`
 
-- [ ] Create a branch `import-sequence` based on this plan title.
-- [ ] Add `active: boolean` and optional `origin` to the domain schema in `packages/shared/src/schemas/domain/sequence.ts` (`SequenceSchema`; `SequenceCreateSchema` with `active` defaulting to `true`; `SequenceUpdateSchema` with `active` optional). `origin` shape: `{ fileName, archivePath, format, importedAt }`, all required within the object, object itself optional.
-- [ ] Round-trip `active` and `origin` through the vault file mapper `packages/storage/src/vault/markdown/mappers/sequence.ts` (read with a safe default of `active: true` for pre-existing files that lack the field).
-- [ ] Add an `active` column (boolean, default `true`) and an `origin` JSON column (nullable) to `sequencesTable` in `packages/storage/src/db/vault/schema.ts`, plus a migration file under the same directory as `20260512_add_sequences.sql` (existing rows backfill to `active = true`, `origin = null`).
-- [ ] Persist `active`/`origin` in `packages/storage/src/indexer/upserts.ts` (`upsertSequence`) and surface them on `IndexedSequence` in `packages/storage/src/indexer/assemblers.ts`.
-- [ ] Update `createSequenceCommand` (`packages/api/src/commands/sequences/create-sequence.ts`) and `updateSequenceCommand` to accept/pass `active` (and `origin` on create); preserve existing default-active behavior for user-created sequences.
-- [ ] Run `bun run codegen` to regenerate the OpenAPI snapshot + frontend client.
-- [ ] Tests: mapper round-trips `active`/`origin`; indexer rebuild preserves them; `createSequence` defaults `active: true`; `updateSequence` toggles `active`.
+- [x] Create a branch `import-sequence` based on this plan title. _(2026-05-31)_
+- [x] Add `active: boolean` and optional `origin` to the domain schema in `packages/shared/src/schemas/domain/sequence.ts` (`SequenceSchema`; `SequenceCreateSchema` with `active` defaulting to `true`; `SequenceUpdateSchema` with `active` optional). `origin` shape: `{ fileName, archivePath, format, importedAt }`, all required within the object, object itself optional. _(2026-05-31)_
+- [x] Round-trip `active` and `origin` through the vault file mapper `packages/storage/src/vault/markdown/mappers/sequence.ts` (read with a safe default of `active: true` for pre-existing files that lack the field). _(2026-05-31)_
+- [x] Add an `active` column (boolean, default `true`) and an `origin` JSON column (nullable) to `sequencesTable` in `packages/storage/src/db/vault/schema.ts`, plus a migration file (`20260531_add_sequence_active_and_origin.sql`) registered in the drizzle journal. _(2026-05-31)_
+- [x] Persist `active`/`origin` in `packages/storage/src/indexer/upserts.ts` (`upsertSequence`) and surface them on `IndexedSequence` in `packages/storage/src/indexer/assemblers.ts`. _(2026-05-31)_
+- [x] Update `createSequenceCommand` and `updateSequenceCommand` to accept/pass `active` (and `origin` on create); added `sequence:activated`/`sequence:deactivated` action-log types + history renderer cases. _(2026-05-31)_
+- [x] Run `bun run codegen` to regenerate the OpenAPI snapshot + frontend client. _(2026-05-31)_
+- [x] Tests: mapper round-trips `active`/`origin` + defaults legacy files to active; `createSequence` defaults `active: true`; `updateSequence` toggles `active`. _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 2 — Sequencer active-gating

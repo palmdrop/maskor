@@ -18,6 +18,10 @@ export const renderSequenceEntryText = (entry: LogEntry): string => {
       return `Sequence "${sequenceName(entry)}" deleted`;
     case "sequence:set-main":
       return `Sequence "${sequenceName(entry)}" set as main`;
+    case "sequence:activated":
+      return `Sequence "${sequenceName(entry)}" activated as a constraint`;
+    case "sequence:deactivated":
+      return `Sequence "${sequenceName(entry)}" deactivated as a constraint`;
     case "sequence:section-reordered":
       return `Section "${entry.payload.sectionName}" reordered in sequence "${sequenceName(entry)}"`;
     default:

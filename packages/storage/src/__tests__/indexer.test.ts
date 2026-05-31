@@ -442,6 +442,7 @@ const makeSequence = (overrides: Partial<Sequence> = {}): Sequence => ({
   uuid: "bbbbbbbb-0000-0000-0000-000000000000",
   name: "Main",
   isMain: true,
+  active: true,
   projectUuid: PROJECT_UUID,
   sections: [
     {

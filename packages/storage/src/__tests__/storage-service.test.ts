@@ -512,6 +512,7 @@ const makeSequence = (projectUuid: string, overrides: Partial<Sequence> = {}): S
   uuid: "bbbbbbbb-0000-0000-0000-000000000000",
   name: "Main",
   isMain: true,
+  active: true,
   projectUuid,
   sections: [],
   ...overrides,
@@ -596,6 +597,7 @@ describe("StorageService.sequences.write + read", () => {
         uuid: renamed.uuid,
         name: "Main",
         isMain: renamed.isMain,
+        active: renamed.active,
         projectUuid: renamed.projectUuid,
         sections: renamed.sections,
       }),
@@ -615,6 +617,7 @@ describe("StorageService.sequences.write + read", () => {
       uuid: existing.uuid,
       name: existing.name,
       isMain: existing.isMain,
+      active: existing.active,
       projectUuid: existing.projectUuid,
       sections: existing.sections,
     });
