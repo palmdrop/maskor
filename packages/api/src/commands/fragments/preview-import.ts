@@ -10,10 +10,16 @@ export type PreviewPiece = {
   content: string;
 };
 
+export type PriorImport = {
+  sequenceName: string;
+  importedAt: string;
+};
+
 export type PreviewImportResult = {
   pieces: PreviewPiece[];
   format: "markdown" | "docx" | "plaintext";
   convertedMarkdown: string;
+  priorImport?: PriorImport;
 };
 
 export const createPreviewImportCommand = (
@@ -24,6 +30,14 @@ export const createPreviewImportCommand = (
     const existingKeys = new Set(
       summaries.filter((s) => !s.isDiscarded).map((s) => s.key.toLowerCase()),
     );
+
+    // Warn (non-blocking) if a file of this name was imported before — matched
+    // on an existing sequence's origin.fileName.
+    const sequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
+    const previous = sequences.find((sequence) => sequence.origin?.fileName === input.sourceFileName);
+    const priorImport: PriorImport | undefined = previous?.origin
+      ? { sequenceName: previous.name, importedAt: previous.origin.importedAt }
+      : undefined;
 
     let convertedMarkdown: string;
     if (input.format === "docx") {
@@ -48,7 +62,7 @@ export const createPreviewImportCommand = (
     });
 
     return {
-      result: { pieces, format: input.format, convertedMarkdown },
+      result: { pieces, format: input.format, convertedMarkdown, priorImport },
       logEntries: [],
     };
   },

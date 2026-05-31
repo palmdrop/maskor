@@ -4,6 +4,7 @@ import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
 import type { CommandContext } from "../../commands/types";
 import { createPreviewImportCommand } from "../../commands/fragments/preview-import";
+import { createImportCommand } from "../../commands/fragments/import";
 import type { DocumentConverter } from "@maskor/importer";
 import type { Logger } from "@maskor/shared/logger";
 
@@ -167,6 +168,47 @@ describe("createPreviewImportCommand - key collision", () => {
 
     expect(result.pieces.length).toBe(1);
     expect(result.pieces[0]?.derivedKey).toMatch(/_1$/);
+  });
+});
+
+describe("createPreviewImportCommand - re-import warning", () => {
+  it("returns priorImport when a file of the same name was imported before", async () => {
+    const ctx = await makeCommandContext();
+    const fileName = `reimport-${Date.now()}.md`;
+
+    // First, a real import to lay down an import-sequence with this origin.fileName.
+    await createImportCommand(makeStubConverter("")).execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Prior ${Date.now()}\n\nPrior body.`),
+      sourceFileName: fileName,
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    const { result } = await createPreviewImportCommand(makeStubConverter("")).execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Again\n\nAgain body.`),
+      sourceFileName: fileName,
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.priorImport).toBeDefined();
+    expect(result.priorImport!.sequenceName).toBe(`Import: ${fileName}`);
+    expect(typeof result.priorImport!.importedAt).toBe("string");
+  });
+
+  it("omits priorImport for a never-before-seen file name", async () => {
+    const ctx = await makeCommandContext();
+    const { result } = await createPreviewImportCommand(makeStubConverter("")).execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Fresh\n\nFresh body.`),
+      sourceFileName: `fresh-${Date.now()}.md`,
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.priorImport).toBeUndefined();
   });
 });
 

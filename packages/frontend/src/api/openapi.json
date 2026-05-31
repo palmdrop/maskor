@@ -2318,23 +2318,19 @@
           "error"
         ]
       },
-      "PreviewResult": {
-        "type": "object",
-        "properties": {
-          "markdown": {
-            "type": "string",
-            "example": "## Part One\n\n### the-crossing\n\nThe river was wide that morning."
+      "ImportPreviewResult": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PreviewResult"
           },
-          "sections": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PreviewNavSection"
+          {
+            "type": "object",
+            "properties": {
+              "priorImport": {
+                "$ref": "#/components/schemas/PriorImport"
+              }
             }
           }
-        },
-        "required": [
-          "markdown",
-          "sections"
         ]
       },
       "PreviewNavSection": {
@@ -2376,6 +2372,42 @@
         "required": [
           "uuid",
           "key"
+        ]
+      },
+      "PriorImport": {
+        "type": "object",
+        "properties": {
+          "sequenceName": {
+            "type": "string",
+            "example": "Import: chapter-one.docx"
+          },
+          "importedAt": {
+            "type": "string",
+            "example": "2026-05-31T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "sequenceName",
+          "importedAt"
+        ]
+      },
+      "PreviewResult": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "example": "## Part One\n\n### the-crossing\n\nThe river was wide that morning."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewNavSection"
+            }
+          }
+        },
+        "required": [
+          "markdown",
+          "sections"
         ]
       },
       "Draft": {
@@ -12229,7 +12261,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PreviewResult"
+                  "$ref": "#/components/schemas/ImportPreviewResult"
                 }
               }
             }

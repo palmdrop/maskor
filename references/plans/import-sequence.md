@@ -58,9 +58,9 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 4 — Re-import warning
 
-- [ ] Extend the preview command (`packages/api/src/commands/fragments/preview-import.ts`) and its result schema to include an optional `priorImport` (e.g. `{ sequenceName, importedAt }`) when an existing sequence's `origin.fileName` matches the incoming `sourceFileName`.
-- [ ] Run `bun run codegen`.
-- [ ] Tests: preview returns `priorImport` when a matching prior import exists; absent otherwise. Import itself still succeeds regardless (no server-side block).
+- [x] Extended the preview command with an optional `priorImport { sequenceName, importedAt }` (matched on an existing sequence's `origin.fileName`); added `ImportPreviewResultSchema` (PreviewResultSchema + optional `priorImport`) so sequence preview stays untouched; route returns it. _(2026-05-31)_
+- [x] Ran `bun run codegen`. _(2026-05-31)_
+- [x] Tests: preview returns `priorImport` after a matching import; absent for a fresh name. Import is never server-side blocked. _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 5 — Frontend

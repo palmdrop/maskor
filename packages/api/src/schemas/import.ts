@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { PreviewResultSchema } from "./preview";
 
 const HeadingLevelSchema = z.union([
   z.literal(1),
@@ -38,7 +39,19 @@ export const ImportResultSchema = z
 
 // The import preview response is the shared { markdown, sections } shape — see
 // `PreviewResultSchema` in ./preview. The route assembles the command's pieces
-// through the same exporter core as sequence preview.
+// through the same exporter core as sequence preview. Import preview adds an
+// optional `priorImport` warning when a file of the same name was imported
+// before (matched on an existing sequence's origin.fileName).
+export const PriorImportSchema = z
+  .object({
+    sequenceName: z.string().openapi({ example: "Import: chapter-one.docx" }),
+    importedAt: z.string().openapi({ example: "2026-05-31T10:00:00.000Z" }),
+  })
+  .openapi("PriorImport");
+
+export const ImportPreviewResultSchema = PreviewResultSchema.extend({
+  priorImport: PriorImportSchema.optional(),
+}).openapi("ImportPreviewResult");
 
 export const ImportBodySchema = z.object({
   file: z.any().openapi({

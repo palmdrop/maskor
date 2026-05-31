@@ -5,9 +5,8 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { projectIdParamSchema } from "../schemas/shared";
 import { ErrorResponseSchema } from "../schemas/error";
-import { ImportBodySchema, ImportOptionsSchema } from "../schemas/import";
+import { ImportBodySchema, ImportOptionsSchema, ImportPreviewResultSchema } from "../schemas/import";
 import type { ImportOptions } from "../schemas/import";
-import { PreviewResultSchema } from "../schemas/preview";
 import { createPreviewImportCommand, executeCommand, type ImportInput } from "../commands";
 import type { CommandContext } from "../commands";
 
@@ -32,7 +31,7 @@ const importPreviewRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: PreviewResultSchema } },
+      content: { "application/json": { schema: ImportPreviewResultSchema } },
       description: "Assembled markdown + per-piece nav for the fragments that would be created",
     },
     400: {
@@ -110,7 +109,7 @@ importPreviewRouter.openapi(importPreviewRoute, async (ctx) => {
     // Map pieces -> blocks -> assembled markdown via the shared exporter core, so
     // import preview and sequence preview render through the same renderer.
     const assembled = assemblePieces(result.pieces);
-    return ctx.json(assembled, 200);
+    return ctx.json({ ...assembled, priorImport: result.priorImport }, 200);
   } catch (error) {
     return throwStorageError(error);
   }
