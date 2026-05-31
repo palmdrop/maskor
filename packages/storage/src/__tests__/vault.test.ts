@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { createVault } from "../vault/markdown/vault";
 import type { VaultConfig } from "../vault/types";
 import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";

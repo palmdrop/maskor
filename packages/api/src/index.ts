@@ -1,6 +1,6 @@
 import { createStorageService } from "@maskor/storage";
 import { createApp } from "./app";
-import { createLogger } from "@maskor/shared";
+import { createLogger } from "@maskor/shared/logger";
 
 const logger = createLogger({ service: "api" });
 const storageService = createStorageService({ logger });

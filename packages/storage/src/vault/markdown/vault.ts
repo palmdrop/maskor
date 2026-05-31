@@ -1,4 +1,5 @@
-import type { Aspect, Logger, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Note, Reference, Sequence } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { Vault, VaultConfig, WithFilePath } from "../types";
 import { VaultError } from "../types";
 import type { ParsedFile } from "./parse";

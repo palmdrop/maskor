@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { restoreAsideRoot, stagingRoot } from "./paths";
 
 // Spec § Crash recovery: at project resolve, blow away `.staging/` and

@@ -16,9 +16,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path aliases */
+    /* Path aliases. No `@maskor/shared` entry: bundler resolution honors the
+       package's `exports` map (workspace symlink), enabling subpath imports
+       like `@maskor/shared/utils` while keeping the Node-only `/logger`
+       subpath out of browser-safe imports. */
     "paths": {
-      "@maskor/shared": ["../shared/src/index.ts"],
       "@/*": ["./src/*"],
       "@api/*": ["./src/api/*"],
       "@assets/*": ["./src/assets/*"],

@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@maskor/shared": path.resolve(__dirname, "../../shared/src/index.ts"),
+      // No `@maskor/shared` alias: it resolves through the package's `exports`
+      // map (workspace symlink in node_modules), so subpaths like
+      // `@maskor/shared/utils` work and the Node-only `/logger` subpath is never
+      // pulled by a browser-safe import.
       "@": path.resolve(__dirname, "./src"),
       "@api": path.resolve(__dirname, "./src/api"),
       "@assets": path.resolve(__dirname, "./src/assets"),

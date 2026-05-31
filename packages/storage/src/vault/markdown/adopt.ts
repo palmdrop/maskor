@@ -1,4 +1,5 @@
-import type { Fragment, Logger } from "@maskor/shared";
+import type { Fragment } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { ParsedFile } from "./parse";
 import { serializeFile } from "./serialize";
 import * as fragmentMapper from "./mappers/fragment";

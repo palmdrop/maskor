@@ -5,7 +5,7 @@ import type { ProjectRecord } from "@maskor/storage";
 import type { CommandContext } from "../../commands/types";
 import { createPreviewImportCommand } from "../../commands/fragments/preview-import";
 import type { DocumentConverter } from "@maskor/importer";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 
 const makeLogger = (): Logger => {
   const noOp = () => {};

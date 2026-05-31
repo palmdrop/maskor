@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { count } from "drizzle-orm";
 import { slugify, type DraftManifest } from "@maskor/shared";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import {
   fragmentsTable,
   aspectsTable,

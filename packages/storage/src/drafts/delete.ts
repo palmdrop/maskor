@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
-import type { DraftManifest, Logger } from "@maskor/shared";
+import type { DraftManifest } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { DraftError } from "./errors";
 import { findDraftByUuid } from "./list";
 import { draftDirectory } from "./paths";

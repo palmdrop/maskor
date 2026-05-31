@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { LogEntry } from "@maskor/shared";
 import type { StorageService, ProjectContext } from "@maskor/storage";
 

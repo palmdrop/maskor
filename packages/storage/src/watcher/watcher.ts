@@ -1,6 +1,7 @@
 import chokidar from "chokidar";
 import path from "node:path";
-import type { Logger, VaultSyncEvent, Aspect, Note, Reference } from "@maskor/shared";
+import type { VaultSyncEvent, Aspect, Note, Reference } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../db/vault";
 import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
 import type { Vault } from "../vault/types";

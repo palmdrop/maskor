@@ -25,7 +25,7 @@ import { draftsRouter } from "./routes/drafts";
 import { swapRouter } from "./routes/swap";
 import { fsRouter } from "./routes/fs";
 import { createSettingsRouter } from "./routes/settings";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 
 export type AppVariables = {
   storageService: StorageService;

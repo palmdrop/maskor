@@ -4,7 +4,6 @@ import type {
   AspectUpdate,
   AspectUpdateResponse,
   Fragment,
-  Logger,
   Note,
   NoteUpdate,
   NoteUpdateResponse,
@@ -15,6 +14,7 @@ import type {
   Sequence,
   VaultSyncEvent,
 } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { ArcSchema } from "@maskor/shared";
 import { mkdir, rename, rmdir, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";

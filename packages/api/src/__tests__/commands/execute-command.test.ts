@@ -5,7 +5,7 @@ import type { ProjectRecord } from "@maskor/storage";
 import type { CommandContext } from "../../commands/types";
 import { executeCommand } from "../../commands/types";
 import type { Command } from "../../commands/types";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 
 const makeLogger = (): Logger & { errors: unknown[] } => {
   const errors: unknown[] = [];

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";

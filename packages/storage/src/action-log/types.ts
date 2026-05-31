@@ -1,4 +1,4 @@
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { LogEntry } from "@maskor/shared";
 
 export type ActionLogConfig = {

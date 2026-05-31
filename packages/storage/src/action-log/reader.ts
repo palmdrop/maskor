@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { LogEntry } from "@maskor/shared";
 import { LogEntrySchema } from "@maskor/shared";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { ACTION_LOG_DIRNAME, ACTION_LOG_FILENAME } from "./constants";
 
 export const readRecentEntries = async (

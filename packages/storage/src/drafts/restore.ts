@@ -1,7 +1,7 @@
 import { mkdir, rename, rm, cp } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { RESTORE_MASKOR_ENTRIES, RESTORE_VAULT_DIRECTORIES } from "./constants";
 import { DraftError } from "./errors";
 import { findDraftByUuid, type ListedDraft } from "./list";

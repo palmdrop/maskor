@@ -1,5 +1,6 @@
 import path from "node:path";
-import type { Logger, VaultSyncEvent } from "@maskor/shared";
+import type { VaultSyncEvent } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import type { ParsedFile } from "../../vault/markdown/parse";
 import { parseFile } from "../../vault/markdown/parse";

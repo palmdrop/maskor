@@ -1,6 +1,14 @@
 {
   "name": "@maskor/shared",
   "module": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./types": "./src/types/index.ts",
+    "./events": "./src/events.ts",
+    "./logger": "./src/logger/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "pino-pretty": "^13.1.3"

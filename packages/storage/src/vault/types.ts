@@ -1,4 +1,5 @@
-import type { Aspect, Fragment, Logger, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 
 export type VaultConfig = {
   root: string;

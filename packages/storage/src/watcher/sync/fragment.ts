@@ -1,4 +1,5 @@
-import type { Fragment, Logger, VaultSyncEvent } from "@maskor/shared";
+import type { Fragment, VaultSyncEvent } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
 import { parseFile } from "../../vault/markdown/parse";

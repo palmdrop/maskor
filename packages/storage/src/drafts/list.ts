@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import type { DraftManifest, Logger } from "@maskor/shared";
+import type { DraftManifest } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import { RESTORE_ASIDE_DIRNAME, STAGING_DIRNAME } from "./constants";
 import { draftDirectory, draftsRoot } from "./paths";
 import { readManifest } from "./manifest";

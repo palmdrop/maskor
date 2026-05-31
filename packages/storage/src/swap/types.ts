@@ -1,4 +1,4 @@
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 import type { SwapEntityType } from "./constants";
 
 export type SwapFile = {

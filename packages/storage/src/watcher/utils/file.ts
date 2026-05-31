@@ -1,4 +1,4 @@
-import type { Logger } from "@maskor/shared";
+import type { Logger } from "@maskor/shared/logger";
 
 export const readFileWithEnoentGuard = async (
   absolutePath: string,
