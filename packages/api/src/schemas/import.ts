@@ -29,6 +29,10 @@ export const ImportResultSchema = z
   .object({
     created: z.array(z.string()).openapi({ example: ["f1a2b3c4-d5e6-7890-abcd-ef1234567890"] }),
     errors: z.array(ImportErrorSchema),
+    importSequenceUuid: z
+      .string()
+      .optional()
+      .openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
   })
   .openapi("ImportResult");
 

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
@@ -26,11 +27,13 @@ const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
+let vaultDirectory: string;
 
 beforeAll(async () => {
   testContext = createTestApp();
   const seeded = await seedVault(testContext.storageService, testContext.temporaryDirectory);
   project = seeded.project;
+  vaultDirectory = seeded.vaultDirectory;
 });
 
 afterAll(async () => {
@@ -244,6 +247,121 @@ describe("createImportCommand - partial failure", () => {
     expect(result.errors[0]!.pieceIndex).toBe(2);
     expect(result.errors[0]!.pieceKey).toBeDefined();
     expect(result.errors[0]!.error).toContain("simulated write failure");
+  });
+});
+
+describe("createImportCommand - import-sequence", () => {
+  it("creates an inactive non-main import-sequence in import order with origin + archive", async () => {
+    const ctx = await makeCommandContext();
+    const markdownContent = `# Order One\n\nBody one.\n\n# Order Two\n\nBody two.`;
+    const command = createImportCommand(makeStubConverter(""));
+
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(markdownContent),
+      sourceFileName: "order-test.md",
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.created.length).toBe(2);
+    expect(result.importSequenceUuid).toBeDefined();
+
+    const sequence = await ctx.storageService.sequences.read(
+      ctx.projectContext,
+      result.importSequenceUuid!,
+    );
+
+    expect(sequence.isMain).toBe(false);
+    expect(sequence.active).toBe(false);
+    expect(sequence.name).toBe("Import: order-test.md");
+    // Fragments recorded in import order, in a single section.
+    expect(sequence.sections.length).toBe(1);
+    const orderedUuids = sequence.sections[0]!.fragments
+      .sort((a, b) => a.position - b.position)
+      .map((fp) => fp.fragmentUuid);
+    expect(orderedUuids).toEqual(result.created);
+
+    // Origin points at the archived original, which exists on disk.
+    expect(sequence.origin).toBeDefined();
+    expect(sequence.origin!.fileName).toBe("order-test.md");
+    expect(sequence.origin!.format).toBe("markdown");
+    expect(sequence.origin!.archivePath.startsWith(".maskor/imports/")).toBe(true);
+    const archived = Bun.file(join(vaultDirectory, sequence.origin!.archivePath));
+    expect(await archived.exists()).toBe(true);
+  });
+
+  it("suffixes the sequence name when the same file is imported again", async () => {
+    const ctx = await makeCommandContext();
+    const command = createImportCommand(makeStubConverter(""));
+    const content = (tag: string) => `# Dup ${tag}\n\nBody ${tag}.`;
+
+    const first = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(content("a")),
+      sourceFileName: "dup.md",
+      format: "markdown",
+      headingLevel: 1,
+    });
+    const second = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(content("b")),
+      sourceFileName: "dup.md",
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    const firstSequence = await ctx.storageService.sequences.read(
+      ctx.projectContext,
+      first.result.importSequenceUuid!,
+    );
+    const secondSequence = await ctx.storageService.sequences.read(
+      ctx.projectContext,
+      second.result.importSequenceUuid!,
+    );
+
+    expect(firstSequence.name).toBe("Import: dup.md");
+    expect(secondSequence.name).toBe("Import: dup.md_1");
+  });
+
+  it("records the import-sequence UUID on the fragment:imported payload", async () => {
+    const ctx = await makeCommandContext();
+    const command = createImportCommand(makeStubConverter(""));
+
+    const { result, logEntries } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Logged ${Date.now()}\n\nBody.`),
+      sourceFileName: "logged.md",
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    const payload = logEntries[0]!.payload as Record<string, unknown>;
+    expect(payload.importSequenceUuid).toBe(result.importSequenceUuid);
+  });
+
+  it("creates no import-sequence when nothing was imported", async () => {
+    const ctx = await makeCommandContext();
+
+    const originalWrite = testContext.storageService.fragments.write;
+    const { VaultError } = await import("@maskor/storage");
+    testContext.storageService.fragments.write = async () => {
+      throw new VaultError("KEY_CONFLICT", "key already exists");
+    };
+
+    const command = createImportCommand(makeStubConverter(""));
+    const { result } = await command.execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Nothing ${Date.now()}\n\nBody.`),
+      sourceFileName: "nothing.md",
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    testContext.storageService.fragments.write = originalWrite;
+
+    expect(result.created.length).toBe(0);
+    expect(result.importSequenceUuid).toBeUndefined();
   });
 });
 

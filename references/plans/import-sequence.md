@@ -49,11 +49,11 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 3 — Archival + import-sequence creation
 
-- [ ] Add a storage-service method to write the original bytes under `.maskor/imports/` (mirror the `.maskor/sequences/` write path around `storage-service.ts:1620`; wrap in `withVaultWriteLock`). Archive filename keyed to the import-sequence UUID to guarantee uniqueness across re-imports; return the vault-relative `archivePath`.
-- [ ] Extend the import command (`packages/api/src/commands/fragments/import.ts`): after fragments are created, build one `Sequence` with a single section holding the created fragments in import (piece) order, `isMain: false`, `active: false`, and `origin` populated from the archived file. Derive a unique sequence name `Import: <sourceFileName>` with a numeric suffix on collision (the storage write throws `KEY_CONFLICT` on duplicate names — compute the suffix against existing sequence names before writing, mirroring `deriveKey`).
-- [ ] Skip fragments that failed to create (only place successfully created UUIDs).
-- [ ] Record the created import-sequence UUID on the existing `fragment:imported` action-log payload rather than emitting a separate entry (keeps the single-entry import convention).
-- [ ] Tests: import creates one inactive non-main sequence; fragments appear in import order in one section; `origin` populated; archive file exists under `.maskor/imports/`; partial-failure import places only successful fragments; name collision produces a suffixed name.
+- [x] Added `storageService.imports.archive(context, archiveFileName, bytes)` writing under `.maskor/imports/` (wrapped in `withVaultWriteLock`), returning the vault-relative `archivePath`. Archive filename keyed to the import-sequence UUID. _(2026-05-31)_
+- [x] Extended the import command: builds one `Sequence` (single "Import" section) holding the created fragments in import order, `isMain: false`, `active: false`, `origin` populated; unique name `Import: <sourceFileName>` with numeric suffix on collision. _(2026-05-31)_
+- [x] Only successfully created fragment UUIDs are placed; no sequence/archive when zero fragments created. _(2026-05-31)_
+- [x] `importSequenceUuid` added to `ImportResult` + `ImportResultSchema` and recorded on the `fragment:imported` payload (single-entry convention kept). _(2026-05-31)_
+- [x] Tests: inactive non-main sequence; import-order section; `origin` populated; archive file exists; name-collision suffix; payload carries UUID; no sequence on empty import. _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 4 — Re-import warning

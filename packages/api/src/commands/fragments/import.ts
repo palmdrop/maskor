@@ -1,9 +1,58 @@
+import { extname } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Fragment, LogEntry } from "@maskor/shared";
+import type { Fragment, LogEntry, Sequence, SequenceOrigin } from "@maskor/shared";
 import type { DocumentConverter, HeadingLevel } from "@maskor/importer";
 import { splitMarkdown, splitPlainText, deriveKey } from "@maskor/importer";
-import type { Command } from "../types";
+import type { Command, CommandContext } from "../types";
 import { createFragmentCommand } from "./create-fragment";
+
+// Pick a sequence name not already taken, mirroring the fragment key-conflict
+// convention: "Import: foo.docx", then "Import: foo.docx_1", etc.
+const deriveUniqueSequenceName = (base: string, existingNames: Set<string>): string => {
+  if (!existingNames.has(base)) return base;
+  let suffix = 1;
+  while (existingNames.has(`${base}_${suffix}`)) suffix++;
+  return `${base}_${suffix}`;
+};
+
+// Build and persist the inactive import-sequence recording the created
+// fragments in their original import order, pointing at the archived original.
+const writeImportSequence = async (
+  ctx: CommandContext,
+  createdFragmentUuids: string[],
+  sourceFileName: string,
+  origin: SequenceOrigin,
+  sequenceUuid: string,
+): Promise<string> => {
+  const existingSequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
+  const name = deriveUniqueSequenceName(
+    `Import: ${sourceFileName}`,
+    new Set(existingSequences.map((sequence) => sequence.name)),
+  );
+
+  const sequence: Sequence = {
+    uuid: sequenceUuid,
+    name,
+    isMain: false,
+    active: false,
+    origin,
+    projectUuid: ctx.projectContext.projectUUID,
+    sections: [
+      {
+        uuid: randomUUID(),
+        name: "Import",
+        fragments: createdFragmentUuids.map((fragmentUuid, position) => ({
+          uuid: randomUUID(),
+          fragmentUuid,
+          position,
+        })),
+      },
+    ],
+  };
+
+  await ctx.storageService.sequences.write(ctx.projectContext, sequence);
+  return sequence.uuid;
+};
 
 export type ImportInput =
   | {
@@ -37,6 +86,13 @@ export type ImportError = {
 export type ImportResult = {
   created: string[];
   errors: ImportError[];
+  importSequenceUuid?: string;
+};
+
+const archiveExtension = (sourceFileName: string, format: ImportInput["format"]): string => {
+  const fromName = extname(sourceFileName);
+  if (fromName) return fromName;
+  return format === "docx" ? ".docx" : format === "plaintext" ? ".txt" : ".md";
 };
 
 export const createImportCommand = (
@@ -92,6 +148,32 @@ export const createImportCommand = (
       }
     }
 
+    // Capture import order + archive the original — only when at least one
+    // fragment was created (an empty import has nothing to order or preserve).
+    let importSequenceUuid: string | undefined;
+    if (created.length > 0) {
+      const sequenceUuid = randomUUID();
+      const archiveFileName = `${sequenceUuid}${archiveExtension(input.sourceFileName, input.format)}`;
+      const archivePath = await ctx.storageService.imports.archive(
+        ctx.projectContext,
+        archiveFileName,
+        input.file,
+      );
+      const origin: SequenceOrigin = {
+        fileName: input.sourceFileName,
+        archivePath,
+        format: input.format,
+        importedAt: new Date().toISOString(),
+      };
+      importSequenceUuid = await writeImportSequence(
+        ctx,
+        created,
+        input.sourceFileName,
+        origin,
+        sequenceUuid,
+      );
+    }
+
     const importPayload =
       input.format === "plaintext"
         ? {
@@ -99,12 +181,14 @@ export const createImportCommand = (
             fragmentCount: created.length,
             format: input.format,
             delimiter: input.delimiter,
+            ...(importSequenceUuid ? { importSequenceUuid } : {}),
           }
         : {
             sourceFileName: input.sourceFileName,
             fragmentCount: created.length,
             format: input.format,
             headingLevel: input.headingLevel,
+            ...(importSequenceUuid ? { importSequenceUuid } : {}),
           };
 
     const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [
@@ -122,6 +206,6 @@ export const createImportCommand = (
       },
     ];
 
-    return { result: { created, errors }, logEntries };
+    return { result: { created, errors, importSequenceUuid }, logEntries };
   },
 });

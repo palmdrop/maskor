@@ -2286,6 +2286,10 @@
             "items": {
               "$ref": "#/components/schemas/ImportError"
             }
+          },
+          "importSequenceUuid": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
           }
         },
         "required": [
@@ -11093,6 +11097,9 @@
                               },
                               "headingLevel": {
                                 "type": "integer"
+                              },
+                              "importSequenceUuid": {
+                                "type": "string"
                               }
                             },
                             "required": [

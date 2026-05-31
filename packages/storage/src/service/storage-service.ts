@@ -1434,6 +1434,26 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
     },
 
+    // Import archive: the original uploaded file kept byte-for-byte under
+    // .maskor/imports/ so a sequence's origin can point back at what was
+    // imported. The watcher ignores .maskor/, so archived binaries are never
+    // adopted as fragments.
+
+    imports: {
+      async archive(
+        context: ProjectContext,
+        archiveFileName: string,
+        bytes: Uint8Array,
+      ): Promise<string> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const importsDirectory = join(context.vaultPath, ".maskor", "imports");
+          await mkdir(importsDirectory, { recursive: true });
+          await Bun.write(join(importsDirectory, archiveFileName), bytes);
+          return join(".maskor", "imports", archiveFileName);
+        });
+      },
+    },
+
     // Suggestion operations
 
     suggestion: {

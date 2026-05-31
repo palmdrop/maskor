@@ -189,6 +189,7 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       format: z.string(),
       delimiter: z.string().optional(),
       headingLevel: z.number().int().optional(),
+      importSequenceUuid: z.string().optional(),
     }),
   ),
 ]);
