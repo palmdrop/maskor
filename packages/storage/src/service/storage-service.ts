@@ -484,6 +484,19 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       return registry.listProjects();
     },
 
+    // Stop every cached watcher and forget it. Each stop() drains its
+    // rename-buffer timers and closes the chokidar instance, so no deferred
+    // event can fire a DB write after the caller tears the vault down. Used by
+    // tests in teardown (before deleting the temp vault dir) and available for
+    // a graceful app shutdown. See the OS note in watcher/sync/keyed-entity.ts
+    // for why an un-stopped watcher poisons a Linux test run.
+    async shutdown(): Promise<void> {
+      for (const watcher of vaultWatcherCache.values()) {
+        await watcher.stop();
+      }
+      vaultWatcherCache.clear();
+    },
+
     async removeProject(projectUUID: string): Promise<void> {
       // Stop and evict the watcher first — a stale watcher on a removed project would
       // hold file handles open and continue firing events against a deleted DB.

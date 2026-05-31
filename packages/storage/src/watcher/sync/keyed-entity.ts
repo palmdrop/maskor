@@ -139,6 +139,19 @@ export const unlinkKeyedEntity = <TEntity extends { uuid: string; key: string }>
   const storedRow = config.queryRowByFilePath(entityRelativePath);
   if (!storedRow) return;
 
+  // The deletion commit is deferred ~RENAME_BUFFER_MS so a following add can be
+  // recognised as a rename instead. That deferral makes watcher lifetime
+  // load-bearing: if the vault directory is deleted out from under a live
+  // watcher (e.g. a test rm-ing its temp dir without calling
+  // storageService.shutdown()), this timer still fires and runs the
+  // transaction below against a vanished directory. On Linux the open
+  // bun:sqlite inode survives but SQLite cannot create its journal/WAL sidecar
+  // in the gone directory, so the write fails with "attempt to write a
+  // readonly database". macOS FSEvents coalesces the subtree delete and rarely
+  // delivers the per-file unlink, so the timer is usually never scheduled there
+  // — which is why a leaked watcher fails the Linux suite but passes on macOS.
+  // Always stop the watcher before removing its vault. See
+  // service/storage-service.ts `shutdown()`.
   config.renameBuffer.add(storedRow.uuid, storedRow.key, entityRelativePath, () => {
     vaultDatabase.transaction((tx) => {
       config.deleteByFilePath(tx, entityRelativePath);

@@ -12,8 +12,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("POST /projects/:projectId/index/rebuild", () => {
@@ -70,6 +70,6 @@ describe("GET /projects/:projectId/rebuild-status", () => {
     expect(body1.length).toBe(body3.length);
     expect(body1.length).toBeGreaterThan(0);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 });

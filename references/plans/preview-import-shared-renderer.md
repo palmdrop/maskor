@@ -5,6 +5,8 @@
 **Specs**: `specifications/preview.md`, `specifications/export.md`, `specifications/import-pipeline.md`
 **Closed**: 30-05-2026 — Scope A shipped. Preview and import render through one shared read-only Tiptap renderer fed by `@maskor/exporter`'s assembled markdown; both endpoints return `{ markdown, sections }`; anchors work via exporter sentinels → `id="fragment-<id>"`; toggles apply server-side; `StaticMarkdown`/`ReadonlyEditor`/`buildPreviewMarkdown`/`scrollToPiece` removed. Novel-scale (100k+ word) live-render validation deferred — no app run in the build environment; risk + static-HTML fallback tracked in `references/suggestions.md` and the preview spec open question.
 
+**Verification correction (2026-05-31)**: The implementation environment had **no bun**, so the Phase 6 `bun run verify` checkbox below was never actually satisfied — it was checked off optimistically. Re-ran with bun available: typecheck, `verify:openapi`, exporter tests (19/19), the frontend suite (431/431), and the preview + import-preview route tests *in isolation* all pass. `bun run verify` itself still fails, but on a **pre-existing test-isolation bug unrelated to this branch** (leaked watcher rename-buffer timers writing into torn-down temp vaults → `SQLiteError: attempt to write a readonly database`; non-deterministic; affected files all pass when run alone). Reproduces on the developer's full system too, so it is not a container artifact. Details: `references/reviews/preview-import-shared-renderer-2026-05-31.md` § Verification and `references/suggestions.md`.
+
 ---
 
 ## Goal
@@ -84,7 +86,7 @@ Key invariants:
 - [x] Update `specifications/export.md` `Shipped`: the `@maskor/exporter` markdown assembler core landed (no file-export UI).
 - [x] Note in `specifications/import-pipeline.md` that import preview now renders via the shared renderer with real anchors (scrollToPiece hack removed).
 - [x] Regenerate `references/CODEBASE_SNAPSHOT.md` via `bun run snapshot` if symbols moved.
-- [x] `bun run verify` — fix any type/test/openapi-drift failures before stopping.
+- [~] `bun run verify` — fix any type/test/openapi-drift failures before stopping. **(Could not run at implementation time — no bun in that environment. Re-run 2026-05-31: typecheck / openapi / exporter / frontend / per-file api all green; full `verify` blocked by a pre-existing watcher-timer test-isolation bug unrelated to this branch. See the Verification correction in the frontmatter.)**
 - [x] `git commit`.
 
 ---

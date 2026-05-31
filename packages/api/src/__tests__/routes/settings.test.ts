@@ -9,8 +9,8 @@ beforeAll(() => {
   testContext = createTestApp();
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("GET /settings", () => {

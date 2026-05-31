@@ -18,8 +18,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("GET /projects/:projectId/suggestion/next", () => {
@@ -103,7 +103,7 @@ describe("GET /projects/:projectId/suggestion/next", () => {
     const body = (await nextResponse.json()) as SuggestionNextResponse;
     expect(body.fragment).toBeNull();
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 });
 
@@ -155,7 +155,7 @@ describe("POST /projects/:projectId/suggestion/pick/:fragmentId", () => {
     );
     expect(after.voluntaryOpenCount).toBe(before.voluntaryOpenCount + 1);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 
   it("a picked fragment is excluded from the next selection (cooldown applied)", async () => {
@@ -188,7 +188,7 @@ describe("POST /projects/:projectId/suggestion/pick/:fragmentId", () => {
     expect(body.fragment).not.toBeNull();
     expect(body.fragment!.uuid).not.toBe(pickedUuid);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 
   it("avoidance_count is NOT incremented when Next is pressed after a pick", async () => {
@@ -223,7 +223,7 @@ describe("POST /projects/:projectId/suggestion/pick/:fragmentId", () => {
     );
     expect(stats.avoidanceCount).toBe(0);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 });
 
@@ -258,7 +258,7 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     );
     expect(stats.avoidanceCount).toBe(1);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 
   it("does not increment avoidance_count when fragment was edited before Next", async () => {
@@ -296,6 +296,6 @@ describe("GET /suggestion/next — avoidance_count increment", () => {
     );
     expect(stats.avoidanceCount).toBe(0);
 
-    freshContext.cleanup();
+    await freshContext.cleanup();
   });
 });

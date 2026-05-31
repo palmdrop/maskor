@@ -41,8 +41,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("POST /projects/:projectId/import — markdown", () => {

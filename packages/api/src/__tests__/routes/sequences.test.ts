@@ -30,8 +30,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 const baseUrl = () => `/projects/${project.projectUUID}/sequences`;

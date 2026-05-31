@@ -42,8 +42,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("PATCH /aspects/:aspectId — single-intent action types", () => {

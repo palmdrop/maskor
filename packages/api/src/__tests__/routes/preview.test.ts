@@ -24,8 +24,8 @@ beforeAll(async () => {
   mainSequenceUuid = mainSeq.uuid;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("GET /projects/:projectId/preview/:sequenceId", () => {

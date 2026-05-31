@@ -33,7 +33,7 @@ beforeAll(() => {
   chmodSync(restrictedDirectory, 0o000);
 });
 
-afterAll(() => {
+afterAll(async () => {
   // Restore permissions before cleanup
   try {
     chmodSync(restrictedDirectory, 0o755);
@@ -41,7 +41,7 @@ afterAll(() => {
     // Ignore
   }
   rmSync(temporaryDirectory, { recursive: true, force: true });
-  testContext.cleanup();
+  await testContext.cleanup();
 });
 
 describe("GET /fs/list", () => {

@@ -19,8 +19,8 @@ beforeAll(async () => {
   vaultDirectory = seeded.vaultDirectory;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("GET /projects/:projectId/fragments", () => {

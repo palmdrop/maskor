@@ -36,8 +36,8 @@ beforeAll(async () => {
   project = seeded.project;
 });
 
-afterAll(() => {
-  testContext.cleanup();
+afterAll(async () => {
+  await testContext.cleanup();
 });
 
 describe("PATCH /fragments/:fragmentId — changedFields reflects only real changes", () => {

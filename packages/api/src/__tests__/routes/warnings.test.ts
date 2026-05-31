@@ -17,8 +17,8 @@ beforeEach(async () => {
   vaultDirectory = seeded.vaultDirectory;
 });
 
-afterEach(() => {
-  testContext.cleanup();
+afterEach(async () => {
+  await testContext.cleanup();
 });
 
 type WarningResponse = {
