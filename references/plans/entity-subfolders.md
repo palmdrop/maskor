@@ -103,6 +103,7 @@ Goal: adopt-an-existing-vault works for pre-prepared nested vaults out of the bo
 - [x] Adoption integration test: adopt a folder pre-populated with `aspects/places/london.md`, `aspects/characters/anna.md`, `notes/research/neuroscience.md`, `references/articles/2024-foo.md` (with pre-assigned frontmatter UUIDs). After rebuild: all entities indexed with derived categories. _(2026-05-27)_
 
 > **Correction (2026-05-29):** The two checkboxes above were wrong. Rebuild does **not** UUID-stamp on "first add" — the watcher ignores the initial scan (`ignoreInitial: true`), so there is no add event for pre-existing files, and `rebuild()` itself never mints UUIDs. The integration test only passed because its fixtures carried **pre-assigned frontmatter UUIDs**, masking the real adoption case. Adopting a real metadata-less Obsidian-format vault crashes the rebuild on the `uuid` NOT NULL constraint. "No special adoption-time recursion code needed" was the wrong conclusion. **Fixed (2026-05-30)** in `references/plans/vault-adoption-rebuild-metadata.md`: rebuild now mints + writes back UUIDs on read (full canonical frontmatter for fragments, UUID-only for keyed entities), using the watcher's helpers.
+
 - [x] Update specs: _(2026-05-27)_
   - `specifications/_glossary.md` — **Category** entry verified accurate.
   - `specifications/aspect-arc-model.md` — category description updated; constraint added; Shipped entry added.

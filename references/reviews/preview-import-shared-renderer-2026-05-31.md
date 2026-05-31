@@ -65,14 +65,14 @@ This only bites when titles are shown: optional in preview (default off), but **
 
 Ran the steps from the project guidance individually, then the whole suite.
 
-| Step | Result |
-| --- | --- |
-| `bun run typecheck` | **Pass** (clean) |
-| `bun run verify:openapi` | **Pass** (snapshot in sync with routes) |
-| `bun test packages/exporter` | **Pass** — 19/19 (assembler core, sentinel collision-safety) |
-| `bun run --cwd packages/frontend test` | **Pass** — 431/431 (renderer, anchor node, preview page) |
-| `packages/api` preview + import-preview tests, run *in isolation* | **Pass** — preview 5/5, import-preview 11/11 |
-| `bun run verify` / full suite in one process | **Now passes** — 749 backend + 431 frontend, 0 fail, deterministic. Originally flaky; root-caused and fixed (see below). |
+| Step                                                              | Result                                                                                                                   |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `bun run typecheck`                                               | **Pass** (clean)                                                                                                         |
+| `bun run verify:openapi`                                          | **Pass** (snapshot in sync with routes)                                                                                  |
+| `bun test packages/exporter`                                      | **Pass** — 19/19 (assembler core, sentinel collision-safety)                                                             |
+| `bun run --cwd packages/frontend test`                            | **Pass** — 431/431 (renderer, anchor node, preview page)                                                                 |
+| `packages/api` preview + import-preview tests, run _in isolation_ | **Pass** — preview 5/5, import-preview 11/11                                                                             |
+| `bun run verify` / full suite in one process                      | **Now passes** — 749 backend + 431 frontend, 0 fail, deterministic. Originally flaky; root-caused and fixed (see below). |
 
 Both static findings (#1 sentinel drift guard, #2 anchor-below-title) have since been **fixed** — see the "Fixed 2026-05-31" notes under each. The exporter↔frontend sentinel seam is now exercised by a frontend test that imports the exporter's canonical builder, and the anchor now precedes the title (guarded by exporter unit tests plus an integration assertion in `verify`).
 
@@ -84,12 +84,13 @@ Both static findings (#1 sentinel drift guard, #2 anchor-below-title) have since
 
 - `createTestApp`'s `cleanup()` (`packages/api/src/__tests__/helpers/create-test-app.ts:22`) only does `rmSync(temporaryDirectory)`. It never stops the watcher that `resolveProject` middleware lazily starts on the test's vault.
 - When `rmSync` deletes the watched files, chokidar fires `unlink` events; `unlinkKeyedEntity` (`packages/storage/src/watcher/sync/keyed-entity.ts:142`) schedules a 500 ms rename-buffer `setTimeout`; ~500 ms later that timer runs `vaultDatabase.transaction(...)` against a vault directory that no longer exists. On Linux the open `bun:sqlite` inode survives the delete, but SQLite can't create its journal/WAL sidecar in the gone directory → it reports the handle as read-only (`SQLiteError: attempt to write a readonly database`).
-- The unhandled error surfaces while a *later* test file is running, so bun blames whatever test is executing at that instant. That is why the failures land on unrelated routes (`aspects`, `notes`, `sequences`, `suggestion`, `import`) this branch never touched, and why every affected file **passes when run alone** (verified: preview 5/5, import-preview 11/11, aspects 8/8, sequences 42/42).
+- The unhandled error surfaces while a _later_ test file is running, so bun blames whatever test is executing at that instant. That is why the failures land on unrelated routes (`aspects`, `notes`, `sequences`, `suggestion`, `import`) this branch never touched, and why every affected file **passes when run alone** (verified: preview 5/5, import-preview 11/11, aspects 8/8, sequences 42/42).
 - **Non-deterministic**: consecutive full runs gave 59 fail/48 err then 62 fail/71 err — flaky counts confirm timing, not logic. The existing `removeProject` path already documents this exact hazard (`storage-service.ts:488`: "a stale watcher on a removed project would hold file handles open and continue firing events against a deleted DB"); the test harness simply bypassed it.
 
 **OS difference (why it was green on macOS, red on Linux):** chokidar uses the native backend per OS. Linux → inotify delivers per-file `unlink` events immediately and individually, reliably scheduling the 500 ms timers, and a write into the deleted directory fails as `SQLITE_READONLY` (SQLite can't create its journal sidecar). macOS → FSEvents coalesces a recursive subtree delete into a latent, batched event on the parent and rarely emits the per-file `unlink`, so the timers are usually never scheduled. A green macOS run was a **false negative** — the watcher leak existed on every platform; only its symptom was Linux-specific (and CI, being Linux, would have hit it).
 
 **Fix shipped (2026-05-31):**
+
 - `createStorageService` now exposes `shutdown()` — stops every cached watcher (`watcher.stop()` `drainAll()`s the rename buffers and `await`s `chokidar.close()`) and clears the cache (`storage-service.ts`).
 - `createTestApp.cleanup()` is async and calls `storageService.shutdown()` before `rmSync` (`create-test-app.ts`); every api test teardown hook now `await`s cleanup.
 - A `keyed-entity.ts` comment documents why watcher lifetime is load-bearing and the inotify-vs-FSEvents reason the symptom is Linux-only.

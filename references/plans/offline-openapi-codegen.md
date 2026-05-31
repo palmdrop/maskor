@@ -30,7 +30,7 @@ Established-solution research (web): a standalone script calling `getOpenAPIDocu
 ## Decisions (locked with developer)
 
 - **Ownership**: the API package owns and commits the snapshot (it owns the spec). The verify guard lives in the API package. Frontend `codegen` only runs orval against the committed file — kept dependency-free and fast.
-- **Sync strategy**: codegen *consumes* the committed snapshot. A verify guard (regenerate to a temp file + `git diff --exit-code` against the committed snapshot) enforces freshness, wired into `bun run verify` / CI.
+- **Sync strategy**: codegen _consumes_ the committed snapshot. A verify guard (regenerate to a temp file + `git diff --exit-code` against the committed snapshot) enforces freshness, wired into `bun run verify` / CI.
 - **Spec version**: match today's `/doc` output exactly — `getOpenAPIDocument` (V3 generator) with `openapi: "3.1.0"` label. Byte-identical; zero change to generated orval hooks. Do **not** switch to `getOpenAPI31Document` in this work.
 
 ---
@@ -66,7 +66,7 @@ Update every durable instruction source that references the codegen pattern so a
 - [x] **`packages/frontend/CLAUDE.md`**: drop "assume the API is already running / start it with `bun run dev`" from the codegen steps; replace with the serverless flow (snapshot is committed; `bun run codegen` runs orval against `src/api/openapi.json`; regenerate the snapshot from `packages/api` when routes change).
 - [x] **`packages/api/CLAUDE.md`**: add a short instruction — the API package owns the committed OpenAPI snapshot; after adding or changing a route, run `bun run generate-openapi` to refresh `packages/frontend/src/api/openapi.json`, and note the verify guard fails if it drifts.
 - [x] **`references/suggestions.md`**: tick / remove the "saved OpenAPI snapshot for offline codegen" entry (line 35), noting it shipped as code-generated rather than `curl`-captured.
-- [x] Confirm no `specifications/` doc documents the codegen *procedure* (only `specifications/quick-switcher.md:138` references the orval client, which stays accurate) — no spec edit expected; verify during implementation.
+- [x] Confirm no `specifications/` doc documents the codegen _procedure_ (only `specifications/quick-switcher.md:138` references the orval client, which stays accurate) — no spec edit expected; verify during implementation.
 - [x] Flag the `app.doc()` 3.1.0-label-on-V3-document quirk to the developer (see below) — record-only, not fixed here.
 - [x] Commit.
 

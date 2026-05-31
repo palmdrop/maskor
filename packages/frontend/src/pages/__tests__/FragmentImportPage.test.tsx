@@ -61,9 +61,11 @@ const { FragmentImportPage } = await import("../FragmentImportPage");
 
 const wrap = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) => (
+  const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+
+  return wrapper;
 };
 
 describe("FragmentImportPage", () => {

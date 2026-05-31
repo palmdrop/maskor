@@ -9,6 +9,7 @@ const PROJECT_ID = "proj-1";
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ projectId: PROJECT_ID }),
   Link: ({ children, className }: { children: ReactNode; className?: string }) => (
+    // eslint-disable-next-line jsx-a11y/anchor-is-valid
     <a className={className}>{children}</a>
   ),
 }));

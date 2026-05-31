@@ -100,7 +100,7 @@ The naming convention is `domain:verb`. The full v1 set:
 
 A rename cascades through related entities (e.g. renaming an aspect updates every fragment that uses it). The cascade produces **one** log entry — the originating `*:renamed` action — not one entry per touched fragment. This keeps the log readable and reflects user intent rather than mechanical side effects.
 
-| `fragment:imported`              | No       | Single summary entry for a whole-file import. Payload: `{ sourceFileName, fragmentCount, format, delimiter?, headingLevel? }`. Individual `fragment:created` entries are not emitted for imported pieces — the batch entry covers the operation. |
+| `fragment:imported` | No | Single summary entry for a whole-file import. Payload: `{ sourceFileName, fragmentCount, format, delimiter?, headingLevel? }`. Individual `fragment:created` entries are not emitted for imported pieces — the batch entry covers the operation. |
 
 #### Out of scope for v1
 

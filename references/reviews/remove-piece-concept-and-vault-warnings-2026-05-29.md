@@ -23,11 +23,11 @@ None.
 
 ## Design
 
-### 1. `UNKNOWN_ASPECT_KEY` only reconciles on fragment *sync* — not on aspect create/delete or fragment delete
+### 1. `UNKNOWN_ASPECT_KEY` only reconciles on fragment _sync_ — not on aspect create/delete or fragment delete
 
 `packages/storage/src/watcher/sync/fragment.ts:136-160` reconciles unknown-aspect-key warnings for keys a fragment touches, but three adjacent events do **not** reconcile:
 
-- **Creating the missing aspect** goes through `syncKeyedEntity` (`watcher.ts` aspect route), which never touches the warnings table. So the user sees "unknown aspect key X", creates aspect X, and the warning persists until they next edit a fragment referencing X *or* a rebuild runs.
+- **Creating the missing aspect** goes through `syncKeyedEntity` (`watcher.ts` aspect route), which never touches the warnings table. So the user sees "unknown aspect key X", creates aspect X, and the warning persists until they next edit a fragment referencing X _or_ a rebuild runs.
 - **Deleting a fragment** (`unlinkFragment`, `fragment.ts:165-174`) deletes the row and emits, but does not reconcile. If the last fragment referencing an unknown key is deleted, the warning lingers; if some remain, the stored `fragmentUuids` payload keeps the deleted UUID until rebuild.
 
 This is consistent with the plan (Phase 5 scoped reconciliation to `syncFragment`; "rebuild stays authoritative"). But the aspect-create case in particular is a plausible everyday flow — fix the thing the warning told you to fix, warning doesn't clear — so it's worth a deliberate decision rather than an accident of scope. Either reconcile in the aspect sync path (clear `UNKNOWN_ASPECT_KEY` for the newly-known key) or document the "clears on next fragment edit / rebuild" behavior in the spec and the tab's fix hint.
