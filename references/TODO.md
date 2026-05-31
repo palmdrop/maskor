@@ -12,13 +12,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] finish remove piece plan (see worktree)
 
-- [ ] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
-
-- [ ] reordering sections in sequence does not work properly with arrow keys, works when dragging and dropping
-- [ ] sequences: default "import-sequence" created for each import, serves as a snapshot of the initial import order
-  - these should not be editable, no pool for adding new fragments
 - [ ] sequences: pool is unnecessarily wide, includes too much
 - [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
+
+- [x] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
+- [x] reordering sections in sequence does not work properly with arrow keys, works when dragging and dropping
+- [x] sequences: default "import-sequence" created for each import, serves as a snapshot of the initial import order
+  - these should not be editable, no pool for adding new fragments
 
 - [ ] start designing UI, see: https://www.are.na/anton-hildingsson/maskor-inspiration
   - want it aesthetic, minimal, graphlike, vague, generic, specific, all at once
@@ -27,7 +27,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - even when fragment titles are hidden
   - redesign, make more minimal, closer to have a document actually looks
 
-- [ ] case-only rename of reference (and probably also note, aspect and fragment) creates a sync/naming collision error that ends up deleting the file entirely...
+- [x] case-only rename of reference (and probably also note, aspect and fragment) creates a sync/naming collision error that ends up deleting the file entirely...
 
 - [ ] add commands for attaching and detaching references and notes to fragment
 
