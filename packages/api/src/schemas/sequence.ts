@@ -22,11 +22,22 @@ const SectionSchema = z
   })
   .openapi("Section");
 
+const SequenceOriginSchema = z
+  .object({
+    fileName: z.string().openapi({ example: "chapter-one.docx" }),
+    archivePath: z.string().openapi({ example: ".maskor/imports/a1b2c3d4.docx" }),
+    format: z.enum(["markdown", "docx", "plaintext"]),
+    importedAt: z.string().openapi({ example: "2026-05-31T10:00:00.000Z" }),
+  })
+  .openapi("SequenceOrigin");
+
 export const SequenceSchema = z
   .object({
     uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     name: z.string().openapi({ example: "Main Sequence" }),
     isMain: z.boolean(),
+    active: z.boolean(),
+    origin: SequenceOriginSchema.optional(),
     projectUuid: z.uuid(),
     filePath: z.string(),
     contentHash: z.string(),
@@ -39,6 +50,8 @@ export const SequenceSummarySchema = z
     uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     name: z.string().openapi({ example: "Main Sequence" }),
     isMain: z.boolean(),
+    active: z.boolean(),
+    origin: SequenceOriginSchema.optional(),
     filePath: z.string(),
   })
   .openapi("SequenceSummary");

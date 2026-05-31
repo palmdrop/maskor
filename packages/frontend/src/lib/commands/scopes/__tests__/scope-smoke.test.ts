@@ -7,8 +7,10 @@ import { projectConfigCommands, type ProjectConfigContext } from "../project-con
 import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
 import { projectShellCommands, type ProjectShellContext } from "../project-shell";
 
-const find = <T extends { id: string }>(list: readonly T[], id: string): T =>
-  list.find((c) => c.id === id)!;
+const find = <T extends { id: string }, Id extends T["id"]>(
+  list: readonly T[],
+  id: Id,
+): Extract<T, { id: Id }> => list.find((c) => c.id === id) as Extract<T, { id: Id }>;
 
 describe("scopes/overview", () => {
   const ctx: OverviewContext = {
@@ -52,6 +54,8 @@ describe("scopes/sequence-sidebar", () => {
     createSequence: vi.fn(),
     confirmingDeleteSequenceId: null,
     deleteSequence: vi.fn(),
+    toggleableSequences: [],
+    setSequenceActive: vi.fn(),
   };
 
   it("create-sequence runs and reports Creating… while pending", () => {

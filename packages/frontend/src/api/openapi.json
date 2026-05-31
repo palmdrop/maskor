@@ -2001,6 +2001,12 @@
           "isMain": {
             "type": "boolean"
           },
+          "active": {
+            "type": "boolean"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/SequenceOrigin"
+          },
           "projectUuid": {
             "type": "string",
             "format": "uuid"
@@ -2022,10 +2028,42 @@
           "uuid",
           "name",
           "isMain",
+          "active",
           "projectUuid",
           "filePath",
           "contentHash",
           "sections"
+        ]
+      },
+      "SequenceOrigin": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "example": "chapter-one.docx"
+          },
+          "archivePath": {
+            "type": "string",
+            "example": ".maskor/imports/a1b2c3d4.docx"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "docx",
+              "plaintext"
+            ]
+          },
+          "importedAt": {
+            "type": "string",
+            "example": "2026-05-31T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "fileName",
+          "archivePath",
+          "format",
+          "importedAt"
         ]
       },
       "Section": {
