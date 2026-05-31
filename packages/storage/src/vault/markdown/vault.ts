@@ -207,9 +207,16 @@ export const createVault = (config: VaultConfig): Vault => {
             // Mint the UUID in memory only (writeBack: false) — a freshly adopted fragment gets its
             // full canonical frontmatter written once below, so a UUID-only write here would be
             // immediately overwritten.
-            const { wasAssigned } = await ensureUuid(parsed, absolutePath, rawContent, log, "fragment", {
-              writeBack: false,
-            });
+            const { wasAssigned } = await ensureUuid(
+              parsed,
+              absolutePath,
+              rawContent,
+              log,
+              "fragment",
+              {
+                writeBack: false,
+              },
+            );
             if (!wasAssigned) {
               return { entity: fragmentMapper.fromFile(parsed, filePath), filePath, rawContent };
             }

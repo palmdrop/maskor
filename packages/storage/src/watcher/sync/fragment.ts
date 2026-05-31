@@ -15,7 +15,11 @@ import { reconcileUnknownAspectKeyWarnings } from "../../warnings/reconcile";
 import { eq } from "drizzle-orm";
 import { findFragmentUuidCollision } from "../utils/fragments";
 import { readFileWithEnoentGuard } from "../utils/file";
-import { ensureUuid, assignNewUuid, writeBackFragmentFrontmatter } from "../../vault/markdown/adopt";
+import {
+  ensureUuid,
+  assignNewUuid,
+  writeBackFragmentFrontmatter,
+} from "../../vault/markdown/adopt";
 import { setWordCount } from "../../suggestion/stats-repo";
 import { computeWordCount } from "../../suggestion/word-count";
 

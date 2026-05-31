@@ -172,9 +172,7 @@ const SortableSection = ({
               autoFocus
               value={editingSectionValue}
               onChange={(e) => setEditingSectionValue(e.target.value)}
-              onKeyDown={(e) =>
-                handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)
-              }
+              onKeyDown={(e) => handleSectionRenameKeyDown(e, sectionData.uuid, sectionData.name)}
               onBlur={() => handleSectionRenameCommit(sectionData.uuid, editingSectionValue)}
               className="text-sm font-medium text-muted-foreground uppercase tracking-wide bg-transparent border-b border-border focus:outline-none"
             />

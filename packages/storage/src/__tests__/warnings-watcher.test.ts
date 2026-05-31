@@ -226,8 +226,7 @@ describe("watcher — unknown aspect key", () => {
     await waitFor(
       () =>
         listWarnings(vaultDatabase).some(
-          (warning) =>
-            warning.kind === "UNKNOWN_ASPECT_KEY" && warning.aspectKey === "temp-aspect",
+          (warning) => warning.kind === "UNKNOWN_ASPECT_KEY" && warning.aspectKey === "temp-aspect",
         ),
       3000,
     );

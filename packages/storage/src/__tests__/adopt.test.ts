@@ -33,7 +33,11 @@ describe("adopt.writeBackFragmentFrontmatter", () => {
     const parsed = parseFile(readFileSync(filePath, "utf8"));
     parsed.frontmatter.uuid = "11111111-1111-1111-1111-111111111111";
 
-    const { fragment, rawContent } = await writeBackFragmentFrontmatter(parsed, filePath, "intro.md");
+    const { fragment, rawContent } = await writeBackFragmentFrontmatter(
+      parsed,
+      filePath,
+      "intro.md",
+    );
 
     expect(fragment.uuid).toBe("11111111-1111-1111-1111-111111111111");
     expect(fragment.key).toBe("intro");

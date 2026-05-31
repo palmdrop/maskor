@@ -89,9 +89,7 @@ describe("ProjectStatsPage", () => {
   });
 
   it("renders discarded fragment with strikethrough styling", () => {
-    const fragments = [
-      makeFragment({ key: "discarded-fragment", isDiscarded: true }),
-    ];
+    const fragments = [makeFragment({ key: "discarded-fragment", isDiscarded: true })];
     (useGetProjectStats as ReturnType<typeof vi.fn>).mockReturnValue({
       data: makeStatsResponse(fragments),
       isLoading: false,

@@ -23,11 +23,11 @@ export default defineConfig({
     },
   },
   server: {
-    host: '127.0.0.1',
+    host: "127.0.0.1",
     allowedHosts: ["desk.ssh"],
-		https: {
-      cert: fs.readFileSync(path.resolve(__dirname, '../../certs/desk.ssh+2.pem')),
-      key: fs.readFileSync(path.resolve(__dirname, '../../certs/desk.ssh+2-key.pem')),
+    https: {
+      cert: fs.readFileSync(path.resolve(__dirname, "../../certs/desk.ssh+2.pem")),
+      key: fs.readFileSync(path.resolve(__dirname, "../../certs/desk.ssh+2-key.pem")),
     },
     proxy: {
       "/api": {

@@ -490,7 +490,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             {extraActions}
             <Popover>
               <PopoverTrigger asChild>
-                <Button size="sm" variant="ghost" title="Display settings" aria-label="Display settings">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Display settings"
+                  aria-label="Display settings"
+                >
                   Aa
                 </Button>
               </PopoverTrigger>

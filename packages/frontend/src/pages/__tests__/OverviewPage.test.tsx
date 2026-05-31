@@ -145,9 +145,7 @@ const makeBundleResponse = (fragmentUuids: string[] = []) => ({
 
 const SECTION_UUID_2 = "sec-2";
 
-const makeMultiSectionBundleResponse = (
-  sections: { uuid: string; fragmentUuids: string[] }[],
-) => ({
+const makeMultiSectionBundleResponse = (sections: { uuid: string; fragmentUuids: string[] }[]) => ({
   status: 200 as const,
   data: {
     sequences: [

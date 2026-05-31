@@ -12,11 +12,7 @@ type Props = {
 export const PreviewProse = ({ markdown, fontSize, maxParagraphWidth }: Props) => {
   return (
     <div className="py-6 px-6">
-      <ReadonlyProse
-        content={markdown}
-        fontSize={fontSize}
-        maxParagraphWidth={maxParagraphWidth}
-      />
+      <ReadonlyProse content={markdown} fontSize={fontSize} maxParagraphWidth={maxParagraphWidth} />
     </div>
   );
 };

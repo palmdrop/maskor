@@ -94,14 +94,29 @@ export const createImportCommand = (
 
     const importPayload =
       input.format === "plaintext"
-        ? { sourceFileName: input.sourceFileName, fragmentCount: created.length, format: input.format, delimiter: input.delimiter }
-        : { sourceFileName: input.sourceFileName, fragmentCount: created.length, format: input.format, headingLevel: input.headingLevel };
+        ? {
+            sourceFileName: input.sourceFileName,
+            fragmentCount: created.length,
+            format: input.format,
+            delimiter: input.delimiter,
+          }
+        : {
+            sourceFileName: input.sourceFileName,
+            fragmentCount: created.length,
+            format: input.format,
+            headingLevel: input.headingLevel,
+          };
 
     const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [
       {
         type: "fragment:imported",
         actor: "user",
-        target: { type: "fragment", uuid: randomUUID(), key: input.sourceFileName, title: input.sourceFileName },
+        target: {
+          type: "fragment",
+          uuid: randomUUID(),
+          key: input.sourceFileName,
+          title: input.sourceFileName,
+        },
         payload: importPayload,
         undoable: false,
       },

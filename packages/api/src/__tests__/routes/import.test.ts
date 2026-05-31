@@ -209,7 +209,8 @@ describe("POST /projects/:projectId/import — empty piece reporting", () => {
 
 describe("POST /projects/:projectId/import — action log", () => {
   it("records a single fragment:imported entry with correct payload after import", async () => {
-    const content = "# Alpha\n\nAlpha content.\n\n# Beta\n\nBeta content.\n\n# Gamma\n\nGamma content.";
+    const content =
+      "# Alpha\n\nAlpha content.\n\n# Beta\n\nBeta content.\n\n# Gamma\n\nGamma content.";
     const file = new File([content], "my-novel.md", { type: "text/markdown" });
 
     const importResponse = await makeImportRequest(testContext.app, project.projectUUID, file, {
@@ -227,7 +228,8 @@ describe("POST /projects/:projectId/import — action log", () => {
     const entries = (await logResponse.json()) as LogEntry[];
 
     const importEntries = entries.filter(
-      (entry) => entry.type === "fragment:imported" && entry.payload.sourceFileName === "my-novel.md",
+      (entry) =>
+        entry.type === "fragment:imported" && entry.payload.sourceFileName === "my-novel.md",
     );
     expect(importEntries).toHaveLength(1);
 

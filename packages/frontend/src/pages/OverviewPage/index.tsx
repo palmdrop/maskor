@@ -265,8 +265,7 @@ export const OverviewPage = () => {
         s.fragmentUuids.includes(selectedFragmentUuid),
       );
       if (currentSectionIndex === -1) return;
-      const targetIndex =
-        direction === "prev" ? currentSectionIndex - 1 : currentSectionIndex + 1;
+      const targetIndex = direction === "prev" ? currentSectionIndex - 1 : currentSectionIndex + 1;
       if (targetIndex < 0 || targetIndex >= sectionsData.length) return;
       const sectionId = sectionsData[currentSectionIndex]!.uuid;
       sequenceMutations.moveSection.mutate({

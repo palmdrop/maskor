@@ -333,7 +333,9 @@ describe("vault readAllWithFilePaths — adopt gating", () => {
     expect(readFileSync(join(tmpDir, "fragments/no-uuid.md"), "utf8")).toBe(FRAGMENT_BODY);
     expect(readFileSync(join(tmpDir, "aspects/no-uuid.md"), "utf8")).toBe(ASPECT_BODY);
     // The entity reads with an undefined UUID rather than a freshly minted one.
-    expect(fragments.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid).toBeUndefined();
+    expect(
+      fragments.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid,
+    ).toBeUndefined();
     expect(aspects.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid).toBeUndefined();
   });
 
@@ -354,7 +356,9 @@ describe("vault readAllWithFilePaths — adopt gating", () => {
     expect(aspectEntry.entity.uuid).toBeTruthy();
 
     // The returned rawContent is exactly what landed on disk (single canonical write per file).
-    expect(readFileSync(join(tmpDir, "fragments/no-uuid.md"), "utf8")).toBe(fragmentEntry.rawContent);
+    expect(readFileSync(join(tmpDir, "fragments/no-uuid.md"), "utf8")).toBe(
+      fragmentEntry.rawContent,
+    );
     expect(readFileSync(join(tmpDir, "aspects/no-uuid.md"), "utf8")).toBe(aspectEntry.rawContent);
   });
 });

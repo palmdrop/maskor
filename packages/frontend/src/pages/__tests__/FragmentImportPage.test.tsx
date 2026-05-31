@@ -55,9 +55,8 @@ const makeImportPreview = (): PreviewResult => ({
   ],
 });
 
-const { usePreviewImportFragments, useImportFragments } = await import(
-  "@api/generated/fragments/fragments"
-);
+const { usePreviewImportFragments, useImportFragments } =
+  await import("@api/generated/fragments/fragments");
 const { FragmentImportPage } = await import("../FragmentImportPage");
 
 const wrap = () => {

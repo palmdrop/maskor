@@ -671,7 +671,10 @@ describe("adoption — nested entity discovery and category derivation", () => {
     // Files with NO frontmatter UUID and no .maskor/ — the real adoption case for a hand-prepared
     // Obsidian vault. The earlier test cheated by pre-assigning UUIDs.
     writeFileSync(join(adoptDir, "fragments/intro.md"), "# Intro\n\nThe beginning.\n");
-    writeFileSync(join(adoptDir, "aspects/places/london.md"), '---\ncolor: "#abcdef"\n---\n\nA grey city.\n');
+    writeFileSync(
+      join(adoptDir, "aspects/places/london.md"),
+      '---\ncolor: "#abcdef"\n---\n\nA grey city.\n',
+    );
     writeFileSync(join(adoptDir, "aspects/characters/anna.md"), "Protagonist.\n");
     writeFileSync(join(adoptDir, "notes/research/neuroscience.md"), "Memory notes.\n");
     writeFileSync(join(adoptDir, "references/articles/2024-foo.md"), "Foo et al.\n");

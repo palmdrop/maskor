@@ -34,9 +34,7 @@ const FragmentRow = ({
 }) => (
   <tr
     className={`border-b border-border last:border-0 transition-colors ${
-      fragment.isDiscarded
-        ? "opacity-50 hover:opacity-70"
-        : "hover:bg-muted/30"
+      fragment.isDiscarded ? "opacity-50 hover:opacity-70" : "hover:bg-muted/30"
     }`}
   >
     <td className="py-2 pr-4">

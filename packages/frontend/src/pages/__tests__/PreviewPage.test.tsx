@@ -41,9 +41,7 @@ vi.mock("@hooks/useProjectEditorConfig", () => ({
 // readonly-prose.test.tsx. Here we stub it to a plain element so the page test
 // stays focused on wiring (sidebar, toggles, refetch) and deterministic.
 vi.mock("@components/readonly-prose", () => ({
-  ReadonlyProse: ({ content }: { content: string }) => (
-    <div data-testid="prose">{content}</div>
-  ),
+  ReadonlyProse: ({ content }: { content: string }) => <div data-testid="prose">{content}</div>,
 }));
 
 vi.mock("@api/generated/projects/projects", () => ({
@@ -114,12 +112,8 @@ const { PreviewPage } = await import("../PreviewPage");
 
 const mockMutate = vi.fn();
 
-const setupMocks = (overrides?: {
-  assembled?: PreviewResult | null;
-  statusCode?: 200 | 404;
-}) => {
-  const assembled =
-    overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
+const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?: 200 | 404 }) => {
+  const assembled = overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
   const statusCode = overrides?.statusCode ?? 200;
 
   (useGetProject as Mock).mockReturnValue({
