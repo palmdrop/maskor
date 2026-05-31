@@ -92,6 +92,23 @@ describe("POST /projects/:projectId/sequences", () => {
     expect(created?.active).toBe(true);
   });
 
+  it("honors active: false from the request body", async () => {
+    const response = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Created Inactive",
+        isMain: false,
+        active: false,
+        projectUuid: project.projectUUID,
+      }),
+    });
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as SequenceBundle;
+    const created = body.sequences.find((s) => s.name === "Created Inactive");
+    expect(created?.active).toBe(false);
+  });
+
   it("returns 409 when name conflicts with existing sequence", async () => {
     await testContext.app.request(baseUrl(), {
       method: "POST",

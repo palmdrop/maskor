@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
+import type { Sequence } from "@maskor/shared";
 import type { CommandContext } from "../../commands/types";
 import { createPreviewImportCommand } from "../../commands/fragments/preview-import";
 import { createImportCommand } from "../../commands/fragments/import";
@@ -196,6 +198,49 @@ describe("createPreviewImportCommand - re-import warning", () => {
     expect(result.priorImport).toBeDefined();
     expect(result.priorImport!.sequenceName).toBe(`Import: ${fileName}`);
     expect(typeof result.priorImport!.importedAt).toBe("string");
+  });
+
+  it("cites the most recent prior import when the same name was imported twice", async () => {
+    const ctx = await makeCommandContext();
+    const fileName = `twice-${Date.now()}.md`;
+
+    // Two import-sequences sharing this origin.fileName, written directly with
+    // controlled importedAt so the "most recent" tiebreak is deterministic.
+    const makeImportSequence = (name: string, importedAt: string): Sequence => ({
+      uuid: randomUUID(),
+      name,
+      isMain: false,
+      active: false,
+      projectUuid: project.projectUUID,
+      sections: [{ uuid: randomUUID(), name: "Import", fragments: [] }],
+      origin: {
+        fileName,
+        archivePath: `.maskor/imports/${randomUUID()}.md`,
+        format: "markdown",
+        importedAt,
+      },
+    });
+
+    await ctx.storageService.sequences.write(
+      ctx.projectContext,
+      makeImportSequence("Older import", "2026-05-30T08:00:00.000Z"),
+    );
+    await ctx.storageService.sequences.write(
+      ctx.projectContext,
+      makeImportSequence("Newer import", "2026-05-31T09:00:00.000Z"),
+    );
+
+    const { result } = await createPreviewImportCommand(makeStubConverter("")).execute(ctx, {
+      projectId: project.projectUUID,
+      file: encode(`# Yet again\n\nBody.`),
+      sourceFileName: fileName,
+      format: "markdown",
+      headingLevel: 1,
+    });
+
+    expect(result.priorImport).toBeDefined();
+    expect(result.priorImport!.sequenceName).toBe("Newer import");
+    expect(result.priorImport!.importedAt).toBe("2026-05-31T09:00:00.000Z");
   });
 
   it("omits priorImport for a never-before-seen file name", async () => {

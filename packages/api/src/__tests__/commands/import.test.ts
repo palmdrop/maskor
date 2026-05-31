@@ -282,13 +282,14 @@ describe("createImportCommand - import-sequence", () => {
     ).map((fp) => fp.fragmentUuid);
     expect(orderedUuids).toEqual(result.created);
 
-    // Origin points at the archived original, which exists on disk.
+    // Origin points at the archived original, preserved byte-for-byte on disk.
     expect(sequence.origin).toBeDefined();
     expect(sequence.origin!.fileName).toBe("order-test.md");
     expect(sequence.origin!.format).toBe("markdown");
     expect(sequence.origin!.archivePath.startsWith(".maskor/imports/")).toBe(true);
     const archived = Bun.file(join(vaultDirectory, sequence.origin!.archivePath));
     expect(await archived.exists()).toBe(true);
+    expect(await archived.text()).toBe(markdownContent);
   });
 
   it("suffixes the sequence name when the same file is imported again", async () => {

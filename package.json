@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && bun run --cwd packages/frontend typecheck",
     "format": "eslint --quiet --fix . && prettier --log-level silent --write .",
     "lint": "eslint . && prettier --check .",
     "test": "bun run test:backend && bun run test:frontend",

@@ -9,9 +9,15 @@ import { createFragmentCommand } from "./create-fragment";
 // Pick a sequence name not already taken, mirroring the fragment key-conflict
 // convention: "Import: foo.docx", then "Import: foo.docx_1", etc.
 const deriveUniqueSequenceName = (base: string, existingNames: Set<string>): string => {
-  if (!existingNames.has(base)) return base;
+  if (!existingNames.has(base)) {
+    return base;
+  }
+
   let suffix = 1;
-  while (existingNames.has(`${base}_${suffix}`)) suffix++;
+  while (existingNames.has(`${base}_${suffix}`)) {
+    suffix++;
+  }
+
   return `${base}_${suffix}`;
 };
 
@@ -89,10 +95,19 @@ export type ImportResult = {
   importSequenceUuid?: string;
 };
 
+const EXTENSION_BY_FORMAT: Record<ImportInput["format"], string> = {
+  docx: ".docx",
+  plaintext: ".txt",
+  markdown: ".md",
+};
+
 const archiveExtension = (sourceFileName: string, format: ImportInput["format"]): string => {
   const fromName = extname(sourceFileName);
-  if (fromName) return fromName;
-  return format === "docx" ? ".docx" : format === "plaintext" ? ".txt" : ".md";
+  if (fromName) {
+    return fromName;
+  }
+
+  return EXTENSION_BY_FORMAT[format];
 };
 
 export const createImportCommand = (
@@ -150,8 +165,11 @@ export const createImportCommand = (
 
     // Capture import order + archive the original — only when at least one
     // fragment was created (an empty import has nothing to order or preserve).
+    // TODO: the archive is written before the sequence; if writeImportSequence
+    // throws, the archived bytes are left orphaned under .maskor/imports/. Clean
+    // up the archive on failure once storageService.imports exposes a delete.
     let importSequenceUuid: string | undefined;
-    if (created.length > 0) {
+    if (created.length) {
       const sequenceUuid = randomUUID();
       const archiveFileName = `${sequenceUuid}${archiveExtension(input.sourceFileName, input.format)}`;
       const archivePath = await ctx.storageService.imports.archive(

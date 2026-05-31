@@ -466,7 +466,7 @@ sequencesRouter.openapi(getSequenceRoute, async (ctx) => {
 
 sequencesRouter.openapi(createSequenceRoute, async (ctx) => {
   try {
-    const { name, isMain } = ctx.req.valid("json");
+    const { name, isMain, active, origin } = ctx.req.valid("json");
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const commandContext: CommandContext = {
@@ -478,6 +478,8 @@ sequencesRouter.openapi(createSequenceRoute, async (ctx) => {
     await executeCommand(createSequenceCommand, commandContext, {
       name,
       isMain: isMain ?? false,
+      active,
+      origin,
     });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 201);

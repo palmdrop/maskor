@@ -32,11 +32,12 @@ export const createPreviewImportCommand = (
     );
 
     // Warn (non-blocking) if a file of this name was imported before — matched
-    // on an existing sequence's origin.fileName.
+    // on an existing sequence's origin.fileName. When several match, cite the
+    // most recent import (latest importedAt).
     const sequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
-    const previous = sequences.find(
-      (sequence) => sequence.origin?.fileName === input.sourceFileName,
-    );
+    const previous = sequences
+      .filter((sequence) => sequence.origin?.fileName === input.sourceFileName)
+      .sort((a, b) => (a.origin!.importedAt < b.origin!.importedAt ? 1 : -1))[0];
     const priorImport: PriorImport | undefined = previous?.origin
       ? { sequenceName: previous.name, importedAt: previous.origin.importedAt }
       : undefined;
