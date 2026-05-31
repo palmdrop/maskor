@@ -14,7 +14,11 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
 
-- [ ] reordering sections does not work properly with arrow keys, works when dragging and dropping
+- [ ] reordering sections in sequence does not work properly with arrow keys, works when dragging and dropping
+- [ ] sequences: default "import-sequence" created for each import, serves as a snapshot of the initial import order
+  - these should not be editable, no pool for adding new fragments
+- [ ] sequences: pool is unnecessarily wide, includes too much
+- [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
 - [ ] start designing UI, see: https://www.are.na/anton-hildingsson/maskor-inspiration
   - want it aesthetic, minimal, graphlike, vague, generic, specific, all at once
@@ -75,10 +79,6 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - graph structure pointing to other fragments using inline links or comments/references?
 
 - [ ] fragment-specific notes, viewing fragment and comments/notes side by side in same view
-
-- [ ] sequences: auto-fill in order of fragments on import
-- [ ] sequences: pool is unnecessarily wide, includes too much
-- [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
 - [ ] extract in suggestion, how should that work?
 
