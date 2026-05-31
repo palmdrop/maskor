@@ -25,7 +25,7 @@ None.
 
 ## Design
 
-### 1. Sentinel syntax is duplicated across the package boundary with no drift guard
+### 1. Sentinel syntax is duplicated across the package boundary with no drift guard — FIXED 2026-05-31
 
 `packages/exporter/src/sentinel.ts` and `packages/frontend/src/components/anchor-sentinel.ts` independently declare `SENTINEL_OPEN/SEPARATOR/CLOSE`, `SENTINEL_LABEL`, and `anchorSentinel`. The duplication itself is justified and documented (Node-only logger in the shared barrel keeps a value import out of the browser bundle). The gap is that **nothing tests the contract across the seam**: the exporter emits the token, the frontend parses it, but no test feeds exporter-produced output into the frontend renderer.
 
@@ -33,15 +33,19 @@ None.
 
 Consequence: a one-sided edit to either file is undetectable by the suite. Fix: add one test that imports the exporter's `anchorSentinel` (it's a pure string builder, safe to import in a test even if not in the bundle) and asserts the frontend's `ANCHOR_SENTINEL_LINE_PATTERN` matches it — or assert the two mirrors are byte-identical.
 
+**Fixed 2026-05-31** — `packages/frontend/src/components/anchor-sentinel.test.ts` imports the exporter's canonical `anchorSentinel` straight from its source (`sentinel.ts` has zero imports, so no Node-only logger is pulled and no `@maskor/exporter` barrel is touched) and asserts (a) the frontend mirror builds byte-identical tokens, and (b) the frontend's `ANCHOR_SENTINEL_LINE_PATTERN` matches an exporter-emitted token and captures its id. A one-sided edit to either file now fails this test. The test lives in the frontend, which runs under `bun run verify`.
+
 ---
 
 ## Minor
 
-### 2. Anchor lands below the fragment's title heading
+### 2. Anchor lands below the fragment's title heading — FIXED 2026-05-31
 
 `packages/exporter/src/assemble.ts:84-87` / `:113-116` emit blocks as `title` then `body`, and the anchor sentinel is prefixed to the **body** (`assemble-markdown.ts:98-99`). So in the assembled markdown the order is `### title` → sentinel → content. Sidebar navigation does `getElementById('fragment-<id>').scrollIntoView({ block: "start" })`, which aligns the (zero-height) anchor div to the viewport top — leaving the fragment's own `###` title scrolled just out of view above the fold.
 
 This only bites when titles are shown: optional in preview (default off), but **always** in import preview, where every piece has a visible `### <n>. <key>` heading. Clicking "1. intro" in the import sidebar scrolls to the body with "1. intro" hidden just above. Minor disorientation, not breakage. If undesired, emit the sentinel before the `title` block for body-bearing units.
+
+**Fixed 2026-05-31** — `assembleMarkdown` now emits each body's anchor sentinel at the **start of its fragment unit**: before the `### title` when a title is shown, and before the body when titles are off (or there is no title block). Navigation now lands on the heading. Implementation: the `title` branch peeks at the next block (always the body, per both adapters) and emits the anchor before the heading; the `body` branch emits its own anchor only when it leads the unit. Guarded by exporter unit tests (anchor-before-title and anchor-before-body exact-output cases, plus per-piece ordering in `assemblePieces`) and an integration assertion in `import-preview.test.ts` (which runs under `verify`). Note: the exporter unit suite itself is not yet in `verify` — see the new entry in `references/suggestions.md`.
 
 ---
 
@@ -70,9 +74,7 @@ Ran the steps from the project guidance individually, then the whole suite.
 | `packages/api` preview + import-preview tests, run *in isolation* | **Pass** — preview 5/5, import-preview 11/11 |
 | `bun run verify` / full suite in one process | **Now passes** — 749 backend + 431 frontend, 0 fail, deterministic. Originally flaky; root-caused and fixed (see below). |
 
-The two static findings (#1 sentinel drift guard, #2 anchor-below-title) are unaffected by being able to run tests — both are about gaps the suite cannot catch, not about test status. They stand as written.
-
-The exporter↔frontend sentinel contract (finding #1) is still untested: exporter tests use the exporter constant, frontend tests use the frontend mirror, and a green run does not exercise the seam. Running the suite does not change that conclusion.
+Both static findings (#1 sentinel drift guard, #2 anchor-below-title) have since been **fixed** — see the "Fixed 2026-05-31" notes under each. The exporter↔frontend sentinel seam is now exercised by a frontend test that imports the exporter's canonical builder, and the anchor now precedes the title (guarded by exporter unit tests plus an integration assertion in `verify`).
 
 ### Test-isolation bug (not a code defect, not container-specific) — FIXED 2026-05-31
 

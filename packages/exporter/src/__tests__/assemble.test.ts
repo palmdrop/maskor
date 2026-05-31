@@ -175,7 +175,9 @@ describe("assembleSequence — markdown assembly", () => {
 
   it("inserts a horizontal-rule separator between fragments but not trailing", () => {
     const markdown = twoFragmentSection({ separator: "horizontal-rule" });
-    expect(markdown).toBe("## Part One\n\n### first\n\nBody one.\n\n---\n\n### second\n\nBody two.");
+    expect(markdown).toBe(
+      "## Part One\n\n### first\n\nBody one.\n\n---\n\n### second\n\nBody two.",
+    );
     // One separator only — between the two fragments.
     expect(markdown.match(/---/g)).toHaveLength(1);
   });
@@ -223,7 +225,13 @@ describe("assembleSequence — markdown assembly", () => {
     const markdown = assembleSequence(
       {
         ...mainSequenceBase,
-        sections: [{ uuid: sectionUuid, name: "Hidden", fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }] }],
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Hidden",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
       },
       [makeFragment({ uuid: "frag-1", key: "only", content: "Body." })],
       { ...baseOptions, showSectionHeadings: false },
@@ -237,8 +245,16 @@ describe("assembleSequence — markdown assembly", () => {
       {
         ...mainSequenceBase,
         sections: [
-          { uuid: "sec-a", name: "Part One", fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }] },
-          { uuid: "sec-b", name: "Part Two", fragments: [{ uuid: "pos-2", fragmentUuid: "frag-2", position: 0 }] },
+          {
+            uuid: "sec-a",
+            name: "Part One",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+          {
+            uuid: "sec-b",
+            name: "Part Two",
+            fragments: [{ uuid: "pos-2", fragmentUuid: "frag-2", position: 0 }],
+          },
         ],
       },
       [
@@ -256,7 +272,13 @@ describe("assembleSequence — markdown assembly", () => {
     const markdown = assembleSequence(
       {
         ...mainSequenceBase,
-        sections: [{ uuid: sectionUuid, name: "Sec", fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }] }],
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
       },
       [makeFragment({ uuid: "frag-1", key: "k", content: "# Internal H1\n\nText." })],
       { ...baseOptions, showTitles: false },
@@ -270,7 +292,13 @@ describe("assembleSequence — anchors", () => {
     assembleSequence(
       {
         ...mainSequenceBase,
-        sections: [{ uuid: sectionUuid, name: "Sec", fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }] }],
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
       },
       [makeFragment({ uuid: "frag-1", key: "k", content: "Body." })],
       { ...baseOptions, includeAnchors },
@@ -280,11 +308,48 @@ describe("assembleSequence — anchors", () => {
     expect(single(false)).not.toMatch(ANCHOR_SENTINEL_PATTERN);
   });
 
-  it("prefixes each body with a sentinel encoding the fragment uuid when includeAnchors is true", () => {
+  it("emits a sentinel encoding the fragment uuid when includeAnchors is true", () => {
     const markdown = single(true);
     expect(markdown).toContain(anchorSentinel("frag-1"));
     const match = markdown.match(ANCHOR_SENTINEL_PATTERN);
     expect(match?.[1]).toBe("frag-1");
+  });
+
+  it("emits the anchor before the title when titles are shown (so nav lands on the heading)", () => {
+    const markdown = assembleSequence(
+      {
+        ...mainSequenceBase,
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
+      },
+      [makeFragment({ uuid: "frag-1", key: "k", content: "Body." })],
+      { ...baseOptions, showTitles: true, includeAnchors: true },
+    ).markdown;
+    // Order: section heading → anchor → title → body. The anchor precedes the ###.
+    expect(markdown).toBe(`## Sec\n\n${anchorSentinel("frag-1")}\n\n### k\n\nBody.`);
+  });
+
+  it("emits the anchor before the body when titles are hidden (body leads the unit)", () => {
+    const markdown = assembleSequence(
+      {
+        ...mainSequenceBase,
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
+      },
+      [makeFragment({ uuid: "frag-1", key: "k", content: "Body." })],
+      { ...baseOptions, showTitles: false, includeAnchors: true },
+    ).markdown;
+    expect(markdown).toBe(`## Sec\n\n${anchorSentinel("frag-1")}\n\nBody.`);
   });
 
   it("strips sentinel-resembling control characters from body content (collision safety)", () => {
@@ -292,7 +357,13 @@ describe("assembleSequence — anchors", () => {
     const markdown = assembleSequence(
       {
         ...mainSequenceBase,
-        sections: [{ uuid: sectionUuid, name: "Sec", fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }] }],
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "pos-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
       },
       [makeFragment({ uuid: "frag-1", key: "k", content: forged })],
       { ...baseOptions, includeAnchors: true },
@@ -333,6 +404,13 @@ describe("assemblePieces", () => {
     expect(result.markdown).toContain("---");
     expect(result.markdown).toContain(anchorSentinel("1"));
     expect(result.markdown).toContain(anchorSentinel("2"));
+  });
+
+  it("places each piece's anchor before its title (titles always shown in import preview)", () => {
+    const result = assemblePieces(pieces);
+    // Each anchor immediately precedes its own ### heading.
+    expect(result.markdown).toContain(`${anchorSentinel("1")}\n\n### 1. intro`);
+    expect(result.markdown).toContain(`${anchorSentinel("2")}\n\n### 2. body`);
   });
 
   it("returns empty markdown and an empty section for no pieces", () => {

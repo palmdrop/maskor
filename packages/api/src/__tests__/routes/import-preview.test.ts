@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { anchorSentinel } from "@maskor/exporter";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
@@ -85,6 +86,9 @@ describe("POST /projects/:projectId/import/preview — markdown", () => {
     expect(nav).toHaveLength(1);
     // The sentinel carries the piece index "1", matching the nav uuid.
     expect(body.markdown).toContain(nav[0]!.uuid);
+    // The anchor sits immediately before the piece's ### heading, so sidebar
+    // navigation lands on the title rather than the body below it.
+    expect(body.markdown).toContain(`${anchorSentinel(nav[0]!.uuid)}\n\n### `);
   });
 
   it("reflects heading-level changes in the nav", async () => {

@@ -10,8 +10,13 @@ import { anchorSentinel, stripSentinelChars } from "./sentinel";
 //   never gets a leading separator).
 // - `title` → `### text` (suppressed when `showTitles` is off; when suppressed it
 //   is transparent to separator state, so fragment separators still apply).
-// - `body` → the fragment content, emitted verbatim, optionally prefixed by an
-//   anchor sentinel.
+// - `body` → the fragment content, emitted verbatim.
+//
+// When `includeAnchors` is on, each body's anchor sentinel is emitted at the
+// START of its fragment unit — immediately before the `title` when a title is
+// shown, otherwise immediately before the body itself. Anchoring the unit's
+// first visible block (rather than the body) means sidebar navigation lands on
+// the `###` heading instead of scrolling it just out of view above the body.
 export type AssemblyBlock =
   | { kind: "section-heading"; text: string }
   | { kind: "title"; text: string }
@@ -76,33 +81,41 @@ export const assembleMarkdown = (blocks: AssemblyBlock[], options: AssemblyOptio
     if (segment !== null) segments.push(segment);
   };
 
-  for (const block of blocks) {
+  blocks.forEach((block, index) => {
     if (block.kind === "section-heading") {
       if (options.showSectionHeadings && block.text.trim().length > 0) {
         segments.push(`## ${block.text}`);
       }
       previousKind = "section-heading";
-      continue;
+      return;
     }
 
     if (block.kind === "title") {
-      if (!options.showTitles) continue; // transparent to separator state
+      if (!options.showTitles) return; // transparent to separator state
       pushSeparatorIfBetweenFragments();
+      // A shown title is the unit's first visible block, so the body's anchor
+      // is emitted here — before the heading — rather than before the body.
+      // (Adapters always emit a body immediately after its title.)
+      const nextBlock = blocks[index + 1];
+      if (options.includeAnchors && nextBlock?.kind === "body") {
+        segments.push(anchorSentinel(nextBlock.anchorId));
+      }
       segments.push(`### ${block.text}`);
       previousKind = "title";
-      continue;
+      return;
     }
 
     // body
     pushSeparatorIfBetweenFragments();
-    if (options.includeAnchors) {
+    // The anchor rides with the preceding title when one is shown (above); emit
+    // it here only when the body leads its unit (titles off, or no title block).
+    const anchoredByTitle = options.showTitles && index > 0 && blocks[index - 1]?.kind === "title";
+    if (options.includeAnchors && !anchoredByTitle) {
       segments.push(anchorSentinel(block.anchorId));
-      segments.push(stripSentinelChars(block.content));
-    } else {
-      segments.push(block.content);
     }
+    segments.push(options.includeAnchors ? stripSentinelChars(block.content) : block.content);
     previousKind = "body";
-  }
+  });
 
   return segments.join("\n\n");
 };
