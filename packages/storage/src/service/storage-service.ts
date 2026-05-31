@@ -279,6 +279,81 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     }
   };
 
+  // A rename writes the new-key (or new-category) file, then removes the old one.
+  // On case-insensitive filesystems (macOS APFS, Windows NTFS) a case-only rename
+  // (e.g. "MyNote" → "mynote") maps both names to the same physical file, so the
+  // naive write-then-unlink would delete the content we just wrote. Detect that
+  // case and hop the old file through a temp path first, so the file always
+  // survives. Returns once the new file is in place and the old one is gone.
+  const writeFileWithCaseSafeRename = async (params: {
+    entityRoot: string; // absolute entity-type directory, e.g. <vault>/notes
+    oldRelativePath: string | null | undefined; // relative to entityRoot
+    newRelativePath: string; // relative to entityRoot
+    tempSeed: string; // unique seed for the temp filename (entity UUID)
+    writeFile: () => Promise<void>; // writes the new-key file to disk
+    pruneParentsOnMove?: boolean; // prune now-empty category folders after a real move
+  }): Promise<void> => {
+    const { entityRoot, oldRelativePath, newRelativePath, tempSeed, writeFile } = params;
+
+    const hasKeyChange =
+      oldRelativePath !== null &&
+      oldRelativePath !== undefined &&
+      oldRelativePath !== newRelativePath;
+    const isCaseOnlyRename =
+      hasKeyChange && oldRelativePath!.toLowerCase() === newRelativePath.toLowerCase();
+
+    if (isCaseOnlyRename) {
+      const oldAbsolutePath = join(entityRoot, oldRelativePath!);
+      const tempAbsolutePath = join(entityRoot, dirname(oldRelativePath!), `${tempSeed}---tmp.md`);
+      await rename(oldAbsolutePath, tempAbsolutePath);
+      await writeFile();
+      await unlink(tempAbsolutePath).catch(() => {});
+      return;
+    }
+
+    await writeFile();
+
+    if (hasKeyChange) {
+      const oldAbsolutePath = join(entityRoot, oldRelativePath!);
+      await unlink(oldAbsolutePath).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") {
+          log.warn({ filePath: oldRelativePath }, "rename cleanup: old entity file already gone");
+          return;
+        }
+        throw error;
+      });
+      if (params.pruneParentsOnMove) {
+        await pruneEmptyParents(entityRoot, oldAbsolutePath);
+      }
+    }
+  };
+
+  // Rejects a write whose key collides (case-insensitively) with a different
+  // keyed entity of the same type. Keys are unique per entity type globally
+  // (across all category subfolders), so the candidate is checked against the
+  // full set. The entity's own row is excluded by UUID, so a no-op save or a
+  // case-only rename of the same entity passes. `subjectPhrase` is the
+  // article-prefixed noun used in the error message ("An aspect", "A note",
+  // "A reference").
+  const assertKeyedEntityKeyAvailable = (
+    existing: readonly { uuid: string; key: string }[],
+    candidate: { uuid: string; key: string },
+    subjectPhrase: string,
+  ): void => {
+    const lowerKey = candidate.key.toLowerCase();
+    if (
+      existing.some(
+        (other) => other.uuid !== candidate.uuid && other.key.toLowerCase() === lowerKey,
+      )
+    ) {
+      throw new VaultError(
+        "KEY_CONFLICT",
+        `${subjectPhrase} with key "${candidate.key}" already exists`,
+        { reason: "key_conflict" },
+      );
+    }
+  };
+
   // --- cascade helpers ---
 
   // Each cascade helper writes updated entity files to disk and returns:
@@ -629,38 +704,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             ? join("discarded", `${fragmentToWrite.key}.md`)
             : `${fragmentToWrite.key}.md`;
 
-          const hasKeyChange =
-            oldFilePath !== null && oldFilePath !== undefined && oldFilePath !== entityRelativePath;
-          // Case-only renames (e.g. "Chapter One" → "chapter one") need special handling on
-          // case-insensitive filesystems (macOS APFS, Windows NTFS): both paths resolve to the
-          // same physical file, so write-then-unlink would delete the content we just wrote.
-          const isCaseOnlyRename =
-            hasKeyChange && oldFilePath!.toLowerCase() === entityRelativePath.toLowerCase();
-
-          if (isCaseOnlyRename) {
-            // Free the old-case FS entry by renaming to a temp path, then write the new-case
-            // file, then remove the temp. Safe on both case-sensitive and case-insensitive
-            // filesystems.
-            const tempFileName = `${fragmentToWrite.uuid}---tmp.md`;
-            const tempAbsolutePath = fragmentToWrite.isDiscarded
-              ? join(context.vaultPath, "fragments", "discarded", tempFileName)
-              : join(context.vaultPath, "fragments", tempFileName);
-            const oldAbsolutePath = join(context.vaultPath, "fragments", oldFilePath!);
-
-            await rename(oldAbsolutePath, tempAbsolutePath);
-            await getVault(context).fragments.write(fragmentToWrite);
-            await unlink(tempAbsolutePath).catch(() => {});
-          } else {
-            await getVault(context).fragments.write(fragmentToWrite);
-
-            // If the slug changed, delete the old file so it doesn't become orphaned.
-            if (hasKeyChange) {
-              const absoluteOldPath = join(context.vaultPath, "fragments", oldFilePath!);
-              await unlink(absoluteOldPath).catch(() => {
-                log.warn({ oldFilePath }, "rename cleanup: old fragment file already gone");
-              });
-            }
-          }
+          await writeFileWithCaseSafeRename({
+            entityRoot: join(context.vaultPath, "fragments"),
+            oldRelativePath: oldFilePath,
+            newRelativePath: entityRelativePath,
+            tempSeed: fragmentToWrite.uuid,
+            writeFile: () => getVault(context).fragments.write(fragmentToWrite),
+          });
 
           const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
           const rawContent = await Bun.file(absolutePath).text();
@@ -908,14 +958,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       async write(context: ProjectContext, aspect: Aspect): Promise<void> {
         return withVaultWriteLock(context.vaultPath, async () => {
           const allAspects = await getVaultIndexer(context).aspects.findAll();
-          const lowerKey = aspect.key.toLowerCase();
-          if (allAspects.some((a) => a.uuid !== aspect.uuid && a.key.toLowerCase() === lowerKey)) {
-            throw new VaultError(
-              "KEY_CONFLICT",
-              `An aspect with key "${aspect.key}" already exists`,
-              { reason: "key_conflict" },
-            );
-          }
+          assertKeyedEntityKeyAvailable(allAspects, aspect, "An aspect");
 
           await getVault(context).aspects.write(aspect);
 
@@ -1005,24 +1048,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               ...(patch.notes !== undefined && { notes: patch.notes }),
             };
 
-            await getVault(context).aspects.write(updated);
+            if (patch.key !== undefined && patch.key !== oldKey) {
+              assertKeyedEntityKeyAvailable(await indexer.aspects.findAll(), updated, "An aspect");
+            }
 
             const newFilePath = joinCategoryPath(updated.category, updated.key);
 
-            if (indexed.filePath !== newFilePath) {
-              const absoluteOldPath = join(context.vaultPath, "aspects", indexed.filePath);
-              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-                if (error.code === "ENOENT") {
-                  log.warn(
-                    { filePath: indexed.filePath },
-                    "rename cleanup: old aspect file already gone",
-                  );
-                  return;
-                }
-                throw error;
-              });
-              await pruneEmptyParents(join(context.vaultPath, "aspects"), absoluteOldPath);
-            }
+            await writeFileWithCaseSafeRename({
+              entityRoot: join(context.vaultPath, "aspects"),
+              oldRelativePath: indexed.filePath,
+              newRelativePath: newFilePath,
+              tempSeed: uuid,
+              writeFile: () => getVault(context).aspects.write(updated),
+              pruneParentsOnMove: true,
+            });
 
             const absolutePath = join(context.vaultPath, "aspects", newFilePath);
             const rawContent = await Bun.file(absolutePath).text();
@@ -1090,12 +1129,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       async write(context: ProjectContext, note: Note): Promise<void> {
         return withVaultWriteLock(context.vaultPath, async () => {
           const allNotes = await getVaultIndexer(context).notes.findAll();
-          const lowerKey = note.key.toLowerCase();
-          if (allNotes.some((n) => n.uuid !== note.uuid && n.key.toLowerCase() === lowerKey)) {
-            throw new VaultError("KEY_CONFLICT", `A note with key "${note.key}" already exists`, {
-              reason: "key_conflict",
-            });
-          }
+          assertKeyedEntityKeyAvailable(allNotes, note, "A note");
 
           await getVault(context).notes.write(note);
 
@@ -1137,24 +1171,20 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               ...(patch.content !== undefined && { content: patch.content }),
             };
 
-            await getVault(context).notes.write(updated);
+            if (patch.key !== undefined && patch.key !== oldKey) {
+              assertKeyedEntityKeyAvailable(await indexer.notes.findAll(), updated, "A note");
+            }
 
             const newFilePath = joinCategoryPath(updated.category, updated.key);
 
-            if (indexed.filePath !== newFilePath) {
-              const absoluteOldPath = join(context.vaultPath, "notes", indexed.filePath);
-              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-                if (error.code === "ENOENT") {
-                  log.warn(
-                    { filePath: indexed.filePath },
-                    "rename cleanup: old note file already gone",
-                  );
-                  return;
-                }
-                throw error;
-              });
-              await pruneEmptyParents(join(context.vaultPath, "notes"), absoluteOldPath);
-            }
+            await writeFileWithCaseSafeRename({
+              entityRoot: join(context.vaultPath, "notes"),
+              oldRelativePath: indexed.filePath,
+              newRelativePath: newFilePath,
+              tempSeed: uuid,
+              writeFile: () => getVault(context).notes.write(updated),
+              pruneParentsOnMove: true,
+            });
 
             const absolutePath = join(context.vaultPath, "notes", newFilePath);
             const rawContent = await Bun.file(absolutePath).text();
@@ -1261,16 +1291,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       async write(context: ProjectContext, reference: Reference): Promise<void> {
         return withVaultWriteLock(context.vaultPath, async () => {
           const allReferences = await getVaultIndexer(context).references.findAll();
-          const lowerKey = reference.key.toLowerCase();
-          if (
-            allReferences.some((r) => r.uuid !== reference.uuid && r.key.toLowerCase() === lowerKey)
-          ) {
-            throw new VaultError(
-              "KEY_CONFLICT",
-              `A reference with key "${reference.key}" already exists`,
-              { reason: "key_conflict" },
-            );
-          }
+          assertKeyedEntityKeyAvailable(allReferences, reference, "A reference");
 
           await getVault(context).references.write(reference);
 
@@ -1312,24 +1333,24 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               ...(patch.content !== undefined && { content: patch.content }),
             };
 
-            await getVault(context).references.write(updated);
+            if (patch.key !== undefined && patch.key !== oldKey) {
+              assertKeyedEntityKeyAvailable(
+                await indexer.references.findAll(),
+                updated,
+                "A reference",
+              );
+            }
 
             const newFilePath = joinCategoryPath(updated.category, updated.key);
 
-            if (indexed.filePath !== newFilePath) {
-              const absoluteOldPath = join(context.vaultPath, "references", indexed.filePath);
-              await unlink(absoluteOldPath).catch((error: NodeJS.ErrnoException) => {
-                if (error.code === "ENOENT") {
-                  log.warn(
-                    { filePath: indexed.filePath },
-                    "rename cleanup: old reference file already gone",
-                  );
-                  return;
-                }
-                throw error;
-              });
-              await pruneEmptyParents(join(context.vaultPath, "references"), absoluteOldPath);
-            }
+            await writeFileWithCaseSafeRename({
+              entityRoot: join(context.vaultPath, "references"),
+              oldRelativePath: indexed.filePath,
+              newRelativePath: newFilePath,
+              tempSeed: uuid,
+              writeFile: () => getVault(context).references.write(updated),
+              pruneParentsOnMove: true,
+            });
 
             const absolutePath = join(context.vaultPath, "references", newFilePath);
             const rawContent = await Bun.file(absolutePath).text();

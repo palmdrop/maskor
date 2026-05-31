@@ -238,6 +238,183 @@ describe("StorageService.fragments.write — case-only rename", () => {
   });
 });
 
+describe("StorageService keyed-entity update — case-only rename", () => {
+  it("preserves note UUID and content when key changes only in case", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const [indexed] = await service.notes.readAll(context);
+    if (!indexed) throw new Error("expected at least one note in fixtures");
+
+    const before = await service.notes.read(context, indexed.uuid);
+    const newKey = before.key.toUpperCase();
+    const directory = join(vaultDir, "notes", indexed.filePath.split("/").slice(0, -1).join("/"));
+
+    const { note } = await service.notes.update(context, indexed.uuid, { key: newKey });
+
+    expect(note.uuid).toBe(before.uuid);
+    expect(note.key).toBe(newKey);
+
+    // readdirSync (not existsSync) — existsSync is case-insensitive on macOS.
+    const files = readdirSync(directory);
+    expect(files).toContain(`${newKey}.md`);
+    expect(files).not.toContain(`${before.key}.md`);
+
+    const reread = await service.notes.read(context, before.uuid);
+    expect(reread.uuid).toBe(before.uuid);
+    expect(reread.key).toBe(newKey);
+    expect(reread.content).toBe(before.content);
+  });
+
+  it("preserves reference UUID and content when key changes only in case", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const [indexed] = await service.references.readAll(context);
+    if (!indexed) throw new Error("expected at least one reference in fixtures");
+
+    const before = await service.references.read(context, indexed.uuid);
+    const newKey = before.key.toUpperCase();
+    const directory = join(
+      vaultDir,
+      "references",
+      indexed.filePath.split("/").slice(0, -1).join("/"),
+    );
+
+    const { reference } = await service.references.update(context, indexed.uuid, { key: newKey });
+
+    expect(reference.uuid).toBe(before.uuid);
+    expect(reference.key).toBe(newKey);
+
+    const files = readdirSync(directory);
+    expect(files).toContain(`${newKey}.md`);
+    expect(files).not.toContain(`${before.key}.md`);
+
+    const reread = await service.references.read(context, before.uuid);
+    expect(reread.uuid).toBe(before.uuid);
+    expect(reread.key).toBe(newKey);
+    expect(reread.content).toBe(before.content);
+  });
+
+  it("preserves aspect UUID when key changes only in case (within a category subfolder)", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allAspects = await service.aspects.readAll(context);
+    const indexed = allAspects.find((aspect) => aspect.filePath.includes("/"));
+    if (!indexed) throw new Error("expected at least one categorised aspect in fixtures");
+
+    const before = await service.aspects.read(context, indexed.uuid);
+    const newKey = before.key.toUpperCase();
+    const directory = join(vaultDir, "aspects", indexed.filePath.split("/").slice(0, -1).join("/"));
+
+    const { aspect } = await service.aspects.update(context, indexed.uuid, { key: newKey });
+
+    expect(aspect.uuid).toBe(before.uuid);
+    expect(aspect.key).toBe(newKey);
+
+    const files = readdirSync(directory);
+    expect(files).toContain(`${newKey}.md`);
+    expect(files).not.toContain(`${before.key}.md`);
+
+    const reread = await service.aspects.read(context, before.uuid);
+    expect(reread.uuid).toBe(before.uuid);
+    expect(reread.key).toBe(newKey);
+  });
+});
+
+describe("StorageService keyed-entity update — key collision", () => {
+  it("rejects renaming a note onto another note's key without touching files", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const notes = await service.notes.readAll(context);
+    const [first, second] = notes;
+    if (!first || !second) throw new Error("expected at least two notes in fixtures");
+
+    const firstPath = join(vaultDir, "notes", first.filePath);
+    const secondPath = join(vaultDir, "notes", second.filePath);
+    const firstContentBefore = await Bun.file(firstPath).text();
+    const secondContentBefore = await Bun.file(secondPath).text();
+
+    await expect(
+      service.notes.update(context, second.uuid, { key: first.key }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+
+    expect(await Bun.file(firstPath).text()).toBe(firstContentBefore);
+    expect(await Bun.file(secondPath).text()).toBe(secondContentBefore);
+  });
+
+  it("rejects renaming an aspect onto another aspect's key across categories", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const aspects = await service.aspects.readAll(context);
+    const [first, second] = aspects;
+    if (!first || !second) throw new Error("expected at least two aspects in fixtures");
+
+    // Keys are unique per entity type globally — a collision across category
+    // subfolders must still be rejected.
+    await expect(
+      service.aspects.update(context, second.uuid, { key: first.key }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+  });
+
+  it("rejects renaming a reference onto another reference's key", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    // Fixtures ship a single reference; add a second so we can force a collision.
+    await service.references.write(context, {
+      uuid: crypto.randomUUID(),
+      key: "second source",
+      content: "placeholder",
+    });
+
+    const references = await service.references.readAll(context);
+    const [first, second] = references;
+    if (!first || !second) throw new Error("expected two references after seeding");
+
+    await expect(
+      service.references.update(context, second.uuid, { key: first.key }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+  });
+
+  it("collision check is case-insensitive on update", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const notes = await service.notes.readAll(context);
+    const [first, second] = notes;
+    if (!first || !second) throw new Error("expected at least two notes in fixtures");
+
+    await expect(
+      service.notes.update(context, second.uuid, { key: first.key.toUpperCase() }),
+    ).rejects.toMatchObject({ code: "KEY_CONFLICT" });
+  });
+});
+
 describe("StorageService.fragments.write — key collision", () => {
   it("rejects a rename onto another active fragment's key without touching files", async () => {
     const service = makeService();
