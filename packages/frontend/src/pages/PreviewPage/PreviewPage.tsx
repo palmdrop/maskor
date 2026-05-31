@@ -9,8 +9,9 @@ import {
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { useGetAssembledSequence } from "@api/generated/preview/preview";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
+import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
 import { PreviewToolbar } from "./PreviewToolbar";
-import { PreviewSidebar } from "./PreviewSidebar";
 import { PreviewProse } from "./PreviewProse";
 import {
   ProjectPreviewSeparator,
@@ -87,6 +88,10 @@ export const PreviewPage = () => {
     ? assembled.sections.some((section) => section.name.trim().length > 0)
     : false;
 
+  const previewReady =
+    !!assembled && assembled.sections.some((section) => section.fragments.length > 0);
+  const { activeAnchorId, navigateToAnchor } = useFragmentAnchor({ ready: previewReady });
+
   if (assembledEnvelope?.status === 404) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -114,7 +119,16 @@ export const PreviewPage = () => {
         onPatch={handlePreviewPatch}
       />
       <div className="flex flex-1 min-h-0">
-        <PreviewSidebar sections={assembled.sections} />
+        <FragmentNavSidebar
+          sections={assembled.sections}
+          activeAnchorId={activeAnchorId}
+          onSelect={navigateToAnchor}
+          header={
+            <div className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {allFragments.length} fragment{allFragments.length !== 1 ? "s" : ""}
+            </div>
+          }
+        />
         <main className="flex-1 overflow-y-auto">
           {allFragments.length === 0 ? (
             <div className="flex items-center justify-center h-full">

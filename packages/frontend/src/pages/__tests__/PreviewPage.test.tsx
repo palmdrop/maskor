@@ -11,10 +11,15 @@ import type {
 const PROJECT_ID = "project-uuid-1";
 const SEQUENCE_UUID = "sequence-uuid-1";
 
+const mockNavigate = vi.fn();
+// Mutable so tests can simulate landing on a `#fragment-…` deep link.
+const mockLocation = { hash: "" };
+
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ projectId: PROJECT_ID }),
   useSearch: () => ({ sequence: undefined }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
+  useLocation: () => mockLocation,
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -142,6 +147,7 @@ const lastQueryParams = () => (useGetAssembledSequence as Mock).mock.calls.at(-1
 describe("PreviewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocation.hash = "";
   });
 
   it("renders fragment keys in the sidebar", () => {
@@ -174,7 +180,7 @@ describe("PreviewPage", () => {
     expect(screen.getByText("This sequence no longer exists.")).toBeInTheDocument();
   });
 
-  it("sidebar click triggers scrollIntoView on the fragment anchor element", () => {
+  it("sidebar click sets the fragment hash and scrolls to the anchor element", () => {
     setupMocks();
     const scrollIntoView = vi.fn();
     document.getElementById = vi.fn().mockImplementation((id) => {
@@ -184,6 +190,25 @@ describe("PreviewPage", () => {
 
     render(<PreviewPage />, { wrapper: wrap() });
     fireEvent.click(screen.getByText("opening"));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ hash: "fragment-frag-1", replace: true }),
+    );
+  });
+
+  it("scrolls to the fragment named in the URL hash once content is ready", () => {
+    setupMocks();
+    mockLocation.hash = "fragment-frag-2";
+    const scrollIntoView = vi.fn();
+    document.getElementById = vi.fn().mockImplementation((id) => {
+      if (id === "fragment-frag-2") return { scrollIntoView };
+      return null;
+    });
+
+    render(<PreviewPage />, { wrapper: wrap() });
+
+    expect(document.getElementById).toHaveBeenCalledWith("fragment-frag-2");
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
   });
 

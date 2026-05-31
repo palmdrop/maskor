@@ -8,10 +8,13 @@ const PROJECT_ID = "project-uuid-1";
 
 const importFile = new File(["# A\n\nbody"], "doc.md", { type: "text/markdown" });
 
+const mockNavigate = vi.fn();
+
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ projectId: PROJECT_ID }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
   useRouterState: () => ({ file: importFile }),
+  useLocation: () => ({ hash: "" }),
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -93,5 +96,8 @@ describe("FragmentImportPage", () => {
 
     expect(document.getElementById).toHaveBeenCalledWith("fragment-2");
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ hash: "fragment-2", replace: true }),
+    );
   });
 });

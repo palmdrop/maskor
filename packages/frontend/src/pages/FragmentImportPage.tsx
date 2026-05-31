@@ -13,7 +13,9 @@ import type {
   ImportResult,
 } from "@api/generated/maskorAPI.schemas";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { ReadonlyProse } from "@components/readonly-prose";
+import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
 import { Button } from "@components/ui/button";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -173,16 +175,12 @@ export const FragmentImportPage = () => {
     }
   };
 
-  const scrollToPiece = (fragment: PreviewNavFragment) => {
-    document
-      .getElementById(`fragment-${fragment.uuid}`)
-      ?.scrollIntoView({ behavior: "instant", block: "start" });
-  };
-
   const pieces: PreviewNavFragment[] =
     previewResult?.sections.flatMap((section) => section.fragments) ?? [];
   const isInFlight = isPreviewPending || isCommitPending;
   const pieceCount = pieces.length;
+
+  const { activeAnchorId, navigateToAnchor } = useFragmentAnchor({ ready: pieceCount > 0 });
 
   const commands = useCommands();
   useCommandScope(fragmentImportScope, {
@@ -290,28 +288,20 @@ export const FragmentImportPage = () => {
       {/* Body: sidebar + main */}
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
-        <aside className="flex flex-col gap-3 w-72 shrink-0 border-r border-border p-4 overflow-y-auto">
-          <div className="text-sm font-medium">
-            {pieceCount === 0
-              ? "No fragments"
-              : `${pieceCount} fragment${pieceCount !== 1 ? "s" : ""} will be created`}
-          </div>
-          {pieceCount > 0 && (
-            <ul className="flex flex-col gap-1">
-              {pieces.map((piece) => (
-                <li key={piece.uuid}>
-                  <button
-                    type="button"
-                    className="text-left w-full text-sm px-2 py-1 rounded hover:bg-muted truncate"
-                    onClick={() => scrollToPiece(piece)}
-                  >
-                    {pieceLabel(piece)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </aside>
+        <FragmentNavSidebar
+          className="w-72"
+          sections={previewResult?.sections ?? []}
+          getFragmentLabel={pieceLabel}
+          activeAnchorId={activeAnchorId}
+          onSelect={navigateToAnchor}
+          header={
+            <div className="px-4 pt-4 pb-2 text-sm font-medium">
+              {pieceCount === 0
+                ? "No fragments"
+                : `${pieceCount} fragment${pieceCount !== 1 ? "s" : ""} will be created`}
+            </div>
+          }
+        />
 
         {/* Main content area */}
         <main
