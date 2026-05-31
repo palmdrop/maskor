@@ -41,10 +41,10 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 2 — Sequencer active-gating
 
-- [ ] Change the secondaries filter at `packages/api/src/routes/sequences.ts:47` from `!s.isMain` to `!s.isMain && s.active` for both `detectCycles` and `computeViolations`.
-- [ ] Defensively confirm `@maskor/sequencer` does not need its own filter; if any other caller assembles secondaries, gate them the same way.
-- [ ] Reconcile the soft/hard-constraint wording flagged in the glossary while here (note in spec update, Phase 6).
-- [ ] Tests: an inactive non-main sequence does not contribute violations/cycles; flipping it active makes it contribute.
+- [x] Change the secondaries filter in `buildBundledResponse` (`packages/api/src/routes/sequences.ts`) from `!s.isMain` to `!s.isMain && s.active` for both `detectCycles` and `computeViolations`. _(2026-05-31)_
+- [x] Confirmed `buildBundledResponse` is the only caller of `computeViolations`/`detectCycles`; the sequencer stays pure (no internal active filter). _(2026-05-31)_
+- [-] Reconcile the soft/hard-constraint wording — moved to Phase 7 (spec updates).
+- [x] Tests: a cycle from two active secondaries disappears when one is deactivated. _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 3 — Archival + import-sequence creation

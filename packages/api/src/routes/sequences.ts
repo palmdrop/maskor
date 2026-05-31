@@ -44,7 +44,9 @@ async function buildBundledResponse(
 ) {
   const allSequences = await storageService.sequences.readAll(projectContext);
   const main = allSequences.find((s) => s.isMain) ?? null;
-  const secondaries = allSequences.filter((s) => !s.isMain);
+  // Only active non-main sequences are consumed as ordering constraints.
+  // Inactive sequences (e.g. import-sequences by default) are excluded.
+  const secondaries = allSequences.filter((s) => !s.isMain && s.active);
   const cycles = detectCycles(secondaries);
   const violations = main ? computeViolations(main, secondaries) : [];
   return { sequences: allSequences, violations, cycles };

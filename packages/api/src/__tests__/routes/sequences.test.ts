@@ -301,6 +301,70 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
   });
 });
 
+describe("active-gating of constraints", () => {
+  // Two secondaries imposing opposite orderings of the same fragment pair form a
+  // cycle — but only while both are active. Deactivating one clears it.
+  const createSecondary = async (name: string): Promise<SequenceFull> => {
+    const bundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, isMain: false, projectUuid: project.projectUUID }),
+      })
+    ).json()) as SequenceBundle;
+    return bundle.sequences.find((s) => s.name === name)! as SequenceFull;
+  };
+
+  const place = async (sequence: SequenceFull, fragmentUuid: string, position: number) => {
+    await testContext.app.request(`${baseUrl()}/${sequence.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fragmentUuid,
+        sectionUuid: sequence.sections[0]!.uuid,
+        position,
+      }),
+    });
+  };
+
+  it("excludes inactive sequences from cycle detection", async () => {
+    const summaries = (await (
+      await testContext.app.request(`/projects/${project.projectUUID}/fragments/summaries`)
+    ).json()) as Array<{ uuid: string }>;
+    const [first, second] = summaries;
+    if (!first || !second) throw new Error("expected at least two seeded fragments");
+
+    const forward = await createSecondary("Cycle Forward");
+    await place(forward, first.uuid, 0);
+    await place(forward, second.uuid, 1);
+
+    const backward = await createSecondary("Cycle Backward");
+    await place(backward, second.uuid, 0);
+    await place(backward, first.uuid, 1);
+
+    // Both active → the two orderings contradict → a cycle is reported.
+    const withBoth = (await (
+      await testContext.app.request(baseUrl())
+    ).json()) as SequenceBundle;
+    expect(withBoth.cycles.length).toBeGreaterThan(0);
+
+    // Deactivate one → no remaining contradiction → no cycle.
+    await testContext.app.request(`${baseUrl()}/${backward.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: false }),
+    });
+    const afterDeactivate = (await (
+      await testContext.app.request(baseUrl())
+    ).json()) as SequenceBundle;
+    expect(afterDeactivate.cycles.length).toBe(0);
+
+    // Clean up so these orderings don't pollute later violation/cycle tests.
+    await testContext.app.request(`${baseUrl()}/${forward.uuid}`, { method: "DELETE" });
+    await testContext.app.request(`${baseUrl()}/${backward.uuid}`, { method: "DELETE" });
+  });
+});
+
 describe("DELETE /projects/:projectId/sequences/:sequenceId", () => {
   it("deletes a non-main sequence and returns 200 bundle", async () => {
     const createBundle = (await (
