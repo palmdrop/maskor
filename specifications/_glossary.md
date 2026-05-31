@@ -100,8 +100,6 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **"Arc" (plain noun)** — informally refers to both the explicit arc entity and the visual curve rendered in the overview (which may overlay both actual and explicit arcs). Use qualified forms ("explicit arc", "actual arc") when precision matters.
 
-**"Hard" vs "soft" constraint** — `sequencer.md` calls secondary-sequence constraints "soft" (shipped log) in one place and "hard" (behavior section) in another. The shipped code does neither strictly: it detects and reports violations/cycles against the main sequence rather than preventing placement — i.e. advisory. Treat secondary-sequence constraints as advisory-and-reported until an enforcing placement engine exists, and reconcile the spec wording.
-
 **"Source"** — reserved as an avoided synonym for Reference. Import provenance uses origin, never "source", to avoid the overload.
 
 **"Key" vs. "title/name" in specs** — the codebase already uses `key` uniformly for notes and references. `attachments.md` still says "title (notes) or name (references)". Spec update tracked in `references/plans/glossary-alignment.md`.

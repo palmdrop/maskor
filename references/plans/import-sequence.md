@@ -1,8 +1,9 @@
 # Import-sequence
 
 **Date**: 31-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/import-pipeline.md`, `specifications/sequencer.md`, `specifications/overview.md`
+**Closed**: 31-05-2026
 
 ---
 
@@ -81,20 +82,11 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 > These are not optional clean-up. The design here reverses a documented decision and resolves a known spec inconsistency, so the spec bodies must change alongside the code — not just the `Shipped` log.
 
-- [ ] `specifications/import-pipeline.md`:
-  - [ ] Reverse the resolved open question "Should the original source file be archived…? Resolved 2026-05-15: Discarded." — re-open/replace with the new resolution (archived byte-for-byte under `.maskor/imports/`, referenced by the import-sequence's `origin`).
-  - [ ] Update the matching **Prior decisions** entry that asserts no archival.
-  - [ ] Add a **Behavior** subsection: import creates an inactive non-main import-sequence recording piece order, and archives the original bytes.
-  - [ ] Add a `Shipped` entry once implemented.
-- [ ] `specifications/sequencer.md`:
-  - [ ] Add `active` to the `sequences` row in the **DB schema** table and note `origin` on the sequence model; mention the `.maskor/imports/` archive.
-  - [ ] Update the **Secondary sequences** behavior to state that secondaries constrain only while `active`, and that import-sequences are auto-created inactive.
-  - [ ] Reconcile the soft/hard-constraint wording (shipped log line ~10 says "soft", behavior line ~72 says "hard"): state that constraints are advisory (detected + reported), gated by `active`. Clear the corresponding glossary "Flagged ambiguity" once the spec is consistent.
-  - [ ] Add a `Shipped` entry once implemented.
-- [ ] `specifications/overview.md`:
-  - [ ] Document that the sequence picker lists import-sequences, exposes an active/inactive toggle, and indicates import provenance (`origin`).
-  - [ ] Add a `Shipped` entry once implemented.
-- [ ] Set this plan's Status to `Done` (or `In Progress` if partial) and add `Closed` date.
+- [x] `specifications/import-pipeline.md`: re-resolved the archival open question (now archived under `.maskor/imports/`), updated the Stage-1 scope note, added Prior-decision entries (ADR refs), added an Import-sequence + source-archival behavior subsection, acceptance criteria, and a `Shipped` entry. _(2026-05-31)_
+- [x] `specifications/sequencer.md`: added `active` + `origin` to the `sequences` DB-schema row, updated the Secondary-sequences behavior (active-gated, import-sequences inactive), added a "soft vs hard" clarification blockquote (advisory detection), and a `Shipped` entry. _(2026-05-31)_
+- [x] `specifications/overview.md`: documented the active/inactive toggle + imported badge/provenance in Sequence selection, added a `Shipped` entry. _(2026-05-31)_
+- [x] Cleared the soft/hard "Flagged ambiguity" from `specifications/_glossary.md`. _(2026-05-31)_
+- [x] Set plan Status to `Done`. _(2026-05-31)_
 - [ ] Final `git commit`.
 
 ---

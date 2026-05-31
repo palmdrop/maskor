@@ -1,7 +1,7 @@
 # Spec: Overview
 
 **Status**: Stable
-**Last updated**: 2026-05-19
+**Last updated**: 2026-05-31
 
 **Shipped**:
 
@@ -10,6 +10,7 @@
 - 2026-05-28 — Overview density choice persists across navigation and page reloads via `project.overview.density` in project.json; URL param (`?density=`) is now optional and serves as a per-session override that seeds the URL on change; absence of the URL param falls back to the persisted value. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
 - 2026-05-28 — Arrow-key rearrangement for fragment tiles: focused tiles sync selection state; ArrowLeft/ArrowRight move the selected fragment one position forward or back. Moving past a section boundary reassigns the fragment to the adjacent section. Uses the same `moveFragment` API call as drag-and-drop so the action log records the same entry type. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
 - 2026-05-28 — Section reordering via drag-and-drop (grab handle on section header) and keyboard (Shift+ArrowLeft/Right moves the section that contains the selected fragment). Logs `sequence:section-reordered` per move. (plan: `scripts/ralph/archive/2026-05-28-small-improvements/`)
+- 2026-05-31 — Sequence sidebar surfaces the `active` flag: each non-main sequence has an active/inactive toggle (logs `sequence:activated`/`sequence:deactivated`) controlling whether it constrains the main sequence; inactive rows are dimmed. Import-sequences appear like any sequence with an "imported" badge and an `origin` provenance tooltip. (plan: `references/plans/import-sequence.md`)
 
 ---
 
@@ -104,6 +105,8 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 
 - The user can switch between the main sequence and any secondary sequences.
 - The main sequence is the default view on open.
+- The sidebar lists every sequence, including auto-created import-sequences (marked with an "imported" badge and an `origin` provenance tooltip).
+- Each non-main sequence has an active/inactive toggle. An active sequence is consumed by the sequencer as an ordering constraint on the main sequence; an inactive one is not (see `sequencer.md`). Import-sequences are created inactive, so the user opts in by toggling them active. Inactive rows are visually dimmed.
 
 ---
 

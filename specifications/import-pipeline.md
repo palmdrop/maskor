@@ -1,7 +1,7 @@
 # Spec: Import Pipeline
 
 **Status**: Stable
-**Last updated**: 2026-05-28
+**Last updated**: 2026-05-31
 **Shipped**:
 
 - 2026-05-16 — Import Pipeline Stage 1 - Import .md, .txt, and .docx files into a project as fragments, splitting on headings (markdown/docx) or a custom delimiter (plaintext). Fire-and-forget: one Fragment created per piece, no review step. (plan: `scripts/ralph/archive/2026-05-16-import-pipeline-stage-1/`)
@@ -10,8 +10,9 @@
 - 2026-05-28 — Piece removal + full-frontmatter adoption. The `pieces/` staging folder has been removed; raw `.md` dropped into `fragments/` is now the sole external-edit adoption path, and the watcher writes back a complete canonical frontmatter (uuid, updatedAt, readiness, notes, references) on first detection. (plan: `references/plans/remove-piece-concept-and-vault-warnings.md`)
 - 2026-05-30 — Import preview rendering unified with sequence preview. The import-preview endpoint now returns the shared `{ markdown, sections }` shape (pieces assembled via `@maskor/exporter` into one markdown string with per-piece anchors), and the page renders through the shared read-only Tiptap renderer. Sidebar navigation scrolls via real `id="fragment-<pieceIndex>"` anchors — the old `<strong>`-text-matching `scrollToPiece` hack is gone. (plan: `references/plans/preview-import-shared-renderer.md`)
 - 2026-05-31 — Import preview now uses the shared `FragmentNavSidebar` + `useFragmentAnchor` hook (the inline sidebar `<aside>` and `scrollToPiece` are removed). Clicking a piece sets the `#fragment-<pieceIndex>` URL hash and scrolls; the active piece is highlighted. (Import remains reachable only via router state, so the hash is in-session navigation, not a shareable deep link.) (plan: `references/plans/preview-import-shared-renderer.md`)
+- 2026-05-31 — Import-sequence + source archival. Each import now (a) archives the original uploaded file byte-for-byte under `.maskor/imports/` and (b) creates one inactive, non-main "import-sequence" recording the created fragments in their original import order, with an `origin` pointing at the archive. The import-sequence is a normal editable `Sequence`; being inactive, it does not constrain the main sequence until the user activates it. Re-importing a file of the same name is allowed but surfaces a non-blocking warning in the preview. (plan: `references/plans/import-sequence.md`)
 
-> **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, folder import is out of Stage 1, and source files are not archived.
+> **Stage 1 scope note (2026-05-15):** The first implementation pass (`tasks/prd-import-pipeline-stage-1.md`) ships **fire-and-forget**: the importer splits the document and creates fragments immediately, with no user review or preview step. The review behavior described below remains the long-term target and is deferred to a later stage. Other open questions in this spec were resolved during PRD work: `.txt` is in scope, delimiter is heading-level (H1–H6) or a custom string for plain text, and folder import is out of Stage 1. (The original "source files are not archived" stance was **reversed on 2026-05-31** — see the import-sequence behavior and prior-decision notes below.)
 
 > **Stage 2 scope note (2026-05-16):** The second implementation pass ships a **read-only preview**: after picking a file, the user sees a full-page preview of how the document will be split into pieces (with derived keys), can adjust the heading level (md/docx) or delimiter (txt), and then presses Import to commit via the existing `/import` endpoint. The preview is read-only — per-piece edit operations (merge, discard individual pieces, retitle, adjustable split points) remain deferred to a future stage.
 
@@ -91,6 +92,16 @@ Within the import pipeline, the importer's internal `Piece`/`RawPiece` types rep
 - A piece is discarded immediately after the corresponding fragment is successfully created via `createFragmentCommand`
 - If creation fails, the error is logged and the piece is not silently dropped
 
+### Import-sequence and source archival
+
+A successful import (at least one fragment created) also captures the import's order and preserves the original file:
+
+- **Source archive.** The original uploaded file is stored byte-for-byte under `.maskor/imports/`, keyed by the import-sequence UUID. `.maskor/` is Maskor-managed and watcher-ignored, so the archived file (including binary `.docx`) is never adopted as a fragment and does not affect the all-markdown convention of the entity folders.
+- **Import-sequence.** One non-main `Sequence` is created with a single section holding the created fragments in import order. It is created **inactive** (`active: false`), so it does not constrain the main sequence until the user activates it (see `sequencer.md`). Its name defaults to `Import: <fileName>` with a numeric suffix on collision. It carries an `origin` (`{ fileName, archivePath, format, importedAt }`) pointing at the archive.
+- The import-sequence is a normal, editable sequence — there is no special "import" entity type. The archive, not the live sequence, is the durable snapshot of imported content (fragments drift as the user edits them).
+- The main sequence is **not** seeded by import; newly created fragments remain unplaced in the main sequence's pool as before. The single `fragment:imported` action-log entry records the created `importSequenceUuid`.
+- **Re-import.** Importing a file whose name matches an existing sequence's `origin.fileName` is allowed; the preview surfaces a non-blocking `priorImport` warning. A second import creates a second, separate import-sequence and archive.
+
 ---
 
 ## Constraints
@@ -106,6 +117,8 @@ Within the import pipeline, the importer's internal `Piece`/`RawPiece` types rep
 - **No metadata on import**: Pieces carry only `title` and `content`. Aspect assignment happens post-import.
 - **Delimiter configured during import**: The user picks the delimiter in the import UI, not in project config.
 - **Title conflict resolution**: Numeric suffix appended to avoid collisions — no error, no abort.
+- **Source is archived, not discarded (2026-05-31, reverses the 2026-05-15 decision)**: The original uploaded file is kept byte-for-byte under `.maskor/imports/` and referenced by the import-sequence's `origin`. Binary in the vault is accepted because it lives only in Maskor-managed `.maskor/`, not the user-authored entity folders. See `references/adr/0005-archive-original-import-bytes.md`.
+- **Import order is captured in an inactive import-sequence**: Rather than a bespoke entity, import order is recorded as a normal non-main `Sequence` created inactive (opt-in as a constraint). See `references/adr/0004-active-gated-sequence-constraints.md`.
 
 ---
 
@@ -114,7 +127,7 @@ Within the import pipeline, the importer's internal `Piece`/`RawPiece` types rep
 - [x] 2026-04-26 — What file formats does the importer support at launch? **Resolved 2026-05-15:** `.md`, `.txt`, `.docx`. `.rtf` and `.pdf` remain out of scope.
 - [x] 2026-04-26 — What delimiter options are available? **Resolved 2026-05-15:** any heading level (H1–H6) for `.md` and `.docx`; arbitrary custom string for `.txt`.
 - [x] 2026-04-26 — For folder import: are subdirectories traversed, or is it a flat folder only? **Resolved 2026-05-15:** Folder import is deferred entirely; not in Stage 1.
-- [x] 2026-04-26 — Should the original source file be archived somewhere in the vault after import, or silently discarded? **Resolved 2026-05-15:** Discarded. Archival is not in Stage 1.
+- [x] 2026-04-26 — Should the original source file be archived somewhere in the vault after import, or silently discarded? **Resolved 2026-05-15:** Discarded. ~~Archival is not in Stage 1.~~ **Re-resolved 2026-05-31:** Archived byte-for-byte under `.maskor/imports/`, referenced by the import-sequence's `origin`. (ADR-0005.)
 
 ---
 
@@ -124,5 +137,7 @@ Within the import pipeline, the importer's internal `Piece`/`RawPiece` types rep
 - A folder import produces one piece per file in the folder, shown in preview before any fragment is created _(folder import deferred — out of Stage 1 and Stage 2 entirely)_
 - Confirming the preview creates a Fragment for each piece; no intermediate files are written _(Stage 2: user reviews preview then presses Import to commit; no intermediate files)_
 - A title that conflicts with an existing fragment gets a numeric suffix — `fragment_1`, `fragment_2`, etc. — and is not rejected
+- A successful import creates one inactive, non-main import-sequence whose section lists the created fragments in import order, with an `origin` referencing the archived original under `.maskor/imports/`
+- Re-importing a file of the same name is permitted and the preview reports a `priorImport` warning; the import still proceeds
 - Creation failures are logged per-piece; the remaining pieces in the batch still proceed
 - No fragment metadata is set during import; all aspect weights, notes, and references default to empty

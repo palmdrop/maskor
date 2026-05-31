@@ -1,7 +1,7 @@
 # Spec: Sequencer
 
 **Status**: In Progress
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-31
 
 **Shipped**:
 
@@ -9,6 +9,7 @@
 - 2026-05-18 — Sequence placement, move, and unplace actions log the sequence name and fragment key for human-readable action log rendering. (plan: references/plans/sequence-action-log-human-readable.md)
 - 2026-05-18 - Secondary sequences as soft constraints, sequence CRUD, violation and cycle detection, sidebar for switching between sequences. (prd: tasks/prd-secondary-sequences.md)
 - 2026-05-29 - Users can re-order sections within a sequence by dragging and dropping.
+- 2026-05-31 - Sequences carry an `active` flag: the violation/cycle detector consumes only **active** non-main sequences, so a non-main sequence no longer constrains the main sequence merely by existing. User-authored secondaries default active; auto-created import-sequences default inactive. Sequences also carry an optional `origin` (import provenance). (plan: `references/plans/import-sequence.md`, ADRs 0004/0005)
 
 ---
 
@@ -66,12 +67,15 @@ The user can arrange their fragments into an ordered sequence — manually, with
 
 ### Secondary sequences
 
-- A secondary sequence is a partial ordering: an explicitly named chain of specific fragments that must appear in a given relative order (A → B → C), or that must land within a specific section.
+- A secondary sequence is any non-main sequence — typically a partial ordering: an explicitly named chain of specific fragments that must appear in a given relative order (A → B → C), or that must land within a specific section. Auto-created **import-sequences** are also secondary sequences (see `import-pipeline.md`).
 - Secondary sequences do not cover the full fragment set — they constrain a subset.
 - A fragment may appear in more than one secondary sequence.
-- Secondary sequences are consumed by the sequencer as hard constraints during placement. A fragment whose secondary sequence requires it to appear after fragment X is excluded from any position before X.
+- **Only `active` secondary sequences are consumed as constraints.** Each sequence carries an `active` flag; the detector ignores inactive ones. User-authored secondaries default `active: true`; import-sequences default `active: false`, so a captured import order constrains nothing until the user opts in.
+- Constraint enforcement is currently **advisory**: the shipped sequencer detects and reports ordering violations and cycles against the main sequence rather than preventing placement (see "Constraint enforcement" below). The relative-order intent (A must precede B) is what a future placement engine will enforce.
 - The interleaving config can additionally define how secondary sequence-streams are paced and woven into the main sequence (see `interleaving.md`).
 - Secondary sequences are stored in `<vault>/.maskor/sequences/` alongside the main sequence.
+
+> **Constraint enforcement — "soft" vs "hard" (clarified 2026-05-31).** Earlier wording in this spec called secondary-sequence constraints both "soft" and "hard". The shipped behavior is neither in the strict sense: active secondary sequences are consumed to **detect and report** violations and cycles against the main sequence (advisory), not to block placement. Hard enforcement (excluding a fragment from positions that would violate its ordering) is the intended target for the automatic placement engine, which is not yet built.
 
 ### Sections
 
@@ -126,13 +130,13 @@ The user can arrange their fragments into an ordered sequence — manually, with
 
 The following tables are required. None exist yet — implementation is blocked until the schema is defined.
 
-| Table                | Key columns                                                            | Notes                                                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sequences`          | `uuid`, `name`, `project_uuid`, `is_main`                              | One row per sequence. Exactly one `is_main = true` per project.                                                                                |
-| `sections`           | `uuid`, `name`, `sequence_uuid`, `position`                            | Ordered list of sections within a sequence. `position` is the section's index among siblings.                                                  |
-| `fragment_positions` | `uuid`, `fragment_uuid`, `section_uuid`, `position`                    | A fragment's placement within a section. `position` is 0-based within the section. A fragment may appear in at most one position per sequence. |
-| `fitting_scores`     | `id`, `fragment_uuid`, `sequence_uuid`, `position_index`, `score`      | Cached derived values. DB-only; recomputable on demand. `position_index` is the fragment's absolute index within the sequence (0-based).       |
-| `key_fragments`      | `id`, `fragment_uuid`, `sequence_uuid`, `target_position`, `tolerance` | Key fragment pins. `target_position` and `tolerance` are both normalized [0, 1].                                                               |
+| Table                | Key columns                                                            | Notes                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sequences`          | `uuid`, `name`, `project_uuid`, `is_main`, `active`, `origin`          | One row per sequence. Exactly one `is_main = true` per project. `active` (default true) gates constraint participation; only non-main `active` rows feed violation/cycle detection. `origin` is an optional JSON provenance object (`{ fileName, archivePath, format, importedAt }`) set for import-sequences, pointing at the archived original under `.maskor/imports/`. |
+| `sections`           | `uuid`, `name`, `sequence_uuid`, `position`                            | Ordered list of sections within a sequence. `position` is the section's index among siblings.                                                                                                                                                                                                                                                                              |
+| `fragment_positions` | `uuid`, `fragment_uuid`, `section_uuid`, `position`                    | A fragment's placement within a section. `position` is 0-based within the section. A fragment may appear in at most one position per sequence.                                                                                                                                                                                                                             |
+| `fitting_scores`     | `id`, `fragment_uuid`, `sequence_uuid`, `position_index`, `score`      | Cached derived values. DB-only; recomputable on demand. `position_index` is the fragment's absolute index within the sequence (0-based).                                                                                                                                                                                                                                   |
+| `key_fragments`      | `id`, `fragment_uuid`, `sequence_uuid`, `target_position`, `tolerance` | Key fragment pins. `target_position` and `tolerance` are both normalized [0, 1].                                                                                                                                                                                                                                                                                           |
 
 Vault files in `<vault>/.maskor/sequences/` are the source of truth for sequence structure. The DB tables above are a derived index — they can be rebuilt from the vault files.
 
