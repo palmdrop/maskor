@@ -1,3 +1,4 @@
+import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { defineScope, defineScopeCommand } from "../define";
 
 export interface SequenceSidebarContext {
@@ -5,6 +6,9 @@ export interface SequenceSidebarContext {
   createSequence: () => void;
   confirmingDeleteSequenceId: string | null;
   deleteSequence: () => void;
+  // Non-main sequences eligible for active/inactive toggling.
+  toggleableSequences: readonly Sequence[];
+  setSequenceActive: (sequenceId: string, active: boolean) => void;
 }
 
 export const sequenceSidebarScope = defineScope<SequenceSidebarContext>("sequence-sidebar", {
@@ -28,4 +32,22 @@ const deleteSequence = defineScopeCommand(sequenceSidebarScope, {
   run: (ctx) => ctx.deleteSequence(),
 });
 
-export const sequenceSidebarCommands = [createSequence, deleteSequence] as const;
+const toggleSequenceActive = defineScopeCommand(sequenceSidebarScope, {
+  id: "overview:toggle-sequence-active",
+  label: "Toggle sequence as constraint",
+  category: "other",
+  arg: {
+    items: (ctx) => ctx.toggleableSequences,
+    getKey: (item) => item.uuid,
+    getLabel: (item) =>
+      item.active ? `Deactivate “${item.name}”` : `Activate “${item.name}”`,
+    placeholder: "Toggle sequence as constraint…",
+  },
+  run: (ctx, target) => ctx.setSequenceActive(target.uuid, !target.active),
+});
+
+export const sequenceSidebarCommands = [
+  createSequence,
+  deleteSequence,
+  toggleSequenceActive,
+] as const;

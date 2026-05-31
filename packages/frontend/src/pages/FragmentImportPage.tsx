@@ -8,10 +8,11 @@ import {
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
 import type {
-  PreviewResult,
+  ImportPreviewResult,
   PreviewNavFragment,
   ImportResult,
 } from "@api/generated/maskorAPI.schemas";
+import { AlertTriangleIcon } from "lucide-react";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { ReadonlyProse } from "@components/readonly-prose";
@@ -67,7 +68,7 @@ export const FragmentImportPage = () => {
 
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>("1");
   const [delimiter, setDelimiter] = useState("---");
-  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<ImportPreviewResult | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [partialFailureResult, setPartialFailureResult] = useState<ImportResult | null>(null);
@@ -177,6 +178,7 @@ export const FragmentImportPage = () => {
 
   const pieces: PreviewNavFragment[] =
     previewResult?.sections.flatMap((section) => section.fragments) ?? [];
+  const priorImport = previewResult?.priorImport ?? null;
   const isInFlight = isPreviewPending || isCommitPending;
   const pieceCount = pieces.length;
 
@@ -284,6 +286,21 @@ export const FragmentImportPage = () => {
           )}
         </div>
       </header>
+
+      {/* Re-import warning — advisory, does not block Import */}
+      {priorImport && (
+        <div
+          role="status"
+          className="flex items-start gap-2 shrink-0 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-700 dark:text-amber-400"
+        >
+          <AlertTriangleIcon className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            You already imported a file named <span className="font-medium">{file.name}</span> on{" "}
+            {new Date(priorImport.importedAt).toLocaleDateString()} (sequence “
+            {priorImport.sequenceName}”). Importing again creates a new, separate import-sequence.
+          </span>
+        </div>
+      )}
 
       {/* Body: sidebar + main */}
       <div className="flex flex-1 min-h-0">

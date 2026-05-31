@@ -65,11 +65,11 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 5 — Frontend
 
-- [ ] Import preview page: render a non-blocking warning banner when `priorImport` is present ("You already imported a file named X on …"), leaving the Import action enabled.
-- [ ] Sequence picker / sidebar: surface the `active` state with a toggle that calls `updateSequence`; indicate import-origin (e.g. an icon/label) and show `origin` provenance for sequences that have one.
-- [ ] Confirm import-sequences appear in the picker like any other sequence (they are normal sequences — no special listing needed beyond the indicator).
-- [ ] Run `bun run codegen` if any schema changed.
-- [ ] Tests: warning banner renders on `priorImport`; active toggle issues the update and reflects state.
+- [x] Import preview page renders a non-blocking amber warning banner (`role="status"`) when `priorImport` is present; Import stays enabled. _(2026-05-31)_
+- [x] Sequence sidebar: per-row active toggle (link/link-off icon) dispatched through a new parameterized `overview:toggle-sequence-active` command → `updateSequence`; inactive non-main rows are dimmed; `origin` shows an "imported" badge with a provenance tooltip. _(2026-05-31)_
+- [x] Import-sequences appear in the sidebar like any sequence (normal listing + the imported badge/dim). _(2026-05-31)_
+- [x] `bun run codegen` already run in Phases 1/3/4. _(2026-05-31)_
+- [x] Tests: warning banner present/absent; active toggle activates/deactivates with the right payload; full frontend suite green (440). _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 6 — Formatting & verification

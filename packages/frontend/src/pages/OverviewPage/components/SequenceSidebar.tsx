@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link2Icon, Link2OffIcon, Trash2Icon } from "lucide-react";
 import type { Cycle, Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import {
   useCreateSequence,
@@ -196,6 +197,10 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   const commands = useCommands();
 
+  const handleSetActive = (sequenceId: string, active: boolean) => {
+    updateSequence.mutate({ projectId, sequenceId, data: { active } });
+  };
+
   useCommandScope(sequenceSidebarScope, {
     createSequencePending: createSequence.isPending,
     createSequence: handleCreate,
@@ -203,6 +208,8 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     deleteSequence: () => {
       if (confirmingDeleteId) handleConfirmDelete(confirmingDeleteId);
     },
+    toggleableSequences: sequences.filter((s) => !s.isMain),
+    setSequenceActive: handleSetActive,
   });
 
   const handleCommitRename = async (
@@ -284,10 +291,20 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                     onClick={() => handleSelect(seq.uuid)}
                     className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors ${
                       isActive ? "bg-accent text-accent-foreground" : ""
-                    }`}
+                    } ${!seq.isMain && !seq.active ? "opacity-55" : ""}`}
                   >
                     <StatusDot status={status} />
                     <span className="flex-1 truncate">{seq.name}</span>
+                    {seq.origin && (
+                      <span
+                        className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0"
+                        title={`Imported from ${seq.origin.fileName} on ${new Date(
+                          seq.origin.importedAt,
+                        ).toLocaleDateString()}`}
+                      >
+                        imported
+                      </span>
+                    )}
                     {seq.isMain && (
                       <span className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0">
                         Main
@@ -298,32 +315,43 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                     </span>
                   </button>
                   {!seq.isMain && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmingDeleteId(seq.uuid);
-                      }}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                      aria-label={`Delete sequence "${seq.name}"`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          commands.run("overview:toggle-sequence-active", seq);
+                        }}
+                        className={`p-1 rounded hover:text-foreground hover:bg-background/80 transition-opacity ${
+                          seq.active
+                            ? "text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            : "text-amber-600 dark:text-amber-500"
+                        }`}
+                        aria-label={
+                          seq.active
+                            ? `Deactivate sequence "${seq.name}" as a constraint`
+                            : `Activate sequence "${seq.name}" as a constraint`
+                        }
+                        title={
+                          seq.active
+                            ? "Active constraint — click to deactivate"
+                            : "Inactive — click to use as a constraint"
+                        }
                       >
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                        <path d="M10 11v6M14 11v6" />
-                        <path d="M9 6V4h6v2" />
-                      </svg>
-                    </button>
+                        {seq.active ? <Link2Icon size={12} /> : <Link2OffIcon size={12} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmingDeleteId(seq.uuid);
+                        }}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        aria-label={`Delete sequence "${seq.name}"`}
+                      >
+                        <Trash2Icon size={12} />
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

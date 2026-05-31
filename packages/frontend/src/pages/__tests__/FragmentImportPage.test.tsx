@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { PreviewResult } from "@api/generated/maskorAPI.schemas";
+import type { ImportPreviewResult } from "@api/generated/maskorAPI.schemas";
 
 const PROJECT_ID = "project-uuid-1";
 
@@ -41,7 +41,9 @@ vi.mock("@api/generated/fragments/fragments", () => ({
   getListFragmentsQueryKey: vi.fn(() => ["fragments", PROJECT_ID]),
 }));
 
-const makeImportPreview = (): PreviewResult => ({
+const makeImportPreview = (
+  overrides: Partial<ImportPreviewResult> = {},
+): ImportPreviewResult => ({
   markdown: "### 1. intro\n\nFirst.\n\n---\n\n### 2. body\n\nSecond.",
   sections: [
     {
@@ -53,6 +55,7 @@ const makeImportPreview = (): PreviewResult => ({
       ],
     },
   ],
+  ...overrides,
 });
 
 const { usePreviewImportFragments, useImportFragments } =
@@ -83,6 +86,36 @@ describe("FragmentImportPage", () => {
     expect(await screen.findByText("1. intro")).toBeInTheDocument();
     expect(screen.getByText("2. body")).toBeInTheDocument();
     expect(screen.getByTestId("prose").textContent).toContain("First.");
+  });
+
+  it("shows a non-blocking re-import warning when priorImport is present", async () => {
+    (usePreviewImportFragments as Mock).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({
+        status: 200,
+        data: makeImportPreview({
+          priorImport: {
+            sequenceName: "Import: doc.md",
+            importedAt: "2026-05-30T10:00:00.000Z",
+          },
+        }),
+      }),
+      isPending: false,
+    });
+
+    render(<FragmentImportPage />, { wrapper: wrap() });
+
+    const banner = await screen.findByRole("status");
+    expect(banner.textContent).toMatch(/already imported a file named/i);
+    expect(banner.textContent).toContain("Import: doc.md");
+    // Import remains enabled — the warning is advisory.
+    const importButton = screen.getByRole("button", { name: /Import 2 fragments/i });
+    expect(importButton).not.toBeDisabled();
+  });
+
+  it("does not show the warning when there is no priorImport", async () => {
+    render(<FragmentImportPage />, { wrapper: wrap() });
+    await screen.findByText("1. intro");
+    expect(screen.queryByText(/already imported a file named/i)).not.toBeInTheDocument();
   });
 
   it("sidebar click scrolls to the piece anchor by id", async () => {
