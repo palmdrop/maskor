@@ -343,9 +343,7 @@ describe("active-gating of constraints", () => {
     await place(backward, first.uuid, 1);
 
     // Both active → the two orderings contradict → a cycle is reported.
-    const withBoth = (await (
-      await testContext.app.request(baseUrl())
-    ).json()) as SequenceBundle;
+    const withBoth = (await (await testContext.app.request(baseUrl())).json()) as SequenceBundle;
     expect(withBoth.cycles.length).toBeGreaterThan(0);
 
     // Deactivate one → no remaining contradiction → no cycle.

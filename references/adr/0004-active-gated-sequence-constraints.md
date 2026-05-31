@@ -1,6 +1,6 @@
 # Active-gated sequence constraints
 
-The sequencer previously consumed *every* non-main sequence as an ordering constraint, with no opt-out. We added an `active: boolean` to every sequence; the sequencer now consumes only non-main sequences where `active = true`. User-authored secondary sequences default to `active: true` (preserving prior behavior), while auto-created import-sequences default to `active: false` so a captured import order never silently constrains the main sequence until the user opts in.
+The sequencer previously consumed _every_ non-main sequence as an ordering constraint, with no opt-out. We added an `active: boolean` to every sequence; the sequencer now consumes only non-main sequences where `active = true`. User-authored secondary sequences default to `active: true` (preserving prior behavior), while auto-created import-sequences default to `active: false` so a captured import order never silently constrains the main sequence until the user opts in.
 
 ## Considered Options
 

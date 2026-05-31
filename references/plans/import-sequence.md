@@ -74,7 +74,7 @@ Resolved through a grilling session (see glossary terms **Import-sequence**, **A
 
 ### Phase 6 — Formatting & verification
 
-- [ ] `bun run format` then `bun run verify`; fix lint/test/snapshot issues.
+- [x] `bun run format` then `bun run verify` — typecheck + OpenAPI snapshot in sync + 789 backend / 440 frontend tests green. _(2026-05-31)_
 - [ ] `git commit`.
 
 ### Phase 7 — Spec updates (drift + Shipped)

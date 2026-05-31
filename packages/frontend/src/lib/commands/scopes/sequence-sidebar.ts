@@ -39,8 +39,7 @@ const toggleSequenceActive = defineScopeCommand(sequenceSidebarScope, {
   arg: {
     items: (ctx) => ctx.toggleableSequences,
     getKey: (item) => item.uuid,
-    getLabel: (item) =>
-      item.active ? `Deactivate “${item.name}”` : `Activate “${item.name}”`,
+    getLabel: (item) => (item.active ? `Deactivate “${item.name}”` : `Activate “${item.name}”`),
     placeholder: "Toggle sequence as constraint…",
   },
   run: (ctx, target) => ctx.setSequenceActive(target.uuid, !target.active),

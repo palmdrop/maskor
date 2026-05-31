@@ -277,9 +277,9 @@ describe("createImportCommand - import-sequence", () => {
     expect(sequence.name).toBe("Import: order-test.md");
     // Fragments recorded in import order, in a single section.
     expect(sequence.sections.length).toBe(1);
-    const orderedUuids = sequence.sections[0]!.fragments
-      .sort((a, b) => a.position - b.position)
-      .map((fp) => fp.fragmentUuid);
+    const orderedUuids = sequence.sections[0]!.fragments.sort(
+      (a, b) => a.position - b.position,
+    ).map((fp) => fp.fragmentUuid);
     expect(orderedUuids).toEqual(result.created);
 
     // Origin points at the archived original, which exists on disk.

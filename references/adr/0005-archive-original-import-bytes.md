@@ -1,6 +1,6 @@
 # Archive original import bytes
 
-Imports now archive the original uploaded file byte-for-byte under `.maskor/imports/`, referenced by the resulting import-sequence's `origin`. This reverses `import-pipeline.md`'s prior resolution (2026-05-15) that the source file is *discarded* after import. The archive is the durable record of imported content: fragments drift as the user edits, merges, and discards them, so the live import-sequence's fragment references are not a faithful snapshot of what was imported — the archived original is.
+Imports now archive the original uploaded file byte-for-byte under `.maskor/imports/`, referenced by the resulting import-sequence's `origin`. This reverses `import-pipeline.md`'s prior resolution (2026-05-15) that the source file is _discarded_ after import. The archive is the durable record of imported content: fragments drift as the user edits, merges, and discards them, so the live import-sequence's fragment references are not a faithful snapshot of what was imported — the archived original is.
 
 ## Considered Options
 

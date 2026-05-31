@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
@@ -22,7 +22,11 @@ const updateMutate = vi.fn();
 
 vi.mock("@api/generated/sequences/sequences", () => ({
   useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useUpdateSequence: vi.fn(() => ({ mutate: updateMutate, mutateAsync: vi.fn(), isPending: false })),
+  useUpdateSequence: vi.fn(() => ({
+    mutate: updateMutate,
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
   useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   getListSequencesQueryKey: () => [`/projects/${PROJECT_ID}/sequences`],
 }));
@@ -41,7 +45,9 @@ const makeSequence = (overrides: Partial<Sequence>): Sequence => ({
   ...overrides,
 });
 
-const wrap = ({ children }: { children: ReactNode }) => <CommandsProvider>{children}</CommandsProvider>;
+const wrap = ({ children }: { children: ReactNode }) => (
+  <CommandsProvider>{children}</CommandsProvider>
+);
 
 describe("SequenceSidebar — active toggle", () => {
   beforeEach(() => vi.clearAllMocks());

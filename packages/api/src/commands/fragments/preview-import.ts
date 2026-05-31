@@ -34,7 +34,9 @@ export const createPreviewImportCommand = (
     // Warn (non-blocking) if a file of this name was imported before — matched
     // on an existing sequence's origin.fileName.
     const sequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
-    const previous = sequences.find((sequence) => sequence.origin?.fileName === input.sourceFileName);
+    const previous = sequences.find(
+      (sequence) => sequence.origin?.fileName === input.sourceFileName,
+    );
     const priorImport: PriorImport | undefined = previous?.origin
       ? { sequenceName: previous.name, importedAt: previous.origin.importedAt }
       : undefined;
