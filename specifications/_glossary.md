@@ -56,9 +56,19 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Warning**: A recorded, non-fatal vault condition surfaced to the user for inspection — either an unresolved-state problem the user can fix (a wrong-format file sitting in an entity folder, an unknown aspect key referenced by a fragment) or a notable auto-resolved event (a UUID collision). State warnings clear once the underlying problem is fixed; event warnings persist until dismissed. _Avoid_: error (warnings are advisory and non-fatal, not thrown failures), diagnostic, alert.
 
-**Note**: A named, free-text vault document representing the user's own thinking or observations, attachable to fragments. _Avoid_: annotation, comment (has a future specific meaning in Maskor), memo.
+**Note**: A named, free-text, project-scope vault document representing the user's own thinking or observations, surfaced and connected via document-links; no longer attached to fragments through a frontmatter list. _Avoid_: annotation, memo. (Distinct from the **Margin**'s unanchored notes section, which is fragment-scope — see flagged ambiguities.)
 
 **Reference**: A named, free-text vault document pointing to or summarizing external source material, attachable to fragments. _Avoid_: source, citation, attachment (attachment is the shared implementation concept for both notes and references).
+
+**Margin**: A companion annotation document for an annotatable host entity — one per host — holding the writer's own thinking about it, split into an unanchored notes section (whole-host thoughts on structure, character, rewrites) and an anchored comments section (each tied to one of the host's anchor units). Rendered side-by-side with the host. The host's anchor unit varies by type: a fragment's is a block (line/paragraph); a sequence's would be a section. Fragments are the first and currently only host; the concept is defined generally so sequences (and later aspects/arcs) plug in without rework. _Avoid_: annotation document, sidecar, gloss.
+
+**Annotatable entity**: A vault entity that can own a Margin. Fragments now; sequences, aspects, and arcs are candidate future hosts. Each annotatable entity declares its anchor unit (the sub-part a comment can bind to). _Avoid_: commentable, host (informal only).
+
+**Comment**: An anchored annotation block within a fragment's Margin, bound to a specific block (line/paragraph) of that fragment; not a standalone vault file and not a document-link. _Avoid_: annotation (the umbrella act), inline note, callout.
+
+**Anchor**: The binding between a Comment and the fragment block it annotates — carried durably by a trailing marker on the fragment block (which follows the text through edits) and mirrored by a short stored excerpt in the Margin used for side-by-side display and orphan context. Block-granular; word/span-level anchoring is out of scope for now. _Avoid_: link (reserved for document-links), pin, reference.
+
+**Orphaned comment**: A Comment whose anchor can no longer be resolved to a fragment block (block deleted, marker stripped by an external edit); never auto-deleted — it sinks to an orphaned group at the foot of the Margin's comments section showing its last-known excerpt, removable only by the user. _Avoid_: dangling comment, lost comment, broken comment.
 
 **Suggestion mode**: The application mode where Maskor surfaces one fragment at a time for the user to work on, chosen non-deterministically from the eligible pool. _Avoid_: prompting mode (prompting is the underlying mechanism name), random mode, shuffle mode.
 
@@ -103,3 +113,5 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 **"Source"** — reserved as an avoided synonym for Reference. Import provenance uses origin, never "source", to avoid the overload.
 
 **"Key" vs. "title/name" in specs** — the codebase already uses `key` uniformly for notes and references. `attachments.md` still says "title (notes) or name (references)". Spec update tracked in `references/plans/glossary-alignment.md`.
+
+**"Note" (project vault entity) vs. Margin "notes" section** — a **Note** is a standalone project-scope vault document; the **Margin** has an unanchored "notes" section that is fragment-scope. Same word, different scope. Accepted overload; always qualify as "vault Note" vs. "Margin notes" when the distinction matters.
