@@ -89,4 +89,27 @@ describe("GeneralTab", () => {
     expect(confirmSpy).toHaveBeenCalled();
     expect(resetMutate).not.toHaveBeenCalled();
   });
+
+  it("surfaces the server error message when a rebuild fails", () => {
+    rebuildMutate.mockImplementation((_variables, options) =>
+      options.onError(new Error("schema drift detected")),
+    );
+    wrap(<GeneralTab project={makeProject() as never} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /rebuild index/i }));
+
+    expect(screen.getByText(/Rebuild failed: schema drift detected/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the server error message when a reset fails", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    resetMutate.mockImplementation((_variables, options) =>
+      options.onError(new Error("could not delete vault.db")),
+    );
+    wrap(<GeneralTab project={makeProject() as never} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /reset database/i }));
+
+    expect(screen.getByText(/Reset failed: could not delete vault.db/i)).toBeInTheDocument();
+  });
 });

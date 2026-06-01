@@ -16,6 +16,12 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectConfigScope } from "@lib/commands/scopes/project-config";
 
+// Pull the server-provided message out of a failed mutation (ApiRequestError carries the API's
+// error body message; fall back gracefully for anything else) so the user sees the actual cause
+// instead of a generic "see server logs".
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : "see server logs.";
+
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
   const updateProject = useUpdateProject();
@@ -29,6 +35,14 @@ export const GeneralTab = ({ project }: { project: Project }) => {
     null,
   );
 
+  // Auto-dismiss a success message after a few seconds so it doesn't linger as stale state.
+  // Errors stay put — the user needs to read what went wrong.
+  useEffect(() => {
+    if (!indexStatus || indexStatus.isError) return;
+    const timeout = setTimeout(() => setIndexStatus(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [indexStatus]);
+
   const runRebuildIndex = () => {
     if (rebuildIndex.isPending) return;
     setIndexStatus(null);
@@ -36,8 +50,8 @@ export const GeneralTab = ({ project }: { project: Project }) => {
       { projectId: project.projectUUID },
       {
         onSuccess: () => setIndexStatus({ message: "Index rebuilt.", isError: false }),
-        onError: () =>
-          setIndexStatus({ message: "Rebuild failed — see server logs.", isError: true }),
+        onError: (error) =>
+          setIndexStatus({ message: `Rebuild failed: ${errorMessage(error)}`, isError: true }),
       },
     );
   };
@@ -63,8 +77,8 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             message: "Database reset and re-derived from the vault.",
             isError: false,
           }),
-        onError: () =>
-          setIndexStatus({ message: "Reset failed — see server logs.", isError: true }),
+        onError: (error) =>
+          setIndexStatus({ message: `Reset failed: ${errorMessage(error)}`, isError: true }),
       },
     );
   };
@@ -249,7 +263,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
         </div>
         <p className="text-xs text-muted-foreground">
           Rebuild re-derives the index from your vault. Reset drops and recreates the database — use
-          it only if the index is broken in a way rebuild can't fix.
+          it only if the index is broken in a way rebuild cannot fix.
         </p>
         {indexStatus && (
           <p

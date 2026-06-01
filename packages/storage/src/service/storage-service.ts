@@ -1882,8 +1882,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             vaultWatcherCache.delete(context.projectUUID);
             deleteVaultDatabaseFiles(context.vaultPath);
 
-            // Re-derive the index from the vault into the freshly created DB.
-            const stats = await getVaultIndexer(context).rebuild();
+            // Re-derive the index from the vault into the freshly created DB. A failed rebuild
+            // still leaves a freshly migrated (empty) DB on disk, so the watcher can run against
+            // it — restart the watcher before surfacing the failure, otherwise live sync would be
+            // left dead until the next project resolve.
+            let stats: RebuildStats;
+            try {
+              stats = await getVaultIndexer(context).rebuild();
+            } catch (error) {
+              getVaultWatcher(context).start();
+              throw error;
+            }
 
             // Start a fresh watcher on the new database. The subscriber bus lives on the service,
             // so existing SSE clients keep receiving events through the new watcher.
