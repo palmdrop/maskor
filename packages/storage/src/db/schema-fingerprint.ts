@@ -71,7 +71,7 @@ const readStoredFingerprint = (databaseFilePath: string): number | null => {
 };
 
 // Delete a sqlite DB file plus its WAL/SHM sidecars, if present.
-const deleteDatabaseFiles = (databaseFilePath: string): void => {
+export const deleteDatabaseFiles = (databaseFilePath: string): void => {
   for (const suffix of ["", "-wal", "-shm"]) {
     rmSync(`${databaseFilePath}${suffix}`, { force: true });
   }

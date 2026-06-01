@@ -54,10 +54,10 @@ The manual reset reuses the draft-restore teardown machinery (`packages/storage/
 
 ### Phase 3: Manual DB reset primitive (storage)
 
-- [ ] Export a reusable delete primitive (the existing `deleteDatabaseFiles` in `packages/storage/src/db/schema-fingerprint.ts`, or a thin re-export) for use by the reset path.
-- [ ] Add `index.reset(context)` (or `database.reset`) to the storage service mirroring `drafts.restore` teardown (`packages/storage/src/service/storage-service.ts:1934`): draft mutex + vault write lock → stop watcher → `closeRawVaultDatabase` → drop `vaultDatabaseCache` / `vaultIndexerCache` / `vaultWatcherCache` for the project → delete DB files → recreate via the cached `getVaultDatabase` (fresh `migrate()` + fingerprint stamp) → rebuild from vault → restart watcher → emit an appropriate vault event.
-- [ ] The reset is an explicit user action, so it is **not** gated by `MASKOR_DB_AUTO_RESET` (that flag stays scoped to the automatic startup path only).
-- [ ] Scope: vault DB only. Registry reset stays out of scope.
+- [x] Exported `deleteDatabaseFiles` from `schema-fingerprint.ts` and added `deleteVaultDatabaseFiles(vaultRoot)` to `db/vault/index.ts` (keeps the DB path private, reuses the primitive). _(2026-06-01)_
+- [x] Added `index.reset(context)` to the storage service mirroring `drafts.restore` teardown: draft mutex + vault write lock → stop watcher → `closeRawVaultDatabase` → drop `vaultDatabaseCache` / `vaultIndexerCache` / `vaultWatcherCache` → `deleteVaultDatabaseFiles` → rebuild via the lazily-recreated `getVaultIndexer` (fresh `migrate()` + fingerprint stamp) → restart watcher → emit `vault:reset`. _(2026-06-01)_
+- [x] Reset is **not** gated by `MASKOR_DB_AUTO_RESET` (explicit user action). New `vault:reset` SSE event added to `@maskor/shared` events + the frontend `useVaultEvents` list (broad invalidation). _(2026-06-01)_
+- [x] Scope: vault DB only. Registry reset stays out of scope. _(2026-06-01)_
 
 ### Phase 4: API — reset route + error propagation
 

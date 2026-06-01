@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { cpSync, mkdtempSync, rmSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { Database } from "bun:sqlite";
 import { createStorageService } from "../service/storage-service";
 import { ProjectNotFoundError } from "../registry/errors";
 import { LOCAL_USER_UUID } from "../registry/types";
@@ -71,6 +72,60 @@ describe("StorageService.resolveProject", () => {
     expect(existsSync(join(minimalVaultDir, "references"))).toBe(true);
     expect(existsSync(join(minimalVaultDir, ".maskor", "sequences"))).toBe(true);
     expect(existsSync(join(minimalVaultDir, ".maskor", "config"))).toBe(true);
+  });
+});
+
+describe("StorageService.index.reset", () => {
+  const vaultDbPath = () => join(vaultDir, ".maskor", "vault.db");
+
+  const markerExists = (): boolean => {
+    const database = new Database(vaultDbPath(), { readonly: true });
+    const row = database
+      .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_reset_marker'")
+      .get();
+    database.close();
+    return row !== null;
+  };
+
+  it("drops the DB, re-derives from the vault, and discards DB-only state", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    const baseline = await service.index.rebuild(context);
+    expect(baseline.fragments).toBeGreaterThan(0);
+
+    // Seed DB-only state (a table no vault file carries) through a separate connection.
+    const seed = new Database(vaultDbPath());
+    seed.exec("CREATE TABLE IF NOT EXISTS _reset_marker (x INTEGER)");
+    seed.close();
+    expect(markerExists()).toBe(true);
+
+    const stats = await service.index.reset(context);
+
+    // Re-derived: every entity count matches the prior rebuild.
+    expect(stats.fragments).toBe(baseline.fragments);
+    expect(stats.aspects).toBe(baseline.aspects);
+    expect(stats.notes).toBe(baseline.notes);
+    expect(stats.references).toBe(baseline.references);
+    expect(stats.sequences).toBe(baseline.sequences);
+
+    // The DB file was recreated (DB-only marker gone), and remains usable afterwards.
+    expect(existsSync(vaultDbPath())).toBe(true);
+    expect(markerExists()).toBe(false);
+    const fragments = await service.fragments.readAll(context);
+    expect(fragments.length).toBe(baseline.fragments);
+  });
+
+  it("leaves the service usable for a subsequent rebuild after a reset", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.reset(context);
+    // Caches were dropped during reset — a follow-up rebuild must still work on the fresh handles.
+    const stats = await service.index.rebuild(context);
+    expect(stats.fragments).toBeGreaterThan(0);
   });
 });
 

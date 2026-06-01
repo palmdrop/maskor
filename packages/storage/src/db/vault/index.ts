@@ -4,7 +4,11 @@ import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import * as schema from "./schema";
-import { resetDatabaseIfSchemaDrifted, stampSchemaFingerprint } from "../schema-fingerprint";
+import {
+  deleteDatabaseFiles,
+  resetDatabaseIfSchemaDrifted,
+  stampSchemaFingerprint,
+} from "../schema-fingerprint";
 
 export type VaultDatabase = ReturnType<typeof createVaultDatabase>;
 
@@ -67,4 +71,12 @@ export const closeRawVaultDatabase = (vaultRoot: string): void => {
   if (!raw) return;
   raw.close();
   rawDatabaseByVaultPath.delete(databaseFilePath);
+};
+
+// Delete the vault.db file plus its WAL/SHM sidecars. Used by the manual DB reset to drop a
+// corrupt or drifted DB so the next createVaultDatabase recreates it clean. The caller must
+// first closeRawVaultDatabase and drop any cached wrappers — deleting a file under a live handle
+// leaves it pointing at a deleted inode.
+export const deleteVaultDatabaseFiles = (vaultRoot: string): void => {
+  deleteDatabaseFiles(vaultDatabaseFilePath(vaultRoot));
 };

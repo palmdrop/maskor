@@ -23,7 +23,7 @@ import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
 import { VaultError } from "../vault/types";
 import { createRegistryDatabase, DEFAULT_CONFIG_DIRECTORY } from "../db/registry";
-import { closeRawVaultDatabase, createVaultDatabase } from "../db/vault";
+import { closeRawVaultDatabase, createVaultDatabase, deleteVaultDatabaseFiles } from "../db/vault";
 import type { VaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
 import type { VaultIndexer } from "../indexer/types";
@@ -1845,6 +1845,59 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         } finally {
           watcher.resume();
         }
+      },
+
+      // Manual, on-demand hard reset: drop the vault DB and re-derive it from the vault. Unlike
+      // rebuild (which re-derives row contents through the live schema), this recreates the DB
+      // file, so it recovers from schema drift, a half-failed migration, or a corrupt .db that
+      // rebuild cannot repair. Reuses the draft-restore teardown: it is the same "replace vault.db
+      // on disk, then rebuild" pipeline, minus the snapshot swap.
+      //
+      // Destructive: discards DB-only state (fragment_stats telemetry, dismissed UUID_COLLISION
+      // warnings) that no vault file carries. This is an explicit user action, so it is NOT gated
+      // by MASKOR_DB_AUTO_RESET (that flag scopes only the automatic startup reset).
+      async reset(context: ProjectContext): Promise<RebuildStats> {
+        return withDraftMutex(context.vaultPath, async () => {
+          return withVaultWriteLock(context.vaultPath, async () => {
+            log.warn(
+              { projectUUID: context.projectUUID },
+              "manual DB reset: dropping and re-deriving vault.db " +
+                "(fragment_stats telemetry and dismissed UUID_COLLISION warnings discarded)",
+            );
+
+            // Stop the watcher entirely: the live vault.db is about to be deleted, and the
+            // watcher's cached drizzle wrapper points at the old inode.
+            const oldWatcher = vaultWatcherCache.get(context.projectUUID);
+            if (oldWatcher) {
+              await oldWatcher.pause();
+              await oldWatcher.stop();
+            }
+
+            // Close the raw handle and drop every cache that closed over the old DB / vault
+            // handle, then delete the DB files so the next getVaultDatabase opens a fresh
+            // connection that re-migrates and re-stamps the schema fingerprint.
+            closeRawVaultDatabase(context.vaultPath);
+            vaultDatabaseCache.delete(context.projectUUID);
+            vaultIndexerCache.delete(context.projectUUID);
+            vaultWatcherCache.delete(context.projectUUID);
+            deleteVaultDatabaseFiles(context.vaultPath);
+
+            // Re-derive the index from the vault into the freshly created DB.
+            const stats = await getVaultIndexer(context).rebuild();
+
+            // Start a fresh watcher on the new database. The subscriber bus lives on the service,
+            // so existing SSE clients keep receiving events through the new watcher.
+            getVaultWatcher(context).start();
+
+            emitVaultEvent(context.projectUUID, { type: "vault:reset" });
+
+            log.info(
+              { projectUUID: context.projectUUID, fragments: stats.fragments },
+              "manual DB reset complete",
+            );
+            return stats;
+          });
+        });
       },
     },
 

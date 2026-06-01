@@ -12,6 +12,7 @@ const VAULT_SYNC_EVENT_TYPES = [
   "reference:synced",
   "reference:deleted",
   "vault:restored",
+  "vault:reset",
   "vault:warning",
 ];
 

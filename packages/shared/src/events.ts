@@ -8,6 +8,9 @@ export type VaultSyncEvent =
   | { type: "reference:synced"; uuid: string; revived?: boolean }
   | { type: "reference:deleted"; filePath: string }
   | { type: "vault:restored"; draftUuid: string }
+  // Signals that the vault DB was dropped and re-derived from the vault (manual reset). Carries no
+  // payload — clients refetch everything for the project.
+  | { type: "vault:reset" }
   // Signals that the vault-warnings table changed (added/cleared/dismissed). Carries no
   // payload — clients refetch the warnings list.
   | { type: "vault:warning" };
@@ -23,5 +26,6 @@ export const VAULT_SYNC_EVENT_TYPES = [
   "reference:synced",
   "reference:deleted",
   "vault:restored",
+  "vault:reset",
   "vault:warning",
 ] as const satisfies VaultSyncEvent["type"][];
