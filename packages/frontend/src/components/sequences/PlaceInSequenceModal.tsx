@@ -169,7 +169,7 @@ export const PlaceInSequenceModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl"
+        className="sm:max-w-4xl"
         onKeyDown={handleKeyDown}
         // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus

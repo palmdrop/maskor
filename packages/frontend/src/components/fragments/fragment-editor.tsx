@@ -22,6 +22,7 @@ import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
+import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
 import { Button } from "@components/ui/button";
@@ -253,6 +254,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         sidebar={
           <div className="flex flex-col gap-4">
             <FragmentMetadataForm fragment={fragment} projectId={projectId} />
+            <Separator />
+            <FragmentSequenceMembership projectId={projectId} fragmentId={fragmentId} />
             {showFragmentStats && (
               <>
                 <Separator />

@@ -77,7 +77,10 @@ const renderModal = () =>
     </QueryClientProvider>,
   );
 
-const setData = (bundle: ReturnType<typeof makeBundle>, summaries: ReturnType<typeof makeSummaries>) => {
+const setData = (
+  bundle: ReturnType<typeof makeBundle>,
+  summaries: ReturnType<typeof makeSummaries>,
+) => {
   (useListSequences as Mock).mockReturnValue({ data: bundle });
   (useListFragmentSummaries as Mock).mockReturnValue({ data: summaries });
 };
