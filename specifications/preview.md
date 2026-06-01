@@ -7,6 +7,7 @@
 - Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
 - 2026-05-30 — Rendering refactor: preview and import render through one shared read-only Tiptap renderer fed by a complete server-assembled **markdown string** from `@maskor/exporter`. Toggles apply server-side (sent as request options); sidebar navigation uses invisible anchor sentinels (a custom markdown-it rule + schema-modeled Tiptap node rendering `id="fragment-<id>"`, `html` stays `false`). `StaticMarkdown` / `dangerouslySetInnerHTML` removed. (plan: `references/plans/preview-import-shared-renderer.md`)
 - 2026-05-31 — Preview and import share one `FragmentNavSidebar` component and one `useFragmentAnchor` hook. The active fragment lives in the URL hash (`#fragment-<id>`) — the native browser anchor token, so a preview anchor is shareable and restored on reload; the hook scrolls once the assembled markdown has rendered (covering the async-fetch gap the router's native hash scroll cannot). Sidebar rows highlight the active fragment via `aria-current`. The per-page sidebar duplicates (`PreviewSidebar`, the import inline `<aside>`, and the `scrollToPiece` helper) are removed.
+- 2026-06-01 — The shared `assembleMarkdown` path strips Margin anchor markers (`<!--c:ID-->`) from fragment bodies, so the preview surface never shows them. (plan: `references/plans/margins.md`, Phase 2b)
 
 ---
 

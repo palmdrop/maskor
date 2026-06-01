@@ -419,3 +419,42 @@ describe("assemblePieces", () => {
     expect(result.sections).toEqual([{ uuid: "", name: "", fragments: [] }]);
   });
 });
+
+describe("assembleSequence — Margin anchor marker stripping", () => {
+  const assembleSingle = (content: string, includeAnchors: boolean) =>
+    assembleSequence(
+      {
+        ...mainSequenceBase,
+        sections: [
+          {
+            uuid: sectionUuid,
+            name: "Sec",
+            fragments: [{ uuid: "frag-1", fragmentUuid: "frag-1", position: 0 }],
+          },
+        ],
+      },
+      [makeFragment({ uuid: "frag-1", key: "k", content })],
+      { ...baseOptions, includeAnchors },
+    ).markdown;
+
+  it("strips trailing <!--c:ID--> markers from assembled output", () => {
+    expect(assembleSingle("The bridge groans. <!--c:abc123-->", false)).toBe(
+      "## Sec\n\n### k\n\nThe bridge groans.",
+    );
+  });
+
+  it("strips markers across multiple lines", () => {
+    const content = "Line one <!--c:aaa-->\nLine two<!--c:bbb-->";
+    expect(assembleSingle(content, false)).toBe("## Sec\n\n### k\n\nLine one\nLine two");
+  });
+
+  it("strips markers regardless of includeAnchors, otherwise byte-identical", () => {
+    const withMarker = assembleSingle("Body. <!--c:m1-->", true);
+    const withoutMarker = assembleSingle("Body.", true);
+    expect(withMarker).toBe(withoutMarker);
+  });
+
+  it("leaves marker-free bodies untouched", () => {
+    expect(assembleSingle("Plain body.", false)).toBe("## Sec\n\n### k\n\nPlain body.");
+  });
+});

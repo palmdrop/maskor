@@ -1,4 +1,5 @@
 import { anchorSentinel, stripSentinelChars } from "@maskor/shared/sentinel";
+import { stripCommentMarkers } from "@maskor/shared";
 
 // The neutral block model: a flat, ordered list. This is the single source of
 // truth for heading levels, separator handling, and sentinel format. Both the
@@ -64,9 +65,11 @@ const separatorSegment = (separator: AssemblySeparator): string | null => {
  * Lower an ordered list of blocks to a single assembled markdown string.
  *
  * Heading levels, separator placement, and sentinel embedding all live here so
- * every caller produces identical output. Bodies are emitted verbatim (only the
- * invisible sentinel control characters are stripped, and only when anchors are
- * on, preserving byte-for-byte fidelity for file export).
+ * every caller produces identical output. Bodies are emitted near-verbatim: the
+ * Margin anchor markers (`<!--c:ID-->`) are always stripped (they belong to the
+ * authoring surface, never the output), and the invisible sentinel control
+ * characters are stripped when anchors are on. Otherwise byte-for-byte fidelity
+ * is preserved for file export.
  */
 export const assembleMarkdown = (blocks: AssemblyBlock[], options: AssemblyOptions): string => {
   const segments: string[] = [];
@@ -113,7 +116,11 @@ export const assembleMarkdown = (blocks: AssemblyBlock[], options: AssemblyOptio
     if (options.includeAnchors && !anchoredByTitle) {
       segments.push(anchorSentinel(block.anchorId));
     }
-    segments.push(options.includeAnchors ? stripSentinelChars(block.content) : block.content);
+    // Strip Margin anchor markers from every body before output, then sentinel chars when anchors
+    // are on. The marker is invisible in rendered markdown anyway, but plain-text/Word/PDF assembly
+    // must not carry it.
+    const body = stripCommentMarkers(block.content);
+    segments.push(options.includeAnchors ? stripSentinelChars(body) : body);
     previousKind = "body";
   });
 

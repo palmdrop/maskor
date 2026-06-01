@@ -51,10 +51,10 @@ On-disk representation, lifecycle, DB shape, and CM6 rendering are now resolved 
 
 Independently committable; depends only on the Phase 1 strip helper.
 
-- [ ] Wire the shared export/preview assembly path to strip `<!--c:ID-->` markers from fragment bodies before output (Markdown, plain text, Word, PDF, and the preview surface).
-- [ ] Tests: assembled export/preview output contains no `<!--c:ID-->` markers; otherwise byte-identical to pre-marker assembly.
-- [ ] `specifications/export.md` / `preview.md`: note the marker-strip step; Shipped entries.
-- [ ] Commit.
+- [x] Wire the shared export/preview assembly path to strip `<!--c:ID-->` markers from fragment bodies before output (`assembleMarkdown` body emission — the single chokepoint for Markdown, plain text, Word, PDF, and the preview surface).
+- [x] Tests: assembled output contains no `<!--c:ID-->` markers; otherwise byte-identical to pre-marker assembly.
+- [x] `specifications/export.md` / `preview.md`: note the marker-strip step; Shipped entries.
+- [x] Commit.
 
 ### Phase 3 — Anchor markers in the editors (shared extension work)
 
