@@ -2,10 +2,13 @@ import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared
 
 // A detected vault warning (content only — the stored form adds id/category/timestamps,
 // see warnings/warnings-repo.ts). Discriminated on `kind`.
+export type EntityKind = "fragment" | "aspect" | "note" | "reference" | "sequence";
+
 export type SyncWarning =
   | { kind: "UNKNOWN_ASPECT_KEY"; aspectKey: string; fragmentUuids: string[] }
   | { kind: "WRONG_FORMAT_FILE"; filePath: string }
-  | { kind: "UUID_COLLISION"; filePath: string; collidingPath: string; newUuid: string };
+  | { kind: "UUID_COLLISION"; filePath: string; collidingPath: string; newUuid: string }
+  | { kind: "INVALID_ENTITY_FILE"; filePath: string; entityKind: EntityKind; error: string };
 
 // The only warning kind produced during fragment upsert / rebuild's stats payload.
 export type UnknownAspectKeyWarning = Extract<SyncWarning, { kind: "UNKNOWN_ASPECT_KEY" }>;

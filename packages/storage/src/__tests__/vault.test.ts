@@ -245,11 +245,12 @@ describe("vault.sequences.write + read (round-trip)", () => {
     const vault = createVault({ ...config, projectUuid: TEST_PROJECT_UUID });
     await vault.sequences.write(makeTestSequence());
 
-    const results = await vault.sequences.readAllWithFilePaths();
-    expect(results).toHaveLength(1);
-    expect(results[0]?.filePath).toBe(`${TEST_SEQUENCE_UUID}.yaml`);
-    expect(results[0]?.entity.uuid).toBe(TEST_SEQUENCE_UUID);
-    expect(typeof results[0]?.rawContent).toBe("string");
+    const { entities, failures } = await vault.sequences.readAllWithFilePaths();
+    expect(failures).toHaveLength(0);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]?.filePath).toBe(`${TEST_SEQUENCE_UUID}.yaml`);
+    expect(entities[0]?.entity.uuid).toBe(TEST_SEQUENCE_UUID);
+    expect(typeof entities[0]?.rawContent).toBe("string");
   });
 });
 
@@ -335,9 +336,11 @@ describe("vault readAllWithFilePaths — adopt gating", () => {
     expect(readFileSync(join(tmpDir, "aspects/no-uuid.md"), "utf8")).toBe(ASPECT_BODY);
     // The entity reads with an undefined UUID rather than a freshly minted one.
     expect(
-      fragments.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid,
+      fragments.entities.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid,
     ).toBeUndefined();
-    expect(aspects.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid).toBeUndefined();
+    expect(
+      aspects.entities.find(({ filePath }) => filePath === "no-uuid.md")?.entity.uuid,
+    ).toBeUndefined();
   });
 
   it("mints and writes back UUIDs once with { adopt: true }", async () => {
@@ -348,8 +351,8 @@ describe("vault readAllWithFilePaths — adopt gating", () => {
     const fragments = await vault.fragments.readAllWithFilePaths({ adopt: true });
     const aspects = await vault.aspects.readAllWithFilePaths({ adopt: true });
 
-    const fragmentEntry = fragments.find(({ filePath }) => filePath === "no-uuid.md");
-    const aspectEntry = aspects.find(({ filePath }) => filePath === "no-uuid.md");
+    const fragmentEntry = fragments.entities.find(({ filePath }) => filePath === "no-uuid.md");
+    const aspectEntry = aspects.entities.find(({ filePath }) => filePath === "no-uuid.md");
     if (!fragmentEntry || !aspectEntry) {
       throw new Error("adopted entries not found");
     }

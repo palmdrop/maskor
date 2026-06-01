@@ -45,6 +45,18 @@ export class VaultError extends Error {
 
 export type WithFilePath<T> = { entity: T; filePath: string; rawContent: string };
 
+// One entity file that failed to read or parse during a bulk read. The bulk readers are
+// fault-tolerant: a single malformed file is collected here instead of rejecting the whole read,
+// so rebuild can index every other entity and surface this one as a warning. `filePath` is
+// relative to the entity directory (same convention as WithFilePath).
+export type EntityReadFailure = { filePath: string; error: string };
+
+// Result of a fault-tolerant bulk read: successfully parsed entities plus per-file failures.
+export type ReadAllResult<T> = {
+  entities: Array<WithFilePath<T>>;
+  failures: EntityReadFailure[];
+};
+
 // Passed to readAllWithFilePaths. `adopt` opts into write-back canonicalization (mint missing
 // UUIDs to disk) and is only set by the indexer rebuild; plain reads leave it false and stay pure.
 export type ReadAllOptions = { adopt?: boolean };
@@ -53,7 +65,7 @@ export type Vault = {
   root: string;
   fragments: {
     readAll(): Promise<Fragment[]>;
-    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Fragment>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<ReadAllResult<Fragment>>;
     read(filePath: string): Promise<Fragment>;
     write(fragment: Fragment): Promise<void>;
     discard(filePath: string): Promise<void>;
@@ -62,28 +74,28 @@ export type Vault = {
   };
   aspects: {
     readAll(): Promise<Aspect[]>;
-    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Aspect>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<ReadAllResult<Aspect>>;
     read(filePath: string): Promise<Aspect>;
     write(aspect: Aspect): Promise<void>;
     delete(filePath: string): Promise<void>;
   };
   notes: {
     readAll(): Promise<Note[]>;
-    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Note>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<ReadAllResult<Note>>;
     read(filePath: string): Promise<Note>;
     write(note: Note): Promise<void>;
     delete(filePath: string): Promise<void>;
   };
   references: {
     readAll(): Promise<Reference[]>;
-    readAllWithFilePaths(options?: ReadAllOptions): Promise<Array<WithFilePath<Reference>>>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<ReadAllResult<Reference>>;
     read(filePath: string): Promise<Reference>;
     write(reference: Reference): Promise<void>;
     delete(filePath: string): Promise<void>;
   };
   sequences: {
     readAll(): Promise<Sequence[]>;
-    readAllWithFilePaths(): Promise<Array<WithFilePath<Sequence>>>;
+    readAllWithFilePaths(): Promise<ReadAllResult<Sequence>>;
     read(filename: string): Promise<Sequence>;
     write(sequence: Sequence): Promise<void>;
     delete(filename: string): Promise<void>;

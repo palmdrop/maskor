@@ -10,12 +10,14 @@ export type ParsedFile = {
 export const INLINE_FIELD_REGEX = new RegExp(`^([${ENTITY_KEY_CHAR_CLASS}]+):: (.+)$`, "u");
 
 export const parseFile = (rawFile: string): ParsedFile => {
-  const parsed = matter(rawFile);
-  // gray-matter caches by input string and returns the SAME `.data` object for byte-identical
-  // content. Callers mutate frontmatter in place (adoption mints `uuid`; future edits could push
-  // into nested `notes`/`references` arrays), so a shared object would let one file's mutation leak
-  // into another identical-content file's parse (silent UUID collapse on adopt, or worse for nested
-  // values). Deep-clone — a shallow copy would still share the nested arrays/objects. Frontmatter is
+  // Pass an options object so gray-matter does NOT use its module-level, input-string-keyed cache.
+  // The cache is doubly dangerous: it returns the SAME `.data` object for byte-identical content
+  // (and callers mutate frontmatter in place — adoption mints `uuid`), AND once a parse throws on
+  // malformed YAML it caches an empty `{}` for that string, so the next identical call returns `{}`
+  // instead of throwing — silently turning a malformed file into an empty entity on a later read.
+  // Bypassing the cache keeps malformed files reliably throwing so the rebuild can report them.
+  const parsed = matter(rawFile, {});
+  // Deep-clone as belt-and-suspenders so callers can mutate frontmatter in place. Frontmatter is
   // YAML-derived plain data (strings, numbers, arrays, objects, dates), all structuredClone-safe.
   const frontmatter = structuredClone(parsed.data) as Record<string, unknown>;
 

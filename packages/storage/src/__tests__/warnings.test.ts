@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
@@ -179,6 +179,55 @@ describe("rebuild warnings integration", () => {
 
     const warnings = listWarnings(database);
     expect(warnings.filter((warning) => warning.kind === "UUID_COLLISION")).toHaveLength(1);
+  });
+
+  // Malformed YAML frontmatter — gray-matter's `matter()` throws parsing this, so the file fails
+  // to load. Used to exercise the fault-tolerant rebuild path.
+  const MALFORMED_FRAGMENT = "---\nkey: [unclosed\n---\nbody\n";
+
+  it("skips an unparseable fragment, indexes the rest, and records INVALID_ENTITY_FILE", async () => {
+    const baseline = await makeIndexer().rebuild();
+    expect(baseline.fragments).toBeGreaterThan(0);
+
+    writeFileSync(join(vaultDir, "fragments", "broken.md"), MALFORMED_FRAGMENT);
+    const stats = await makeIndexer().rebuild();
+
+    // The bad file is not indexed; every other fragment still is.
+    expect(stats.fragments).toBe(baseline.fragments);
+
+    const invalid = listWarnings(makeDatabase()).filter(
+      (warning) => warning.kind === "INVALID_ENTITY_FILE",
+    );
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0]).toMatchObject({
+      kind: "INVALID_ENTITY_FILE",
+      filePath: "fragments/broken.md",
+      entityKind: "fragment",
+    });
+  });
+
+  it("never rewrites an unparseable file during rebuild", async () => {
+    const brokenPath = join(vaultDir, "fragments", "broken.md");
+    writeFileSync(brokenPath, MALFORMED_FRAGMENT);
+
+    await makeIndexer().rebuild();
+
+    expect(readFileSync(brokenPath, "utf8")).toBe(MALFORMED_FRAGMENT);
+  });
+
+  it("clears INVALID_ENTITY_FILE once the file is fixed", async () => {
+    const brokenPath = join(vaultDir, "fragments", "broken.md");
+    writeFileSync(brokenPath, MALFORMED_FRAGMENT);
+    await makeIndexer().rebuild();
+    expect(
+      listWarnings(makeDatabase()).filter((warning) => warning.kind === "INVALID_ENTITY_FILE"),
+    ).toHaveLength(1);
+
+    rmSync(brokenPath);
+    await makeIndexer().rebuild();
+    expect(
+      listWarnings(makeDatabase()).filter((warning) => warning.kind === "INVALID_ENTITY_FILE"),
+    ).toHaveLength(0);
   });
 
   it("records a deduplicated UNKNOWN_ASPECT_KEY warning for a missing aspect key", async () => {

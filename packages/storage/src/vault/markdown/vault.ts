@@ -1,6 +1,6 @@
 import type { Aspect, Note, Reference, Sequence } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
-import type { Vault, VaultConfig, WithFilePath } from "../types";
+import type { EntityReadFailure, ReadAllResult, Vault, VaultConfig, WithFilePath } from "../types";
 import { VaultError } from "../types";
 import type { ParsedFile } from "./parse";
 import { parseFile } from "./parse";
@@ -45,6 +45,47 @@ const readYaml = async (absolutePath: string): Promise<string> => {
 
 const writeYaml = async (absolutePath: string, content: string): Promise<void> => {
   await Bun.write(absolutePath, content);
+};
+
+// Fault-tolerant bulk read: read every file via `readOne`, collecting successes and per-file
+// failures instead of rejecting the whole batch on the first malformed file. Rebuild relies on
+// this so one unparseable entity does not wedge the entire index. A failed file is never
+// rewritten — `readOne` only writes back after a successful parse.
+const readEntitiesSettled = async <TEntity>(
+  files: string[],
+  readOne: (filePath: string) => Promise<WithFilePath<TEntity>>,
+): Promise<ReadAllResult<TEntity>> => {
+  const outcomes = await Promise.all(
+    files.map(
+      async (
+        filePath,
+      ): Promise<
+        { ok: true; entry: WithFilePath<TEntity> } | { ok: false; failure: EntityReadFailure }
+      > => {
+        try {
+          return { ok: true, entry: await readOne(filePath) };
+        } catch (error) {
+          return {
+            ok: false,
+            failure: { filePath, error: error instanceof Error ? error.message : String(error) },
+          };
+        }
+      },
+    ),
+  );
+
+  const entities: Array<WithFilePath<TEntity>> = [];
+  const failures: EntityReadFailure[] = [];
+
+  for (const outcome of outcomes) {
+    if (outcome.ok) {
+      entities.push(outcome.entry);
+    } else {
+      failures.push(outcome.failure);
+    }
+  }
+
+  return { entities, failures };
 };
 
 // --- factory ---
@@ -147,27 +188,25 @@ export const createVault = (config: VaultConfig): Vault => {
     fromFile: (parsed: ParsedFile, filePath: string) => TEntity,
     label: string,
     adopt: boolean,
-  ): Promise<Array<WithFilePath<TEntity>>> => {
+  ): Promise<ReadAllResult<TEntity>> => {
     const files = await listMarkdownFiles(vaultPath(subdir), { recursive: true });
-    return Promise.all(
-      files.map(async (filePath) => {
-        const absolutePath = toAbsolute(filePath);
-        const rawContent = await readMarkdown(absolutePath);
-        const parsed = parseFile(rawContent);
-        if (!adopt) {
-          return { entity: fromFile(parsed, filePath), filePath, rawContent };
-        }
+    return readEntitiesSettled(files, async (filePath) => {
+      const absolutePath = toAbsolute(filePath);
+      const rawContent = await readMarkdown(absolutePath);
+      const parsed = parseFile(rawContent);
+      if (!adopt) {
+        return { entity: fromFile(parsed, filePath), filePath, rawContent };
+      }
 
-        const { rawContent: afterAdoption } = await ensureUuid(
-          parsed,
-          absolutePath,
-          rawContent,
-          log,
-          label,
-        );
-        return { entity: fromFile(parsed, filePath), filePath, rawContent: afterAdoption };
-      }),
-    );
+      const { rawContent: afterAdoption } = await ensureUuid(
+        parsed,
+        absolutePath,
+        rawContent,
+        log,
+        label,
+      );
+      return { entity: fromFile(parsed, filePath), filePath, rawContent: afterAdoption };
+    });
   };
 
   return {
@@ -195,39 +234,37 @@ export const createVault = (config: VaultConfig): Vault => {
         const active = await listMarkdownFiles(vaultPath("fragments"));
         const discardedFiles = await listMarkdownFiles(vaultPath("fragments", "discarded"));
         const discarded = discardedFiles.map((fileName) => join("discarded", fileName));
-        return Promise.all(
-          [...active, ...discarded].map(async (filePath) => {
-            const absolutePath = toAbsoluteFragment(filePath);
-            const rawContent = await readMarkdown(absolutePath);
-            const parsed = parseFile(rawContent);
-            if (!adopt) {
-              return { entity: fragmentMapper.fromFile(parsed, filePath), filePath, rawContent };
-            }
+        return readEntitiesSettled([...active, ...discarded], async (filePath) => {
+          const absolutePath = toAbsoluteFragment(filePath);
+          const rawContent = await readMarkdown(absolutePath);
+          const parsed = parseFile(rawContent);
+          if (!adopt) {
+            return { entity: fragmentMapper.fromFile(parsed, filePath), filePath, rawContent };
+          }
 
-            // Mint the UUID in memory only (writeBack: false) — a freshly adopted fragment gets its
-            // full canonical frontmatter written once below, so a UUID-only write here would be
-            // immediately overwritten.
-            const { wasAssigned } = await ensureUuid(
-              parsed,
-              absolutePath,
-              rawContent,
-              log,
-              "fragment",
-              {
-                writeBack: false,
-              },
-            );
-            if (!wasAssigned) {
-              return { entity: fragmentMapper.fromFile(parsed, filePath), filePath, rawContent };
-            }
+          // Mint the UUID in memory only (writeBack: false) — a freshly adopted fragment gets its
+          // full canonical frontmatter written once below, so a UUID-only write here would be
+          // immediately overwritten.
+          const { wasAssigned } = await ensureUuid(
+            parsed,
+            absolutePath,
+            rawContent,
+            log,
+            "fragment",
+            {
+              writeBack: false,
+            },
+          );
+          if (!wasAssigned) {
+            return { entity: fragmentMapper.fromFile(parsed, filePath), filePath, rawContent };
+          }
 
-            // Freshly adopted fragment: write back the full canonical frontmatter, mirroring the
-            // watcher's adoption path. Reuse the returned fragment so the upsert's updatedAt matches
-            // what was serialized to disk.
-            const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, filePath);
-            return { entity: adopted.fragment, filePath, rawContent: adopted.rawContent };
-          }),
-        );
+          // Freshly adopted fragment: write back the full canonical frontmatter, mirroring the
+          // watcher's adoption path. Reuse the returned fragment so the upsert's updatedAt matches
+          // what was serialized to disk.
+          const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, filePath);
+          return { entity: adopted.fragment, filePath, rawContent: adopted.rawContent };
+        });
       },
 
       async write(fragment) {
@@ -487,14 +524,12 @@ export const createVault = (config: VaultConfig): Vault => {
 
       async readAllWithFilePaths() {
         const files = await listYamlFiles(sequencesDir);
-        return Promise.all(
-          files.map(async (filename) => {
-            const absolutePath = toAbsoluteSequence(filename);
-            const rawContent = await readYaml(absolutePath);
-            const entity = sequenceMapper.fromFile(rawContent, config.projectUuid ?? "");
-            return { entity, filePath: filename, rawContent };
-          }),
-        );
+        return readEntitiesSettled(files, async (filename) => {
+          const absolutePath = toAbsoluteSequence(filename);
+          const rawContent = await readYaml(absolutePath);
+          const entity = sequenceMapper.fromFile(rawContent, config.projectUuid ?? "");
+          return { entity, filePath: filename, rawContent };
+        });
       },
 
       async write(sequence: Sequence) {

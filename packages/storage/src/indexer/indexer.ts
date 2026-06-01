@@ -13,12 +13,14 @@ import {
   sectionsTable,
   sequencesTable,
 } from "../db/vault/schema";
-import type { Vault } from "../vault/types";
+import type { EntityReadFailure, Vault } from "../vault/types";
 import type {
+  EntityKind,
   IndexedAspect,
   IndexedFragment,
   IndexedSequence,
   RebuildStats,
+  SyncWarning,
   UnknownAspectKeyWarning,
   VaultIndexer,
 } from "./types";
@@ -59,6 +61,30 @@ const aggregateUnknownAspectWarnings = (
   }));
 };
 
+// Entity-directory prefix per kind, used to turn an entity-relative failure path into the
+// vault-root-relative path the warnings store keys on (matching WRONG_FORMAT_FILE).
+const ENTITY_FOLDER_BY_KIND: Record<EntityKind, string> = {
+  fragment: "fragments",
+  aspect: "aspects",
+  note: "notes",
+  reference: "references",
+  sequence: ".maskor/sequences",
+};
+
+// Turn the fault-tolerant read failures for one entity kind into INVALID_ENTITY_FILE warnings.
+// A file that failed to parse is reported, never rewritten — the user fixes it and the warning
+// clears on the next rebuild.
+const invalidFileWarnings = (
+  entityKind: EntityKind,
+  failures: EntityReadFailure[],
+): SyncWarning[] =>
+  failures.map((failure) => ({
+    kind: "INVALID_ENTITY_FILE",
+    filePath: `${ENTITY_FOLDER_BY_KIND[entityKind]}/${failure.filePath}`,
+    entityKind,
+    error: failure.error,
+  }));
+
 // --- indexer factory ---
 
 export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): VaultIndexer => {
@@ -70,7 +96,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Phase 1: Read all vault data (async).
     // TODO: This loads all vault entities into memory before writing. For very large vaults
     // this may become a concern. Consider chunked writes if needed (see suggestions.md).
-    const [aspectEntries, noteEntries, referenceEntries, fragmentEntries, sequenceEntries] =
+    const [aspectResult, noteResult, referenceResult, fragmentResult, sequenceResult] =
       await Promise.all([
         // adopt: mint + write back UUIDs for any entity file lacking one. The watcher ignores the
         // initial scan, so rebuild is the only path that canonicalizes pre-existing files.
@@ -81,6 +107,14 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         vault.fragments.readAllWithFilePaths({ adopt: true }),
         vault.sequences.readAllWithFilePaths(),
       ]);
+
+    // Successfully parsed entities flow into the index; per-file failures become
+    // INVALID_ENTITY_FILE warnings below. One bad file no longer wedges the whole rebuild.
+    const aspectEntries = aspectResult.entities;
+    const noteEntries = noteResult.entities;
+    const referenceEntries = referenceResult.entities;
+    const fragmentEntries = fragmentResult.entities;
+    const sequenceEntries = sequenceResult.entities;
 
     // Build known aspect key set (used for drift detection during the fragments pass).
     const knownAspectKeys = new Set(aspectEntries.map(({ entity: aspect }) => aspect.key));
@@ -171,6 +205,16 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       insertWarning(vaultDatabase, warning);
     }
     for (const warning of aggregateUnknownAspectWarnings(fragmentWarnings)) {
+      insertWarning(vaultDatabase, warning);
+    }
+    const invalidEntityWarnings = [
+      ...invalidFileWarnings("fragment", fragmentResult.failures),
+      ...invalidFileWarnings("aspect", aspectResult.failures),
+      ...invalidFileWarnings("note", noteResult.failures),
+      ...invalidFileWarnings("reference", referenceResult.failures),
+      ...invalidFileWarnings("sequence", sequenceResult.failures),
+    ];
+    for (const warning of invalidEntityWarnings) {
       insertWarning(vaultDatabase, warning);
     }
 

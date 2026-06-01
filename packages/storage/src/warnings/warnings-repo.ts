@@ -20,11 +20,13 @@ export type StoredWarning = SyncWarning & {
 export const STATE_WARNING_KINDS = [
   "WRONG_FORMAT_FILE",
   "UNKNOWN_ASPECT_KEY",
+  "INVALID_ENTITY_FILE",
 ] as const satisfies WarningKind[];
 
 const CATEGORY_BY_KIND: Record<WarningKind, WarningCategory> = {
   WRONG_FORMAT_FILE: "state",
   UNKNOWN_ASPECT_KEY: "state",
+  INVALID_ENTITY_FILE: "state",
   UUID_COLLISION: "event",
 };
 
@@ -36,6 +38,8 @@ const dedupKeyFor = (warning: SyncWarning): string | null => {
       return warning.filePath;
     case "UNKNOWN_ASPECT_KEY":
       return warning.aspectKey;
+    case "INVALID_ENTITY_FILE":
+      return warning.filePath;
     case "UUID_COLLISION":
       return null;
   }
