@@ -72,4 +72,5 @@ export type { RestoreDraftInput, RestoreDraftResult } from "./drafts/restore-dra
 export { dismissWarningCommand } from "./warnings/dismiss-warning";
 export type { DismissWarningInput } from "./warnings/dismiss-warning";
 
+export { rebuildIndexCommand } from "./vault-index/rebuild-index";
 export { resetDatabaseCommand } from "./vault-index/reset-database";

@@ -4,7 +4,7 @@ import { throwStorageError } from "../errors";
 import { RebuildStatsSchema } from "../schemas/vault-index";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
-import { executeCommand, resetDatabaseCommand } from "../commands";
+import { executeCommand, rebuildIndexCommand, resetDatabaseCommand } from "../commands";
 import type { CommandContext } from "../commands";
 
 export const vaultIndexRouter = new OpenAPIHono<{ Variables: AppVariables }>();
@@ -30,9 +30,13 @@ const rebuildIndexRoute = createRoute({
 
 vaultIndexRouter.openapi(rebuildIndexRoute, async (ctx) => {
   try {
-    const storageService = ctx.get("storageService");
-    const projectContext = ctx.get("projectContext")!;
-    const stats = await storageService.index.rebuild(projectContext);
+    const commandContext: CommandContext = {
+      storageService: ctx.get("storageService"),
+      projectContext: ctx.get("projectContext")!,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const stats = await executeCommand(rebuildIndexCommand, commandContext, undefined);
     return ctx.json(stats, 200);
   } catch (error) {
     return throwStorageError(error);
