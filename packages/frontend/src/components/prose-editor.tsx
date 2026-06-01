@@ -12,6 +12,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
+import { commentMarkerExtension } from "./comment-marker-cm";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
@@ -151,11 +152,12 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       cmTheme,
       EditorView.lineWrapping,
       selectionListener,
+      commentMarkerExtension,
     ],
     [cmTheme, selectionListener],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener],
+    () => [markdown(), cmTheme, selectionListener, commentMarkerExtension],
     [cmTheme, selectionListener],
   );
 

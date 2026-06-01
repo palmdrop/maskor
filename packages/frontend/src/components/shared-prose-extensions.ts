@@ -1,6 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Typography from "@tiptap/extension-typography";
+import { CommentMarker } from "./comment-marker-extension";
 
 // Single source of the Tiptap config shared by the editable `ProseEditor` and
 // the read-only `ReadonlyProse` renderer, so the two cannot drift. `html` stays
@@ -12,6 +13,7 @@ export const buildSharedProseExtensions = () => [
   StarterKit,
   Markdown.configure({ html: false, transformPastedText: true }),
   Typography,
+  CommentMarker,
 ];
 
 // The base prose typography classes. Each editor appends its own surface-specific

@@ -15,6 +15,13 @@ export const COMMENT_MARKER_REGEX = new RegExp(`[ \\t]*<!--c:([${MARKER_ID_CHAR_
 
 export const buildCommentMarker = (markerId: string): string => `<!--c:${markerId}-->`;
 
+// A fresh global regex matching the bare marker token (no surrounding whitespace), with the id
+// captured. Returned fresh each call so callers never share `lastIndex` state. Used by the editors
+// to locate exact marker bounds for hiding/parsing (the strip helper above eats leading whitespace,
+// which is wrong for in-place editor decorations).
+export const createCommentMarkerTokenRegex = (): RegExp =>
+  new RegExp(`<!--c:([${MARKER_ID_CHAR_CLASS}]+)-->`, "g");
+
 // Mint a new marker id. Short, url-safe, collision-resistant enough for per-fragment comment counts.
 export const createCommentMarkerId = (): string =>
   Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);

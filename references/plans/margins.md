@@ -58,11 +58,11 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 3 — Anchor markers in the editors (shared extension work)
 
-- [ ] CM6 (vim/raw mode): decoration plugin that hides the whole `<!--c:ID-->` with a zero-width `Decoration.replace` (no gap), shows a subtle gutter dot / line-end glyph on blocks that carry a comment, and reveals the raw marker only when the cursor enters that block (per-block, Obsidian live-preview style). Marker is preserved verbatim in the buffer.
-- [ ] TipTap (rich mode): node attribute (or equivalent) carrying the marker id, with matching markdown parse + serialize so the marker survives markdown→ProseMirror→markdown.
-- [ ] Round-trip guard tests: fragment with markers edited in TipTap then vim (and vice versa) preserves all markers byte-stable.
-- [ ] `specifications/fragment-editor.md`: document the marker rendering in both modes; Shipped entry.
-- [ ] Commit.
+- [x] CM6 (vim/raw mode): decoration plugin (`comment-marker-cm.ts`) hides the whole `<!--c:ID-->` with a zero-width `Decoration.replace` (no gap), marks the line with a subtle line-end cue, and reveals the raw marker only when the cursor is on that line (Obsidian live-preview style). Marker preserved verbatim in the buffer.
+- [x] TipTap (rich mode): a schema-modeled invisible inline node (`comment-marker-extension.ts`) carrying the marker id, with markdown-it parse + serialize so the marker survives markdown→ProseMirror→markdown.
+- [x] Round-trip guard tests: TipTap markdown→PM→markdown preserves markers byte-stable; CM6 decorations hide/reveal correctly. (Per-block line cue uses line number; granular block ≈ line.)
+- [x] `specifications/fragment-editor.md`: document the marker rendering in both modes; Shipped entry.
+- [x] Commit.
 
 ### Phase 4 — Comment-creation gesture (fragment side)
 
