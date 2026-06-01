@@ -66,7 +66,7 @@ The manual reset reuses the draft-restore teardown machinery (`packages/storage/
 - [x] Added the `INVALID_ENTITY_FILE` member to the OpenAPI `VaultWarning` discriminated union (`packages/api/src/schemas/warnings.ts`) so the frontend can render it. _(2026-06-01)_
 - [x] Rebuild route already surfaces failures via `throwStorageError`; no change. _(2026-06-01)_
 - [x] `bun run codegen` refreshed the OpenAPI snapshot + generated client (`useResetDatabase`, `INVALID_ENTITY_FILE` model). _(2026-06-01)_
-- [ ] **Note:** the sibling `rebuild` route calls `storageService` directly rather than through a command — a pre-existing deviation from `packages/api/CLAUDE.md`. `reset` follows the rule (command); flag rebuild in `references/suggestions.md`.
+- [x] **Late addition (2026-06-01):** the sibling `rebuild` route called `storageService` directly — a pre-existing deviation from `packages/api/CLAUDE.md`. Initially left as-is (flagged in `references/suggestions.md`) so `reset` wouldn't copy the deviation. Then, on developer request, routed `rebuild` through a new `rebuildIndexCommand` (empty `logEntries`) too, so **both** vault-index re-derivation routes go through the commands pipeline. No route path/schema change. Suggestions entry marked resolved. _(commit `ecc9435`)_
 
 ### Phase 5: Frontend — reset button, error surfacing, Diagnostics render — DONE _(2026-06-01)_
 
