@@ -11,7 +11,8 @@
 - 2026-05-22 — Rebuild-in-progress loading state: concurrent requests all await the same rebuild promise; `GET rebuild-status` endpoint exposes in-progress state without blocking; fragment list, overview, and project-config views show "Rebuilding project index…" during rebuild. (plan: `scripts/ralph/archive/2026-05-22-small-improvements/`)
 - 2026-04-04 — Vault change events are emitted over SSE after each watcher transaction; the frontend invalidates its cache automatically without polling. (plan: references/plans/sse-vault-events.md)
 - 2026-04-05 — Fragments, aspects, notes, and references are stored as vault markdown files; Maskor reads and writes frontmatter without modifying body content. (plan: references/plans/storage-markdown-reader.md)
-- 2026-06-01 — Margin storage. A fragment's Margin is a vault markdown file at `margins/<fragment-key>.md` (`fragmentUuid` + `createdAt`/`updatedAt` frontmatter; `## Notes` + `## Comments` body, comments serialized as `<!--c:ID-->` + `> excerpt` + body). Lazily created on first note/comment; persists when emptied (no auto-removal). The Margin follows its fragment through the lifecycle: rename cascades the filename, discard moves it to `margins/discarded/`, delete removes it alongside the fragment. `fragmentUuid` is the stable join. (plan: references/plans/margins.md)
+- 2026-06-01 — Margin storage. A fragment's Margin is a vault markdown file at `margins/<fragment-key>.md` (`fragmentUuid` + `createdAt`/`updatedAt` frontmatter; `## Notes` + `## Comments` body, comments serialized as `<!--c:ID-->` + `> excerpt` + body). Lazily created on first note/comment; persists when emptied (no auto-removal). The Margin follows its fragment through the lifecycle: rename cascades the filename, discard moves it to `margins/discarded/`, delete removes it alongside the fragment. `fragmentUuid` is the stable join. (plan: references/plans/margins.md, Phase 1)
+- 2026-06-01 — Margin DB index, watcher sync & API. The vault DB carries a `margins` row + per-comment `comments` rows (`marker_id`, excerpt, body, `orphaned`, `ordinal`); rebuild and the watcher keep them in sync. A comment's `orphaned` flag is derived at sync time: true when its `<!--c:ID-->` marker is absent from the owning fragment's body. Editing a fragment recomputes its Margin's orphan flags (the Margin file is untouched). `margin:synced` / `margin:deleted` SSE events fire on change. API: read/replace a fragment's Margin, create/update/delete a comment, list orphaned comments. (plan: references/plans/margins.md, Phase 2)
 - 2026-04-10 — All vault entities are indexed in a per-vault SQLite database; full rebuilds run as a single atomic transaction and soft-delete entities no longer present in the vault. (plan: references/plans/vault-content-index.md)
 - 2026-04-15 — Piece files dropped into `pieces/` are consumed individually as they arrive; `updatedAt` is recorded in frontmatter across all vault entities. (plan: references/plans/storage-sync-spec-fixes.md)
 - 2026-04-24 — Storage uses two separate databases: a global project registry and a per-vault database that travels with the vault and can be fully rebuilt from vault files at any time. (plan: references/plans/sessions-and-projects.md)
@@ -89,16 +90,17 @@ The core idea is to have a database for quick lookups and queries, but keep all 
 - Full-file hash guard (frontmatter + body) before every upsert; makes all watcher events idempotent for API-originated writes
 - Entity routing by relative path prefix:
 
-| Path prefix                        | Handling                                                            |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| `fragments/`                       | sync fragment (root only)                                           |
-| `fragments/discarded/`             | sync fragment (`isDiscarded` derived from path)                     |
-| `fragments/<other-subfolder>/`     | rejected with warning — fragments are root-only beyond `discarded/` |
-| `aspects/[<category>/]`            | sync aspect (category derived from subfolder path)                  |
-| `notes/[<category>/]`              | sync note (category derived from subfolder path)                    |
-| `references/[<category>/]`         | sync reference (category derived from subfolder path)               |
-| non-`.md` under an entity folder   | recorded as a `WRONG_FORMAT_FILE` warning; not indexed              |
-| `.maskor/`, `.obsidian/`, dotfiles | ignored                                                             |
+| Path prefix                        | Handling                                                             |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `fragments/`                       | sync fragment (root only)                                            |
+| `fragments/discarded/`             | sync fragment (`isDiscarded` derived from path)                      |
+| `fragments/<other-subfolder>/`     | rejected with warning — fragments are root-only beyond `discarded/`  |
+| `aspects/[<category>/]`            | sync aspect (category derived from subfolder path)                   |
+| `notes/[<category>/]`              | sync note (category derived from subfolder path)                     |
+| `references/[<category>/]`         | sync reference (category derived from subfolder path)                |
+| `margins/`, `margins/discarded/`   | sync margin (joined by `fragmentUuid`; comment orphan flags derived) |
+| non-`.md` under an entity folder   | recorded as a `WRONG_FORMAT_FILE` warning; not indexed               |
+| `.maskor/`, `.obsidian/`, dotfiles | ignored                                                              |
 
 - On `add` with missing UUID: write UUID to frontmatter, then upsert; the second watcher event from the write-back hash-guards to a no-op
 - On `add` with colliding UUID for **fragments**: assign a new UUID, write back, log warning

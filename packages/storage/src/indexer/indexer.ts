@@ -1,13 +1,16 @@
 import { eq, inArray, notInArray } from "drizzle-orm";
+import { extractCommentMarkerIds } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
   aspectsTable,
+  commentsTable,
   fragmentAspectsTable,
   fragmentNotesTable,
   fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentsTable,
+  marginsTable,
   notesTable,
   referencesTable,
   sectionsTable,
@@ -17,7 +20,9 @@ import type { EntityReadFailure, Vault } from "../vault/types";
 import type {
   EntityKind,
   IndexedAspect,
+  IndexedComment,
   IndexedFragment,
+  IndexedMargin,
   IndexedSequence,
   RebuildStats,
   SyncWarning,
@@ -27,6 +32,7 @@ import type {
 import {
   assembleAspect,
   assembleFragment,
+  assembleMargin,
   assembleNote,
   assembleReference,
   assembleSequence,
@@ -34,6 +40,7 @@ import {
 import {
   upsertAspect,
   upsertFragment,
+  upsertMargin,
   upsertNote,
   upsertReference,
   upsertSequence,
@@ -69,6 +76,7 @@ const ENTITY_FOLDER_BY_KIND: Record<EntityKind, string> = {
   note: "notes",
   reference: "references",
   sequence: ".maskor/sequences",
+  margin: "margins",
 };
 
 // Turn the fault-tolerant read failures for one entity kind into INVALID_ENTITY_FILE warnings.
@@ -96,17 +104,25 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Phase 1: Read all vault data (async).
     // TODO: This loads all vault entities into memory before writing. For very large vaults
     // this may become a concern. Consider chunked writes if needed (see suggestions.md).
-    const [aspectResult, noteResult, referenceResult, fragmentResult, sequenceResult] =
-      await Promise.all([
-        // adopt: mint + write back UUIDs for any entity file lacking one. The watcher ignores the
-        // initial scan, so rebuild is the only path that canonicalizes pre-existing files.
-        // Sequences are Maskor-owned and always carry a UUID, so they are read without adoption.
-        vault.aspects.readAllWithFilePaths({ adopt: true }),
-        vault.notes.readAllWithFilePaths({ adopt: true }),
-        vault.references.readAllWithFilePaths({ adopt: true }),
-        vault.fragments.readAllWithFilePaths({ adopt: true }),
-        vault.sequences.readAllWithFilePaths(),
-      ]);
+    const [
+      aspectResult,
+      noteResult,
+      referenceResult,
+      fragmentResult,
+      sequenceResult,
+      marginResult,
+    ] = await Promise.all([
+      // adopt: mint + write back UUIDs for any entity file lacking one. The watcher ignores the
+      // initial scan, so rebuild is the only path that canonicalizes pre-existing files.
+      // Sequences are Maskor-owned and always carry a UUID, so they are read without adoption.
+      vault.aspects.readAllWithFilePaths({ adopt: true }),
+      vault.notes.readAllWithFilePaths({ adopt: true }),
+      vault.references.readAllWithFilePaths({ adopt: true }),
+      vault.fragments.readAllWithFilePaths({ adopt: true }),
+      vault.sequences.readAllWithFilePaths(),
+      // Margins carry no UUID of their own (joined by fragmentUuid) — read without adoption.
+      vault.margins.readAllWithFilePaths(),
+    ]);
 
     // Successfully parsed entities flow into the index; per-file failures become
     // INVALID_ENTITY_FILE warnings below. One bad file no longer wedges the whole rebuild.
@@ -115,9 +131,19 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     const referenceEntries = referenceResult.entities;
     const fragmentEntries = fragmentResult.entities;
     const sequenceEntries = sequenceResult.entities;
+    const marginEntries = marginResult.entities;
 
     // Build known aspect key set (used for drift detection during the fragments pass).
     const knownAspectKeys = new Set(aspectEntries.map(({ entity: aspect }) => aspect.key));
+
+    // Marker ids present in each fragment's body, keyed by fragmentUuid. Drives comment orphan
+    // detection during the margins pass (a comment whose marker is absent is orphaned).
+    const fragmentMarkerIdsByUuid = new Map<string, Set<string>>(
+      fragmentEntries.map(({ entity: fragment }) => [
+        fragment.uuid as string,
+        new Set(extractCommentMarkerIds(fragment.content)),
+      ]),
+    );
 
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
@@ -188,6 +214,27 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         tx.delete(sequencesTable).where(notInArray(sequencesTable.uuid, activeSequenceUuids)).run();
       } else {
         tx.delete(sequencesTable).run();
+      }
+
+      // 6. Upsert margins (comments cascade from each upsert). Orphan flags derive from the
+      // fragment marker map built above.
+      for (const { entity: margin, filePath, rawContent } of marginEntries) {
+        upsertMargin(
+          tx,
+          margin,
+          filePath,
+          rawContent,
+          fragmentMarkerIdsByUuid.get(margin.fragmentUuid) ?? null,
+        );
+      }
+
+      const activeMarginUuids = marginEntries.map(({ entity }) => entity.fragmentUuid);
+      if (activeMarginUuids.length > 0) {
+        tx.delete(marginsTable)
+          .where(notInArray(marginsTable.fragmentUuid, activeMarginUuids))
+          .run();
+      } else {
+        tx.delete(marginsTable).run();
       }
     });
 
@@ -503,6 +550,50 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
         if (!row) return null;
         return row.filePath;
+      },
+    },
+
+    margins: {
+      async findByFragmentUuid(fragmentUuid: string): Promise<IndexedMargin | null> {
+        const row = vaultDatabase
+          .select()
+          .from(marginsTable)
+          .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+          .get();
+        if (!row) return null;
+
+        const commentRows = vaultDatabase
+          .select()
+          .from(commentsTable)
+          .where(eq(commentsTable.fragmentUuid, fragmentUuid))
+          .all();
+
+        return assembleMargin(row, commentRows);
+      },
+
+      async findFilePath(fragmentUuid: string): Promise<string | null> {
+        const row = vaultDatabase
+          .select({ filePath: marginsTable.filePath })
+          .from(marginsTable)
+          .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+          .get();
+        return row?.filePath ?? null;
+      },
+
+      async findOrphanedComments(): Promise<Array<IndexedComment & { fragmentUuid: string }>> {
+        return vaultDatabase
+          .select()
+          .from(commentsTable)
+          .where(eq(commentsTable.orphaned, true))
+          .all()
+          .map((row) => ({
+            fragmentUuid: row.fragmentUuid,
+            markerId: row.markerId,
+            excerpt: row.excerpt,
+            body: row.body,
+            orphaned: row.orphaned,
+            ordinal: row.ordinal,
+          }));
       },
     },
   };

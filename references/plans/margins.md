@@ -40,12 +40,12 @@ On-disk representation, lifecycle, DB shape, and CM6 rendering are now resolved 
 
 ### Phase 2 — DB index, watcher sync & API (backend)
 
-- [ ] Index margins/comments in the per-vault DB as **per-comment rows** (`fragment_uuid`, `marker_id`, excerpt, resolved/orphan flag, ordinal) plus a margin row. Rebuild + live watcher sync, consistent with the existing vault content index.
-- [ ] API routes: read/write a fragment's Margin; create/update/delete a comment; resolve/list orphaned comments. Detect orphans (marker missing for a stored comment) on sync.
-- [ ] Watcher re-parses externally-edited Margin and fragment files; recomputes anchor resolution and orphan state.
-- [ ] `bun run codegen` (regenerate OpenAPI snapshot + orval) for the new routes.
-- [ ] Tests: index rebuild, watcher live updates, orphan detection on block/marker removal, external-edit re-parse.
-- [ ] `specifications/storage-sync.md` / `margins.md`: Shipped entries. Commit.
+- [x] Index margins/comments in the per-vault DB as **per-comment rows** (`fragment_uuid`, `marker_id`, excerpt, body, orphan flag, ordinal) plus a margin row. Rebuild + live watcher sync, consistent with the existing vault content index.
+- [x] API routes: read/replace a fragment's Margin; create/update/delete a comment; list orphaned comments (removal of an orphan is `deleteComment`). Detect orphans (marker missing for a stored comment) on sync.
+- [x] Watcher re-parses externally-edited Margin and fragment files; recomputes anchor resolution and orphan state (fragment edits recompute the bound Margin's orphan flags).
+- [x] `bun run codegen` (regenerate OpenAPI snapshot + orval) for the new routes.
+- [x] Tests: index rebuild + re-derive, watcher live updates, orphan detection on marker add/remove, external margin add/delete.
+- [x] `specifications/storage-sync.md` / `margins.md`: Shipped entries. Commit.
 
 ### Phase 2b — Export/preview marker stripping
 

@@ -179,6 +179,41 @@ export const vaultWarningsTable = sqliteTable(
   (table) => [uniqueIndex("vault_warnings_kind_dedup_unique").on(table.kind, table.dedupKey)],
 );
 
+// A fragment's Margin (companion annotation doc). The stable join is `fragmentUuid` (the Margin
+// has no UUID of its own); `fragmentKey` mirrors the filename stem. The vault file is authoritative
+// — this row is a derived index for orphan detection and the future graph view.
+export const marginsTable = sqliteTable("margins", {
+  fragmentUuid: text("fragment_uuid").primaryKey(),
+  fragmentKey: text("fragment_key").notNull(),
+  notes: text("notes").notNull().default(""),
+  filePath: text("file_path").notNull().unique(),
+  contentHash: text("content_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+});
+
+// One row per comment in a Margin. `orphaned` is derived at sync time: true when the comment's
+// `marker_id` is absent from the owning fragment's body. `ordinal` preserves authoring order.
+export const commentsTable = sqliteTable(
+  "comments",
+  {
+    fragmentUuid: text("fragment_uuid")
+      .notNull()
+      .references(() => marginsTable.fragmentUuid, { onDelete: "cascade" }),
+    markerId: text("marker_id").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    body: text("body").notNull().default(""),
+    orphaned: integer("orphaned", { mode: "boolean" }).notNull().default(false),
+    ordinal: integer("ordinal").notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.fragmentUuid, table.markerId] }),
+    index("comments_fragment_uuid_idx").on(table.fragmentUuid),
+    index("comments_orphaned_idx").on(table.orphaned),
+  ],
+);
+
 export const fragmentPositionsTable = sqliteTable(
   "fragment_positions",
   {

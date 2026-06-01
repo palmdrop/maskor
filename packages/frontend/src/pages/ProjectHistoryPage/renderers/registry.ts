@@ -12,6 +12,7 @@ export const DOMAIN_LABELS: Record<LogEntry["target"]["type"], string> = {
   reference: "REFERENCES",
   sequence: "SEQUENCE",
   draft: "DRAFTS",
+  margin: "MARGINS",
 };
 
 export const renderEntryText = (entry: LogEntry): string => {
@@ -27,7 +28,8 @@ export const renderEntryText = (entry: LogEntry): string => {
     case "sequence":
       return renderSequenceEntryText(entry);
     case "draft":
-      // Draft entries don't have a dedicated renderer yet — fall back to a
+    case "margin":
+      // Draft and Margin entries don't have a dedicated renderer yet — fall back to a
       // generic textual representation so the history view still shows them.
       return `${entry.type}: ${entry.target.key ?? entry.target.uuid}`;
   }
@@ -45,5 +47,7 @@ const TERMINAL_TYPES = new Set<LogEntry["type"]>([
 export const isLinkable = (entry: LogEntry): boolean => {
   if (TERMINAL_TYPES.has(entry.type)) return false;
   if (entry.target.type === "sequence") return false;
+  // Margins have no standalone entity page — they live beside their fragment.
+  if (entry.target.type === "margin") return false;
   return true;
 };

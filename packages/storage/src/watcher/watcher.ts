@@ -26,11 +26,18 @@ import { createRenameBuffer } from "./utils/rename-buffer";
 import { createInFlightTracker } from "./utils/in-flight-tracker";
 import { createRecentlyDeletedTracker } from "./utils/recently-deleted";
 import type { CascadeCallbacks, VaultWatcher } from "./types";
-import { FRAGMENT_PREFIX, ASPECT_PREFIX, NOTE_PREFIX, REFERENCE_PREFIX } from "./utils/constants";
+import {
+  FRAGMENT_PREFIX,
+  ASPECT_PREFIX,
+  NOTE_PREFIX,
+  REFERENCE_PREFIX,
+  MARGIN_PREFIX,
+} from "./utils/constants";
 import { createChokidarConfig } from "./chokidar-config";
 import type { EntityConfig } from "./sync/keyed-entity";
 import { syncKeyedEntity, unlinkKeyedEntity } from "./sync/keyed-entity";
 import { syncFragment, unlinkFragment } from "./sync/fragment";
+import { syncMargin, unlinkMargin } from "./sync/margin";
 
 type Route = {
   prefix: string;
@@ -229,6 +236,18 @@ export const createVaultWatcher = (
       handleUnlink: (vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(REFERENCE_PREFIX.length);
         unlinkKeyedEntity(referenceConfig, vaultDatabase, entityRelativePath);
+      },
+    },
+    {
+      prefix: MARGIN_PREFIX,
+      entityKind: "margin",
+      handleAddOrChange: (absolutePath, vaultRelativePath) => {
+        const entityRelativePath = vaultRelativePath.slice(MARGIN_PREFIX.length);
+        return syncMargin(vaultDatabase, vaultRoot, emit, log, absolutePath, entityRelativePath);
+      },
+      handleUnlink: (vaultRelativePath) => {
+        const entityRelativePath = vaultRelativePath.slice(MARGIN_PREFIX.length);
+        unlinkMargin(vaultDatabase, emit, entityRelativePath);
       },
     },
   ];

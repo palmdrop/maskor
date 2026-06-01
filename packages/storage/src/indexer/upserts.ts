@@ -1,16 +1,18 @@
 import { and, eq, not, or } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { SQLiteBunTransaction } from "drizzle-orm/bun-sqlite";
-import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Fragment, Margin, Note, Reference, Sequence } from "@maskor/shared";
 import {
   aspectNotesTable,
   aspectsTable,
+  commentsTable,
   fragmentAspectsTable,
   fragmentNotesTable,
   fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentStatsTable,
   fragmentsTable,
+  marginsTable,
   notesTable,
   referencesTable,
   sectionsTable,
@@ -325,6 +327,112 @@ export const upsertSequence = (
 
 export const deleteSequenceByFilePath = (tx: Transaction, filePath: string): void => {
   tx.delete(sequencesTable).where(eq(sequencesTable.filePath, filePath)).run();
+};
+
+// Upsert a Margin and replace its comments. `fragmentMarkerIds` is the set of `<!--c:ID-->` marker
+// ids currently present in the owning fragment's body — a comment whose marker is absent is
+// orphaned. Pass `null` when the fragment is unknown (no row / never read): every comment is then
+// orphaned. The vault file is authoritative; this row is the derived index.
+export const upsertMargin = (
+  tx: Transaction,
+  margin: Margin,
+  filePath: string,
+  rawContent: string,
+  fragmentMarkerIds: Set<string> | null,
+): void => {
+  const syncedAt = new Date();
+  const contentHash = hashContent(rawContent);
+
+  // filePath is UNIQUE but not the conflict target — pre-delete any row that would collide on it
+  // under a different fragmentUuid (e.g. an external rename that swapped which fragment a stem maps
+  // to). Comments cascade-delete with the margin row.
+  tx.delete(marginsTable)
+    .where(
+      and(
+        not(eq(marginsTable.fragmentUuid, margin.fragmentUuid)),
+        eq(marginsTable.filePath, filePath),
+      ),
+    )
+    .run();
+
+  tx.insert(marginsTable)
+    .values({
+      fragmentUuid: margin.fragmentUuid,
+      fragmentKey: margin.fragmentKey,
+      notes: margin.notes,
+      filePath,
+      contentHash,
+      createdAt: margin.createdAt,
+      updatedAt: margin.updatedAt,
+      syncedAt,
+    })
+    .onConflictDoUpdate({
+      target: marginsTable.fragmentUuid,
+      set: {
+        fragmentKey: margin.fragmentKey,
+        notes: margin.notes,
+        filePath,
+        contentHash,
+        createdAt: margin.createdAt,
+        updatedAt: margin.updatedAt,
+        syncedAt,
+      },
+    })
+    .run();
+
+  tx.delete(commentsTable).where(eq(commentsTable.fragmentUuid, margin.fragmentUuid)).run();
+  margin.comments.forEach((comment, ordinal) => {
+    tx.insert(commentsTable)
+      .values({
+        fragmentUuid: margin.fragmentUuid,
+        markerId: comment.markerId,
+        excerpt: comment.excerpt,
+        body: comment.body,
+        orphaned: fragmentMarkerIds ? !fragmentMarkerIds.has(comment.markerId) : true,
+        ordinal,
+      })
+      .run();
+  });
+};
+
+export const deleteMarginByFilePath = (tx: Transaction, filePath: string): void => {
+  // Comments cascade-delete via the FK.
+  tx.delete(marginsTable).where(eq(marginsTable.filePath, filePath)).run();
+};
+
+// Recompute the orphan flag for every comment bound to one fragment, given the marker ids now
+// present in that fragment's body. Returns true if any flag changed. Called when a fragment's body
+// changes (the Margin file itself is untouched, so no margin watcher event fires). Cheap: a Margin
+// holds a handful of comments.
+export const recomputeMarginOrphans = (
+  vaultDatabase: VaultDatabase,
+  fragmentUuid: string,
+  fragmentMarkerIds: Set<string>,
+): boolean => {
+  const comments = vaultDatabase
+    .select({ markerId: commentsTable.markerId, orphaned: commentsTable.orphaned })
+    .from(commentsTable)
+    .where(eq(commentsTable.fragmentUuid, fragmentUuid))
+    .all();
+
+  let changed = false;
+  vaultDatabase.transaction((tx) => {
+    for (const comment of comments) {
+      const orphaned = !fragmentMarkerIds.has(comment.markerId);
+      if (orphaned === comment.orphaned) continue;
+      tx.update(commentsTable)
+        .set({ orphaned })
+        .where(
+          and(
+            eq(commentsTable.fragmentUuid, fragmentUuid),
+            eq(commentsTable.markerId, comment.markerId),
+          ),
+        )
+        .run();
+      changed = true;
+    }
+  });
+  return changed;
 };
 
 export const findFragmentUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {

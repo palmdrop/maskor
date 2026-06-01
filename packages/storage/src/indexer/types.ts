@@ -2,7 +2,7 @@ import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared
 
 // A detected vault warning (content only — the stored form adds id/category/timestamps,
 // see warnings/warnings-repo.ts). Discriminated on `kind`.
-export type EntityKind = "fragment" | "aspect" | "note" | "reference" | "sequence";
+export type EntityKind = "fragment" | "aspect" | "note" | "reference" | "sequence" | "margin";
 
 export type SyncWarning =
   | { kind: "UNKNOWN_ASPECT_KEY"; aspectKey: string; fragmentUuids: string[] }
@@ -38,6 +38,22 @@ export type IndexedReference = Omit<Reference, "content"> & { filePath: string }
 
 export type IndexedSequence = Sequence & { filePath: string; contentHash: string };
 
+export type IndexedComment = {
+  markerId: string;
+  excerpt: string;
+  body: string;
+  orphaned: boolean;
+  ordinal: number;
+};
+
+export type IndexedMargin = {
+  fragmentUuid: string;
+  fragmentKey: string;
+  notes: string;
+  filePath: string;
+  comments: IndexedComment[];
+};
+
 export interface VaultIndexer {
   rebuild(): Promise<RebuildStats>;
 
@@ -71,5 +87,11 @@ export interface VaultIndexer {
     findByUUID(uuid: string): Promise<IndexedSequence | null>;
     findMain(): Promise<IndexedSequence | null>;
     findFilePath(uuid: string): Promise<string | null>;
+  };
+
+  margins: {
+    findByFragmentUuid(fragmentUuid: string): Promise<IndexedMargin | null>;
+    findFilePath(fragmentUuid: string): Promise<string | null>;
+    findOrphanedComments(): Promise<Array<IndexedComment & { fragmentUuid: string }>>;
   };
 }

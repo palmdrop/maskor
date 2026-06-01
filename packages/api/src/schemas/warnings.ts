@@ -32,7 +32,7 @@ const InvalidEntityFileWarningSchema = z.object({
   ...warningBaseFields,
   kind: z.literal("INVALID_ENTITY_FILE"),
   filePath: z.string(),
-  entityKind: z.enum(["fragment", "aspect", "note", "reference", "sequence"]),
+  entityKind: z.enum(["fragment", "aspect", "note", "reference", "sequence", "margin"]),
   error: z.string(),
 });
 

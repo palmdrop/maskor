@@ -3,7 +3,9 @@ import type {
   Aspect,
   AspectUpdate,
   AspectUpdateResponse,
+  Comment,
   Fragment,
+  Margin,
   Note,
   NoteUpdate,
   NoteUpdateResponse,
@@ -48,6 +50,8 @@ import {
   upsertNote,
   upsertReference,
   upsertSequence,
+  upsertMargin,
+  recomputeMarginOrphans,
   deleteReferenceByFilePath,
   deleteFragmentByFilePath,
   deleteAspectByFilePath,
@@ -58,6 +62,7 @@ import {
   findFragmentUuidsByReferenceKey,
   findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
+import { extractCommentMarkerIds } from "@maskor/shared";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { joinCategoryPath } from "../utils/category";
@@ -187,6 +192,81 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const indexer = createVaultIndexer(vaultDatabase, vault);
     vaultIndexerCache.set(context.projectUUID, indexer);
     return indexer;
+  };
+
+  // The set of `<!--c:ID-->` marker ids in a fragment's body — drives comment orphan detection.
+  // Returns null when the fragment is unknown (every comment of an unbound Margin is then orphaned).
+  const loadFragmentMarkerIds = async (
+    context: ProjectContext,
+    fragmentUuid: string,
+  ): Promise<Set<string> | null> => {
+    const filePath = await getVaultIndexer(context).fragments.findFilePath(fragmentUuid);
+    if (!filePath) return null;
+    try {
+      const fragment = await getVault(context).fragments.read(filePath);
+      return new Set(extractCommentMarkerIds(fragment.content));
+    } catch (error) {
+      if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") return null;
+      throw error;
+    }
+  };
+
+  // Read the current Margin for a fragment, or null when none exists. Reads the authoritative vault
+  // file (full notes + comment bodies), located via the index.
+  const readMargin = async (
+    context: ProjectContext,
+    fragmentUuid: string,
+  ): Promise<Margin | null> => {
+    const filePath = await getVaultIndexer(context).margins.findFilePath(fragmentUuid);
+    if (!filePath) return null;
+    try {
+      return await getVault(context).margins.read(filePath);
+    } catch (error) {
+      if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") return null;
+      throw error;
+    }
+  };
+
+  // Persist a Margin's notes + comments to the vault file (lazy-creating it) and inline-upsert the
+  // DB row + per-comment orphan flags so the index is coherent before the watcher fires. Caller
+  // must hold the vault write lock. Preserves `createdAt` across rewrites.
+  const persistMargin = async (
+    context: ProjectContext,
+    fragmentUuid: string,
+    notes: string,
+    comments: Comment[],
+  ): Promise<Margin> => {
+    const indexedFragment = await getVaultIndexer(context).fragments.findByUUID(fragmentUuid);
+    if (!indexedFragment) {
+      throw new VaultError(
+        "FRAGMENT_NOT_FOUND",
+        `Cannot write Margin: fragment "${fragmentUuid}" not found in index`,
+        { uuid: fragmentUuid, reason: "UUID not present in vault index" },
+      );
+    }
+
+    const existing = await readMargin(context, fragmentUuid);
+    const margin: Margin = {
+      fragmentUuid,
+      fragmentKey: indexedFragment.key,
+      notes,
+      comments,
+      createdAt: existing?.createdAt ?? new Date(),
+      updatedAt: new Date(),
+    };
+
+    await getVault(context).margins.write(margin);
+
+    const entityRelativePath = `${indexedFragment.key}.md`;
+    const absolutePath = join(context.vaultPath, "margins", entityRelativePath);
+    const rawContent = await Bun.file(absolutePath).text();
+    const fragmentMarkerIds = await loadFragmentMarkerIds(context, fragmentUuid);
+
+    getVaultDatabase(context).transaction((tx) => {
+      upsertMargin(tx, margin, entityRelativePath, rawContent, fragmentMarkerIds);
+    });
+
+    return margin;
   };
 
   const getSuggestionCooldown = (context: ProjectContext): CooldownSet => {
@@ -737,6 +817,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             computeWordCount(fragmentToWrite.content),
           );
 
+          // The fragment body carries the anchor markers, so a content edit may orphan or rebind a
+          // comment in the bound Margin (whose own file is untouched). Recompute its orphan flags.
+          recomputeMarginOrphans(
+            vaultDatabase,
+            fragmentToWrite.uuid,
+            new Set(extractCommentMarkerIds(fragmentToWrite.content)),
+          );
+
           return { ...fragmentToWrite, contentHash };
         });
       },
@@ -938,6 +1026,112 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           // The Margin is deleted alongside its fragment.
           await getVault(context).margins.delete(indexed.key);
         });
+      },
+    },
+
+    // Margin operations — a fragment's companion annotation document.
+
+    margins: {
+      // Read a fragment's Margin, or null when none exists yet (lazily created on first write).
+      async read(context: ProjectContext, fragmentUuid: string): Promise<Margin | null> {
+        return readMargin(context, fragmentUuid);
+      },
+
+      // Replace a fragment's Margin (notes + comments). Lazily creates the file on first write.
+      async write(
+        context: ProjectContext,
+        fragmentUuid: string,
+        input: { notes: string; comments: Comment[] },
+      ): Promise<Margin> {
+        return withVaultWriteLock(context.vaultPath, () =>
+          persistMargin(context, fragmentUuid, input.notes, input.comments),
+        );
+      },
+
+      // Append a comment to a fragment's Margin (creating the Margin if needed). The marker is
+      // expected to already be (or soon be) in the fragment body; orphan state is derived on save.
+      async createComment(
+        context: ProjectContext,
+        fragmentUuid: string,
+        comment: Comment,
+      ): Promise<Margin> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const existing = await readMargin(context, fragmentUuid);
+          const notes = existing?.notes ?? "";
+          const comments = [...(existing?.comments ?? [])];
+          const index = comments.findIndex((entry) => entry.markerId === comment.markerId);
+          if (index === -1) {
+            comments.push(comment);
+          } else {
+            comments[index] = comment;
+          }
+          return persistMargin(context, fragmentUuid, notes, comments);
+        });
+      },
+
+      // Update an existing comment's excerpt and/or body. Throws ENTITY_NOT_FOUND when the marker
+      // is absent from the Margin.
+      async updateComment(
+        context: ProjectContext,
+        fragmentUuid: string,
+        markerId: string,
+        patch: { excerpt?: string; body?: string },
+      ): Promise<Margin> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const existing = await readMargin(context, fragmentUuid);
+          const comment = existing?.comments.find((entry) => entry.markerId === markerId);
+          if (!existing || !comment) {
+            throw new VaultError(
+              "ENTITY_NOT_FOUND",
+              `Comment "${markerId}" not found in Margin for fragment "${fragmentUuid}"`,
+              { uuid: fragmentUuid, reason: "marker_id not present in Margin" },
+            );
+          }
+          const comments = existing.comments.map((entry) =>
+            entry.markerId === markerId
+              ? {
+                  ...entry,
+                  excerpt: patch.excerpt ?? entry.excerpt,
+                  body: patch.body ?? entry.body,
+                }
+              : entry,
+          );
+          return persistMargin(context, fragmentUuid, existing.notes, comments);
+        });
+      },
+
+      // Remove a comment from a fragment's Margin (the only way an orphaned comment is removed).
+      // No-op-safe: a missing marker leaves the Margin unchanged.
+      async deleteComment(
+        context: ProjectContext,
+        fragmentUuid: string,
+        markerId: string,
+      ): Promise<Margin> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const existing = await readMargin(context, fragmentUuid);
+          if (!existing) {
+            throw new VaultError(
+              "ENTITY_NOT_FOUND",
+              `Cannot delete comment: no Margin for fragment "${fragmentUuid}"`,
+              { uuid: fragmentUuid, reason: "no Margin file" },
+            );
+          }
+          const comments = existing.comments.filter((entry) => entry.markerId !== markerId);
+          return persistMargin(context, fragmentUuid, existing.notes, comments);
+        });
+      },
+
+      // List every orphaned comment across the project (marker absent from its fragment's body).
+      async listOrphanedComments(
+        context: ProjectContext,
+      ): Promise<Array<Comment & { fragmentUuid: string }>> {
+        const rows = await getVaultIndexer(context).margins.findOrphanedComments();
+        return rows.map((row) => ({
+          fragmentUuid: row.fragmentUuid,
+          markerId: row.markerId,
+          excerpt: row.excerpt,
+          body: row.body,
+        }));
       },
     },
 

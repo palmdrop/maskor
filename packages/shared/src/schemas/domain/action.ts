@@ -62,12 +62,16 @@ export const ActionTypeSchema = z.enum([
   "draft:deleted",
   "draft:restored",
   "fragment:imported",
+  "margin:updated",
+  "comment:created",
+  "comment:updated",
+  "comment:deleted",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
 
 export const LogEntryTargetSchema = z.object({
-  type: z.enum(["fragment", "aspect", "note", "reference", "sequence", "draft"]),
+  type: z.enum(["fragment", "aspect", "note", "reference", "sequence", "draft", "margin"]),
   uuid: z.string(),
   key: z.string().optional(),
   title: z.string().optional(),
@@ -192,6 +196,10 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       importSequenceUuid: z.string().optional(),
     }),
   ),
+  entry("margin:updated", empty),
+  entry("comment:created", z.object({ markerId: z.string() })),
+  entry("comment:updated", z.object({ markerId: z.string() })),
+  entry("comment:deleted", z.object({ markerId: z.string() })),
 ]);
 
 export type LogEntry = z.infer<typeof LogEntrySchema>;

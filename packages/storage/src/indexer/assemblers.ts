@@ -2,8 +2,10 @@
 
 import type {
   aspectsTable,
+  commentsTable,
   fragmentPositionsTable,
   fragmentsTable,
+  marginsTable,
   notesTable,
   referencesTable,
   sectionsTable,
@@ -11,7 +13,9 @@ import type {
 } from "../db/vault/schema";
 import type {
   IndexedAspect,
+  IndexedComment,
   IndexedFragment,
+  IndexedMargin,
   IndexedNote,
   IndexedReference,
   IndexedSequence,
@@ -69,6 +73,25 @@ export const assembleReference = (row: typeof referencesTable.$inferSelect): Ind
   key: row.key,
   category: deriveCategory(row.filePath),
   filePath: row.filePath,
+});
+
+export const assembleComment = (row: typeof commentsTable.$inferSelect): IndexedComment => ({
+  markerId: row.markerId,
+  excerpt: row.excerpt,
+  body: row.body,
+  orphaned: row.orphaned,
+  ordinal: row.ordinal,
+});
+
+export const assembleMargin = (
+  row: typeof marginsTable.$inferSelect,
+  commentRows: Array<typeof commentsTable.$inferSelect>,
+): IndexedMargin => ({
+  fragmentUuid: row.fragmentUuid,
+  fragmentKey: row.fragmentKey,
+  notes: row.notes,
+  filePath: row.filePath,
+  comments: [...commentRows].sort((a, b) => a.ordinal - b.ordinal).map(assembleComment),
 });
 
 export const assembleSequence = (

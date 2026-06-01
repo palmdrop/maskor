@@ -6,6 +6,7 @@
 **Shipped**:
 
 - 2026-06-01 — Margin storage (backend): a fragment's Margin is a vault markdown file at `margins/<fragment-key>.md` (`fragmentUuid` + timestamps; `## Notes` + `## Comments` body; comments serialized as `<!--c:ID-->` + `> excerpt` + body). Lazily created, persists when emptied, follows the fragment through rename/discard/delete. Shared `<!--c:ID-->` marker build/extract/strip helpers. (plan: references/plans/margins.md, Phase 1)
+- 2026-06-01 — Margin DB index, watcher sync & API (backend): per-comment DB rows + a margin row, kept in sync by rebuild and the watcher; comment orphan state derived from the fragment's markers and recomputed on fragment edits; `margin:synced`/`margin:deleted` events; API routes to read/replace a Margin, CRUD comments, and list orphaned comments. (plan: references/plans/margins.md, Phase 2)
 
 ---
 

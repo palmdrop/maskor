@@ -857,3 +857,90 @@ describe("StorageService.fragments — Margin lifecycle cascade", () => {
     expect(existsSync(join(vaultDir, "margins", "discarded", `${indexed.key}.md`))).toBe(false);
   });
 });
+
+import { buildCommentMarker } from "@maskor/shared";
+
+// Helpers: set up a project + an active fragment whose body carries a comment marker.
+const setupMarginContext = async () => {
+  const service = makeService();
+  const record = await service.registerProject("Margin Project", vaultDir, "adopt");
+  const context = await service.resolveProject(record.projectUUID);
+  await service.index.rebuild(context);
+  return { service, context };
+};
+
+describe("StorageService.margins — DB index & orphan detection", () => {
+  it("rebuild indexes a Margin and derives comment orphan state from fragment markers", async () => {
+    const { service, context } = await setupMarginContext();
+
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    // Two comments: one anchored to a marker present in the body, one whose marker is absent.
+    await service.fragments.write(context, {
+      ...full,
+      content: `${full.content} ${buildCommentMarker("present")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "Structural thoughts.",
+      comments: [
+        { markerId: "present", excerpt: "anchored", body: "bound" },
+        { markerId: "gone", excerpt: "lost", body: "orphan" },
+      ],
+    });
+
+    // Re-derive from the vault to prove the index is rebuilt, not just inline-written.
+    await service.index.reset(context);
+
+    const margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.notes).toBe("Structural thoughts.");
+    expect(margin?.comments.map((c) => c.markerId).sort()).toEqual(["gone", "present"]);
+
+    const orphaned = await service.margins.listOrphanedComments(context);
+    expect(orphaned.map((c) => c.markerId)).toEqual(["gone"]);
+  });
+
+  it("orphans a comment when the fragment marker is removed", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    await service.fragments.write(context, {
+      ...full,
+      content: `${full.content} ${buildCommentMarker("anchor")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "anchor", excerpt: "the line", body: "comment" }],
+    });
+    expect(await service.margins.listOrphanedComments(context)).toHaveLength(0);
+
+    // Strip the marker from the fragment body — the comment becomes orphaned.
+    await service.fragments.write(context, { ...full, content: full.content });
+    const orphaned = await service.margins.listOrphanedComments(context);
+    expect(orphaned.map((c) => c.markerId)).toEqual(["anchor"]);
+  });
+
+  it("createComment / deleteComment round-trip through the Margin", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+
+    await service.margins.createComment(context, fragment.uuid, {
+      markerId: "c1",
+      excerpt: "x",
+      body: "first",
+    });
+    let margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.comments.map((c) => c.markerId)).toEqual(["c1"]);
+
+    await service.margins.deleteComment(context, fragment.uuid, "c1");
+    margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.comments).toEqual([]);
+  });
+
+  it("returns null reading a Margin that does not exist", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    expect(await service.margins.read(context, fragment.uuid)).toBeNull();
+  });
+});

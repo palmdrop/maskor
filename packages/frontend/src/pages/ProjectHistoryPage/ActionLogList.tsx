@@ -53,7 +53,8 @@ const entityExists = (entry: LogEntry, existence: ExistenceMaps): boolean => {
     case "sequence":
       return false;
     case "draft":
-      // Drafts aren't tracked in ExistenceMaps; treat them as never linkable
+    case "margin":
+      // Drafts and Margins aren't tracked in ExistenceMaps; treat them as never linkable
       // (history shows the entry but without a navigable target).
       return false;
   }

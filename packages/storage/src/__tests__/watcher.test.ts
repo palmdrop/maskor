@@ -831,3 +831,84 @@ describe("watcher — swap files are ignored under .maskor/", () => {
     expect(events).toHaveLength(0);
   });
 });
+
+// --- Margins ---
+
+import { marginsTable, commentsTable } from "../db/vault/schema";
+import { buildCommentMarker } from "@maskor/shared";
+
+describe("syncMargin — live indexing & orphan detection", () => {
+  it("indexes an externally-added Margin and rebinds an orphaned comment when the fragment marker appears", async () => {
+    const made = await rebuildAndWatch({});
+
+    const fragmentRow = made.vaultDatabase
+      .select({ uuid: fragmentsTable.uuid })
+      .from(fragmentsTable)
+      .where(eq(fragmentsTable.key, "the-bridge"))
+      .get();
+    const fragmentUuid = fragmentRow!.uuid;
+
+    // External edit: drop a Margin file with a comment whose marker is not yet in the fragment.
+    await Bun.write(
+      join(vaultDir, "margins", "the-bridge.md"),
+      `---\nfragmentUuid: ${fragmentUuid}\n---\n## Notes\n\nnote prose\n\n## Comments\n\n<!--c:m1-->\n> the excerpt\nthe body\n`,
+    );
+
+    const orphanedNow = () =>
+      made.vaultDatabase
+        .select({ orphaned: commentsTable.orphaned })
+        .from(commentsTable)
+        .where(eq(commentsTable.fragmentUuid, fragmentUuid))
+        .get();
+
+    // The comment is indexed and orphaned (marker absent from the fragment body).
+    await waitFor(() => orphanedNow()?.orphaned === true);
+
+    const marginRow = made.vaultDatabase
+      .select({ notes: marginsTable.notes })
+      .from(marginsTable)
+      .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+      .get();
+    expect(marginRow?.notes).toBe("note prose");
+
+    // Now add the matching marker to the fragment body — the comment rebinds (no longer orphaned).
+    const fragmentPath = join(vaultDir, "fragments", "the-bridge.md");
+    const original = await Bun.file(fragmentPath).text();
+    await Bun.write(fragmentPath, `${original.trimEnd()} ${buildCommentMarker("m1")}\n`);
+
+    await waitFor(() => orphanedNow()?.orphaned === false);
+  });
+
+  it("removes the Margin row when the Margin file is deleted externally", async () => {
+    const made = await rebuildAndWatch({});
+    const fragmentUuid = made.vaultDatabase
+      .select({ uuid: fragmentsTable.uuid })
+      .from(fragmentsTable)
+      .where(eq(fragmentsTable.key, "the-bridge"))
+      .get()!.uuid;
+
+    const marginPath = join(vaultDir, "margins", "the-bridge.md");
+    await Bun.write(
+      marginPath,
+      `---\nfragmentUuid: ${fragmentUuid}\n---\n## Notes\n\n## Comments\n`,
+    );
+    await waitFor(
+      () =>
+        made.vaultDatabase
+          .select({ uuid: marginsTable.fragmentUuid })
+          .from(marginsTable)
+          .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+          .get() !== undefined,
+    );
+
+    unlinkSync(marginPath);
+    await waitFor(
+      () =>
+        made.vaultDatabase
+          .select({ uuid: marginsTable.fragmentUuid })
+          .from(marginsTable)
+          .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+          .get() === undefined,
+    );
+  });
+});

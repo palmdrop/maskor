@@ -1,4 +1,5 @@
 import type { Fragment, VaultSyncEvent } from "@maskor/shared";
+import { extractCommentMarkerIds } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
@@ -9,6 +10,7 @@ import {
   loadKnownAspectKeys,
   upsertFragment,
   deleteFragmentByFilePath,
+  recomputeMarginOrphans,
 } from "../../indexer/upserts";
 import { insertWarning } from "../../warnings/warnings-repo";
 import { reconcileUnknownAspectKeyWarnings } from "../../warnings/reconcile";
@@ -136,6 +138,18 @@ export const syncFragment = async (
   setWordCount(vaultDatabase, resolvedUuid, computeWordCount(fragment.content));
 
   emit({ type: "fragment:synced", uuid: resolvedUuid });
+
+  // The fragment body carries the anchor markers, so editing it can orphan or rebind a comment in
+  // the Margin (whose own file is untouched). Recompute the bound Margin's orphan flags.
+  if (
+    recomputeMarginOrphans(
+      vaultDatabase,
+      resolvedUuid,
+      new Set(extractCommentMarkerIds(fragment.content)),
+    )
+  ) {
+    emit({ type: "margin:synced", fragmentUuid: resolvedUuid });
+  }
 
   for (const warning of warnings) {
     log.warn(

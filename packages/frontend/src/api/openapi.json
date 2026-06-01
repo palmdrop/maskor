@@ -1623,6 +1623,142 @@
           }
         }
       },
+      "OrphanedComment": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Comment"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fragmentUuid": {
+                "type": "string",
+                "format": "uuid",
+                "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+              }
+            },
+            "required": [
+              "fragmentUuid"
+            ]
+          }
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "markerId": {
+            "type": "string",
+            "example": "a1b2c3d4"
+          },
+          "excerpt": {
+            "type": "string",
+            "example": "The bridge groans under the weight."
+          },
+          "body": {
+            "type": "string",
+            "example": "Too literal — rework."
+          }
+        },
+        "required": [
+          "markerId",
+          "excerpt",
+          "body"
+        ]
+      },
+      "Margin": {
+        "type": "object",
+        "properties": {
+          "fragmentUuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+          },
+          "fragmentKey": {
+            "type": "string",
+            "example": "the-bridge"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Thoughts on structure."
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "fragmentUuid",
+          "fragmentKey",
+          "notes",
+          "comments",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "MarginWrite": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": "string",
+            "example": "Thoughts on structure."
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          }
+        },
+        "required": [
+          "notes",
+          "comments"
+        ]
+      },
+      "CommentCreate": {
+        "type": "object",
+        "properties": {
+          "markerId": {
+            "type": "string",
+            "example": "a1b2c3d4"
+          },
+          "excerpt": {
+            "type": "string",
+            "example": "The bridge groans under the weight."
+          },
+          "body": {
+            "type": "string",
+            "example": "Too literal — rework."
+          }
+        },
+        "required": [
+          "markerId",
+          "excerpt",
+          "body"
+        ]
+      },
+      "CommentUpdate": {
+        "type": "object",
+        "properties": {
+          "excerpt": {
+            "type": "string",
+            "example": "The bridge groans."
+          },
+          "body": {
+            "type": "string",
+            "example": "Reworked thought."
+          }
+        }
+      },
       "RebuildStats": {
         "type": "object",
         "properties": {
@@ -1837,7 +1973,8 @@
                   "aspect",
                   "note",
                   "reference",
-                  "sequence"
+                  "sequence",
+                  "margin"
                 ]
               },
               "error": {
@@ -5897,6 +6034,405 @@
         }
       }
     },
+    "/projects/{projectId}/margins/orphaned": {
+      "get": {
+        "operationId": "listOrphanedComments",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "List every orphaned comment in the project",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orphaned comments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrphanedComment"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/margins/{fragmentId}": {
+      "get": {
+        "operationId": "getMargin",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "Read a fragment's Margin",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+            },
+            "required": true,
+            "name": "fragmentId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Margin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Margin"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Margin for this fragment yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "writeMargin",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "Replace a fragment's Margin (notes + comments)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+            },
+            "required": true,
+            "name": "fragmentId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarginWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Margin written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Margin"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fragment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/margins/{fragmentId}/comments": {
+      "post": {
+        "operationId": "createComment",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "Add a comment to a fragment's Margin",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+            },
+            "required": true,
+            "name": "fragmentId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Margin"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fragment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/margins/{fragmentId}/comments/{markerId}": {
+      "patch": {
+        "operationId": "updateComment",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "Update a comment's excerpt and/or body",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+            },
+            "required": true,
+            "name": "fragmentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "a1b2c3d4"
+            },
+            "required": true,
+            "name": "markerId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Margin"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteComment",
+        "tags": [
+          "Margins"
+        ],
+        "summary": "Delete a comment from a fragment's Margin",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"
+            },
+            "required": true,
+            "name": "fragmentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "a1b2c3d4"
+            },
+            "required": true,
+            "name": "markerId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Margin"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Margin not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectId}/index/rebuild": {
       "post": {
         "operationId": "rebuildIndex",
@@ -6384,7 +6920,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -6487,7 +7024,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -6590,7 +7128,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -6693,7 +7232,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -6796,7 +7336,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -6899,7 +7440,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7002,7 +7544,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7105,7 +7648,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7208,7 +7752,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7311,7 +7856,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7414,7 +7960,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7517,7 +8064,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7620,7 +8168,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7689,7 +8238,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7758,7 +8308,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7844,7 +8395,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7924,7 +8476,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -7993,7 +8546,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8062,7 +8616,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8131,7 +8686,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8211,7 +8767,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8287,7 +8844,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8363,7 +8921,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8439,7 +8998,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8515,7 +9075,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8595,7 +9156,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8671,7 +9233,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8755,7 +9318,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8824,7 +9388,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8893,7 +9458,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -8978,7 +9544,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9058,7 +9625,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9134,7 +9702,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9210,7 +9779,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9286,7 +9856,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9362,7 +9933,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9431,7 +10003,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9500,7 +10073,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9582,7 +10156,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9662,7 +10237,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9731,7 +10307,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9807,7 +10384,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9876,7 +10454,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -9945,7 +10524,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10027,7 +10607,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10107,7 +10688,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10176,7 +10758,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10252,7 +10835,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10328,7 +10912,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10404,7 +10989,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10480,7 +11066,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10549,7 +11136,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10629,7 +11217,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10698,7 +11287,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10767,7 +11357,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10836,7 +11427,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10905,7 +11497,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -10981,7 +11574,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -11060,7 +11654,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -11136,7 +11731,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -11215,7 +11811,8 @@
                                   "note",
                                   "reference",
                                   "sequence",
-                                  "draft"
+                                  "draft",
+                                  "margin"
                                 ]
                               },
                               "uuid": {
@@ -11268,6 +11865,307 @@
                               "sourceFileName",
                               "fragmentCount",
                               "format"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "margin:updated"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "comment:created"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "markerId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "markerId"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "comment:updated"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "markerId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "markerId"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "comment:deleted"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "markerId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "markerId"
                             ]
                           }
                         },
