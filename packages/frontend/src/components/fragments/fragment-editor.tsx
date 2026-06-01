@@ -18,10 +18,12 @@ import {
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
 import { useGetProject } from "@api/generated/projects/projects";
+import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
+import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { Separator } from "@components/ui/separator";
@@ -58,6 +60,10 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const queryClient = useQueryClient();
   const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
   const { data: projectEnvelope } = useGetProject(projectId);
+  const { data: sequenceBundleEnvelope } = useListSequences(projectId);
+  const sequences =
+    sequenceBundleEnvelope?.status === 200 ? sequenceBundleEnvelope.data.sequences : [];
+  const [placeInSequenceId, setPlaceInSequenceId] = useState<string | null>(null);
   const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
@@ -172,6 +178,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     isDiscarded: !!fragment?.isDiscarded,
     discard: handleDiscard,
     restore: handleRestore,
+    sequences,
+    openPlaceInSequence: setPlaceInSequenceId,
   });
 
   const extraActions = useMemo(() => {
@@ -220,38 +228,51 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   ) : undefined;
 
   return (
-    <EntityEditorShell
-      ref={shellRef}
-      label="Fragment"
-      projectId={projectId}
-      entityKind="fragment"
-      entityUUID={fragmentId}
-      entityKey={fragment.key}
-      content={fragment.content}
-      isPending={isActionPending}
-      isDirty={isDirty}
-      banner={discardedBanner}
-      extraActions={extraActions}
-      sidebarCollapsible={sidebarCollapsible}
-      onProseChange={() => setIsProseDirty(true)}
-      onSaved={() => {
-        setIsProseDirty(false);
-        onSaved?.();
-      }}
-      onContentRevert={() => setIsProseDirty(false)}
-      onKeySave={onKeySave}
-      onContentSave={onContentSave}
-      sidebar={
-        <div className="flex flex-col gap-4">
-          <FragmentMetadataForm fragment={fragment} projectId={projectId} />
-          {showFragmentStats && (
-            <>
-              <Separator />
-              <FragmentStatsInspector projectId={projectId} fragmentId={fragmentId} />
-            </>
-          )}
-        </div>
-      }
-    />
+    <>
+      <EntityEditorShell
+        ref={shellRef}
+        label="Fragment"
+        projectId={projectId}
+        entityKind="fragment"
+        entityUUID={fragmentId}
+        entityKey={fragment.key}
+        content={fragment.content}
+        isPending={isActionPending}
+        isDirty={isDirty}
+        banner={discardedBanner}
+        extraActions={extraActions}
+        sidebarCollapsible={sidebarCollapsible}
+        onProseChange={() => setIsProseDirty(true)}
+        onSaved={() => {
+          setIsProseDirty(false);
+          onSaved?.();
+        }}
+        onContentRevert={() => setIsProseDirty(false)}
+        onKeySave={onKeySave}
+        onContentSave={onContentSave}
+        sidebar={
+          <div className="flex flex-col gap-4">
+            <FragmentMetadataForm fragment={fragment} projectId={projectId} />
+            {showFragmentStats && (
+              <>
+                <Separator />
+                <FragmentStatsInspector projectId={projectId} fragmentId={fragmentId} />
+              </>
+            )}
+          </div>
+        }
+      />
+      {placeInSequenceId && (
+        <PlaceInSequenceModal
+          projectId={projectId}
+          fragmentId={fragmentId}
+          sequenceId={placeInSequenceId}
+          open
+          onOpenChange={(next) => {
+            if (!next) setPlaceInSequenceId(null);
+          }}
+        />
+      )}
+    </>
   );
 });

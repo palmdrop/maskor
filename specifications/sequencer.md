@@ -10,6 +10,7 @@
 - 2026-05-18 - Secondary sequences as soft constraints, sequence CRUD, violation and cycle detection, sidebar for switching between sequences. (prd: tasks/prd-secondary-sequences.md)
 - 2026-05-29 - Users can re-order sections within a sequence by dragging and dropping.
 - 2026-05-31 - Sequences carry an `active` flag: the violation/cycle detector consumes only **active** non-main sequences, so a non-main sequence no longer constrains the main sequence merely by existing. User-authored secondaries default active; auto-created import-sequences default inactive. Sequences also carry an optional `origin` (import provenance). (plan: `references/plans/import-sequence.md`, ADRs 0004/0005)
+- 2026-06-01 - "Place in sequence…" command (fragment editor scope, available from the fragment list and suggestion mode): pick a sequence by name, then add/move/remove the active fragment and add/remove sections in a keyboard-driven modal. Active-fragment-only, live commit, no DnD; reuses the Overview's tile and step-move logic. (plan: `references/plans/place-in-sequence.md`, ADR 0006)
 
 ---
 

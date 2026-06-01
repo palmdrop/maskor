@@ -78,6 +78,8 @@ describe("scopes/fragment-editor", () => {
     isDiscarded: false,
     discard: vi.fn(),
     restore: vi.fn(),
+    sequences: [],
+    openPlaceInSequence: vi.fn(),
   };
 
   it("discard runs and is disabled in obvious bad states", () => {
@@ -92,6 +94,20 @@ describe("scopes/fragment-editor", () => {
     const cmd = find(fragmentEditorCommands, "fragment:restore");
     expect(cmd.disabled?.({ ...baseCtx, isDiscarded: false })).toBe("Fragment is not discarded");
     expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBeUndefined();
+  });
+
+  it("place-in-sequence opens the chosen sequence and disables in bad states", () => {
+    const cmd = find(fragmentEditorCommands, "fragment:place-in-sequence");
+    const sequence = { uuid: "seq-1", name: "Main" } as FragmentEditorContext["sequences"][number];
+    const ctx = { ...baseCtx, sequences: [sequence] };
+
+    cmd.run(ctx, sequence);
+    expect(ctx.openPlaceInSequence).toHaveBeenCalledWith("seq-1");
+
+    expect(cmd.disabled?.({ ...ctx, hasFragment: false })).toBe("No fragment to place");
+    expect(cmd.disabled?.({ ...ctx, isDiscarded: true })).toBe("Fragment is discarded");
+    expect(cmd.disabled?.({ ...ctx, sequences: [] })).toBe("No sequences");
+    expect(cmd.disabled?.(ctx)).toBeUndefined();
   });
 });
 
