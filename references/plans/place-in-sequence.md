@@ -56,6 +56,13 @@ Design rationale recorded in `references/adr/0006-placement-modal-separate-from-
 - [x] Update `specifications/sequencer.md` `Shipped`. _(2026-06-01)_
 - [x] Commit per phase. _(2026-06-01)_
 
+### Phase 5 — Post-review refinements _(scope added 2026-06-01, after first review)_
+
+> Added during review of the shipped feature. Captured here so the scope increase is on record — these were not in the original plan.
+
+- [x] Widen the modal: the `DialogContent` base sets `sm:max-w-sm`, which beat the unprefixed `max-w-2xl` at the `sm`+ breakpoint and made the title overflow. Overridden with `sm:max-w-4xl`. _(2026-06-01)_
+- [x] Add a read-only **"Sequences" membership stat** to the fragment metadata sidebar (`FragmentSequenceMembership`): lists each sequence the active fragment is placed in, with its section and a `(main)` marker, each row linking to that sequence in the Overview. Surfaces the fragment model's `isPlaced` property and updates live off the same `useListSequences` query the modal mutates. _(2026-06-01)_
+
 ---
 
 ## Testing
@@ -65,6 +72,7 @@ ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests alrea
 - Shared step-move helper: unit tests for within-section, cross-section-boundary, and end-of-sequence (no-op) cases.
 - Modal: add appends to selected section; move steps across boundaries; remove unplaces; section add/remove (incl. blocked last-section delete and active-fragment-in-deleted-section → pool). Wrap with `<CommandsProvider>` where a scope is exercised.
 - Command: present and enabled in the fragment-editor scope; disabled when the active fragment is discarded; selecting a sequence opens the modal for that sequence.
+- Sequence membership stat (Phase 5): lists each placed-in sequence with its section + main marker; empty state when unplaced.
 
 ## Notes
 

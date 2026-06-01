@@ -8,6 +8,7 @@
 - 2026-05-05 — Fragments support inline renaming; the filename stem is the user-facing identity, consistent with all other vault entities. UUID and all attached metadata survive a rename. (plan: references/plans/drop-fragment-title.md)
 - 2026-05-06 — Users can assign per-aspect weights (0–1) to a fragment; weights are optional, default to 0, and are preserved for aspects that no longer exist in the project. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
 - 2026-05-14 — Fragments can be discarded and restored reliably; discard state is derived from filesystem location alone — no stored flag can drift out of sync. (plan: references/plans/remove-pool-concept.md)
+- 2026-06-01 — The fragment editor surfaces `isPlaced`: a read-only "Sequences" stat in the metadata sidebar lists every sequence the fragment is placed in, with its section. (plan: references/plans/place-in-sequence.md)
 
 ---
 
