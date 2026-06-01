@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import {
+  cpSync,
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Database } from "bun:sqlite";
@@ -783,5 +791,69 @@ describe("StorageService.sequences.setMain", () => {
     await expect(
       service.sequences.setMain(context, "00000000-0000-0000-0000-000000000000"),
     ).rejects.toMatchObject({ code: "SEQUENCE_NOT_FOUND" });
+  });
+});
+
+// A Margin follows its fragment through the lifecycle. These tests seed a Margin file on disk
+// (Phase 1 has no service-level Margin write yet) and assert the fragment operations cascade it.
+const seedMargin = (key: string, uuid: string) => {
+  const dir = join(vaultDir, "margins");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, `${key}.md`),
+    `---\nfragmentUuid: ${uuid}\n---\n## Notes\n\nseeded\n\n## Comments\n`,
+  );
+};
+
+describe("StorageService.fragments — Margin lifecycle cascade", () => {
+  it("renames the Margin file when the fragment is renamed", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+    await service.index.rebuild(context);
+
+    const indexed = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded);
+    if (!indexed) throw new Error("expected an active fragment");
+    seedMargin(indexed.key, indexed.uuid);
+
+    const fragment = await service.fragments.read(context, indexed.uuid);
+    await service.fragments.write(context, { ...fragment, key: "renamed-key" });
+
+    expect(existsSync(join(vaultDir, "margins", `${indexed.key}.md`))).toBe(false);
+    expect(existsSync(join(vaultDir, "margins", "renamed-key.md"))).toBe(true);
+  });
+
+  it("moves the Margin into and back out of discarded/ with the fragment", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+    await service.index.rebuild(context);
+
+    const indexed = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded);
+    if (!indexed) throw new Error("expected an active fragment");
+    seedMargin(indexed.key, indexed.uuid);
+
+    await service.fragments.discard(context, indexed.uuid);
+    expect(existsSync(join(vaultDir, "margins", `${indexed.key}.md`))).toBe(false);
+    expect(existsSync(join(vaultDir, "margins", "discarded", `${indexed.key}.md`))).toBe(true);
+
+    await service.fragments.restore(context, indexed.uuid);
+    expect(existsSync(join(vaultDir, "margins", `${indexed.key}.md`))).toBe(true);
+    expect(existsSync(join(vaultDir, "margins", "discarded", `${indexed.key}.md`))).toBe(false);
+  });
+
+  it("deletes the Margin when the fragment is permanently deleted", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+    await service.index.rebuild(context);
+
+    const indexed = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded);
+    if (!indexed) throw new Error("expected an active fragment");
+    seedMargin(indexed.key, indexed.uuid);
+
+    await service.fragments.discard(context, indexed.uuid);
+    await service.fragments.delete(context, indexed.uuid);
+    expect(existsSync(join(vaultDir, "margins", "discarded", `${indexed.key}.md`))).toBe(false);
   });
 });

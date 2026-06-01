@@ -3,6 +3,10 @@
 **Status**: Stable
 **Last updated**: 2026-06-01
 
+**Shipped**:
+
+- 2026-06-01 — Margin storage (backend): a fragment's Margin is a vault markdown file at `margins/<fragment-key>.md` (`fragmentUuid` + timestamps; `## Notes` + `## Comments` body; comments serialized as `<!--c:ID-->` + `> excerpt` + body). Lazily created, persists when emptied, follows the fragment through rename/discard/delete. Shared `<!--c:ID-->` marker build/extract/strip helpers. (plan: references/plans/margins.md, Phase 1)
+
 ---
 
 ## Outcome
@@ -34,7 +38,7 @@ The Margin concept is defined generally — a companion annotation document for 
 - **Word / span-level anchoring** — comments anchor to whole blocks only. Sub-block precision is deferred (better suited to a word processor).
 - **Sequence Margins, aspect Margins, arc Margins** — the model supports them; no UI or anchor logic is built here.
 - **Graph / canvas view** — the side-by-side pair is designed to drop into it later, but the canvas itself is out of scope.
-- **Project-scope vault Notes themselves** — they continue to exist per `notes.md`; only their *fragment-attachment* mechanism changes (handled here + in `document-links.md`).
+- **Project-scope vault Notes themselves** — they continue to exist per `notes.md`; only their _fragment-attachment_ mechanism changes (handled here + in `document-links.md`).
 - **References** — unchanged; references stay an attached structured frontmatter list (`attachments.md`).
 - **Inline `[[document-links]]` syntax and machinery** — owned by `document-links.md`; this spec only changes the notes auto-sync consequence.
 - **Comments as a linkable `[[type/key]]` target** — comments are not vault files and are not document-link targets (see ADR 0007).

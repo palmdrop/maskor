@@ -1,4 +1,4 @@
-import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Fragment, Margin, Note, Reference, Sequence } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 
 export type VaultConfig = {
@@ -100,5 +100,19 @@ export type Vault = {
     read(filename: string): Promise<Sequence>;
     write(sequence: Sequence): Promise<void>;
     delete(filename: string): Promise<void>;
+  };
+  margins: {
+    // filePath is relative to the margins/ directory. Active: "the-bridge.md";
+    // discarded: "discarded/the-bridge.md".
+    readAll(): Promise<Margin[]>;
+    readAllWithFilePaths(options?: ReadAllOptions): Promise<ReadAllResult<Margin>>;
+    read(filePath: string): Promise<Margin>;
+    write(margin: Margin): Promise<void>;
+    // Margins follow their fragment. These tolerate a missing source file (a fragment with no
+    // Margin yet) and no-op, so the fragment lifecycle can cascade unconditionally.
+    rename(oldKey: string, newKey: string): Promise<void>;
+    discard(key: string): Promise<void>;
+    restore(key: string): Promise<void>;
+    delete(key: string): Promise<void>;
   };
 };

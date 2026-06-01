@@ -20,23 +20,23 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 On-disk representation, lifecycle, DB shape, and CM6 rendering are now resolved in `specifications/margins.md` Prior decisions (session 2026-06-01) — Phase 0 no longer needs to settle them. Carried forward: marker = `<!--c:ID-->`; comment = `<!--c:ID-->` + `> excerpt` + body; empty Margins persist (not auto-removed); per-comment DB rows; CM6 hide + gutter cue + reveal-on-block-cursor; export/preview strip markers.
 
-- [ ] Create branch `margins` based on this plan title. (The design artifacts from the 2026-06-01 session are already in the working tree — they carry over to the new branch.)
-- [ ] **First commit — docs only, before any code or further spec edits.** Commit the existing uncommitted working-tree design artifacts so the branch opens with the agreed design recorded: `specifications/_glossary.md` (new Margin/Comment/Anchor/Orphaned-comment/Annotatable-entity terms + Note update + flagged ambiguity), `references/adr/0007-margin-anchored-comments-supersede-file-based-comments.md`, `specifications/margins.md`, and this plan (`references/plans/margins.md`). Nothing else goes in this commit.
-- [ ] `specifications/fragment-model.md`: loosen the "Maskor never edits fragment content" constraint to "never edits fragment **prose** except through user actions; anchor markup written when the user authors a comment is a permitted, user-initiated edit." Add a Prior decision pointing to ADR 0007. (Spec text only — no behaviour change yet.)
-- [ ] `specifications/document-links.md`: remove comments from the future scope / "comments are not anchor-scoped" prior decision; add a note that comments now live in `margins.md` (→ ADR 0007). Leave the notes auto-sync rule in place for now (changed in Phase 8).
-- [ ] Update `references/CODEBASE_SNAPSHOT.md` if stale (`bun run snapshot`) so later phases reference current structure.
-- [ ] Commit.
+- [x] Create branch `margins` based on this plan title. (The design artifacts from the 2026-06-01 session are already in the working tree — they carry over to the new branch.)
+- [x] **First commit — docs only, before any code or further spec edits.** Commit the existing uncommitted working-tree design artifacts so the branch opens with the agreed design recorded: `specifications/_glossary.md` (new Margin/Comment/Anchor/Orphaned-comment/Annotatable-entity terms + Note update + flagged ambiguity), `references/adr/0007-margin-anchored-comments-supersede-file-based-comments.md`, `specifications/margins.md`, and this plan (`references/plans/margins.md`). Nothing else goes in this commit.
+- [x] `specifications/fragment-model.md`: loosen the "Maskor never edits fragment content" constraint to "never edits fragment **prose** except through user actions; anchor markup written when the user authors a comment is a permitted, user-initiated edit." Add a Prior decision pointing to ADR 0007. (Spec text only — no behaviour change yet.)
+- [x] `specifications/document-links.md`: remove comments from the future scope / "comments are not anchor-scoped" prior decision; add a note that comments now live in `margins.md` (→ ADR 0007). Leave the notes auto-sync rule in place for now (changed in Phase 8).
+- [x] Update `references/CODEBASE_SNAPSHOT.md` if stale (`bun run snapshot`) so later phases reference current structure.
+- [x] Commit.
 
 ### Phase 1 — Storage: the `margins/` entity (backend)
 
-- [ ] Define the Margin file model in `packages/storage`: path `margins/<fragment-key>.md`, frontmatter `fragmentUuid` + `createdAt`/`updatedAt`, body = `## Notes` section + `## Comments` section. Mirror the existing note/reference reader/writer patterns.
-- [ ] Parser/serialiser for the comments section: each comment serialises as `<!--c:ID-->` + `> excerpt` + body prose, blank-line separated; parser splits on the id-comment lines; round-trip safe and Obsidian-legible. Fragment-side `<!--c:ID-->` marker parse/strip helper (shared with editor and export phases).
-- [ ] Lazy create on first note/comment; Margins persist once created (no auto-removal).
-- [ ] Rename cascade: fragment rename renames the Margin file (extend the existing rename-cascade mechanism). Discard moves Margin to `margins/discarded/<key>.md`; delete moves it to trash alongside the fragment.
-- [ ] `fragmentUuid` is the stable join; handle the case where the Margin's stem and its fragment's key disagree after an external rename (orphan/warning behaviour consistent with `attachments.md`).
-- [ ] Tests: create/read/write/rename/discard/delete, round-trip fidelity, lazy create, persist-when-emptied, external-rename mismatch.
-- [ ] `specifications/storage-sync.md` (and `attachments.md` if it documents the shared reader pattern): add the `margins/` directory and its sync rules. Update Shipped where applicable.
-- [ ] `specifications/margins.md`: add a Shipped entry for storage. Commit.
+- [x] Define the Margin file model in `packages/storage`: path `margins/<fragment-key>.md`, frontmatter `fragmentUuid` + `createdAt`/`updatedAt`, body = `## Notes` section + `## Comments` section. Mirror the existing note/reference reader/writer patterns.
+- [x] Parser/serialiser for the comments section: each comment serialises as `<!--c:ID-->` + `> excerpt` + body prose, blank-line separated; parser splits on the id-comment lines; round-trip safe and Obsidian-legible. Fragment-side `<!--c:ID-->` marker parse/strip helper (shared with editor and export phases) — `@maskor/shared` `comment-marker.ts`.
+- [x] Lazy create on first note/comment; Margins persist once created (no auto-removal).
+- [x] Rename cascade: fragment rename renames the Margin file (wired into `fragments.write`). Discard moves Margin to `margins/discarded/<key>.md`; delete removes it alongside the fragment (matches fragment delete = unlink; no trash folder exists).
+- [x] `fragmentUuid` is the stable join; the mapper preserves it even when the filename stem disagrees after an external rename (test covers the mismatch). Indexer-level orphan/warning behaviour lands in Phase 2.
+- [x] Tests: create/read/write/rename/discard/delete, round-trip fidelity, lazy create, persist-when-emptied, external-rename mismatch.
+- [x] `specifications/storage-sync.md`: added the `margins/` directory and its storage rules + Shipped entry. (`attachments.md` unchanged — it does not document the shared reader pattern.)
+- [x] `specifications/margins.md`: add a Shipped entry for storage. Commit.
 
 ### Phase 2 — DB index, watcher sync & API (backend)
 

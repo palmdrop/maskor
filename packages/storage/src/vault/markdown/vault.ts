@@ -1,4 +1,4 @@
-import type { Aspect, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Margin, Note, Reference, Sequence } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { EntityReadFailure, ReadAllResult, Vault, VaultConfig, WithFilePath } from "../types";
 import { VaultError } from "../types";
@@ -11,6 +11,7 @@ import * as aspectMapper from "./mappers/aspect";
 import * as noteMapper from "./mappers/note";
 import * as referenceMapper from "./mappers/reference";
 import * as sequenceMapper from "./mappers/sequence";
+import * as marginMapper from "./mappers/margin";
 import { rename, unlink, mkdir } from "node:fs/promises";
 import { join, basename, sep, resolve } from "node:path";
 import { joinCategoryPath } from "../../utils/category";
@@ -113,6 +114,7 @@ export const createVault = (config: VaultConfig): Vault => {
   const toAbsoluteAspect = makeToAbsolute(resolve(vaultPath("aspects")));
   const toAbsoluteNote = makeToAbsolute(resolve(vaultPath("notes")));
   const toAbsoluteReference = makeToAbsolute(resolve(vaultPath("references")));
+  const toAbsoluteMargin = makeToAbsolute(resolve(vaultPath("margins")));
   const sequencesDir = resolve(vaultPath(".maskor", "sequences"));
   const toAbsoluteSequence = makeToAbsolute(sequencesDir);
 
@@ -556,6 +558,133 @@ export const createVault = (config: VaultConfig): Vault => {
           throw cause;
         }
         log.debug({ filename }, "sequence deleted");
+      },
+    },
+
+    margins: {
+      // filePath is relative to the margins/ directory.
+      // Active margins: "the-bridge.md"; discarded margins: "discarded/the-bridge.md".
+      async read(filePath) {
+        const absolutePath = toAbsoluteMargin(filePath);
+        const raw = await readMarkdown(absolutePath);
+        return marginMapper.fromFile(parseFile(raw), filePath);
+      },
+
+      async readAll() {
+        const active = await listMarkdownFiles(vaultPath("margins"));
+        const discardedFiles = await listMarkdownFiles(vaultPath("margins", "discarded"));
+        const discarded = discardedFiles.map((fileName) => join("discarded", fileName));
+        return Promise.all([...active, ...discarded].map((filePath) => this.read(filePath)));
+      },
+
+      async readAllWithFilePaths() {
+        const active = await listMarkdownFiles(vaultPath("margins"));
+        const discardedFiles = await listMarkdownFiles(vaultPath("margins", "discarded"));
+        const discarded = discardedFiles.map((fileName) => join("discarded", fileName));
+        return readEntitiesSettled([...active, ...discarded], async (filePath) => {
+          const absolutePath = toAbsoluteMargin(filePath);
+          const rawContent = await readMarkdown(absolutePath);
+          return {
+            entity: marginMapper.fromFile(parseFile(rawContent), filePath),
+            filePath,
+            rawContent,
+          };
+        });
+      },
+
+      // Writes to the active path margins/<fragment-key>.md. A Margin is lazily created: callers
+      // only write once the user authors the first note or comment. Discarded margins are moved by
+      // `discard`, not written here.
+      async write(margin: Margin) {
+        const { frontmatter, body } = marginMapper.toFile(margin);
+        const absoluteFilePath = toAbsoluteMargin(`${margin.fragmentKey}.md`);
+        await mkdir(resolve(vaultPath("margins")), { recursive: true });
+        await writeMarkdown(absoluteFilePath, serializeFile({ frontmatter, body }));
+        log.debug({ filePath: `${margin.fragmentKey}.md` }, "margin written");
+      },
+
+      // Cascade helper: rename the Margin file to follow a fragment rename, preserving whichever
+      // directory (active or discarded/) the Margin currently sits in. No-op when the fragment has
+      // no Margin yet.
+      async rename(oldKey: string, newKey: string) {
+        if (oldKey === newKey) return;
+        const activeSource = toAbsoluteMargin(`${oldKey}.md`);
+        const discardedSource = toAbsoluteMargin(join("discarded", `${oldKey}.md`));
+        const [source, destination] = (await Bun.file(activeSource).exists())
+          ? [activeSource, toAbsoluteMargin(`${newKey}.md`)]
+          : (await Bun.file(discardedSource).exists())
+            ? [discardedSource, toAbsoluteMargin(join("discarded", `${newKey}.md`))]
+            : [null, null];
+        if (!source || !destination) return;
+        try {
+          await rename(source, destination);
+        } catch (cause) {
+          throw new VaultError(
+            "FILE_MOVE_FAILED",
+            `Failed to rename margin "${oldKey}" -> "${newKey}"`,
+            { filePath: `${oldKey}.md`, reason: "fs.rename failed" },
+            { cause },
+          );
+        }
+        log.debug({ oldKey, newKey }, "margin renamed");
+      },
+
+      // Cascade helper: move the active Margin into margins/discarded/. No-op when absent.
+      async discard(key: string) {
+        const absoluteSource = toAbsoluteMargin(`${key}.md`);
+        if (!(await Bun.file(absoluteSource).exists())) return;
+        const absoluteDestination = toAbsoluteMargin(join("discarded", `${key}.md`));
+        await mkdir(join(resolve(vaultPath("margins")), "discarded"), { recursive: true });
+        try {
+          await rename(absoluteSource, absoluteDestination);
+        } catch (cause) {
+          throw new VaultError(
+            "FILE_MOVE_FAILED",
+            `Failed to move margin to discarded/`,
+            { filePath: `${key}.md`, reason: "fs.rename failed" },
+            { cause },
+          );
+        }
+        log.debug({ key }, "margin discarded");
+      },
+
+      // Cascade helper: move the Margin back out of margins/discarded/. No-op when absent.
+      async restore(key: string) {
+        const absoluteSource = toAbsoluteMargin(join("discarded", `${key}.md`));
+        if (!(await Bun.file(absoluteSource).exists())) return;
+        const absoluteDestination = toAbsoluteMargin(`${key}.md`);
+        try {
+          await rename(absoluteSource, absoluteDestination);
+        } catch (cause) {
+          throw new VaultError(
+            "FILE_MOVE_FAILED",
+            `Failed to move margin out of discarded/`,
+            { filePath: join("discarded", `${key}.md`), reason: "fs.rename failed" },
+            { cause },
+          );
+        }
+        log.debug({ key }, "margin restored");
+      },
+
+      // Cascade helper: delete the Margin alongside its fragment. The fragment must be discarded
+      // before deletion, so the Margin is looked for in margins/discarded/ first, then active as a
+      // fallback. No-op when absent.
+      async delete(key: string) {
+        const discardedPath = toAbsoluteMargin(join("discarded", `${key}.md`));
+        const activePath = toAbsoluteMargin(`${key}.md`);
+        const target = (await Bun.file(discardedPath).exists())
+          ? discardedPath
+          : (await Bun.file(activePath).exists())
+            ? activePath
+            : null;
+        if (!target) return;
+        try {
+          await unlink(target);
+        } catch (cause) {
+          if (cause instanceof Error && (cause as NodeJS.ErrnoException).code === "ENOENT") return;
+          throw cause;
+        }
+        log.debug({ key }, "margin deleted");
       },
     },
   };

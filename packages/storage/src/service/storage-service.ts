@@ -17,7 +17,7 @@ import type {
 import type { Logger } from "@maskor/shared/logger";
 import { ArcSchema } from "@maskor/shared";
 import { mkdir, rename, rmdir, unlink } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { createVault } from "../vault/markdown";
 import type { Vault } from "../vault/types";
@@ -712,6 +712,15 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             writeFile: () => getVault(context).fragments.write(fragmentToWrite),
           });
 
+          // Cascade a key rename to the fragment's Margin (margins/<key>.md follows the fragment
+          // key). No-op when the key is unchanged or the fragment has no Margin.
+          if (oldFilePath) {
+            const oldKey = basename(oldFilePath).replace(/\.md$/, "");
+            if (oldKey !== fragmentToWrite.key) {
+              await getVault(context).margins.rename(oldKey, fragmentToWrite.key);
+            }
+          }
+
           const absolutePath = join(context.vaultPath, "fragments", entityRelativePath);
           const rawContent = await Bun.file(absolutePath).text();
           const contentHash = hashContent(rawContent);
@@ -791,6 +800,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               knownAspectKeys,
             );
           });
+
+          // The Margin follows the fragment into discarded/.
+          await getVault(context).margins.discard(indexed.key);
         });
       },
 
@@ -874,6 +886,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               knownAspectKeys,
             );
           });
+
+          // The Margin follows the fragment back out of discarded/.
+          await getVault(context).margins.restore(indexed.key);
         });
       },
 
@@ -919,6 +934,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           vaultDatabase.transaction((tx) => {
             deleteFragmentByFilePath(tx, indexed.filePath);
           });
+
+          // The Margin is deleted alongside its fragment.
+          await getVault(context).margins.delete(indexed.key);
         });
       },
     },
