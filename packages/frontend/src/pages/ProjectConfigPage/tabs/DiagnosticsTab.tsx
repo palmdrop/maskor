@@ -3,11 +3,16 @@ import { useDismissWarning, getListWarningsQueryKey } from "@api/generated/warni
 import type { VaultWarning } from "@api/generated/maskorAPI.schemas";
 import { useWarnings } from "@hooks/useWarnings";
 import { Button } from "@components/ui/button";
-import { FileWarningIcon, TagIcon, CopyIcon, type LucideIcon } from "lucide-react";
+import { FileWarningIcon, TagIcon, CopyIcon, FileX2Icon, type LucideIcon } from "lucide-react";
 
 type WarningKind = VaultWarning["kind"];
 
 const KIND_META: Record<WarningKind, { title: string; hint: string; icon: LucideIcon }> = {
+  INVALID_ENTITY_FILE: {
+    title: "Invalid files",
+    hint: "Could not be parsed (malformed frontmatter). Skipped during indexing — fix the file and it clears automatically.",
+    icon: FileX2Icon,
+  },
   WRONG_FORMAT_FILE: {
     title: "Wrong-format files",
     hint: "Not a Markdown file. Convert it through Import, or remove it from the folder.",
@@ -25,10 +30,22 @@ const KIND_META: Record<WarningKind, { title: string; hint: string; icon: Lucide
   },
 };
 
-const KIND_ORDER: WarningKind[] = ["WRONG_FORMAT_FILE", "UNKNOWN_ASPECT_KEY", "UUID_COLLISION"];
+const KIND_ORDER: WarningKind[] = [
+  "INVALID_ENTITY_FILE",
+  "WRONG_FORMAT_FILE",
+  "UNKNOWN_ASPECT_KEY",
+  "UUID_COLLISION",
+];
 
 const WarningContext = ({ warning }: { warning: VaultWarning }) => {
   switch (warning.kind) {
+    case "INVALID_ENTITY_FILE":
+      return (
+        <span className="text-xs">
+          <code>{warning.filePath}</code>
+          <span className="text-muted-foreground"> — {warning.error}</span>
+        </span>
+      );
     case "WRONG_FORMAT_FILE":
       return <code className="text-xs">{warning.filePath}</code>;
     case "UNKNOWN_ASPECT_KEY":

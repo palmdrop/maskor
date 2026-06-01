@@ -1,10 +1,11 @@
 # Spec: Project Configuration
 
 **Status**: Stable
-**Last updated**: 2026-05-29
+**Last updated**: 2026-06-01
 
 **Shipped**:
 
+- 2026-06-01 — The General tab's Index section adds a **Reset database** button beside **Rebuild index** (drops + re-derives the vault DB on demand, behind a confirmation; for breakage rebuild can't fix), and both buttons now surface success/failure instead of failing silently. The Diagnostics tab also renders the `INVALID_ENTITY_FILE` warning kind (unparseable entity files). (plan: references/plans/resilient-rebuild-and-db-reset.md)
 - 2026-04-04 — The suggestion eligibility cutoff ("Ready status threshold") is configurable per project, controlling which fragments are eligible for suggestion mode. (plan: references/plans/suggestion-mode.md)
 - 2026-05-29 — A Diagnostics tab surfaces vault warnings — wrong-format files, unknown aspect keys (state warnings that clear when fixed) and resolved UUID collisions (event warnings the user dismisses). Live-updates via `vault:warning` SSE; a count badge shows on the tab. (plan: references/plans/remove-piece-concept-and-vault-warnings.md)
 - 2026-04-30 — User can manage project configuration from a dedicated tabbed UI: edit project name, create/rename/delete aspects and their arcs, manage notes and references. (plan: references/plans/project-config-page.md)

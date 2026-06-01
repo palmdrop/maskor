@@ -122,12 +122,27 @@ describe("scopes/fragment-import", () => {
 });
 
 describe("scopes/project-config", () => {
+  const makeContext = (): ProjectConfigContext => ({
+    rebuildIndexPending: false,
+    rebuildIndex: vi.fn(),
+    resetDatabasePending: false,
+    resetDatabase: vi.fn(),
+  });
+
   it("rebuild-index runs and reports Rebuilding… while pending", () => {
-    const ctx: ProjectConfigContext = { rebuildIndexPending: false, rebuildIndex: vi.fn() };
+    const ctx = makeContext();
     const cmd = find(projectConfigCommands, "config:rebuild-index");
     cmd.run(ctx);
     expect(ctx.rebuildIndex).toHaveBeenCalled();
     expect(cmd.disabled?.({ ...ctx, rebuildIndexPending: true })).toBe("Rebuilding…");
+  });
+
+  it("reset-database runs and reports Resetting… while pending", () => {
+    const ctx = makeContext();
+    const cmd = find(projectConfigCommands, "config:reset-database");
+    cmd.run(ctx);
+    expect(ctx.resetDatabase).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, resetDatabasePending: true })).toBe("Resetting…");
   });
 });
 

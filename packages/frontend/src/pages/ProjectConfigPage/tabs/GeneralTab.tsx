@@ -11,7 +11,7 @@ import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { Slider } from "@components/ui/slider";
 import { Button } from "@components/ui/button";
-import { useRebuildIndex } from "@api/generated/index";
+import { useRebuildIndex, useResetDatabase } from "@api/generated/index";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectConfigScope } from "@lib/commands/scopes/project-config";
@@ -20,11 +20,61 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
   const updateProject = useUpdateProject();
   const rebuildIndex = useRebuildIndex();
+  const resetDatabase = useResetDatabase();
+
+  // Feedback for the index-maintenance buttons. Surfacing it is the fix for the prior silent
+  // failure: a fire-and-forget mutate() dropped errors, so a failed rebuild looked like nothing
+  // happened. Invalid-file feedback flows through the Diagnostics tab, not here.
+  const [indexStatus, setIndexStatus] = useState<{ message: string; isError: boolean } | null>(
+    null,
+  );
+
+  const runRebuildIndex = () => {
+    if (rebuildIndex.isPending) return;
+    setIndexStatus(null);
+    rebuildIndex.mutate(
+      { projectId: project.projectUUID },
+      {
+        onSuccess: () => setIndexStatus({ message: "Index rebuilt.", isError: false }),
+        onError: () =>
+          setIndexStatus({ message: "Rebuild failed — see server logs.", isError: true }),
+      },
+    );
+  };
+
+  const runResetDatabase = () => {
+    if (resetDatabase.isPending) return;
+    // Reuses the auto-reset wording: re-derives from the vault, discarding DB-only state.
+    if (
+      !confirm(
+        "Reset the database? It is dropped and re-derived from your vault. " +
+          "Fragment usage stats and dismissed collision warnings are discarded. " +
+          "Your vault files are not touched.",
+      )
+    ) {
+      return;
+    }
+    setIndexStatus(null);
+    resetDatabase.mutate(
+      { projectId: project.projectUUID },
+      {
+        onSuccess: () =>
+          setIndexStatus({
+            message: "Database reset and re-derived from the vault.",
+            isError: false,
+          }),
+        onError: () =>
+          setIndexStatus({ message: "Reset failed — see server logs.", isError: true }),
+      },
+    );
+  };
 
   const commands = useCommands();
   useCommandScope(projectConfigScope, {
     rebuildIndexPending: rebuildIndex.isPending,
-    rebuildIndex: () => rebuildIndex.mutate({ projectId: project.projectUUID }),
+    rebuildIndex: runRebuildIndex,
+    resetDatabasePending: resetDatabase.isPending,
+    resetDatabase: runResetDatabase,
   });
 
   const [editing, setEditing] = useState(false);
@@ -176,12 +226,40 @@ export const GeneralTab = ({ project }: { project: Project }) => {
 
   return (
     <div className="flex flex-col gap-6 pt-4 max-w-md">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex flex-col gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => commands.run("config:rebuild-index")}>
+      <div className="flex flex-col gap-2">
+        <Label className="text-base">Index</Label>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => commands.run("config:rebuild-index")}
+            disabled={rebuildIndex.isPending}
+          >
             Rebuild index
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => commands.run("config:reset-database")}
+            disabled={resetDatabase.isPending}
+          >
+            Reset database
+          </Button>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Rebuild re-derives the index from your vault. Reset drops and recreates the database — use
+          it only if the index is broken in a way rebuild can't fix.
+        </p>
+        {indexStatus && (
+          <p
+            className={`text-xs ${indexStatus.isError ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {indexStatus.message}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="project-name">Name</Label>
         {editing ? (
           <Input

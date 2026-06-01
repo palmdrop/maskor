@@ -1,8 +1,9 @@
 # Resilient rebuild, invalid-file warnings, and manual DB reset
 
 **Date**: 01-06-2026
-**Status**: Todo
-**Specs**: `specifications/storage-sync.md`
+**Status**: Done
+**Specs**: `specifications/storage-sync.md`, `specifications/project-config.md`
+**Closed**: 01-06-2026
 
 ---
 
@@ -67,22 +68,24 @@ The manual reset reuses the draft-restore teardown machinery (`packages/storage/
 - [x] `bun run codegen` refreshed the OpenAPI snapshot + generated client (`useResetDatabase`, `INVALID_ENTITY_FILE` model). _(2026-06-01)_
 - [ ] **Note:** the sibling `rebuild` route calls `storageService` directly rather than through a command — a pre-existing deviation from `packages/api/CLAUDE.md`. `reset` follows the rule (command); flag rebuild in `references/suggestions.md`.
 
-### Phase 5: Frontend — reset button, error surfacing, Diagnostics render
+### Phase 5: Frontend — reset button, error surfacing, Diagnostics render — DONE _(2026-06-01)_
 
 - [ ] Add a `config:reset-database` command (project-config scope, `packages/frontend/src/lib/commands/scopes/project-config.ts`) wired to the generated reset mutation, behind a confirm dialog. Dialog copy **reuses the auto-reset wording**: discards `fragment_stats` telemetry and dismissed `UUID_COLLISION` warnings.
 - [ ] Add the **Reset database** button to `GeneralTab.tsx` as a second, clearly-distinct button beside the existing **Rebuild index** (destructive styling). Do not change the existing rebuild button's behavior.
 - [ ] Surface genuine failures for both commands: add `onError` handling so a failed rebuild/reset renders an error (not silent). Invalid-file feedback continues to flow through the Diagnostics tab, not the toast.
-- [ ] Render `INVALID_ENTITY_FILE` in `DiagnosticsTab.tsx` — grouped like other state warnings, showing file path + parse error + a fix hint. State warning → no Dismiss button (clears on fix). `useWarnings` already live-invalidates on `vault:warning`.
+- [x] Added `config:reset-database` command (project-config scope) + a **Reset database** button beside **Rebuild index** in `GeneralTab.tsx`, behind a `confirm()` reusing the auto-reset wording. _(2026-06-01)_
+- [x] Both rebuild and reset now surface success/failure via an `onError`/`onSuccess` status line (fixes the prior silent fire-and-forget). _(2026-06-01)_
+- [x] Rendered `INVALID_ENTITY_FILE` in `DiagnosticsTab.tsx` — grouped first, file path + parse error + fix hint, no Dismiss button (state warning). _(2026-06-01)_
 
 ### Phase 6: Spec + suggestions
 
-- [ ] Update `specifications/storage-sync.md`: rebuild is fault-tolerant per entity; invalid files are reported as `INVALID_ENTITY_FILE` state warnings and never auto-rewritten; document the manual `index.reset` and the on-demand Reset database button. Add both to the `Shipped` section.
-- [ ] Add a `references/suggestions.md` entry for the original silent-failure root cause (rebuild button `.mutate` fire-and-forget) if not fully closed by Phase 5.
+- [x] Updated `specifications/storage-sync.md`: fault-tolerant rebuild, `INVALID_ENTITY_FILE` state warning (never auto-rewritten), and manual `index.reset` documented + added to `Shipped`. Updated `specifications/project-config.md` for the Reset button + new warning kind. _(2026-06-01)_
+- [x] Silent-failure root cause fully closed by Phase 5 (rebuild/reset now surface errors); no separate suggestions entry needed. (Logged the unrelated rebuild-bypasses-commands deviation instead.) _(2026-06-01)_
 
 ### Phase 7: Commit
 
-- [ ] `bun run format` then `bun run verify`; fix issues.
-- [ ] `git commit` in logical batches (storage / API / frontend) with descriptive messages.
+- [x] `bun run format` then `bun run verify`; fix issues. _(2026-06-01)_
+- [x] `git commit` in logical batches (storage / API / frontend) with descriptive messages. _(2026-06-01)_
 
 ---
 

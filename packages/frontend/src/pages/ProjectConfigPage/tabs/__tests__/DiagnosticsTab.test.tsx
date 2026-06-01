@@ -58,6 +58,16 @@ const collision: VaultWarning = {
   newUuid: "uuid-new",
 };
 
+const invalidFile: VaultWarning = {
+  id: "w4",
+  category: "state",
+  createdAt: "2026-05-29T00:00:00.000Z",
+  kind: "INVALID_ENTITY_FILE",
+  filePath: "fragments/broken.md",
+  entityKind: "fragment",
+  error: "unexpected end of the stream within a flow collection",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   listedWarnings = [];
@@ -82,8 +92,19 @@ describe("DiagnosticsTab", () => {
     expect(screen.getByText("fragments/duplicate.md")).toBeInTheDocument();
   });
 
+  it("renders an INVALID_ENTITY_FILE warning with its path and parse error", () => {
+    listedWarnings = [invalidFile];
+    wrap(<DiagnosticsTab projectId={PROJECT_ID} />);
+
+    expect(screen.getByText(/Invalid files/i)).toBeInTheDocument();
+    expect(screen.getByText("fragments/broken.md")).toBeInTheDocument();
+    expect(screen.getByText(/unexpected end of the stream/i)).toBeInTheDocument();
+    // State warning — no Dismiss button.
+    expect(screen.queryByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
+  });
+
   it("shows a Dismiss button only for event warnings", () => {
-    listedWarnings = [wrongFormat, unknownAspect, collision];
+    listedWarnings = [wrongFormat, unknownAspect, collision, invalidFile];
     wrap(<DiagnosticsTab projectId={PROJECT_ID} />);
 
     const dismissButtons = screen.getAllByRole("button", { name: /dismiss/i });
