@@ -21,6 +21,8 @@ export type { StorageService, StorageServiceConfig } from "./service";
 export { createVaultDatabase } from "./db/vault";
 export type { VaultDatabase } from "./db/vault";
 
+export { MASKOR_DB_AUTO_RESET_ENV, computeSchemaFingerprint } from "./db/schema-fingerprint";
+
 export { createVaultIndexer } from "./indexer/indexer";
 export type {
   VaultIndexer,

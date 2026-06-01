@@ -1,8 +1,9 @@
 # Dev-only DB auto-reset on schema mismatch
 
 **Date**: 01-06-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/storage-sync.md`
+**Closed**: 01-06-2026
 
 ---
 
@@ -28,37 +29,37 @@ The registry DB (`packages/storage/src/db/registry/index.ts`) has the identical 
 
 ### Phase 0: Branch
 
-- [ ] Create branch `dev-db-auto-reset` from current base
+- [x] Create branch `dev-db-auto-reset` from current base
 
 ### Phase 1: Schema fingerprint + reset primitive (vault DB)
 
-- [ ] Decide the dev flag: env var `MASKOR_DB_AUTO_RESET` (truthy = enabled). Read once; document it.
-- [ ] Add a schema-fingerprint helper: hash of the migration journal (`migrations/meta/_journal.json` entries) — stable per schema version, changes whenever migrations change.
-- [ ] On `createVaultDatabase`: read the stored fingerprint from `PRAGMA user_version` (or a small meta mechanism if a 32-bit int proves insufficient — prefer `user_version` for zero schema cost).
-- [ ] If flag is set AND a DB file exists AND stored fingerprint ≠ current fingerprint: close any live handle, delete `vault.db`, recreate, run `migrate()`, then stamp the new fingerprint into `user_version`. Reuse the existing `closeRawVaultDatabase` teardown path rather than inventing a new one.
-- [ ] If flag is unset: behave exactly as today (`migrate()` only) — no fingerprint check side effects beyond optionally stamping `user_version` on a fresh DB.
-- [ ] Always stamp `user_version` after a successful `migrate()` on a freshly created DB so the next run has a baseline.
-- [ ] Emit a single clear log line on reset (which DB, old→new fingerprint, "telemetry/stats and dismissed collision warnings discarded").
+- [x] Decide the dev flag: env var `MASKOR_DB_AUTO_RESET` (truthy = enabled). Read once; document it.
+- [x] Add a schema-fingerprint helper: hash of the migration journal (`migrations/meta/_journal.json` entries) — stable per schema version, changes whenever migrations change.
+- [x] On `createVaultDatabase`: read the stored fingerprint from `PRAGMA user_version` (or a small meta mechanism if a 32-bit int proves insufficient — prefer `user_version` for zero schema cost).
+- [x] If flag is set AND a DB file exists AND stored fingerprint ≠ current fingerprint: close any live handle, delete `vault.db`, recreate, run `migrate()`, then stamp the new fingerprint into `user_version`. Reuse the existing `closeRawVaultDatabase` teardown path rather than inventing a new one.
+- [x] If flag is unset: behave exactly as today (`migrate()` only) — no fingerprint check side effects beyond optionally stamping `user_version` on a fresh DB.
+- [x] Always stamp `user_version` after a successful `migrate()` on a freshly created DB so the next run has a baseline.
+- [x] Emit a single clear log line on reset (which DB, old→new fingerprint, "telemetry/stats and dismissed collision warnings discarded").
 
 ### Phase 2: Registry DB parity
 
-- [ ] Apply the same flag-gated fingerprint-check + reset to `createRegistryDatabase`.
-- [ ] Log line notes that the project registry is discarded on registry reset.
+- [x] Apply the same flag-gated fingerprint-check + reset to `createRegistryDatabase`.
+- [x] Log line notes that the project registry is discarded on registry reset.
 
 ### Phase 3: Repopulation wiring (verify, don't duplicate)
 
-- [ ] Confirm the existing startup rebuild in `resolveProject` repopulates a freshly reset vault DB on first project access — no new rebuild trigger should be needed. Add a test asserting this.
-- [ ] Confirm nothing caches a stale drizzle wrapper / indexer / watcher across a reset (mirror the draft-restore teardown reasoning). Document any cache that must be dropped.
+- [x] Confirm the existing startup rebuild in `resolveProject` repopulates a freshly reset vault DB on first project access — no new rebuild trigger should be needed. Add a test asserting this.
+- [x] Confirm nothing caches a stale drizzle wrapper / indexer / watcher across a reset (mirror the draft-restore teardown reasoning). Document any cache that must be dropped.
 
 ### Phase 4: Spec + suggestions correction
 
-- [ ] Update `specifications/storage-sync.md`: qualify the "DB fully re-derivable" invariant — `fragment_stats` behavioral counters and `UUID_COLLISION` event warnings are canonical DB-only state, not reconstructed by rebuild. Add the dev-only auto-reset to the `Shipped` section once implemented.
-- [ ] Add a `references/SUGGESTIONS.md` entry recording the spec-vs-code drift found during investigation (invariant overstated).
+- [x] Update `specifications/storage-sync.md`: qualify the "DB fully re-derivable" invariant — `fragment_stats` behavioral counters and `UUID_COLLISION` event warnings are canonical DB-only state, not reconstructed by rebuild. Add the dev-only auto-reset to the `Shipped` section once implemented.
+- [x] Add a `references/SUGGESTIONS.md` entry recording the spec-vs-code drift found during investigation (invariant overstated).
 
 ### Phase 5: Commit
 
-- [ ] `bun run format` then `bun run verify`; fix issues.
-- [ ] `git commit` the batch with a descriptive message.
+- [x] `bun run format` then `bun run verify`; fix issues.
+- [x] `git commit` the batch with a descriptive message.
 
 ---
 

@@ -2,8 +2,9 @@ import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import * as schema from "./schema";
+import { resetDatabaseIfSchemaDrifted, stampSchemaFingerprint } from "../schema-fingerprint";
 
 export type VaultDatabase = ReturnType<typeof createVaultDatabase>;
 
@@ -15,16 +16,27 @@ const rawDatabaseByVaultPath = new Map<string, Database>();
 
 const vaultDatabaseFilePath = (vaultRoot: string): string => join(vaultRoot, ".maskor", "vault.db");
 
+const migrationsFolder = join(import.meta.dir, "migrations");
+
 export const createVaultDatabase = (vaultRoot: string) => {
   const maskorDirectory = join(vaultRoot, ".maskor");
   mkdirSync(maskorDirectory, { recursive: true });
 
   const databaseFilePath = vaultDatabaseFilePath(vaultRoot);
+  resetDatabaseIfSchemaDrifted(databaseFilePath, migrationsFolder, "vault");
+  // Capture freshness after any reset: a fresh DB gets the full schema from migrate(), so its
+  // fingerprint is stamped below. An existing DB is left unstamped to preserve drift detection.
+  const isFreshDatabase = !existsSync(databaseFilePath);
+
   const database = new Database(databaseFilePath);
   database.exec("PRAGMA foreign_keys = ON");
   const vaultDatabase = drizzle(database, { schema });
 
-  migrate(vaultDatabase, { migrationsFolder: join(import.meta.dir, "migrations") });
+  migrate(vaultDatabase, { migrationsFolder });
+
+  if (isFreshDatabase) {
+    stampSchemaFingerprint(database, migrationsFolder);
+  }
 
   rawDatabaseByVaultPath.set(databaseFilePath, database);
 

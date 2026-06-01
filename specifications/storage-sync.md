@@ -1,9 +1,11 @@
 # Spec: Storage Sync
 
 **Status**: Stable
-**Last updated**: 2026-05-30
+**Last updated**: 2026-06-01
 
 **Shipped**:
+
+- 2026-06-01 — Dev-only DB auto-reset on schema drift: `vault.db` and `registry.db` stamp a migration-journal fingerprint into `PRAGMA user_version`; with the opt-in `MASKOR_DB_AUTO_RESET` flag set, a fingerprint mismatch drops and recreates the DB clean on open (repopulated by the startup rebuild), removing the manual delete-db + restart + reload loop. Off by default. Spec invariant corrected to document `fragment_stats` telemetry and `UUID_COLLISION` warnings as non-re-derivable DB-only state. (plan: references/plans/dev-db-auto-reset.md)
 
 - 2026-05-22 — Rebuild-in-progress loading state: concurrent requests all await the same rebuild promise; `GET rebuild-status` endpoint exposes in-progress state without blocking; fragment list, overview, and project-config views show "Rebuilding project index…" during rebuild. (plan: `scripts/ralph/archive/2026-05-22-small-improvements/`)
 - 2026-04-04 — Vault change events are emitted over SSE after each watcher transaction; the frontend invalidates its cache automatically without polling. (plan: references/plans/sse-vault-events.md)
@@ -23,7 +25,7 @@
 
 ## Outcome
 
-The storage layer keeps vault markdown files and the SQLite index in sync at all times. External file edits are detected and indexed automatically; changes made via the Maskor API are reflected in the index immediately without waiting for the watcher. The vault is always the source of truth — the DB is always fully re-derivable from it.
+The storage layer keeps vault markdown files and the SQLite index in sync at all times. External file edits are detected and indexed automatically; changes made via the Maskor API are reflected in the index immediately without waiting for the watcher. The vault is always the source of truth — the DB is re-derivable from it via `index.rebuild`, **with two documented exceptions** (see "DB-only state" below): `fragment_stats` behavioral telemetry and `UUID_COLLISION` event warnings are canonical DB-only state, accumulated at runtime and stored in no vault file. A normal rebuild preserves them; a full DB drop discards them.
 
 The core idea is to have a database for quick lookups and queries, but keep all core project data in human-readable vault files where possible. Sequences are stored in `<vault>/.maskor/sequences/`; interleaving config in `<vault>/.maskor/config/`. These are Maskor-managed and not subject to watcher sync.
 
@@ -157,7 +159,9 @@ Notes (`notes/<title>.md`) and References (`references/<name>.md`) follow the sa
 
 ## Prior decisions
 
-- **Vault = source of truth, DB = derived cache**: Human-readable, Obsidian-compatible, survives DB loss. DB is re-derivable in full at any time from the vault.
+- **Vault = source of truth, DB = derived cache**: Human-readable, Obsidian-compatible, survives DB loss. DB is re-derivable from the vault at any time via `index.rebuild`, except for the DB-only state noted below.
+- **DB-only state (not re-derivable)**: `fragment_stats` behavioral telemetry (`voluntaryOpenCount`, `promptAcceptCount`, `avoidanceCount`, `editCount`, `lastSurfacedAt`) and `UUID_COLLISION` event warnings exist only in the DB — no vault file carries them. `index.rebuild` preserves them (stats via `onConflictDoNothing`; event warnings are never wiped), but a full DB drop loses them. This is why the dev-only auto-reset (below) is opt-in and gated — it is the one operation that discards this state.
+- **Dev-only DB auto-reset on schema drift**: `createVaultDatabase` / `createRegistryDatabase` stamp a schema fingerprint (hash of the migration journal) into `PRAGMA user_version` on a freshly created DB. When the opt-in env flag `MASKOR_DB_AUTO_RESET` is set and a DB's stored fingerprint no longer matches the code's migration set, the DB file is dropped and recreated clean on open, then repopulated by the normal startup rebuild. Off by default; never fires in a packaged run. Eliminates the manual delete-db + restart + reload loop during greenfield schema iteration. Trade-off: a reset discards the DB-only state above, hence the dev gating.
 - **Two databases**: Registry DB (`~/.config/maskor/registry.db`) is global; vault DB (`<vault>/.maskor/vault.db`) is per-vault and travels with the vault. No `project_uuid` column in vault DB.
 - **Single transaction on rebuild**: Atomicity and batched disk flushes give consistent state and better performance than row-by-row commits.
 - **Fragment "soft delete" via `fragments/discarded/`**: deleting a fragment via Maskor moves the file into `fragments/discarded/`; the DB row remains with `isDiscarded` derived from the path. Aspects, notes, and references are **hard-deleted** from the DB on unlink-buffer expiry — there is no `deletedAt` column for keyed entities. Identity across the unlink→re-add cycle is preserved through the UUID in frontmatter (see ADR-0002) rather than through a tombstoned row.
