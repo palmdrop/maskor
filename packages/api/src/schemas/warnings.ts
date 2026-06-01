@@ -28,11 +28,20 @@ const UuidCollisionWarningSchema = z.object({
   newUuid: z.string(),
 });
 
+const InvalidEntityFileWarningSchema = z.object({
+  ...warningBaseFields,
+  kind: z.literal("INVALID_ENTITY_FILE"),
+  filePath: z.string(),
+  entityKind: z.enum(["fragment", "aspect", "note", "reference", "sequence"]),
+  error: z.string(),
+});
+
 export const VaultWarningSchema = z
   .discriminatedUnion("kind", [
     UnknownAspectKeyWarningSchema,
     WrongFormatFileWarningSchema,
     UuidCollisionWarningSchema,
+    InvalidEntityFileWarningSchema,
   ])
   .openapi("VaultWarning");
 

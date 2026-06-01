@@ -1804,6 +1804,55 @@
               "collidingPath",
               "newUuid"
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "state",
+                  "event"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "INVALID_ENTITY_FILE"
+                ]
+              },
+              "filePath": {
+                "type": "string"
+              },
+              "entityKind": {
+                "type": "string",
+                "enum": [
+                  "fragment",
+                  "aspect",
+                  "note",
+                  "reference",
+                  "sequence"
+                ]
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "category",
+              "createdAt",
+              "kind",
+              "filePath",
+              "entityKind",
+              "error"
+            ]
           }
         ]
       },
@@ -5869,6 +5918,49 @@
         "responses": {
           "200": {
             "description": "Rebuild complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildStats"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/index/reset": {
+      "post": {
+        "operationId": "resetDatabase",
+        "tags": [
+          "Index"
+        ],
+        "summary": "Drop and re-derive the vault database",
+        "description": "Manual hard reset: drops the vault DB and rebuilds it from the vault. Recovers from DB corruption / schema drift that a plain rebuild cannot fix. Discards DB-only state (fragment_stats telemetry, dismissed UUID_COLLISION warnings).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reset complete",
             "content": {
               "application/json": {
                 "schema": {

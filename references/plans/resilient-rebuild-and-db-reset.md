@@ -61,9 +61,11 @@ The manual reset reuses the draft-restore teardown machinery (`packages/storage/
 
 ### Phase 4: API — reset route + error propagation
 
-- [ ] Add `resetDatabaseCommand` under `packages/api/src/commands/` (state-changing ops go through the commands pipeline per `packages/api/CLAUDE.md`) and a `POST /projects/:projectId/index/reset` route calling it via `executeCommand`.
-- [ ] Confirm the rebuild route already surfaces failures correctly (it does, via `throwStorageError`); no change needed beyond the frontend wiring in Phase 5.
-- [ ] `bun run codegen` to refresh the OpenAPI snapshot + generated client (new route; new `VaultWarning` union member from Phase 1).
+- [x] Added `resetDatabaseCommand` (`packages/api/src/commands/vault-index/reset-database.ts`, empty `logEntries` — re-derivation, not a content mutation) and a `POST /projects/:projectId/index/reset` route calling it via `executeCommand`. _(2026-06-01)_
+- [x] Added the `INVALID_ENTITY_FILE` member to the OpenAPI `VaultWarning` discriminated union (`packages/api/src/schemas/warnings.ts`) so the frontend can render it. _(2026-06-01)_
+- [x] Rebuild route already surfaces failures via `throwStorageError`; no change. _(2026-06-01)_
+- [x] `bun run codegen` refreshed the OpenAPI snapshot + generated client (`useResetDatabase`, `INVALID_ENTITY_FILE` model). _(2026-06-01)_
+- [ ] **Note:** the sibling `rebuild` route calls `storageService` directly rather than through a command — a pre-existing deviation from `packages/api/CLAUDE.md`. `reset` follows the rule (command); flag rebuild in `references/suggestions.md`.
 
 ### Phase 5: Frontend — reset button, error surfacing, Diagnostics render
 

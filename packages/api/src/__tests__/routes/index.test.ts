@@ -31,6 +31,34 @@ describe("POST /projects/:projectId/index/rebuild", () => {
   });
 });
 
+describe("POST /projects/:projectId/index/reset", () => {
+  it("resets the database and returns rebuild stats", async () => {
+    const freshContext = createTestApp();
+    const { project: freshProject } = await seedVault(
+      freshContext.storageService,
+      freshContext.temporaryDirectory,
+    );
+
+    const response = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/index/reset`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { fragments: number; aspects: number };
+    expect(body).toHaveProperty("fragments");
+    expect(body.fragments).toBeGreaterThan(0);
+
+    // The DB is usable afterwards — fragments still list.
+    const fragments = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    expect(fragments.status).toBe(200);
+    expect(((await fragments.json()) as unknown[]).length).toBe(body.fragments);
+
+    await freshContext.cleanup();
+  });
+});
+
 describe("GET /projects/:projectId/rebuild-status", () => {
   it("returns rebuilding:false when no rebuild is in progress", async () => {
     const response = await testContext.app.request(
