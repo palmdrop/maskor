@@ -13,7 +13,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [x] finish remove piece plan (see worktree)
 
 - [ ] sequences: pool is unnecessarily wide, includes too much
-- [ ] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
+- [x] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
 - [x] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
 - [x] reordering sections in sequence does not work properly with arrow keys, works when dragging and dropping
@@ -73,8 +73,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [x] use command system to trigger quick-switcher and command palette too instead of custom keybind handlers in components
 
 - [ ] rework note system -- side by side view of note + fragment should be available
-  - also, possibly include with comment system.
   - goal: a way to write general notes, but also annotate text, point to specific parts
+  - also, possibly include with comment system.
+  - attach part of note to specific line/word(s). One long note with expandable-retractable comment lines, combined note + comment view?
   - more granular than fragment? arrows that link to a section in the text? note-based, non-linear commenting/notation engine?
   - graph structure pointing to other fragments using inline links or comments/references?
 
