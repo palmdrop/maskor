@@ -10,6 +10,9 @@ interface TileContentProps {
   violationTooltips?: string[];
   cycleTooltips?: string[];
   isSelected?: boolean;
+  // Tiles are draggable in the Overview but inert in the place-in-sequence
+  // modal; the grab cursor is suppressed when false so it does not imply DnD.
+  draggable?: boolean;
 }
 
 const IndicatorIcons = ({
@@ -92,16 +95,18 @@ export const TileContent = ({
   violationTooltips,
   cycleTooltips,
   isSelected,
+  draggable = true,
 }: TileContentProps) => {
   const aspectKeys = Object.keys(fragment.aspects);
   const containerSize = TILE_DIMENSIONS_BY_DENSITY[density].tileClass;
   const borderClass = isSelected ? "border-primary ring-1 ring-primary" : "border-border";
+  const cursorClass = draggable ? "cursor-grab active:cursor-grabbing" : "";
 
   if (density === "mini") {
     return (
       <div
         data-density="mini"
-        className={`relative rounded-md border bg-card cursor-grab active:cursor-grabbing select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
+        className={`relative rounded-md border bg-card ${cursorClass} select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
         title={fragment.key}
         aria-label={fragment.key}
       >
@@ -119,7 +124,7 @@ export const TileContent = ({
     return (
       <div
         data-density="compact"
-        className={`relative rounded-md border bg-card flex flex-col gap-1 cursor-grab active:cursor-grabbing select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
+        className={`relative rounded-md border bg-card flex flex-col gap-1 ${cursorClass} select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
       >
         <IndicatorIcons violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
         <span className="text-xs font-semibold text-foreground truncate">{fragment.key}</span>
@@ -135,7 +140,7 @@ export const TileContent = ({
   return (
     <div
       data-density="full"
-      className={`relative rounded-md border bg-card flex flex-col gap-1 cursor-grab active:cursor-grabbing select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
+      className={`relative rounded-md border bg-card flex flex-col gap-1 ${cursorClass} select-none shrink-0 overflow-hidden transition-colors ${containerSize} ${borderClass}`}
     >
       <IndicatorIcons violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
       <span className="text-xs font-semibold text-foreground truncate">{fragment.key}</span>

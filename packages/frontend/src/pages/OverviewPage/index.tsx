@@ -32,6 +32,7 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
+import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
 import { useSequenceDnD } from "./hooks/useSequenceDnD";
 import { useArcData } from "./hooks/useArcData";
@@ -214,45 +215,14 @@ export const OverviewPage = () => {
     (direction: "prev" | "next") => {
       if (!selectedFragmentUuid || !sequence || dnd.activeDragId) return;
 
-      const currentSectionIndex = sectionsData.findIndex((s) =>
-        s.fragmentUuids.includes(selectedFragmentUuid),
-      );
-      if (currentSectionIndex === -1) return;
+      const target = computeStepMoveTarget(sectionsData, selectedFragmentUuid, direction);
+      if (!target) return;
 
-      const currentSection = sectionsData[currentSectionIndex];
-      const currentPositionInSection = currentSection.fragmentUuids.indexOf(selectedFragmentUuid);
-
-      let targetSectionIndex: number;
-      let targetPosition: number;
-
-      if (direction === "prev") {
-        if (currentPositionInSection > 0) {
-          targetSectionIndex = currentSectionIndex;
-          targetPosition = currentPositionInSection - 1;
-        } else if (currentSectionIndex > 0) {
-          targetSectionIndex = currentSectionIndex - 1;
-          targetPosition = sectionsData[targetSectionIndex].fragmentUuids.length;
-        } else {
-          return;
-        }
-      } else {
-        if (currentPositionInSection < currentSection.fragmentUuids.length - 1) {
-          targetSectionIndex = currentSectionIndex;
-          targetPosition = currentPositionInSection + 1;
-        } else if (currentSectionIndex < sectionsData.length - 1) {
-          targetSectionIndex = currentSectionIndex + 1;
-          targetPosition = 0;
-        } else {
-          return;
-        }
-      }
-
-      const targetSection = sectionsData[targetSectionIndex];
       sequenceMutations.moveFragment.mutate({
         projectId,
         sequenceId: sequence.uuid,
         fragmentUuid: selectedFragmentUuid,
-        data: { sectionUuid: targetSection.uuid, position: targetPosition },
+        data: { sectionUuid: target.sectionUuid, position: target.position },
       });
     },
     [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
