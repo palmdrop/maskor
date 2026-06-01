@@ -12,6 +12,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] finish remove piece plan (see worktree)
 
+- [ ] make it possible to "clone" a sequence, or insert one sequence into another, etc
+
+- [ ] add way to select many fragments in sequence, way of making them into a section
+  - way of easily dragging many into an existing section
+  - way of marking a fragment, then "splitting" the sequence by introducing a new section at that location
+  - NOTE: this logic needs to be robust, i.e not just frontend. Should live in the sequencer code.
+
 - [ ] sequences: pool is unnecessarily wide, includes too much
 - [x] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
@@ -29,7 +36,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] case-only rename of reference (and probably also note, aspect and fragment) creates a sync/naming collision error that ends up deleting the file entirely...
 
-- [ ] add commands for attaching and detaching references and notes to fragment
+- [x] add commands for attaching and detaching references and notes to fragment
 
 - [ ] in-line editing of fragments in preview mode
   - make it possible to click a fragment and edit it directly in the preview
