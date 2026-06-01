@@ -65,6 +65,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const sequences =
     sequenceBundleEnvelope?.status === 200 ? sequenceBundleEnvelope.data.sequences : [];
   const [placeInSequenceId, setPlaceInSequenceId] = useState<string | null>(null);
+  const [isPlaceInSequenceOpen, setIsPlaceInSequenceOpen] = useState(false);
+  // Keep `open` separate from the mounted/unmounted decision so Radix can run
+  // its own close lifecycle (exit transition + focus restoration) before the
+  // dialog tears down. Unmounting on close cuts that short and can drop focus.
+  const openPlaceInSequence = useCallback((sequenceId: string) => {
+    setPlaceInSequenceId(sequenceId);
+    setIsPlaceInSequenceOpen(true);
+  }, []);
   const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
@@ -180,7 +188,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     discard: handleDiscard,
     restore: handleRestore,
     sequences,
-    openPlaceInSequence: setPlaceInSequenceId,
+    openPlaceInSequence,
   });
 
   const extraActions = useMemo(() => {
@@ -270,10 +278,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           projectId={projectId}
           fragmentId={fragmentId}
           sequenceId={placeInSequenceId}
-          open
-          onOpenChange={(next) => {
-            if (!next) setPlaceInSequenceId(null);
-          }}
+          open={isPlaceInSequenceOpen}
+          onOpenChange={setIsPlaceInSequenceOpen}
         />
       )}
     </>

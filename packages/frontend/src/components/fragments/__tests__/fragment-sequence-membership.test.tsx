@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
+  Link: ({ children }: { children: ReactNode }) => <a href="/mock">{children}</a>,
 }));
 
 vi.mock("@api/generated/sequences/sequences", () => ({

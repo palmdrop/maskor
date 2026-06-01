@@ -23,21 +23,20 @@ export const FragmentSequenceMembership = ({ projectId, fragmentId }: Props) => 
 
   const memberships = useMemo<Membership[]>(() => {
     if (bundleEnvelope?.status !== 200) return [];
-    const result: Membership[] = [];
-    for (const sequence of bundleEnvelope.data.sequences) {
+    return bundleEnvelope.data.sequences.flatMap((sequence) => {
       const section = sequence.sections.find((candidate) =>
         candidate.fragments.some((position) => position.fragmentUuid === fragmentId),
       );
-      if (section) {
-        result.push({
+      if (!section) return [];
+      return [
+        {
           sequenceUuid: sequence.uuid,
           sequenceName: sequence.name,
           sectionName: section.name,
           isMain: sequence.isMain,
-        });
-      }
-    }
-    return result;
+        },
+      ];
+    });
   }, [bundleEnvelope, fragmentId]);
 
   return (

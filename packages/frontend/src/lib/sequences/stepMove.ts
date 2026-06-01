@@ -14,6 +14,13 @@ export interface StepMoveTarget {
 // Returns null when the fragment is not placed or is already at the relevant
 // end of the sequence. Shared by the Overview (arrow-key rearrange) and the
 // place-in-sequence modal so the two surfaces cannot drift on move semantics.
+//
+// Coordinate system: the returned `position` is the destination index *after*
+// the moved fragment has been removed from its current slot (remove-then-insert
+// semantics) — this is the contract the move endpoint expects, which is why a
+// within-section "next" step lands at `currentIndex + 1` rather than `+ 2`.
+// This differs from placing a brand-new fragment, where `position` is a plain
+// insertion index into the unchanged section (see PlaceInSequenceModal.handleAdd).
 export const computeStepMoveTarget = (
   sectionsData: SectionFragments[],
   fragmentUuid: string,

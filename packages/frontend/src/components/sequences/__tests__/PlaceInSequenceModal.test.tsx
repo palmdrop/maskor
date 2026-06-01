@@ -136,6 +136,39 @@ describe("PlaceInSequenceModal", () => {
     });
   });
 
+  it("moves a placed fragment forward within its section", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG, "x"] }]), makeSummaries([FRAG, "x"]));
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_ID,
+      fragmentUuid: FRAG,
+      data: { sectionUuid: "s1", position: 1 },
+    });
+  });
+
+  it("deletes a section when more than one remains", () => {
+    setData(
+      makeBundle([
+        { uuid: "s1", fragmentUuids: ["x"] },
+        { uuid: "s2", fragmentUuids: [FRAG] },
+      ]),
+      makeSummaries([FRAG, "x"]),
+    );
+    renderModal();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete section" })[0]!);
+
+    expect(deleteSectionMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_ID,
+      sectionId: "s1",
+    });
+  });
+
   it("adds a section", () => {
     setData(makeBundle([{ uuid: "s1", fragmentUuids: [] }]), makeSummaries([FRAG]));
     renderModal();

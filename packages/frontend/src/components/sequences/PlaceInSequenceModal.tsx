@@ -39,6 +39,23 @@ interface PlaceInSequenceModalProps {
 // the map fall back to a neutral color inside AspectColorBar.
 const NO_ASPECT_COLORS = new Map<string, string>();
 
+// The ←/→/Backspace shortcuts must keep firing while focus rests on one of the
+// action buttons — Radix's FocusScope moves focus to a child control on open,
+// so we cannot require focus on the dialog container itself. Instead we suppress
+// the shortcuts only when focus is on a text-entry surface, where Backspace and
+// the arrows carry their own meaning. Covers native fields, ARIA text/combobox
+// roles, and contentEditable, so a future editable child can't trigger a
+// destructive unplace mid-keystroke.
+const isTextEntryTarget = (element: HTMLElement): boolean => {
+  if (element.isContentEditable) return true;
+
+  const tagName = element.tagName;
+  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") return true;
+
+  const role = element.getAttribute("role");
+  return role === "textbox" || role === "combobox" || role === "searchbox";
+};
+
 export const PlaceInSequenceModal = ({
   projectId,
   fragmentId,
@@ -49,7 +66,7 @@ export const PlaceInSequenceModal = ({
   const queryClient = useQueryClient();
   const listQueryKey = getListSequencesQueryKey(projectId);
 
-  const { data: bundleEnvelope } = useListSequences(projectId);
+  const { data: bundleEnvelope, isLoading: isBundleLoading } = useListSequences(projectId);
   const { data: summariesEnvelope } = useListFragmentSummaries(projectId);
 
   const sequence =
@@ -115,6 +132,10 @@ export const PlaceInSequenceModal = ({
     const targetSectionUuid = addTargetSectionUuid ?? sectionsData[0]?.uuid;
     if (!targetSectionUuid) return;
     const targetSection = sectionsData.find((section) => section.uuid === targetSectionUuid);
+
+    // Place uses a plain insertion index into the unchanged section (append at
+    // its current end) — unlike move, there is no prior removal to account for.
+    // See computeStepMoveTarget for the remove-then-insert move semantics.
     mutations.placeFragment.mutate({
       projectId,
       sequenceId,
@@ -143,14 +164,7 @@ export const PlaceInSequenceModal = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.tagName === "SELECT"
-    ) {
-      return;
-    }
+    if (isTextEntryTarget(event.target as HTMLElement)) return;
     if (!isPlaced) return;
     if (event.key === "ArrowLeft") {
       event.preventDefault();
@@ -186,7 +200,9 @@ export const PlaceInSequenceModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        {!sequence ? (
+        {isBundleLoading ? (
+          <p className="text-sm text-muted-foreground">Loading sequence…</p>
+        ) : !sequence ? (
           <p className="text-sm text-muted-foreground">Sequence not found.</p>
         ) : (
           <div className="flex flex-col gap-4">
