@@ -260,6 +260,7 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       ...invalidFileWarnings("note", noteResult.failures),
       ...invalidFileWarnings("reference", referenceResult.failures),
       ...invalidFileWarnings("sequence", sequenceResult.failures),
+      ...invalidFileWarnings("margin", marginResult.failures),
     ];
     for (const warning of invalidEntityWarnings) {
       insertWarning(vaultDatabase, warning);

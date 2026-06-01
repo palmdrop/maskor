@@ -52,6 +52,8 @@ import {
   upsertSequence,
   upsertMargin,
   recomputeMarginOrphans,
+  relocateMarginInIndex,
+  deleteMarginByFragmentUuid,
   deleteReferenceByFilePath,
   deleteFragmentByFilePath,
   deleteAspectByFilePath,
@@ -794,10 +796,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           // Cascade a key rename to the fragment's Margin (margins/<key>.md follows the fragment
           // key). No-op when the key is unchanged or the fragment has no Margin.
+          let marginRenamed = false;
           if (oldFilePath) {
             const oldKey = basename(oldFilePath).replace(/\.md$/, "");
             if (oldKey !== fragmentToWrite.key) {
               await getVault(context).margins.rename(oldKey, fragmentToWrite.key);
+              marginRenamed = true;
             }
           }
 
@@ -809,6 +813,16 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           vaultDatabase.transaction((tx) => {
             upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
+            // Keep the Margin index in step with the renamed file inline (the watcher would
+            // otherwise lag); the margins/<key>.md path mirrors the fragment's relative path.
+            if (marginRenamed) {
+              relocateMarginInIndex(
+                tx,
+                fragmentToWrite.uuid,
+                fragmentToWrite.key,
+                entityRelativePath,
+              );
+            }
           });
 
           setWordCount(
@@ -818,12 +832,21 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           );
 
           // The fragment body carries the anchor markers, so a content edit may orphan or rebind a
-          // comment in the bound Margin (whose own file is untouched). Recompute its orphan flags.
-          recomputeMarginOrphans(
-            vaultDatabase,
-            fragmentToWrite.uuid,
-            new Set(extractCommentMarkerIds(fragmentToWrite.content)),
-          );
+          // comment in the bound Margin (whose own file is untouched). Recompute its orphan flags;
+          // when any changed, emit margin:synced — the watcher can't (its hash-guard sees the
+          // inline-written fragment row and short-circuits before it would emit).
+          if (
+            recomputeMarginOrphans(
+              vaultDatabase,
+              fragmentToWrite.uuid,
+              new Set(extractCommentMarkerIds(fragmentToWrite.content)),
+            )
+          ) {
+            emitVaultEvent(context.projectUUID, {
+              type: "margin:synced",
+              fragmentUuid: fragmentToWrite.uuid,
+            });
+          }
 
           return { ...fragmentToWrite, contentHash };
         });
@@ -887,6 +910,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               rawContent,
               knownAspectKeys,
             );
+            // Move the Margin index row in step with the fragment (key unchanged, path moves into
+            // discarded/); the watcher would otherwise briefly drop and re-add the row.
+            relocateMarginInIndex(tx, uuid, indexed.key, destinationEntityRelativePath);
           });
 
           // The Margin follows the fragment into discarded/.
@@ -973,6 +999,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
               rawContent,
               knownAspectKeys,
             );
+            // Move the Margin index row back out of discarded/ in step with the fragment.
+            relocateMarginInIndex(tx, uuid, indexed.key, destinationEntityRelativePath);
           });
 
           // The Margin follows the fragment back out of discarded/.
@@ -1021,6 +1049,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const vaultDatabase = getVaultDatabase(context);
           vaultDatabase.transaction((tx) => {
             deleteFragmentByFilePath(tx, indexed.filePath);
+            // Drop the Margin index row in step with the fragment (the file is removed below).
+            deleteMarginByFragmentUuid(tx, uuid);
           });
 
           // The Margin is deleted alongside its fragment.

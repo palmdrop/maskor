@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type MarkdownIt from "markdown-it";
-import { buildCommentMarker } from "@maskor/shared";
+import { buildCommentMarker, MARKER_ID_CHAR_CLASS } from "@maskor/shared";
 
 // A schema-modeled, invisible inline node carrying a Margin comment's anchor marker id. The marker
 // trails a fragment block as `<!--c:ID-->`. A naive HTML comment would not survive TipTap's
@@ -9,7 +9,9 @@ import { buildCommentMarker } from "@maskor/shared";
 // serializer re-emits it verbatim. Invisible in the rendered prose; the Margin panel surfaces it.
 
 const TOKEN_NAME = "commentMarker";
-const INLINE_MARKER = /^<!--c:([A-Za-z0-9_-]+)-->/;
+// Matches a marker at the current markdown-it parse position. Built from the shared char-class so it
+// can't drift from the rest of the marker machinery.
+const INLINE_MARKER = new RegExp(`^<!--c:([${MARKER_ID_CHAR_CLASS}]+)-->`);
 
 export const CommentMarker = Node.create({
   name: TOKEN_NAME,

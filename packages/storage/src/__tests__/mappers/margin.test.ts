@@ -94,7 +94,45 @@ describe("margin serialization round-trip", () => {
     const body = serializeMarginBody("", [
       { markerId: "aaa", excerpt: "The bridge groans.", body: "Too literal." },
     ]);
-    expect(body).toContain("<!--c:aaa-->\n> The bridge groans.\nToo literal.");
+    // A blank line separates the excerpt from the body so a body starting with `>` is unambiguous.
+    expect(body).toContain("<!--c:aaa-->\n> The bridge groans.\n\nToo literal.");
+  });
+
+  it("round-trips a comment body that itself starts with a blockquote", () => {
+    const comment = {
+      markerId: "quo",
+      excerpt: "anchored line",
+      body: "> a quoted aside\nand more",
+    };
+    const body = serializeMarginBody("", [comment]);
+    const reparsed = fromFile(
+      parseFile(`---\nfragmentUuid: f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b\n---\n${body}\n`),
+      "the-bridge.md",
+    );
+    expect(reparsed.comments).toEqual([comment]);
+  });
+
+  it("dedupes a duplicated markerId, keeping first position and last content", () => {
+    const body = [
+      "## Comments",
+      "",
+      "<!--c:dup-->",
+      "> first excerpt",
+      "",
+      "first body",
+      "",
+      "<!--c:dup-->",
+      "> second excerpt",
+      "",
+      "second body",
+    ].join("\n");
+    const margin = fromFile(
+      parseFile(`---\nfragmentUuid: f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b\n---\n${body}\n`),
+      "the-bridge.md",
+    );
+    expect(margin.comments).toEqual([
+      { markerId: "dup", excerpt: "second excerpt", body: "second body" },
+    ]);
   });
 
   it("handles a comment with no excerpt or body", () => {
@@ -105,5 +143,17 @@ describe("margin serialization round-trip", () => {
       "the-bridge.md",
     );
     expect(reparsed.comments).toEqual([stub]);
+  });
+});
+
+describe("margin.fromFile validation", () => {
+  it("throws INVALID_ENTITY_FILE when fragmentUuid frontmatter is absent", () => {
+    const parsed = parseFile("---\ntitle: not a margin\n---\n## Notes\n\n## Comments\n");
+    expect(() => fromFile(parsed, "orphaned.md")).toThrow(/fragmentUuid/);
+  });
+
+  it("throws INVALID_ENTITY_FILE when fragmentUuid is empty", () => {
+    const parsed = parseFile('---\nfragmentUuid: ""\n---\n## Notes\n\n## Comments\n');
+    expect(() => fromFile(parsed, "empty-uuid.md")).toThrow(/fragmentUuid/);
   });
 });

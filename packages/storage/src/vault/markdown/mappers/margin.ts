@@ -1,6 +1,7 @@
 import type { Comment, Margin } from "@maskor/shared";
-import { buildCommentMarker } from "@maskor/shared";
+import { buildCommentMarker, MARKER_ID_CHAR_CLASS } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
+import { VaultError } from "../../types";
 import { basename } from "node:path";
 
 // Section headings the Margin body is split on. The notes section is free prose; the comments
@@ -9,7 +10,9 @@ import { basename } from "node:path";
 const NOTES_HEADING = "## Notes";
 const COMMENTS_HEADING = "## Comments";
 
-const MARKER_LINE_REGEX = /^<!--c:([A-Za-z0-9_-]+)-->\s*$/;
+// A line that is nothing but a marker. Built from the shared char-class so it can't drift from the
+// rest of the marker machinery.
+const MARKER_LINE_REGEX = new RegExp(`^<!--c:([${MARKER_ID_CHAR_CLASS}]+)-->\\s*$`);
 
 const parseDate = (raw: unknown): Date =>
   typeof raw === "string" && raw ? new Date(raw) : new Date();
@@ -53,7 +56,20 @@ const parseComments = (section: string): Comment[] => {
   }
   flush();
 
-  return comments;
+  return dedupeComments(comments);
+};
+
+// A markerId is the comment's identity (the join to the fragment marker, and the comments-table
+// composite key). An external edit could duplicate a marker block; keep the first occurrence's
+// position but let the last occurrence's content win, mirroring `createComment`'s replace-by-id
+// semantics. Without this a duplicated marker would collide on the `(fragmentUuid, markerId)`
+// primary key during upsert.
+const dedupeComments = (comments: Comment[]): Comment[] => {
+  const byMarkerId = new Map<string, Comment>();
+  for (const comment of comments) {
+    byMarkerId.set(comment.markerId, comment);
+  }
+  return [...byMarkerId.values()];
 };
 
 // Split the Margin body into its notes prose and comments. Tolerant of a body missing either
@@ -79,7 +95,12 @@ const serializeComment = (comment: Comment): string => {
         .join("\n"),
     );
   }
-  if (comment.body.trim()) parts.push(comment.body.trim());
+  if (comment.body.trim()) {
+    // A blank line always precedes the body so the parser can tell where the (optional) excerpt
+    // ends — even when the body itself starts with a `>` blockquote, which would otherwise be
+    // absorbed into the excerpt on re-parse.
+    parts.push("", comment.body.trim());
+  }
   return parts.join("\n");
 };
 
@@ -97,10 +118,24 @@ export const serializeMarginBody = (notes: string, comments: Comment[]): string 
 export const fromFile = (parsed: ParsedFile, filePath: string): Margin => {
   const frontmatter = parsed.frontmatter;
   const fragmentKey = basename(filePath).replace(/\.md$/, "");
+
+  // `fragmentUuid` is the stable join to the owning fragment and the Margin's DB primary key. Unlike
+  // keyed entities, Margins are read without UUID adoption, so a hand-created or corrupted file with
+  // no usable join key must be surfaced as INVALID_ENTITY_FILE rather than indexed as a junk row
+  // (which, during rebuild, would also break the single write transaction).
+  const fragmentUuid = frontmatter.fragmentUuid;
+  if (typeof fragmentUuid !== "string" || fragmentUuid.trim() === "") {
+    throw new VaultError(
+      "INVALID_ENTITY_FILE",
+      `Margin file "${filePath}" is missing a valid fragmentUuid`,
+      { filePath, reason: "fragmentUuid frontmatter is absent or not a string" },
+    );
+  }
+
   const { notes, comments } = parseMarginBody(parsed.body);
 
   return {
-    fragmentUuid: frontmatter.fragmentUuid as string,
+    fragmentUuid,
     fragmentKey,
     notes,
     comments,

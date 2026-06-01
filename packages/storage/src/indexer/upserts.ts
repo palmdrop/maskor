@@ -391,6 +391,17 @@ export const upsertMargin = (
         orphaned: fragmentMarkerIds ? !fragmentMarkerIds.has(comment.markerId) : true,
         ordinal,
       })
+      // The parser dedupes markerIds, but an API caller could still submit a duplicate; last-wins on
+      // the `(fragmentUuid, markerId)` primary key keeps the insert from throwing.
+      .onConflictDoUpdate({
+        target: [commentsTable.fragmentUuid, commentsTable.markerId],
+        set: {
+          excerpt: comment.excerpt,
+          body: comment.body,
+          orphaned: fragmentMarkerIds ? !fragmentMarkerIds.has(comment.markerId) : true,
+          ordinal,
+        },
+      })
       .run();
   });
 };
@@ -398,6 +409,27 @@ export const upsertMargin = (
 export const deleteMarginByFilePath = (tx: Transaction, filePath: string): void => {
   // Comments cascade-delete via the FK.
   tx.delete(marginsTable).where(eq(marginsTable.filePath, filePath)).run();
+};
+
+export const deleteMarginByFragmentUuid = (tx: Transaction, fragmentUuid: string): void => {
+  // Comments cascade-delete via the FK.
+  tx.delete(marginsTable).where(eq(marginsTable.fragmentUuid, fragmentUuid)).run();
+};
+
+// Reflect a fragment rename/discard/restore in the Margin index inline (matching how the fragment's
+// own row is updated inline), so the index doesn't lag behind the moved file until the watcher
+// catches up. No-op when the fragment has no Margin row. The file move is a pure relocation — content
+// (and therefore contentHash) is unchanged — so only key + path move.
+export const relocateMarginInIndex = (
+  tx: Transaction,
+  fragmentUuid: string,
+  fragmentKey: string,
+  filePath: string,
+): void => {
+  tx.update(marginsTable)
+    .set({ fragmentKey, filePath })
+    .where(eq(marginsTable.fragmentUuid, fragmentUuid))
+    .run();
 };
 
 // Recompute the orphan flag for every comment bound to one fragment, given the marker ids now

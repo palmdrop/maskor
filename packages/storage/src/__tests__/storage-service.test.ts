@@ -943,4 +943,60 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
     expect(await service.margins.read(context, fragment.uuid)).toBeNull();
   });
+
+  it("emits margin:synced when an API fragment edit changes comment orphan state", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    await service.fragments.write(context, {
+      ...full,
+      content: `${full.content} ${buildCommentMarker("anchor")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "anchor", excerpt: "the line", body: "comment" }],
+    });
+
+    const syncedFragmentUuids: string[] = [];
+    const unsubscribe = service.watcher.subscribe(context, (event) => {
+      if (event.type === "margin:synced") syncedFragmentUuids.push(event.fragmentUuid);
+    });
+
+    // Strip the marker — the comment flips to orphaned, so the inline write must emit margin:synced
+    // (the watcher's hash-guard would otherwise suppress it).
+    await service.fragments.write(context, { ...full, content: full.content });
+    unsubscribe();
+
+    expect(syncedFragmentUuids).toContain(fragment.uuid);
+  });
+});
+
+describe("StorageService.fragments — Margin index relocation (inline, no watcher)", () => {
+  it("relocates the Margin index when the fragment is renamed", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+    await service.margins.write(context, fragment.uuid, { notes: "kept", comments: [] });
+
+    await service.fragments.write(context, { ...full, key: "renamed-for-margin" });
+
+    // margins.read locates the file via the index; a stale index would point at the old path and
+    // return null. A correct inline relocation finds the moved file.
+    const margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.fragmentKey).toBe("renamed-for-margin");
+    expect(margin?.notes).toBe("kept");
+  });
+
+  it("moves the Margin index through discard and drops it on delete", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    await service.margins.write(context, fragment.uuid, { notes: "kept", comments: [] });
+
+    await service.fragments.discard(context, fragment.uuid);
+    expect((await service.margins.read(context, fragment.uuid))?.notes).toBe("kept");
+
+    await service.fragments.delete(context, fragment.uuid);
+    expect(await service.margins.read(context, fragment.uuid)).toBeNull();
+  });
 });

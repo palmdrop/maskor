@@ -5,8 +5,10 @@
 // the export/preview assembly path — keep them browser-safe (no Node built-ins).
 
 // Marker ids are url-safe: alphanumerics, hyphen, underscore. Matches what `createCommentMarkerId`
-// produces and what an externally-authored marker may legibly contain.
-const MARKER_ID_CHAR_CLASS = "A-Za-z0-9_-";
+// produces and what an externally-authored marker may legibly contain. Exported so the editors and
+// storage mappers build their own anchored regexes from the single source rather than re-hardcoding
+// the class (which would drift).
+export const MARKER_ID_CHAR_CLASS = "A-Za-z0-9_-";
 
 // Global matcher for a single marker, optionally preceded by horizontal whitespace. Capturing the
 // leading whitespace lets the strip helper remove a trailing-space-plus-marker cleanly, leaving no
