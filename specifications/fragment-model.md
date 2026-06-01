@@ -107,7 +107,7 @@ A raw markdown file is a writing file without Maskor metadata. When one appears 
 
 ## Constraints
 
-- Maskor never edits fragment content without explicit user edits through the fragment editor.
+- Maskor never edits fragment **prose** except through user actions; anchor markup written when the user authors a comment is a permitted, user-initiated edit (see ADR 0007 and `specifications/margins.md`). Maskor still never rewrites fragment prose unprompted.
 - Maskor never auto-rewrites fragment files to fix aspect key drift.
 - Unknown aspect property keys must be preserved on save, not silently dropped.
 - Fragment identity is UUID-based. Filename and `key` may change; UUID cannot.
@@ -126,6 +126,7 @@ A raw markdown file is a writing file without Maskor metadata. When one appears 
 - **Only existing notes/references can be attached**: Adding a note or reference that does not yet exist in the vault is not allowed from the fragment editor.
 - **`contentHash` computed at write time**: `storageService.fragments.write()` computes the hash from the serialized file and returns the fragment with the correct hash. Route handlers use the return value — no empty hashes are exposed to callers.
 - **`title` removed**: The `title` field was removed entirely. `key` (the filename stem) is the single identity field, consistent with notes, references, and aspects. The create flow now accepts `key` directly; no slugification step. See `references/plans/drop-fragment-title.md`.
+- **Anchor markup is a permitted, user-initiated fragment edit**: Authoring a comment in a fragment's Margin writes a trailing `<!--c:ID-->` marker into the fragment block. This loosens the "Maskor never edits fragment content" constraint to "never edits prose unprompted" — the marker is user-initiated, not an unprompted rewrite. See ADR 0007 and `specifications/margins.md`.
 
 ---
 

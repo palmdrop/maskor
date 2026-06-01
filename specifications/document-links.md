@@ -9,7 +9,7 @@
 
 Users can write Obsidian-style `[[type/key]]` links inside any markdown body — fragments, notes, references — to connect their work without leaving the editor. Links are navigable in the Maskor UI and round-trip cleanly through Obsidian. Linking to a note, reference, or aspect from a fragment body auto-attaches it in the fragment's metadata. Backlinks let the user see every place an entity is referenced.
 
-This feature is the foundation for a later **comments** spec, where each comment is its own small vault document linked from a fragment.
+Comments are **no longer** part of this model: they are anchored blocks inside a fragment's Margin (`specifications/margins.md`, ADR 0007), not vault files linked from a fragment.
 
 ---
 
@@ -37,7 +37,7 @@ This feature is the foundation for a later **comments** spec, where each comment
 - Subfolders inside entity-type folders (`notes/<subfolder>/<key>.md` is not supported)
 - Sequencing constraints derived from links (deferred — future feature)
 - Link-graph visualization or analytics view
-- Comments — separate spec; this one is the substrate
+- Comments — owned by `specifications/margins.md` + ADR 0007; comments are anchored Margin blocks, not document-links
 - The `fragment.notes` / `fragment.references` API field shape itself (see "Coherence with metadata form" below — implementation detail for the migration plan)
 
 ---
@@ -159,7 +159,7 @@ Note and reference bodies are also link sources, but they have no metadata-attac
 - **Alias preserved across rename**: Renaming `notes/old-key` to `notes/new-key` rewrites `[[notes/old-key|the manor]]` to `[[notes/new-key|the manor]]`. The alias is user-authored display text and must survive.
 - **Unresolved links are persisted**: A `[[notes/does-not-exist]]` row sits in the link table with `target_uuid = null`. When the target is later created, the row is bound. This supports useful project-wide broken-link queries.
 - **Unrecognised types are not links**: `[[gibberish/foo]]` (where `gibberish` is not a known entity type) is plain text. It does not enter the link table.
-- **Comments are not anchor-scoped**: The future comments spec will model each comment as its own small file linked via `[[comments/c-…|alias]]`. Anchor/block references (`[[note#heading]]`) are out of scope. This keeps the link model uniform — every link points at a file, not a position inside one.
+- **Comments live in the Margin, not as document-links** (supersedes the earlier "comments are not anchor-scoped" decision): Comments are now anchored blocks inside a fragment's Margin (`specifications/margins.md`), bound to a block by a trailing marker — not standalone files linked via `[[comments/…]]`. Anchoring is the whole point of commenting; the file-per-comment model could not express it. See ADR 0007. Anchor/block references in document-link syntax (`[[note#heading]]`) remain out of scope; ordinary links still point at a file, not a position.
 - **Autocomplete and click-to-navigate work in all editor modes**: Including raw markdown mode and vim mode. The link UX must not degrade when users opt into a lower-level edit mode.
 - **Backlinks UI is fed from a persisted link table**: Computed on-demand from a full body scan would be too slow for large projects. The watcher is already the right place to maintain a body-derived index, so it gains one more table.
 - **Subfolders are not supported inside entity-type folders**: Filename collisions across folders are not allowed within the same type. Only cross-type collisions (e.g. `notes/the-river` vs `aspects/the-river`) are permitted, which is exactly what the full-path form disambiguates.
@@ -169,7 +169,7 @@ Note and reference bodies are also link sources, but they have no metadata-attac
 ## Open questions
 
 - [ ] 2026-05-20 — **Form X-button cascade behaviour**: currently spec'd as disabled while inline links exist. This is conservative but mildly unintuitive ("why can't I remove this chip?"). Reconsider once the feature is in user hands. Alternatives to revisit: track an `origin` field per attachment so form-X can remove form-origin entries without touching inline ones; or have form-X strip the inline link from the body (destructive but consistent).
-- [ ] 2026-05-20 — **Broken-link "offer to create"**: deferred. Since Maskor inserts full-path links the target type is always known on broken links, so this affordance is feasible. Worth revisiting after the comments spec lands, since "create a new comment file inline" is the most natural place for it.
+- [ ] 2026-05-20 — **Broken-link "offer to create"**: deferred. Since Maskor inserts full-path links the target type is always known on broken links, so this affordance is feasible. (Comments are no longer a candidate trigger — they live in the Margin now, not as inline-created files. See ADR 0007.)
 - [ ] 2026-05-20 — **Backlink snippet detail**: should the backlinks panel show just the source key, or also a contextual excerpt around the link? Excerpts are more useful but cost extra parsing/storage. Pick after a basic implementation is live.
 - [ ] 2026-05-20 — **Watcher catch-up performance at scale**: a project with many bodies and many cross-references will rebuild the link table from scratch on a full sync. Acceptable for greenfield. If projects grow large, an incremental rebuild strategy may become necessary.
 - [ ] 2026-05-20 — **Sequencing constraints from links**: explicitly deferred. A user-authored `[[fragments/foo]]` link could later be interpreted as "this fragment should come near foo" or "before/after foo." Tracked as a future direction; not part of this spec.
