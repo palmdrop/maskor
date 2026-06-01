@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync, existsSync, cpSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, cpSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
+import { createRegistryDatabase } from "../db/registry";
 import { createVaultIndexer } from "../indexer/indexer";
 import { MASKOR_DB_AUTO_RESET_ENV, computeSchemaFingerprint } from "../db/schema-fingerprint";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 const vaultMigrationsFolder = join(import.meta.dir, "..", "db", "vault", "migrations");
+const registryMigrationsFolder = join(import.meta.dir, "..", "db", "registry", "migrations");
 
 let tmpDir: string;
 let vaultDir: string;
@@ -120,6 +122,19 @@ describe("createVaultDatabase auto-reset", () => {
     expect(readUserVersion()).toBe(999);
   });
 
+  it("treats an unreadable DB file as drift and recreates it when the flag is set", () => {
+    createVaultDatabase(vaultDir);
+    // Clobber the DB with garbage — a half-failed migration can leave a file that isn't valid
+    // SQLite. Reading its fingerprint would throw; the reset should heal it instead of crashing.
+    writeFileSync(vaultDbPath(), "not a sqlite database");
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    expect(() => createVaultDatabase(vaultDir)).not.toThrow();
+
+    expect(existsSync(vaultDbPath())).toBe(true);
+    expect(readUserVersion()).toBe(computeSchemaFingerprint(vaultMigrationsFolder));
+  });
+
   it("re-derives vault data after a reset (reset → rebuild repopulates the index)", async () => {
     // The startup path resets inside createVaultDatabase, then rebuilds in the same flow
     // (resolveProject → index.rebuild → getVaultDatabase). Mirror that cycle here.
@@ -143,5 +158,67 @@ describe("createVaultDatabase auto-reset", () => {
     expect(rebuilt.notes).toBe(populated.notes);
     expect(rebuilt.references).toBe(populated.references);
     expect(rebuilt.sequences).toBe(populated.sequences);
+  });
+});
+
+describe("createRegistryDatabase schema fingerprint", () => {
+  const configDir = () => join(tmpDir, "config");
+  const registryDbPath = () => join(configDir(), "registry.db");
+
+  const readRegistryUserVersion = (): number => {
+    const database = new Database(registryDbPath(), { readonly: true });
+    const row = database.query("PRAGMA user_version").get() as { user_version: number };
+    database.close();
+    return row.user_version;
+  };
+
+  const setRegistryUserVersion = (value: number): void => {
+    const database = new Database(registryDbPath());
+    database.exec(`PRAGMA user_version = ${value}`);
+    database.close();
+  };
+
+  const writeRegistryMarker = (): void => {
+    const database = new Database(registryDbPath());
+    database.exec("CREATE TABLE IF NOT EXISTS _test_marker (x INTEGER)");
+    database.close();
+  };
+
+  const registryMarkerExists = (): boolean => {
+    const database = new Database(registryDbPath(), { readonly: true });
+    const row = database
+      .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_test_marker'")
+      .get();
+    database.close();
+    return row !== null;
+  };
+
+  it("stamps the current fingerprint into a freshly created registry DB", () => {
+    createRegistryDatabase(configDir());
+    expect(readRegistryUserVersion()).toBe(computeSchemaFingerprint(registryMigrationsFolder));
+  });
+
+  it("resets a drifted registry DB when the flag is set (project registry discarded)", () => {
+    createRegistryDatabase(configDir());
+    writeRegistryMarker();
+    setRegistryUserVersion(999); // simulate a schema change the live DB never picked up
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    createRegistryDatabase(configDir());
+
+    expect(existsSync(registryDbPath())).toBe(true);
+    expect(registryMarkerExists()).toBe(false);
+    expect(readRegistryUserVersion()).toBe(computeSchemaFingerprint(registryMigrationsFolder));
+  });
+
+  it("does not reset a drifted registry DB when the flag is unset (default behavior)", () => {
+    createRegistryDatabase(configDir());
+    writeRegistryMarker();
+    setRegistryUserVersion(999);
+
+    createRegistryDatabase(configDir());
+
+    expect(registryMarkerExists()).toBe(true);
+    expect(readRegistryUserVersion()).toBe(999);
   });
 });
