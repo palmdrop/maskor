@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, writeFileSync, unlinkSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
@@ -92,6 +92,69 @@ describe("watcher — wrong-format files", () => {
 
     const warnings = listWarnings(vaultDatabase);
     expect(warnings.filter((warning) => warning.kind === "WRONG_FORMAT_FILE")).toHaveLength(0);
+  });
+});
+
+describe("watcher — invalid entity file", () => {
+  // Malformed YAML frontmatter — parseEntityFileOrThrow rejects it.
+  const MALFORMED_FRAGMENT = "---\nkey: [unclosed\n---\nbody\n";
+
+  it("records an INVALID_ENTITY_FILE warning and emits vault:warning when a malformed .md is dropped in", async () => {
+    const { vaultDatabase, events } = await rebuildAndWatch();
+
+    const brokenPath = join(vaultDir, "fragments", "broken.md");
+    writeFileSync(brokenPath, MALFORMED_FRAGMENT);
+    await waitFor(() => warningEventCount(events) > 0);
+
+    const invalid = listWarnings(vaultDatabase).filter(
+      (warning) => warning.kind === "INVALID_ENTITY_FILE",
+    );
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0]).toMatchObject({
+      kind: "INVALID_ENTITY_FILE",
+      filePath: "fragments/broken.md",
+      entityKind: "fragment",
+    });
+
+    // The malformed file is left untouched on disk — never rewritten.
+    expect(readFileSync(brokenPath, "utf8")).toBe(MALFORMED_FRAGMENT);
+  });
+
+  it("clears the warning when the malformed file is fixed", async () => {
+    const { vault, vaultDatabase, events } = await rebuildAndWatch();
+
+    const brokenPath = join(vaultDir, "fragments", "broken.md");
+    writeFileSync(brokenPath, MALFORMED_FRAGMENT);
+    await waitFor(() => warningEventCount(events) > 0);
+    const afterAdd = warningEventCount(events);
+
+    // Overwrite with valid content → parses, syncs, warning clears.
+    writeFileSync(brokenPath, "---\nkey: broken\n---\n\nNow valid.\n");
+    await waitFor(() => warningEventCount(events) > afterAdd);
+
+    expect(
+      listWarnings(vaultDatabase).filter((warning) => warning.kind === "INVALID_ENTITY_FILE"),
+    ).toHaveLength(0);
+    // And the now-valid fragment is indexed.
+    expect((await vault.fragments.readAll()).some((fragment) => fragment.key === "broken")).toBe(
+      true,
+    );
+  });
+
+  it("clears the warning when the malformed file is removed", async () => {
+    const { vaultDatabase, events } = await rebuildAndWatch();
+
+    const brokenPath = join(vaultDir, "fragments", "broken.md");
+    writeFileSync(brokenPath, MALFORMED_FRAGMENT);
+    await waitFor(() => warningEventCount(events) > 0);
+    const afterAdd = warningEventCount(events);
+
+    unlinkSync(brokenPath);
+    await waitFor(() => warningEventCount(events) > afterAdd);
+
+    expect(
+      listWarnings(vaultDatabase).filter((warning) => warning.kind === "INVALID_ENTITY_FILE"),
+    ).toHaveLength(0);
   });
 });
 

@@ -49,8 +49,8 @@ The manual reset reuses the draft-restore teardown machinery (`packages/storage/
 
 ### Phase 2: Incremental `INVALID_ENTITY_FILE` updates in the watcher
 
-- [ ] In the watcher's add/change handling (`packages/storage/src/watcher/`), when an entity file fails to parse during sync, record an `INVALID_ENTITY_FILE` state warning and emit `vault:warning`; on a subsequent successful sync of the same path, clear it. Mirror the existing route-aware `WRONG_FORMAT_FILE` handling.
-- [ ] Confirm an unparseable file is **never** rewritten by the watcher (adoption write-back must only run after a successful parse).
+- [x] Parse failures in `syncFragment` / `syncKeyedEntity` now throw a typed `VaultError("INVALID_ENTITY_FILE")` (`parseEntityFileOrThrow` in `vault/markdown/parse.ts`). The watcher's `handleAddOrChange` records the warning + emits `vault:warning` on that error, clears it on a successful sync, and `handleUnlink` clears it on removal — mirroring the route-aware `WRONG_FORMAT_FILE` handling. Routes carry an `entityKind`. _(2026-06-01)_
+- [x] Confirmed an unparseable file is **never** rewritten by the watcher — the throwing parse runs before any `ensureUuid`/writeback. Covered by a test asserting on-disk bytes are unchanged. _(2026-06-01)_
 
 ### Phase 3: Manual DB reset primitive (storage)
 

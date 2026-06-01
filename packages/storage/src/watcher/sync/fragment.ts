@@ -2,7 +2,7 @@ import type { Fragment, VaultSyncEvent } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
-import { parseFile } from "../../vault/markdown/parse";
+import { parseEntityFileOrThrow } from "../../vault/markdown/parse";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
 import { hashContent } from "../../utils/hash";
 import {
@@ -47,7 +47,9 @@ export const syncFragment = async (
   const rawContentOrNull = await readFileWithEnoentGuard(absolutePath, "fragment", log);
   if (rawContentOrNull === null) return;
 
-  const parsed = parseFile(rawContentOrNull);
+  // Throws VaultError("INVALID_ENTITY_FILE") on malformed frontmatter — the watcher records a
+  // warning and skips. This runs before any writeback, so an unparseable file is never rewritten.
+  const parsed = parseEntityFileOrThrow(rawContentOrNull, entityRelativePath);
 
   // writeBack: false — when the UUID is freshly minted the adoption branch below writes the full
   // canonical frontmatter, so a UUID-only write here would just be overwritten. When the UUID

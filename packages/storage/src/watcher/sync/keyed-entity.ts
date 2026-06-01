@@ -3,7 +3,7 @@ import type { VaultSyncEvent } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import type { ParsedFile } from "../../vault/markdown/parse";
-import { parseFile } from "../../vault/markdown/parse";
+import { parseEntityFileOrThrow } from "../../vault/markdown/parse";
 import type { Transaction } from "../../indexer/upserts";
 import type { RenameBuffer } from "../utils/rename-buffer";
 import type { RecentlyDeletedTracker } from "../utils/recently-deleted";
@@ -45,7 +45,9 @@ export const syncKeyedEntity = async <TEntity extends { uuid: string; key: strin
   const rawContentOrNull = await readFileWithEnoentGuard(absolutePath, config.label, log);
   if (rawContentOrNull === null) return;
 
-  const parsed = parseFile(rawContentOrNull);
+  // Throws VaultError("INVALID_ENTITY_FILE") on malformed frontmatter — the watcher records a
+  // warning and skips. This runs before any writeback, so an unparseable file is never rewritten.
+  const parsed = parseEntityFileOrThrow(rawContentOrNull, entityRelativePath);
   const { uuid, rawContent } = await ensureUuid(
     parsed,
     absolutePath,

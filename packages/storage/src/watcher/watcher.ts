@@ -5,6 +5,8 @@ import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../db/vault";
 import { aspectsTable, notesTable, referencesTable } from "../db/vault/schema";
 import type { Vault } from "../vault/types";
+import { VaultError } from "../vault/types";
+import type { EntityKind } from "../indexer/types";
 import * as aspectMapper from "../vault/markdown/mappers/aspect";
 import * as noteMapper from "../vault/markdown/mappers/note";
 import * as referenceMapper from "../vault/markdown/mappers/reference";
@@ -32,6 +34,7 @@ import { syncFragment, unlinkFragment } from "./sync/fragment";
 
 type Route = {
   prefix: string;
+  entityKind: EntityKind;
   handleAddOrChange: (absolutePath: string, vaultRelativePath: string) => Promise<void>;
   handleUnlink: (vaultRelativePath: string) => void;
 };
@@ -176,6 +179,7 @@ export const createVaultWatcher = (
   const routes: Route[] = [
     {
       prefix: ASPECT_PREFIX,
+      entityKind: "aspect",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(ASPECT_PREFIX.length);
         return syncKeyedEntity(aspectConfig, vaultDatabase, log, absolutePath, entityRelativePath);
@@ -187,6 +191,7 @@ export const createVaultWatcher = (
     },
     {
       prefix: FRAGMENT_PREFIX,
+      entityKind: "fragment",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(FRAGMENT_PREFIX.length);
         return syncFragment(vaultDatabase, emit, log, absolutePath, entityRelativePath);
@@ -198,6 +203,7 @@ export const createVaultWatcher = (
     },
     {
       prefix: NOTE_PREFIX,
+      entityKind: "note",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(NOTE_PREFIX.length);
         return syncKeyedEntity(noteConfig, vaultDatabase, log, absolutePath, entityRelativePath);
@@ -209,6 +215,7 @@ export const createVaultWatcher = (
     },
     {
       prefix: REFERENCE_PREFIX,
+      entityKind: "reference",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(REFERENCE_PREFIX.length);
         return syncKeyedEntity(
@@ -283,14 +290,42 @@ export const createVaultWatcher = (
     inFlight.enter();
     try {
       await route.handleAddOrChange(absolutePath, vaultRelativePath);
+      // Parsed and synced (or unchanged) — clear any stale INVALID_ENTITY_FILE warning for this
+      // file. Rebuild remains authoritative; this is best-effort incremental upkeep.
+      if (
+        deleteStateWarningByKey(
+          vaultDatabase,
+          "INVALID_ENTITY_FILE",
+          toWarningKey(vaultRelativePath),
+        )
+      ) {
+        emit({ type: "vault:warning" });
+      }
     } catch (error) {
-      log.error(
-        {
-          filePath: absolutePath,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        },
-        "watcher: unhandled error processing add/change event — skipping",
-      );
+      // A malformed file throws VaultError("INVALID_ENTITY_FILE") from the parse step (before any
+      // writeback). Record it as a state warning instead of a generic error log; the file stays on
+      // disk untouched and the warning clears once the user fixes it.
+      if (error instanceof VaultError && error.code === "INVALID_ENTITY_FILE") {
+        insertWarning(vaultDatabase, {
+          kind: "INVALID_ENTITY_FILE",
+          filePath: toWarningKey(vaultRelativePath),
+          entityKind: route.entityKind,
+          error: error.context.reason ?? error.message,
+        });
+        emit({ type: "vault:warning" });
+        log.warn(
+          { filePath: vaultRelativePath },
+          "watcher: invalid entity file — recorded warning, skipping",
+        );
+      } else {
+        log.error(
+          {
+            filePath: absolutePath,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          "watcher: unhandled error processing add/change event — skipping",
+        );
+      }
     } finally {
       inFlight.exit();
     }
@@ -333,6 +368,16 @@ export const createVaultWatcher = (
     inFlight.enter();
     try {
       route.handleUnlink(vaultRelativePath);
+      // A removed file can no longer be invalid — clear any INVALID_ENTITY_FILE warning for it.
+      if (
+        deleteStateWarningByKey(
+          vaultDatabase,
+          "INVALID_ENTITY_FILE",
+          toWarningKey(vaultRelativePath),
+        )
+      ) {
+        emit({ type: "vault:warning" });
+      }
       log.debug({ filePath: absolutePath }, "watcher: entity unlink handled");
     } catch (error) {
       log.error(

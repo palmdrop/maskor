@@ -18,7 +18,8 @@ export type VaultErrorCode =
   | "STALE_INDEX"
   | "FRAGMENT_NOT_DISCARDED"
   | "KEY_CONFLICT"
-  | "SEQUENCE_NOT_FOUND";
+  | "SEQUENCE_NOT_FOUND"
+  | "INVALID_ENTITY_FILE";
 
 export type VaultErrorContext = {
   filePath?: string;
