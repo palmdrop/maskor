@@ -1,7 +1,8 @@
 # Margins: fragment notes & anchored comments
 
 **Date**: 01-06-2026
-**Status**: Todo
+**Status**: Done
+**Closed**: 02-06-2026
 **Specs**: `specifications/margins.md`, `references/adr/0007-margin-anchored-comments-supersede-file-based-comments.md`
 
 ---
@@ -109,11 +110,11 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 9 — Final reconciliation
 
-- [ ] `bun run format` then `bun run verify`; fix lint/test/codegen-sync failures.
-- [ ] Sweep all touched specs for Shipped accuracy and Status (`Draft` → `Stable` where appropriate, esp. `margins.md`).
-- [ ] Add any surprises encountered to `references/SUGGESTIONS.md`.
-- [ ] Set this plan's Status to `Done` (or `In progress` if partial); set `Closed` date.
-- [ ] Final commit.
+- [x] `bun run format` then `bun run verify`; fixed test/codegen-sync failures. (`bun run verify` green: typecheck, openapi sync, 858 backend + 496 frontend tests. Lint: 0 errors; one pre-existing unrelated warning in `OverviewPage/index.tsx` left untouched.)
+- [x] Swept touched specs for Shipped accuracy and Status. `margins.md` already `Stable`; `document-links.md` stays `Draft` (its inline-link machinery is still unbuilt); `fragment-model.md`/`attachments.md`/`notes.md`/`fragment-editor.md` remain `Stable` with new Shipped entries.
+- [x] Added surprises to `references/suggestions.md` (unknown-frontmatter stripping in the aspect/note/reference mappers; Margin alignment-padding deferral).
+- [x] Set this plan's Status to `Done`; set `Closed` date (02-06-2026).
+- [x] Final commit.
 
 ---
 
