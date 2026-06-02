@@ -3,6 +3,7 @@ import { Command, CommandInput, CommandList } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { consumeFocusClaim } from "@lib/focus-intent";
 
 export interface PickerProps {
   open: boolean;
@@ -53,7 +54,15 @@ export function Picker({
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            returnFocusRef.current?.focus();
+            // A command run from the palette may intend to move focus elsewhere (e.g. the comment
+            // gesture focusing the new comment field). If it registered a claim, honour it instead of
+            // restoring focus to the previously-focused element.
+            const claim = consumeFocusClaim();
+            if (claim) {
+              claim();
+            } else {
+              returnFocusRef.current?.focus();
+            }
             returnFocusRef.current = null;
           }}
         >

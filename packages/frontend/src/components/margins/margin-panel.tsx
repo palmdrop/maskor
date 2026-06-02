@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Button } from "@components/ui/button";
 import { Separator } from "@components/ui/separator";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { claimFocusOnPickerClose } from "@lib/focus-intent";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 import { MarginNotesEditor } from "./margin-notes-editor";
@@ -109,13 +110,20 @@ export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginP
         // The gesture wants the writer typing immediately: open the comments section and leave
         // compact mode so the body textarea exists, then focus it on the next frame.
         setCompact(false);
-        requestAnimationFrame(() => {
-          const textarea = bodyRefs.current.get(markerId);
-          if (textarea) {
-            textarea.scrollIntoView({ block: "center" });
-            textarea.focus();
-          }
-        });
+        const applyFocus = () => {
+          requestAnimationFrame(() => {
+            const textarea = bodyRefs.current.get(markerId);
+            if (textarea) {
+              textarea.scrollIntoView({ block: "center" });
+              textarea.focus();
+            }
+          });
+        };
+        // Direct path (toolbar button — no palette). Under a closing command palette this is reverted
+        // by the dialog's focus trap; the claim re-applies the focus once the palette has closed (and
+        // suppresses the palette's focus-restore back to the editor).
+        applyFocus();
+        claimFocusOnPickerClose(applyFocus);
       },
     }),
     [setCompact],
