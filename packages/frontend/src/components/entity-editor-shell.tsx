@@ -42,8 +42,9 @@ import { useCommands } from "../lib/commands/useCommands";
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
   getSelection: () => SelectionCapture;
-  getCurrentBlock: () => { text: string } | null;
+  getCurrentBlock: () => { text: string; markerId: string | null } | null;
   appendCommentMarker: (markerId: string) => void;
+  stripCommentMarker: (markerId: string) => void;
   revealCommentMarker: (markerId: string) => void;
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
@@ -317,6 +318,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         getCurrentBlock: () => proseEditorRef.current?.getCurrentBlock() ?? null,
         appendCommentMarker: (markerId: string) =>
           proseEditorRef.current?.appendCommentMarker(markerId),
+        stripCommentMarker: (markerId: string) =>
+          proseEditorRef.current?.stripCommentMarker(markerId),
         revealCommentMarker: (markerId: string) =>
           proseEditorRef.current?.revealCommentMarker(markerId),
         restoreFromServer: () => handleRestoreFromServer(),

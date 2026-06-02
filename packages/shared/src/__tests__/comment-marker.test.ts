@@ -5,6 +5,7 @@ import {
   extractCommentMarkerIds,
   hasCommentMarker,
   stripCommentMarkers,
+  stripCommentMarker,
   deriveExcerpt,
   extractBlockOpening,
   EXCERPT_MAX_LENGTH,
@@ -58,6 +59,18 @@ describe("stripCommentMarkers", () => {
 
   it("leaves marker-free text untouched", () => {
     expect(stripCommentMarkers("nothing here")).toBe("nothing here");
+  });
+});
+
+describe("stripCommentMarker (single)", () => {
+  it("removes only the named marker (and its leading whitespace)", () => {
+    const input = `One ${buildCommentMarker("a")} two ${buildCommentMarker("b")}`;
+    expect(stripCommentMarker(input, "a")).toBe(`One two ${buildCommentMarker("b")}`);
+  });
+
+  it("is a no-op when the marker is absent", () => {
+    const input = `Only ${buildCommentMarker("b")}`;
+    expect(stripCommentMarker(input, "a")).toBe(input);
   });
 });
 

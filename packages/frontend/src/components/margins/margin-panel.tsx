@@ -22,6 +22,10 @@ type Props = {
   // Display excerpts derived live from the open fragment buffer, keyed by marker id. Anchored
   // comments render this (their block's current opening); orphans fall back to the stored excerpt.
   liveExcerpts?: Record<string, string>;
+  // Delete a comment. Anchored comments strip their marker from the fragment buffer too (coordinated
+  // edit); orphaned comments are removed from the Margin only. Falls back to the margin-only removal
+  // when omitted.
+  onRemoveComment?: (markerId: string, orphaned: boolean) => void;
   onSave: () => void;
   onCommentBlock?: () => void;
   onRevealMarker?: (markerId: string) => void;
@@ -86,6 +90,7 @@ export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginP
     marginEditor,
     fragmentMarkerIds,
     liveExcerpts,
+    onRemoveComment,
     onSave,
     onCommentBlock,
     onRevealMarker,
@@ -156,7 +161,11 @@ export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginP
       orphaned={orphanedFlag}
       compact={compact}
       onBodyChange={(body) => updateCommentBody(comment.markerId, body)}
-      onRemove={() => removeComment(comment.markerId)}
+      onRemove={() =>
+        onRemoveComment
+          ? onRemoveComment(comment.markerId, orphanedFlag)
+          : removeComment(comment.markerId)
+      }
       onReveal={orphanedFlag ? undefined : () => onRevealMarker?.(comment.markerId)}
       bodyRef={(node) => registerBodyRef(comment.markerId, node)}
     />

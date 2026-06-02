@@ -73,3 +73,11 @@ export const extractBlockOpening = (
 // text. Used by the export/preview assembly path so assembled output carries no markers, and by any
 // caller that needs the marker-free prose.
 export const stripCommentMarkers = (text: string): string => text.replace(COMMENT_MARKER_REGEX, "");
+
+// Remove only the named marker (and any horizontal whitespace immediately before it), leaving every
+// other marker intact. Backs the delete-comment coordinated edit: removing one comment strips its
+// anchor from the fragment buffer without touching its siblings.
+export const stripCommentMarker = (text: string, markerId: string): string => {
+  const escaped = buildCommentMarker(markerId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`[ \\t]*${escaped}`, "g"), "");
+};

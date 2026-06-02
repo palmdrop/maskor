@@ -24,6 +24,7 @@ import { useInvalidateActionLog } from "@api/action-log";
 import { toast } from "sonner";
 import { extractCommentMarkerIds, createCommentMarkerId, deriveExcerpt } from "@maskor/shared";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
+import { resolveCommentTarget } from "@lib/margins/comment-gesture";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
@@ -281,11 +282,29 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   // stub on the next Margin save — then focus moves to the Margin so the writer can type immediately.
   const handleCommentBlock = useCallback(() => {
     const block = shellRef.current?.getCurrentBlock();
-    const markerId = createCommentMarkerId();
-    shellRef.current?.appendCommentMarker(markerId);
+    // One comment per block: reuse the block's existing marker (focus the existing comment) instead
+    // of injecting a second; only mint + inject for a fresh block.
+    const { markerId, inject } = resolveCommentTarget(
+      block?.markerId ?? null,
+      createCommentMarkerId,
+    );
+    if (inject) {
+      shellRef.current?.appendCommentMarker(markerId);
+    }
     marginEditor.addCommentStub({ markerId, excerpt: deriveExcerpt(block?.text ?? ""), body: "" });
     marginPanelRef.current?.focusComment(markerId);
   }, [marginEditor]);
+
+  // Delete = coordinated buffer edit: strip the anchored comment's marker from the fragment buffer
+  // and remove the comment from the Margin buffer; each persists on its own next save. Deleting an
+  // orphaned comment (marker already gone) is a no-op on the fragment side.
+  const handleRemoveComment = useCallback(
+    (markerId: string, orphaned: boolean) => {
+      if (!orphaned) shellRef.current?.stripCommentMarker(markerId);
+      marginEditor.removeComment(markerId);
+    },
+    [marginEditor],
+  );
 
   useCommandScope(marginScope, {
     hasFragment: !!fragment,
@@ -379,6 +398,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             marginEditor={marginEditor}
             fragmentMarkerIds={fragmentMarkerIds}
             liveExcerpts={liveExcerpts}
+            onRemoveComment={handleRemoveComment}
             onSave={() => commands.run("margin:save")}
             onCommentBlock={() => commands.run("margin:comment-block")}
             onRevealMarker={handleRevealMarker}

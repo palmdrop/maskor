@@ -168,6 +168,28 @@ describe("MarginPanel", () => {
     expect(removeComment).toHaveBeenCalledWith("live");
   });
 
+  it("routes delete through onRemoveComment with the orphaned flag (coordinated marker strip)", () => {
+    const onRemoveComment = vi.fn();
+    const marginEditor = buildMarginEditor({
+      comments: [comment("live", "kept"), comment("dead", "lost")],
+    });
+    render(
+      <MarginPanel
+        projectId="project-1"
+        marginEditor={marginEditor}
+        fragmentMarkerIds={["live"]}
+        onRemoveComment={onRemoveComment}
+        onSave={vi.fn()}
+      />,
+    );
+    const removeButtons = screen.getAllByLabelText("Remove comment");
+    // First card is the anchored "live" comment; last is the orphaned "dead" comment.
+    fireEvent.click(removeButtons[0]!);
+    expect(onRemoveComment).toHaveBeenCalledWith("live", false);
+    fireEvent.click(removeButtons[removeButtons.length - 1]!);
+    expect(onRemoveComment).toHaveBeenCalledWith("dead", true);
+  });
+
   it("disables Save unless the margin is dirty", () => {
     const marginEditor = buildMarginEditor({ isDirty: false });
     const { rerender } = render(

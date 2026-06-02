@@ -15,6 +15,8 @@ import {
   buildCommentMarker,
   stripCommentMarkers,
   createCommentMarkerTokenRegex,
+  extractCommentMarkerIds,
+  stripCommentMarker,
 } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { commentMarkerExtension } from "./comment-marker-cm";
@@ -37,10 +39,15 @@ export type ProseEditorHandle = {
   setContent: (value: string) => void;
   getSelection: () => SelectionCapture;
   focus: () => void;
-  // Marker-block operations backing the Margin comment gesture (Phase 4) and scroll correspondence
-  // (Phase 6). The block is the line (CM6/vim) or the parent text block (TipTap) at the cursor.
-  getCurrentBlock: () => { text: string } | null;
+  // Marker-block operations backing the Margin comment gesture and scroll correspondence. The block
+  // is the line (CM6/vim) or the parent text block (TipTap) at the cursor. `markerId` is the comment
+  // anchor already present on that block (the first one), or null — used to enforce one comment per
+  // block (the gesture focuses the existing comment instead of injecting a second marker).
+  getCurrentBlock: () => { text: string; markerId: string | null } | null;
   appendCommentMarker: (markerId: string) => void;
+  // Strip a comment's anchor marker from the buffer (the delete-comment coordinated edit). No-op when
+  // the marker is absent (an orphaned comment leaves the fragment untouched).
+  stripCommentMarker: (markerId: string) => void;
   revealCommentMarker: (markerId: string) => void;
 };
 
@@ -279,16 +286,24 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           editor.commands.focus();
         }
       },
-      getCurrentBlock: (): { text: string } | null => {
+      getCurrentBlock: (): { text: string; markerId: string | null } | null => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return null;
           const line = view.state.doc.lineAt(view.state.selection.main.head);
-          return { text: stripCommentMarkers(line.text).trim() };
+          const markerId = extractCommentMarkerIds(line.text)[0] ?? null;
+          return { text: stripCommentMarkers(line.text).trim(), markerId };
         }
         if (!editor) return null;
         const { $from } = editor.state.selection;
-        return { text: stripCommentMarkers($from.parent.textContent).trim() };
+        // The marker is an atom node with no textContent, so scan the block's children for it.
+        let markerId: string | null = null;
+        $from.parent.forEach((child) => {
+          if (markerId === null && child.type.name === "commentMarker") {
+            markerId = (child.attrs.markerId as string | null) ?? null;
+          }
+        });
+        return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId };
       },
       appendCommentMarker: (markerId: string) => {
         const marker = buildCommentMarker(markerId);
@@ -304,6 +319,32 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         // Insert the schema-modeled marker node at the end of the current text block.
         const end = editor.state.selection.$from.end();
         editor.commands.insertContentAt(end, { type: "commentMarker", attrs: { markerId } });
+      },
+      stripCommentMarker: (markerId: string) => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          const text = view.state.doc.toString();
+          const next = stripCommentMarker(text, markerId);
+          if (next === text) return;
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+          return;
+        }
+        if (!editor) return;
+        let from: number | null = null;
+        let to: number | null = null;
+        editor.state.doc.descendants((node, position) => {
+          if (from !== null) return false;
+          if (node.type.name === "commentMarker" && node.attrs.markerId === markerId) {
+            from = position;
+            to = position + node.nodeSize;
+            return false;
+          }
+          return true;
+        });
+        if (from !== null && to !== null) {
+          editor.chain().deleteRange({ from, to }).run();
+        }
       },
       revealCommentMarker: (markerId: string) => {
         if (vimMode || rawMarkdownMode) {
