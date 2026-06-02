@@ -28,6 +28,8 @@ const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({
   decreaseFontSize: vi.fn(),
   increaseMargin: vi.fn(),
   decreaseMargin: vi.fn(),
+  showSource: false,
+  toggleShowSource: vi.fn(),
   ...overrides,
 });
 
@@ -41,6 +43,14 @@ describe("scopes/editor — save", () => {
 
   it("declares the mod+s hotkey", () => {
     expect(find("editor:save").hotkey).toBe("mod+s");
+  });
+});
+
+describe("scopes/editor — show source", () => {
+  it("toggles the raw anchor-marker reveal", () => {
+    const ctx = makeCtx();
+    find("editor:toggle-show-source").run(ctx);
+    expect(ctx.toggleShowSource).toHaveBeenCalled();
   });
 });
 

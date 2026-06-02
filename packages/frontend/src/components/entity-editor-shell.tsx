@@ -270,6 +270,13 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       false,
     );
 
+    // "Show source": reveal the raw `<!--c:ID-->` anchor markers verbatim in raw/vim mode. Persisted
+    // per project; default off (markers render as a hidden dot cue).
+    const [showSource, , toggleShowSource] = usePersistedBoolean(
+      `marginShowSource_${projectId}`,
+      false,
+    );
+
     const {
       keyEditing,
       keyValue,
@@ -470,6 +477,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       decreaseFontSize: handleDecreaseFontSize,
       increaseMargin: handleIncreaseMargin,
       decreaseMargin: handleDecreaseMargin,
+      showSource,
+      toggleShowSource,
     });
 
     const handleProseChange = useCallback(() => {
@@ -569,6 +578,18 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
                     onValueCommit={([value]) => void persistMaxParagraphWidth(value!)}
                   />
                 </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Show anchor source</Label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showSource}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => commands.run("editor:toggle-show-source")}
+                  >
+                    {showSource ? "On" : "Off"}
+                  </button>
+                </div>
               </PopoverContent>
             </Popover>
             <Button
@@ -626,6 +647,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               rawMarkdownMode={editorConfig.rawMarkdownMode}
               fontSize={localFontSize}
               maxParagraphWidth={localMaxParagraphWidth}
+              showSource={showSource}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
               cursor={cursor}

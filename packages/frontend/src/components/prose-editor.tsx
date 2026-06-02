@@ -50,13 +50,25 @@ type Props = {
   rawMarkdownMode: boolean;
   fontSize: number;
   maxParagraphWidth: number;
+  // Reveal the raw `<!--c:ID-->` anchor markers verbatim (the "show source" toggle). Default off.
+  showSource?: boolean;
   onSave?: () => void;
   onChange?: () => void;
   cursor?: PersistedCursor;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, rawMarkdownMode, fontSize, maxParagraphWidth, onSave, onChange, cursor },
+  {
+    content,
+    vimMode,
+    rawMarkdownMode,
+    fontSize,
+    maxParagraphWidth,
+    showSource = false,
+    onSave,
+    onChange,
+    cursor,
+  },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
@@ -162,13 +174,13 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       cmTheme,
       EditorView.lineWrapping,
       selectionListener,
-      commentMarkerExtension,
+      commentMarkerExtension(showSource),
     ],
-    [cmTheme, selectionListener],
+    [cmTheme, selectionListener, showSource],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener, commentMarkerExtension],
-    [cmTheme, selectionListener],
+    () => [markdown(), cmTheme, selectionListener, commentMarkerExtension(showSource)],
+    [cmTheme, selectionListener, showSource],
   );
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?

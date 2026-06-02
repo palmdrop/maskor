@@ -48,8 +48,8 @@ const decorationRanges = (set: DecorationSet): { lines: Range[]; replacements: R
   return { lines, replacements };
 };
 
-const decorate = (doc: string, cursor: number): DecorationSet =>
-  commentMarkerDecorations(EditorState.create({ doc, selection: { anchor: cursor } }));
+const decorate = (doc: string, cursor: number, showSource = false): DecorationSet =>
+  commentMarkerDecorations(EditorState.create({ doc, selection: { anchor: cursor } }), showSource);
 
 describe("commentMarkerDecorations (CM6)", () => {
   const doc = "first line\nsecond line <!--c:m1-->";
@@ -57,17 +57,22 @@ describe("commentMarkerDecorations (CM6)", () => {
   const markerStart = 11 + "second line ".length;
   const markerEnd = markerStart + "<!--c:m1-->".length;
 
-  it("hides the marker (zero-width replace) when the cursor is on another line", () => {
+  it("hides the marker (zero-width replace) and cues the annotated line", () => {
     const { lines, replacements } = decorationRanges(decorate(doc, 0));
     expect(replacements).toContainEqual({ from: markerStart, to: markerEnd });
-    // The annotated line carries a cue decoration at its start.
+    // The annotated line carries the dot-cue decoration at its start.
     expect(lines).toContainEqual({ from: 11, to: 11 });
   });
 
-  it("reveals the raw marker when the cursor is on its line", () => {
-    const { lines, replacements } = decorationRanges(decorate(doc, markerStart));
+  it("keeps the marker hidden even when the cursor is on its line (no reveal-on-cursor)", () => {
+    const { replacements } = decorationRanges(decorate(doc, markerStart));
+    expect(replacements).toContainEqual({ from: markerStart, to: markerEnd });
+  });
+
+  it("reveals the raw marker verbatim when show source is on", () => {
+    const { lines, replacements } = decorationRanges(decorate(doc, 0, true));
     expect(replacements).toHaveLength(0);
-    // The line cue stays even while revealed.
+    // The line cue stays even while the raw marker is revealed.
     expect(lines).toContainEqual({ from: 11, to: 11 });
   });
 
