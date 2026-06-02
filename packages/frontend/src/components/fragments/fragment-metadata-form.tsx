@@ -11,7 +11,6 @@ import {
   useCreateAspect,
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
-import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
 import { useInvalidateActionLog } from "@api/action-log";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
@@ -56,18 +55,12 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   const { mutateAsync: createAspect } = useCreateAspect();
   const [createAspectError, setCreateAspectError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
-  const { data: notesEnvelope } = useListNotes(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);
 
   const projectAspects = useMemo(
     () => (aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : []),
     [aspectsEnvelope],
   );
-
-  const noteKeyToUuid = useMemo(() => {
-    const notes = notesEnvelope?.status === 200 ? notesEnvelope.data : [];
-    return new Map(notes.map((note) => [note.key, note.uuid]));
-  }, [notesEnvelope]);
 
   const referenceKeyToUuid = useMemo(() => {
     const references = referencesEnvelope?.status === 200 ? referencesEnvelope.data : [];
@@ -148,15 +141,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     ),
   });
 
-  const notesField = useLiveFieldSave({
-    serverValue: fragment.notes,
-    isEqual: stringSetEqual,
-    save: makeSave(
-      (_, value) => ({ notes: value }),
-      (value) => ({ notes: value }),
-    ),
-  });
-
   const referencesField = useLiveFieldSave({
     serverValue: fragment.references,
     isEqual: stringSetEqual,
@@ -208,16 +192,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     () => Object.entries(aspectsField.value).filter(([key]) => !knownAspectKeys.has(key)),
     [aspectsField.value, knownAspectKeys],
   );
-
-  const availableNoteGroups = useMemo((): OptionGroup[] => {
-    const notes = (notesEnvelope?.status === 200 ? notesEnvelope.data : []).filter(
-      (note) => !notesField.value.includes(note.key),
-    );
-    return groupByCategory(notes, (n) => n.category).map(({ category, items }) => ({
-      label: category,
-      options: items.map((n) => n.key),
-    }));
-  }, [notesEnvelope, notesField.value]);
 
   const availableReferenceGroups = useMemo((): OptionGroup[] => {
     const references = (referencesEnvelope?.status === 200 ? referencesEnvelope.data : []).filter(
@@ -279,8 +253,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   useCommandScope(fragmentMetadataScope, {
     attachEntity: (kind, key) => {
       switch (kind) {
-        case "note":
-          return notesField.onChange([...notesField.value, key]);
         case "reference":
           return referencesField.onChange([...referencesField.value, key]);
         case "aspect":
@@ -290,8 +262,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     },
     detachEntity: (kind, key) => {
       switch (kind) {
-        case "note":
-          return notesField.onChange(notesField.value.filter((n) => n !== key));
         case "reference":
           return referencesField.onChange(referencesField.value.filter((r) => r !== key));
         case "aspect":
@@ -305,8 +275,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     },
     getAvailableEntities: (kind) => {
       switch (kind) {
-        case "note":
-          return availableNoteGroups.flatMap((g) => g.options);
         case "reference":
           return availableReferenceGroups.flatMap((g) => g.options);
         case "aspect":
@@ -316,8 +284,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     },
     getAttachedEntities: (kind) => {
       switch (kind) {
-        case "note":
-          return notesField.value;
         case "reference":
           return referencesField.value;
         case "aspect":
@@ -339,37 +305,6 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
           step={1}
         />
         {readinessField.error && <p className="text-xs text-destructive">{readinessField.error}</p>}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label>Notes</Label>
-        <div className="flex flex-wrap gap-1">
-          {notesField.value.map((noteKey) => {
-            const noteUuid = noteKeyToUuid.get(noteKey);
-            return (
-              <EntityTag
-                key={noteKey}
-                value={noteKey}
-                linkArguments={
-                  noteUuid
-                    ? {
-                        to: "/projects/$projectId/notes/$noteId",
-                        params: { projectId, noteId: noteUuid },
-                        search: { from: fragment.uuid },
-                      }
-                    : undefined
-                }
-                onRemove={() => commands.run("fragment-metadata:detach-note", noteKey)}
-              />
-            );
-          })}
-        </div>
-        <TagCombobox
-          groups={availableNoteGroups}
-          placeholder="Add note — type to filter"
-          onSelect={(value) => commands.run("fragment-metadata:attach-note", value)}
-        />
-        {notesField.error && <p className="text-xs text-destructive">{notesField.error}</p>}
       </div>
 
       <div className="flex flex-col gap-2">

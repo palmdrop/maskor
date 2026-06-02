@@ -7,7 +7,7 @@
 
 ## Outcome
 
-Users can write Obsidian-style `[[type/key]]` links inside any markdown body — fragments, notes, references — to connect their work without leaving the editor. Links are navigable in the Maskor UI and round-trip cleanly through Obsidian. Linking to a note, reference, or aspect from a fragment body auto-attaches it in the fragment's metadata. Backlinks let the user see every place an entity is referenced.
+Users can write Obsidian-style `[[type/key]]` links inside any markdown body — fragments, notes, references — to connect their work without leaving the editor. Links are navigable in the Maskor UI and round-trip cleanly through Obsidian. Linking to a reference or aspect from a fragment body auto-attaches it in the fragment's metadata; linking to a note connects it via the link table and backlinks only (notes are no longer a fragment attachment — ADR 0007). Backlinks let the user see every place an entity is referenced.
 
 Comments are **no longer** part of this model: they are anchored blocks inside a fragment's Margin (`specifications/margins.md`, ADR 0007), not vault files linked from a fragment.
 
@@ -24,7 +24,7 @@ Comments are **no longer** part of this model: they are anchored blocks inside a
 - Autocomplete and click-to-navigate in raw markdown mode and vim mode (not only rich mode)
 - Persisted link table (forward + backward edges) maintained by the watcher and API
 - Backlinks UI surface on each entity page
-- Auto-sync from inline links into fragment metadata (notes, references, aspects)
+- Auto-sync from inline links into fragment metadata (references, aspects). Notes are not auto-synced to a fragment attachment — the fragment note list was removed (ADR 0007); note links are link-table/backlink citizens only.
 - Rename cascade: renaming any linkable entity rewrites links in every referring body, preserving aliases
 - Delete behaviour: warn, strip from metadata, leave dead link in body
 - External (Obsidian) edits parsed by the watcher; unresolved targets persisted
@@ -54,12 +54,12 @@ Comments are **no longer** part of this model: they are anchored blocks inside a
 
 ### Linkable entity types
 
-| Type         | Vault folder  | Linkable | Inline-creates metadata attachment                                            |
-| ------------ | ------------- | -------- | ----------------------------------------------------------------------------- |
-| `fragments`  | `fragments/`  | Yes      | No (fragments are not attached to other fragments via metadata)               |
-| `notes`      | `notes/`      | Yes      | Yes (added to fragment's note list at weight n/a)                             |
-| `references` | `references/` | Yes      | Yes (added to fragment's reference list)                                      |
-| `aspects`    | `aspects/`    | Yes      | Yes (added at weight 0; user must use the metadata form to set a real weight) |
+| Type         | Vault folder  | Linkable | Inline-creates metadata attachment                                                 |
+| ------------ | ------------- | -------- | ---------------------------------------------------------------------------------- |
+| `fragments`  | `fragments/`  | Yes      | No (fragments are not attached to other fragments via metadata)                    |
+| `notes`      | `notes/`      | Yes      | No (the fragment note attachment was removed — ADR 0007; link-table/backlink only) |
+| `references` | `references/` | Yes      | Yes (added to fragment's reference list)                                           |
+| `aspects`    | `aspects/`    | Yes      | Yes (added at weight 0; user must use the metadata form to set a real weight)      |
 
 Subfolders inside these directories are not supported. The filename stem remains the unique key within each type.
 
@@ -82,12 +82,12 @@ Subfolders inside these directories are not supported. The filename stem remains
 
 ### Auto-sync between inline links and fragment metadata
 
-When a fragment is saved, its body is parsed and the link table is updated. Inline links from a fragment body to a note, reference, or aspect also drive the fragment's metadata:
+When a fragment is saved, its body is parsed and the link table is updated. Inline links from a fragment body to a reference or aspect also drive the fragment's metadata (notes are not a fragment attachment — ADR 0007 — so a `[[notes/foo]]` link drives the link table/backlinks only):
 
 - **Adding** an inline link in a fragment body adds the target to the corresponding metadata list on the next save:
-  - Notes: added to the fragment's note list.
   - References: added to the fragment's reference list.
   - Aspects: added to the fragment's aspect map at weight `0`. The user must use the metadata form to set a meaningful weight.
+  - Notes: no metadata attachment — link-table/backlink only.
 - **Removing** an inline link from a fragment body does _not_ automatically remove the metadata attachment, with one exception:
   - Aspects with weight `0` and no remaining inline references are removed on save. Aspects with any weight > 0 are preserved (the user committed to them deliberately via the form).
 - Multiple inline references to the same target count as a single attachment. The metadata entry is preserved as long as at least one inline reference remains.
@@ -96,7 +96,7 @@ When a fragment is saved, its body is parsed and the link table is updated. Inli
 
 Auto-sync runs **on save**, not per keystroke. There is a brief, expected lag between typing a link and the metadata chip appearing in the form.
 
-Note and reference bodies are also link sources, but they have no metadata-attachment concept. Their links contribute to the link table only.
+Note and reference bodies are also link sources, but they have no metadata-attachment concept. Their links contribute to the link table only. (Note **targets** likewise never become a fragment attachment — ADR 0007.)
 
 ### Rename cascade
 
@@ -153,7 +153,7 @@ Note and reference bodies are also link sources, but they have no metadata-attac
 - **Inline link syntax follows Obsidian conventions exactly**: `[[type/key]]` and `[[type/key|alias]]`, no `.md` extension. Round-trip compatibility with Obsidian is mandatory.
 - **Full-path-only canonical form**: Maskor always inserts `type/key`, never bare. This disambiguates target type immediately, prevents future collisions across types from breaking existing links, and lets broken-link UI know what kind of entity is missing.
 - **Aspects are linkable but weight management stays in the metadata form**: An inline `[[aspects/foo]]` attaches the aspect at weight 0. The user must use the metadata form to set a real weight. Inline-link syntax has no room for a weight value; trying to encode one would either collide with Obsidian alias syntax or invent a Maskor-only dialect that breaks round-trip.
-- **Inline links auto-add to fragment metadata; removal does not auto-remove (notes/refs)**: For notes and references, attachments added through the metadata form must survive incidental edits to the body. Asymmetric add/remove protects user-curated attachments from silent destruction.
+- **Inline links auto-add to fragment metadata; removal does not auto-remove (references)**: For references, attachments added through the metadata form must survive incidental edits to the body. Asymmetric add/remove protects user-curated attachments from silent destruction. (Notes no longer have a fragment attachment — ADR 0007 — so this asymmetry no longer applies to notes; a `[[notes/foo]]` link is a link-table/backlink citizen only.)
 - **Aspect weight-0 cascade removal**: An aspect at weight 0 with no remaining inline references is removed on save. Weight 0 is treated as "uncommitted." Any non-zero weight is preserved regardless of inline state. This was a deliberate choice over a separate `origin` field on attachments — see Open Questions.
 - **Form X-button disabled while inline links exist**: Removing a chip via the form while the body still links inline would re-add it on the next save (loop) or require Maskor to rewrite the body (destructive). Disabling the form X with an explanatory hint is the only honest option. Acknowledged as somewhat unintuitive — flagged for reconsideration.
 - **Alias preserved across rename**: Renaming `notes/old-key` to `notes/new-key` rewrites `[[notes/old-key|the manor]]` to `[[notes/new-key|the manor]]`. The alias is user-authored display text and must survive.
@@ -182,12 +182,12 @@ Note and reference bodies are also link sources, but they have no metadata-attac
 - Selecting an entity from autocomplete inserts a link in canonical full-path form (`[[type/key]]`).
 - The command-palette "Insert link" action opens an entity picker and inserts a link at the editor's current cursor position; the cursor returns to the position after the inserted link.
 - Autocomplete, command-palette insertion, and click-to-navigate behave identically in rich mode, raw markdown mode, and vim mode.
-- An inline `[[notes/foo]]` in a fragment body causes `notes/foo` to appear as an attached note in the fragment's metadata form after the next save.
+- An inline `[[notes/foo]]` in a fragment body does **not** add `foo` to any fragment note list (the list was removed — ADR 0007); it contributes to the link table and backlinks only.
 - An inline `[[aspects/bar]]` in a fragment body adds `bar` to the fragment's aspect map at weight `0` after the next save.
 - An inline `[[references/baz]]` in a fragment body adds `baz` to the fragment's reference list after the next save.
 - Inline links from note and reference bodies do not modify any fragment metadata; they appear in the link table and contribute to backlinks only.
 - Removing the last inline `[[aspects/bar]]` reference from a fragment body removes `bar` from the fragment's aspect map iff the weight is `0`. Non-zero weights are preserved.
-- Removing the last inline `[[notes/foo]]` reference from a fragment body does **not** remove `foo` from the fragment's note list. The form X-button is the only way to detach.
+- Notes have no fragment attachment, so there is no fragment note list to add to or remove from; `[[notes/foo]]` links are surfaced via backlinks only.
 - The metadata form's X-button is disabled (with hint) for any attachment that currently has at least one inline link in the fragment body.
 - Renaming a note from `old-key` to `new-key` atomically: renames the vault file, rewrites every `[[notes/old-key]]` and `[[notes/old-key|<alias>]]` in every fragment, note, and reference body, preserves all aliases, and updates the link table.
 - Renaming a fragment performs the same atomic cascade across all referring bodies. (Net-new: fragment renames previously did not cascade.)

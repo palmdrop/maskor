@@ -497,12 +497,6 @@
           "contentHash": {
             "type": "string"
           },
-          "notes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "references": {
             "type": "array",
             "items": {
@@ -539,7 +533,6 @@
           "key",
           "readiness",
           "contentHash",
-          "notes",
           "references",
           "isDiscarded",
           "aspects",
@@ -570,12 +563,6 @@
           },
           "contentHash": {
             "type": "string"
-          },
-          "notes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "references": {
             "type": "array",
@@ -609,7 +596,6 @@
           "content",
           "readiness",
           "contentHash",
-          "notes",
           "references",
           "isDiscarded",
           "aspects",
@@ -778,12 +764,6 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1
-          },
-          "notes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "references": {
             "type": "array",

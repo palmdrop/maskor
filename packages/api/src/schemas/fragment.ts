@@ -15,6 +15,7 @@ const IndexedFragmentAspectSchema = z.object({
 export const IndexedFragmentSchema = DomainFragmentSchema.omit({
   content: true,
   updatedAt: true,
+  extraFrontmatter: true,
 })
   .extend({
     key: z.string().openapi({ example: "harbour-lights" }),
@@ -27,7 +28,7 @@ export const IndexedFragmentSchema = DomainFragmentSchema.omit({
 // Response schema for GET /fragments/:id and POST /fragments — full vault fragment with content.
 // updatedAt is omitted from the domain schema so it can be re-typed as a string (ISO date) for
 // JSON transport; other fields are re-extended only to attach OpenAPI examples.
-export const FragmentSchema = DomainFragmentSchema.omit({ updatedAt: true })
+export const FragmentSchema = DomainFragmentSchema.omit({ updatedAt: true, extraFrontmatter: true })
   .extend({
     uuid: z.uuid().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     key: z.string().openapi({ example: "harbour-lights" }),

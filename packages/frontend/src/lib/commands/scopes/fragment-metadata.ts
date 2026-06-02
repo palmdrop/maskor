@@ -1,6 +1,8 @@
 import { defineScope, defineScopeCommand } from "../define";
 
-type EntityKind = "aspect" | "note" | "reference";
+// Notes are no longer a fragment attachment (margins replaced them — ADR 0007); only aspects and
+// references remain attachable from the metadata form.
+type EntityKind = "aspect" | "reference";
 
 export interface FragmentMetadataContext {
   attachEntity: (kind: EntityKind, key: string) => void;
@@ -49,42 +51,6 @@ const detachAspect = defineScopeCommand(fragmentMetadataScope, {
   },
 });
 
-const attachNote = defineScopeCommand(fragmentMetadataScope, {
-  id: "fragment-metadata:attach-note",
-  label: "Attach note",
-  category: "attach",
-  disabled: (ctx) =>
-    ctx.getAvailableEntities("note").length === 0 ? "No notes to attach" : undefined,
-  arg: {
-    items: (ctx): string[] => ctx.getAvailableEntities("note"),
-    getKey: (item) => item,
-    getLabel: (item) => item,
-    placeholder: "Choose note…",
-  },
-  run: (ctx, aspectKey) => {
-    if (!aspectKey) return;
-    ctx.attachEntity("note", aspectKey);
-  },
-});
-
-const detachNote = defineScopeCommand(fragmentMetadataScope, {
-  id: "fragment-metadata:detach-note",
-  label: "Detach note",
-  category: "attach",
-  disabled: (ctx) =>
-    ctx.getAttachedEntities("note").length === 0 ? "No attached notes" : undefined,
-  arg: {
-    items: (ctx): string[] => ctx.getAttachedEntities("note"),
-    getKey: (item) => item,
-    getLabel: (item) => item,
-    placeholder: "Choose note…",
-  },
-  run: (ctx, aspectKey) => {
-    if (!aspectKey) return;
-    ctx.detachEntity("note", aspectKey);
-  },
-});
-
 const attachReference = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:attach-reference",
   label: "Attach reference",
@@ -124,8 +90,6 @@ const detachReference = defineScopeCommand(fragmentMetadataScope, {
 export const fragmentMetadataCommands = [
   attachAspect,
   detachAspect,
-  attachNote,
-  detachNote,
   attachReference,
   detachReference,
 ] as const;

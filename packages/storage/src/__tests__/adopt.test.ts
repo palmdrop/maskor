@@ -42,7 +42,6 @@ describe("adopt.writeBackFragmentFrontmatter", () => {
     expect(fragment.uuid).toBe("11111111-1111-1111-1111-111111111111");
     expect(fragment.key).toBe("intro");
     expect(fragment.readiness).toBe(0);
-    expect(fragment.notes).toEqual([]);
     expect(fragment.references).toEqual([]);
 
     // Returned raw content matches exactly what landed on disk.
@@ -53,7 +52,7 @@ describe("adopt.writeBackFragmentFrontmatter", () => {
     expect(reparsed.frontmatter.uuid).toBe("11111111-1111-1111-1111-111111111111");
     expect(reparsed.frontmatter.readiness).toBe(0);
     expect(reparsed.frontmatter).toHaveProperty("updatedAt");
-    expect(reparsed.frontmatter).toHaveProperty("notes");
+    expect(reparsed.frontmatter).not.toHaveProperty("notes");
     expect(reparsed.frontmatter).toHaveProperty("references");
   });
 

@@ -7,7 +7,6 @@ import {
   aspectsTable,
   commentsTable,
   fragmentAspectsTable,
-  fragmentNotesTable,
   fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentStatsTable,
@@ -194,11 +193,6 @@ export const upsertFragment = (
       },
     })
     .run();
-
-  tx.delete(fragmentNotesTable).where(eq(fragmentNotesTable.fragmentUuid, fragment.uuid)).run();
-  for (const noteKey of fragment.notes) {
-    tx.insert(fragmentNotesTable).values({ fragmentUuid: fragment.uuid, noteKey }).run();
-  }
 
   tx.delete(fragmentReferencesTable)
     .where(eq(fragmentReferencesTable.fragmentUuid, fragment.uuid))
@@ -465,15 +459,6 @@ export const recomputeMarginOrphans = (
     }
   });
   return changed;
-};
-
-export const findFragmentUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {
-  return db
-    .select({ fragmentUuid: fragmentNotesTable.fragmentUuid })
-    .from(fragmentNotesTable)
-    .where(eq(fragmentNotesTable.noteKey, noteKey))
-    .all()
-    .map((row) => row.fragmentUuid);
 };
 
 export const findAspectUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {

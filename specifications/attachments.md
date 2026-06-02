@@ -1,10 +1,11 @@
 # Spec: Attachable Vault Documents
 
 **Status**: Stable
-**Last updated**: 2026-04-27
+**Last updated**: 2026-06-02
 
 **Shipped**:
 
+- 2026-06-02 — Notes are no longer attachable to fragments (ADR 0007); the fragment notes attachment list and its UI/auto-sync were removed. Notes are project-scope documents surfaced via `[[document-links]]`/backlinks. Reference attachment is unchanged. (plan: references/plans/margins.md, Phase 8)
 - 2026-04-05 — Notes and references are stored as vault markdown files; Maskor reads and writes their frontmatter (UUID, key, createdAt, updatedAt) without touching body content. (plan: references/plans/storage-markdown-reader.md)
 - 2026-04-10 — Notes and references are indexed in a per-vault SQLite database; the index is rebuilt on demand and kept live by the file watcher. (plan: references/plans/vault-content-index.md)
 - 2026-04-15 — Notes and references can be created and deleted via API; deletion hard-removes both the vault file and the DB row. (plan: references/plans/aspects-notes-references-crud.md)
@@ -18,7 +19,7 @@
 
 ## Outcome
 
-Users can create named, free-text vault documents — notes and references — and attach them to fragments. Both types share an identical structure; the distinction between them is semantic and product-level only. This spec defines the shared rules. See `notes.md` and `references.md` for type-specific purpose and naming.
+Users can create named, free-text vault documents — notes and references. Both types share an identical file structure; the distinction between them is semantic and product-level only. **References are attachable to fragments; notes are not** — the fragment notes attachment was removed (ADR 0007), so notes are project-scope documents surfaced via `[[document-links]]` and backlinks rather than a fragment frontmatter list. This spec defines the shared file/lifecycle rules and the reference-attachment behaviour. See `notes.md` and `references.md` for type-specific purpose and naming.
 
 ---
 
@@ -28,8 +29,8 @@ Users can create named, free-text vault documents — notes and references — a
 
 - Identity, lifecycle (create, read, rename, delete) for notes and references
 - Vault storage and DB sync
-- Attaching and detaching from fragments
-- Handling orphaned attachments (vault file deleted; fragment still references it)
+- Attaching and detaching **references** from fragments (notes are no longer fragment-attachable — ADR 0007)
+- Handling orphaned reference attachments (vault file deleted; fragment still references it)
 - Frontmatter schema
 
 ### Out of scope
@@ -68,8 +69,9 @@ Frontmatter schema: UUID, key, `createdAt`, `updatedAt`. Body is free-form.
 
 ### Attaching to fragments
 
-- A fragment's frontmatter contains lists of note and reference keys it is linked to.
-- The fragment owns the relationship. Notes and references carry no back-reference to the fragment.
+- **Only references attach to fragments.** Notes were removed as a fragment attachment (ADR 0007) — they are project-scope documents connected through `[[document-links]]` and backlinks. The rules below apply to references; the historical "note" wording is retained only where the mechanics are identical and reference-only.
+- A fragment's frontmatter contains a list of reference keys it is linked to.
+- The fragment owns the relationship. References carry no back-reference to the fragment.
 - Only documents that already exist in the vault can be attached. Creating inline from the fragment editor is out of scope for the initial implementation.
 - The same note or reference can be attached to multiple fragments.
 - Detaching removes the key from the fragment's frontmatter list. The document file is unaffected.

@@ -24,7 +24,6 @@ import { deriveCategory } from "../utils/category";
 
 export const assembleFragment = (
   row: typeof fragmentsTable.$inferSelect,
-  noteRows: Array<{ noteKey: string }>,
   referenceRows: Array<{ referenceKey: string }>,
   propertyRows: Array<{
     aspectKey: string;
@@ -38,7 +37,6 @@ export const assembleFragment = (
   contentHash: row.contentHash,
   filePath: row.filePath,
   updatedAt: row.updatedAt,
-  notes: noteRows.map((note) => note.noteKey),
   references: referenceRows.map((reference) => reference.referenceKey),
   aspects: propertyRows.reduce(
     (acc, property) => {

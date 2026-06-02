@@ -31,7 +31,6 @@ const baseFragment: Fragment = {
   content: "fragment content",
   readiness: 0.2,
   contentHash: "hash",
-  notes: [],
   references: [],
   isDiscarded: false,
   aspects: {},
@@ -60,12 +59,12 @@ const seedQueries = (queryClient: QueryClient, fragment: Fragment) => {
     headers,
   });
   queryClient.setQueryData(getListNotesQueryKey(projectId), {
-    data: [{ uuid: "note-1", key: "bridge-obs" }],
+    data: [],
     status: 200,
     headers,
   });
   queryClient.setQueryData(getListReferencesQueryKey(projectId), {
-    data: [],
+    data: [{ uuid: "reference-1", key: "bridge-obs", category: "general" }],
     status: 200,
     headers,
   });
@@ -106,10 +105,10 @@ describe("FragmentMetadataForm — live metadata save", () => {
     queryClient.clear();
   });
 
-  it("detaching a note: tag disappears immediately, PATCH fires after debounce", async () => {
-    const seeded: Fragment = { ...baseFragment, notes: ["bridge-obs"] };
+  it("detaching a reference: tag disappears immediately, PATCH fires after debounce", async () => {
+    const seeded: Fragment = { ...baseFragment, references: ["bridge-obs"] };
     seedQueries(queryClient, seeded);
-    fetchMock.mockResolvedValue(mockPatchResponse({ ...seeded, notes: [] }));
+    fetchMock.mockResolvedValue(mockPatchResponse({ ...seeded, references: [] }));
 
     render(<FragmentMetadataForm fragment={seeded} projectId={projectId} />, {
       wrapper: wrap(queryClient),
@@ -138,7 +137,7 @@ describe("FragmentMetadataForm — live metadata save", () => {
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe(`/api/projects/${projectId}/fragments/${seeded.uuid}`);
     expect(init.method).toBe("PATCH");
-    expect(JSON.parse(init.body as string)).toEqual({ notes: [] });
+    expect(JSON.parse(init.body as string)).toEqual({ references: [] });
   });
 
   it("toggling back within the debounce window cancels the PATCH entirely", async () => {
@@ -151,9 +150,9 @@ describe("FragmentMetadataForm — live metadata save", () => {
     //
     // Here we test the narrower property: after a successful save settles, a later
     // change resumes the live-save loop without leaking state.
-    const seeded: Fragment = { ...baseFragment, notes: ["bridge-obs"] };
+    const seeded: Fragment = { ...baseFragment, references: ["bridge-obs"] };
     seedQueries(queryClient, seeded);
-    fetchMock.mockResolvedValueOnce(mockPatchResponse({ ...seeded, notes: [] }));
+    fetchMock.mockResolvedValueOnce(mockPatchResponse({ ...seeded, references: [] }));
 
     render(<FragmentMetadataForm fragment={seeded} projectId={projectId} />, {
       wrapper: wrap(queryClient),
@@ -179,11 +178,11 @@ describe("FragmentMetadataForm — live metadata save", () => {
   });
 
   it("on success: response data replaces the optimistic cache write (no single-fragment refetch)", async () => {
-    const seeded: Fragment = { ...baseFragment, notes: ["bridge-obs"] };
+    const seeded: Fragment = { ...baseFragment, references: ["bridge-obs"] };
     seedQueries(queryClient, seeded);
     const serverFragment: Fragment = {
       ...seeded,
-      notes: [],
+      references: [],
       // Distinct updatedAt to verify cache adopts the server response, not the optimistic value.
       updatedAt: "2030-01-01T00:00:00.000Z",
     };
@@ -219,7 +218,7 @@ describe("FragmentMetadataForm — live metadata save", () => {
   });
 
   it("on error: rolls back optimistic write and surfaces the error", async () => {
-    const seeded: Fragment = { ...baseFragment, notes: ["bridge-obs"] };
+    const seeded: Fragment = { ...baseFragment, references: ["bridge-obs"] };
     seedQueries(queryClient, seeded);
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ message: "Network down" }), {
@@ -247,7 +246,7 @@ describe("FragmentMetadataForm — live metadata save", () => {
     const cached = queryClient.getQueryData<CacheEntry>(
       getGetFragmentQueryKey(projectId, seeded.uuid),
     );
-    expect(cached?.data.notes).toEqual(["bridge-obs"]);
+    expect(cached?.data.references).toEqual(["bridge-obs"]);
 
     // Error rendered beneath the failing field
     expect(screen.getByText(/Network down/i)).toBeInTheDocument();

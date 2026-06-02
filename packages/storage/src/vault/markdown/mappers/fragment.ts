@@ -3,6 +3,19 @@ import type { ParsedFile } from "../parse";
 import { inlineFieldsToAspects, aspectsToInlineFields } from "./aspect";
 import { basename } from "node:path";
 
+// Frontmatter keys Maskor manages directly. `notes` is intentionally included: the fragment notes
+// attachment was removed (ADR 0007 / margins), so a legacy `notes:` list is dropped on the next save
+// rather than preserved as user data. Every other frontmatter key is preserved verbatim.
+const MANAGED_FRONTMATTER_KEYS = new Set(["uuid", "updatedAt", "readiness", "references", "notes"]);
+
+const extractExtraFrontmatter = (frontmatter: Record<string, unknown>): Record<string, unknown> => {
+  const extra: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (!MANAGED_FRONTMATTER_KEYS.has(key)) extra[key] = value;
+  }
+  return extra;
+};
+
 export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
   const frontmatter = parsed.frontmatter;
 
@@ -17,12 +30,12 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
     key,
     isDiscarded,
     readiness: typeof frontmatter.readiness === "number" ? frontmatter.readiness : 0,
-    notes: (frontmatter.notes as string[]) ?? [],
     references: (frontmatter.references as string[]) ?? [],
     aspects: inlineFieldsToAspects(parsed.inlineFields),
     content: parsed.body,
     contentHash: "",
     updatedAt,
+    extraFrontmatter: extractExtraFrontmatter(frontmatter),
   };
 };
 
@@ -35,10 +48,11 @@ export const toFile = (
 } => {
   return {
     frontmatter: {
+      // Unmanaged user keys first, so the managed keys below always win on a name clash.
+      ...(fragment.extraFrontmatter ?? {}),
       uuid: fragment.uuid,
       updatedAt: fragment.updatedAt.toISOString(),
       readiness: fragment.readiness,
-      notes: fragment.notes,
       references: fragment.references,
     },
     inlineFields: aspectsToInlineFields(fragment.aspects),

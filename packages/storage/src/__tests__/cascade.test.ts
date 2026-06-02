@@ -37,44 +37,15 @@ const setup = async () => {
 // --- Note rename cascade ---
 
 describe("cascadeNoteKeyRename — via notes.update", () => {
-  it("updates the notes array in attached fragment files on disk", async () => {
-    const { service, context, vault } = await setup();
-    const notes = await service.notes.readAll(context);
-    const bridgeNote = notes.find((note) => note.key === "bridge observation")!;
-
-    await service.notes.update(context, bridgeNote.uuid, { key: "bridge notes" });
-
-    const bridge = await vault.fragments.read("the-bridge.md");
-    expect(bridge.notes).toContain("bridge notes");
-    expect(bridge.notes).not.toContain("bridge observation");
-  });
-
-  it("returns affected fragment UUIDs in warnings", async () => {
+  it("no longer cascades to fragments (the fragment notes attachment was removed)", async () => {
     const { service, context } = await setup();
     const notes = await service.notes.readAll(context);
     const bridgeNote = notes.find((note) => note.key === "bridge observation")!;
 
     const result = await service.notes.update(context, bridgeNote.uuid, { key: "bridge notes" });
 
-    expect(result.warnings.fragments).toContain(BRIDGE_FRAGMENT_UUID);
-    expect(result.warnings.fragments).not.toContain(HARBOUR_FRAGMENT_UUID);
-  });
-
-  it("updates notes in all attached fragments (multiple)", async () => {
-    const { service, context, vault } = await setup();
-
-    // harbour-lights is attached to harbour observation
-    const notes = await service.notes.readAll(context);
-    const harbourNote = notes.find((note) => note.key === "harbour observation")!;
-
-    const result = await service.notes.update(context, harbourNote.uuid, {
-      key: "harbour notes",
-    });
-
-    expect(result.warnings.fragments).toContain(HARBOUR_FRAGMENT_UUID);
-    const harbour = await vault.fragments.read("harbour-lights.md");
-    expect(harbour.notes).toContain("harbour notes");
-    expect(harbour.notes).not.toContain("harbour observation");
+    // Renaming a note touches no fragments — notes are no longer a fragment attachment.
+    expect(result.warnings.fragments).toHaveLength(0);
   });
 
   it("updates the notes array in attached aspect files on disk", async () => {

@@ -97,15 +97,15 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 8 — Drop the fragment `notes:` attachment & rework notes auto-sync
 
-- [ ] Remove the `notes:` attachment list from the fragment model (`packages/storage`, API, frontend metadata form). Preserve unknown frontmatter keys on save (do not strip user data).
-- [ ] `document-links.md`: change the notes auto-sync rule — inline `[[notes/foo]]` no longer adds to a fragment note list (the list is gone); notes become link-table/backlink citizens only. References and aspects keep their auto-sync behaviour. Update the table and acceptance criteria.
-- [ ] `attachments.md`: notes are project-scope only; remove the fragment-attachment behaviour for notes (keep it for references). Update Outcome, Scope, Behavior, Acceptance criteria, and Shipped.
-- [ ] `notes.md`: notes are project-scope; remove "attachable to fragments"; describe surfacing via document-links. Update Shipped.
-- [ ] `specifications/fragment-model.md`: remove `notes` from the fragment model fields and acceptance criteria; Shipped entry.
-- [ ] `bun run codegen` for the changed fragment/notes routes.
-- [ ] Migration consideration: existing fragments may carry a `notes:` list. Decide and implement handling (drop silently on next write vs. one-time surfacing as a warning). Record the decision in `margins.md` or a note.
-- [ ] Tests: fragment create/save has no notes-attachment field; inline `[[notes/foo]]` does not create an attachment; references/aspects auto-sync unchanged; unknown keys preserved.
-- [ ] Commit.
+- [x] Removed the `notes:` attachment list from the fragment model (`packages/storage` domain schema, mapper, indexer, DB table + drop migration; API command/routes/schemas; frontend metadata form + read-only display + commands). Added unknown-frontmatter preservation via `extraFrontmatter` (storage-internal, omitted from API responses) so a Maskor save never strips user data.
+- [x] `document-links.md`: changed the notes auto-sync rule — inline `[[notes/foo]]` no longer adds to a fragment note list (gone); notes are link-table/backlink citizens only. References/aspects unchanged. Table + acceptance criteria + decisions updated.
+- [x] `attachments.md`: notes are project-scope only; reference attachment retained. Outcome, Scope, Behavior, Shipped updated.
+- [x] `notes.md`: notes are project-scope; removed "attachable to fragments"; surfaced via document-links. Shipped updated.
+- [x] `specifications/fragment-model.md`: removed `notes` from fields and acceptance criteria; Shipped + Prior decision entries.
+- [x] `bun run codegen` for the changed fragment routes.
+- [x] Migration: existing `notes:` lists are **dropped silently on the next Maskor write** (greenfield, no live users). The mapper treats `notes` as a managed-but-removed key and excludes it from preservation; every other unmanaged key survives. Decision recorded in `fragment-model.md` (Prior decisions) and `margins.md` Open question resolved below.
+- [x] Tests: fragment create/save has no notes-attachment field; `[[notes/foo]]` does not create an attachment (no inline-link machinery exists yet — N/A in code, asserted in spec); references/aspects auto-sync unchanged (reference cascade + aspect-notes cascade tests pass); unknown keys preserved (mapper + vault round-trip tests).
+- [x] Commit.
 
 ### Phase 9 — Final reconciliation
 

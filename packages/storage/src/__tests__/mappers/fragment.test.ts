@@ -8,7 +8,6 @@ const PARSED: ParsedFile = {
     uuid: "frag-0001-0000-0000-000000000001",
     updatedAt: "2026-04-01T12:00:00.000Z",
     readiness: 0.8,
-    notes: ["bridge observation"],
     references: ["city research"],
   },
   inlineFields: { grief: "0.6", city: "0.9" },
@@ -22,8 +21,25 @@ describe("fragment.fromFile", () => {
     expect(fragment.key).toBe("the-bridge");
     expect(fragment.isDiscarded).toBe(false);
     expect(fragment.readiness).toBe(0.8);
-    expect(fragment.notes).toEqual(["bridge observation"]);
     expect(fragment.references).toEqual(["city research"]);
+  });
+
+  it("captures unmanaged frontmatter keys into extraFrontmatter (no legacy notes)", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: {
+        ...PARSED.frontmatter,
+        // A legacy fragment notes attachment plus a user-authored Obsidian key.
+        notes: ["bridge observation"],
+        tags: ["wip", "draft"],
+      },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md");
+    // The removed notes attachment is not surfaced and is not preserved as user data.
+    expect("notes" in fragment).toBe(false);
+    expect(fragment.extraFrontmatter?.notes).toBeUndefined();
+    // Genuinely unmanaged keys are preserved.
+    expect(fragment.extraFrontmatter?.tags).toEqual(["wip", "draft"]);
   });
 
   it("reads updatedAt from frontmatter", () => {
@@ -68,13 +84,12 @@ describe("fragment.fromFile", () => {
     expect(fragment.readiness).toBe(0);
   });
 
-  it("defaults notes and references to empty arrays", () => {
+  it("defaults references to an empty array", () => {
     const parsed: ParsedFile = {
       ...PARSED,
-      frontmatter: { ...PARSED.frontmatter, notes: undefined, references: undefined },
+      frontmatter: { ...PARSED.frontmatter, references: undefined },
     };
     const fragment = fromFile(parsed, "the-bridge.md");
-    expect(fragment.notes).toEqual([]);
     expect(fragment.references).toEqual([]);
   });
 });
@@ -86,12 +101,12 @@ describe("fragment.toFile", () => {
     key: "the-bridge",
     isDiscarded: false,
     readiness: 0.8,
-    notes: ["bridge observation"],
     references: ["city research"],
     aspects: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
     content: "She crossed it every morning.",
     contentHash: "abc123",
     updatedAt,
+    extraFrontmatter: { tags: ["wip"] },
   };
 
   it("writes all frontmatter fields", () => {
@@ -101,10 +116,16 @@ describe("fragment.toFile", () => {
     expect(frontmatter.readiness).toBe(0.8);
   });
 
-  it("does not write contentHash or isDiscarded", () => {
+  it("does not write a notes attachment, contentHash, or isDiscarded", () => {
     const { frontmatter } = toFile(fragment);
+    expect("notes" in frontmatter).toBe(false);
     expect("contentHash" in frontmatter).toBe(false);
     expect("isDiscarded" in frontmatter).toBe(false);
+  });
+
+  it("preserves unmanaged frontmatter keys (does not strip user data)", () => {
+    const { frontmatter } = toFile(fragment);
+    expect(frontmatter.tags).toEqual(["wip"]);
   });
 
   it("writes aspects as inline fields", () => {

@@ -45,13 +45,52 @@ describe("vault.fragments.readAll", () => {
   });
 });
 
+describe("vault.fragments — unmanaged frontmatter preservation", () => {
+  it("preserves user frontmatter keys and drops a legacy notes attachment across a write", async () => {
+    const vault = createVault(config);
+    // A hand-authored fragment carrying both a legacy `notes:` attachment and user-owned Obsidian
+    // keys that Maskor does not manage.
+    writeFileSync(
+      join(tmpDir, "fragments", "hand-authored.md"),
+      [
+        "---",
+        'uuid: "abcdabcd-0000-0000-0000-00000000abcd"',
+        "readiness: 0.3",
+        "notes:",
+        "  - legacy attachment",
+        "tags:",
+        "  - wip",
+        "  - draft",
+        'aliases: "Working Title"',
+        "---",
+        "",
+        "Body text.",
+        "",
+      ].join("\n"),
+    );
+
+    const fragment = await vault.fragments.read("hand-authored.md");
+    expect("notes" in fragment).toBe(false);
+    expect(fragment.extraFrontmatter).toEqual({ tags: ["wip", "draft"], aliases: "Working Title" });
+
+    // Round-trip through a Maskor write: the legacy notes list is gone, user keys survive.
+    await vault.fragments.write({ ...fragment, content: "Edited body." });
+    const onDisk = readFileSync(join(tmpDir, "fragments", "hand-authored.md"), "utf8");
+    expect(onDisk).not.toContain("legacy attachment");
+    expect(onDisk).toContain("tags:");
+    expect(onDisk).toContain("aliases:");
+
+    const reread = await vault.fragments.read("hand-authored.md");
+    expect(reread.extraFrontmatter).toEqual({ tags: ["wip", "draft"], aliases: "Working Title" });
+  });
+});
+
 describe("vault.fragments.read", () => {
   it("reads a fragment by filename", async () => {
     const vault = createVault(config);
     const fragment = await vault.fragments.read("the-bridge.md");
     expect(fragment.key).toBe("the-bridge");
     expect(fragment.aspects["grief"]).toEqual({ weight: 0.6 });
-    expect(fragment.notes).toContain("bridge observation");
   });
 
   it("assigns uuid from frontmatter", async () => {

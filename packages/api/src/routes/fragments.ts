@@ -37,16 +37,12 @@ import { resolveSourceKey } from "../helpers/resolve-source-key";
 const classifyFragmentSource = (patch: {
   content?: unknown;
   readiness?: unknown;
-  notes?: unknown;
   references?: unknown;
   aspects?: unknown;
 }): UpdateSource => {
   const hasContent = patch.content !== undefined;
   const hasMetadata =
-    patch.readiness !== undefined ||
-    patch.notes !== undefined ||
-    patch.references !== undefined ||
-    patch.aspects !== undefined;
+    patch.readiness !== undefined || patch.references !== undefined || patch.aspects !== undefined;
   if (hasContent && !hasMetadata) return "user-content-save";
   if (!hasContent && hasMetadata) return "user-metadata";
   return "programmatic";
@@ -435,7 +431,6 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       content,
       isDiscarded: false,
       readiness: 0,
-      notes: [],
       references: [],
       aspects: {},
       contentHash: "",
@@ -490,7 +485,6 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       content,
       isDiscarded: false,
       readiness: 0,
-      notes: [],
       references: [],
       aspects: {},
       contentHash: "",

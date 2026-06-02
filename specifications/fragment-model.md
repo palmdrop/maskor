@@ -1,10 +1,11 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-05-30
+**Last updated**: 2026-06-02
 
 **Shipped**:
 
+- 2026-06-02 — The fragment `notes:` attachment list was removed; fragment-level notes live in the Margin (ADR 0007). A legacy `notes:` list is dropped on the next Maskor write, and all other unmanaged frontmatter keys (e.g. `tags`, `aliases`) are now preserved verbatim across writes. (plan: references/plans/margins.md, Phase 8)
 - 2026-05-05 — Fragments support inline renaming; the filename stem is the user-facing identity, consistent with all other vault entities. UUID and all attached metadata survive a rename. (plan: references/plans/drop-fragment-title.md)
 - 2026-05-06 — Users can assign per-aspect weights (0–1) to a fragment; weights are optional, default to 0, and are preserved for aspects that no longer exist in the project. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
 - 2026-05-14 — Fragments can be discarded and restored reliably; discard state is derived from filesystem location alone — no stored flag can drift out of sync. (plan: references/plans/remove-pool-concept.md)
@@ -53,18 +54,18 @@ A fragment is a UUID-identified piece of writing. It has:
 - **`key`** — the filename stem; the user-facing identity. Editable via rename. Consistent with notes, references, and aspects.
 - **`readyStatus`** — a float 0–1 the user sets to indicate how finished the fragment is. `1.0` means finished.
 - **Aspect properties** — a map of aspect keys to weights (0–1), indicating how strongly the fragment embodies each project aspect. Primary input to the fitting score.
-- **Notes** — a list of note titles attached to this fragment.
-- **References** — a list of reference names. Same rules as notes.
+- **References** — a list of reference names attached to this fragment.
 - **`isDiscarded`** — whether the fragment has been removed from the active working set.
+- **Unmanaged frontmatter** — any frontmatter key Maskor does not manage (e.g. user-authored Obsidian `tags`/`aliases`) is preserved verbatim across Maskor writes. (Fragments no longer carry a `notes:` attachment list — see below.)
 - **`isPlaced`** — derived, not stored. `true` if the fragment has at least one position in any sequence. See `specifications/sequencer.md`.
 
 ### Lifecycle
 
 1. **Creation** — a fragment is created by the user via the UI (key + content required), or automatically by dropping a raw markdown file into the vault's `fragments/` directory: the watcher adopts it, minting a UUID and writing back full canonical frontmatter (see `specifications/storage-sync.md`).
 
-2. **Editing** — the user edits content in the fragment editor. Metadata (`readyStatus`, notes, references, aspect properties) is edited through the metadata panel. `key` is edited via rename.
+2. **Editing** — the user edits content in the fragment editor. Metadata (`readyStatus`, references, aspect properties) is edited through the metadata panel. `key` is edited via rename. Fragment-level notes now live in the fragment's **Margin** (`specifications/margins.md`), not a frontmatter attachment.
 
-3. **Enrichment** — the user adds aspect weights, notes, and references over time. This is the primary way Maskor accumulates the data needed for sequencing.
+3. **Enrichment** — the user adds aspect weights and references over time, and writes free notes/comments in the Margin. This is the primary way Maskor accumulates the data needed for sequencing.
 
 4. **Readiness** — the user manually controls `readyStatus`. A value of `1.0` signals the fragment is finished. The file is always authoritative.
 
@@ -88,12 +89,13 @@ Each project aspect can have a weight on a fragment (0–1), expressing how stro
 
 Weights are set by the user via the metadata panel.
 
-### Notes and references
+### References
 
-- A fragment can reference existing notes and references by title or name.
-- Only notes and references that already exist in the vault can be attached.
-- The fragment owns the relationship. Notes and references carry no back-reference to the fragment.
-- Removing a note from the fragment removes it from the list only — it does not delete the note file.
+- A fragment can attach existing references by name.
+- Only references that already exist in the vault can be attached.
+- The fragment owns the relationship. References carry no back-reference to the fragment.
+- Removing a reference from the fragment removes it from the list only — it does not delete the reference file.
+- **Notes are no longer a fragment attachment.** Fragment-level thinking lives in the Margin (`specifications/margins.md`); project-scope vault Notes are surfaced via `[[document-links]]` and backlinks (`specifications/document-links.md`). See ADR 0007.
 
 ### Identity and rename
 
@@ -121,9 +123,10 @@ A raw markdown file is a writing file without Maskor metadata. When one appears 
 - **Pool removed**: The `pool` field (`unprocessed`, `incomplete`, `unplaced`, `discarded`) was removed entirely. These states introduced persistent divergence risk between frontmatter and filesystem. `isDiscarded` derived from folder location is the only remaining lifecycle state. Do not re-introduce.
 - **Folder-based discard**: Discard state is determined solely by file location (`fragments/discarded/`). No frontmatter flag. This eliminates the possibility of the frontmatter and filesystem location disagreeing.
 - **`version` removed**: The `version` frontmatter field served no user-facing purpose.
-- **Fragment owns note/reference relationships**: Fragment frontmatter lists note titles and reference names. Notes and references carry no back-reference. Keeps notes and references self-contained, with fragments as the attachment point.
+- **Fragment owns reference relationships**: Fragment frontmatter lists reference names; references carry no back-reference. Keeps references self-contained, with fragments as the attachment point.
+- **Fragment `notes:` attachment removed**: The per-fragment `notes:` frontmatter list was dropped — fragment-level thinking moved into the Margin (`specifications/margins.md`, ADR 0007). A legacy `notes:` list on an existing fragment is silently dropped on the next Maskor write (greenfield, no migration); every other unmanaged frontmatter key is preserved.
 - **Piece concept removed**: The former Piece staging mechanism (a metadata-less file dropped into `pieces/`, consumed and deleted on conversion) was removed. A raw markdown file dropped into `fragments/` is now adopted in place — the file is not deleted; a UUID is minted and full frontmatter written back. See `specifications/storage-sync.md` (Removed concepts). Do not re-introduce.
-- **Only existing notes/references can be attached**: Adding a note or reference that does not yet exist in the vault is not allowed from the fragment editor.
+- **Only existing references can be attached**: Adding a reference that does not yet exist in the vault is not allowed from the fragment editor.
 - **`contentHash` computed at write time**: `storageService.fragments.write()` computes the hash from the serialized file and returns the fragment with the correct hash. Route handlers use the return value — no empty hashes are exposed to callers.
 - **`title` removed**: The `title` field was removed entirely. `key` (the filename stem) is the single identity field, consistent with notes, references, and aspects. The create flow now accepts `key` directly; no slugification step. See `references/plans/drop-fragment-title.md`.
 - **Anchor markup is a permitted, user-initiated fragment edit**: Authoring a comment in a fragment's Margin writes a trailing `<!--c:ID-->` marker into the fragment block. This loosens the "Maskor never edits fragment content" constraint to "never edits prose unprompted" — the marker is user-initiated, not an unprompted rewrite. See ADR 0007 and `specifications/margins.md`.
@@ -140,7 +143,8 @@ A raw markdown file is a writing file without Maskor metadata. When one appears 
 
 ## Acceptance criteria
 
-- A newly created fragment has a UUID, `key`, `readyStatus: 0`, empty notes and references, empty aspect properties, and `isDiscarded: false`.
+- A newly created fragment has a UUID, `key`, `readyStatus: 0`, empty references, empty aspect properties, and `isDiscarded: false`. It carries no `notes:` attachment field.
+- A legacy `notes:` frontmatter list is dropped on the next Maskor write; unmanaged user frontmatter keys (e.g. `tags`, `aliases`) survive the write unchanged.
 - Creating a fragment via the API returns a `Fragment` with a non-empty `contentHash`.
 - Updating a fragment's content via the API returns a `Fragment` with a `contentHash` that differs from the pre-update value.
 - Discarding a fragment moves its file to `fragments/discarded/` and subsequent reads reflect `isDiscarded: true`.

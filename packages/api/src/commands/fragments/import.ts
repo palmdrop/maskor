@@ -147,7 +147,6 @@ export const createImportCommand = (
         content: piece.content,
         isDiscarded: false,
         readiness: 0,
-        notes: [],
         references: [],
         aspects: {},
         contentHash: "",

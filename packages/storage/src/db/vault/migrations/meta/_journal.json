@@ -141,6 +141,13 @@
       "when": 1748822400000,
       "tag": "20260601_create_margins_and_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1748908800000,
+      "tag": "20260602_drop_fragment_notes",
+      "breakpoints": true
     }
   ]
 }

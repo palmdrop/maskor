@@ -6,7 +6,6 @@ import {
   aspectsTable,
   commentsTable,
   fragmentAspectsTable,
-  fragmentNotesTable,
   fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentsTable,
@@ -289,12 +288,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
     const uuids = fragmentRows.map((row) => row.uuid);
 
-    const allNotes = vaultDatabase
-      .select()
-      .from(fragmentNotesTable)
-      .where(inArray(fragmentNotesTable.fragmentUuid, uuids))
-      .all();
-
     const allReferences = vaultDatabase
       .select()
       .from(fragmentReferencesTable)
@@ -310,7 +303,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     return fragmentRows.map((row) =>
       assembleFragment(
         row,
-        allNotes.filter((note) => note.fragmentUuid === row.uuid),
         allReferences.filter((reference) => reference.fragmentUuid === row.uuid),
         allProperties.filter((property) => property.fragmentUuid === row.uuid),
       ),

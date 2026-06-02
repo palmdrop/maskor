@@ -159,7 +159,7 @@ The Margin concept is defined generally — a companion annotation document for 
 ## Open questions
 
 - [ ] 2026-06-01 — **Sequence anchor unit**: section vs. placement when sequence Margins are eventually built. Out of scope now; flagged so the general model anticipates it.
-- [ ] 2026-06-01 — **Existing `notes:` migration**: how to handle fragments that already carry a `notes:` attachment list when it is removed (silent drop on next write vs. one-time warning). Decided during the removal phase — see `references/plans/margins.md` Phase 8.
+- [x] 2026-06-01 — **Existing `notes:` migration**: how to handle fragments that already carry a `notes:` attachment list when it is removed. **Resolved (2026-06-02)**: silent drop on the next Maskor write (greenfield, no live users). The fragment mapper classifies `notes` as a managed-but-removed key, so it is excluded from `extraFrontmatter` preservation and simply not re-emitted; every other unmanaged frontmatter key survives. See `references/plans/margins.md` Phase 8 and `fragment-model.md` Prior decisions.
 
 ---
 

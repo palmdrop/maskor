@@ -36,17 +36,6 @@ export const fragmentsTable = sqliteTable(
   ],
 );
 
-export const fragmentNotesTable = sqliteTable(
-  "fragment_notes",
-  {
-    fragmentUuid: text("fragment_uuid")
-      .notNull()
-      .references(() => fragmentsTable.uuid, { onDelete: "cascade" }),
-    noteKey: text("note_key").notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.fragmentUuid, table.noteKey] })],
-);
-
 export const fragmentReferencesTable = sqliteTable(
   "fragment_references",
   {

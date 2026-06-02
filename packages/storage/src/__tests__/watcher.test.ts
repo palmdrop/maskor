@@ -489,7 +489,7 @@ describe("syncFragment — raw drop adoption", () => {
 
     expect(typeof parsed.frontmatter.uuid).toBe("string");
     expect(parsed.frontmatter.readiness).toBe(0);
-    expect(Array.isArray(parsed.frontmatter.notes)).toBe(true);
+    expect(parsed.frontmatter).not.toHaveProperty("notes");
     expect(Array.isArray(parsed.frontmatter.references)).toBe(true);
     expect(typeof parsed.frontmatter.updatedAt).toBe("string");
 
@@ -520,7 +520,7 @@ describe("syncFragment — raw drop adoption", () => {
 
     expect(parsed.frontmatter.readiness).toBe(0.5);
     expect(typeof parsed.frontmatter.uuid).toBe("string");
-    expect(Array.isArray(parsed.frontmatter.notes)).toBe(true);
+    expect(parsed.frontmatter).not.toHaveProperty("notes");
     expect(Array.isArray(parsed.frontmatter.references)).toBe(true);
 
     const row = vaultDatabase

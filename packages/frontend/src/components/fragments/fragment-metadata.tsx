@@ -8,7 +8,6 @@ type Props = {
 export const FragmentMetadata = ({ fragment }: Props) => {
   return (
     <MetadataList>
-      <MetadataProperty label="Notes" value={fragment.notes} />
       <MetadataProperty label="Status" value={fragment.readiness} />
       <MetadataProperty label="Updated at" value={new Date(fragment.updatedAt).toDateString()} />
       <MetadataProperty

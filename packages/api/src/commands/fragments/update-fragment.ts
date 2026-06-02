@@ -15,7 +15,6 @@ type UpdateFragmentInput = {
     key?: string;
     content?: string;
     readiness?: number;
-    notes?: string[];
     references?: string[];
     aspects?: Record<string, { weight: number }>;
   };
@@ -29,15 +28,13 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
     const contentChanged = patch.content !== undefined && patch.content !== existing.content;
     const readinessChanged =
       patch.readiness !== undefined && patch.readiness !== existing.readiness;
-    const notesChanged =
-      patch.notes !== undefined && !stringArraysEqual(patch.notes, existing.notes);
     const referencesChanged =
       patch.references !== undefined && !stringArraysEqual(patch.references, existing.references);
     const aspectsChanged =
       patch.aspects !== undefined && !aspectWeightsEqual(patch.aspects, existing.aspects);
 
     const anyNonKeyChanged =
-      contentChanged || readinessChanged || notesChanged || referencesChanged || aspectsChanged;
+      contentChanged || readinessChanged || referencesChanged || aspectsChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: existing, logEntries: [] };
@@ -95,28 +92,6 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
         payload: { from: existing.readiness, to: patch.readiness! },
         undoable: true,
       });
-    }
-
-    if (notesChanged) {
-      const { added, removed } = diffStringSet(existing.notes, patch.notes!);
-      for (const noteKey of added) {
-        logEntries.push({
-          type: "fragment:note-attached",
-          actor: ctx.actor,
-          target: { type: "fragment", uuid: existing.uuid, key: patch.key ?? existing.key },
-          payload: { noteKey },
-          undoable: true,
-        });
-      }
-      for (const noteKey of removed) {
-        logEntries.push({
-          type: "fragment:note-detached",
-          actor: ctx.actor,
-          target: { type: "fragment", uuid: existing.uuid, key: patch.key ?? existing.key },
-          payload: { noteKey },
-          undoable: true,
-        });
-      }
     }
 
     if (referencesChanged) {

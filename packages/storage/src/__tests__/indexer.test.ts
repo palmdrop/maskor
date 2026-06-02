@@ -117,7 +117,6 @@ describe("fragments.findAll", () => {
     const bridge = fragments.find((fragment) => fragment.key === "the-bridge");
 
     expect(bridge).toBeDefined();
-    expect(bridge?.notes).toContain("bridge observation");
     expect(bridge?.references).toContain("city research");
     expect(bridge?.aspects["grief"]).toBeDefined();
     expect(bridge?.aspects["grief"]?.weight).toBe(0.6);
@@ -342,7 +341,7 @@ describe("hard-delete on rebuild", () => {
 // --- relation isolation ---
 
 describe("fragments.findAll relation isolation", () => {
-  it("does not return notes from one fragment on another fragment", async () => {
+  it("does not return references from one fragment on another fragment", async () => {
     const indexer = makeIndexer();
     await indexer.rebuild();
 
@@ -350,10 +349,10 @@ describe("fragments.findAll relation isolation", () => {
     const bridge = fragments.find((fragment) => fragment.key === "the-bridge")!;
     const otherFragments = fragments.filter((fragment) => fragment.key !== "the-bridge");
 
-    // Notes listed on bridge should not appear on any other fragment
-    for (const note of bridge.notes) {
+    // References listed on bridge should not appear on any other fragment
+    for (const reference of bridge.references) {
       for (const other of otherFragments) {
-        expect(other.notes).not.toContain(note);
+        expect(other.references).not.toContain(reference);
       }
     }
   });
@@ -696,10 +695,10 @@ describe("adoption — nested entity discovery and category derivation", () => {
       readFileSync(join(adoptDir, "fragments/intro.md"), "utf8"),
     ).frontmatter;
     expect(fragmentFrontmatter.uuid).toBeTruthy();
-    // Fragments get full canonical frontmatter.
+    // Fragments get full canonical frontmatter (no notes attachment — margins replaced it).
     expect(fragmentFrontmatter).toHaveProperty("updatedAt");
     expect(fragmentFrontmatter.readiness).toBe(0);
-    expect(fragmentFrontmatter).toHaveProperty("notes");
+    expect(fragmentFrontmatter).not.toHaveProperty("notes");
     expect(fragmentFrontmatter).toHaveProperty("references");
 
     // Keyed entity: UUID minted, user-supplied field preserved.

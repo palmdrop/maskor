@@ -55,7 +55,6 @@ describe("PATCH /fragments/:fragmentId — changedFields reflects only real chan
         body: JSON.stringify({
           content: `${fragment.content}\nA new line.`,
           readiness: fragment.readiness,
-          notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,
         }),
@@ -88,7 +87,6 @@ describe("PATCH /fragments/:fragmentId — changedFields reflects only real chan
         body: JSON.stringify({
           content: fragment.content,
           readiness: fragment.readiness,
-          notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,
         }),
@@ -174,53 +172,6 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
     expect(entry?.payload.to).toBe(0.5);
   });
 
-  it("emits 'fragment:note-attached' when a note is added", async () => {
-    const fragment = await findFragmentByKey("late-winter");
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: ["bridge observation"] }),
-      },
-    );
-    expect(response.status).toBe(200);
-
-    const entries = await tailEntries();
-    const entry = entries.find(
-      (e) => e.type === "fragment:note-attached" && e.target.uuid === fragment.uuid,
-    );
-    expect(entry).toBeTruthy();
-    expect(entry?.payload.noteKey).toBe("bridge observation");
-  });
-
-  it("emits one detach and one attach when swapping a note in a single PATCH", async () => {
-    // the-bridge already has notes: ["bridge observation"] after indexing
-    const fragment = await findFragmentByKey("the-bridge");
-    // Swap "bridge observation" for "harbour observation"
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: ["harbour observation"] }),
-      },
-    );
-    expect(response.status).toBe(200);
-
-    const entries = await tailEntries(30);
-    const attached = entries.filter(
-      (e) => e.type === "fragment:note-attached" && e.target.uuid === fragment.uuid,
-    );
-    const detached = entries.filter(
-      (e) => e.type === "fragment:note-detached" && e.target.uuid === fragment.uuid,
-    );
-    expect(attached.length).toBe(1);
-    expect(detached.length).toBe(1);
-    expect(attached[0]?.payload.noteKey).toBe("harbour observation");
-    expect(detached[0]?.payload.noteKey).toBe("bridge observation");
-  });
-
   it("emits 'fragment:aspect-weight-changed' with from/to when a weight changes", async () => {
     const fragment = await findFragmentByKey("late-winter");
     const response = await testContext.app.request(
@@ -253,7 +204,6 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
         body: JSON.stringify({
           content: `${fragment.content}\nEdited.`,
           readiness: fragment.readiness,
-          notes: fragment.notes,
           references: fragment.references,
           aspects: fragment.aspects,
         }),

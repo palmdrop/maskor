@@ -12,10 +12,13 @@ export const FragmentSchema = z.object({
   readiness: z.number().min(0).max(1),
   contentHash: z.string(),
   updatedAt: z.date(),
-  notes: z.array(z.string()),
   references: z.array(z.string()),
   isDiscarded: z.boolean(),
   aspects: AspectWeightsSchema,
+  // Frontmatter keys Maskor does not manage (user-authored, e.g. Obsidian `tags`/`aliases`). Carried
+  // through read→write so a Maskor save never strips user data. Storage-internal; omitted from API
+  // responses.
+  extraFrontmatter: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type AspectWeights = z.infer<typeof AspectWeightsSchema>;
@@ -30,7 +33,6 @@ export const FragmentUpdateSchema = z.object({
   key: z.string().min(1).optional(),
   content: z.string().optional(),
   readiness: z.number().min(0).max(1).optional(),
-  notes: z.array(z.string()).optional(),
   references: z.array(z.string()).optional(),
   aspects: AspectWeightsSchema.optional(),
 });

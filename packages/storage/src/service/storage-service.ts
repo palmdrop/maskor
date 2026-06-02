@@ -59,7 +59,6 @@ import {
   deleteAspectByFilePath,
   deleteNoteByFilePath,
   deleteSequenceByFilePath,
-  findFragmentUuidsByNoteKey,
   findAspectUuidsByNoteKey,
   findFragmentUuidsByReferenceKey,
   findFragmentUuidsByAspectKey,
@@ -523,14 +522,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     newKey: string,
   ): Promise<{ fragments: string[]; aspects: string[]; commit: (tx: Transaction) => void }> => {
     const vaultDatabase = getVaultDatabase(context);
-    const fragmentPayload = await cascadeFragments(
-      context,
-      findFragmentUuidsByNoteKey(vaultDatabase, oldKey),
-      (fragment) => ({
-        ...fragment,
-        notes: fragment.notes.map((note) => (note === oldKey ? newKey : note)),
-      }),
-    );
+    // Fragments no longer carry a notes attachment (margins replaced it — ADR 0007), so a note
+    // rename only cascades to aspects, which keep their notes list.
     const aspectPayload = await cascadeAspects(
       context,
       findAspectUuidsByNoteKey(vaultDatabase, oldKey),
@@ -540,10 +533,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       }),
     );
     return {
-      fragments: fragmentPayload.touched,
+      fragments: [],
       aspects: aspectPayload.touched,
       commit: (tx) => {
-        fragmentPayload.commit(tx);
         aspectPayload.commit(tx);
       },
     };
