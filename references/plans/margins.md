@@ -66,11 +66,11 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 4 — Comment-creation gesture (fragment side)
 
-- [ ] Command-palette command, vim binding, and toolbar button to "comment this block": inject/ensure the trailing marker on the block at the cursor, create the bound comment stub in the Margin seeded with the block excerpt, move focus to the Margin panel.
-- [ ] Coordinated buffer edits only — no force-flush; marker lands on next fragment save, stub on next Margin save.
-- [ ] Respect the command-system precedence rules (commands fire before reaching the editor; no double-trigger in vim — see `command-palette.md`).
-- [ ] Tests: gesture from each entry point, marker injected, stub created with excerpt, focus moved, no premature persistence.
-- [ ] `specifications/fragment-editor.md` / `margins.md`: Shipped entries. Commit.
+- [x] Command-palette command, vim binding, and toolbar button to "comment this block": inject/ensure the trailing marker on the block at the cursor, create the bound comment stub in the Margin seeded with the block excerpt, move focus to the Margin panel.
+- [x] Coordinated buffer edits only — no force-flush; marker lands on next fragment save, stub on next Margin save.
+- [x] Respect the command-system precedence rules (commands fire before reaching the editor; no double-trigger in vim — see `command-palette.md`). The gesture is a command-system hotkey (`mod+shift+m`), so the existing modifier-key interception in `prose-editor.tsx` suppresses the vim binding automatically.
+- [x] Tests: gesture from the button entry point through the real command system, marker injected, stub created with excerpt, focus moved, no premature persistence; the command's shared hotkey covers the palette/vim entry points.
+- [x] `specifications/fragment-editor.md` / `margins.md`: Shipped entries. Commit.
 
 ### Phase 5 — Linked swap pair (fragment ↔ Margin)
 

@@ -19,6 +19,7 @@ type Props = {
   // orphan detection: a stored comment whose marker is absent here is orphaned.
   fragmentMarkerIds: string[];
   onSave: () => void;
+  onCommentBlock?: () => void;
   onRevealMarker?: (markerId: string) => void;
 };
 
@@ -76,7 +77,7 @@ const SectionHeader = ({
 // The side-by-side Margin surface: a fragment's companion notes + anchored comments, rendered as a
 // self-contained pair beside the fragment editor (designed to later drop into a graph-canvas node).
 export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginPanel(
-  { projectId, marginEditor, fragmentMarkerIds, onSave, onRevealMarker },
+  { projectId, marginEditor, fragmentMarkerIds, onSave, onCommentBlock, onRevealMarker },
   ref,
 ) {
   const { notes, comments, isDirty, isSaving, setNotes, updateCommentBody, removeComment } =
@@ -145,6 +146,16 @@ export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginP
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">Margin</span>
         <div className="flex items-center gap-1">
+          {onCommentBlock && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onCommentBlock}
+              title="Comment the block at the cursor (⌘⇧M)"
+            >
+              + Comment
+            </Button>
+          )}
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"

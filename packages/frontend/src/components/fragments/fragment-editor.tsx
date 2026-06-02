@@ -22,7 +22,7 @@ import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
 import { toast } from "sonner";
-import { extractCommentMarkerIds } from "@maskor/shared";
+import { extractCommentMarkerIds, createCommentMarkerId } from "@maskor/shared";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
@@ -269,10 +269,22 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     return { at };
   }, [fragmentRecovery, marginSwap.recovery]);
 
+  // The comment gesture: coordinated buffer edits in both panels (the marker into the fragment, the
+  // stub into the Margin) with no force-flush — the marker persists on the next fragment save, the
+  // stub on the next Margin save — then focus moves to the Margin so the writer can type immediately.
+  const handleCommentBlock = useCallback(() => {
+    const block = shellRef.current?.getCurrentBlock();
+    const markerId = createCommentMarkerId();
+    shellRef.current?.appendCommentMarker(markerId);
+    marginEditor.addCommentStub({ markerId, excerpt: block?.text ?? "", body: "" });
+    marginPanelRef.current?.focusComment(markerId);
+  }, [marginEditor]);
+
   useCommandScope(marginScope, {
     hasFragment: !!fragment,
     canSave: marginEditor.isDirty && !marginEditor.isSaving,
     save: () => void handleMarginSave(),
+    commentBlock: handleCommentBlock,
   });
 
   const handleRevealMarker = useCallback((markerId: string) => {
@@ -360,6 +372,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             marginEditor={marginEditor}
             fragmentMarkerIds={fragmentMarkerIds}
             onSave={() => commands.run("margin:save")}
+            onCommentBlock={() => commands.run("margin:comment-block")}
             onRevealMarker={handleRevealMarker}
           />
         }
