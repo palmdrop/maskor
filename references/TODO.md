@@ -11,10 +11,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 ### Margins
 
 - [ ] margins panel should look more linear and sync and scroll with the fragment editor
+- [ ] margins panel should feel like an actual margin, scroll with the editor, aligh properly, etc
 - [ ] deleting comments does not remove the anchor
+- [ ] anchors clutter the editing, and are easily broken
 - [ ] adding a new comment where there already is an anchor creates a double anchor
 - [ ] the entire paragraph becomes the excerpt of a comment, not just a small excerpt
 - [ ] pressing escape or maybe enter should restore focus to editor again
+- [ ] surprise in suggestions.md about frontmatter loss requires investigation
 
 ### Rest
 
