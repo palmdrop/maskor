@@ -42,6 +42,12 @@ import { useCommands } from "../lib/commands/useCommands";
 export type EntityEditorShellHandle = {
   save: () => Promise<void>;
   getSelection: () => SelectionCapture;
+  getCurrentBlock: () => { text: string } | null;
+  appendCommentMarker: (markerId: string) => void;
+  revealCommentMarker: (markerId: string) => void;
+  // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
+  // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
+  restoreFromServer: () => void;
 };
 
 type Props = {
@@ -57,6 +63,8 @@ type Props = {
   banner?: ReactNode;
   sidebar?: ReactNode;
   sidebarCollapsible?: boolean;
+  // An optional panel rendered beside the prose editor (the fragment's Margin surface).
+  rightPanel?: ReactNode;
   extraActions?: ReactNode;
   cascadeWarnings?: string[];
   onDismissWarnings?: () => void;
@@ -65,6 +73,14 @@ type Props = {
   onContentRevert?: () => void;
   onKeySave: (key: string) => Promise<void>;
   onContentSave: (content: string) => Promise<void>;
+  // Live prose content on every edit — lets a paired Margin panel track the fragment's anchor
+  // markers (for comment ordering and orphan detection).
+  onLiveContentChange?: (content: string) => void;
+  // When true, this shell does not render its own unsaved-recovery banner — a parent coordinates a
+  // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
+  suppressRecoveryBanner?: boolean;
+  // Reports the fragment swap recovery up to a coordinating parent (linked swap pair).
+  onRecoveryChange?: (recovery: { at: Date } | null) => void;
 };
 
 type InsertionTarget = {
@@ -93,6 +109,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       banner,
       sidebar,
       sidebarCollapsible = false,
+      rightPanel,
       extraActions,
       cascadeWarnings,
       onDismissWarnings,
@@ -101,6 +118,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onContentRevert,
       onKeySave,
       onContentSave,
+      onLiveContentChange,
+      suppressRecoveryBanner = false,
+      onRecoveryChange,
     },
     ref,
   ) {
@@ -287,8 +307,14 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       () => ({
         save: saveContent,
         getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
+        getCurrentBlock: () => proseEditorRef.current?.getCurrentBlock() ?? null,
+        appendCommentMarker: (markerId: string) =>
+          proseEditorRef.current?.appendCommentMarker(markerId),
+        revealCommentMarker: (markerId: string) =>
+          proseEditorRef.current?.revealCommentMarker(markerId),
+        restoreFromServer: () => handleRestoreFromServer(),
       }),
-      [saveContent],
+      [saveContent, handleRestoreFromServer],
     );
 
     const getEditorSelection = useCallback(
@@ -448,13 +474,24 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     const handleProseChange = useCallback(() => {
       const current = proseEditorRef.current?.getContent();
-      if (current !== undefined) setLiveContent(current);
+      if (current !== undefined) {
+        setLiveContent(current);
+        onLiveContentChange?.(current);
+      }
       onProseChange();
-    }, [onProseChange]);
+    }, [onProseChange, onLiveContentChange]);
+
+    // Report fragment swap recovery to a coordinating parent (linked swap pair). Re-fires only when
+    // the recovery identity changes.
+    const onRecoveryChangeRef = useRef(onRecoveryChange);
+    onRecoveryChangeRef.current = onRecoveryChange;
+    useEffect(() => {
+      onRecoveryChangeRef.current?.(recovery ? { at: recovery.at } : null);
+    }, [recovery]);
 
     return (
       <div className="flex flex-col h-full gap-2">
-        {recovery && (
+        {recovery && !suppressRecoveryBanner && (
           <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
         )}
         {banner}
@@ -594,6 +631,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               cursor={cursor}
             />
           </main>
+          {rightPanel && (
+            <div className="flex w-full shrink-0 flex-col lg:w-80 min-h-0 border-t pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+              {rightPanel}
+            </div>
+          )}
         </div>
         {extractTarget && (
           <ExtractToEntityDialog

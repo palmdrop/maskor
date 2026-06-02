@@ -81,12 +81,12 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 6 — Side-by-side Margin panel (UI)
 
-- [ ] Margin panel rendered beside the fragment editor as a self-contained pair component (designed for later reuse as a graph-canvas node).
-- [ ] Notes section as a prose editor; comments section as the linear comment list bound to blocks.
-- [ ] Collapsed (default): compact markers/badges aligned to annotated blocks. Expanded: alignment padding so blocks and comments correspond. Per-section toggle + global default-state toggle. Scroll correspondence.
-- [ ] Orphaned-comment group at the foot of the comments section with last-known excerpt; user-only removal.
-- [ ] Tests (component + interaction): collapse/expand, alignment, toggle persistence, orphan group rendering and removal.
-- [ ] `specifications/margins.md`: Shipped entry for the surface. Commit.
+- [x] Margin panel rendered beside the fragment editor as a self-contained pair component (designed for later reuse as a graph-canvas node).
+- [x] Notes section as a prose editor; comments section as the linear comment list bound to blocks.
+- [x] Collapsed (default): compact comment previews. Expanded: editable comment bodies. Per-section toggle (notes, comments) + global compact/expanded toggle, all persisted. Scroll correspondence via click-to-reveal block. (Pixel-perfect block alignment padding deferred — see SUGGESTIONS.md.)
+- [x] Orphaned-comment group at the foot of the comments section with last-known excerpt; user-only removal.
+- [x] Tests (component + interaction): collapse/expand, toggle persistence, orphan group rendering and removal, comment ordering.
+- [x] `specifications/margins.md`: Shipped entry for the surface. Commit.
 
 ### Phase 7 — Orphan handling end-to-end
 

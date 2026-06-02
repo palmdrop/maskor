@@ -11,6 +11,11 @@ import CodeMirror, { EditorView, keymap, Prec } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent } from "@tiptap/react";
+import {
+  buildCommentMarker,
+  stripCommentMarkers,
+  createCommentMarkerTokenRegex,
+} from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { commentMarkerExtension } from "./comment-marker-cm";
 import { ProseToolbar } from "./prose-toolbar";
@@ -32,6 +37,11 @@ export type ProseEditorHandle = {
   setContent: (value: string) => void;
   getSelection: () => SelectionCapture;
   focus: () => void;
+  // Marker-block operations backing the Margin comment gesture (Phase 4) and scroll correspondence
+  // (Phase 6). The block is the line (CM6/vim) or the parent text block (TipTap) at the cursor.
+  getCurrentBlock: () => { text: string } | null;
+  appendCommentMarker: (markerId: string) => void;
+  revealCommentMarker: (markerId: string) => void;
 };
 
 type Props = {
@@ -255,6 +265,61 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           view.focus();
         } else {
           editor.commands.focus();
+        }
+      },
+      getCurrentBlock: (): { text: string } | null => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return null;
+          const line = view.state.doc.lineAt(view.state.selection.main.head);
+          return { text: stripCommentMarkers(line.text).trim() };
+        }
+        if (!editor) return null;
+        const { $from } = editor.state.selection;
+        return { text: stripCommentMarkers($from.parent.textContent).trim() };
+      },
+      appendCommentMarker: (markerId: string) => {
+        const marker = buildCommentMarker(markerId);
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          // Trailing the block's line; the marker decoration hides it in place.
+          const line = view.state.doc.lineAt(view.state.selection.main.head);
+          view.dispatch({ changes: { from: line.to, insert: marker } });
+          return;
+        }
+        if (!editor) return;
+        // Insert the schema-modeled marker node at the end of the current text block.
+        const end = editor.state.selection.$from.end();
+        editor.commands.insertContentAt(end, { type: "commentMarker", attrs: { markerId } });
+      },
+      revealCommentMarker: (markerId: string) => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          const text = view.state.doc.toString();
+          const regex = createCommentMarkerTokenRegex();
+          let match: RegExpExecArray | null;
+          while ((match = regex.exec(text)) !== null) {
+            if (match[1] === markerId) {
+              view.dispatch({ effects: EditorView.scrollIntoView(match.index, { y: "center" }) });
+              return;
+            }
+          }
+          return;
+        }
+        if (!editor) return;
+        let markerPosition: number | null = null;
+        editor.state.doc.descendants((node, position) => {
+          if (markerPosition !== null) return false;
+          if (node.type.name === "commentMarker" && node.attrs.markerId === markerId) {
+            markerPosition = position;
+            return false;
+          }
+          return true;
+        });
+        if (markerPosition !== null) {
+          editor.chain().setTextSelection(markerPosition).scrollIntoView().run();
         }
       },
     }),

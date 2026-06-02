@@ -2,6 +2,7 @@ import { suggestionModeCommands } from "./suggestion-mode";
 import { overviewCommands } from "./overview";
 import { sequenceSidebarCommands } from "./sequence-sidebar";
 import { fragmentEditorCommands } from "./fragment-editor";
+import { marginCommands } from "./margin";
 import { fragmentImportCommands } from "./fragment-import";
 import { fragmentMetadataCommands } from "./fragment-metadata";
 import { projectConfigCommands } from "./project-config";
@@ -21,6 +22,7 @@ export const scopeCommands = [
   ...overviewCommands,
   ...sequenceSidebarCommands,
   ...fragmentEditorCommands,
+  ...marginCommands,
   ...fragmentImportCommands,
   ...fragmentMetadataCommands,
   ...projectConfigCommands,

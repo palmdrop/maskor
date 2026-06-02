@@ -7,6 +7,7 @@
 
 - 2026-06-01 — Margin storage (backend): a fragment's Margin is a vault markdown file at `margins/<fragment-key>.md` (`fragmentUuid` + timestamps; `## Notes` + `## Comments` body; comments serialized as `<!--c:ID-->` + `> excerpt` + body). Lazily created, persists when emptied, follows the fragment through rename/discard/delete. Shared `<!--c:ID-->` marker build/extract/strip helpers. (plan: references/plans/margins.md, Phase 1)
 - 2026-06-01 — Margin DB index, watcher sync & API (backend): per-comment DB rows + a margin row, kept in sync by rebuild and the watcher; comment orphan state derived from the fragment's markers and recomputed on fragment edits; `margin:synced`/`margin:deleted` events; API routes to read/replace a Margin, CRUD comments, and list orphaned comments. (plan: references/plans/margins.md, Phase 2)
+- 2026-06-02 — Side-by-side Margin panel (UI): the fragment editor renders its Margin as a self-contained panel beside the prose editor — a notes prose editor plus a linear comment list bound to fragment blocks. Comments order by block position; comments whose marker is gone render in an orphaned group at the foot with their last-known excerpt and a user-only remove. Per-section collapse toggles (notes, comments) and a global compact/expanded toggle, all persisted; clicking a comment reveals its block in the fragment editor. The Margin holds an explicit-save buffer (its own Save button / `margin:save` command), mirroring the fragment's no-auto-save model. (plan: references/plans/margins.md, Phase 6)
 
 ---
 

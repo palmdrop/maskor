@@ -21,16 +21,21 @@ import { useGetProject } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
+import { toast } from "sonner";
+import { extractCommentMarkerIds } from "@maskor/shared";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
+import { MarginPanel, type MarginPanelHandle } from "@components/margins/margin-panel";
 import { Separator } from "@components/ui/separator";
+import { useMarginEditor } from "@hooks/useMarginEditor";
 import { useCommands } from "../../lib/commands/useCommands";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentEditorScope } from "../../lib/commands/scopes/fragment-editor";
+import { marginScope } from "../../lib/commands/scopes/margin";
 
 export type FragmentEditorHandle = {
   save: () => Promise<void>;
@@ -81,9 +86,24 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     projectEnvelope?.status === 200 ? projectEnvelope.data.advanced.showFragmentStats : false;
 
   const shellRef = useRef<EntityEditorShellHandle>(null);
+  const marginPanelRef = useRef<MarginPanelHandle>(null);
+
+  const marginEditor = useMarginEditor(projectId, fragmentId);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
   const isDirty = isProseDirty;
+
+  // Live fragment body, tracked so the Margin panel can derive the fragment's anchor markers (for
+  // comment ordering and orphan detection). Seeded from the server fragment; updated on each edit.
+  const [fragmentContent, setFragmentContent] = useState("");
+  const fragment = envelope?.status === 200 ? envelope.data : null;
+  useEffect(() => {
+    if (fragment && !isProseDirty) setFragmentContent(fragment.content);
+  }, [fragment?.content, isProseDirty]);
+  const fragmentMarkerIds = useMemo(
+    () => extractCommentMarkerIds(fragmentContent),
+    [fragmentContent],
+  );
 
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
@@ -102,8 +122,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     }),
     [],
   );
-
-  const fragment = envelope?.status === 200 ? envelope.data : null;
 
   const isActionPending = isUpdatePending || isDiscardPending || isRestorePending;
 
@@ -191,6 +209,24 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     openPlaceInSequence,
   });
 
+  const handleMarginSave = useCallback(async () => {
+    try {
+      await marginEditor.save();
+    } catch {
+      toast.error("Couldn't save the margin.");
+    }
+  }, [marginEditor]);
+
+  useCommandScope(marginScope, {
+    hasFragment: !!fragment,
+    canSave: marginEditor.isDirty && !marginEditor.isSaving,
+    save: () => void handleMarginSave(),
+  });
+
+  const handleRevealMarker = useCallback((markerId: string) => {
+    shellRef.current?.revealCommentMarker(markerId);
+  }, []);
+
   const extraActions = useMemo(() => {
     const discardButton = (
       <Button
@@ -251,6 +287,17 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         banner={discardedBanner}
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}
+        onLiveContentChange={setFragmentContent}
+        rightPanel={
+          <MarginPanel
+            ref={marginPanelRef}
+            projectId={projectId}
+            marginEditor={marginEditor}
+            fragmentMarkerIds={fragmentMarkerIds}
+            onSave={() => commands.run("margin:save")}
+            onRevealMarker={handleRevealMarker}
+          />
+        }
         onProseChange={() => setIsProseDirty(true)}
         onSaved={() => {
           setIsProseDirty(false);
