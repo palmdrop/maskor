@@ -75,7 +75,7 @@ Phases are ordered so each is independently committable and leaves the app worki
 - [x] **Congruent scroll.** Two scrollers with `scrollTop` mirroring retained (no single physical scroller); congruence comes from the unified block source + notes header out of flow + inherited rhythm (rows keyed off measured tops) + spacers. _(2026-06-02)_
 - [x] `specifications/margins.md`: replaced the margin-side-only behaviour with shipped mutual padding; Shipped entry (→ ADR 0009). _(2026-06-02)_
 - [x] Tests: pure alignment math (`alignment.test.ts` — pad/spacer/convergence/cap/natural-slot/epsilon) + a column wiring test that stubs row geometry and asserts `setBlockSpacers([140, 0])`. **Manual smoke test in rich and vim/raw still required for the real decoration geometry.** _(2026-06-02)_
-- [ ] Commit.
+- [x] Commit. _(2026-06-02 — commit 88d5827)_
 
 ### Phase 5 — Recovery: load fuzzy fallback & precise swap anchors
 
