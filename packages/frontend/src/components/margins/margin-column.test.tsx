@@ -2,7 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
+import type { EditorBlock } from "@components/prose-editor";
+import { enumerateBlocks } from "@lib/margins/column";
 import { MarginColumn } from "./margin-column";
+
+// In the editor-less harness the real editor's `getBlocks()` is unavailable, so synthesize the block
+// list from the fragment content (the editor is the source of truth in production; this mirrors its
+// block order with zero geometry).
+const blocksFromContent = (content: string): EditorBlock[] =>
+  enumerateBlocks(content).map((block) => ({
+    markerId: block.markerId,
+    text: block.text,
+    top: 0,
+    height: 0,
+  }));
 
 // SlotEditor wraps TipTap/CM6 (not meaningful in happy-dom); stub it as a textarea that surfaces
 // value + onChange so the column's create/edit wiring is testable.
@@ -44,12 +57,13 @@ const buildMarginEditor = (
   ...overrides,
 });
 
-const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =>
-  render(
+const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) => {
+  const fragmentContent = props.fragmentContent ?? "";
+  return render(
     <MarginColumn
       projectId="project-1"
       marginEditor={buildMarginEditor()}
-      fragmentContent=""
+      fragmentContent={fragmentContent}
       mode="rich"
       onSave={vi.fn()}
       insertMarkerInBlock={vi.fn()}
@@ -57,10 +71,11 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       revealMarker={vi.fn()}
       focusMarkerBlock={vi.fn()}
       getScrollElement={() => null}
-      getBlockHeights={() => []}
+      getBlocks={() => blocksFromContent(fragmentContent)}
       {...props}
     />,
   );
+};
 
 beforeEach(() => localStorage.clear());
 
@@ -127,6 +142,31 @@ describe("MarginColumn", () => {
     fireEvent.change(screen.getByTestId("slot-editor"), { target: { value: "   " } });
     expect(insertMarkerInBlock).not.toHaveBeenCalled();
     expect(addCommentStub).not.toHaveBeenCalled();
+  });
+
+  it("renders one row per editor block, not per markdown re-parse (editor is the source)", () => {
+    // The editor reports a heading + a paragraph (two blocks) for `# Heading\nBody.` even with no
+    // blank line between them — where a blank-line parse would see one. The column must follow the
+    // editor's block list (ADR 0009), so two slots render and the marker binds to the second.
+    renderColumn({
+      fragmentContent: "# Heading\nBody.",
+      marginEditor: buildMarginEditor({ comments: [comment("a", "on body")] }),
+      getBlocks: () => [
+        { markerId: null, text: "Heading", top: 0, height: 0 },
+        { markerId: "a", text: "Body.", top: 0, height: 0 },
+      ],
+    });
+    expect(document.querySelector('[data-slot-block="0"]')).toBeTruthy();
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+    expect(screen.getByText("on body")).toBeTruthy();
+  });
+
+  it("keeps the notes header out of the scrolled flow (row 0 aligns with block 0)", () => {
+    renderColumn({ fragmentContent: "First.\n\nSecond." });
+    const notes = screen.getByTestId("margin-notes");
+    const scroll = screen.getByTestId("margin-scroll");
+    // The notes header is a sibling above the scroller, never nested inside it.
+    expect(scroll.contains(notes)).toBe(false);
   });
 
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {

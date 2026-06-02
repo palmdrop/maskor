@@ -43,11 +43,11 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 ### Phase 1 — Editor as the single source of block geometry
 
-- [ ] Add a `getBlocks()` handle to `prose-editor.tsx` returning the authoritative `{ markerId | null, top, height }[]` in document order — `top`/`height` measured from the real editor DOM (CM6 `coordsAtPos` for line/block ranges; TipTap `nodeDOM`/`offsetTop` per top-level node), `markerId` from the live anchor model (Phase 2), not from a markdown re-parse. Surface it through `entity-editor-shell.tsx`.
-- [ ] Margin column renders **one row per `getBlocks()` entry** and binds comments by `markerId`. Delete the margin's independent `enumerateBlocks` markdown parse from the render path (keep any pure helper still needed for excerpts). Replace `getBlockHeights` usage with the unified source.
-- [ ] Re-measure on edit / resize / mode-change via `ResizeObserver` + rAF-batched remeasure (extend the existing measure effect); ensure block count/order match the editor exactly.
-- [ ] Move the **notes header out of the scrolled flow** (sticky/fixed above the scroller, or zero-height when collapsed) so margin row 0 aligns with block 0; verify `scrollTop` mirroring is now offset-free.
-- [ ] Tests: unified block source produces identical counts/order to the editor across paragraph / heading-without-blank-line / list / blockquote cases (pure-logic where geometry can be faked; flag a manual smoke test for real `top`/`height`); margin binds by `markerId`; notes header does not offset row 0.
+- [x] Add a `getBlocks()` handle to `prose-editor.tsx` returning the authoritative `{ markerId | null, text, top, height }[]` in document order — `top`/`height` measured from the real editor DOM (CM6 `coordsAtPos` for block ranges; TipTap `nodeDOM` per top-level node), `markerId` from the editor's own block scan (a Phase-1 bridge: still reads the in-buffer marker; Phase 2 swaps the source to the anchor model). Surfaced through `entity-editor-shell.tsx`. _(2026-06-02)_
+- [x] Margin column renders **one row per `getBlocks()` entry** and binds comments by `markerId`. The margin's independent `enumerateBlocks` parse is gone from the render path (kept only as the editor-less test-harness fallback). `getBlockHeights` replaced by the unified source. _(2026-06-02)_
+- [x] Re-measure on edit / resize / mode-change via `ResizeObserver` + rAF-batched `geometryTick`; block count/order match the editor (the `getBlocks()` list is the only structural source). _(2026-06-02)_
+- [x] Moved the **notes header out of the scrolled flow** (a pinned `shrink-0` sibling above the scroller) so margin row 0 aligns with block 0. _(2026-06-02)_
+- [x] Tests: column renders one row per `getBlocks()` entry where the editor's count differs from a blank-line parse (heading-without-blank-line); binds by `markerId`; notes header is not nested in the scroller. (Real `top`/`height` geometry deferred to a manual smoke test.) _(2026-06-02)_
 - [ ] Commit.
 
 ### Phase 2 — Position-anchor model (live binding via transaction mapping)

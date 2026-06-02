@@ -13,11 +13,12 @@ import { Separator } from "@components/ui/separator";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { claimFocusOnPickerClose } from "@lib/focus-intent";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
+import type { EditorBlock } from "@components/prose-editor";
 import {
   buildColumn,
-  enumerateBlocks,
   nextSlotIndex,
   previousSlotIndex,
+  type FragmentBlock,
 } from "@lib/margins/column";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
 import { CommentCard } from "./comment-card";
@@ -50,7 +51,9 @@ type Props = {
   revealMarker: (markerId: string) => void;
   focusMarkerBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
-  getBlockHeights: () => number[];
+  // The editor's authoritative block list (ADR 0009): the column renders one row per entry and binds
+  // comments by markerId, so its block-index space matches the editor's geometry exactly.
+  getBlocks: () => EditorBlock[];
 };
 
 export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function MarginColumn(
@@ -66,7 +69,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     revealMarker,
     focusMarkerBlock,
     getScrollElement,
-    getBlockHeights,
+    getBlocks,
   },
   ref,
 ) {
@@ -80,11 +83,23 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
 
   const [activeSlot, setActiveSlot] = useState<ActiveSlot>(null);
   const [draft, setDraft] = useState("");
-  const [blockHeights, setBlockHeights] = useState<number[]>([]);
+  // Bumped after mount / content change / resize to re-pull the editor's measured geometry. The block
+  // list itself comes from the editor (ADR 0009) — the single source of enumeration and geometry.
+  const [geometryTick, setGeometryTick] = useState(0);
 
-  const blocks = useMemo(() => enumerateBlocks(fragmentContent), [fragmentContent]);
+  const editorBlocks = useMemo(() => getBlocks(), [getBlocks, fragmentContent, mode, geometryTick]);
+  // Structural rows in the editor's block order; geometry stays indexed alongside for padding.
+  const blocks = useMemo<FragmentBlock[]>(
+    () =>
+      editorBlocks.map((block, index) => ({
+        index,
+        text: block.text,
+        markerId: block.markerId,
+      })),
+    [editorBlocks],
+  );
   const markerIds = useMemo(
-    () => blocks.flatMap((b) => (b.markerId ? [b.markerId] : [])),
+    () => blocks.flatMap((block) => (block.markerId ? [block.markerId] : [])),
     [blocks],
   );
   const liveExcerpts = useMemo(
@@ -118,24 +133,25 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     };
   }, [getScrollElement]);
 
-  // --- Block geometry: re-measure block heights for margin-side padding when the content changes or
-  // the editor resizes. ---
-  const measure = useCallback(() => {
-    setBlockHeights(getBlockHeights());
-  }, [getBlockHeights]);
+  // --- Block geometry: re-pull the editor's measured block list for margin-side padding when the
+  // content changes or the editor resizes. A tick bump re-runs `getBlocks()` (the editor is the
+  // single source of geometry) after layout has settled. ---
+  const remeasure = useCallback(() => {
+    setGeometryTick((tick) => tick + 1);
+  }, []);
 
   useEffect(() => {
-    const id = requestAnimationFrame(measure);
+    const id = requestAnimationFrame(remeasure);
     return () => cancelAnimationFrame(id);
-  }, [measure, fragmentContent, mode]);
+  }, [remeasure, fragmentContent, mode]);
 
   useEffect(() => {
     const editorScroll = getScrollElement();
     if (!editorScroll || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => measure());
+    const observer = new ResizeObserver(() => remeasure());
     observer.observe(editorScroll);
     return () => observer.disconnect();
-  }, [getScrollElement, measure]);
+  }, [getScrollElement, remeasure]);
 
   useImperativeHandle(
     ref,
@@ -185,7 +201,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   };
 
   const minHeightFor = (blockIndex: number): number | undefined => {
-    const height = blockHeights[blockIndex];
+    const height = editorBlocks[blockIndex]?.height;
     return height && height > 0 ? height : undefined;
   };
 
@@ -225,47 +241,48 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       </div>
       <Separator />
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1">
-        {/* Notes: a collapsible pinned header at the top of the column, scrolling with the content. */}
-        <section className="mb-3 flex flex-col gap-1">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
-            onClick={toggleNotes}
-            aria-expanded={notesOpen}
-          >
-            <span className="inline-block w-3">{notesOpen ? "▾" : "▸"}</span>
-            <span>Notes</span>
-          </button>
-          {notesOpen && (
-            <div className="rounded-md border border-border px-2 py-1" data-slot-notes>
-              {activeSlot?.kind === "notes" ? (
-                <SlotEditor
-                  value={notes}
-                  mode={mode}
-                  focusOnMount
-                  placeholder="Thoughts on structure, character, things to rewrite…"
-                  onChange={setNotes}
-                  onBlur={() => setActiveSlot(null)}
-                  onEscape={() => setActiveSlot(null)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-sm text-foreground/90"
-                  onClick={() => setActiveSlot({ kind: "notes" })}
-                >
-                  {notes || (
-                    <span className="text-muted-foreground">
-                      Thoughts on structure, character, things to rewrite…
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
-        </section>
+      {/* Notes: a collapsible pinned header above the scroller (ADR 0009 — out of the scrolled flow so
+          margin row 0 aligns with the editor's block 0; the rows below scroll in lockstep). */}
+      <section className="flex shrink-0 flex-col gap-1" data-testid="margin-notes">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+          onClick={toggleNotes}
+          aria-expanded={notesOpen}
+        >
+          <span className="inline-block w-3">{notesOpen ? "▾" : "▸"}</span>
+          <span>Notes</span>
+        </button>
+        {notesOpen && (
+          <div className="rounded-md border border-border px-2 py-1" data-slot-notes>
+            {activeSlot?.kind === "notes" ? (
+              <SlotEditor
+                value={notes}
+                mode={mode}
+                focusOnMount
+                placeholder="Thoughts on structure, character, things to rewrite…"
+                onChange={setNotes}
+                onBlur={() => setActiveSlot(null)}
+                onEscape={() => setActiveSlot(null)}
+              />
+            ) : (
+              <button
+                type="button"
+                className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-sm text-foreground/90"
+                onClick={() => setActiveSlot({ kind: "notes" })}
+              >
+                {notes || (
+                  <span className="text-muted-foreground">
+                    Thoughts on structure, character, things to rewrite…
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </section>
 
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1" data-testid="margin-scroll">
         {/* One slot per paragraph, flow-aligned by margin-side padding (min-height = block height). */}
         <div className="flex flex-col">
           {rows.map((row, rowIndex) => {

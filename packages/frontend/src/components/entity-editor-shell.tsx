@@ -16,7 +16,12 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "@api/generated/projects/projects";
-import { ProseEditor, type ProseEditorHandle, type SelectionCapture } from "./prose-editor";
+import {
+  ProseEditor,
+  type ProseEditorHandle,
+  type SelectionCapture,
+  type EditorBlock,
+} from "./prose-editor";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -49,7 +54,7 @@ export type EntityEditorShellHandle = {
   revealCommentMarker: (markerId: string) => void;
   focusMarkerBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
-  getBlockHeights: () => number[];
+  getBlocks: () => EditorBlock[];
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
   restoreFromServer: () => void;
@@ -330,7 +335,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           proseEditorRef.current?.revealCommentMarker(markerId),
         focusMarkerBlock: (markerId: string) => proseEditorRef.current?.focusMarkerBlock(markerId),
         getScrollElement: () => proseEditorRef.current?.getScrollElement() ?? null,
-        getBlockHeights: () => proseEditorRef.current?.getBlockHeights() ?? [],
+        getBlocks: () => proseEditorRef.current?.getBlocks() ?? [],
         restoreFromServer: () => handleRestoreFromServer(),
       }),
       [saveContent, handleRestoreFromServer],

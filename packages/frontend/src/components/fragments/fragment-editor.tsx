@@ -304,7 +304,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     shellRef.current?.focusMarkerBlock(markerId);
   }, []);
   const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
-  const getBlockHeights = useCallback(() => shellRef.current?.getBlockHeights() ?? [], []);
+  const getBlocks = useCallback(() => shellRef.current?.getBlocks() ?? [], []);
 
   const extraActions = useMemo(() => {
     const discardButton = (
@@ -394,7 +394,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             revealMarker={handleRevealMarker}
             focusMarkerBlock={handleFocusMarkerBlock}
             getScrollElement={getScrollElement}
-            getBlockHeights={getBlockHeights}
+            getBlocks={getBlocks}
           />
         }
         onProseChange={() => setIsProseDirty(true)}

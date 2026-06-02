@@ -74,9 +74,21 @@ export type ProseEditorHandle = {
   focusMarkerBlock: (markerId: string) => void;
   // The scrolling element of the active editor, for scroll-sync with the margin column.
   getScrollElement: () => HTMLElement | null;
-  // Rendered pixel heights of each block in document order (matching `enumerateBlocks`), for
-  // margin-side padding. Empty when geometry can't be measured.
-  getBlockHeights: () => number[];
+  // The authoritative block list (ADR 0009): the editor — not the margin — enumerates the fragment's
+  // blocks and measures their geometry, so the margin column renders one row per entry in this order
+  // and binds comments by `markerId`. This removes the old two-index-space mismatch between a separate
+  // markdown parse and the editor's DOM nodes. `top`/`height` are content-relative pixels (0 when
+  // geometry can't yet be measured); `text` is the marker-stripped block opening for type-to-create.
+  getBlocks: () => EditorBlock[];
+};
+
+// One block as the editor reports it: its comment anchor (the first marker on the block, or null),
+// the marker-stripped opening text, and its content-relative top/height in pixels.
+export type EditorBlock = {
+  markerId: string | null;
+  text: string;
+  top: number;
+  height: number;
 };
 
 type Props = {
@@ -480,25 +492,53 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         if (vimMode || rawMarkdownMode) return viewRef.current?.scrollDOM ?? null;
         return richScrollerRef.current;
       },
-      getBlockHeights: (): number[] => {
+      getBlocks: (): EditorBlock[] => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return [];
+          const scroller = view.scrollDOM;
+          // Content-relative origin: subtract the scroller's viewport top and add its scroll offset
+          // so `top` is independent of the current scroll position.
+          const contentOrigin = scroller.getBoundingClientRect().top - scroller.scrollTop;
           return blockRanges(view.state.doc.toString()).map((range) => {
+            const raw = view.state.doc.sliceString(range.from, range.to);
+            const markerId = extractCommentMarkerIds(raw)[0] ?? null;
+            const text = stripCommentMarkers(raw).trim();
             const top = view.coordsAtPos(range.from);
             const bottom = view.coordsAtPos(range.to);
-            if (!top || !bottom) return 0;
-            return Math.max(0, bottom.bottom - top.top);
+            if (!top || !bottom) return { markerId, text, top: 0, height: 0 };
+            return {
+              markerId,
+              text,
+              top: top.top - contentOrigin,
+              height: Math.max(0, bottom.bottom - top.top),
+            };
           });
         }
         if (!editor) return [];
-        const heights: number[] = [];
-        editor.state.doc.forEach((_node, offset) => {
+        const scroller = richScrollerRef.current;
+        const contentOrigin = scroller
+          ? scroller.getBoundingClientRect().top - scroller.scrollTop
+          : 0;
+        const blocks: EditorBlock[] = [];
+        editor.state.doc.forEach((node, offset) => {
+          // The marker is an atom node with no textContent; scan the block's children for it.
+          let markerId: string | null = null;
+          node.forEach((child) => {
+            if (markerId === null && child.type.name === "commentMarker") {
+              markerId = (child.attrs.markerId as string | null) ?? null;
+            }
+          });
+          const text = stripCommentMarkers(node.textContent).trim();
           const dom = editor.view.nodeDOM(offset);
-          if (dom instanceof HTMLElement) heights.push(dom.getBoundingClientRect().height);
-          else heights.push(0);
+          if (dom instanceof HTMLElement) {
+            const rect = dom.getBoundingClientRect();
+            blocks.push({ markerId, text, top: rect.top - contentOrigin, height: rect.height });
+          } else {
+            blocks.push({ markerId, text, top: 0, height: 0 });
+          }
         });
-        return heights;
+        return blocks;
       },
     }),
     [vimMode, rawMarkdownMode, editor, content],
