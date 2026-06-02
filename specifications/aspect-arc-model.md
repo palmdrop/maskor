@@ -12,6 +12,7 @@
 - 2026-05-25 — Aspect color picker added to the aspect editor (constrained 10-color palette); chosen color persisted on frontmatter; aspect color dots shown in fragment metadata editor; overview tile color bars and arc curves already used aspect colors. (plan: `scripts/ralph/archive/2026-05-25-ralph-small-improvements/`)
 - 2026-05-25 — Aspect delete now cascades: deletes the arc file and strips the weight key from all fragment frontmatter atomically. The `aspect:deleted` action log entry records the count of affected fragments. (plan: `scripts/ralph/archive/2026-05-25-ralph-small-improvements/`)
 - 2026-05-27 — Aspects can be assigned a category (slash-separated path) from the aspect editor; changing the category moves the vault file into the matching subfolder and is reflected immediately in the config list (grouped) and the fragment attachment picker (grouped). Category autocompletes from existing aspect categories. Client-side validation mirrors the API rules. (plan: `references/plans/entity-subfolders.md`)
+- 2026-06-02 — Unmanaged user frontmatter on an aspect file (keys Maskor does not own, e.g. Obsidian `tags`/`aliases`) is preserved across a Maskor write via an `extraFrontmatter` round-trip; the managed `uuid`/`color`/`notes` keys are still rebuilt. (plan: references/plans/margins-2.md, Phase 6)
 
 ---
 

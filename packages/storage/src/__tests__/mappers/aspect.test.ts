@@ -63,6 +63,28 @@ describe("aspect.fromFile", () => {
     const aspect = fromFile(PARSED_ASPECT, "grief.md");
     expect(aspect.color).toBeUndefined();
   });
+
+  it("captures unmanaged frontmatter keys into extraFrontmatter (managed keys excluded)", () => {
+    const parsed: ParsedFile = {
+      ...PARSED_ASPECT,
+      frontmatter: {
+        ...PARSED_ASPECT.frontmatter,
+        color: "#f97316",
+        notes: ["a note key"],
+        tags: ["theme"],
+        aliases: ["sorrow"],
+      },
+    };
+    const aspect = fromFile(parsed, "grief.md");
+    // Managed keys are not duplicated into extraFrontmatter.
+    expect(aspect.extraFrontmatter?.uuid).toBeUndefined();
+    expect(aspect.extraFrontmatter?.color).toBeUndefined();
+    expect(aspect.extraFrontmatter?.notes).toBeUndefined();
+    // Unmanaged user keys are preserved; the managed notes list is still mapped normally.
+    expect(aspect.extraFrontmatter?.tags).toEqual(["theme"]);
+    expect(aspect.extraFrontmatter?.aliases).toEqual(["sorrow"]);
+    expect(aspect.notes).toEqual(["a note key"]);
+  });
 });
 
 describe("aspect.toFile", () => {
@@ -103,6 +125,31 @@ describe("aspect.toFile", () => {
   it("omits color when undefined", () => {
     const { frontmatter } = toFile(aspect);
     expect("color" in frontmatter).toBe(false);
+  });
+
+  it("re-emits unmanaged frontmatter keys, managed keys winning on clash", () => {
+    const { frontmatter } = toFile({
+      ...aspect,
+      extraFrontmatter: { tags: ["theme"], uuid: "should-be-overwritten" },
+    });
+    expect(frontmatter.tags).toEqual(["theme"]);
+    // Managed uuid wins over an extraFrontmatter clash.
+    expect(frontmatter.uuid).toBe(aspect.uuid);
+  });
+
+  it("round-trips unmanaged keys through fromFile → toFile", () => {
+    const parsed: ParsedFile = {
+      frontmatter: {
+        uuid: "aspect-0001-0000-0000-000000000001",
+        notes: ["n"],
+        tags: ["theme"],
+      },
+      inlineFields: {},
+      body: "desc",
+    };
+    const { frontmatter } = toFile(fromFile(parsed, "themes/grief.md"));
+    expect(frontmatter.tags).toEqual(["theme"]);
+    expect(frontmatter.notes).toEqual(["n"]);
   });
 });
 

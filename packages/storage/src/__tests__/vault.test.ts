@@ -85,6 +85,92 @@ describe("vault.fragments — unmanaged frontmatter preservation", () => {
   });
 });
 
+describe("vault.aspects/notes/references — unmanaged frontmatter preservation", () => {
+  it("preserves user keys across an aspect write, keeping the managed notes list", async () => {
+    const vault = createVault(config);
+    writeFileSync(
+      join(tmpDir, "aspects", "hand-aspect.md"),
+      [
+        "---",
+        'uuid: "aaaaaaaa-0000-0000-0000-00000000aaaa"',
+        "notes:",
+        "  - a note key",
+        "tags:",
+        "  - theme",
+        'aliases: "Sorrow"',
+        "---",
+        "",
+        "Ambient loss.",
+        "",
+      ].join("\n"),
+    );
+
+    const aspect = await vault.aspects.read("hand-aspect.md");
+    expect(aspect.notes).toEqual(["a note key"]);
+    expect(aspect.extraFrontmatter).toEqual({ tags: ["theme"], aliases: "Sorrow" });
+
+    await vault.aspects.write({ ...aspect, description: "Edited." });
+    const onDisk = readFileSync(join(tmpDir, "aspects", "hand-aspect.md"), "utf8");
+    expect(onDisk).toContain("tags:");
+    expect(onDisk).toContain("aliases:");
+    expect(onDisk).toContain("a note key");
+
+    const reread = await vault.aspects.read("hand-aspect.md");
+    expect(reread.extraFrontmatter).toEqual({ tags: ["theme"], aliases: "Sorrow" });
+    expect(reread.notes).toEqual(["a note key"]);
+  });
+
+  it("preserves user keys across a note write", async () => {
+    const vault = createVault(config);
+    writeFileSync(
+      join(tmpDir, "notes", "hand-note.md"),
+      [
+        "---",
+        'uuid: "bbbbbbbb-0000-0000-0000-00000000bbbb"',
+        "tags:",
+        "  - wip",
+        'aliases: "Solitude"',
+        "---",
+        "",
+        "A thought.",
+        "",
+      ].join("\n"),
+    );
+
+    const note = await vault.notes.read("hand-note.md");
+    expect(note.extraFrontmatter).toEqual({ tags: ["wip"], aliases: "Solitude" });
+
+    await vault.notes.write({ ...note, content: "Edited." });
+    const reread = await vault.notes.read("hand-note.md");
+    expect(reread.extraFrontmatter).toEqual({ tags: ["wip"], aliases: "Solitude" });
+  });
+
+  it("preserves user keys across a reference write", async () => {
+    const vault = createVault(config);
+    writeFileSync(
+      join(tmpDir, "references", "hand-ref.md"),
+      [
+        "---",
+        'uuid: "cccccccc-0000-0000-0000-00000000cccc"',
+        "tags:",
+        "  - source",
+        "year: 1952",
+        "---",
+        "",
+        "A reference.",
+        "",
+      ].join("\n"),
+    );
+
+    const reference = await vault.references.read("hand-ref.md");
+    expect(reference.extraFrontmatter).toEqual({ tags: ["source"], year: 1952 });
+
+    await vault.references.write({ ...reference, content: "Edited." });
+    const reread = await vault.references.read("hand-ref.md");
+    expect(reread.extraFrontmatter).toEqual({ tags: ["source"], year: 1952 });
+  });
+});
+
 describe("vault.fragments.read", () => {
   it("reads a fragment by filename", async () => {
     const vault = createVault(config);

@@ -18,11 +18,13 @@ export const IndexedNoteSchema = DomainNoteSchema.pick({ uuid: true, key: true }
   .openapi("IndexedNote");
 
 // Single-get response — vault type with content
-export const NoteSchema = DomainNoteSchema.extend({
-  uuid: z.uuid().openapi({ example: "n1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
-  key: z.string().openapi({ example: "On solitude" }),
-  category: z.string().optional().openapi({ example: "research" }),
-}).openapi("Note");
+export const NoteSchema = DomainNoteSchema.omit({ extraFrontmatter: true })
+  .extend({
+    uuid: z.uuid().openapi({ example: "n1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    key: z.string().openapi({ example: "On solitude" }),
+    category: z.string().optional().openapi({ example: "research" }),
+  })
+  .openapi("Note");
 
 export const NoteUUIDParamSchema = z.object({
   projectId: z.uuid(),

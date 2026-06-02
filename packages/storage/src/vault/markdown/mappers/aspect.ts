@@ -5,6 +5,19 @@ import { deriveCategory } from "../../../utils/category";
 
 // --- Aspect file mapper ---
 
+// Frontmatter keys Maskor manages directly. The managed `notes:` list is preserved on its own; every
+// other (unmanaged) key is carried through read→write verbatim so a Maskor save never strips user
+// data (e.g. Obsidian `tags`/`aliases`).
+const MANAGED_FRONTMATTER_KEYS = new Set(["uuid", "color", "notes"]);
+
+const extractExtraFrontmatter = (frontmatter: Record<string, unknown>): Record<string, unknown> => {
+  const extra: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (!MANAGED_FRONTMATTER_KEYS.has(key)) extra[key] = value;
+  }
+  return extra;
+};
+
 export const fromFile = (parsed: ParsedFile, filePath: string): Aspect => {
   const frontmatter = parsed.frontmatter;
   const description = parsed.body?.trim() || undefined;
@@ -17,11 +30,14 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Aspect => {
     color: frontmatter.color as string | undefined,
     description,
     notes: (frontmatter.notes as string[]) ?? [],
+    extraFrontmatter: extractExtraFrontmatter(frontmatter),
   };
 };
 
 export const toFile = (aspect: Aspect): { frontmatter: Record<string, unknown>; body: string } => {
   const frontmatter: Record<string, unknown> = {
+    // Unmanaged user keys first, so the managed keys below always win on a name clash.
+    ...(aspect.extraFrontmatter ?? {}),
     uuid: aspect.uuid,
     notes: aspect.notes,
   };

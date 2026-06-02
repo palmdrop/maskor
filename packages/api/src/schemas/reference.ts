@@ -18,11 +18,13 @@ export const IndexedReferenceSchema = DomainReferenceSchema.pick({ uuid: true, k
   .openapi("IndexedReference");
 
 // Single-get response — vault type with content
-export const ReferenceSchema = DomainReferenceSchema.extend({
-  uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
-  key: z.string().openapi({ example: "The Old Man and the Sea" }),
-  category: z.string().optional().openapi({ example: "novels" }),
-}).openapi("Reference");
+export const ReferenceSchema = DomainReferenceSchema.omit({ extraFrontmatter: true })
+  .extend({
+    uuid: z.uuid().openapi({ example: "r1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    key: z.string().openapi({ example: "The Old Man and the Sea" }),
+    category: z.string().optional().openapi({ example: "novels" }),
+  })
+  .openapi("Reference");
 
 export const ReferenceUUIDParamSchema = z.object({
   projectId: z.uuid(),

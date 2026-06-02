@@ -10,7 +10,10 @@ import { InsertionBodySchema } from "./shared";
 const ColorExample = { example: "#f97316" };
 
 // List response — index layer fields
-export const IndexedAspectSchema = DomainAspectSchema.omit({ description: true })
+export const IndexedAspectSchema = DomainAspectSchema.omit({
+  description: true,
+  extraFrontmatter: true,
+})
   .extend({
     uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
     key: z.string().openapi({ example: "tone" }),
@@ -21,12 +24,14 @@ export const IndexedAspectSchema = DomainAspectSchema.omit({ description: true }
   .openapi("IndexedAspect");
 
 // Single-get response — vault type with description
-export const AspectSchema = DomainAspectSchema.extend({
-  uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
-  key: z.string().openapi({ example: "tone" }),
-  category: z.string().optional().openapi({ example: "style" }),
-  color: z.string().optional().openapi(ColorExample),
-}).openapi("Aspect");
+export const AspectSchema = DomainAspectSchema.omit({ extraFrontmatter: true })
+  .extend({
+    uuid: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
+    key: z.string().openapi({ example: "tone" }),
+    category: z.string().optional().openapi({ example: "style" }),
+    color: z.string().optional().openapi(ColorExample),
+  })
+  .openapi("Aspect");
 
 export const AspectUUIDParamSchema = z.object({
   projectId: z.uuid(),

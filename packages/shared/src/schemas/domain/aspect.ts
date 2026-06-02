@@ -11,6 +11,10 @@ export const AspectSchema = z.object({
   color: AspectColorSchema.optional(),
   description: z.string().optional(),
   notes: z.array(z.string()),
+  // Frontmatter keys Maskor does not manage (user-authored, e.g. Obsidian `tags`/`aliases`). Carried
+  // through read→write so a Maskor save never strips user data. Storage-internal; omitted from API
+  // responses. The managed `notes:` list is preserved separately — only *unmanaged* keys land here.
+  extraFrontmatter: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type Aspect = z.infer<typeof AspectSchema>;
