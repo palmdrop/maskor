@@ -56,6 +56,24 @@ describe("partitionComments", () => {
     expect(anchored).toHaveLength(0);
     expect(orphaned.map((entry) => entry.markerId)).toEqual(["x"]);
   });
+
+  it("rebinds an orphaned comment once its marker reappears in the fragment", () => {
+    const comments = [comment("x")];
+    // Orphaned while the marker is gone.
+    expect(partitionComments(comments, []).orphaned.map((c) => c.markerId)).toEqual(["x"]);
+    // Re-adding the marker (e.g. undo, or re-typing the raw marker) rebinds it.
+    const rebound = partitionComments(comments, ["x"]);
+    expect(rebound.anchored.map((c) => c.markerId)).toEqual(["x"]);
+    expect(rebound.orphaned).toHaveLength(0);
+  });
+
+  it("ignores a fragment marker that has no matching comment (inert, self-healing)", () => {
+    // A marker present in the fragment but with no stored comment contributes nothing — it is inert
+    // and cleanable, never surfaced as a phantom comment.
+    const { anchored, orphaned } = partitionComments([comment("a")], ["a", "stray"]);
+    expect(anchored.map((c) => c.markerId)).toEqual(["a"]);
+    expect(orphaned).toHaveLength(0);
+  });
 });
 
 describe("MarginPanel", () => {
@@ -73,6 +91,42 @@ describe("MarginPanel", () => {
     );
     expect(screen.getByText(/Orphaned \(1\)/)).toBeTruthy();
     expect(screen.getByText("excerpt-dead")).toBeTruthy();
+  });
+
+  it("moves a comment to the orphaned group when its block is deleted, and back on rebind", () => {
+    const marginEditor = buildMarginEditor({ comments: [comment("anchor", "kept")] });
+    const { rerender } = render(
+      <MarginPanel
+        projectId="project-1"
+        marginEditor={marginEditor}
+        fragmentMarkerIds={["anchor"]}
+        onSave={vi.fn()}
+      />,
+    );
+    // Anchored: no orphaned group.
+    expect(screen.queryByText(/Orphaned/)).toBeNull();
+
+    // Delete the annotated block (marker gone from the live fragment) → orphaned.
+    rerender(
+      <MarginPanel
+        projectId="project-1"
+        marginEditor={marginEditor}
+        fragmentMarkerIds={[]}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Orphaned \(1\)/)).toBeTruthy();
+
+    // Marker reappears (rebind) → orphaned group gone again.
+    rerender(
+      <MarginPanel
+        projectId="project-1"
+        marginEditor={marginEditor}
+        fragmentMarkerIds={["anchor"]}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/Orphaned/)).toBeNull();
   });
 
   it("reveals the annotated block when an anchored comment's excerpt is clicked", () => {

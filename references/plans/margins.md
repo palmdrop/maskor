@@ -90,10 +90,10 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 7 — Orphan handling end-to-end
 
-- [ ] Wire backend orphan detection (Phase 2) to the panel: comments whose marker is gone render in the orphaned group; resolving the anchor (re-adding matching text/marker) rebinds them where feasible, else they stay orphaned.
-- [ ] Confirm the self-healing desync cases: marker-without-comment is inert/cleanable; comment-without-marker is an orphan.
-- [ ] Tests: delete annotated block → orphan; external marker strip → orphan; rebind path.
-- [ ] `specifications/margins.md`: Shipped entry. Commit.
+- [x] Orphan detection wired to the panel: comments whose marker is gone render in the orphaned group; re-adding the marker rebinds them. The panel derives this live from the open fragment buffer (more responsive than the persisted backend flag, which still serves cross-fragment/persisted queries). Re-adding the exact marker rebinds; re-adding only matching prose does not (the marker is the authoritative anchor).
+- [x] Confirmed the self-healing desync cases: marker-without-comment is inert/cleanable; comment-without-marker is an orphan.
+- [x] Tests: delete annotated block → orphan; external marker strip → orphan; rebind path; inert stray marker.
+- [x] `specifications/margins.md`: Shipped entry. Commit.
 
 ### Phase 8 — Drop the fragment `notes:` attachment & rework notes auto-sync
 

@@ -8,6 +8,16 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+### Margins
+
+- [ ] margins panel should look more linear and sync and scroll with the fragment editor
+- [ ] deleting comments does not remove the anchor
+- [ ] adding a new comment where there already is an anchor creates a double anchor
+- [ ] the entire paragraph becomes the excerpt of a comment, not just a small excerpt
+- [ ] pressing escape or maybe enter should restore focus to editor again
+
+### Rest
+
 - [x] fix lint errors
 
 - [x] finish remove piece plan (see worktree)
