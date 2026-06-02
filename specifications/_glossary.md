@@ -66,7 +66,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Comment**: An anchored annotation block within a fragment's Margin, bound to a specific block (line/paragraph) of that fragment; not a standalone vault file and not a document-link. _Avoid_: annotation (the umbrella act), inline note, callout.
 
-**Anchor**: The binding between a Comment and the fragment block it annotates — carried durably by a trailing marker on the fragment block (which follows the text through edits) and mirrored by a short stored excerpt in the Margin used for side-by-side display and orphan context. Block-granular; word/span-level anchoring is out of scope for now. _Avoid_: link (reserved for document-links), pin, reference.
+**Anchor**: The binding between a Comment and the fragment block it annotates — carried durably by a trailing marker on the fragment block (which follows the text through edits) and mirrored by an **excerpt**: the opening of the anchored block, kept current while the anchor resolves and frozen at its last-known value once the comment is orphaned, used for side-by-side display and orphan context. Block-granular; the excerpt is display context, not a sub-block anchor — word/span-level anchoring is out of scope for now. _Avoid_: link (reserved for document-links), pin, reference.
 
 **Orphaned comment**: A Comment whose anchor can no longer be resolved to a fragment block (block deleted, marker stripped by an external edit); never auto-deleted — it sinks to an orphaned group at the foot of the Margin's comments section showing its last-known excerpt, removable only by the user. _Avoid_: dangling comment, lost comment, broken comment.
 
