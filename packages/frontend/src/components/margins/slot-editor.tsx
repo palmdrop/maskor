@@ -15,6 +15,9 @@ type Props = {
   value: string;
   mode: EditorMode;
   placeholder?: string;
+  // Match the fragment editor's font size so a comment beside a paragraph reads at the same scale and
+  // its measured height lines up with the block (ADR 0009).
+  fontSize?: number;
   // Focus the editor when it mounts (the slot just became the single active editor).
   focusOnMount?: boolean;
   onChange: (value: string) => void;
@@ -33,6 +36,7 @@ export const SlotEditor = ({
   value,
   mode,
   placeholder,
+  fontSize,
   focusOnMount,
   onChange,
   onBlur,
@@ -60,6 +64,7 @@ export const SlotEditor = ({
       <RichSlotEditor
         value={value}
         placeholder={placeholder}
+        fontSize={fontSize}
         focusOnMount={focusOnMount}
         onChange={onChange}
         onBlur={onBlur}
@@ -71,6 +76,7 @@ export const SlotEditor = ({
     <CodeSlotEditor
       value={value}
       vimMode={mode === "vim"}
+      fontSize={fontSize}
       focusOnMount={focusOnMount}
       onChange={onChange}
       onBlur={onBlur}
@@ -82,6 +88,7 @@ export const SlotEditor = ({
 const RichSlotEditor = ({
   value,
   placeholder,
+  fontSize,
   focusOnMount,
   onChange,
   onBlur,
@@ -89,6 +96,7 @@ const RichSlotEditor = ({
 }: {
   value: string;
   placeholder?: string;
+  fontSize?: number;
   focusOnMount?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -124,7 +132,7 @@ const RichSlotEditor = ({
   return (
     // The interactive surface is the inner editor; this wrapper only forwards navigation keys.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div onKeyDown={onKeyDown}>
+    <div onKeyDown={onKeyDown} style={fontSize ? { fontSize } : undefined}>
       <EditorContent editor={editor} />
     </div>
   );
@@ -133,6 +141,7 @@ const RichSlotEditor = ({
 const CodeSlotEditor = ({
   value,
   vimMode,
+  fontSize,
   focusOnMount,
   onChange,
   onBlur,
@@ -140,6 +149,7 @@ const CodeSlotEditor = ({
 }: {
   value: string;
   vimMode: boolean;
+  fontSize?: number;
   focusOnMount?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -157,7 +167,11 @@ const CodeSlotEditor = ({
   return (
     // The interactive surface is the inner editor; this wrapper only forwards navigation keys.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div onKeyDown={onKeyDown} className="font-mono text-sm">
+    <div
+      onKeyDown={onKeyDown}
+      className="font-mono"
+      style={{ fontSize: fontSize ? `${fontSize}px` : "0.875rem" }}
+    >
       <CodeMirror
         ref={ref}
         value={value}

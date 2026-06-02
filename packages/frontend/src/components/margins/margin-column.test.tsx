@@ -65,6 +65,7 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       marginEditor={buildMarginEditor()}
       fragmentContent={fragmentContent}
       mode="rich"
+      fontSize={16}
       onSave={vi.fn()}
       insertMarkerInBlock={vi.fn()}
       stripMarker={vi.fn()}
@@ -73,6 +74,7 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       getScrollElement={() => null}
       getBlocks={() => blocksFromContent(fragmentContent)}
       setBlockSpacers={vi.fn()}
+      setEditorTopPadding={vi.fn()}
       {...props}
     />,
   );
@@ -207,6 +209,43 @@ describe("MarginColumn", () => {
     const scroll = screen.getByTestId("margin-scroll");
     // The notes header is a sibling above the scroller, never nested inside it.
     expect(scroll.contains(notes)).toBe(false);
+  });
+
+  it("pads the editor's top to close the chrome gap (notes header offset)", () => {
+    // The margin scroller sits 40px below the editor scroller (its extra chrome — notes header etc.).
+    // The column measures that gap and asks the editor to pad its content down to align row 0.
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const top = this.getAttribute("data-testid") === "margin-scroll" ? 140 : 0;
+        return {
+          height: 0,
+          top,
+          left: 0,
+          right: 0,
+          bottom: top,
+          width: 0,
+          x: 0,
+          y: top,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+    const editorScroll = {
+      getBoundingClientRect: () => ({ top: 100 }) as DOMRect,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLElement;
+    const setEditorTopPadding = vi.fn();
+    try {
+      renderColumn({
+        fragmentContent: "First.",
+        getScrollElement: () => editorScroll,
+        setEditorTopPadding,
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(setEditorTopPadding).toHaveBeenCalledWith(40);
   });
 
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {

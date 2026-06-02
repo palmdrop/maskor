@@ -71,6 +71,9 @@ export type ProseEditorHandle = {
   // Push document-side spacers (pixels, indexed by block) so a tall Margin comment pushes the next
   // block down, keeping rows aligned. A decoration only — never a buffer edit (ADR 0009).
   setBlockSpacers: (spacers: number[]) => void;
+  // Pad the top of the editor content (pixels) so block 0 lines up with the Margin's row 0 despite the
+  // two columns' differing chrome (e.g. the notes header). Inside the scroller — never a buffer edit.
+  setTopPadding: (px: number) => void;
 };
 
 // One block as the editor reports it: its comment anchor (the first marker on the block, or null),
@@ -112,6 +115,10 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   const viewRef = useRef<EditorView | null>(null);
   // The rich-mode scroll container, for scroll-sync with the margin column.
   const richScrollerRef = useRef<HTMLDivElement | null>(null);
+  // Top padding applied inside the editor content so the Margin column can align row 0 with block 0
+  // across the two columns' differing chrome heights (the notes header etc.). Set imperatively by the
+  // margin via `setTopPadding`; rich uses React state, CM6 a CSS variable on the editor DOM.
+  const [richTopPadding, setRichTopPadding] = useState(0);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const cursorRef = useRef(cursor);
@@ -156,6 +163,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         },
         ".cm-content": {
           padding: "1rem",
+          // Top padding is variable so the Margin column can shift the content down to align row 0
+          // with block 0 across differing chrome heights (ADR 0009). Defaults to the base 1rem.
+          paddingTop: "var(--cm-top-pad, 1rem)",
         },
         ".cm-focused": {
           outline: "none",
@@ -550,6 +560,14 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         // Meta-only transaction: `docChanged` is false, so TipTap's onUpdate never fires.
         editor.view.dispatch(editor.state.tr.setMeta(blockSpacerKey, spacers));
       },
+      setTopPadding: (px: number) => {
+        if (vimMode || rawMarkdownMode) {
+          // A CSS variable read by the `.cm-content` rule — no reconfiguration, no buffer change.
+          viewRef.current?.dom.style.setProperty("--cm-top-pad", `${px}px`);
+          return;
+        }
+        setRichTopPadding(px);
+      },
     }),
     [vimMode, rawMarkdownMode, editor, content],
   );
@@ -590,7 +608,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       <div className="flex-1 overflow-y-auto" ref={richScrollerRef}>
         <div
           className="mx-auto w-full"
-          style={{ fontSize: `${fontSize}px`, maxWidth: `${maxParagraphWidth}ch` }}
+          style={{
+            fontSize: `${fontSize}px`,
+            maxWidth: `${maxParagraphWidth}ch`,
+            paddingTop: richTopPadding || undefined,
+          }}
         >
           <EditorContent editor={editor} />
         </div>

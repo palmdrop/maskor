@@ -49,6 +49,9 @@ type Props = {
   fragmentContent: string;
   // The fragment editor mode, so the active slot edits in the matching idiom (one active editor).
   mode: EditorMode;
+  // The fragment editor's font size — applied to comment text so it reads at the same scale as the
+  // prose, and a trigger to re-measure alignment when the size changes.
+  fontSize: number;
   onSave: () => void;
   onCommentBlock?: () => void;
   // Editor bridge (coordinated buffer edits + geometry), wired from the fragment editor shell.
@@ -63,6 +66,9 @@ type Props = {
   // Push document-side spacers (pixels, by block index) so a comment taller than its block pushes the
   // next paragraph down — the document side of mutual flow alignment.
   setBlockSpacers: (spacers: number[]) => void;
+  // Pad the editor content's top so block 0 lines up with this column's row 0 despite the columns'
+  // differing chrome (the notes header etc.). The column measures the gap and reports it.
+  setEditorTopPadding: (px: number) => void;
 };
 
 export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function MarginColumn(
@@ -71,6 +77,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     marginEditor,
     fragmentContent,
     mode,
+    fontSize,
     onSave,
     onCommentBlock,
     insertMarkerInBlock,
@@ -80,6 +87,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     getScrollElement,
     getBlocks,
     setBlockSpacers,
+    setEditorTopPadding,
   },
   ref,
 ) {
@@ -99,11 +107,17 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   // Per-block row min-heights (margin side): a short comment fills its block's slot. Populated by the
   // alignment pass below from the editor's measured geometry.
   const [minHeights, setMinHeights] = useState<number[]>([]);
+  // Top padding for the rows when the editor's content origin sits *below* this column's (rare). The
+  // common case — this column lower, because of the notes header — is handled by padding the editor.
+  const [rowsPaddingTop, setRowsPaddingTop] = useState(0);
   // The spacers we last pushed to the editor — backed out when recovering the natural slot heights so
   // the alignment pass converges (the spacer never feeds into its own input).
   const currentSpacersRef = useRef<number[]>([]);
 
-  const editorBlocks = useMemo(() => getBlocks(), [getBlocks, fragmentContent, mode, geometryTick]);
+  const editorBlocks = useMemo(
+    () => getBlocks(),
+    [getBlocks, fragmentContent, mode, fontSize, geometryTick],
+  );
   // Structural rows in the editor's block order; geometry stays indexed alongside for padding.
   const blocks = useMemo<FragmentBlock[]>(
     () =>
@@ -147,7 +161,9 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       editorScroll.removeEventListener("scroll", onEditorScroll);
       columnScroll.removeEventListener("scroll", onColumnScroll);
     };
-  }, [getScrollElement]);
+    // `geometryTick` re-runs this once the editor has mounted: on first render `getScrollElement()`
+    // returns null (the editor isn't laid out yet) and the listeners would never attach otherwise.
+  }, [getScrollElement, geometryTick]);
 
   // --- Block geometry: re-pull the editor's measured block list for margin-side padding when the
   // content changes or the editor resizes. A tick bump re-runs `getBlocks()` (the editor is the
@@ -159,7 +175,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   useEffect(() => {
     const id = requestAnimationFrame(remeasure);
     return () => cancelAnimationFrame(id);
-  }, [remeasure, fragmentContent, mode]);
+  }, [remeasure, fragmentContent, mode, fontSize]);
 
   useEffect(() => {
     const editorScroll = getScrollElement();
@@ -168,6 +184,24 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     observer.observe(editorScroll);
     return () => observer.disconnect();
   }, [getScrollElement, remeasure]);
+
+  // --- Origin alignment: line up this column's row 0 with the editor's block 0 by measuring the
+  // vertical gap between the two scrollers' content tops (their chrome — notes header, toolbars —
+  // differs) and closing it. Usually this column sits lower (the notes header), so the editor's
+  // content is padded down; the rare opposite case pads the rows. Measured from the stable scroller
+  // boxes, so neither padding feeds back into the measurement. ---
+  useEffect(() => {
+    const editorScroll = getScrollElement();
+    const columnScroll = scrollRef.current;
+    if (!editorScroll || !columnScroll) return;
+    const delta =
+      columnScroll.getBoundingClientRect().top - editorScroll.getBoundingClientRect().top;
+    setEditorTopPadding(Math.max(0, delta));
+    setRowsPaddingTop((previous) => {
+      const next = Math.max(0, -delta);
+      return Math.abs(previous - next) < 0.5 ? previous : next;
+    });
+  }, [getScrollElement, setEditorTopPadding, notesOpen, mode, fontSize, geometryTick]);
 
   // --- Mutual flow alignment (ADR 0009). Each row is as tall as the taller of its block-slot and its
   // comment: the column pads short comments up to the slot (min-height), and the editor pushes the
@@ -196,7 +230,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       setBlockSpacers(spacers);
     }
     setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
-  }, [editorBlocks, comments, activeSlot, expandAll, mode, setBlockSpacers]);
+  }, [editorBlocks, comments, activeSlot, expandAll, mode, fontSize, setBlockSpacers]);
 
   useImperativeHandle(
     ref,
@@ -304,6 +338,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               <SlotEditor
                 value={notes}
                 mode={mode}
+                fontSize={fontSize}
                 focusOnMount
                 placeholder="Thoughts on structure, character, things to rewrite…"
                 onChange={setNotes}
@@ -313,7 +348,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             ) : (
               <button
                 type="button"
-                className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-sm text-foreground/90"
+                className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-foreground/90"
+                style={{ fontSize }}
                 onClick={() => setActiveSlot({ kind: "notes" })}
               >
                 {notes || (
@@ -328,8 +364,9 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       </section>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1" data-testid="margin-scroll">
-        {/* One slot per paragraph, flow-aligned by margin-side padding (min-height = block height). */}
-        <div className="flex flex-col">
+        {/* One slot per paragraph, flow-aligned to the editor (ADR 0009): each row's min-height is its
+            block's slot height, and the editor injects a spacer when a comment is taller. */}
+        <div className="flex flex-col" style={{ paddingTop: rowsPaddingTop || undefined }}>
           {rows.map((row, rowIndex) => {
             const minHeight = minHeightFor(row.block.index);
             const isCommentActive =
@@ -378,6 +415,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                       <SlotEditor
                         value={comment.body}
                         mode={mode}
+                        fontSize={fontSize}
                         focusOnMount
                         placeholder="Add a comment…"
                         onChange={(body) => updateCommentBody(comment.markerId, body)}
@@ -393,9 +431,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                   ) : (
                     <button
                       type="button"
-                      className={`w-full py-1 text-left text-sm text-foreground/90 ${
+                      className={`w-full py-1 text-left text-foreground/90 ${
                         expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
                       }`}
+                      style={{ fontSize }}
                       onClick={() => {
                         setActiveSlot({ kind: "comment", markerId: comment.markerId });
                         setDraft("");
@@ -422,6 +461,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     <SlotEditor
                       value={draft}
                       mode={mode}
+                      fontSize={fontSize}
                       focusOnMount
                       placeholder="Type to comment this paragraph…"
                       onChange={(next) =>

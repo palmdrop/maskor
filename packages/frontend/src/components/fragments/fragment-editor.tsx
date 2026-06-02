@@ -309,6 +309,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     (spacers: number[]) => shellRef.current?.setBlockSpacers(spacers),
     [],
   );
+  const setEditorTopPadding = useCallback((px: number) => shellRef.current?.setTopPadding(px), []);
 
   const extraActions = useMemo(() => {
     const discardButton = (
@@ -391,6 +392,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             marginEditor={marginEditor}
             fragmentContent={fragmentContent}
             mode={marginMode}
+            fontSize={editorConfig.fontSize}
             onSave={() => commands.run("margin:save")}
             onCommentBlock={() => commands.run("margin:comment-block")}
             insertMarkerInBlock={insertMarkerInBlock}
@@ -400,6 +402,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             getScrollElement={getScrollElement}
             getBlocks={getBlocks}
             setBlockSpacers={setBlockSpacers}
+            setEditorTopPadding={setEditorTopPadding}
           />
         }
         onProseChange={() => setIsProseDirty(true)}
