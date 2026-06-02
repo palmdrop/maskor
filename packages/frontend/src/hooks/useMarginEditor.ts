@@ -29,6 +29,10 @@ export type UseMarginEditorResult = {
   revertToServer: () => void;
   // Stable string of the current local margin, for the swap mirror.
   serialize: () => string;
+  // Current local margin and the last-persisted baseline, serialized — the swap pair's
+  // `currentValue`/`serverValue`.
+  serializedContent: string;
+  serializedServer: string;
   // Apply a serialized margin (a recovered swap payload) back into local state.
   applySerialized: (raw: string) => void;
 };
@@ -199,6 +203,8 @@ export const useMarginEditor = (projectId: string, fragmentId: string): UseMargi
     save,
     revertToServer,
     serialize,
+    serializedContent: localSerialized,
+    serializedServer: baselineSerialized,
     applySerialized,
   };
 };

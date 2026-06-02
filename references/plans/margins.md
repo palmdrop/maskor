@@ -74,10 +74,10 @@ Independently committable; depends only on the Phase 1 strip helper.
 
 ### Phase 5 — Linked swap pair (fragment ↔ Margin)
 
-- [ ] Extend the `.maskor/swap/` mechanism so the fragment and its Margin are a linked pair: unsaved edits to either are mirrored; on reopen both restore together under a single banner; never one without the other.
-- [ ] Revert/keep applies to the pair atomically.
-- [ ] Tests: crash/reopen with unsaved edits in fragment only, Margin only, and both; single banner; atomic revert.
-- [ ] `specifications/fragment-editor.md`: Shipped entry (extends the 2026-05-19 swap entry). Commit.
+- [x] Extend the `.maskor/swap/` mechanism so the fragment and its Margin are a linked pair: unsaved edits to either are mirrored; on reopen both restore together under a single banner; never one without the other.
+- [x] Revert/keep applies to the pair atomically.
+- [x] Tests: crash/reopen with unsaved edits in fragment only, Margin only, and both; single banner; atomic revert.
+- [x] `specifications/fragment-editor.md`: Shipped entry (extends the 2026-05-19 swap entry). Commit.
 
 ### Phase 6 — Side-by-side Margin panel (UI)
 

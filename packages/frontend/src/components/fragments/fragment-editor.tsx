@@ -30,8 +30,10 @@ import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginPanel, type MarginPanelHandle } from "@components/margins/margin-panel";
+import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
 import { Separator } from "@components/ui/separator";
 import { useMarginEditor } from "@hooks/useMarginEditor";
+import { useEntityContentSwap } from "@hooks/useEntityContentSwap";
 import { useCommands } from "../../lib/commands/useCommands";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentEditorScope } from "../../lib/commands/scopes/fragment-editor";
@@ -89,6 +91,32 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const marginPanelRef = useRef<MarginPanelHandle>(null);
 
   const marginEditor = useMarginEditor(projectId, fragmentId);
+
+  // The Margin's unsaved buffer is mirrored to `.maskor/swap/margin/<fragmentUuid>.json`, keyed by
+  // the owning fragment so it forms a linked pair with the fragment swap. The single recovery banner
+  // (rendered below) restores both sides together; neither is restored without the other.
+  const marginSwap = useEntityContentSwap({
+    projectId,
+    entityType: "margin",
+    entityUUID: fragmentId,
+    currentValue: marginEditor.serializedContent,
+    serverValue: marginEditor.serializedServer,
+  });
+
+  // Fragment swap recovery, reported up from the shell so it can be coordinated with the margin's.
+  const [fragmentRecovery, setFragmentRecovery] = useState<{ at: Date } | null>(null);
+
+  // Apply the recovered Margin buffer once, mirroring the shell's fragment-recovery behaviour.
+  const marginRecoveryAppliedRef = useRef(false);
+  useEffect(() => {
+    marginRecoveryAppliedRef.current = false;
+  }, [projectId, fragmentId]);
+  useEffect(() => {
+    if (!marginSwap.recovery) return;
+    if (marginRecoveryAppliedRef.current) return;
+    marginRecoveryAppliedRef.current = true;
+    marginEditor.applySerialized(marginSwap.recovery.content);
+  }, [marginSwap.recovery, marginEditor]);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
   const isDirty = isProseDirty;
@@ -212,10 +240,34 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const handleMarginSave = useCallback(async () => {
     try {
       await marginEditor.save();
+      // The canonical save succeeded — drop the mirrored buffer.
+      await marginSwap.clear();
     } catch {
       toast.error("Couldn't save the margin.");
     }
-  }, [marginEditor]);
+  }, [marginEditor, marginSwap]);
+
+  // The linked pair's single "restore from server": revert both the fragment and the Margin to the
+  // last saved state and drop both swap buffers, atomically. Never one without the other.
+  const handlePairRestore = useCallback(() => {
+    shellRef.current?.restoreFromServer();
+    marginEditor.revertToServer();
+    void marginSwap.clear();
+  }, [marginEditor, marginSwap]);
+
+  // One recovery offer covers the pair; surface whichever side cached most recently for the label.
+  const pairRecovery = useMemo(() => {
+    const fragmentAt = fragmentRecovery?.at ?? null;
+    const marginAt = marginSwap.recovery?.at ?? null;
+    if (!fragmentAt && !marginAt) return null;
+    const at =
+      fragmentAt && marginAt
+        ? fragmentAt > marginAt
+          ? fragmentAt
+          : marginAt
+        : (fragmentAt ?? marginAt!);
+    return { at };
+  }, [fragmentRecovery, marginSwap.recovery]);
 
   useCommandScope(marginScope, {
     hasFragment: !!fragment,
@@ -272,6 +324,17 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     </div>
   ) : undefined;
 
+  // The shell's own fragment banner is suppressed; this single banner covers the linked pair and
+  // restores both fragment and Margin together.
+  const pairBanner = (
+    <>
+      {pairRecovery && (
+        <UnsavedRecoveryBanner cachedAt={pairRecovery.at} onDismiss={handlePairRestore} />
+      )}
+      {discardedBanner}
+    </>
+  );
+
   return (
     <>
       <EntityEditorShell
@@ -284,7 +347,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         content={fragment.content}
         isPending={isActionPending}
         isDirty={isDirty}
-        banner={discardedBanner}
+        banner={pairBanner}
+        suppressRecoveryBanner
+        onRecoveryChange={setFragmentRecovery}
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}
         onLiveContentChange={setFragmentContent}

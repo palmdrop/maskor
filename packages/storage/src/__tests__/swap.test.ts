@@ -139,4 +139,23 @@ describe("createSwapStorage", () => {
     expect(sorted).toHaveLength(3);
     expect(sorted.map((entry) => entry.entityType).sort()).toEqual(["aspect", "fragment", "note"]);
   });
+
+  it("round-trips a margin swap keyed by the owning fragment uuid (linked pair)", async () => {
+    const storage = createSwapStorage({ vaultPath });
+    // A fragment and its Margin share the same uuid key but distinct entity-type directories, so the
+    // two swap buffers coexist and can be read/cleared independently.
+    await storage.write("fragment", "shared-uuid", "fragment buffer");
+    await storage.write("margin", "shared-uuid", '{"notes":"unsaved","comments":[]}');
+
+    expect((await storage.read("margin", "shared-uuid"))?.content).toBe(
+      '{"notes":"unsaved","comments":[]}',
+    );
+    expect(existsSync(join(vaultPath, ".maskor", "swap", "margin", "shared-uuid.json"))).toBe(true);
+
+    // Clearing one side leaves the other intact (independent persistence).
+    await storage.delete("fragment", "shared-uuid");
+    expect((await storage.read("margin", "shared-uuid"))?.content).toBe(
+      '{"notes":"unsaved","comments":[]}',
+    );
+  });
 });

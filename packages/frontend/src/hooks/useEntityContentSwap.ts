@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDeleteSwap, useGetSwap, usePutSwap } from "@api/generated/swap/swap";
 
-export type SwapEntityKind = "fragment" | "aspect" | "note" | "reference";
+export type SwapEntityKind = "fragment" | "aspect" | "note" | "reference" | "margin";
 
 export type SwapRecovery = {
   content: string;

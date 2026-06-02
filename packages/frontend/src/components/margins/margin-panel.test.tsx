@@ -33,6 +33,8 @@ const buildMarginEditor = (
   save: vi.fn(),
   revertToServer: vi.fn(),
   serialize: vi.fn(() => ""),
+  serializedContent: "",
+  serializedServer: "",
   applySerialized: vi.fn(),
   ...overrides,
 });
