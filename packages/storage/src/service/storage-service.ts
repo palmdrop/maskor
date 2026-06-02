@@ -63,7 +63,7 @@ import {
   findFragmentUuidsByReferenceKey,
   findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
-import { extractCommentMarkerIds } from "@maskor/shared";
+import { extractCommentMarkerIds, extractBlockOpening } from "@maskor/shared";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { joinCategoryPath } from "../utils/category";
@@ -268,6 +268,50 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     });
 
     return margin;
+  };
+
+  // On a fragment content edit, keep the bound Margin's stored excerpts honest: refresh each
+  // *anchored* comment's excerpt from its block's current opening, and *freeze* the excerpt once the
+  // comment is orphaned (its marker is gone). Returns true when anything changed (excerpt or orphan
+  // state) so the caller can emit `margin:synced`. Caller holds the vault write lock. When nothing
+  // changed there is no file churn — the cheap DB-only orphan recompute already kept the index
+  // coherent and is run as the fast path.
+  const refreshMarginExcerptsOnFragmentSave = async (
+    context: ProjectContext,
+    fragmentUuid: string,
+    fragmentContent: string,
+  ): Promise<boolean> => {
+    const fragmentMarkerIds = new Set(extractCommentMarkerIds(fragmentContent));
+    const margin = await readMargin(context, fragmentUuid);
+    // No Margin file: nothing to refresh, but the DB index may still carry stale orphan flags.
+    if (!margin) {
+      return recomputeMarginOrphans(getVaultDatabase(context), fragmentUuid, fragmentMarkerIds);
+    }
+
+    let changed = false;
+    const refreshedComments: Comment[] = margin.comments.map((comment) => {
+      const anchored = fragmentMarkerIds.has(comment.markerId);
+      // Orphaned comments freeze their last-known excerpt — never recompute from a now-absent block.
+      if (!anchored) return comment;
+      const opening = extractBlockOpening(fragmentContent, comment.markerId) ?? comment.excerpt;
+      if (opening !== comment.excerpt) changed = true;
+      return { ...comment, excerpt: opening };
+    });
+
+    // An orphan-state flip (a marker appearing/disappearing) also needs a sync even when no excerpt
+    // text moved — the DB orphan flags must follow.
+    const orphanFlagsChanged = recomputeMarginOrphans(
+      getVaultDatabase(context),
+      fragmentUuid,
+      fragmentMarkerIds,
+    );
+
+    if (changed) {
+      // Rewrite the file (and reindex) so the Obsidian-visible `> excerpt` matches the live block.
+      await persistMargin(context, fragmentUuid, margin.notes, refreshedComments);
+    }
+
+    return changed || orphanFlagsChanged;
   };
 
   const getSuggestionCooldown = (context: ProjectContext): CooldownSet => {
@@ -823,15 +867,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             computeWordCount(fragmentToWrite.content),
           );
 
-          // The fragment body carries the anchor markers, so a content edit may orphan or rebind a
-          // comment in the bound Margin (whose own file is untouched). Recompute its orphan flags;
-          // when any changed, emit margin:synced — the watcher can't (its hash-guard sees the
-          // inline-written fragment row and short-circuits before it would emit).
+          // The fragment body carries the anchor markers, so a content edit may orphan/rebind a
+          // comment in the bound Margin and shifts the block openings its excerpts mirror. Refresh
+          // each anchored comment's excerpt from its current block (freezing orphaned ones) and
+          // recompute orphan flags; when anything changed, emit margin:synced — the watcher can't
+          // (its hash-guard sees the inline-written fragment row and short-circuits before it would
+          // emit).
           if (
-            recomputeMarginOrphans(
-              vaultDatabase,
+            await refreshMarginExcerptsOnFragmentSave(
+              context,
               fragmentToWrite.uuid,
-              new Set(extractCommentMarkerIds(fragmentToWrite.content)),
+              fragmentToWrite.content,
             )
           ) {
             emitVaultEvent(context.projectUUID, {

@@ -2,6 +2,9 @@ import type { Comment } from "@api/generated/maskorAPI.schemas";
 
 type Props = {
   comment: Comment;
+  // The excerpt to display: derived live from the fragment block for anchored comments, or the
+  // frozen stored excerpt for orphans. Falls back to `comment.excerpt` when omitted.
+  displayExcerpt?: string;
   // Orphaned comments (marker gone from the fragment) render muted with an explanatory badge.
   orphaned?: boolean;
   // Compact mode shows excerpt + body preview only; expanded mode shows the editable body.
@@ -18,6 +21,7 @@ type Props = {
 // fragment editor (scroll correspondence).
 export const CommentCard = ({
   comment,
+  displayExcerpt,
   orphaned = false,
   compact,
   onBodyChange,
@@ -25,6 +29,7 @@ export const CommentCard = ({
   onReveal,
   bodyRef,
 }: Props) => {
+  const excerpt = displayExcerpt ?? comment.excerpt;
   return (
     <div
       className={`group rounded-md border px-3 py-2 text-sm ${
@@ -42,7 +47,7 @@ export const CommentCard = ({
           onClick={onReveal}
           title={orphaned ? "Anchor lost" : "Reveal the annotated block"}
         >
-          {comment.excerpt || <span className="not-italic">(no excerpt)</span>}
+          {excerpt || <span className="not-italic">(no excerpt)</span>}
         </button>
         <div className="flex items-center gap-1 shrink-0">
           {orphaned && (

@@ -5,6 +5,9 @@ import {
   extractCommentMarkerIds,
   hasCommentMarker,
   stripCommentMarkers,
+  deriveExcerpt,
+  extractBlockOpening,
+  EXCERPT_MAX_LENGTH,
 } from "../utils/comment-marker";
 
 describe("buildCommentMarker", () => {
@@ -55,5 +58,39 @@ describe("stripCommentMarkers", () => {
 
   it("leaves marker-free text untouched", () => {
     expect(stripCommentMarkers("nothing here")).toBe("nothing here");
+  });
+});
+
+describe("deriveExcerpt", () => {
+  it("strips markers, collapses whitespace, and trims", () => {
+    expect(deriveExcerpt("  The   bridge\n groans <!--c:abc-->  ")).toBe("The bridge groans");
+  });
+
+  it("caps at the max length with an ellipsis", () => {
+    const long = "a".repeat(EXCERPT_MAX_LENGTH + 50);
+    const excerpt = deriveExcerpt(long);
+    expect(excerpt.endsWith("…")).toBe(true);
+    expect(excerpt.length).toBe(EXCERPT_MAX_LENGTH + 1); // cap + the ellipsis char
+  });
+
+  it("leaves a short block uncapped", () => {
+    expect(deriveExcerpt("short opening")).toBe("short opening");
+  });
+});
+
+describe("extractBlockOpening", () => {
+  const content = "First paragraph here.\n\nSecond paragraph. <!--c:m2-->\n\nThird one.";
+
+  it("returns the opening of the block carrying the marker", () => {
+    expect(extractBlockOpening(content, "m2")).toBe("Second paragraph.");
+  });
+
+  it("returns null when the marker is absent (orphaned)", () => {
+    expect(extractBlockOpening(content, "missing")).toBeNull();
+  });
+
+  it("derives the opening from a multi-line block", () => {
+    const block = "Line one\nline two <!--c:m-->";
+    expect(extractBlockOpening(block, "m")).toBe("Line one line two");
   });
 });

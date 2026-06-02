@@ -22,7 +22,8 @@ import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
 import { toast } from "sonner";
-import { extractCommentMarkerIds, createCommentMarkerId } from "@maskor/shared";
+import { extractCommentMarkerIds, createCommentMarkerId, deriveExcerpt } from "@maskor/shared";
+import { deriveLiveExcerpts } from "@lib/margins/excerpts";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
@@ -131,6 +132,12 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const fragmentMarkerIds = useMemo(
     () => extractCommentMarkerIds(fragmentContent),
     [fragmentContent],
+  );
+  // Display excerpts derived live from the open fragment buffer (no file churn): an anchored
+  // comment shows its block's current opening; orphans fall back to their frozen stored excerpt.
+  const liveExcerpts = useMemo(
+    () => deriveLiveExcerpts(fragmentContent, fragmentMarkerIds),
+    [fragmentContent, fragmentMarkerIds],
   );
 
   const onDirtyChangeRef = useRef(onDirtyChange);
@@ -276,7 +283,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     const block = shellRef.current?.getCurrentBlock();
     const markerId = createCommentMarkerId();
     shellRef.current?.appendCommentMarker(markerId);
-    marginEditor.addCommentStub({ markerId, excerpt: block?.text ?? "", body: "" });
+    marginEditor.addCommentStub({ markerId, excerpt: deriveExcerpt(block?.text ?? ""), body: "" });
     marginPanelRef.current?.focusComment(markerId);
   }, [marginEditor]);
 
@@ -371,6 +378,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             projectId={projectId}
             marginEditor={marginEditor}
             fragmentMarkerIds={fragmentMarkerIds}
+            liveExcerpts={liveExcerpts}
             onSave={() => commands.run("margin:save")}
             onCommentBlock={() => commands.run("margin:comment-block")}
             onRevealMarker={handleRevealMarker}

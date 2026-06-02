@@ -19,6 +19,9 @@ type Props = {
   // Marker ids present in the live fragment buffer, in document order. Drives comment ordering and
   // orphan detection: a stored comment whose marker is absent here is orphaned.
   fragmentMarkerIds: string[];
+  // Display excerpts derived live from the open fragment buffer, keyed by marker id. Anchored
+  // comments render this (their block's current opening); orphans fall back to the stored excerpt.
+  liveExcerpts?: Record<string, string>;
   onSave: () => void;
   onCommentBlock?: () => void;
   onRevealMarker?: (markerId: string) => void;
@@ -78,7 +81,15 @@ const SectionHeader = ({
 // The side-by-side Margin surface: a fragment's companion notes + anchored comments, rendered as a
 // self-contained pair beside the fragment editor (designed to later drop into a graph-canvas node).
 export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginPanel(
-  { projectId, marginEditor, fragmentMarkerIds, onSave, onCommentBlock, onRevealMarker },
+  {
+    projectId,
+    marginEditor,
+    fragmentMarkerIds,
+    liveExcerpts,
+    onSave,
+    onCommentBlock,
+    onRevealMarker,
+  },
   ref,
 ) {
   const { notes, comments, isDirty, isSaving, setNotes, updateCommentBody, removeComment } =
@@ -138,6 +149,10 @@ export const MarginPanel = forwardRef<MarginPanelHandle, Props>(function MarginP
     <CommentCard
       key={comment.markerId}
       comment={comment}
+      // Anchored: the block's live opening; orphaned: the frozen stored excerpt.
+      displayExcerpt={
+        orphanedFlag ? comment.excerpt : (liveExcerpts?.[comment.markerId] ?? comment.excerpt)
+      }
       orphaned={orphanedFlag}
       compact={compact}
       onBodyChange={(body) => updateCommentBody(comment.markerId, body)}

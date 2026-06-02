@@ -858,7 +858,7 @@ describe("StorageService.fragments — Margin lifecycle cascade", () => {
   });
 });
 
-import { buildCommentMarker } from "@maskor/shared";
+import { buildCommentMarker, deriveExcerpt } from "@maskor/shared";
 
 // Helpers: set up a project + an active fragment whose body carries a comment marker.
 const setupMarginContext = async () => {
@@ -919,6 +919,90 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     await service.fragments.write(context, { ...full, content: full.content });
     const orphaned = await service.margins.listOrphanedComments(context);
     expect(orphaned.map((c) => c.markerId)).toEqual(["anchor"]);
+  });
+
+  it("refreshes an anchored comment's excerpt from its block opening on fragment save", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    // Anchor a comment to a block whose opening will change.
+    await service.fragments.write(context, {
+      ...full,
+      content: `Original opening sentence. ${buildCommentMarker("anchor")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "anchor", excerpt: "stale excerpt", body: "comment" }],
+    });
+
+    // Rewrite the block; the stored excerpt must follow the block's new opening.
+    await service.fragments.write(context, {
+      ...full,
+      content: `A wholly rewritten opening line. ${buildCommentMarker("anchor")}`,
+    });
+
+    const margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.comments[0]?.excerpt).toBe(deriveExcerpt("A wholly rewritten opening line."));
+  });
+
+  it("caps a refreshed excerpt at the block opening (ellipsis), not the whole block", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    const longBlock = "word ".repeat(40).trim();
+    await service.fragments.write(context, {
+      ...full,
+      content: `${longBlock} ${buildCommentMarker("anchor")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "anchor", excerpt: "x", body: "" }],
+    });
+    await service.fragments.write(context, {
+      ...full,
+      content: `${longBlock}! ${buildCommentMarker("anchor")}`,
+    });
+
+    const margin = await service.margins.read(context, fragment.uuid);
+    expect(margin?.comments[0]?.excerpt.endsWith("…")).toBe(true);
+    expect(margin!.comments[0]!.excerpt.length).toBeLessThanOrEqual(81);
+  });
+
+  it("freezes the excerpt once the comment is orphaned, and the round-trip preserves it", async () => {
+    const { service, context } = await setupMarginContext();
+    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
+    const full = await service.fragments.read(context, fragment.uuid);
+
+    await service.fragments.write(context, {
+      ...full,
+      content: `Last known opening. ${buildCommentMarker("anchor")}`,
+    });
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "anchor", excerpt: "stale", body: "comment" }],
+    });
+    // Save once while anchored to capture the live opening as the frozen value.
+    await service.fragments.write(context, {
+      ...full,
+      content: `Last known opening. ${buildCommentMarker("anchor")}`,
+    });
+    const frozen = (await service.margins.read(context, fragment.uuid))!.comments[0]!.excerpt;
+    expect(frozen).toBe(deriveExcerpt("Last known opening."));
+
+    // Strip the marker → orphaned. The excerpt must not be recomputed or cleared.
+    await service.fragments.write(context, { ...full, content: "Some other text entirely." });
+    const afterOrphan = await service.margins.read(context, fragment.uuid);
+    expect(afterOrphan?.comments[0]?.excerpt).toBe(frozen);
+    expect((await service.margins.listOrphanedComments(context)).map((c) => c.markerId)).toEqual([
+      "anchor",
+    ]);
+
+    // A vault → DB → vault rebuild keeps the frozen excerpt intact.
+    await service.index.reset(context);
+    const afterReset = await service.margins.read(context, fragment.uuid);
+    expect(afterReset?.comments[0]?.excerpt).toBe(frozen);
   });
 
   it("createComment / deleteComment round-trip through the Margin", async () => {

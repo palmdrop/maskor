@@ -41,6 +41,34 @@ export const extractCommentMarkerIds = (text: string): string[] => {
 export const hasCommentMarker = (text: string, markerId: string): boolean =>
   extractCommentMarkerIds(text).includes(markerId);
 
+// A comment's excerpt is the *opening* of its anchored block, capped to keep the Margin honest and
+// compact (ADR 0008). The cap is short by design — it is display context, not the body.
+export const EXCERPT_MAX_LENGTH = 80;
+
+// Collapse a block's text into a single-line opening excerpt: strip anchor markers, collapse runs of
+// whitespace to single spaces, trim, and cap at `maxLength` with an ellipsis. Shared by the live
+// display derivation (frontend) and the refresh-on-save persistence (storage) so both produce
+// byte-identical excerpts.
+export const deriveExcerpt = (blockText: string, maxLength = EXCERPT_MAX_LENGTH): string => {
+  const cleaned = stripCommentMarkers(blockText).replace(/\s+/g, " ").trim();
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength).trimEnd()}…`;
+};
+
+// The opening excerpt of the block (blank-line-separated paragraph) that carries `markerId` in
+// `content`, or null when the marker is absent (the comment is orphaned). Used to refresh a stored
+// excerpt on fragment save and to live-derive the display excerpt from the open fragment buffer.
+export const extractBlockOpening = (
+  content: string,
+  markerId: string,
+  maxLength = EXCERPT_MAX_LENGTH,
+): string | null => {
+  const marker = buildCommentMarker(markerId);
+  const block = content.split(/\n[ \t]*\n/).find((candidate) => candidate.includes(marker));
+  if (block === undefined) return null;
+  return deriveExcerpt(block, maxLength);
+};
+
 // Remove every `<!--c:ID-->` marker (and any horizontal whitespace immediately before it) from the
 // text. Used by the export/preview assembly path so assembled output carries no markers, and by any
 // caller that needs the marker-free prose.
