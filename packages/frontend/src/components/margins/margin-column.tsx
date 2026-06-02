@@ -20,9 +20,15 @@ import {
   previousSlotIndex,
   type FragmentBlock,
 } from "@lib/margins/column";
+import { computeBlockAlignment, naturalSlotHeights, spacersEqual } from "@lib/margins/alignment";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
 import { CommentCard } from "./comment-card";
 import { SlotEditor, type EditorMode } from "./slot-editor";
+
+// Safety cap on a single document-side spacer so one runaway comment can't open an absurd gap. A
+// collapsed comment is already clipped (line-clamp) and a focused/expanded one is intentionally
+// uncapped within this bound.
+const MAX_SPACER = 4000;
 
 export type MarginColumnHandle = {
   // Jump focus to a paragraph's slot (the "Comment this block" gesture, now a jump). Focuses the
@@ -54,6 +60,9 @@ type Props = {
   // The editor's authoritative block list (ADR 0009): the column renders one row per entry and binds
   // comments by markerId, so its block-index space matches the editor's geometry exactly.
   getBlocks: () => EditorBlock[];
+  // Push document-side spacers (pixels, by block index) so a comment taller than its block pushes the
+  // next paragraph down — the document side of mutual flow alignment.
+  setBlockSpacers: (spacers: number[]) => void;
 };
 
 export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function MarginColumn(
@@ -70,6 +79,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     focusMarkerBlock,
     getScrollElement,
     getBlocks,
+    setBlockSpacers,
   },
   ref,
 ) {
@@ -86,6 +96,12 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   // Bumped after mount / content change / resize to re-pull the editor's measured geometry. The block
   // list itself comes from the editor (ADR 0009) — the single source of enumeration and geometry.
   const [geometryTick, setGeometryTick] = useState(0);
+  // Per-block row min-heights (margin side): a short comment fills its block's slot. Populated by the
+  // alignment pass below from the editor's measured geometry.
+  const [minHeights, setMinHeights] = useState<number[]>([]);
+  // The spacers we last pushed to the editor — backed out when recovering the natural slot heights so
+  // the alignment pass converges (the spacer never feeds into its own input).
+  const currentSpacersRef = useRef<number[]>([]);
 
   const editorBlocks = useMemo(() => getBlocks(), [getBlocks, fragmentContent, mode, geometryTick]);
   // Structural rows in the editor's block order; geometry stays indexed alongside for padding.
@@ -153,6 +169,35 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     return () => observer.disconnect();
   }, [getScrollElement, remeasure]);
 
+  // --- Mutual flow alignment (ADR 0009). Each row is as tall as the taller of its block-slot and its
+  // comment: the column pads short comments up to the slot (min-height), and the editor pushes the
+  // next block down by a spacer for a taller comment. Both are derived from natural (spacer-excluded)
+  // geometry so a single pass converges. Re-runs when the geometry or any comment height changes. ---
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const tops = editorBlocks.map((block) => block.top);
+    const heights = editorBlocks.map((block) => block.height);
+    const slots = naturalSlotHeights(tops, heights, currentSpacersRef.current);
+    // The rendered row height is already max(slot, comment) because the row carries min-height = slot,
+    // so feeding it as the comment height yields the right spacer without a separate content probe.
+    const rowHeights = slots.map((_, index) => {
+      const node = scroll.querySelector<HTMLElement>(`[data-row-index="${index}"]`);
+      return node ? node.getBoundingClientRect().height : 0;
+    });
+    const alignment = computeBlockAlignment(
+      slots.map((slot, index) => ({ naturalSlotHeight: slot, commentHeight: rowHeights[index]! })),
+      MAX_SPACER,
+    );
+    const spacers = alignment.map((row) => row.spacer);
+    const mins = alignment.map((row) => row.minHeight);
+    if (!spacersEqual(spacers, currentSpacersRef.current)) {
+      currentSpacersRef.current = spacers;
+      setBlockSpacers(spacers);
+    }
+    setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
+  }, [editorBlocks, comments, activeSlot, expandAll, mode, setBlockSpacers]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -201,7 +246,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   };
 
   const minHeightFor = (blockIndex: number): number | undefined => {
-    const height = editorBlocks[blockIndex]?.height;
+    const height = minHeights[blockIndex];
     return height && height > 0 ? height : undefined;
   };
 
@@ -299,6 +344,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 <div
                   key={comment.markerId}
                   data-slot-marker={comment.markerId}
+                  data-row-index={row.block.index}
                   className="group relative border-l-2 border-border/60 pl-3"
                   style={{ minHeight }}
                 >
@@ -367,6 +413,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               <div
                 key={`block-${row.block.index}`}
                 data-slot-block={row.block.index}
+                data-row-index={row.block.index}
                 className="group relative pl-3"
                 style={{ minHeight }}
               >

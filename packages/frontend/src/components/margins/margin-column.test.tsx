@@ -72,6 +72,7 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       focusMarkerBlock={vi.fn()}
       getScrollElement={() => null}
       getBlocks={() => blocksFromContent(fragmentContent)}
+      setBlockSpacers={vi.fn()}
       {...props}
     />,
   );
@@ -159,6 +160,45 @@ describe("MarginColumn", () => {
     expect(document.querySelector('[data-slot-block="0"]')).toBeTruthy();
     expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
     expect(screen.getByText("on body")).toBeTruthy();
+  });
+
+  it("pushes a document-side spacer when a comment is taller than its block slot", () => {
+    // jsdom reports zero geometry; stub each row's height by its data-row-index so the alignment pass
+    // has something to measure. Row 0 (the long comment) renders 200px against a 60px slot → a 140px
+    // spacer pushes block 1 down; the short last row needs none.
+    const rect = (height: number) =>
+      ({
+        height,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: height,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        return rect(this.getAttribute("data-row-index") === "0" ? 200 : 40);
+      });
+    const setBlockSpacers = vi.fn();
+    try {
+      renderColumn({
+        fragmentContent: "Long. <!--c:a-->\n\nShort.",
+        marginEditor: buildMarginEditor({ comments: [comment("a", "a very long comment body")] }),
+        getBlocks: () => [
+          { markerId: "a", text: "Long.", top: 0, height: 50 },
+          { markerId: null, text: "Short.", top: 60, height: 40 },
+        ],
+        setBlockSpacers,
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(setBlockSpacers).toHaveBeenCalled();
+    expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
   });
 
   it("keeps the notes header out of the scrolled flow (row 0 aligns with block 0)", () => {

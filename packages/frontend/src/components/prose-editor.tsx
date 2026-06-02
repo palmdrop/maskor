@@ -20,6 +20,9 @@ import {
 } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { commentMarkerExtension } from "./comment-marker-cm";
+import { blockSpacerExtension, blockSpacerKey } from "./block-spacer-tiptap";
+import { cmBlockSpacerExtension, setCmSpacersEffect } from "./block-spacer-cm";
+import { blockRanges } from "@lib/margins/block-ranges";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
@@ -30,21 +33,6 @@ type MarkdownStorage = {
     getMarkdown: () => string;
     serializer: { serialize: (content: unknown) => string };
   };
-};
-
-// Character ranges [from, to) of each blank-line-separated block in document order, matching
-// `enumerateBlocks`. Used to target a block for marker injection and to measure block geometry in
-// raw/vim (CM6) mode.
-const blockRanges = (text: string): { from: number; to: number }[] => {
-  const ranges: { from: number; to: number }[] = [];
-  const regex = /(^|\n)([ \t]*\S[^\n]*(?:\n[ \t]*\S[^\n]*)*)/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    const lead = match[1]?.length ?? 0;
-    const from = match.index + lead;
-    ranges.push({ from, to: from + (match[2]?.length ?? 0) });
-  }
-  return ranges;
 };
 
 export type SelectionCapture = { text: string; isEmpty: boolean };
@@ -80,6 +68,9 @@ export type ProseEditorHandle = {
   // markdown parse and the editor's DOM nodes. `top`/`height` are content-relative pixels (0 when
   // geometry can't yet be measured); `text` is the marker-stripped block opening for type-to-create.
   getBlocks: () => EditorBlock[];
+  // Push document-side spacers (pixels, indexed by block) so a tall Margin comment pushes the next
+  // block down, keeping rows aligned. A decoration only — never a buffer edit (ADR 0009).
+  setBlockSpacers: (spacers: number[]) => void;
 };
 
 // One block as the editor reports it: its comment anchor (the first marker on the block, or null),
@@ -224,17 +215,24 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       EditorView.lineWrapping,
       selectionListener,
       commentMarkerExtension(showSource),
+      cmBlockSpacerExtension,
     ],
     [cmTheme, selectionListener, showSource],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener, commentMarkerExtension(showSource)],
+    () => [
+      markdown(),
+      cmTheme,
+      selectionListener,
+      commentMarkerExtension(showSource),
+      cmBlockSpacerExtension,
+    ],
     [cmTheme, selectionListener, showSource],
   );
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
-    extensions: buildSharedProseExtensions(),
+    extensions: [...buildSharedProseExtensions(), blockSpacerExtension],
     content,
     onUpdate: () => onChangeRef.current?.(),
     onSelectionUpdate: ({ editor: tiptapEditor }) => {
@@ -539,6 +537,18 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           }
         });
         return blocks;
+      },
+      setBlockSpacers: (spacers: number[]) => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          // Effect-only dispatch: no doc change, so the buffer is never dirtied.
+          view.dispatch({ effects: setCmSpacersEffect.of(spacers) });
+          return;
+        }
+        if (!editor) return;
+        // Meta-only transaction: `docChanged` is false, so TipTap's onUpdate never fires.
+        editor.view.dispatch(editor.state.tr.setMeta(blockSpacerKey, spacers));
       },
     }),
     [vimMode, rawMarkdownMode, editor, content],

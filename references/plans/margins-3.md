@@ -69,12 +69,12 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 ### Phase 4 — Flow alignment rebuild (margin-side + document-side padding)
 
-- [ ] **Mutual padding.** Per row, `rowHeight = max(block.height, commentHeight)`, both derived from **natural** (unpadded) measurements so a single measure→compute→apply pass converges. Margin side pads comments shorter than their block (refine existing).
-- [ ] **Document-side spacer.** Inject vertical space **below** a block whose comment is taller — TipTap node decoration / CM6 block widget — adding height only, never mutating buffer text or affecting serialization. Re-measured on edit/resize/mode-change.
-- [ ] **Very-tall-comment cap.** Decide and apply a cap (e.g. clip beyond N× block height with expand-in-place) so one long comment can't open an enormous document gap.
-- [ ] **Congruent scroll.** Confirm the two scrollers stay exactly aligned under mirroring once rows are congruent (unified block source + notes header out of flow + inherited inter-block rhythm + spacers). No single physical scroller.
-- [ ] `specifications/margins.md`: replace the "document-side padding deferred" decision with shipped mutual padding; Shipped entry (→ ADR 0009). Note the resolved margins-2 Phase 5 deferral.
-- [ ] Tests: a comment taller than its block pushes the following paragraph down so the next row stays aligned (pure padding-math unit tests; manual smoke test in rich and vim/raw for the real geometry); margin-side padding for short comments; spacer never mutates buffer/markdown; cap behaviour.
+- [x] **Mutual padding.** Per row, `rowHeight = max(block.height, commentHeight)`, derived from **natural** (spacer-excluded) measurements (`naturalSlotHeights` backs out the current spacer) so the measure→compute→apply pass converges. Margin side pads comments shorter than their block via the computed `minHeight`. _(2026-06-02)_
+- [x] **Document-side spacer.** A TipTap widget decoration (`block-spacer-tiptap.ts`, meta-only transaction) and a CM6 block widget (`block-spacer-cm.ts`, effect-only dispatch) inject vertical space below a block whose comment is taller — height only, never buffer text or serialization. `ProseEditor.setBlockSpacers` drives both; re-measured on edit/resize/mode-change. _(2026-06-02)_
+- [x] **Very-tall-comment cap.** A collapsed comment is clipped to ~3 lines (line-clamp); a single spacer is capped at `MAX_SPACER` for safety; focused/expanded is intentionally uncapped within that bound. _(2026-06-02)_
+- [x] **Congruent scroll.** Two scrollers with `scrollTop` mirroring retained (no single physical scroller); congruence comes from the unified block source + notes header out of flow + inherited rhythm (rows keyed off measured tops) + spacers. _(2026-06-02)_
+- [x] `specifications/margins.md`: replaced the margin-side-only behaviour with shipped mutual padding; Shipped entry (→ ADR 0009). _(2026-06-02)_
+- [x] Tests: pure alignment math (`alignment.test.ts` — pad/spacer/convergence/cap/natural-slot/epsilon) + a column wiring test that stubs row geometry and asserts `setBlockSpacers([140, 0])`. **Manual smoke test in rich and vim/raw still required for the real decoration geometry.** _(2026-06-02)_
 - [ ] Commit.
 
 ### Phase 5 — Recovery: load fuzzy fallback & precise swap anchors

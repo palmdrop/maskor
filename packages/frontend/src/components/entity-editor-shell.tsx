@@ -55,6 +55,7 @@ export type EntityEditorShellHandle = {
   focusMarkerBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
   getBlocks: () => EditorBlock[];
+  setBlockSpacers: (spacers: number[]) => void;
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
   restoreFromServer: () => void;
@@ -336,6 +337,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         focusMarkerBlock: (markerId: string) => proseEditorRef.current?.focusMarkerBlock(markerId),
         getScrollElement: () => proseEditorRef.current?.getScrollElement() ?? null,
         getBlocks: () => proseEditorRef.current?.getBlocks() ?? [],
+        setBlockSpacers: (spacers: number[]) => proseEditorRef.current?.setBlockSpacers(spacers),
         restoreFromServer: () => handleRestoreFromServer(),
       }),
       [saveContent, handleRestoreFromServer],
