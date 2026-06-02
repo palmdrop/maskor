@@ -12,6 +12,14 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] finish remove piece plan (see worktree)
 
+- [ ] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
+
+- [ ] when adding an aspect, even when navigating to select an option, enter creates a new aspect, unless the full aspect name is inputted in the search field
+
+- [ ] when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown instead. Backend state is probably not updated properly?
+
+- [ ] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
+
 - [ ] make it possible to "clone" a sequence, or insert one sequence into another, etc
 
 - [ ] add way to select many fragments in sequence, way of making them into a section
