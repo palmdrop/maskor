@@ -32,6 +32,21 @@ type MarkdownStorage = {
   };
 };
 
+// Character ranges [from, to) of each blank-line-separated block in document order, matching
+// `enumerateBlocks`. Used to target a block for marker injection and to measure block geometry in
+// raw/vim (CM6) mode.
+const blockRanges = (text: string): { from: number; to: number }[] => {
+  const ranges: { from: number; to: number }[] = [];
+  const regex = /(^|\n)([ \t]*\S[^\n]*(?:\n[ \t]*\S[^\n]*)*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const lead = match[1]?.length ?? 0;
+    const from = match.index + lead;
+    ranges.push({ from, to: from + (match[2]?.length ?? 0) });
+  }
+  return ranges;
+};
+
 export type SelectionCapture = { text: string; isEmpty: boolean };
 
 export type ProseEditorHandle = {
@@ -42,13 +57,26 @@ export type ProseEditorHandle = {
   // Marker-block operations backing the Margin comment gesture and scroll correspondence. The block
   // is the line (CM6/vim) or the parent text block (TipTap) at the cursor. `markerId` is the comment
   // anchor already present on that block (the first one), or null — used to enforce one comment per
-  // block (the gesture focuses the existing comment instead of injecting a second marker).
-  getCurrentBlock: () => { text: string; markerId: string | null } | null;
+  // block (the gesture focuses the existing comment instead of injecting a second marker). `index` is
+  // the block's document-order index (matching `enumerateBlocks`), for jumping to its margin slot.
+  getCurrentBlock: () => { text: string; markerId: string | null; index: number } | null;
   appendCommentMarker: (markerId: string) => void;
+  // Inject a marker into a specific block (blank-line paragraph, by document-order index) — the
+  // annotated-paragraphs column's type-to-create on an arbitrary paragraph. No-op when the index is
+  // out of range.
+  insertCommentMarkerInBlock: (blockIndex: number, markerId: string) => void;
   // Strip a comment's anchor marker from the buffer (the delete-comment coordinated edit). No-op when
   // the marker is absent (an orphaned comment leaves the fragment untouched).
   stripCommentMarker: (markerId: string) => void;
   revealCommentMarker: (markerId: string) => void;
+  // Move the caret into the block carrying `markerId` and focus the editor (Escape from a comment
+  // returns to its bound paragraph).
+  focusMarkerBlock: (markerId: string) => void;
+  // The scrolling element of the active editor, for scroll-sync with the margin column.
+  getScrollElement: () => HTMLElement | null;
+  // Rendered pixel heights of each block in document order (matching `enumerateBlocks`), for
+  // margin-side padding. Empty when geometry can't be measured.
+  getBlockHeights: () => number[];
 };
 
 type Props = {
@@ -79,6 +107,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
+  // The rich-mode scroll container, for scroll-sync with the margin column.
+  const richScrollerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const cursorRef = useRef(cursor);
@@ -286,13 +316,20 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           editor.commands.focus();
         }
       },
-      getCurrentBlock: (): { text: string; markerId: string | null } | null => {
+      getCurrentBlock: (): { text: string; markerId: string | null; index: number } | null => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return null;
-          const line = view.state.doc.lineAt(view.state.selection.main.head);
+          const head = view.state.selection.main.head;
+          const ranges = blockRanges(view.state.doc.toString());
+          const index = ranges.findIndex((range) => head >= range.from && head <= range.to);
+          const line = view.state.doc.lineAt(head);
           const markerId = extractCommentMarkerIds(line.text)[0] ?? null;
-          return { text: stripCommentMarkers(line.text).trim(), markerId };
+          return {
+            text: stripCommentMarkers(line.text).trim(),
+            markerId,
+            index: index === -1 ? Math.max(ranges.length - 1, 0) : index,
+          };
         }
         if (!editor) return null;
         const { $from } = editor.state.selection;
@@ -303,7 +340,13 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             markerId = (child.attrs.markerId as string | null) ?? null;
           }
         });
-        return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId };
+        // The top-level block index containing the caret.
+        const pos = $from.pos;
+        let index = 0;
+        editor.state.doc.forEach((node, offset, childIndex) => {
+          if (pos >= offset && pos <= offset + node.nodeSize) index = childIndex;
+        });
+        return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId, index };
       },
       appendCommentMarker: (markerId: string) => {
         const marker = buildCommentMarker(markerId);
@@ -319,6 +362,31 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         // Insert the schema-modeled marker node at the end of the current text block.
         const end = editor.state.selection.$from.end();
         editor.commands.insertContentAt(end, { type: "commentMarker", attrs: { markerId } });
+      },
+      insertCommentMarkerInBlock: (blockIndex: number, markerId: string) => {
+        const marker = buildCommentMarker(markerId);
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          const range = blockRanges(view.state.doc.toString())[blockIndex];
+          if (!range) return;
+          view.dispatch({ changes: { from: range.to, insert: marker } });
+          return;
+        }
+        if (!editor) return;
+        // Find the blockIndex-th top-level node and insert the marker node at its end.
+        let targetEnd: number | null = null;
+        editor.state.doc.forEach((node, offset, index) => {
+          if (index === blockIndex) {
+            // +1 enters the node; +node.content.size lands at the end of its inline content.
+            targetEnd = offset + 1 + node.content.size;
+          }
+        });
+        if (targetEnd === null) return;
+        editor.commands.insertContentAt(targetEnd, {
+          type: "commentMarker",
+          attrs: { markerId },
+        });
       },
       stripCommentMarker: (markerId: string) => {
         if (vimMode || rawMarkdownMode) {
@@ -375,6 +443,63 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           editor.chain().setTextSelection(markerPosition).scrollIntoView().run();
         }
       },
+      focusMarkerBlock: (markerId: string) => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return;
+          const text = view.state.doc.toString();
+          const regex = createCommentMarkerTokenRegex();
+          let match: RegExpExecArray | null;
+          while ((match = regex.exec(text)) !== null) {
+            if (match[1] === markerId) {
+              view.focus();
+              view.dispatch({
+                selection: { anchor: match.index },
+                effects: EditorView.scrollIntoView(match.index, { y: "center" }),
+              });
+              return;
+            }
+          }
+          return;
+        }
+        if (!editor) return;
+        let markerPosition: number | null = null;
+        editor.state.doc.descendants((node, position) => {
+          if (markerPosition !== null) return false;
+          if (node.type.name === "commentMarker" && node.attrs.markerId === markerId) {
+            markerPosition = position;
+            return false;
+          }
+          return true;
+        });
+        if (markerPosition !== null) {
+          editor.chain().focus().setTextSelection(markerPosition).scrollIntoView().run();
+        }
+      },
+      getScrollElement: (): HTMLElement | null => {
+        if (vimMode || rawMarkdownMode) return viewRef.current?.scrollDOM ?? null;
+        return richScrollerRef.current;
+      },
+      getBlockHeights: (): number[] => {
+        if (vimMode || rawMarkdownMode) {
+          const view = viewRef.current;
+          if (!view) return [];
+          return blockRanges(view.state.doc.toString()).map((range) => {
+            const top = view.coordsAtPos(range.from);
+            const bottom = view.coordsAtPos(range.to);
+            if (!top || !bottom) return 0;
+            return Math.max(0, bottom.bottom - top.top);
+          });
+        }
+        if (!editor) return [];
+        const heights: number[] = [];
+        editor.state.doc.forEach((_node, offset) => {
+          const dom = editor.view.nodeDOM(offset);
+          if (dom instanceof HTMLElement) heights.push(dom.getBoundingClientRect().height);
+          else heights.push(0);
+        });
+        return heights;
+      },
     }),
     [vimMode, rawMarkdownMode, editor, content],
   );
@@ -412,7 +537,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   return (
     <div className="flex flex-col h-full gap-2 w-full">
       <ProseToolbar editor={editor} />
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={richScrollerRef}>
         <div
           className="mx-auto w-full"
           style={{ fontSize: `${fontSize}px`, maxWidth: `${maxParagraphWidth}ch` }}

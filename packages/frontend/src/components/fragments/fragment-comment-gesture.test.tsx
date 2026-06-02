@@ -4,15 +4,20 @@ import { forwardRef, useImperativeHandle, type Ref, type ReactNode } from "react
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import { allCommands } from "@lib/commands/catalog";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
-import type { MarginPanelHandle } from "@components/margins/margin-panel";
+import type { MarginColumnHandle } from "@components/margins/margin-column";
 
 // The gesture is driven through the REAL command system (palette / vim hotkey / button all route to
-// `margin:comment-block`). Only the editor surfaces and data hooks are stubbed.
+// `margin:comment-block`). It is now a *jump* to the paragraph's margin slot — no marker injection,
+// no stub creation (creation is implicit: typing in the slot conjures the comment).
 
-const getCurrentBlockSpy = vi.fn(() => ({ text: "the cursor block" }));
+const getCurrentBlockSpy = vi.fn(() => ({
+  text: "the cursor block",
+  markerId: "m1" as string | null,
+  index: 2,
+}));
 const appendCommentMarkerSpy = vi.fn();
 const shellSaveSpy = vi.fn();
-const focusCommentSpy = vi.fn();
+const focusSlotSpy = vi.fn();
 const addCommentStubSpy = vi.fn();
 const marginSaveSpy = vi.fn();
 
@@ -20,7 +25,7 @@ type ShellProps = { banner?: ReactNode; rightPanel?: ReactNode };
 type ShellHandle = {
   save: () => Promise<void>;
   getSelection: () => { text: string; isEmpty: boolean };
-  getCurrentBlock: () => { text: string } | null;
+  getCurrentBlock: () => { text: string; markerId: string | null; index: number } | null;
   appendCommentMarker: (markerId: string) => void;
   revealCommentMarker: (markerId: string) => void;
   restoreFromServer: () => void;
@@ -48,11 +53,11 @@ vi.mock("@components/entity-editor-shell", () => ({
   }),
 }));
 
-// Panel stub: exposes the "+ Comment" affordance (calls onCommentBlock) and a focusComment spy ref.
-vi.mock("@components/margins/margin-panel", () => ({
-  MarginPanel: forwardRef<MarginPanelHandle, { onCommentBlock?: () => void }>(
-    function MarginPanelStub({ onCommentBlock }, ref: Ref<MarginPanelHandle>) {
-      useImperativeHandle(ref, () => ({ focusComment: focusCommentSpy }));
+// Column stub: exposes the "+ Comment" affordance (calls onCommentBlock) and a focusSlot spy ref.
+vi.mock("@components/margins/margin-column", () => ({
+  MarginColumn: forwardRef<MarginColumnHandle, { onCommentBlock?: () => void }>(
+    function MarginColumnStub({ onCommentBlock }, ref: Ref<MarginColumnHandle>) {
+      useImperativeHandle(ref, () => ({ focusSlot: focusSlotSpy }));
       return (
         <button type="button" onClick={onCommentBlock}>
           + Comment
@@ -110,7 +115,7 @@ vi.mock("@api/generated/fragments/fragments", () => ({
 
 vi.mock("@api/generated/projects/projects", () => ({
   useGetProject: () => ({
-    data: { status: 200, data: { advanced: { showFragmentStats: false } } },
+    data: { status: 200, data: { advanced: { showFragmentStats: false }, editor: {} } },
   }),
 }));
 
@@ -132,7 +137,7 @@ beforeEach(() => {
   getCurrentBlockSpy.mockClear();
   appendCommentMarkerSpy.mockClear();
   shellSaveSpy.mockClear();
-  focusCommentSpy.mockClear();
+  focusSlotSpy.mockClear();
   addCommentStubSpy.mockClear();
   marginSaveSpy.mockClear();
 });
@@ -151,26 +156,18 @@ describe("comment gesture (margin:comment-block)", () => {
     expect(def?.hotkey).toBe("mod+shift+m");
   });
 
-  it("injects a marker, seeds a stub with the block excerpt, and moves focus — without saving", () => {
+  it("jumps to the paragraph's slot — no marker injection, no stub, no save", () => {
     renderEditor();
     fireEvent.click(screen.getByRole("button", { name: "+ Comment" }));
 
-    // Marker injected into the fragment buffer.
-    expect(appendCommentMarkerSpy).toHaveBeenCalledTimes(1);
-    const markerId = appendCommentMarkerSpy.mock.calls[0]![0] as string;
-    expect(markerId).toBeTruthy();
+    // Jump to the current block's slot (its comment if any, else the empty slot).
+    expect(focusSlotSpy).toHaveBeenCalledWith({ index: 2, markerId: "m1" });
 
-    // Stub created in the Margin, seeded with the block excerpt, bound to the same marker.
-    expect(addCommentStubSpy).toHaveBeenCalledWith({
-      markerId,
-      excerpt: "the cursor block",
-      body: "",
-    });
+    // Creation is implicit now: the gesture itself injects nothing and seeds no stub.
+    expect(appendCommentMarkerSpy).not.toHaveBeenCalled();
+    expect(addCommentStubSpy).not.toHaveBeenCalled();
 
-    // Focus moved to the Margin panel's comment.
-    expect(focusCommentSpy).toHaveBeenCalledWith(markerId);
-
-    // No premature persistence — neither buffer is force-flushed.
+    // No premature persistence.
     expect(shellSaveSpy).not.toHaveBeenCalled();
     expect(marginSaveSpy).not.toHaveBeenCalled();
   });

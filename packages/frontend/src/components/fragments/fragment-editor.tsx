@@ -22,16 +22,15 @@ import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
 import { toast } from "sonner";
-import { extractCommentMarkerIds, createCommentMarkerId, deriveExcerpt } from "@maskor/shared";
-import { deriveLiveExcerpts } from "@lib/margins/excerpts";
-import { resolveCommentTarget } from "@lib/margins/comment-gesture";
+import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import type { EditorMode } from "@components/margins/slot-editor";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
-import { MarginPanel, type MarginPanelHandle } from "@components/margins/margin-panel";
+import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
 import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
 import { Separator } from "@components/ui/separator";
 import { useMarginEditor } from "@hooks/useMarginEditor";
@@ -90,7 +89,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     projectEnvelope?.status === 200 ? projectEnvelope.data.advanced.showFragmentStats : false;
 
   const shellRef = useRef<EntityEditorShellHandle>(null);
-  const marginPanelRef = useRef<MarginPanelHandle>(null);
+  const marginColumnRef = useRef<MarginColumnHandle>(null);
+
+  const editorConfig = useProjectEditorConfig(projectId);
+  const marginMode: EditorMode = editorConfig.vimMode
+    ? "vim"
+    : editorConfig.rawMarkdownMode
+      ? "raw"
+      : "rich";
 
   const marginEditor = useMarginEditor(projectId, fragmentId);
 
@@ -123,23 +129,13 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const [isProseDirty, setIsProseDirty] = useState(false);
   const isDirty = isProseDirty;
 
-  // Live fragment body, tracked so the Margin panel can derive the fragment's anchor markers (for
-  // comment ordering and orphan detection). Seeded from the server fragment; updated on each edit.
+  // Live fragment body, tracked so the Margin column can enumerate the fragment's blocks and bind
+  // comments live. Seeded from the server fragment; updated on each edit.
   const [fragmentContent, setFragmentContent] = useState("");
   const fragment = envelope?.status === 200 ? envelope.data : null;
   useEffect(() => {
     if (fragment && !isProseDirty) setFragmentContent(fragment.content);
   }, [fragment?.content, isProseDirty]);
-  const fragmentMarkerIds = useMemo(
-    () => extractCommentMarkerIds(fragmentContent),
-    [fragmentContent],
-  );
-  // Display excerpts derived live from the open fragment buffer (no file churn): an anchored
-  // comment shows its block's current opening; orphans fall back to their frozen stored excerpt.
-  const liveExcerpts = useMemo(
-    () => deriveLiveExcerpts(fragmentContent, fragmentMarkerIds),
-    [fragmentContent, fragmentMarkerIds],
-  );
 
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
@@ -277,34 +273,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     return { at };
   }, [fragmentRecovery, marginSwap.recovery]);
 
-  // The comment gesture: coordinated buffer edits in both panels (the marker into the fragment, the
-  // stub into the Margin) with no force-flush — the marker persists on the next fragment save, the
-  // stub on the next Margin save — then focus moves to the Margin so the writer can type immediately.
+  // The "Comment this block" gesture is now a *jump*: it moves focus to the margin slot beside the
+  // paragraph at the cursor (the comment if one exists, otherwise the empty slot ready for
+  // type-to-create). Creation itself is implicit — typing in the slot conjures the marker + comment.
   const handleCommentBlock = useCallback(() => {
     const block = shellRef.current?.getCurrentBlock();
-    // One comment per block: reuse the block's existing marker (focus the existing comment) instead
-    // of injecting a second; only mint + inject for a fresh block.
-    const { markerId, inject } = resolveCommentTarget(
-      block?.markerId ?? null,
-      createCommentMarkerId,
-    );
-    if (inject) {
-      shellRef.current?.appendCommentMarker(markerId);
-    }
-    marginEditor.addCommentStub({ markerId, excerpt: deriveExcerpt(block?.text ?? ""), body: "" });
-    marginPanelRef.current?.focusComment(markerId);
-  }, [marginEditor]);
-
-  // Delete = coordinated buffer edit: strip the anchored comment's marker from the fragment buffer
-  // and remove the comment from the Margin buffer; each persists on its own next save. Deleting an
-  // orphaned comment (marker already gone) is a no-op on the fragment side.
-  const handleRemoveComment = useCallback(
-    (markerId: string, orphaned: boolean) => {
-      if (!orphaned) shellRef.current?.stripCommentMarker(markerId);
-      marginEditor.removeComment(markerId);
-    },
-    [marginEditor],
-  );
+    if (!block) return;
+    marginColumnRef.current?.focusSlot({ index: block.index, markerId: block.markerId });
+  }, []);
 
   useCommandScope(marginScope, {
     hasFragment: !!fragment,
@@ -313,9 +289,22 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     commentBlock: handleCommentBlock,
   });
 
+  // Editor bridges the margin column drives: marker injection (type-to-create), the coordinated
+  // delete strip, reveal/focus, and geometry for scroll-sync + margin-side padding.
+  const insertMarkerInBlock = useCallback((blockIndex: number, markerId: string) => {
+    shellRef.current?.insertCommentMarkerInBlock(blockIndex, markerId);
+  }, []);
+  const stripMarker = useCallback((markerId: string) => {
+    shellRef.current?.stripCommentMarker(markerId);
+  }, []);
   const handleRevealMarker = useCallback((markerId: string) => {
     shellRef.current?.revealCommentMarker(markerId);
   }, []);
+  const handleFocusMarkerBlock = useCallback((markerId: string) => {
+    shellRef.current?.focusMarkerBlock(markerId);
+  }, []);
+  const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
+  const getBlockHeights = useCallback(() => shellRef.current?.getBlockHeights() ?? [], []);
 
   const extraActions = useMemo(() => {
     const discardButton = (
@@ -392,16 +381,20 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         sidebarCollapsible={sidebarCollapsible}
         onLiveContentChange={setFragmentContent}
         rightPanel={
-          <MarginPanel
-            ref={marginPanelRef}
+          <MarginColumn
+            ref={marginColumnRef}
             projectId={projectId}
             marginEditor={marginEditor}
-            fragmentMarkerIds={fragmentMarkerIds}
-            liveExcerpts={liveExcerpts}
-            onRemoveComment={handleRemoveComment}
+            fragmentContent={fragmentContent}
+            mode={marginMode}
             onSave={() => commands.run("margin:save")}
             onCommentBlock={() => commands.run("margin:comment-block")}
-            onRevealMarker={handleRevealMarker}
+            insertMarkerInBlock={insertMarkerInBlock}
+            stripMarker={stripMarker}
+            revealMarker={handleRevealMarker}
+            focusMarkerBlock={handleFocusMarkerBlock}
+            getScrollElement={getScrollElement}
+            getBlockHeights={getBlockHeights}
           />
         }
         onProseChange={() => setIsProseDirty(true)}

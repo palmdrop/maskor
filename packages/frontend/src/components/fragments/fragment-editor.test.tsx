@@ -50,9 +50,9 @@ vi.mock("@components/entity-editor-shell", () => ({
   }),
 }));
 
-vi.mock("@components/margins/margin-panel", () => ({
-  MarginPanel: forwardRef(function MarginPanelStub(_props: unknown, _ref: Ref<unknown>) {
-    return <div data-testid="margin-panel-stub" />;
+vi.mock("@components/margins/margin-column", () => ({
+  MarginColumn: forwardRef(function MarginColumnStub(_props: unknown, _ref: Ref<unknown>) {
+    return <div data-testid="margin-column-stub" />;
   }),
 }));
 
