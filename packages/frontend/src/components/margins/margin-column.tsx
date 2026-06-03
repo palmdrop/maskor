@@ -18,6 +18,7 @@ import {
   buildColumn,
   nextSlotIndex,
   previousSlotIndex,
+  planOrphanRebinds,
   type FragmentBlock,
 } from "@lib/margins/column";
 import { computeBlockAlignment, naturalSlotHeights, spacersEqual } from "@lib/margins/alignment";
@@ -231,6 +232,16 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     }
     setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
   }, [editorBlocks, comments, activeSlot, expandAll, mode, fontSize, setBlockSpacers]);
+
+  // --- Fuzzy recovery (ADR 0009). An orphaned comment whose last-known excerpt still uniquely matches
+  // an un-anchored block re-anchors to it (adding the anchor; the marker re-emits on the next save).
+  // Conservative — only unambiguous matches — and self-terminating: once rebound the comment is no
+  // longer an orphan, so the next pass finds nothing. ---
+  useEffect(() => {
+    for (const { blockIndex, markerId } of planOrphanRebinds(blocks, orphans)) {
+      insertMarkerInBlock(blockIndex, markerId);
+    }
+  }, [blocks, orphans, insertMarkerInBlock]);
 
   useImperativeHandle(
     ref,

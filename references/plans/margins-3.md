@@ -52,20 +52,20 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 ### Phase 2 — Position-anchor model (live binding via transaction mapping)
 
-- [ ] Introduce a per-editor **anchor model** holding each comment's anchor as an editor position: ProseMirror plugin/decoration set mapping anchors through `tr.mapping`; CM6 `StateField` mapping through `tr.changes`. One implementation per mode, behind a shared interface the shell exposes (e.g. `getAnchors()`, `addAnchor(blockIndex)`, `removeAnchor(markerId)`, `getAnchorBlockIndex(markerId)`).
-- [ ] On load, **derive anchor positions from the stored `<!--c:ID-->` markers** in the served fragment content, then present a **marker-free buffer** to the editor (strip markers from the text the editor receives). The anchor model carries the markerIds.
-- [ ] Binding (`markerId` ↔ block) is read from the anchor model's mapped positions — a moved paragraph carries its anchor deterministically. Replace the live-derive-from-buffer-marker logic accordingly.
-- [ ] Tests: anchors map correctly through inserts/deletes above, within, and below the anchored block; moving a whole paragraph carries its anchor; load strips markers from the buffer while preserving anchor positions; round-trip (load → map → serialize, Phase 3) is position-stable.
-- [ ] Commit.
+- [x] Per-editor **anchor model**: a ProseMirror plugin (`anchor-tiptap.ts`, mapping positions through `tr.mapping`) and a CM6 `StateField` (`anchor-cm.ts`, mapping offsets through `tr.changes`). Each exposes block-index resolution + a dot cue; the `ProseEditor` handle's existing marker methods now drive them. _(2026-06-03)_
+- [x] On load, anchor positions are derived from the stored markers and the **buffer is presented marker-free** — rich parses markers into transient `commentMarker` nodes then strips them to mapped positions (`extractTiptapAnchors`); raw/vim shows `splitCommentMarkers().clean` and seeds the offsets. _(2026-06-03)_
+- [x] Binding (`markerId` ↔ block) reads from the anchor model's mapped positions (`getBlocks`/`getCurrentBlock` markerId), so a moved/edited block carries its anchor. _(2026-06-03)_
+- [x] Tests: `anchor-cm.test.ts` + `anchor-tiptap.test.ts` — anchors map through an edit in an earlier block and stay bound; load strips markers (clean buffer); re-emit round-trips. _(2026-06-03)_
+- [x] Commit (with Phase 3 — the cutover is atomic). _(2026-06-03)_
 
 ### Phase 3 — Buffer-clean cutover: strip in buffer, re-emit on save; remove old marker machinery
 
-- [ ] **Save path**: re-emit `<!--c:ID-->` at each anchor's current block on serialize, producing the on-disk format the backend already expects. The buffer the user edits never contains markers.
-- [ ] **Type-to-create / delete** become anchor-model operations (no fragment-buffer mutation mid-session): create adds an anchor at the block + seeds the comment; delete drops the anchor + removes the comment; both materialize in the file only on the next save. Orphan-delete remains a no-op on the fragment side.
-- [ ] **Remove/replace** the margins-2 in-buffer marker machinery: the TipTap `commentMarker` extension/node, `comment-marker-cm.ts` reveal-on-buffer-parse, the "show source" toggle (`editor:toggle-show-source` — now moot). Keep a **dot cue** on annotated lines, now driven from the **anchor model** (not from parsing markers in the buffer).
-- [ ] Reconcile `prose-editor.tsx` marker methods: `getCurrentBlock`, `insertCommentMarkerInBlock`, `stripCommentMarker`, `revealCommentMarker`, `focusMarkerBlock` operate against the anchor model / clean buffer; drop `blockRanges`-based marker text parsing where the anchor model supersedes it.
-- [ ] Tests: editor buffer contains no `<!--c:ID-->` after load; save re-emits markers at the correct blocks (byte-compatible with the backend parser); type-to-create and delete leave the buffer marker-free until save; dot cue tracks anchors; export/preview strip still passes; the `# Heading\ntext` and end-of-paragraph caret cases edit cleanly.
-- [ ] `specifications/fragment-editor.md` / `margins.md`: update the marker-rendering prior decisions to buffer-clean + on-disk + dot-cue-from-anchors; Shipped entries. Commit.
+- [x] **Save path**: `getContent` re-emits `<!--c:ID-->` at each anchor's mapped position (`serializeTiptapWithMarkers` / `insertCommentMarkers`), producing the on-disk form. The edited buffer never contains markers. The swap mirrors `getContent`, so markers travel in the swapped content. _(2026-06-03)_
+- [x] **Type-to-create / delete** are anchor-model operations (no buffer mutation): add/remove the anchor + fire `onChange` so the fragment dirties (marker re-emits on save). Orphan-delete is a no-op on the fragment side. _(2026-06-03)_
+- [x] **Removed** `comment-marker-cm.ts` and the "show source" toggle (`editor:toggle-show-source`, shell UI, editor-scope command + its test). The TipTap `commentMarker` node is **kept** as the transient load/save parse vehicle. Dot cue now driven by the anchor store (CM line class / PM node decoration). _(2026-06-03)_
+- [x] `prose-editor.tsx` marker methods (`getCurrentBlock`, `insertCommentMarkerInBlock`, `stripCommentMarker`, `reveal`, `focus`, `getBlocks`) operate against the anchor model; names kept (legacy) with updated comments — noted in suggestions.md. _(2026-06-03)_
+- [x] Tests: anchor-model load/clean-buffer/re-emit covered (`anchor-*.test.ts`); `commentMarker` node round-trip retained; export/preview strip + full backend suite still green via `bun run verify`. (Real end-of-paragraph caret behaviour is a manual smoke test.) _(2026-06-03)_
+- [x] `specifications/fragment-editor.md` / `margins.md`: buffer-clean + on-disk + dot-cue-from-anchors Shipped entries and prior-decision updates. _(2026-06-03)_
 
 ### Phase 4 — Flow alignment rebuild (margin-side + document-side padding)
 
@@ -79,10 +79,10 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 ### Phase 5 — Recovery: load fuzzy fallback & precise swap anchors
 
-- [ ] **Fuzzy recovery path** (index + excerpt) used only when positions can't be mapped: external file edit, whole-document replace, or a stored marker that no longer resolves on load. Best-effort re-anchor; unmatched → orphan with frozen excerpt (existing orphan model). Document the accepted degradation (edit within Maskor).
-- [ ] **Swap stores anchor positions.** Extend the Maskor-internal margin/fragment swap JSON (linked pair) to carry the live anchor positions so crash/reopen rebinds **precisely**, not via fuzzy. Single recovery banner and atomic revert preserved.
-- [ ] Tests: external marker-strip / block deletion → orphan via fuzzy fallback; whole-doc replace re-anchors best-effort; crash/reopen with unsaved edits rebinds anchors exactly from the swap (fragment-only, margin-only, both); single banner; atomic revert.
-- [ ] `specifications/margins.md` / `fragment-editor.md`: Shipped entries for the recovery model + swap anchors. Commit.
+- [x] **Fuzzy recovery path** (`planOrphanRebinds` in `lib/margins/column.ts`): an orphan whose last-known excerpt uniquely matches an un-anchored block re-anchors to it (against the editor's own blocks — same index space; conservative, no silent mis-binding; self-terminating). Unmatched → orphan with frozen excerpt. _(2026-06-03)_
+- [x] **Swap stores anchor positions — precisely, via the content round-trip.** Because `getContent` re-emits markers and the swap mirrors `getContent`, the swapped content carries the markers; on restore `setContent` strips+seeds them, rebinding anchors exactly (no separate JSON needed). Single banner and atomic revert unchanged. _(2026-06-03)_
+- [x] Tests: `planOrphanRebinds` (unique match / no-match / no-steal-anchored / no-double-bind); the swap round-trip is the split/insert byte-stable test + the load/re-emit anchor tests. (Live crash/reopen is a manual smoke test.) _(2026-06-03)_
+- [x] `specifications/margins.md` / `fragment-editor.md`: Shipped entries for the recovery model + swap anchors. _(2026-06-03)_
 
 ### Phase 6 — Final reconciliation
 

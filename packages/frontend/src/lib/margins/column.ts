@@ -56,6 +56,32 @@ export const buildColumn = (blocks: FragmentBlock[], comments: Comment[]): Colum
   return { rows, orphans };
 };
 
+// Fuzzy recovery (ADR 0009): re-anchor orphaned comments whose last-known excerpt still uniquely
+// matches an un-anchored block's opening. Conservative — a comment is rebound only when exactly one
+// free block matches (no silent mis-binding), and each block is consumed once so two orphans never
+// claim the same block. Matches against the editor's own blocks, sharing its block-index space
+// (never a re-parse). Returns the rebinds to apply (add the anchor at the block).
+export const planOrphanRebinds = (
+  blocks: readonly FragmentBlock[],
+  orphans: readonly Comment[],
+): { markerId: string; blockIndex: number }[] => {
+  const consumed = new Set(blocks.filter((block) => block.markerId).map((block) => block.index));
+  const plan: { markerId: string; blockIndex: number }[] = [];
+  for (const orphan of orphans) {
+    const target = deriveExcerpt(orphan.excerpt ?? "");
+    if (target === "") continue;
+    const candidates = blocks.filter(
+      (block) => !consumed.has(block.index) && deriveExcerpt(block.text) === target,
+    );
+    if (candidates.length === 1) {
+      const blockIndex = candidates[0]!.index;
+      plan.push({ markerId: orphan.markerId, blockIndex });
+      consumed.add(blockIndex);
+    }
+  }
+  return plan;
+};
+
 // Focus navigation between slots (Tab / Shift-Tab and ↓/↑ at comment boundaries). Clamped to the
 // row range; the caller decides when a boundary move applies (e.g. caret at the end of the body).
 export const nextSlotIndex = (current: number, rowCount: number): number =>

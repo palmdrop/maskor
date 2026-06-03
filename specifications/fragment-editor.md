@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-06-03 — Buffer-clean comment anchoring (ADR 0009): the editor buffer holds pure markdown — `<!--c:ID-->` anchor markers are stripped on load and re-emitted on save (fixing end-of-paragraph caret breakage), with the live comment↔block binding maintained by mapping anchor positions through editor transactions (rich: a ProseMirror plugin; vim/raw: a CM6 `StateField`). The dot cue on annotated lines is driven by the anchor store; the "show source" toggle (`editor:toggle-show-source`) is removed (no buffer markers to reveal). Document-side spacers (a TipTap widget / CM6 block widget) keep the Margin column's rows flow-aligned to the editor. (plan: references/plans/margins-3.md; ADR 0009)
 - 2026-04-08 — Default prose editor uses WYSIWYG editing; content is stored as raw markdown. (plan: references/plans/prose-editor-tiptap.md)
 - 2026-04-20 — Dedicated single-fragment editing view with prose editor (supporting vim mode) and metadata form (readiness, notes, references, aspect weights). (plan: references/plans/fragment-editor.md)
 - 2026-05-05 — Fragment editor gained inline key (filename stem) editing with the same rename pattern as notes, references, and aspects; discard/restore and metadata sidebar wired as shell slots. (plan: references/plans/entity-editor-unification.md)

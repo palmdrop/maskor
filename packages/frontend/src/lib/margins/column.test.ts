@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { enumerateBlocks, buildColumn, nextSlotIndex, previousSlotIndex } from "./column";
+import {
+  enumerateBlocks,
+  buildColumn,
+  planOrphanRebinds,
+  nextSlotIndex,
+  previousSlotIndex,
+} from "./column";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 
 const comment = (markerId: string, body = "", excerpt = ""): Comment => ({
@@ -57,6 +63,32 @@ describe("buildColumn", () => {
     const { rows, orphans } = buildColumn(blocks, []);
     expect(rows[0]?.comment).toBeNull();
     expect(orphans).toHaveLength(0);
+  });
+});
+
+describe("planOrphanRebinds (fuzzy recovery)", () => {
+  it("rebinds an orphan to the unique un-anchored block matching its excerpt", () => {
+    const blocks = enumerateBlocks("Alpha paragraph. <!--c:a-->\n\nBeta paragraph.");
+    expect(planOrphanRebinds(blocks, [comment("b", "", "Beta paragraph.")])).toEqual([
+      { markerId: "b", blockIndex: 1 },
+    ]);
+  });
+
+  it("does not rebind when the excerpt matches nothing", () => {
+    const blocks = enumerateBlocks("Alpha.");
+    expect(planOrphanRebinds(blocks, [comment("x", "", "Totally different.")])).toEqual([]);
+  });
+
+  it("does not steal a block already carrying an anchor", () => {
+    const blocks = enumerateBlocks("Shared. <!--c:a-->");
+    expect(planOrphanRebinds(blocks, [comment("b", "", "Shared.")])).toEqual([]);
+  });
+
+  it("never binds two orphans to the same block", () => {
+    const blocks = enumerateBlocks("Same.");
+    expect(
+      planOrphanRebinds(blocks, [comment("b", "", "Same."), comment("c", "", "Same.")]),
+    ).toEqual([{ markerId: "b", blockIndex: 0 }]);
   });
 });
 

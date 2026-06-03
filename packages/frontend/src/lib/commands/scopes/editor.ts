@@ -25,9 +25,6 @@ export interface EditorContext {
   decreaseFontSize: () => void;
   increaseMargin: () => void;
   decreaseMargin: () => void;
-  // Reveal the raw `<!--c:ID-->` anchor markers verbatim in raw/vim mode (default off).
-  showSource: boolean;
-  toggleShowSource: () => void;
 }
 
 // Singleton scope — only one EntityEditorShell may be mounted at a time.
@@ -301,16 +298,8 @@ const decreaseMargin = defineScopeCommand(editorScope, {
   run: (ctx) => ctx.decreaseMargin(),
 });
 
-const toggleShowSource = defineScopeCommand(editorScope, {
-  id: "editor:toggle-show-source",
-  label: "Toggle anchor source markers",
-  category: "other",
-  run: (ctx) => ctx.toggleShowSource(),
-});
-
 export const editorCommands = [
   save,
-  toggleShowSource,
   extractToFragment,
   extractToNote,
   extractToReference,

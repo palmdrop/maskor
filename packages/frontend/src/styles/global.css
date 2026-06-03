@@ -173,3 +173,19 @@ button,
 a {
   cursor: pointer;
 }
+
+/* Margin anchor dot cue: a quiet locator at the end of a block that carries a comment anchor (ADR
+   0009). The marker no longer lives in the buffer, so the cue is driven by a ProseMirror node
+   decoration adding this class to the annotated block; the Margin column does the real surfacing. */
+.pm-has-comment {
+  position: relative;
+}
+.pm-has-comment::after {
+  content: "●";
+  position: absolute;
+  right: -0.75rem;
+  top: 0;
+  opacity: 0.3;
+  font-size: 0.6em;
+  pointer-events: none;
+}

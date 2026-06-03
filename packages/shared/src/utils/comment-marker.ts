@@ -81,3 +81,45 @@ export const stripCommentMarker = (text: string, markerId: string): string => {
   const escaped = buildCommentMarker(markerId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return text.replace(new RegExp(`[ \\t]*${escaped}`, "g"), "");
 };
+
+// A comment anchor recovered from (or to be written into) on-disk content: the marker id and the
+// character offset in the *clean* (marker-free) text where the marker sits. The editor holds markers
+// out of its live buffer (ADR 0009) — they are stripped on load (recording these offsets, then mapped
+// live by the editor) and re-emitted on save. This pair backs the raw/vim (CM6) path; the rich
+// (TipTap) path uses ProseMirror node positions instead.
+export type ParsedAnchor = { markerId: string; offset: number };
+
+// Strip every `<!--c:ID-->` token from `content` (only the token — leading whitespace is preserved so
+// re-emission is byte-stable), returning the clean text and each marker's offset into that clean
+// text. `insertCommentMarkers` is its exact inverse for a given anchor set.
+export const splitCommentMarkers = (
+  content: string,
+): { clean: string; anchors: ParsedAnchor[] } => {
+  const regex = createCommentMarkerTokenRegex();
+  const anchors: ParsedAnchor[] = [];
+  let clean = "";
+  let lastIndex = 0;
+  for (const match of content.matchAll(regex)) {
+    clean += content.slice(lastIndex, match.index);
+    if (match[1]) anchors.push({ markerId: match[1], offset: clean.length });
+    lastIndex = match.index + match[0].length;
+  }
+  clean += content.slice(lastIndex);
+  return { clean, anchors };
+};
+
+// Re-emit markers into clean text at the given offsets — the inverse of `splitCommentMarkers`. Offsets
+// are clamped into range and applied in order so the result is well-formed even if an anchor drifted.
+export const insertCommentMarkers = (clean: string, anchors: readonly ParsedAnchor[]): string => {
+  const sorted = [...anchors].sort((a, b) => a.offset - b.offset);
+  let result = "";
+  let last = 0;
+  for (const anchor of sorted) {
+    const offset = Math.max(0, Math.min(anchor.offset, clean.length));
+    if (offset < last) continue;
+    result += clean.slice(last, offset) + buildCommentMarker(anchor.markerId);
+    last = offset;
+  }
+  result += clean.slice(last);
+  return result;
+};

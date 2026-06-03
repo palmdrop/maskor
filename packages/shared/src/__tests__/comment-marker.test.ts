@@ -9,6 +9,8 @@ import {
   deriveExcerpt,
   extractBlockOpening,
   EXCERPT_MAX_LENGTH,
+  splitCommentMarkers,
+  insertCommentMarkers,
 } from "../utils/comment-marker";
 
 describe("buildCommentMarker", () => {
@@ -105,5 +107,32 @@ describe("extractBlockOpening", () => {
   it("derives the opening from a multi-line block", () => {
     const block = "Line one\nline two <!--c:m-->";
     expect(extractBlockOpening(block, "m")).toBe("Line one line two");
+  });
+});
+
+describe("splitCommentMarkers / insertCommentMarkers", () => {
+  it("splits markers out and records their clean-text offsets", () => {
+    const { clean, anchors } = splitCommentMarkers("First.<!--c:a-->\n\nSecond.<!--c:b-->");
+    expect(clean).toBe("First.\n\nSecond.");
+    expect(anchors).toEqual([
+      { markerId: "a", offset: 6 },
+      { markerId: "b", offset: 15 },
+    ]);
+  });
+
+  it("round-trips: insert is the inverse of split (byte-stable)", () => {
+    const original = "Alpha.<!--c:x-->\n\nBeta line\nmore <!--c:y-->\n\nGamma.";
+    const { clean, anchors } = splitCommentMarkers(original);
+    expect(insertCommentMarkers(clean, anchors)).toBe(original);
+  });
+
+  it("preserves whitespace before a marker (no leading-space eating)", () => {
+    const { clean, anchors } = splitCommentMarkers("Trailing space <!--c:a-->");
+    expect(clean).toBe("Trailing space ");
+    expect(insertCommentMarkers(clean, anchors)).toBe("Trailing space <!--c:a-->");
+  });
+
+  it("clamps drifted offsets into range", () => {
+    expect(insertCommentMarkers("abc", [{ markerId: "a", offset: 999 }])).toBe("abc<!--c:a-->");
   });
 });
