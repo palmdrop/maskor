@@ -1,7 +1,8 @@
 # Margins III: editor-driven flow alignment & buffer-clean anchoring
 
 **Date**: 02-06-2026
-**Status**: In progress
+**Status**: Done
+**Closed**: 03-06-2026
 **Specs**: `specifications/margins.md`, `specifications/fragment-editor.md`, `references/adr/0009-buffer-clean-anchoring-and-editor-driven-flow-alignment.md` (new), `references/adr/0007-margin-anchored-comments-supersede-file-based-comments.md`, `references/adr/0008-margin-is-an-annotated-paragraphs-column.md`
 
 ---
@@ -86,11 +87,13 @@ Phases are ordered so each is independently committable and leaves the app worki
 
 ### Phase 6 — Final reconciliation
 
-- [ ] `bun run format` then `bun run verify`; fix lint/test/codegen-sync failures. (No API route changes expected — confirm; run `bun run codegen` only if a route schema moved.)
-- [ ] Sweep touched specs for Shipped accuracy and Status; ensure ADR 0009 cross-references ADR 0007/0008 and the superseded prior decisions are annotated.
-- [ ] Update `references/CODEBASE_SNAPSHOT.md` (`bun run snapshot`); add any surprises to `references/suggestions.md`; tick resolved `references/TODO.md` Margins items (document-side padding).
-- [ ] Set this plan's Status to `Done` (or `In progress` if partial); set `Closed` date.
-- [ ] Final commit.
+- [x] `bun run format` then `bun run verify` green: typecheck, openapi sync, 883 backend + 522 frontend tests. No API route changes (no codegen needed). _(2026-06-03)_
+- [x] Specs swept: `margins.md`/`fragment-editor.md` Shipped + prior-decision updates; ADR 0009 cross-references 0007/0008 and the superseded decisions are annotated. _(2026-06-03)_
+- [x] Snapshot regenerated; suggestions.md notes the legacy handle names + (earlier) alignment-padding deferral now resolved; TODO.md Margins items ticked to margins-3. _(2026-06-03)_
+- [x] Status `Done`; `Closed` 03-06-2026. _(2026-06-03)_
+- [x] Final commit. _(2026-06-03)_
+
+> **Manual smoke test still owed** (jsdom can't render real editor geometry/caret): in both rich and vim/raw — row↔paragraph alignment (notes open & collapsed, after font-size change), document-side push when a comment is taller than its block, linked scroll, and end-of-paragraph caret behaviour with the marker out of the buffer; plus a save→reload→save round-trip to confirm markers land byte-stable on disk.
 
 ---
 

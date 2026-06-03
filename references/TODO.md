@@ -11,9 +11,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 ### Margins
 
 - [x] margins panel should look more linear and sync and scroll with the fragment editor (margins-2 Phase 4: annotated-paragraphs column + scroll-sync)
-- [x] margins panel should feel like an actual margin, scroll with the editor, aligh properly, etc (margins-2 Phase 4; pixel-exact padding/scroll-sync need a manual browser smoke — see suggestions.md)
-- [x] deleting comments does not remove the anchor (margins-2 Phase 3: delete strips the marker)
-- [x] anchors clutter the editing, and are easily broken (margins-2 Phase 1: always-hidden marker + dot cue + show-source toggle)
+- [x] margins panel should feel like an actual margin, scroll with the editor, aligh properly, etc (margins-3: editor-driven mutual flow alignment + document-side padding + origin alignment + scroll re-link; pixel geometry needs a manual browser smoke)
+- [x] deleting comments does not remove the anchor (margins-2 Phase 3: delete strips the marker; margins-3: delete drops the anchor, marker stops re-emitting)
+- [x] anchors clutter the editing, and are easily broken (margins-3: buffer-clean anchoring — marker stripped from the live buffer, position-mapped, re-emitted on save; fixes end-of-paragraph caret breakage)
 - [x] adding a new comment where there already is an anchor creates a double anchor (margins-2 Phase 3: one comment per block; gesture focuses existing)
 - [x] the entire paragraph becomes the excerpt of a comment, not just a small excerpt (margins-2 Phase 2: excerpt is the capped block opening)
 - [x] pressing escape or maybe enter should restore focus to editor again (margins-2 Phase 4: Escape returns the caret to the bound paragraph)
