@@ -2,7 +2,6 @@ import {
   Decoration,
   type DecorationSet,
   EditorView,
-  MapMode,
   StateEffect,
   StateField,
   type EditorState,
@@ -26,14 +25,28 @@ export const cmAnchorField = StateField.define<ParsedAnchor[]>({
       if (effect.is(setCmAnchorsEffect)) return effect.value;
     }
     if (!transaction.docChanged) return value;
-    // Map each offset forward; -1 bias keeps a block-end anchor before text appended at that spot.
-    // `MapMode.TrackDel` returns `null` when the change deletes the content around the offset — drop
-    // that anchor (margins-4 #7) so a deleted paragraph orphans its comment, rather than collapsing
-    // the offset to the deletion boundary (which would mis-bind it to the adjacent block). The
-    // orphaned comment can re-attach by excerpt once the paragraph is pasted back.
+    // Map each anchor through the edit, but decide orphaning at the *block* level (margins-4): an
+    // anchor sits at its block's end, so deleting only the block's last soft-wrapped line would
+    // strictly engulf the offset — `MapMode.TrackDel` would wrongly drop the anchor even though the
+    // paragraph survives above. Instead, map the anchor's whole block (from the pre-edit doc) and only
+    // drop when the block's content fully collapsed (the paragraph was deleted); otherwise remap the
+    // anchor into the surviving block. A deleted paragraph still orphans its comment (and re-attaches
+    // by excerpt on paste-back); deleting one line of a multi-line paragraph keeps it.
+    const oldRanges = blockRanges(transaction.startState.doc.toString());
+    const changes = transaction.changes;
     return value.flatMap((anchor) => {
-      const offset = transaction.changes.mapPos(anchor.offset, -1, MapMode.TrackDel);
-      if (offset === null) return [];
+      const block = oldRanges.find(
+        (range) => anchor.offset >= range.from && anchor.offset <= range.to,
+      );
+      // Anchor not inside a known block (e.g. on a blank line) — map plainly and keep.
+      if (!block) {
+        return [{ markerId: anchor.markerId, offset: changes.mapPos(anchor.offset, -1) }];
+      }
+      // Map the block's own boundaries inward; if they collapse, the whole paragraph is gone → orphan.
+      const from = changes.mapPos(block.from, 1);
+      const to = changes.mapPos(block.to, -1);
+      if (to <= from) return [];
+      const offset = Math.max(from, Math.min(changes.mapPos(anchor.offset, -1), to));
       return [{ markerId: anchor.markerId, offset }];
     });
   },

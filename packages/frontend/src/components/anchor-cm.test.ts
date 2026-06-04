@@ -35,6 +35,34 @@ describe("cm anchors (ADR 0009)", () => {
     expect(cmAnchorBlockIndex(state).has("a")).toBe(false);
   });
 
+  it("keeps the anchor when one line of a multi-line paragraph is deleted (margins-4)", () => {
+    // A single block (no blank line) of three soft-wrapped lines; the anchor sits at the block end.
+    const text = "Line one\nLine two\nLine three";
+    const end = text.length;
+    const twoLines = "Line one\nLine two".length;
+    let state = make(text);
+    state = state.update({
+      effects: setCmAnchorsEffect.of([{ markerId: "a", offset: end }]),
+    }).state;
+    expect(cmAnchorBlockIndex(state).get("a")).toBe(0);
+    // Delete the last line ("\nLine three") — the paragraph survives as "Line one\nLine two".
+    state = state.update({ changes: { from: twoLines, to: end } }).state;
+    // The anchor is NOT orphaned: it remaps into the surviving block, still bound to block 0.
+    expect(getCmAnchors(state).length).toBe(1);
+    expect(cmAnchorBlockIndex(state).get("a")).toBe(0);
+  });
+
+  it("orphans the anchor only when the whole multi-line paragraph is deleted (margins-4)", () => {
+    const para = "Line one\nLine two\nLine three";
+    let state = make(`${para}\n\nNext.`);
+    state = state.update({
+      effects: setCmAnchorsEffect.of([{ markerId: "a", offset: para.length }]),
+    }).state;
+    // Delete the entire paragraph and its blank-line separator → only "Next." remains.
+    state = state.update({ changes: { from: 0, to: `${para}\n\n`.length } }).state;
+    expect(getCmAnchors(state)).toEqual([]);
+  });
+
   it("keeps an anchor when an earlier deletion does not touch its block", () => {
     let state = make("First.\n\nSecond.");
     state = state.update({ effects: setCmAnchorsEffect.of([{ markerId: "b", offset: 15 }]) }).state;

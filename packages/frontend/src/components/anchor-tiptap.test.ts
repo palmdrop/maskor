@@ -3,6 +3,7 @@ import { Editor } from "@tiptap/core";
 import { buildSharedProseExtensions } from "./shared-prose-extensions";
 import {
   tiptapAnchorExtension,
+  tiptapAnchorKey,
   extractTiptapAnchors,
   serializeTiptapWithMarkers,
   tiptapAnchorBlockIndex,
@@ -68,6 +69,19 @@ describe("tiptap anchors (ADR 0009)", () => {
     // The anchor is dropped (orphaned), not collapsed onto "Alpha." (block 0).
     expect(tiptapAnchorBlockIndex(editor.state).has("b")).toBe(false);
     expect(serializeTiptapWithMarkers(editor)).not.toContain("<!--c:b-->");
+    editor.destroy();
+  });
+
+  it("keeps the anchor when text is deleted before it within the same paragraph (margins-4)", () => {
+    const editor = makeEditor("Hello world. <!--c:b-->");
+    extractTiptapAnchors(editor);
+    expect(tiptapAnchorBlockIndex(editor.state).get("b")).toBe(0);
+    // Delete the four characters immediately before the anchor — the paragraph (and the anchor at its
+    // end) survive, so the anchor is NOT orphaned (only `deletedAcross` whole-block deletes drop it).
+    const anchorPos = (tiptapAnchorKey.getState(editor.state) ?? [])[0]!.pos;
+    editor.view.dispatch(editor.state.tr.delete(anchorPos - 4, anchorPos));
+    expect(tiptapAnchorBlockIndex(editor.state).get("b")).toBe(0);
+    expect(serializeTiptapWithMarkers(editor)).toContain("<!--c:b-->");
     editor.destroy();
   });
 });
