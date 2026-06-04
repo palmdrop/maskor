@@ -204,12 +204,33 @@ describe("MarginColumn", () => {
     expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
   });
 
-  it("keeps the notes header out of the scrolled flow (row 0 aligns with block 0)", () => {
+  it("places notes at the bottom of the scroller, with no top toolbar (margins-4 #3, #4)", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
     const notes = screen.getByTestId("margin-notes");
     const scroll = screen.getByTestId("margin-scroll");
-    // The notes header is a sibling above the scroller, never nested inside it.
-    expect(scroll.contains(notes)).toBe(false);
+    const column = screen.getByTestId("margin-column");
+    // Notes now scroll with the content, at the foot of the scroller (reached after the fragment text).
+    expect(scroll.contains(notes)).toBe(true);
+    // The column controls are a pinned footer below the scroller, not a top toolbar.
+    const controls = screen.getByTestId("margin-controls");
+    expect(scroll.contains(controls)).toBe(false);
+    // The scroller is the column's first child — no chrome above it offsets the rows.
+    expect(column.firstElementChild).toBe(scroll);
+  });
+
+  it("renders an idle comment as flowing text (no box border) and boxes only the active one", () => {
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->",
+      marginEditor: buildMarginEditor({ comments: [comment("a", "on a")] }),
+    });
+    const row = document.querySelector('[data-slot-marker="a"]')!;
+    // The attachment rule (top border) is always present; the full box border only while editing.
+    expect(row.className).toContain("border-t");
+    expect(row.className).not.toContain("border-x");
+    // Activating the comment boxes it.
+    fireEvent.click(screen.getByText("on a"));
+    const activeRow = document.querySelector('[data-slot-marker="a"]')!;
+    expect(activeRow.className).toContain("border-x");
   });
 
   it("pads the editor's top to close the chrome gap (notes header offset)", () => {

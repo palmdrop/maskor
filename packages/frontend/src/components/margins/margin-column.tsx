@@ -9,7 +9,6 @@ import {
 } from "react";
 import { createCommentMarkerId, deriveExcerpt } from "@maskor/shared";
 import { Button } from "@components/ui/button";
-import { Separator } from "@components/ui/separator";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { claimFocusOnPickerClose } from "@lib/focus-intent";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
@@ -304,84 +303,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   };
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-hidden" data-testid="margin-column">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Margin</span>
-        <div className="flex items-center gap-1">
-          {onCommentBlock && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onCommentBlock}
-              title="Jump to the slot beside the block at the cursor (⌘⇧M)"
-            >
-              + Comment
-            </Button>
-          )}
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onClick={toggleExpandAll}
-            title={expandAll ? "Collapse all comments" : "Expand all comments"}
-          >
-            {expandAll ? "Collapse all" : "Expand all"}
-          </button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!isDirty || isSaving}
-            onClick={onSave}
-            className="min-w-16"
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
-      <Separator />
-
-      {/* Notes: a collapsible pinned header above the scroller (ADR 0009 — out of the scrolled flow so
-          margin row 0 aligns with the editor's block 0; the rows below scroll in lockstep). */}
-      <section className="flex shrink-0 flex-col gap-1" data-testid="margin-notes">
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
-          onClick={toggleNotes}
-          aria-expanded={notesOpen}
-        >
-          <span className="inline-block w-3">{notesOpen ? "▾" : "▸"}</span>
-          <span>Notes</span>
-        </button>
-        {notesOpen && (
-          <div className="rounded-md border border-border px-2 py-1" data-slot-notes>
-            {activeSlot?.kind === "notes" ? (
-              <SlotEditor
-                value={notes}
-                mode={mode}
-                fontSize={fontSize}
-                focusOnMount
-                placeholder="Thoughts on structure, character, things to rewrite…"
-                onChange={setNotes}
-                onBlur={() => setActiveSlot(null)}
-                onEscape={() => setActiveSlot(null)}
-              />
-            ) : (
-              <button
-                type="button"
-                className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-foreground/90"
-                style={serifText(fontSize)}
-                onClick={() => setActiveSlot({ kind: "notes" })}
-              >
-                {notes || (
-                  <span className="text-muted-foreground">
-                    Thoughts on structure, character, things to rewrite…
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
+    <div className="flex h-full flex-col overflow-hidden" data-testid="margin-column">
+      {/* No top chrome (margins-4 #3, #4): the scroller is flush to the column top so the
+          origin-alignment effect pads the margin rows down to the editor's first line (rowsPaddingTop)
+          and leaves the editor's own top offset at zero. Notes + controls live at the bottom. */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1" data-testid="margin-scroll">
         {/* One slot per paragraph, flow-aligned to the editor (ADR 0009): each row's min-height is its
             block's slot height, and the editor injects a spacer when a comment is taller. */}
@@ -397,22 +322,22 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             if (row.comment) {
               const comment = row.comment;
               return (
+                // Seamless flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the
+                // attachment cue, aligned (via flow padding) with the top of the bound paragraph. A
+                // faint full border appears only while editing, so the comment reads as a box only then.
                 <div
                   key={comment.markerId}
                   data-slot-marker={comment.markerId}
                   data-row-index={row.block.index}
-                  className="group relative border-l-2 border-border/60 pl-3"
+                  className={`group relative border-t border-border/40 ${
+                    isCommentActive
+                      ? "rounded-b-sm border-x border-b border-border/60 bg-muted/20"
+                      : ""
+                  }`}
                   style={{ minHeight }}
                 >
-                  <button
-                    type="button"
-                    className="absolute -left-px top-0 h-full w-0.5 bg-transparent hover:bg-foreground/30"
-                    title="Reveal the annotated paragraph"
-                    aria-label="Reveal the annotated paragraph"
-                    onClick={() => revealMarker(comment.markerId)}
-                  />
                   {isCommentActive ? (
-                    <div className="py-1">
+                    <div className="px-2 py-1">
                       <div className="flex items-start justify-end">
                         <button
                           type="button"
@@ -454,7 +379,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                         expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
                       }`}
                       style={serifText(fontSize)}
+                      // Clicking a comment activates it for editing and reveals its bound paragraph in
+                      // the editor (the left guide line is gone — margins-4 #11).
                       onClick={() => {
+                        revealMarker(comment.markerId);
                         setActiveSlot({ kind: "comment", markerId: comment.markerId });
                         setDraft("");
                       }}
@@ -472,11 +400,15 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 key={`block-${row.block.index}`}
                 data-slot-block={row.block.index}
                 data-row-index={row.block.index}
-                className="group relative pl-3"
+                className={`group relative ${
+                  isBlockActive
+                    ? "rounded-b-sm border-x border-b border-t border-border/60 bg-muted/20"
+                    : ""
+                }`}
                 style={{ minHeight }}
               >
                 {isBlockActive ? (
-                  <div className="py-1">
+                  <div className="px-2 py-1">
                     <SlotEditor
                       value={draft}
                       mode={mode}
@@ -533,6 +465,92 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             No paragraphs yet. Write in the fragment, then type beside a paragraph to annotate it.
           </p>
         )}
+
+        {/* Notes: bottom-placed (margins-4 #3) — a collapsible section reached only after scrolling
+            past the fragment text, scrolling with the content rather than offsetting the top. */}
+        <section
+          className="mt-8 flex flex-col gap-1 border-t border-border pt-3"
+          data-testid="margin-notes"
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+            onClick={toggleNotes}
+            aria-expanded={notesOpen}
+          >
+            <span className="inline-block w-3">{notesOpen ? "▾" : "▸"}</span>
+            <span>Notes</span>
+          </button>
+          {notesOpen && (
+            <div
+              className={`rounded-md px-2 py-1 ${
+                activeSlot?.kind === "notes" ? "border border-border/60 bg-muted/20" : ""
+              }`}
+              data-slot-notes
+            >
+              {activeSlot?.kind === "notes" ? (
+                <SlotEditor
+                  value={notes}
+                  mode={mode}
+                  fontSize={fontSize}
+                  focusOnMount
+                  placeholder="Thoughts on structure, character, things to rewrite…"
+                  onChange={setNotes}
+                  onBlur={() => setActiveSlot(null)}
+                  onEscape={() => setActiveSlot(null)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-foreground/90"
+                  style={serifText(fontSize)}
+                  onClick={() => setActiveSlot({ kind: "notes" })}
+                >
+                  {notes || (
+                    <span className="text-muted-foreground">
+                      Thoughts on structure, character, things to rewrite…
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Column controls: a pinned footer at the bottom of the column (margins-4 #4) — the jump-to-slot
+          gesture and the expand-all toggle. */}
+      <div
+        className="flex shrink-0 items-center justify-end gap-3 border-t border-border pt-2"
+        data-testid="margin-controls"
+      >
+        {onCommentBlock && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onCommentBlock}
+            title="Jump to the slot beside the block at the cursor (⌘⇧M)"
+          >
+            + Comment
+          </Button>
+        )}
+        <button
+          type="button"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={toggleExpandAll}
+          title={expandAll ? "Collapse all comments" : "Expand all comments"}
+        >
+          {expandAll ? "Collapse all" : "Expand all"}
+        </button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!isDirty || isSaving}
+          onClick={onSave}
+          className="min-w-16"
+        >
+          {isSaving ? "Saving…" : "Save"}
+        </Button>
       </div>
     </div>
   );

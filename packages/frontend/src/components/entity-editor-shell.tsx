@@ -653,7 +653,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             />
           </main>
           {rightPanel && (
-            <div className="flex w-full shrink-0 flex-col lg:w-80 min-h-0 border-t pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+            // A faint vertical separator with padding so the fragment editor and the Margin read as two
+            // seamless pieces of text (margins-4 #12).
+            <div className="flex w-full shrink-0 flex-col lg:w-80 min-h-0 border-t border-border/50 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
               {rightPanel}
             </div>
           )}
