@@ -230,11 +230,17 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     );
     const spacers = alignment.map((row) => row.spacer);
     const mins = alignment.map((row) => row.minHeight);
+    // Margin-side padding always tracks the live geometry (a short comment keeps filling its slot).
+    setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
+    // Document-side push is frozen while a slot is focused (margins-4 #6): the fragment paragraphs do
+    // not shift per keystroke. It reconciles on blur — when `activeSlot` returns to null this effect
+    // re-runs and applies the settled spacers. The `spacersEqual` guard keeps the reconcile a single
+    // settle.
+    if (activeSlot !== null) return;
     if (!spacersEqual(spacers, currentSpacersRef.current)) {
       currentSpacersRef.current = spacers;
       setBlockSpacers(spacers);
     }
-    setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
   }, [editorBlocks, comments, activeSlot, expandAll, mode, fontSize, setBlockSpacers]);
 
   // --- Fuzzy recovery (ADR 0009). An orphaned comment whose last-known excerpt still uniquely matches

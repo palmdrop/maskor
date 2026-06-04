@@ -203,6 +203,72 @@ describe("MarginColumn", () => {
     expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
   });
 
+  it("freezes the document-side spacers while a slot is active, reconciling on blur (margins-4 #6)", () => {
+    const rect = (height: number) =>
+      ({
+        height,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: height,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    // Mutable per-row heights so the active comment can "grow" mid-test.
+    const rowHeights: Record<string, number> = { "0": 200 };
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const index = this.getAttribute("data-row-index");
+        return rect(index && rowHeights[index] !== undefined ? rowHeights[index]! : 40);
+      });
+    const setBlockSpacers = vi.fn();
+    const getBlocks = (): EditorBlock[] => [
+      { markerId: "a", text: "Long.", top: 0, height: 50 },
+      { markerId: null, text: "Short.", top: 60, height: 40 },
+    ];
+    const baseProps = {
+      projectId: "project-1",
+      fragmentContent: "Long. <!--c:a-->\n\nShort.",
+      mode: "rich" as const,
+      fontSize: 16,
+      insertMarkerInBlock: vi.fn(),
+      stripMarker: vi.fn(),
+      revealMarker: vi.fn(),
+      focusMarkerBlock: vi.fn(),
+      getScrollElement: () => null,
+      getBlocks,
+      setBlockSpacers,
+      setEditorTopPadding: vi.fn(),
+    };
+    try {
+      const view = render(
+        <MarginColumn
+          {...baseProps}
+          marginEditor={buildMarginEditor({ comments: [comment("a", "body")] })}
+        />,
+      );
+      // Idle (no active slot): the 200px comment over a 60px slot pushes a 140px spacer on block 0.
+      expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
+      setBlockSpacers.mockClear();
+      // Activate the comment, then grow its measured height (as if typing).
+      fireEvent.click(screen.getByText("body"));
+      rowHeights["0"] = 500;
+      view.rerender(
+        <MarginColumn
+          {...baseProps}
+          marginEditor={buildMarginEditor({ comments: [comment("a", "body grown")] })}
+        />,
+      );
+      // Frozen while editing: the document-side spacer is not re-pushed to reflect the growth.
+      expect(setBlockSpacers).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("places notes at the bottom of the scroller, with no top toolbar (margins-4 #3, #4)", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
     const notes = screen.getByTestId("margin-notes");
