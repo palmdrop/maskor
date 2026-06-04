@@ -20,6 +20,7 @@ const blocksFromContent = (content: string): EditorBlock[] =>
 // SlotEditor wraps TipTap/CM6 (not meaningful in happy-dom); stub it as a textarea that surfaces
 // value + onChange so the column's create/edit wiring is testable.
 vi.mock("./slot-editor", () => ({
+  MARGIN_LINE_HEIGHT: 1.75,
   SlotEditor: ({ value, onChange }: { value: string; onChange: (next: string) => void }) => (
     <textarea
       data-testid="slot-editor"

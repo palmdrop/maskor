@@ -24,7 +24,15 @@ import {
 import { computeBlockAlignment, naturalSlotHeights, spacersEqual } from "@lib/margins/alignment";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
 import { CommentCard } from "./comment-card";
-import { SlotEditor, type EditorMode } from "./slot-editor";
+import { SlotEditor, type EditorMode, MARGIN_LINE_HEIGHT } from "./slot-editor";
+
+// Serif text styling shared by the column's static (non-editing) comment and notes text, so they read
+// in the same family + rhythm as the prose editor and the active slot editors (margins-4 #1, #2).
+const serifText = (fontSize: number) => ({
+  fontFamily: "var(--font-serif)",
+  lineHeight: MARGIN_LINE_HEIGHT,
+  fontSize,
+});
 
 // Safety cap on a single document-side spacer so one runaway comment can't open an absurd gap. A
 // collapsed comment is already clipped (line-clamp) and a focused/expanded one is intentionally
@@ -360,7 +368,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               <button
                 type="button"
                 className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-foreground/90"
-                style={{ fontSize }}
+                style={serifText(fontSize)}
                 onClick={() => setActiveSlot({ kind: "notes" })}
               >
                 {notes || (
@@ -445,7 +453,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                       className={`w-full py-1 text-left text-foreground/90 ${
                         expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
                       }`}
-                      style={{ fontSize }}
+                      style={serifText(fontSize)}
                       onClick={() => {
                         setActiveSlot({ kind: "comment", markerId: comment.markerId });
                         setDraft("");

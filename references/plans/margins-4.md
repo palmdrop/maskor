@@ -17,7 +17,7 @@
 `margins-3` (ADR 0009) shipped buffer-clean anchoring + editor-driven mutual flow alignment. A manual smoke test (`references/reviews/margins-findings-2026-06-04.md`) surfaced font, layout, styling, save-coupling, and two interaction/anchor bugs. This iteration pays them down. Two design decisions were settled in discussion:
 
 - **Freeze the document while editing a comment** — no per-keystroke push; the document-side spacers reconcile on blur (finding #6).
-- **No initial top offset in the fragment editor** — remove the margin's top chrome so the existing origin-alignment effect pads the *margin* down to meet the editor's first line (the `rowsPaddingTop` branch), leaving `editorTopPadding` at 0 (findings #3, #4).
+- **No initial top offset in the fragment editor** — remove the margin's top chrome so the existing origin-alignment effect pads the _margin_ down to meet the editor's first line (the `rowsPaddingTop` branch), leaving `editorTopPadding` at 0 (findings #3, #4).
 
 Touch-points (orientation, not prescription): `packages/frontend/src/components/margins/` (`margin-column.tsx`, `slot-editor.tsx`, `comment-card.tsx`); `prose-editor.tsx` (origin alignment, `getContent`/`setContent`, spacer/anchor wiring); `anchor-cm.ts`, `anchor-tiptap.ts` (deletion detection); `block-spacer-cm.ts`, `block-spacer-tiptap.ts`; `entity-editor-shell.tsx`, `fragments/fragment-editor.tsx` (save coupling, dirty); `hooks/useMarginEditor.ts`; `styles/global.css`. ADR 0009 is the model of record.
 

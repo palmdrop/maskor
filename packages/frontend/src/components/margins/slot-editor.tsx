@@ -7,6 +7,12 @@ import { buildSharedProseExtensions, proseClassName } from "../shared-prose-exte
 
 export type EditorMode = "rich" | "vim" | "raw";
 
+// The line-height the Margin text (static comments, notes, and the active slot editors) shares so the
+// column reads in the same serif rhythm as the prose editor beside it (margins-4 findings #1, #2).
+// Matches the prose body line-height; the document-side push is measured, so equal line-heights keep
+// multi-line comments from drifting against their block.
+export const MARGIN_LINE_HEIGHT = 1.75;
+
 type MarkdownStorage = {
   markdown: { getMarkdown: () => string };
 };
@@ -132,7 +138,14 @@ const RichSlotEditor = ({
   return (
     // The interactive surface is the inner editor; this wrapper only forwards navigation keys.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div onKeyDown={onKeyDown} style={fontSize ? { fontSize } : undefined}>
+    <div
+      onKeyDown={onKeyDown}
+      style={{
+        fontFamily: "var(--font-serif)",
+        lineHeight: MARGIN_LINE_HEIGHT,
+        ...(fontSize ? { fontSize } : {}),
+      }}
+    >
       <EditorContent editor={editor} />
     </div>
   );
@@ -165,12 +178,17 @@ const CodeSlotEditor = ({
   );
 
   return (
-    // The interactive surface is the inner editor; this wrapper only forwards navigation keys.
+    // The interactive surface is the inner editor; this wrapper only forwards navigation keys. The
+    // raw/vim comment shares the editor's serif family + line-height so its lines keep the same
+    // vertical rhythm as the prose beside it (ADR 0009; margins-4 finding #1).
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       onKeyDown={onKeyDown}
-      className="font-mono"
-      style={{ fontSize: fontSize ? `${fontSize}px` : "0.875rem" }}
+      style={{
+        fontFamily: "var(--font-serif)",
+        lineHeight: MARGIN_LINE_HEIGHT,
+        fontSize: fontSize ? `${fontSize}px` : "0.875rem",
+      }}
     >
       <CodeMirror
         ref={ref}
