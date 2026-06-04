@@ -8,6 +8,7 @@ export type SuggestionNextResponse = {
 
 type SuggestionNextEnvelope = { data: SuggestionNextResponse; status: 200 };
 
+// TODO: why does this use generated hook?
 export const getNextSuggestion = (
   projectId: string,
   excludeUuid?: string,

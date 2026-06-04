@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { suggestionModeScope } from "@lib/commands/scopes/suggestion-mode";
-import { useGetCurrentSuggestion } from "../../api/generated/suggestion/suggestion";
+import {
+  useGetCurrentSuggestion,
+  getGetCurrentSuggestionQueryKey,
+} from "../../api/generated/suggestion/suggestion";
 
 // TODO: this should be configured globally and not in a random FE-component
 const AVOIDANCE_NUDGE_THRESHOLD = 3;
@@ -16,6 +20,7 @@ export const SuggestionModePage = () => {
   const { fragment: fragmentId } = useSearch({ from: "/projects/$projectId/suggestion" });
   const navigate = useNavigate({ from: "/projects/$projectId/suggestion" });
   const router = useRouter();
+  const queryClient = useQueryClient();
   const current = useGetCurrentSuggestion(projectId);
 
   const editorRef = useRef<FragmentEditorHandle>(null);
@@ -37,6 +42,11 @@ export const SuggestionModePage = () => {
           setSaveError("Failed to load next suggestion.");
           return;
         }
+
+        await queryClient.invalidateQueries({
+          queryKey: getGetCurrentSuggestionQueryKey(projectId),
+        });
+
         const { fragment, avoidanceCount: count } = result.data;
         setAvoidanceCount(count);
         navigate({ search: { fragment: fragment?.uuid } });
