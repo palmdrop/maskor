@@ -8,34 +8,23 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-### Margins
-
-- [x] margins panel should look more linear and sync and scroll with the fragment editor (margins-2 Phase 4: annotated-paragraphs column + scroll-sync)
-- [x] margins panel should feel like an actual margin, scroll with the editor, aligh properly, etc (margins-3: editor-driven mutual flow alignment + document-side padding + origin alignment + scroll re-link; pixel geometry needs a manual browser smoke)
-- [x] deleting comments does not remove the anchor (margins-2 Phase 3: delete strips the marker; margins-3: delete drops the anchor, marker stops re-emitting)
-- [x] anchors clutter the editing, and are easily broken (margins-3: buffer-clean anchoring — marker stripped from the live buffer, position-mapped, re-emitted on save; fixes end-of-paragraph caret breakage)
-- [x] adding a new comment where there already is an anchor creates a double anchor (margins-2 Phase 3: one comment per block; gesture focuses existing)
-- [x] the entire paragraph becomes the excerpt of a comment, not just a small excerpt (margins-2 Phase 2: excerpt is the capped block opening)
-- [x] pressing escape or maybe enter should restore focus to editor again (margins-2 Phase 4: Escape returns the caret to the bound paragraph)
-- [x] surprise in suggestions.md about frontmatter loss requires investigation (margins-2 Phase 6: extraFrontmatter round-trip for aspects/notes/refs)
-
-### Rest
-
-- [x] fix lint errors
-
-- [x] finish remove piece plan (see worktree)
+- [ ] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
 - [ ] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
 
 - [ ] when adding an aspect, even when navigating to select an option, enter creates a new aspect, unless the full aspect name is inputted in the search field
 
-- [ ] when re-loading a fragment from server, the banner indicating that its been edited, not saved, sticks and never goes away, even after a save.
-
 - [ ] when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown instead. Backend state is probably not updated properly?
+
+- [ ] sticky fragment titles showing which fragment we are in during import/preview/export
+  - even when fragment titles are hidden
+  - redesign, make more minimal, closer to have a document actually looks
 
 - [ ] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
 
 - [ ] make it possible to "clone" a sequence, or insert one sequence into another, etc
+
+- [ ] investigate spelling, language settings
 
 - [ ] add way to select many fragments in sequence, way of making them into a section
   - way of easily dragging many into an existing section
@@ -52,10 +41,6 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] start designing UI, see: https://www.are.na/anton-hildingsson/maskor-inspiration
   - want it aesthetic, minimal, graphlike, vague, generic, specific, all at once
-
-- [ ] sticky fragment titles showing which fragment we are in during import/preview/export
-  - even when fragment titles are hidden
-  - redesign, make more minimal, closer to have a document actually looks
 
 - [x] case-only rename of reference (and probably also note, aspect and fragment) creates a sync/naming collision error that ends up deleting the file entirely...
 
@@ -120,8 +105,6 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [x] specs claim command palette and quick-switcher use the same underlying picker component, but neither does. Instead, they define their own logic. There is a picker component, but it is never used in the code (except for test).
 
 - [ ] add project-wide setting for yanking to clipboard or not in vim mode
-
-- [ ] investigate spelling, language settings
 
 ## Workflow / tooling
 
