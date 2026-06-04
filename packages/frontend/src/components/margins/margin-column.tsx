@@ -60,7 +60,6 @@ type Props = {
   // The fragment editor's font size — applied to comment text so it reads at the same scale as the
   // prose, and a trigger to re-measure alignment when the size changes.
   fontSize: number;
-  onSave: () => void;
   onCommentBlock?: () => void;
   // Editor bridge (coordinated buffer edits + geometry), wired from the fragment editor shell.
   insertMarkerInBlock: (blockIndex: number, markerId: string) => void;
@@ -86,7 +85,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     fragmentContent,
     mode,
     fontSize,
-    onSave,
     onCommentBlock,
     insertMarkerInBlock,
     stripMarker,
@@ -99,8 +97,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   },
   ref,
 ) {
-  const { notes, comments, isDirty, isSaving, setNotes, updateCommentBody, addCommentStub } =
-    marginEditor;
+  const { notes, comments, setNotes, updateCommentBody, addCommentStub } = marginEditor;
 
   const [notesOpen, , toggleNotes] = usePersistedBoolean(`marginNotesOpen_${projectId}`, true);
   // Global default: collapsed (comments clipped to their paragraph's height). Expand-all reveals
@@ -519,7 +516,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       </div>
 
       {/* Column controls: a pinned footer at the bottom of the column (margins-4 #4) — the jump-to-slot
-          gesture and the expand-all toggle. */}
+          gesture and the expand-all toggle. The margin no longer has its own Save button: the editor's
+          save persists the fragment and the Margin together (margins-4 #13). */}
       <div
         className="flex shrink-0 items-center justify-end gap-3 border-t border-border pt-2"
         data-testid="margin-controls"
@@ -542,15 +540,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         >
           {expandAll ? "Collapse all" : "Expand all"}
         </button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!isDirty || isSaving}
-          onClick={onSave}
-          className="min-w-16"
-        >
-          {isSaving ? "Saving…" : "Save"}
-        </Button>
       </div>
     </div>
   );

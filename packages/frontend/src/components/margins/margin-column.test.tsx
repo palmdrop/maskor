@@ -67,7 +67,6 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       fragmentContent={fragmentContent}
       mode="rich"
       fontSize={16}
-      onSave={vi.fn()}
       insertMarkerInBlock={vi.fn()}
       stripMarker={vi.fn()}
       revealMarker={vi.fn()}

@@ -127,7 +127,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   }, [marginSwap.recovery, marginEditor]);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
-  const isDirty = isProseDirty;
+  // The editor save persists the fragment and its Margin together (margins-4 #10, #13), so a
+  // margin-only edit dirties the shell — enabling the editor Save button and gating its command.
+  const isDirty = isProseDirty || marginEditor.isDirty;
 
   // Live fragment body, tracked so the Margin column can enumerate the fragment's blocks and bind
   // comments live. Seeded from the server fragment; updated on each edit.
@@ -184,17 +186,26 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   const onContentSave = useCallback(
     async (content: string) => {
-      const result = await updateFragment({
-        projectId,
-        fragmentId,
-        data: { content },
-      });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Save failed.");
+      // Coupled save (margins-4 #10, #13): the editor's save persists the fragment and its Margin
+      // together. Save the fragment only when its prose changed; always flush a dirty Margin (and
+      // drop its swap mirror). Each side still persists on its own next save if the other is clean.
+      if (isProseDirty) {
+        const result = await updateFragment({
+          projectId,
+          fragmentId,
+          data: { content },
+        });
+        if (result.status !== 200) {
+          throw new Error((result.data as { message?: string }).message ?? "Save failed.");
+        }
+        invalidateFragment();
+        invalidateFragmentStats();
+        invalidateActionLog();
       }
-      invalidateFragment();
-      invalidateFragmentStats();
-      invalidateActionLog();
+      if (marginEditor.isDirty) {
+        await marginEditor.save();
+        await marginSwap.clear();
+      }
     },
     [
       updateFragment,
@@ -203,6 +214,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       invalidateFragment,
       invalidateFragmentStats,
       invalidateActionLog,
+      isProseDirty,
+      marginEditor,
+      marginSwap,
     ],
   );
 
@@ -393,7 +407,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             fragmentContent={fragmentContent}
             mode={marginMode}
             fontSize={editorConfig.fontSize}
-            onSave={() => commands.run("margin:save")}
             onCommentBlock={() => commands.run("margin:comment-block")}
             insertMarkerInBlock={insertMarkerInBlock}
             stripMarker={stripMarker}

@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-06-04 — Coupled fragment+Margin save (margins-4): the fragment editor's save (`editor:save` / `:w` / `mod+s` / the editor Save button) persists the fragment **and** its Margin together; the Margin has no separate Save button, and a margin-only edit dirties the editor so it gates/enables the editor Save. The fragment is re-written only when its prose changed; a dirty Margin is always flushed. The linked swap pair and single recovery banner are unchanged. (plan: references/plans/margins-4.md, Phase 4)
 - 2026-06-03 — Buffer-clean comment anchoring (ADR 0009): the editor buffer holds pure markdown — `<!--c:ID-->` anchor markers are stripped on load and re-emitted on save (fixing end-of-paragraph caret breakage), with the live comment↔block binding maintained by mapping anchor positions through editor transactions (rich: a ProseMirror plugin; vim/raw: a CM6 `StateField`). The dot cue on annotated lines is driven by the anchor store; the "show source" toggle (`editor:toggle-show-source`) is removed (no buffer markers to reveal). Document-side spacers (a TipTap widget / CM6 block widget) keep the Margin column's rows flow-aligned to the editor. (plan: references/plans/margins-3.md; ADR 0009)
 - 2026-04-08 — Default prose editor uses WYSIWYG editing; content is stored as raw markdown. (plan: references/plans/prose-editor-tiptap.md)
 - 2026-04-20 — Dedicated single-fragment editing view with prose editor (supporting vim mode) and metadata form (readiness, notes, references, aspect weights). (plan: references/plans/fragment-editor.md)

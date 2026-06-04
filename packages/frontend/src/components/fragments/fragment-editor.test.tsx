@@ -9,16 +9,25 @@ import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 const restoreFromServerSpy = vi.fn();
 const marginClearSpy = vi.fn();
 const marginRevertSpy = vi.fn();
+const marginSaveSpy = vi.fn(() => Promise.resolve());
+const updateFragmentSpy = vi.fn(() => Promise.resolve({ status: 200, data: {} }));
 
 let fragmentRecovery: SwapRecovery | null = null;
 let marginRecovery: SwapRecovery | null = null;
 let capturedOnRecoveryChange: ((recovery: { at: Date } | null) => void) | undefined;
+// Captured from the shell stub so the coupled-save path (margins-4 Phase 4) is testable.
+let capturedIsDirty: boolean | undefined;
+let capturedOnProseChange: (() => void) | undefined;
+let capturedOnContentSave: ((content: string) => Promise<unknown>) | undefined;
 
 // EntityEditorShell stub: renders the `banner` prop (where the linked-pair recovery banner lives),
 // reports the fragment recovery up via onRecoveryChange, and exposes restoreFromServer on its ref.
 type ShellProps = {
   banner?: ReactNode;
   onRecoveryChange?: (recovery: { at: Date } | null) => void;
+  isDirty?: boolean;
+  onProseChange?: () => void;
+  onContentSave?: (content: string) => Promise<unknown>;
 };
 type ShellHandle = {
   save: () => Promise<void>;
@@ -31,10 +40,13 @@ type ShellHandle = {
 
 vi.mock("@components/entity-editor-shell", () => ({
   EntityEditorShell: forwardRef<ShellHandle, ShellProps>(function ShellStub(
-    { banner, onRecoveryChange }: ShellProps,
+    { banner, onRecoveryChange, isDirty, onProseChange, onContentSave }: ShellProps,
     ref: Ref<ShellHandle>,
   ) {
     capturedOnRecoveryChange = onRecoveryChange;
+    capturedIsDirty = isDirty;
+    capturedOnProseChange = onProseChange;
+    capturedOnContentSave = onContentSave;
     useEffect(() => {
       onRecoveryChange?.(fragmentRecovery ? { at: fragmentRecovery.at } : null);
     }, [onRecoveryChange]);
@@ -67,7 +79,7 @@ const marginEditor: UseMarginEditorResult = {
   updateCommentBody: vi.fn(),
   addCommentStub: vi.fn(),
   removeComment: vi.fn(),
-  save: vi.fn(),
+  save: marginSaveSpy,
   revertToServer: marginRevertSpy,
   serialize: vi.fn(() => ""),
   serializedContent: "",
@@ -93,7 +105,7 @@ vi.mock("@api/generated/fragments/fragments", () => ({
     isLoading: false,
     isError: false,
   }),
-  useUpdateFragment: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateFragment: () => ({ mutateAsync: updateFragmentSpy, isPending: false }),
   useDiscardFragment: () => ({ mutate: vi.fn(), isPending: false }),
   useRestoreFragment: () => ({ mutate: vi.fn(), isPending: false }),
   getGetFragmentQueryKey: () => ["fragment"],
@@ -134,9 +146,15 @@ beforeEach(() => {
   restoreFromServerSpy.mockReset();
   marginClearSpy.mockReset();
   marginRevertSpy.mockReset();
+  marginSaveSpy.mockClear();
+  updateFragmentSpy.mockClear();
   fragmentRecovery = null;
   marginRecovery = null;
+  marginEditor.isDirty = false;
   capturedOnRecoveryChange = undefined;
+  capturedIsDirty = undefined;
+  capturedOnProseChange = undefined;
+  capturedOnContentSave = undefined;
 });
 
 const at = new Date("2026-06-02T10:00:00.000Z");
@@ -185,5 +203,41 @@ describe("FragmentEditor linked swap pair", () => {
     // Simulate the shell reporting the fragment swap cleared (e.g. after restore/ save).
     act(() => capturedOnRecoveryChange?.(null));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("FragmentEditor coupled save (margins-4 Phase 4)", () => {
+  it("a margin-only edit dirties the shell so the editor Save is enabled", () => {
+    marginEditor.isDirty = true;
+    renderEditor();
+    expect(capturedIsDirty).toBe(true);
+  });
+
+  it("a clean margin and clean prose leave the shell not dirty", () => {
+    renderEditor();
+    expect(capturedIsDirty).toBe(false);
+  });
+
+  it("the editor save persists the fragment and the margin together when both are dirty", async () => {
+    marginEditor.isDirty = true;
+    renderEditor();
+    // Dirty the prose so the fragment side of the coupled save runs.
+    act(() => capturedOnProseChange?.());
+    await act(async () => {
+      await capturedOnContentSave?.("new body");
+    });
+    expect(updateFragmentSpy).toHaveBeenCalledTimes(1);
+    expect(marginSaveSpy).toHaveBeenCalledTimes(1);
+    expect(marginClearSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("a margin-only save flushes the margin without re-writing the unchanged fragment", async () => {
+    marginEditor.isDirty = true;
+    renderEditor();
+    await act(async () => {
+      await capturedOnContentSave?.("body");
+    });
+    expect(updateFragmentSpy).not.toHaveBeenCalled();
+    expect(marginSaveSpy).toHaveBeenCalledTimes(1);
   });
 });
