@@ -54,20 +54,17 @@ export type ProseEditorHandle = {
   // block (the first one), or null; `index` is the block's document-order index for the margin slot.
   // (Method names predate the buffer-clean model; they now operate on anchors, not buffer markers.)
   getCurrentBlock: () => { text: string; markerId: string | null; index: number } | null;
-  // Anchor a comment at the cursor's block. Coordinated-edit semantics (dirties the fragment so the
-  // marker re-emits on save), but no buffer mutation. Kept for the handle's shape; the column jumps.
-  appendCommentMarker: (markerId: string) => void;
   // Anchor a comment at a specific block (by document-order index) — the column's type-to-create. No
   // buffer mutation; the marker materialises on the next save. No-op when the index is out of range.
-  insertCommentMarkerInBlock: (blockIndex: number, markerId: string) => void;
+  addAnchorAtBlock: (blockIndex: number, markerId: string) => void;
   // Drop a comment's anchor (the delete-comment coordinated edit). No buffer mutation — the marker
   // simply stops being re-emitted. No-op when the anchor is absent (an orphan leaves the fragment be).
-  stripCommentMarker: (markerId: string) => void;
+  removeAnchor: (markerId: string) => void;
   // Scroll the editor to the block carrying `markerId`.
-  revealCommentMarker: (markerId: string) => void;
+  revealAnchor: (markerId: string) => void;
   // Move the caret into the block carrying `markerId` and focus the editor (Escape from a comment
   // returns to its bound paragraph).
-  focusMarkerBlock: (markerId: string) => void;
+  focusAnchorBlock: (markerId: string) => void;
   // The scrolling element of the active editor, for scroll-sync with the margin column.
   getScrollElement: () => HTMLElement | null;
   // The authoritative block list (ADR 0009): the editor — not the margin — enumerates the fragment's
@@ -412,28 +409,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         const markerId = markerForBlock(tiptapAnchorBlockIndex(editor.state), index);
         return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId, index };
       },
-      // Anchor the comment at the cursor's block (a coordinated buffer edit in spirit, but the marker
-      // is held as an anchor, not written into the buffer). Kept for the handle's shape; the column's
-      // gesture is a jump.
-      appendCommentMarker: (markerId: string) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          const ranges = blockRanges(view.state.doc.toString());
-          const head = view.state.selection.main.head;
-          const index = ranges.findIndex((range) => head >= range.from && head <= range.to);
-          if (index === -1) return;
-          addCmAnchor(view, ranges[index]!.to, markerId);
-          onChangeRef.current?.();
-          return;
-        }
-        if (!editor) return;
-        addTiptapAnchor(editor, editor.state.selection.$from.end(), markerId);
-        onChangeRef.current?.();
-      },
       // Type-to-create on an arbitrary block: add the anchor at that block's end. No buffer mutation —
       // the marker materialises on the next save; the change still dirties the fragment (onChange).
-      insertCommentMarkerInBlock: (blockIndex: number, markerId: string) => {
+      addAnchorAtBlock: (blockIndex: number, markerId: string) => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return;
@@ -454,7 +432,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       },
       // Delete the comment's anchor (the delete-comment coordinated edit). No buffer mutation; the
       // marker simply stops being re-emitted on the next save. No-op when the anchor is absent.
-      stripCommentMarker: (markerId: string) => {
+      removeAnchor: (markerId: string) => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return;
@@ -469,7 +447,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         editor.view.dispatch(editor.state.tr.setMeta(tiptapAnchorKey, next));
         onChangeRef.current?.();
       },
-      revealCommentMarker: (markerId: string) => {
+      revealAnchor: (markerId: string) => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return;
@@ -485,7 +463,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         );
         if (anchor) editor.chain().setTextSelection(anchor.pos).scrollIntoView().run();
       },
-      focusMarkerBlock: (markerId: string) => {
+      focusAnchorBlock: (markerId: string) => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return;

@@ -15,7 +15,6 @@ const getCurrentBlockSpy = vi.fn(() => ({
   markerId: "m1" as string | null,
   index: 2,
 }));
-const appendCommentMarkerSpy = vi.fn();
 const shellSaveSpy = vi.fn();
 const focusSlotSpy = vi.fn();
 const addCommentStubSpy = vi.fn();
@@ -26,8 +25,7 @@ type ShellHandle = {
   save: () => Promise<void>;
   getSelection: () => { text: string; isEmpty: boolean };
   getCurrentBlock: () => { text: string; markerId: string | null; index: number } | null;
-  appendCommentMarker: (markerId: string) => void;
-  revealCommentMarker: (markerId: string) => void;
+  revealAnchor: (markerId: string) => void;
   restoreFromServer: () => void;
 };
 
@@ -40,8 +38,7 @@ vi.mock("@components/entity-editor-shell", () => ({
       save: shellSaveSpy as unknown as () => Promise<void>,
       getSelection: () => ({ text: "", isEmpty: true }),
       getCurrentBlock: getCurrentBlockSpy,
-      appendCommentMarker: appendCommentMarkerSpy,
-      revealCommentMarker: vi.fn(),
+      revealAnchor: vi.fn(),
       restoreFromServer: vi.fn(),
     }));
     return (
@@ -135,7 +132,6 @@ import { FragmentEditor } from "./fragment-editor";
 
 beforeEach(() => {
   getCurrentBlockSpy.mockClear();
-  appendCommentMarkerSpy.mockClear();
   shellSaveSpy.mockClear();
   focusSlotSpy.mockClear();
   addCommentStubSpy.mockClear();
@@ -163,8 +159,7 @@ describe("comment gesture (margin:comment-block)", () => {
     // Jump to the current block's slot (its comment if any, else the empty slot).
     expect(focusSlotSpy).toHaveBeenCalledWith({ index: 2, markerId: "m1" });
 
-    // Creation is implicit now: the gesture itself injects nothing and seeds no stub.
-    expect(appendCommentMarkerSpy).not.toHaveBeenCalled();
+    // Creation is implicit now: the gesture itself seeds no stub.
     expect(addCommentStubSpy).not.toHaveBeenCalled();
 
     // No premature persistence.

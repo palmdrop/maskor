@@ -3,7 +3,7 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 import type { EditorBlock } from "@components/prose-editor";
-import { enumerateBlocks } from "@lib/margins/column";
+import { enumerateBlocks } from "@lib/margins/column.test-helpers";
 import { MarginColumn } from "./margin-column";
 
 // In the editor-less harness the real editor's `getBlocks()` is unavailable, so synthesize the block
@@ -74,12 +74,13 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       projectId="project-1"
       marginEditor={buildMarginEditor()}
       fragmentContent={fragmentContent}
+      fragmentDirty={false}
       mode="rich"
       fontSize={16}
-      insertMarkerInBlock={vi.fn()}
-      stripMarker={vi.fn()}
-      revealMarker={vi.fn()}
-      focusMarkerBlock={vi.fn()}
+      addAnchorAtBlock={vi.fn()}
+      removeAnchor={vi.fn()}
+      revealAnchor={vi.fn()}
+      focusAnchorBlock={vi.fn()}
       getScrollElement={() => null}
       getBlocks={() => blocksFromContent(fragmentContent)}
       setBlockSpacers={vi.fn()}
@@ -123,36 +124,36 @@ describe("MarginColumn", () => {
   });
 
   it("type-to-create: typing in an empty slot injects a marker and seeds a bound comment", () => {
-    const insertMarkerInBlock = vi.fn();
+    const addAnchorAtBlock = vi.fn();
     const addCommentStub = vi.fn();
     renderColumn({
       fragmentContent: "First. <!--c:a-->\n\nSecond paragraph.",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a")], addCommentStub }),
-      insertMarkerInBlock,
+      addAnchorAtBlock,
     });
     // Activate the empty slot beside the second paragraph (block index 1), then type.
     fireEvent.click(screen.getByText("+ comment"));
     fireEvent.change(screen.getByTestId("slot-editor"), { target: { value: "new thought" } });
 
-    expect(insertMarkerInBlock).toHaveBeenCalledTimes(1);
-    expect(insertMarkerInBlock.mock.calls[0]![0]).toBe(1);
-    const markerId = insertMarkerInBlock.mock.calls[0]![1] as string;
+    expect(addAnchorAtBlock).toHaveBeenCalledTimes(1);
+    expect(addAnchorAtBlock.mock.calls[0]![0]).toBe(1);
+    const markerId = addAnchorAtBlock.mock.calls[0]![1] as string;
     expect(addCommentStub).toHaveBeenCalledWith(
       expect.objectContaining({ markerId, body: "new thought" }),
     );
   });
 
   it("does not create when an activated slot stays empty", () => {
-    const insertMarkerInBlock = vi.fn();
+    const addAnchorAtBlock = vi.fn();
     const addCommentStub = vi.fn();
     renderColumn({
       fragmentContent: "Lonely paragraph.",
       marginEditor: buildMarginEditor({ addCommentStub }),
-      insertMarkerInBlock,
+      addAnchorAtBlock,
     });
     fireEvent.click(screen.getByText("+ comment"));
     fireEvent.change(screen.getByTestId("slot-editor"), { target: { value: "   " } });
-    expect(insertMarkerInBlock).not.toHaveBeenCalled();
+    expect(addAnchorAtBlock).not.toHaveBeenCalled();
     expect(addCommentStub).not.toHaveBeenCalled();
   });
 
@@ -241,12 +242,13 @@ describe("MarginColumn", () => {
     const baseProps = {
       projectId: "project-1",
       fragmentContent: "Long. <!--c:a-->\n\nShort.",
+      fragmentDirty: false,
       mode: "rich" as const,
       fontSize: 16,
-      insertMarkerInBlock: vi.fn(),
-      stripMarker: vi.fn(),
-      revealMarker: vi.fn(),
-      focusMarkerBlock: vi.fn(),
+      addAnchorAtBlock: vi.fn(),
+      removeAnchor: vi.fn(),
+      revealAnchor: vi.fn(),
+      focusAnchorBlock: vi.fn(),
       getScrollElement: () => null,
       getBlocks,
       setBlockSpacers,
@@ -383,42 +385,42 @@ describe("MarginColumn", () => {
   });
 
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {
-    const stripMarker = vi.fn();
+    const removeAnchor = vi.fn();
     const removeComment = vi.fn();
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a")], removeComment }),
-      stripMarker,
+      removeAnchor,
     });
     // Activate the comment, then delete it.
     fireEvent.click(screen.getByText("on a"));
     fireEvent.mouseDown(screen.getByLabelText("Remove comment"));
-    expect(stripMarker).toHaveBeenCalledWith("a");
+    expect(removeAnchor).toHaveBeenCalledWith("a");
     expect(removeComment).toHaveBeenCalledWith("a");
   });
 
   it("exposes the remove control on an idle comment (deletable without entering edit)", () => {
-    const stripMarker = vi.fn();
+    const removeAnchor = vi.fn();
     const removeComment = vi.fn();
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a")], removeComment }),
-      stripMarker,
+      removeAnchor,
     });
     // The remove × is present (in the gutter) without activating the comment first.
     fireEvent.mouseDown(screen.getByLabelText("Remove comment"));
-    expect(stripMarker).toHaveBeenCalledWith("a");
+    expect(removeAnchor).toHaveBeenCalledWith("a");
     expect(removeComment).toHaveBeenCalledWith("a");
   });
 
   it("removes an emptied comment on blur instead of leaving a blank '(empty)' slot", () => {
-    const stripMarker = vi.fn();
+    const removeAnchor = vi.fn();
     const removeComment = vi.fn();
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       // The comment body is already empty (e.g. the writer cleared it).
       marginEditor: buildMarginEditor({ comments: [comment("a", "")], removeComment }),
-      stripMarker,
+      removeAnchor,
     });
     // No "(empty)" placeholder is rendered.
     expect(screen.queryByText("(empty)")).toBeNull();
@@ -429,7 +431,7 @@ describe("MarginColumn", () => {
       .find((node) => node.getAttribute("aria-label") !== "Remove comment")!;
     fireEvent.click(bodyButton);
     fireEvent.blur(screen.getByTestId("slot-editor"));
-    expect(stripMarker).toHaveBeenCalledWith("a");
+    expect(removeAnchor).toHaveBeenCalledWith("a");
     expect(removeComment).toHaveBeenCalledWith("a");
   });
 });

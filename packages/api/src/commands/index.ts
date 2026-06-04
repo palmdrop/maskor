@@ -41,12 +41,6 @@ export { deleteReferenceCommand } from "./references/delete-reference";
 
 export { writeMarginCommand } from "./margins/write-margin";
 export type { WriteMarginInput } from "./margins/write-margin";
-export { createCommentCommand } from "./margins/create-comment";
-export type { CreateCommentInput } from "./margins/create-comment";
-export { updateCommentCommand } from "./margins/update-comment";
-export type { UpdateCommentInput } from "./margins/update-comment";
-export { deleteCommentCommand } from "./margins/delete-comment";
-export type { DeleteCommentInput } from "./margins/delete-comment";
 
 export { ensureMainSequenceCommand } from "./sequences/ensure-main-sequence";
 export { createSequenceCommand } from "./sequences/create-sequence";

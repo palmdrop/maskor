@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetMargin,
-  useWriteMargin,
-  getGetMarginQueryKey,
-  getListOrphanedCommentsQueryKey,
-} from "@api/generated/margins/margins";
+import { useGetMargin, useWriteMargin, getGetMarginQueryKey } from "@api/generated/margins/margins";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 
 export type MarginState = {
@@ -155,7 +150,6 @@ export const useMarginEditor = (projectId: string, fragmentId: string): UseMargi
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: getGetMarginQueryKey(projectId, fragmentId) });
-    queryClient.invalidateQueries({ queryKey: getListOrphanedCommentsQueryKey(projectId) });
   }, [queryClient, projectId, fragmentId]);
 
   const localRef = useRef(local);

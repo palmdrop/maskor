@@ -77,7 +77,6 @@ export const assembleComment = (row: typeof commentsTable.$inferSelect): Indexed
   markerId: row.markerId,
   excerpt: row.excerpt,
   body: row.body,
-  orphaned: row.orphaned,
   ordinal: row.ordinal,
 });
 

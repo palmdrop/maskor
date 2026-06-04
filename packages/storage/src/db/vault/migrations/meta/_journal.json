@@ -148,6 +148,13 @@
       "when": 1748908800000,
       "tag": "20260602_drop_fragment_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1749081600000,
+      "tag": "20260604_drop_comment_orphaned",
+      "breakpoints": true
     }
   ]
 }

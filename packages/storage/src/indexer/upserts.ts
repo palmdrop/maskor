@@ -323,16 +323,14 @@ export const deleteSequenceByFilePath = (tx: Transaction, filePath: string): voi
   tx.delete(sequencesTable).where(eq(sequencesTable.filePath, filePath)).run();
 };
 
-// Upsert a Margin and replace its comments. `fragmentMarkerIds` is the set of `<!--c:ID-->` marker
-// ids currently present in the owning fragment's body — a comment whose marker is absent is
-// orphaned. Pass `null` when the fragment is unknown (no row / never read): every comment is then
-// orphaned. The vault file is authoritative; this row is the derived index.
+// Upsert a Margin and replace its comments. The vault file is authoritative; this row is the derived
+// index. Orphan state is not stored — the panel derives it live from the open fragment buffer (a
+// comment whose `<!--c:ID-->` marker is absent from the fragment is an orphan).
 export const upsertMargin = (
   tx: Transaction,
   margin: Margin,
   filePath: string,
   rawContent: string,
-  fragmentMarkerIds: Set<string> | null,
 ): void => {
   const syncedAt = new Date();
   const contentHash = hashContent(rawContent);
@@ -382,7 +380,6 @@ export const upsertMargin = (
         markerId: comment.markerId,
         excerpt: comment.excerpt,
         body: comment.body,
-        orphaned: fragmentMarkerIds ? !fragmentMarkerIds.has(comment.markerId) : true,
         ordinal,
       })
       // The parser dedupes markerIds, but an API caller could still submit a duplicate; last-wins on
@@ -392,7 +389,6 @@ export const upsertMargin = (
         set: {
           excerpt: comment.excerpt,
           body: comment.body,
-          orphaned: fragmentMarkerIds ? !fragmentMarkerIds.has(comment.markerId) : true,
           ordinal,
         },
       })
@@ -424,41 +420,6 @@ export const relocateMarginInIndex = (
     .set({ fragmentKey, filePath })
     .where(eq(marginsTable.fragmentUuid, fragmentUuid))
     .run();
-};
-
-// Recompute the orphan flag for every comment bound to one fragment, given the marker ids now
-// present in that fragment's body. Returns true if any flag changed. Called when a fragment's body
-// changes (the Margin file itself is untouched, so no margin watcher event fires). Cheap: a Margin
-// holds a handful of comments.
-export const recomputeMarginOrphans = (
-  vaultDatabase: VaultDatabase,
-  fragmentUuid: string,
-  fragmentMarkerIds: Set<string>,
-): boolean => {
-  const comments = vaultDatabase
-    .select({ markerId: commentsTable.markerId, orphaned: commentsTable.orphaned })
-    .from(commentsTable)
-    .where(eq(commentsTable.fragmentUuid, fragmentUuid))
-    .all();
-
-  let changed = false;
-  vaultDatabase.transaction((tx) => {
-    for (const comment of comments) {
-      const orphaned = !fragmentMarkerIds.has(comment.markerId);
-      if (orphaned === comment.orphaned) continue;
-      tx.update(commentsTable)
-        .set({ orphaned })
-        .where(
-          and(
-            eq(commentsTable.fragmentUuid, fragmentUuid),
-            eq(commentsTable.markerId, comment.markerId),
-          ),
-        )
-        .run();
-      changed = true;
-    }
-  });
-  return changed;
 };
 
 export const findAspectUuidsByNoteKey = (db: VaultDatabase, noteKey: string): string[] => {

@@ -51,7 +51,6 @@ import {
   upsertReference,
   upsertSequence,
   upsertMargin,
-  recomputeMarginOrphans,
   relocateMarginInIndex,
   deleteMarginByFragmentUuid,
   deleteReferenceByFilePath,
@@ -63,7 +62,7 @@ import {
   findFragmentUuidsByReferenceKey,
   findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
-import { extractCommentMarkerIds, extractBlockOpening } from "@maskor/shared";
+import { markerIdSet, extractBlockOpening } from "@maskor/shared";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { joinCategoryPath } from "../utils/category";
@@ -195,17 +194,17 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     return indexer;
   };
 
-  // The set of `<!--c:ID-->` marker ids in a fragment's body — drives comment orphan detection.
-  // Returns null when the fragment is unknown (every comment of an unbound Margin is then orphaned).
-  const loadFragmentMarkerIds = async (
+  // The authoritative fragment body for a uuid, or null when the fragment is unknown / its file is
+  // missing. The marker ids and the comment excerpts the Margin index derives both come from here.
+  const readFragmentContent = async (
     context: ProjectContext,
     fragmentUuid: string,
-  ): Promise<Set<string> | null> => {
+  ): Promise<string | null> => {
     const filePath = await getVaultIndexer(context).fragments.findFilePath(fragmentUuid);
     if (!filePath) return null;
     try {
       const fragment = await getVault(context).fragments.read(filePath);
-      return new Set(extractCommentMarkerIds(fragment.content));
+      return fragment.content;
     } catch (error) {
       if (error instanceof VaultError && error.code === "FILE_NOT_FOUND") return null;
       throw error;
@@ -247,11 +246,24 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     }
 
     const existing = await readMargin(context, fragmentUuid);
+
+    // The backend is the single authority for each comment's stored excerpt (review #1): an *anchored*
+    // comment's excerpt is always (re)derived from its block's current opening in the fragment body, so
+    // a client write can never persist a stale excerpt over the live block. An *orphaned* comment
+    // (marker absent) keeps its provided last-known excerpt, frozen.
+    const fragmentContent = await readFragmentContent(context, fragmentUuid);
+    const fragmentMarkerIds = fragmentContent ? markerIdSet(fragmentContent) : new Set<string>();
+    const resolvedComments = comments.map((comment) => {
+      if (!fragmentContent || !fragmentMarkerIds.has(comment.markerId)) return comment;
+      const opening = extractBlockOpening(fragmentContent, comment.markerId);
+      return opening === null ? comment : { ...comment, excerpt: opening };
+    });
+
     const margin: Margin = {
       fragmentUuid,
       fragmentKey: indexedFragment.key,
       notes,
-      comments,
+      comments: resolvedComments,
       createdAt: existing?.createdAt ?? new Date(),
       updatedAt: new Date(),
     };
@@ -261,10 +273,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     const entityRelativePath = `${indexedFragment.key}.md`;
     const absolutePath = join(context.vaultPath, "margins", entityRelativePath);
     const rawContent = await Bun.file(absolutePath).text();
-    const fragmentMarkerIds = await loadFragmentMarkerIds(context, fragmentUuid);
 
     getVaultDatabase(context).transaction((tx) => {
-      upsertMargin(tx, margin, entityRelativePath, rawContent, fragmentMarkerIds);
+      upsertMargin(tx, margin, entityRelativePath, rawContent);
     });
 
     return margin;
@@ -272,21 +283,19 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
   // On a fragment content edit, keep the bound Margin's stored excerpts honest: refresh each
   // *anchored* comment's excerpt from its block's current opening, and *freeze* the excerpt once the
-  // comment is orphaned (its marker is gone). Returns true when anything changed (excerpt or orphan
-  // state) so the caller can emit `margin:synced`. Caller holds the vault write lock. When nothing
-  // changed there is no file churn — the cheap DB-only orphan recompute already kept the index
-  // coherent and is run as the fast path.
+  // comment is orphaned (its marker is gone). Returns true when an excerpt changed (and the Margin
+  // file was rewritten) so the caller can emit `margin:synced`. Caller holds the vault write lock.
+  // Orphan state is not persisted — the panel derives it live — so a pure orphan flip (a marker
+  // appearing/disappearing without any anchored excerpt moving) leaves the index identical and emits
+  // nothing, which is correct: there is nothing for a client to refetch.
   const refreshMarginExcerptsOnFragmentSave = async (
     context: ProjectContext,
     fragmentUuid: string,
     fragmentContent: string,
   ): Promise<boolean> => {
-    const fragmentMarkerIds = new Set(extractCommentMarkerIds(fragmentContent));
+    const fragmentMarkerIds = markerIdSet(fragmentContent);
     const margin = await readMargin(context, fragmentUuid);
-    // No Margin file: nothing to refresh, but the DB index may still carry stale orphan flags.
-    if (!margin) {
-      return recomputeMarginOrphans(getVaultDatabase(context), fragmentUuid, fragmentMarkerIds);
-    }
+    if (!margin) return false;
 
     let changed = false;
     const refreshedComments: Comment[] = margin.comments.map((comment) => {
@@ -298,20 +307,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       return { ...comment, excerpt: opening };
     });
 
-    // An orphan-state flip (a marker appearing/disappearing) also needs a sync even when no excerpt
-    // text moved — the DB orphan flags must follow.
-    const orphanFlagsChanged = recomputeMarginOrphans(
-      getVaultDatabase(context),
-      fragmentUuid,
-      fragmentMarkerIds,
-    );
-
     if (changed) {
       // Rewrite the file (and reindex) so the Obsidian-visible `> excerpt` matches the live block.
       await persistMargin(context, fragmentUuid, margin.notes, refreshedComments);
     }
 
-    return changed || orphanFlagsChanged;
+    return changed;
   };
 
   const getSuggestionCooldown = (context: ProjectContext): CooldownSet => {
@@ -1114,92 +1115,6 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         return withVaultWriteLock(context.vaultPath, () =>
           persistMargin(context, fragmentUuid, input.notes, input.comments),
         );
-      },
-
-      // Append a comment to a fragment's Margin (creating the Margin if needed). The marker is
-      // expected to already be (or soon be) in the fragment body; orphan state is derived on save.
-      async createComment(
-        context: ProjectContext,
-        fragmentUuid: string,
-        comment: Comment,
-      ): Promise<Margin> {
-        return withVaultWriteLock(context.vaultPath, async () => {
-          const existing = await readMargin(context, fragmentUuid);
-          const notes = existing?.notes ?? "";
-          const comments = [...(existing?.comments ?? [])];
-          const index = comments.findIndex((entry) => entry.markerId === comment.markerId);
-          if (index === -1) {
-            comments.push(comment);
-          } else {
-            comments[index] = comment;
-          }
-          return persistMargin(context, fragmentUuid, notes, comments);
-        });
-      },
-
-      // Update an existing comment's excerpt and/or body. Throws ENTITY_NOT_FOUND when the marker
-      // is absent from the Margin.
-      async updateComment(
-        context: ProjectContext,
-        fragmentUuid: string,
-        markerId: string,
-        patch: { excerpt?: string; body?: string },
-      ): Promise<Margin> {
-        return withVaultWriteLock(context.vaultPath, async () => {
-          const existing = await readMargin(context, fragmentUuid);
-          const comment = existing?.comments.find((entry) => entry.markerId === markerId);
-          if (!existing || !comment) {
-            throw new VaultError(
-              "ENTITY_NOT_FOUND",
-              `Comment "${markerId}" not found in Margin for fragment "${fragmentUuid}"`,
-              { uuid: fragmentUuid, reason: "marker_id not present in Margin" },
-            );
-          }
-          const comments = existing.comments.map((entry) =>
-            entry.markerId === markerId
-              ? {
-                  ...entry,
-                  excerpt: patch.excerpt ?? entry.excerpt,
-                  body: patch.body ?? entry.body,
-                }
-              : entry,
-          );
-          return persistMargin(context, fragmentUuid, existing.notes, comments);
-        });
-      },
-
-      // Remove a comment from a fragment's Margin (the only way an orphaned comment is removed).
-      // No-op-safe: a missing marker leaves the Margin unchanged.
-      async deleteComment(
-        context: ProjectContext,
-        fragmentUuid: string,
-        markerId: string,
-      ): Promise<Margin> {
-        return withVaultWriteLock(context.vaultPath, async () => {
-          const existing = await readMargin(context, fragmentUuid);
-          if (!existing) {
-            throw new VaultError(
-              "ENTITY_NOT_FOUND",
-              `Cannot delete comment: no Margin for fragment "${fragmentUuid}"`,
-              { uuid: fragmentUuid, reason: "no Margin file" },
-            );
-          }
-          const comments = existing.comments.filter((entry) => entry.markerId !== markerId);
-          return persistMargin(context, fragmentUuid, existing.notes, comments);
-        });
-      },
-
-      // List every orphaned comment across the project (marker absent from its fragment's body).
-      async listOrphanedComments(
-        context: ProjectContext,
-      ): Promise<Array<Comment & { fragmentUuid: string }>> {
-        const rows = await getVaultIndexer(context).margins.findOrphanedComments();
-        return rows.map((row) => ({
-          fragmentUuid: row.fragmentUuid,
-          markerId: row.markerId,
-          excerpt: row.excerpt,
-          body: row.body,
-        }));
       },
     },
 

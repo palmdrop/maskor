@@ -22,7 +22,6 @@ import {
 } from "@lib/margins/column";
 import { computeBlockAlignment, naturalSlotHeights, spacersEqual } from "@lib/margins/alignment";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
-import { CommentCard } from "./comment-card";
 import { SlotEditor, type EditorMode, MARGIN_LINE_HEIGHT } from "./slot-editor";
 
 // Serif text styling shared by the column's static (non-editing) comment and notes text, so they read
@@ -55,6 +54,10 @@ type Props = {
   marginEditor: UseMarginEditorResult;
   // The live fragment buffer — the column enumerates its blocks and binds comments live.
   fragmentContent: string;
+  // Whether the fragment prose has unsaved edits this session. The fuzzy orphan re-bind only runs
+  // while dirty (review #6) — a user-initiated edit like pasting a deleted paragraph back — so merely
+  // opening a clean fragment never silently re-anchors an orphan and dirties it.
+  fragmentDirty: boolean;
   // The fragment editor mode, so the active slot edits in the matching idiom (one active editor).
   mode: EditorMode;
   // The fragment editor's font size — applied to comment text so it reads at the same scale as the
@@ -62,10 +65,10 @@ type Props = {
   fontSize: number;
   onCommentBlock?: () => void;
   // Editor bridge (coordinated buffer edits + geometry), wired from the fragment editor shell.
-  insertMarkerInBlock: (blockIndex: number, markerId: string) => void;
-  stripMarker: (markerId: string) => void;
-  revealMarker: (markerId: string) => void;
-  focusMarkerBlock: (markerId: string) => void;
+  addAnchorAtBlock: (blockIndex: number, markerId: string) => void;
+  removeAnchor: (markerId: string) => void;
+  revealAnchor: (markerId: string) => void;
+  focusAnchorBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
   // The editor's authoritative block list (ADR 0009): the column renders one row per entry and binds
   // comments by markerId, so its block-index space matches the editor's geometry exactly.
@@ -83,13 +86,14 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     projectId,
     marginEditor,
     fragmentContent,
+    fragmentDirty,
     mode,
     fontSize,
     onCommentBlock,
-    insertMarkerInBlock,
-    stripMarker,
-    revealMarker,
-    focusMarkerBlock,
+    addAnchorAtBlock,
+    removeAnchor,
+    revealAnchor,
+    focusAnchorBlock,
     getScrollElement,
     getBlocks,
     setBlockSpacers,
@@ -146,6 +150,12 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   );
   const { rows, orphans } = useMemo(() => buildColumn(blocks, comments), [blocks, comments]);
 
+  // Until the editor has emitted its block list, `getBlocks()` returns [] — every comment would bind
+  // to nothing and flash in the orphan group for a frame (review #7). Treat the column as "measured"
+  // once we have blocks, or when the fragment is genuinely empty (no blocks to expect); suppress the
+  // orphan group and the empty-state copy until then.
+  const measured = editorBlocks.length > 0 || fragmentContent.trim() === "";
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Latest comments, read by the empty-comment cleanup on blur (the closure that fires may predate the
@@ -154,19 +164,21 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   commentsRef.current = comments;
 
   // An emptied comment is removed rather than left as a blank slot (no "(empty)" placeholder): on blur
-  // (or Escape) a comment whose body is now whitespace strips its anchor and drops the comment. Each
-  // side persists on its own next save (coordinated edit). Returns whether it deleted.
+  // (or Escape) a comment whose body is now whitespace drops the comment. For an *anchored* comment
+  // this also strips its anchor (coordinated edit; each side persists on its own next save); for an
+  // *orphan* (no live anchor) it removes the comment only — calling `removeAnchor` would needlessly
+  // dirty the fragment. Returns whether it deleted.
   const deleteCommentIfEmpty = useCallback(
-    (markerId: string): boolean => {
+    (markerId: string, { anchored = true }: { anchored?: boolean } = {}): boolean => {
       const current = commentsRef.current.find((entry) => entry.markerId === markerId);
       if (current && current.body.trim() === "") {
-        stripMarker(markerId);
+        if (anchored) removeAnchor(markerId);
         marginEditor.removeComment(markerId);
         return true;
       }
       return false;
     },
-    [stripMarker, marginEditor],
+    [removeAnchor, marginEditor],
   );
 
   // --- Scroll sync: mirror the editor's scrollTop into the column and back, lockstep. A guard
@@ -284,12 +296,15 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   // --- Fuzzy recovery (ADR 0009). An orphaned comment whose last-known excerpt still uniquely matches
   // an un-anchored block re-anchors to it (adding the anchor; the marker re-emits on the next save).
   // Conservative — only unambiguous matches — and self-terminating: once rebound the comment is no
-  // longer an orphan, so the next pass finds nothing. ---
+  // longer an orphan, so the next pass finds nothing. Gated on `fragmentDirty` (review #6): rebinding
+  // only runs after a user edit (e.g. pasting a deleted paragraph back), so opening a clean fragment
+  // never silently re-anchors an orphan and marks it dirty. ---
   useEffect(() => {
+    if (!fragmentDirty) return;
     for (const { blockIndex, markerId } of planOrphanRebinds(blocks, orphans)) {
-      insertMarkerInBlock(blockIndex, markerId);
+      addAnchorAtBlock(blockIndex, markerId);
     }
-  }, [blocks, orphans, insertMarkerInBlock]);
+  }, [fragmentDirty, blocks, orphans, addAnchorAtBlock]);
 
   useImperativeHandle(
     ref,
@@ -325,7 +340,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       return;
     }
     const markerId = createCommentMarkerId();
-    insertMarkerInBlock(blockIndex, markerId);
+    addAnchorAtBlock(blockIndex, markerId);
     addCommentStub({ markerId, excerpt: deriveExcerpt(blockText), body: next });
     // Keep the slot active by block index; the new comment binds to this block, so the unified editor
     // below routes onChange to it on the next render. Clear the draft (now superseded by the comment).
@@ -407,7 +422,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     title="Remove comment (strips its anchor)"
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      stripMarker(comment.markerId);
+                      removeAnchor(comment.markerId);
                       marginEditor.removeComment(comment.markerId);
                       setActiveSlot(null);
                     }}
@@ -440,7 +455,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     onEscape={() => {
                       setActiveSlot(null);
                       if (comment && !deleteCommentIfEmpty(comment.markerId)) {
-                        focusMarkerBlock(comment.markerId);
+                        focusAnchorBlock(comment.markerId);
                       }
                     }}
                   />
@@ -455,7 +470,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     // Clicking a comment activates it for editing and reveals its bound paragraph in the
                     // editor (the left guide line is gone — margins-4 #11).
                     onClick={() => {
-                      revealMarker(comment.markerId);
+                      revealAnchor(comment.markerId);
                       setActiveSlot({ kind: "comment", markerId: comment.markerId });
                       setDraft("");
                     }}
@@ -490,26 +505,87 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           })}
         </div>
 
-        {orphans.length > 0 && (
+        {measured && orphans.length > 0 && (
           <div className="mt-4 flex flex-col gap-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Orphaned ({orphans.length})
             </p>
-            {orphans.map((comment) => (
-              <CommentCard
-                key={comment.markerId}
-                comment={comment}
-                displayExcerpt={liveExcerpts[comment.markerId] ?? comment.excerpt}
-                orphaned
-                compact={!expandAll}
-                onBodyChange={(body) => updateCommentBody(comment.markerId, body)}
-                onRemove={() => marginEditor.removeComment(comment.markerId)}
-              />
-            ))}
+            {orphans.map((comment) => {
+              // Orphans reuse the column's seamless serif slot (review #8) — the body edits through the
+              // same mode-coupled SlotEditor as anchored comments, not a separate textarea. The lost
+              // block's last-known excerpt is shown as context (anchored comments hide it).
+              const isActive =
+                activeSlot?.kind === "comment" && activeSlot.markerId === comment.markerId;
+              const excerpt = liveExcerpts[comment.markerId] ?? comment.excerpt;
+              return (
+                <div
+                  key={comment.markerId}
+                  data-marker-id={comment.markerId}
+                  data-orphaned="true"
+                  className={`group relative rounded-sm border border-dashed py-1 pl-6 pr-2 ${
+                    isActive ? "border-border/60 bg-muted/20" : "border-muted/60 bg-muted/10"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className={`absolute left-1 top-1.5 text-xs leading-none text-muted-foreground transition-opacity hover:text-destructive ${
+                      isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                    aria-label="Remove comment"
+                    title="Remove orphaned comment"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      // Orphan removal is a no-op on the fragment side (no live anchor to strip).
+                      marginEditor.removeComment(comment.markerId);
+                      setActiveSlot(null);
+                    }}
+                  >
+                    ×
+                  </button>
+                  <p className="mb-0.5 flex items-center gap-1.5 text-xs italic text-muted-foreground">
+                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] not-italic uppercase tracking-wide">
+                      orphaned
+                    </span>
+                    <span>{excerpt || <span className="not-italic">(no excerpt)</span>}</span>
+                  </p>
+                  {isActive ? (
+                    <SlotEditor
+                      value={comment.body}
+                      mode={mode}
+                      fontSize={fontSize}
+                      focusOnMount
+                      placeholder="Re-add the text or remove this comment…"
+                      onChange={(next) => updateCommentBody(comment.markerId, next)}
+                      onBlur={() => {
+                        deleteCommentIfEmpty(comment.markerId, { anchored: false });
+                        setActiveSlot(null);
+                      }}
+                      onEscape={() => {
+                        setActiveSlot(null);
+                        deleteCommentIfEmpty(comment.markerId, { anchored: false });
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="w-full whitespace-pre-wrap break-words text-left text-foreground/90"
+                      style={serifText(fontSize)}
+                      onClick={() => setActiveSlot({ kind: "comment", markerId: comment.markerId })}
+                    >
+                      {comment.body || (
+                        <span className="text-muted-foreground">
+                          Its block is gone. Re-add the text or remove this comment.
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {rows.length === 0 && orphans.length === 0 && (
+        {measured && rows.length === 0 && orphans.length === 0 && (
           <p className="text-xs text-muted-foreground">
             No paragraphs yet. Write in the fragment, then type beside a paragraph to annotate it.
           </p>

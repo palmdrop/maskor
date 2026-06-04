@@ -48,11 +48,10 @@ export type EntityEditorShellHandle = {
   save: () => Promise<void>;
   getSelection: () => SelectionCapture;
   getCurrentBlock: () => { text: string; markerId: string | null; index: number } | null;
-  appendCommentMarker: (markerId: string) => void;
-  insertCommentMarkerInBlock: (blockIndex: number, markerId: string) => void;
-  stripCommentMarker: (markerId: string) => void;
-  revealCommentMarker: (markerId: string) => void;
-  focusMarkerBlock: (markerId: string) => void;
+  addAnchorAtBlock: (blockIndex: number, markerId: string) => void;
+  removeAnchor: (markerId: string) => void;
+  revealAnchor: (markerId: string) => void;
+  focusAnchorBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
   getBlocks: () => EditorBlock[];
   setBlockSpacers: (spacers: number[]) => void;
@@ -320,15 +319,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         save: saveContent,
         getSelection: () => proseEditorRef.current?.getSelection() ?? { text: "", isEmpty: true },
         getCurrentBlock: () => proseEditorRef.current?.getCurrentBlock() ?? null,
-        appendCommentMarker: (markerId: string) =>
-          proseEditorRef.current?.appendCommentMarker(markerId),
-        insertCommentMarkerInBlock: (blockIndex: number, markerId: string) =>
-          proseEditorRef.current?.insertCommentMarkerInBlock(blockIndex, markerId),
-        stripCommentMarker: (markerId: string) =>
-          proseEditorRef.current?.stripCommentMarker(markerId),
-        revealCommentMarker: (markerId: string) =>
-          proseEditorRef.current?.revealCommentMarker(markerId),
-        focusMarkerBlock: (markerId: string) => proseEditorRef.current?.focusMarkerBlock(markerId),
+        addAnchorAtBlock: (blockIndex: number, markerId: string) =>
+          proseEditorRef.current?.addAnchorAtBlock(blockIndex, markerId),
+        removeAnchor: (markerId: string) => proseEditorRef.current?.removeAnchor(markerId),
+        revealAnchor: (markerId: string) => proseEditorRef.current?.revealAnchor(markerId),
+        focusAnchorBlock: (markerId: string) => proseEditorRef.current?.focusAnchorBlock(markerId),
         getScrollElement: () => proseEditorRef.current?.getScrollElement() ?? null,
         getBlocks: () => proseEditorRef.current?.getBlocks() ?? [],
         setBlockSpacers: (spacers: number[]) => proseEditorRef.current?.setBlockSpacers(spacers),

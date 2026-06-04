@@ -1,5 +1,4 @@
 import { eq, inArray, notInArray } from "drizzle-orm";
-import { extractCommentMarkerIds } from "@maskor/shared";
 import type { VaultDatabase } from "../db/vault";
 import {
   aspectNotesTable,
@@ -19,7 +18,6 @@ import type { EntityReadFailure, Vault } from "../vault/types";
 import type {
   EntityKind,
   IndexedAspect,
-  IndexedComment,
   IndexedFragment,
   IndexedMargin,
   IndexedSequence,
@@ -135,15 +133,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     // Build known aspect key set (used for drift detection during the fragments pass).
     const knownAspectKeys = new Set(aspectEntries.map(({ entity: aspect }) => aspect.key));
 
-    // Marker ids present in each fragment's body, keyed by fragmentUuid. Drives comment orphan
-    // detection during the margins pass (a comment whose marker is absent is orphaned).
-    const fragmentMarkerIdsByUuid = new Map<string, Set<string>>(
-      fragmentEntries.map(({ entity: fragment }) => [
-        fragment.uuid as string,
-        new Set(extractCommentMarkerIds(fragment.content)),
-      ]),
-    );
-
     // Phase 2: Write all data in a single transaction (sync).
     // A single transaction ensures the DB is never left in a partially-updated state if
     // rebuild is interrupted. It also batches all fsyncs for a significant performance win.
@@ -215,16 +204,10 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
         tx.delete(sequencesTable).run();
       }
 
-      // 6. Upsert margins (comments cascade from each upsert). Orphan flags derive from the
-      // fragment marker map built above.
+      // 6. Upsert margins (comments cascade from each upsert). Orphan state is not stored — the panel
+      // derives it live from the open fragment buffer.
       for (const { entity: margin, filePath, rawContent } of marginEntries) {
-        upsertMargin(
-          tx,
-          margin,
-          filePath,
-          rawContent,
-          fragmentMarkerIdsByUuid.get(margin.fragmentUuid) ?? null,
-        );
+        upsertMargin(tx, margin, filePath, rawContent);
       }
 
       const activeMarginUuids = marginEntries.map(({ entity }) => entity.fragmentUuid);
@@ -571,22 +554,6 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
           .where(eq(marginsTable.fragmentUuid, fragmentUuid))
           .get();
         return row?.filePath ?? null;
-      },
-
-      async findOrphanedComments(): Promise<Array<IndexedComment & { fragmentUuid: string }>> {
-        return vaultDatabase
-          .select()
-          .from(commentsTable)
-          .where(eq(commentsTable.orphaned, true))
-          .all()
-          .map((row) => ({
-            fragmentUuid: row.fragmentUuid,
-            markerId: row.markerId,
-            excerpt: row.excerpt,
-            body: row.body,
-            orphaned: row.orphaned,
-            ordinal: row.ordinal,
-          }));
       },
     },
   };

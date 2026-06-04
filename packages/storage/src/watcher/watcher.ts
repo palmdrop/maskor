@@ -243,7 +243,7 @@ export const createVaultWatcher = (
       entityKind: "margin",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(MARGIN_PREFIX.length);
-        return syncMargin(vaultDatabase, vaultRoot, emit, log, absolutePath, entityRelativePath);
+        return syncMargin(vaultDatabase, emit, log, absolutePath, entityRelativePath);
       },
       handleUnlink: (vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(MARGIN_PREFIX.length);

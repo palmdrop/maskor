@@ -21,7 +21,6 @@ import { useGetProject } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
-import { toast } from "sonner";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import type { EditorMode } from "@components/margins/slot-editor";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
@@ -255,16 +254,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     openPlaceInSequence,
   });
 
-  const handleMarginSave = useCallback(async () => {
-    try {
-      await marginEditor.save();
-      // The canonical save succeeded — drop the mirrored buffer.
-      await marginSwap.clear();
-    } catch {
-      toast.error("Couldn't save the margin.");
-    }
-  }, [marginEditor, marginSwap]);
-
   // The linked pair's single "restore from server": revert both the fragment and the Margin to the
   // last saved state and drop both swap buffers, atomically. Never one without the other.
   const handlePairRestore = useCallback(() => {
@@ -298,24 +287,22 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   useCommandScope(marginScope, {
     hasFragment: !!fragment,
-    canSave: marginEditor.isDirty && !marginEditor.isSaving,
-    save: () => void handleMarginSave(),
     commentBlock: handleCommentBlock,
   });
 
   // Editor bridges the margin column drives: marker injection (type-to-create), the coordinated
   // delete strip, reveal/focus, and geometry for scroll-sync + margin-side padding.
-  const insertMarkerInBlock = useCallback((blockIndex: number, markerId: string) => {
-    shellRef.current?.insertCommentMarkerInBlock(blockIndex, markerId);
+  const addAnchorAtBlock = useCallback((blockIndex: number, markerId: string) => {
+    shellRef.current?.addAnchorAtBlock(blockIndex, markerId);
   }, []);
-  const stripMarker = useCallback((markerId: string) => {
-    shellRef.current?.stripCommentMarker(markerId);
+  const removeAnchor = useCallback((markerId: string) => {
+    shellRef.current?.removeAnchor(markerId);
   }, []);
-  const handleRevealMarker = useCallback((markerId: string) => {
-    shellRef.current?.revealCommentMarker(markerId);
+  const handleRevealAnchor = useCallback((markerId: string) => {
+    shellRef.current?.revealAnchor(markerId);
   }, []);
-  const handleFocusMarkerBlock = useCallback((markerId: string) => {
-    shellRef.current?.focusMarkerBlock(markerId);
+  const handleFocusAnchorBlock = useCallback((markerId: string) => {
+    shellRef.current?.focusAnchorBlock(markerId);
   }, []);
   const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
   const getBlocks = useCallback(() => shellRef.current?.getBlocks() ?? [], []);
@@ -405,13 +392,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             projectId={projectId}
             marginEditor={marginEditor}
             fragmentContent={fragmentContent}
+            fragmentDirty={isProseDirty}
             mode={marginMode}
             fontSize={editorConfig.fontSize}
             onCommentBlock={() => commands.run("margin:comment-block")}
-            insertMarkerInBlock={insertMarkerInBlock}
-            stripMarker={stripMarker}
-            revealMarker={handleRevealMarker}
-            focusMarkerBlock={handleFocusMarkerBlock}
+            addAnchorAtBlock={addAnchorAtBlock}
+            removeAnchor={removeAnchor}
+            revealAnchor={handleRevealAnchor}
+            focusAnchorBlock={handleFocusAnchorBlock}
             getScrollElement={getScrollElement}
             getBlocks={getBlocks}
             setBlockSpacers={setBlockSpacers}

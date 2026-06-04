@@ -19,18 +19,9 @@ export const MarginSchema = z
   })
   .openapi("Margin");
 
-// An orphaned comment carries its owning fragment so the panel can group it.
-export const OrphanedCommentSchema = CommentSchema.extend({
-  fragmentUuid: z.uuid().openapi({ example: "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" }),
-}).openapi("OrphanedComment");
-
 export const MarginParamSchema = z.object({
   projectId: z.uuid(),
   fragmentId: z.uuid().openapi({ example: "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b" }),
-});
-
-export const CommentParamSchema = MarginParamSchema.extend({
-  markerId: z.string().openapi({ example: "a1b2c3d4" }),
 });
 
 export const MarginWriteSchema = z
@@ -39,12 +30,3 @@ export const MarginWriteSchema = z
     comments: z.array(CommentSchema),
   })
   .openapi("MarginWrite");
-
-export const CommentCreateSchema = CommentSchema.openapi("CommentCreate");
-
-export const CommentUpdateSchema = z
-  .object({
-    excerpt: z.string().optional().openapi({ example: "The bridge groans." }),
-    body: z.string().optional().openapi({ example: "Reworked thought." }),
-  })
-  .openapi("CommentUpdate");

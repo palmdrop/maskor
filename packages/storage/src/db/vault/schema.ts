@@ -182,8 +182,9 @@ export const marginsTable = sqliteTable("margins", {
   syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
 });
 
-// One row per comment in a Margin. `orphaned` is derived at sync time: true when the comment's
-// `marker_id` is absent from the owning fragment's body. `ordinal` preserves authoring order.
+// One row per comment in a Margin. `ordinal` preserves authoring order. Orphan state is not stored —
+// the panel derives it live from the open fragment buffer (a comment whose `marker_id` is absent from
+// the fragment body is an orphan).
 export const commentsTable = sqliteTable(
   "comments",
   {
@@ -193,13 +194,11 @@ export const commentsTable = sqliteTable(
     markerId: text("marker_id").notNull(),
     excerpt: text("excerpt").notNull().default(""),
     body: text("body").notNull().default(""),
-    orphaned: integer("orphaned", { mode: "boolean" }).notNull().default(false),
     ordinal: integer("ordinal").notNull().default(0),
   },
   (table) => [
     primaryKey({ columns: [table.fragmentUuid, table.markerId] }),
     index("comments_fragment_uuid_idx").on(table.fragmentUuid),
-    index("comments_orphaned_idx").on(table.orphaned),
   ],
 );
 

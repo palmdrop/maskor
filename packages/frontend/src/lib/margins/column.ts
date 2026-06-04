@@ -1,4 +1,4 @@
-import { stripCommentMarkers, extractCommentMarkerIds, deriveExcerpt } from "@maskor/shared";
+import { deriveExcerpt } from "@maskor/shared";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 
 // A fragment block (a blank-line-separated paragraph) as the annotated-paragraphs column sees it.
@@ -8,23 +8,6 @@ export type FragmentBlock = {
   index: number;
   text: string;
   markerId: string | null;
-};
-
-// Enumerate the fragment's blocks in document order. A block is a run separated by blank lines —
-// the markdown notion of a paragraph — matching `extractBlockOpening`. Blank runs are skipped. The
-// index is the position among non-blank blocks, used to target a block for type-to-create.
-export const enumerateBlocks = (content: string): FragmentBlock[] => {
-  const blocks: FragmentBlock[] = [];
-  let index = 0;
-  for (const raw of content.split(/\n[ \t]*\n/)) {
-    if (raw.trim() === "") continue;
-    blocks.push({
-      index: index++,
-      text: deriveExcerpt(stripCommentMarkers(raw)),
-      markerId: extractCommentMarkerIds(raw)[0] ?? null,
-    });
-  }
-  return blocks;
 };
 
 // One row of the annotated-paragraphs column: a block plus its bound comment (or null for an

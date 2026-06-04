@@ -33,8 +33,7 @@ type ShellHandle = {
   save: () => Promise<void>;
   getSelection: () => { text: string; isEmpty: boolean };
   getCurrentBlock: () => { text: string } | null;
-  appendCommentMarker: (markerId: string) => void;
-  revealCommentMarker: (markerId: string) => void;
+  revealAnchor: (markerId: string) => void;
   restoreFromServer: () => void;
 };
 
@@ -54,8 +53,7 @@ vi.mock("@components/entity-editor-shell", () => ({
       save: vi.fn(),
       getSelection: () => ({ text: "", isEmpty: true }),
       getCurrentBlock: () => null,
-      appendCommentMarker: vi.fn(),
-      revealCommentMarker: vi.fn(),
+      revealAnchor: vi.fn(),
       restoreFromServer: restoreFromServerSpy,
     }));
     return <div data-testid="shell-stub">{banner}</div>;

@@ -835,10 +835,9 @@ describe("watcher — swap files are ignored under .maskor/", () => {
 // --- Margins ---
 
 import { marginsTable, commentsTable } from "../db/vault/schema";
-import { buildCommentMarker } from "@maskor/shared";
 
-describe("syncMargin — live indexing & orphan detection", () => {
-  it("indexes an externally-added Margin and rebinds an orphaned comment when the fragment marker appears", async () => {
+describe("syncMargin — live indexing", () => {
+  it("indexes an externally-added Margin (notes + comment rows)", async () => {
     const made = await rebuildAndWatch({});
 
     const fragmentRow = made.vaultDatabase
@@ -848,21 +847,22 @@ describe("syncMargin — live indexing & orphan detection", () => {
       .get();
     const fragmentUuid = fragmentRow!.uuid;
 
-    // External edit: drop a Margin file with a comment whose marker is not yet in the fragment.
+    // External edit: drop a Margin file with a comment. Orphan state is not stored in the index (the
+    // panel derives it live), so the watcher just indexes the margin row + comment row.
     await Bun.write(
       join(vaultDir, "margins", "the-bridge.md"),
       `---\nfragmentUuid: ${fragmentUuid}\n---\n## Notes\n\nnote prose\n\n## Comments\n\n<!--c:m1-->\n> the excerpt\nthe body\n`,
     );
 
-    const orphanedNow = () =>
+    const commentNow = () =>
       made.vaultDatabase
-        .select({ orphaned: commentsTable.orphaned })
+        .select({ markerId: commentsTable.markerId, body: commentsTable.body })
         .from(commentsTable)
         .where(eq(commentsTable.fragmentUuid, fragmentUuid))
         .get();
 
-    // The comment is indexed and orphaned (marker absent from the fragment body).
-    await waitFor(() => orphanedNow()?.orphaned === true);
+    await waitFor(() => commentNow()?.markerId === "m1");
+    expect(commentNow()?.body).toBe("the body");
 
     const marginRow = made.vaultDatabase
       .select({ notes: marginsTable.notes })
@@ -870,13 +870,6 @@ describe("syncMargin — live indexing & orphan detection", () => {
       .where(eq(marginsTable.fragmentUuid, fragmentUuid))
       .get();
     expect(marginRow?.notes).toBe("note prose");
-
-    // Now add the matching marker to the fragment body — the comment rebinds (no longer orphaned).
-    const fragmentPath = join(vaultDir, "fragments", "the-bridge.md");
-    const original = await Bun.file(fragmentPath).text();
-    await Bun.write(fragmentPath, `${original.trimEnd()} ${buildCommentMarker("m1")}\n`);
-
-    await waitFor(() => orphanedNow()?.orphaned === false);
   });
 
   it("removes the Margin row when the Margin file is deleted externally", async () => {

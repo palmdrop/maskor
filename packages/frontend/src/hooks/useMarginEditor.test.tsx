@@ -17,7 +17,6 @@ vi.mock("@api/generated/margins/margins", () => ({
   useGetMargin: () => marginQueryResult,
   useWriteMargin: () => ({ mutateAsync: writeMarginMock, isPending: false }),
   getGetMarginQueryKey: () => ["margin"],
-  getListOrphanedCommentsQueryKey: () => ["orphaned"],
 }));
 
 import { useMarginEditor } from "./useMarginEditor";

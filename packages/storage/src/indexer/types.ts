@@ -42,7 +42,6 @@ export type IndexedComment = {
   markerId: string;
   excerpt: string;
   body: string;
-  orphaned: boolean;
   ordinal: number;
 };
 
@@ -92,6 +91,5 @@ export interface VaultIndexer {
   margins: {
     findByFragmentUuid(fragmentUuid: string): Promise<IndexedMargin | null>;
     findFilePath(fragmentUuid: string): Promise<string | null>;
-    findOrphanedComments(): Promise<Array<IndexedComment & { fragmentUuid: string }>>;
   };
 }

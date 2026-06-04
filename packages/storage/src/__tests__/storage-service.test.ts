@@ -870,7 +870,7 @@ const setupMarginContext = async () => {
 };
 
 describe("StorageService.margins — DB index & orphan detection", () => {
-  it("rebuild indexes a Margin and derives comment orphan state from fragment markers", async () => {
+  it("rebuild indexes a Margin and round-trips its comments from the vault", async () => {
     const { service, context } = await setupMarginContext();
 
     const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
@@ -895,30 +895,8 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     const margin = await service.margins.read(context, fragment.uuid);
     expect(margin?.notes).toBe("Structural thoughts.");
     expect(margin?.comments.map((c) => c.markerId).sort()).toEqual(["gone", "present"]);
-
-    const orphaned = await service.margins.listOrphanedComments(context);
-    expect(orphaned.map((c) => c.markerId)).toEqual(["gone"]);
-  });
-
-  it("orphans a comment when the fragment marker is removed", async () => {
-    const { service, context } = await setupMarginContext();
-    const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
-    const full = await service.fragments.read(context, fragment.uuid);
-
-    await service.fragments.write(context, {
-      ...full,
-      content: `${full.content} ${buildCommentMarker("anchor")}`,
-    });
-    await service.margins.write(context, fragment.uuid, {
-      notes: "",
-      comments: [{ markerId: "anchor", excerpt: "the line", body: "comment" }],
-    });
-    expect(await service.margins.listOrphanedComments(context)).toHaveLength(0);
-
-    // Strip the marker from the fragment body — the comment becomes orphaned.
-    await service.fragments.write(context, { ...full, content: full.content });
-    const orphaned = await service.margins.listOrphanedComments(context);
-    expect(orphaned.map((c) => c.markerId)).toEqual(["anchor"]);
+    // The orphaned comment keeps its frozen excerpt; the anchored one is derived from its block.
+    expect(margin?.comments.find((c) => c.markerId === "gone")?.excerpt).toBe("lost");
   });
 
   it("refreshes an anchored comment's excerpt from its block opening on fragment save", async () => {
@@ -995,9 +973,6 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     await service.fragments.write(context, { ...full, content: "Some other text entirely." });
     const afterOrphan = await service.margins.read(context, fragment.uuid);
     expect(afterOrphan?.comments[0]?.excerpt).toBe(frozen);
-    expect((await service.margins.listOrphanedComments(context)).map((c) => c.markerId)).toEqual([
-      "anchor",
-    ]);
 
     // A vault → DB → vault rebuild keeps the frozen excerpt intact.
     await service.index.reset(context);
@@ -1005,19 +980,18 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     expect(afterReset?.comments[0]?.excerpt).toBe(frozen);
   });
 
-  it("createComment / deleteComment round-trip through the Margin", async () => {
+  it("write replaces the Margin's comment set (add then remove round-trips)", async () => {
     const { service, context } = await setupMarginContext();
     const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
 
-    await service.margins.createComment(context, fragment.uuid, {
-      markerId: "c1",
-      excerpt: "x",
-      body: "first",
+    await service.margins.write(context, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "c1", excerpt: "x", body: "first" }],
     });
     let margin = await service.margins.read(context, fragment.uuid);
     expect(margin?.comments.map((c) => c.markerId)).toEqual(["c1"]);
 
-    await service.margins.deleteComment(context, fragment.uuid, "c1");
+    await service.margins.write(context, fragment.uuid, { notes: "", comments: [] });
     margin = await service.margins.read(context, fragment.uuid);
     expect(margin?.comments).toEqual([]);
   });
@@ -1028,18 +1002,18 @@ describe("StorageService.margins — DB index & orphan detection", () => {
     expect(await service.margins.read(context, fragment.uuid)).toBeNull();
   });
 
-  it("emits margin:synced when an API fragment edit changes comment orphan state", async () => {
+  it("emits margin:synced when an API fragment edit refreshes an anchored comment's excerpt", async () => {
     const { service, context } = await setupMarginContext();
     const fragment = (await service.fragments.readAll(context)).find((f) => !f.isDiscarded)!;
     const full = await service.fragments.read(context, fragment.uuid);
 
     await service.fragments.write(context, {
       ...full,
-      content: `${full.content} ${buildCommentMarker("anchor")}`,
+      content: `Original opening. ${buildCommentMarker("anchor")}`,
     });
     await service.margins.write(context, fragment.uuid, {
       notes: "",
-      comments: [{ markerId: "anchor", excerpt: "the line", body: "comment" }],
+      comments: [{ markerId: "anchor", excerpt: "Original opening.", body: "comment" }],
     });
 
     const syncedFragmentUuids: string[] = [];
@@ -1047,9 +1021,14 @@ describe("StorageService.margins — DB index & orphan detection", () => {
       if (event.type === "margin:synced") syncedFragmentUuids.push(event.fragmentUuid);
     });
 
-    // Strip the marker — the comment flips to orphaned, so the inline write must emit margin:synced
-    // (the watcher's hash-guard would otherwise suppress it).
-    await service.fragments.write(context, { ...full, content: full.content });
+    // Rewrite the anchored block's opening — the stored excerpt is refreshed, so the inline write
+    // rewrites the Margin file and emits margin:synced (the watcher's hash-guard would otherwise
+    // suppress it). A pure orphan flip with no excerpt change emits nothing (orphan state is not
+    // stored — the panel derives it live).
+    await service.fragments.write(context, {
+      ...full,
+      content: `A rewritten opening. ${buildCommentMarker("anchor")}`,
+    });
     unsubscribe();
 
     expect(syncedFragmentUuids).toContain(fragment.uuid);

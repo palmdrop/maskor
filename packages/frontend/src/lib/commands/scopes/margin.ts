@@ -2,23 +2,14 @@ import { defineScope, defineScopeCommand } from "../define";
 
 export interface MarginContext {
   hasFragment: boolean;
-  canSave: boolean;
-  save: () => void;
-  // Anchor a comment to the fragment block at the cursor: inject the marker, seed a comment stub
-  // with the block excerpt, and move focus to the Margin panel.
+  // Jump focus to the margin slot beside the fragment block at the cursor (creation is implicit —
+  // typing in the slot conjures the comment). There is no separate margin save: the fragment editor's
+  // save (`editor:save`) persists the fragment and the Margin together (margins-4 #13).
   commentBlock: () => void;
 }
 
 // Singleton scope published by the fragment editor while a Margin panel is mounted beside it.
 export const marginScope = defineScope<MarginContext>("margin", { label: "Margin" });
-
-const save = defineScopeCommand(marginScope, {
-  id: "margin:save",
-  label: "Save margin",
-  category: "navigation",
-  disabled: (ctx) => (ctx.canSave ? undefined : "Nothing to save"),
-  run: (ctx) => ctx.save(),
-});
 
 const commentBlock = defineScopeCommand(marginScope, {
   id: "margin:comment-block",
@@ -31,4 +22,4 @@ const commentBlock = defineScopeCommand(marginScope, {
   run: (ctx) => ctx.commentBlock(),
 });
 
-export const marginCommands = [save, commentBlock] as const;
+export const marginCommands = [commentBlock] as const;

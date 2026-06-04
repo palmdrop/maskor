@@ -49,6 +49,44 @@ type Props = {
   onEscape?: () => void;
 };
 
+type SlotNavHandlers = {
+  onNext?: () => void;
+  onPrevious?: () => void;
+  onEscape?: () => void;
+};
+
+// Shared slot keymap (one active editor; ADR 0008): Tab/Shift-Tab move between slots, Escape returns
+// to the prose, and ↑/↓ move between slots only at the comment's text boundaries (margins-2/4 #5) —
+// `atStart`/`atEnd` are computed per editor so ↑/↓ in the middle of a multi-line comment still move
+// the caret a line. Enter falls through (newline within the comment).
+const handleSlotNavKeys = (
+  event: KeyboardEvent,
+  { onNext, onPrevious, onEscape }: SlotNavHandlers,
+  atStart: boolean,
+  atEnd: boolean,
+): void => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    if (event.shiftKey) onPrevious?.();
+    else onNext?.();
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    onEscape?.();
+    return;
+  }
+  if (event.key === "ArrowUp" && atStart) {
+    event.preventDefault();
+    onPrevious?.();
+    return;
+  }
+  if (event.key === "ArrowDown" && atEnd) {
+    event.preventDefault();
+    onNext?.();
+  }
+};
+
 // The single "active" editor of the annotated-paragraphs column (ADR 0008: one active editor; all
 // other slots render statically). It follows the fragment editor mode — TipTap in rich mode, CM6
 // (with vim) in vim/raw mode — so the focused comment edits in the same idiom as the prose. Enter is
@@ -65,20 +103,7 @@ export const SlotEditor = ({
   onPrevious,
   onEscape,
 }: Props) => {
-  // Tab/Shift-Tab and Escape are column-navigation, not text input — intercept them before the
-  // editor. Enter falls through (newline). Arrow up/down navigate only at the text boundaries.
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Tab") {
-      event.preventDefault();
-      if (event.shiftKey) onPrevious?.();
-      else onNext?.();
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onEscape?.();
-    }
-  };
+  const nav: SlotNavHandlers = { onNext, onPrevious, onEscape };
 
   if (mode === "rich") {
     return (
@@ -89,7 +114,7 @@ export const SlotEditor = ({
         focusOnMount={focusOnMount}
         onChange={onChange}
         onBlur={onBlur}
-        onKeyDown={handleKeyDown}
+        nav={nav}
       />
     );
   }
@@ -101,7 +126,7 @@ export const SlotEditor = ({
       focusOnMount={focusOnMount}
       onChange={onChange}
       onBlur={onBlur}
-      onKeyDown={handleKeyDown}
+      nav={nav}
     />
   );
 };
@@ -113,7 +138,7 @@ const RichSlotEditor = ({
   focusOnMount,
   onChange,
   onBlur,
-  onKeyDown,
+  nav,
 }: {
   value: string;
   placeholder?: string;
@@ -121,7 +146,7 @@ const RichSlotEditor = ({
   focusOnMount?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
-  onKeyDown: (event: KeyboardEvent) => void;
+  nav: SlotNavHandlers;
 }) => {
   const editor = useEditor({
     extensions: buildSharedProseExtensions(),
@@ -153,11 +178,21 @@ const RichSlotEditor = ({
     if (editor && focusOnMount) editor.commands.focus("end");
   }, [editor, focusOnMount]);
 
+  // ↑ jumps to the previous slot only when the caret sits at the very start of the comment, ↓ to the
+  // next only at the very end — otherwise the arrow moves the caret a line within a multi-line comment.
+  const handleKeyDown = (event: KeyboardEvent) => {
+    const selection = editor?.state.selection;
+    const docEnd = editor ? editor.state.doc.content.size - 1 : 0;
+    const atStart = !!selection && selection.empty && selection.from <= 1;
+    const atEnd = !!selection && selection.empty && selection.to >= docEnd;
+    handleSlotNavKeys(event, nav, atStart, atEnd);
+  };
+
   return (
     // The interactive surface is the inner editor; this wrapper only forwards navigation keys.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       style={{
         fontFamily: "var(--font-serif)",
         lineHeight: MARGIN_LINE_HEIGHT,
@@ -176,7 +211,7 @@ const CodeSlotEditor = ({
   focusOnMount,
   onChange,
   onBlur,
-  onKeyDown,
+  nav,
 }: {
   value: string;
   vimMode: boolean;
@@ -184,7 +219,7 @@ const CodeSlotEditor = ({
   focusOnMount?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
-  onKeyDown: (event: KeyboardEvent) => void;
+  nav: SlotNavHandlers;
 }) => {
   const ref = useRef<ReactCodeMirrorRef>(null);
   const extensions = useMemo(
@@ -195,13 +230,23 @@ const CodeSlotEditor = ({
     [vimMode],
   );
 
+  // ↑/↓ cross slot boundaries only at the buffer's very start / end (offset 0 / doc length); elsewhere
+  // the arrow moves the caret a line within the comment.
+  const handleKeyDown = (event: KeyboardEvent) => {
+    const state = ref.current?.view?.state;
+    const head = state?.selection.main;
+    const atStart = !!head && head.empty && head.head === 0;
+    const atEnd = !!head && head.empty && head.head === state!.doc.length;
+    handleSlotNavKeys(event, nav, atStart, atEnd);
+  };
+
   return (
     // The interactive surface is the inner editor; this wrapper only forwards navigation keys. The
     // raw/vim comment shares the editor's serif family + line-height so its lines keep the same
     // vertical rhythm as the prose beside it (ADR 0009; margins-4 finding #1).
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       style={{
         fontFamily: "var(--font-serif)",
         lineHeight: MARGIN_LINE_HEIGHT,

@@ -41,6 +41,12 @@ export const extractCommentMarkerIds = (text: string): string[] => {
 export const hasCommentMarker = (text: string, markerId: string): boolean =>
   extractCommentMarkerIds(text).includes(markerId);
 
+// The unique set of marker ids present in some text. The single definition of "which comments are
+// anchored in this fragment body," shared by the storage service and the watcher so the two derive
+// orphan state identically (they read the body through different layers — parsed vs raw — but agree on
+// the marker set).
+export const markerIdSet = (text: string): Set<string> => new Set(extractCommentMarkerIds(text));
+
 // A comment's excerpt is the *opening* of its anchored block, capped to keep the Margin honest and
 // compact (ADR 0008). The cap is short by design — it is display context, not the body.
 export const EXCERPT_MAX_LENGTH = 80;

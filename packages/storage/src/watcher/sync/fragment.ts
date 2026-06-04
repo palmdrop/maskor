@@ -1,5 +1,4 @@
 import type { Fragment, VaultSyncEvent } from "@maskor/shared";
-import { extractCommentMarkerIds } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
@@ -10,7 +9,6 @@ import {
   loadKnownAspectKeys,
   upsertFragment,
   deleteFragmentByFilePath,
-  recomputeMarginOrphans,
 } from "../../indexer/upserts";
 import { insertWarning } from "../../warnings/warnings-repo";
 import { reconcileUnknownAspectKeyWarnings } from "../../warnings/reconcile";
@@ -139,17 +137,9 @@ export const syncFragment = async (
 
   emit({ type: "fragment:synced", uuid: resolvedUuid });
 
-  // The fragment body carries the anchor markers, so editing it can orphan or rebind a comment in
-  // the Margin (whose own file is untouched). Recompute the bound Margin's orphan flags.
-  if (
-    recomputeMarginOrphans(
-      vaultDatabase,
-      resolvedUuid,
-      new Set(extractCommentMarkerIds(fragment.content)),
-    )
-  ) {
-    emit({ type: "margin:synced", fragmentUuid: resolvedUuid });
-  }
+  // The fragment body carries the anchor markers, but the Margin's orphan state is not stored in the
+  // index (the panel derives it live from the open buffer) and the Margin file itself is untouched by
+  // a fragment edit — so there is nothing in the Margin index to update here.
 
   for (const warning of warnings) {
     log.warn(

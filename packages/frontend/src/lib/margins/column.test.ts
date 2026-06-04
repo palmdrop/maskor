@@ -1,11 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  enumerateBlocks,
-  buildColumn,
-  planOrphanRebinds,
-  nextSlotIndex,
-  previousSlotIndex,
-} from "./column";
+import { buildColumn, planOrphanRebinds, nextSlotIndex, previousSlotIndex } from "./column";
+import { enumerateBlocks } from "./column.test-helpers";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 
 const comment = (markerId: string, body = "", excerpt = ""): Comment => ({
