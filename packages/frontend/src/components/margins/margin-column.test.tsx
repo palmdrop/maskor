@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 import type { EditorBlock } from "@components/prose-editor";
@@ -21,11 +21,20 @@ const blocksFromContent = (content: string): EditorBlock[] =>
 // value + onChange so the column's create/edit wiring is testable.
 vi.mock("./slot-editor", () => ({
   MARGIN_LINE_HEIGHT: 1.75,
-  SlotEditor: ({ value, onChange }: { value: string; onChange: (next: string) => void }) => (
+  SlotEditor: ({
+    value,
+    onChange,
+    onBlur,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+    onBlur?: () => void;
+  }) => (
     <textarea
       data-testid="slot-editor"
       value={value}
       onChange={(event) => onChange(event.target.value)}
+      onBlur={() => onBlur?.()}
     />
   ),
 }));
@@ -384,6 +393,42 @@ describe("MarginColumn", () => {
     // Activate the comment, then delete it.
     fireEvent.click(screen.getByText("on a"));
     fireEvent.mouseDown(screen.getByLabelText("Remove comment"));
+    expect(stripMarker).toHaveBeenCalledWith("a");
+    expect(removeComment).toHaveBeenCalledWith("a");
+  });
+
+  it("exposes the remove control on an idle comment (deletable without entering edit)", () => {
+    const stripMarker = vi.fn();
+    const removeComment = vi.fn();
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->",
+      marginEditor: buildMarginEditor({ comments: [comment("a", "on a")], removeComment }),
+      stripMarker,
+    });
+    // The remove × is present (in the gutter) without activating the comment first.
+    fireEvent.mouseDown(screen.getByLabelText("Remove comment"));
+    expect(stripMarker).toHaveBeenCalledWith("a");
+    expect(removeComment).toHaveBeenCalledWith("a");
+  });
+
+  it("removes an emptied comment on blur instead of leaving a blank '(empty)' slot", () => {
+    const stripMarker = vi.fn();
+    const removeComment = vi.fn();
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->",
+      // The comment body is already empty (e.g. the writer cleared it).
+      marginEditor: buildMarginEditor({ comments: [comment("a", "")], removeComment }),
+      stripMarker,
+    });
+    // No "(empty)" placeholder is rendered.
+    expect(screen.queryByText("(empty)")).toBeNull();
+    // Activate the (empty) comment via its body button, then blur — it is removed, not kept blank.
+    const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    const bodyButton = within(row)
+      .getAllByRole("button")
+      .find((node) => node.getAttribute("aria-label") !== "Remove comment")!;
+    fireEvent.click(bodyButton);
+    fireEvent.blur(screen.getByTestId("slot-editor"));
     expect(stripMarker).toHaveBeenCalledWith("a");
     expect(removeComment).toHaveBeenCalledWith("a");
   });

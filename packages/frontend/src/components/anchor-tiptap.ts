@@ -1,12 +1,11 @@
 import { Extension, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 // Comment anchors for the rich (TipTap) editor (ADR 0009). The `<!--c:ID-->` marker never lives in
 // the live document; on load it is parsed into a transient node, converted to one of these anchors,
 // and the node removed (see `prose-editor.tsx`). Each anchor is a ProseMirror position mapped forward
 // through every transaction, so a comment follows its block deterministically without marker text in
-// the prose. Anchors are re-emitted as markers on save. A node decoration cues the annotated block.
+// the prose. Anchors are re-emitted as markers on save. The Margin column surfaces the binding.
 
 export type TiptapAnchor = { markerId: string; pos: number };
 
@@ -29,25 +28,6 @@ export const tiptapAnchorBlockIndex = (state: EditorState): Map<string, number> 
     if (found) map.set(anchor.markerId, index);
   }
   return map;
-};
-
-const decorations = (state: EditorState): DecorationSet => {
-  const anchors = tiptapAnchorKey.getState(state) ?? [];
-  if (anchors.length === 0) return DecorationSet.empty;
-  const decorationList: Decoration[] = [];
-  const seenBlocks = new Set<number>();
-  for (const anchor of anchors) {
-    state.doc.forEach((node, offset) => {
-      if (anchor.pos >= offset && anchor.pos <= offset + node.nodeSize) {
-        if (seenBlocks.has(offset)) return;
-        seenBlocks.add(offset);
-        decorationList.push(
-          Decoration.node(offset, offset + node.nodeSize, { class: "pm-has-comment" }),
-        );
-      }
-    });
-  }
-  return DecorationSet.create(state.doc, decorationList);
 };
 
 type MarkdownStorage = {
@@ -123,11 +103,6 @@ export const tiptapAnchorExtension = Extension.create({
               if (result.deletedAcross) return [];
               return [{ markerId: anchor.markerId, pos: result.pos }];
             });
-          },
-        },
-        props: {
-          decorations(this, state) {
-            return decorations(state);
           },
         },
       }),
