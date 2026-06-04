@@ -34,8 +34,8 @@ const serifText = (fontSize: number) => ({
 });
 
 // Safety cap on a single document-side spacer so one runaway comment can't open an absurd gap. A
-// collapsed comment is already clipped (line-clamp) and a focused/expanded one is intentionally
-// uncapped within this bound.
+// collapsed comment is already clipped to its block height (so it needs no spacer); a focused/expanded
+// one is intentionally uncapped within this bound.
 const MAX_SPACER = 4000;
 
 export type MarginColumnHandle = {
@@ -326,51 +326,57 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             const isActive =
               (activeSlot?.kind === "comment" && comment?.markerId === activeSlot.markerId) ||
               (activeSlot?.kind === "block" && activeSlot.index === row.block.index);
-            const expanded = expandAll || isActive;
 
+            // Clip every idle/collapsed row to its paragraph's height (margins-4 #4, #6) so neither a
+            // collapsed comment nor an empty slot's padding inflates the row above the block — only an
+            // expanded (expand-all) or actively-edited comment pushes the fragment down. The box
+            // dimensions (1px border + padding) are reserved on every row so activating a slot changes
+            // only colour/background, not layout (margins-4 #3).
+            const clipToBlock = !isActive && !(comment && expandAll) && minHeight !== undefined;
             return (
               // One row per paragraph, keyed by block index so the SAME node (and its single unified
               // SlotEditor) survives the draft→comment transition — no remount (margins-4 #5). Seamless
-              // flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the attachment
-              // cue for an anchored comment, aligned (via flow padding) with the bound paragraph's top;
-              // a faint full border boxes the slot only while it is being edited.
+              // flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the attachment cue
+              // for an anchored comment, aligned (via flow padding) with the bound paragraph's top; a
+              // faint full border boxes the slot only while it is being edited.
               <div
                 key={`row-${row.block.index}`}
                 data-row-index={row.block.index}
                 {...(comment
                   ? { "data-slot-marker": comment.markerId }
                   : { "data-slot-block": row.block.index })}
-                className={`group relative ${comment && !isActive ? "border-t border-border/40" : ""} ${
-                  isActive
-                    ? "rounded-b-sm border-x border-b border-t border-border/60 bg-muted/20"
-                    : ""
-                }`}
-                style={{ minHeight }}
+                className={`group relative border border-transparent px-2 py-1 ${
+                  comment && !isActive ? "border-t-border/40" : ""
+                } ${isActive ? "rounded-sm border-border/60 bg-muted/20" : ""}`}
+                style={{
+                  minHeight,
+                  ...(clipToBlock ? { maxHeight: minHeight, overflow: "hidden" } : {}),
+                }}
               >
                 {isActive ? (
-                  <div className="px-2 py-1">
+                  <>
                     {comment && (
-                      <div className="flex items-start justify-end">
-                        <button
-                          type="button"
-                          className="text-muted-foreground transition-colors hover:text-destructive"
-                          aria-label="Remove comment"
-                          title="Remove comment (strips its anchor)"
-                          // Coordinated delete: strip the marker from the fragment buffer and remove
-                          // the comment from the Margin (Phase 3); each persists on its own save.
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                            stripMarker(comment.markerId);
-                            marginEditor.removeComment(comment.markerId);
-                            setActiveSlot(null);
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
+                      // The remove control floats in the left gutter so it never offsets the comment
+                      // text downward while editing (margins-4: the inline ✕ row is gone).
+                      <button
+                        type="button"
+                        className="absolute -left-5 top-1 text-xs text-muted-foreground transition-colors hover:text-destructive"
+                        aria-label="Remove comment"
+                        title="Remove comment (strips its anchor)"
+                        // Coordinated delete: strip the marker from the fragment buffer and remove the
+                        // comment from the Margin (Phase 3); each persists on its own save.
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          stripMarker(comment.markerId);
+                          marginEditor.removeComment(comment.markerId);
+                          setActiveSlot(null);
+                        }}
+                      >
+                        ×
+                      </button>
                     )}
-                    {/* One unified editor: while the slot is a draft it routes to type-to-create; once
-                        a comment exists it routes to that comment — same instance, no branch swap. */}
+                    {/* One unified editor: while the slot is a draft it routes to type-to-create; once a
+                        comment exists it routes to that comment — same instance, no branch swap. */}
                     <SlotEditor
                       value={comment ? comment.body : draft}
                       mode={mode}
@@ -390,13 +396,14 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                         if (comment) focusMarkerBlock(comment.markerId);
                       }}
                     />
-                  </div>
+                  </>
                 ) : comment ? (
                   <button
                     type="button"
-                    className={`w-full py-1 text-left text-foreground/90 ${
-                      expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
-                    }`}
+                    // `whitespace-pre-wrap` in both states keeps the comment's line breaks (collapsing no
+                    // longer flattens the markdown onto one line — margins-4 #5/formatting); the row
+                    // clip above limits a collapsed comment to its paragraph's height.
+                    className="w-full whitespace-pre-wrap break-words text-left text-foreground/90"
                     style={serifText(fontSize)}
                     // Clicking a comment activates it for editing and reveals its bound paragraph in the
                     // editor (the left guide line is gone — margins-4 #11).
@@ -411,7 +418,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 ) : (
                   <button
                     type="button"
-                    className="w-full py-1 text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    className="w-full text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
                     onClick={() => {
                       setActiveSlot({ kind: "block", index: row.block.index });
                       setDraft("");

@@ -13,6 +13,21 @@ export type EditorMode = "rich" | "vim" | "raw";
 // multi-line comments from drifting against their block.
 export const MARGIN_LINE_HEIGHT = 1.75;
 
+// CodeMirror's base theme forces a monospace family and its own line padding on `.cm-content` /
+// `.cm-scroller`. Override them so the raw/vim comment editor reads in the same serif rhythm as the
+// static comment text beside it — no font/spacing jump between viewing and editing (margins-4 #2, #3).
+// The wrapper owns the padding, so the editor's own content padding is zeroed.
+const slotCmTheme = EditorView.theme({
+  "&": { fontFamily: "var(--font-serif)", backgroundColor: "transparent" },
+  "&.cm-focused": { outline: "none" },
+  ".cm-scroller": {
+    fontFamily: "var(--font-serif)",
+    lineHeight: String(MARGIN_LINE_HEIGHT),
+  },
+  ".cm-content": { fontFamily: "var(--font-serif)", padding: "0" },
+  ".cm-line": { padding: "0" },
+});
+
 type MarkdownStorage = {
   markdown: { getMarkdown: () => string };
 };
@@ -117,7 +132,10 @@ const RichSlotEditor = ({
     onBlur: () => onBlur?.(),
     editorProps: {
       attributes: {
-        class: `${proseClassName} focus:outline-none text-sm`,
+        // No `text-sm` (inherit the column `fontSize`) and zero paragraph margins so the rich comment
+        // editor matches the static comment text — no size/spacing jump between view and edit
+        // (margins-4 #3).
+        class: `${proseClassName} focus:outline-none [&_p]:my-0`,
         "data-placeholder": placeholder ?? "",
       },
     },
@@ -172,8 +190,8 @@ const CodeSlotEditor = ({
   const extensions = useMemo(
     () =>
       vimMode
-        ? [markdown(), vim(), EditorView.lineWrapping]
-        : [markdown(), EditorView.lineWrapping],
+        ? [markdown(), vim(), EditorView.lineWrapping, slotCmTheme]
+        : [markdown(), EditorView.lineWrapping, slotCmTheme],
     [vimMode],
   );
 

@@ -283,19 +283,57 @@ describe("MarginColumn", () => {
     expect(column.firstElementChild).toBe(scroll);
   });
 
-  it("renders an idle comment as flowing text (no box border) and boxes only the active one", () => {
+  it("renders an idle comment as flowing text (top rule only) and boxes only the active one", () => {
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a")] }),
     });
     const row = document.querySelector('[data-slot-marker="a"]')!;
-    // The attachment rule (top border) is always present; the full box border only while editing.
-    expect(row.className).toContain("border-t");
-    expect(row.className).not.toContain("border-x");
-    // Activating the comment boxes it.
+    // The attachment rule (coloured top border) shows when idle; the box background only while editing.
+    expect(row.className).toContain("border-t-border/40");
+    expect(row.className).not.toContain("bg-muted/20");
+    // Activating the comment boxes it (background + full border colour); the reserved transparent
+    // border means activation changes only colour, not layout.
     fireEvent.click(screen.getByText("on a"));
     const activeRow = document.querySelector('[data-slot-marker="a"]')!;
-    expect(activeRow.className).toContain("border-x");
+    expect(activeRow.className).toContain("bg-muted/20");
+    expect(activeRow.className).not.toContain("border-t-border/40");
+  });
+
+  it("clips an idle/collapsed comment row to its block height so it adds no document spacer (margins-4 #4, #6)", () => {
+    const rect = (height: number) =>
+      ({
+        height,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: height,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        return rect(this.getAttribute("data-row-index") === "0" ? 200 : 40);
+      });
+    try {
+      renderColumn({
+        fragmentContent: "Long. <!--c:a-->\n\nShort.",
+        marginEditor: buildMarginEditor({ comments: [comment("a", "a tall comment body")] }),
+        getBlocks: () => [
+          { markerId: "a", text: "Long.", top: 0, height: 50 },
+          { markerId: null, text: "Short.", top: 60, height: 40 },
+        ],
+      });
+      // The block-0 slot height is 60px (tops 0→60); the idle comment row is clipped to it.
+      const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+      expect(row.style.overflow).toBe("hidden");
+      expect(row.style.maxHeight).toBe("60px");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("pads the editor's top to close the chrome gap (notes header offset)", () => {
