@@ -1,7 +1,7 @@
 # Spec: Margins (fragment notes & anchored comments)
 
 **Status**: Stable
-**Last updated**: 2026-06-02
+**Last updated**: 2026-06-04
 
 **Shipped**:
 

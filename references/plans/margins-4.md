@@ -1,7 +1,8 @@
 # Margins IV: smoke-test fixes — font, seamless layout, save coupling & two anchor bugs
 
 **Date**: 04-06-2026
-**Status**: In progress
+**Status**: Done
+**Closed**: 04-06-2026
 **Specs**: `specifications/margins.md`, `specifications/fragment-editor.md`, `references/adr/0009-buffer-clean-anchoring-and-editor-driven-flow-alignment.md`
 
 ---
@@ -29,64 +30,64 @@ Phases are independently committable and leave the app working. Order: quick fon
 
 ### Phase 0 — Branch & groundwork
 
-- [ ] Verify that you are in a branch named `agent/margins-4`. If not, stop immediately.
-- [ ] No spec/behaviour change in this phase. Commit only if anything is outstanding.
+- [x] Verify that you are in a branch named `agent/margins-4`. If not, stop immediately.
+- [x] No spec/behaviour change in this phase. Commit only if anything is outstanding.
 
 ### Phase 1 — Serif font in the Margin (#1, #2)
 
-- [ ] Apply the editor's serif family (`var(--font-serif)`) and matching line-height to the Margin's static comment/notes text and to both `SlotEditor` variants (the raw/vim slot is currently `font-mono`; the rich slot inherits sans). Keep the existing `fontSize` propagation.
-- [ ] Verify finding #2 (multi-line comments offsetting alignment) is resolved by the font/line-height match — the document-side push is measured, so equal line-heights should remove the drift. If residual drift remains, note it for Phase 5/manual smoke.
-- [ ] `specifications/margins.md`: Shipped note (font parity). Tests: none meaningful in jsdom (geometry) — covered by manual smoke. Commit.
+- [x] Apply the editor's serif family (`var(--font-serif)`) and matching line-height to the Margin's static comment/notes text and to both `SlotEditor` variants (the raw/vim slot is currently `font-mono`; the rich slot inherits sans). Keep the existing `fontSize` propagation.
+- [x] Verify finding #2 (multi-line comments offsetting alignment) is resolved by the font/line-height match — the document-side push is measured, so equal line-heights should remove the drift. If residual drift remains, note it for Phase 5/manual smoke.
+- [x] `specifications/margins.md`: Shipped note (font parity). Tests: none meaningful in jsdom (geometry) — covered by manual smoke. Commit.
 
 ### Phase 2 — Seamless layout: top-flush editor, notes & controls at the bottom (#3, #4)
 
-- [ ] Remove the Margin's **top toolbar**; the scroller starts at the column top with no chrome, so the origin-alignment effect pads the margin rows down to the editor's first paragraph and the fragment editor keeps **zero** top offset (`editorTopPadding` resolves to 0).
-- [ ] Move the **Notes** section to the **bottom** of the margin scroller — it scrolls with the content and is reached only after scrolling past the fragment text.
-- [ ] Move the column **controls** (expand-all; the "+ Comment" jump) to the **bottom** of the margin column as a pinned footer.
-- [ ] Confirm the editor content itself has no first-line top gap (the prior chrome-matching is now a margin-side pad only).
-- [ ] `specifications/margins.md`: update the "notes are a pinned header at the top" surface description to bottom-placed notes/controls; Shipped entry. Tests: update/extend the margin-column tests for notes-at-bottom and no top toolbar. Commit.
+- [x] Remove the Margin's **top toolbar**; the scroller starts at the column top with no chrome, so the origin-alignment effect pads the margin rows down to the editor's first paragraph and the fragment editor keeps **zero** top offset (`editorTopPadding` resolves to 0).
+- [x] Move the **Notes** section to the **bottom** of the margin scroller — it scrolls with the content and is reached only after scrolling past the fragment text.
+- [x] Move the column **controls** (expand-all; the "+ Comment" jump) to the **bottom** of the margin column as a pinned footer.
+- [x] Confirm the editor content itself has no first-line top gap (the prior chrome-matching is now a margin-side pad only).
+- [x] `specifications/margins.md`: update the "notes are a pinned header at the top" surface description to bottom-placed notes/controls; Shipped entry. Tests: update/extend the margin-column tests for notes-at-bottom and no top toolbar. Commit.
 
 ### Phase 3 — Seamless styling: flowing text, edit-only border, attachment rule, separator (#8, #9, #11, #12)
 
-- [ ] Remove the per-comment **box**: the left border (`border-l-2`), the left padding (`pl-3`), and the reveal guide-line button. Comments render as plain flowing serif text — a seamless column.
-- [ ] Show a **faint border only on the focused/editing comment** (it reads as a box only while editing).
-- [ ] Add a thin **horizontal rule along the top edge** of each comment, which (via alignment) sits level with the top of its bound paragraph — the attachment cue (replaces the removed left guide line). Final look to be confirmed on screen.
-- [ ] Add a **faint vertical separator with padding** between the fragment editor and the Margin so the two read as two seamless pieces of text.
-- [ ] `specifications/margins.md`: update the surface styling description; Shipped entry. Tests: assert the idle comment has no box border and the active one does; the attachment rule renders. Commit.
+- [x] Remove the per-comment **box**: the left border (`border-l-2`), the left padding (`pl-3`), and the reveal guide-line button. Comments render as plain flowing serif text — a seamless column.
+- [x] Show a **faint border only on the focused/editing comment** (it reads as a box only while editing).
+- [x] Add a thin **horizontal rule along the top edge** of each comment, which (via alignment) sits level with the top of its bound paragraph — the attachment cue (replaces the removed left guide line). Final look to be confirmed on screen.
+- [x] Add a **faint vertical separator with padding** between the fragment editor and the Margin so the two read as two seamless pieces of text.
+- [x] `specifications/margins.md`: update the surface styling description; Shipped entry. Tests: assert the idle comment has no box border and the active one does; the attachment rule renders. Commit.
 
 ### Phase 4 — Save coupling: editor save persists fragment + margin (#10, #13)
 
-- [ ] Remove the Margin **Save button** as a separate user action. The fragment editor save (`editor:save` / `:w` / `mod+s` / the editor Save button) saves the **fragment and the margin together**. (`margin:save` may remain as the internal mechanism the coupled save invokes.)
-- [ ] The Margin's **dirty** state contributes to the shell's dirty indicator and gates the editor Save button, so a margin-only edit is saveable from the editor.
-- [ ] Preserve the linked swap pair and the single recovery banner (unchanged); only the explicit-save path is coupled.
-- [ ] `specifications/margins.md` / `fragment-editor.md`: update the "explicit save for both" decision to a single coupled save; Shipped entries. Tests: editor save triggers both fragment and margin persistence; margin-only dirtiness enables the editor save. Commit.
+- [x] Remove the Margin **Save button** as a separate user action. The fragment editor save (`editor:save` / `:w` / `mod+s` / the editor Save button) saves the **fragment and the margin together**. (`margin:save` may remain as the internal mechanism the coupled save invokes.)
+- [x] The Margin's **dirty** state contributes to the shell's dirty indicator and gates the editor Save button, so a margin-only edit is saveable from the editor.
+- [x] Preserve the linked swap pair and the single recovery banner (unchanged); only the explicit-save path is coupled.
+- [x] `specifications/margins.md` / `fragment-editor.md`: update the "explicit save for both" decision to a single coupled save; Shipped entries. Tests: editor save triggers both fragment and margin persistence; margin-only dirtiness enables the editor save. Commit.
 
 ### Phase 5 — Type-to-create without remount (#5)
 
-- [ ] Render **one persistent editor per active slot** with a stable React key across the draft→comment transition: the first non-empty keystroke mints the marker + comment, but the same `SlotEditor` instance keeps editing (swap value/onChange, do not switch JSX branch), so CM/vim mode and the caret survive — no reload, no drop back to normal mode, no layout jump.
-- [ ] Keep "untouched slot creates nothing" (focus alone creates no comment; creation is still first-keystroke).
-- [ ] `specifications/margins.md`: Shipped note. Tests: type-to-create still injects the anchor + seeds the comment on first input and does not on empty (existing assertions hold against the unified editor); the remount itself is a manual smoke (vim mode preserved). Commit.
+- [x] Render **one persistent editor per active slot** with a stable React key across the draft→comment transition: the first non-empty keystroke mints the marker + comment, but the same `SlotEditor` instance keeps editing (swap value/onChange, do not switch JSX branch), so CM/vim mode and the caret survive — no reload, no drop back to normal mode, no layout jump.
+- [x] Keep "untouched slot creates nothing" (focus alone creates no comment; creation is still first-keystroke).
+- [x] `specifications/margins.md`: Shipped note. Tests: type-to-create still injects the anchor + seeds the comment on first input and does not on empty (existing assertions hold against the unified editor); the remount itself is a manual smoke (vim mode preserved). Commit.
 
 ### Phase 6 — Freeze the document while editing (#6)
 
-- [ ] While a comment/slot is **focused**, freeze the document-side spacers at their current values — the focused comment may grow within the Margin, but the fragment paragraph padding does not change per keystroke.
-- [ ] On **blur** (focus leaves the slot), recompute and reconcile the document-side spacers to the settled comment height.
-- [ ] Margin-side row heights may still reflect the live comment; only the **document push** is frozen during editing. Keep the convergence guards (`spacersEqual`) so the reconcile is a single settle.
-- [ ] `specifications/margins.md`: Shipped note (freeze-while-editing). Tests: the alignment pass skips document-spacer updates while a slot is active and applies them on blur (pure-logic where possible; geometry via manual smoke). Commit.
+- [x] While a comment/slot is **focused**, freeze the document-side spacers at their current values — the focused comment may grow within the Margin, but the fragment paragraph padding does not change per keystroke.
+- [x] On **blur** (focus leaves the slot), recompute and reconcile the document-side spacers to the settled comment height.
+- [x] Margin-side row heights may still reflect the live comment; only the **document push** is frozen during editing. Keep the convergence guards (`spacersEqual`) so the reconcile is a single settle.
+- [x] `specifications/margins.md`: Shipped note (freeze-while-editing). Tests: the alignment pass skips document-spacer updates while a slot is active and applies them on blur (pure-logic where possible; geometry via manual smoke). Commit.
 
 ### Phase 7 — Drop anchors on block deletion so orphan + re-attach works (#7)
 
-- [ ] Detect deletion when mapping anchors: ProseMirror `tr.mapping.mapResult(pos).deleted` in `anchor-tiptap.ts`; CM6 `tr.changes.mapPos(offset, -1, MapMode.TrackDel)` (returns `< 0`) in `anchor-cm.ts`. **Drop** an anchor whose position was deleted instead of collapsing it to the deletion boundary (which mis-binds it to an adjacent block).
-- [ ] Result: deleting a paragraph **orphans** its comment; pasting the paragraph back lets `planOrphanRebinds` re-attach by excerpt. Verify the end-to-end path (delete → orphan → paste → rebind).
-- [ ] `specifications/margins.md`: Shipped note (deletion drops the anchor; recovery rebinds). Tests: `anchor-cm.test.ts` / `anchor-tiptap.test.ts` — deleting the range containing an anchor drops it (no mis-bind to the neighbour); the existing mapping-through-edit tests still pass. Commit.
+- [x] Detect deletion when mapping anchors: ProseMirror `tr.mapping.mapResult(pos).deleted` in `anchor-tiptap.ts`; CM6 `tr.changes.mapPos(offset, -1, MapMode.TrackDel)` (returns `< 0`) in `anchor-cm.ts`. **Drop** an anchor whose position was deleted instead of collapsing it to the deletion boundary (which mis-binds it to an adjacent block).
+- [x] Result: deleting a paragraph **orphans** its comment; pasting the paragraph back lets `planOrphanRebinds` re-attach by excerpt. Verify the end-to-end path (delete → orphan → paste → rebind).
+- [x] `specifications/margins.md`: Shipped note (deletion drops the anchor; recovery rebinds). Tests: `anchor-cm.test.ts` / `anchor-tiptap.test.ts` — deleting the range containing an anchor drops it (no mis-bind to the neighbour); the existing mapping-through-edit tests still pass. Commit.
 
 ### Phase 8 — Final reconciliation
 
-- [ ] `bun run format` then `bun run verify`; fix lint/test/codegen-sync failures (no API route changes expected).
-- [ ] Sweep touched specs for Shipped accuracy and Status; keep ADR 0009 the model of record (no ADR change expected — these are refinements).
-- [ ] Regenerate the snapshot; resolve the addressed `references/reviews/margins-findings-2026-06-04.md` items (annotate as fixed); add any new surprises to `references/suggestions.md`.
-- [ ] Set this plan's Status to `Done` (or `In progress` if partial); set `Closed` date.
-- [ ] Final commit.
+- [x] `bun run format` then `bun run verify`; fix lint/test/codegen-sync failures (no API route changes expected).
+- [x] Sweep touched specs for Shipped accuracy and Status; keep ADR 0009 the model of record (no ADR change expected — these are refinements).
+- [x] Regenerate the snapshot; resolve the addressed `references/reviews/margins-findings-2026-06-04.md` items (annotate as fixed); add any new surprises to `references/suggestions.md`.
+- [x] Set this plan's Status to `Done` (or `In progress` if partial); set `Closed` date.
+- [x] Final commit.
 
 ---
 
