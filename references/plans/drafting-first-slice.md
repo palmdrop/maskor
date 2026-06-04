@@ -40,7 +40,7 @@ These resolve open questions or in-spec call-outs that the spec deferred to plan
 
 ### Phase 2 — In-flight write-handler drain
 
-> Closes the async race window flagged in `packages/storage/src/watcher/watcher.ts:290-296` and `references/SUGGESTIONS.md`. Without this, a `pause()` between an event handler's `if (isPaused) return` check and its DB upsert can still produce a partial-update snapshot.
+> Closes the async race window flagged in `packages/storage/src/watcher/watcher.ts:290-296` and `references/suggestions.md`. Without this, a `pause()` between an event handler's `if (isPaused) return` check and its DB upsert can still produce a partial-update snapshot.
 
 - [x] Extracted in-flight tracker into `watcher/utils/in-flight-tracker.ts`; handlers wrap `enter` / `try / finally exit`. _(2026-05-18)_
 - [x] `pause()` is async: sets `isPaused` then awaits the tracker. _(2026-05-18)_

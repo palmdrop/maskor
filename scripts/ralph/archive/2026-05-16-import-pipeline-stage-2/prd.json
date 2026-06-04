@@ -2,7 +2,9 @@
   "project": "Maskor",
   "branchName": "ralph/import-pipeline-stage-2",
   "description": "Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred.",
-  "specs": ["specifications/import-pipeline.md"],
+  "specs": [
+    "specifications/import-pipeline.md"
+  ],
   "userStories": [
     {
       "id": "US-001",
@@ -93,13 +95,13 @@
     },
     {
       "id": "US-005",
-      "title": "Spec + SUGGESTIONS.md updates",
-      "description": "As a developer, I need the import-pipeline spec to reflect that preview-and-review shipped (read-only) and per-piece editing is still deferred; and I want a SUGGESTIONS.md note for the future backend-session optimization.",
+      "title": "Spec + suggestions.md updates",
+      "description": "As a developer, I need the import-pipeline spec to reflect that preview-and-review shipped (read-only) and per-piece editing is still deferred; and I want a suggestions.md note for the future backend-session optimization.",
       "acceptanceCriteria": [
         "`specifications/import-pipeline.md` `**Shipped**:` list at top gains an entry: `YYYY-MM-DD — Import Pipeline Stage 2 - Read-only preview-and-review step: convert + split on backend without committing, render document with split markers, commit via existing /import endpoint. (plan: tasks/prd-import-pipeline-stage-2.md)`",
         "A `**Stage 2 scope note**` is added (mirroring the existing Stage 1 scope note) clarifying that preview is read-only and that per-piece edit operations (merge, discard individual pieces, retitle, adjustable split points) remain deferred",
         "The `## Acceptance criteria` lines that previously said `(preview deferred — Stage 1 creates fragments immediately)` are updated to reflect that the preview now exists, with edit-pieces still noted as deferred",
-        "`references/SUGGESTIONS.md` gains an entry describing the future backend session cache: preview re-uploads and re-converts the file on every options change; for larger .docx files this is wasteful; consider a backend session cache (keyed by content hash, short TTL e.g. 10 min) that stores the converted markdown so subsequent preview requests with different options skip mammoth+turndown; triggers when preview latency becomes user-visible",
+        "`references/suggestions.md` gains an entry describing the future backend session cache: preview re-uploads and re-converts the file on every options change; for larger .docx files this is wasteful; consider a backend session cache (keyed by content hash, short TTL e.g. 10 min) that stores the converted markdown so subsequent preview requests with different options skip mammoth+turndown; triggers when preview latency becomes user-visible",
         "Typecheck passes"
       ],
       "priority": 5,

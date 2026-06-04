@@ -149,5 +149,5 @@ Changes to `packages/frontend/src/pages/AspectEditorPage/components/AspectEditor
 - [x] `bun run verify` passes (type-check + test suite) — 202 backend + 2 frontend tests pass
 - [x] Updated `storage-service.test.ts` rename test to use `key` instead of `title`
 - [x] Updated `fragment.test.ts` fixture to include `key` field
-- [ ] Check `SUGGESTIONS.md` for any entries made obsolete by this work and remove them
+- [ ] Check `suggestions.md` for any entries made obsolete by this work and remove them
 - [ ] Run `bun run codegen` once API server is available to regenerate orval client (currently manually patched)

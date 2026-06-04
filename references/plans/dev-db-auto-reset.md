@@ -54,7 +54,7 @@ The registry DB (`packages/storage/src/db/registry/index.ts`) has the identical 
 ### Phase 4: Spec + suggestions correction
 
 - [x] Update `specifications/storage-sync.md`: qualify the "DB fully re-derivable" invariant — `fragment_stats` behavioral counters and `UUID_COLLISION` event warnings are canonical DB-only state, not reconstructed by rebuild. Add the dev-only auto-reset to the `Shipped` section once implemented.
-- [x] Add a `references/SUGGESTIONS.md` entry recording the spec-vs-code drift found during investigation (invariant overstated).
+- [x] Add a `references/suggestions.md` entry recording the spec-vs-code drift found during investigation (invariant overstated).
 
 ### Phase 5: Commit
 

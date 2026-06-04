@@ -104,9 +104,9 @@ Stage 1 (`tasks/prd-import-pipeline-stage-1.md`) shipped fire-and-forget — the
 - [ ] Typecheck passes
 - [ ] Verify in browser using dev-browser skill
 
-### US-005: Spec update + SUGGESTIONS.md entry
+### US-005: Spec update + suggestions.md entry
 
-**Description:** As a developer, I need the import-pipeline spec to reflect that preview-and-review shipped (read-only) and per-piece editing is still deferred; and I want a SUGGESTIONS.md note for the future backend-session optimization.
+**Description:** As a developer, I need the import-pipeline spec to reflect that preview-and-review shipped (read-only) and per-piece editing is still deferred; and I want a suggestions.md note for the future backend-session optimization.
 
 **Acceptance Criteria:**
 
@@ -114,7 +114,7 @@ Stage 1 (`tasks/prd-import-pipeline-stage-1.md`) shipped fire-and-forget — the
   - `**Shipped**:` list at the top gains an entry: `2026-MM-DD — Import Pipeline Stage 2 - Read-only preview-and-review step: convert + split on backend without committing, render document with split markers, commit via existing /import endpoint. (plan: tasks/prd-import-pipeline-stage-2.md)`
   - A `**Stage 2 scope note**` is added (mirroring the existing Stage 1 scope note) clarifying that preview is read-only and that per-piece edit operations (merge, discard individual pieces, retitle, adjustable split points) remain deferred to a later stage
   - The `## Acceptance criteria` lines that previously said `(preview deferred — Stage 1 creates fragments immediately)` are updated to reflect that the preview now exists, with edit-pieces still noted as deferred
-- [ ] `references/SUGGESTIONS.md` gains an entry: _"Import preview re-uploads and re-converts the file on every options change. For larger .docx files this is wasteful. Consider a backend session cache (keyed by content hash, short TTL e.g. 10 min) that stores the converted markdown so subsequent preview requests with different options skip mammoth+turndown. Triggers when preview latency becomes user-visible — currently sub-second for typical docs."_
+- [ ] `references/suggestions.md` gains an entry: _"Import preview re-uploads and re-converts the file on every options change. For larger .docx files this is wasteful. Consider a backend session cache (keyed by content hash, short TTL e.g. 10 min) that stores the converted markdown so subsequent preview requests with different options skip mammoth+turndown. Triggers when preview latency becomes user-visible — currently sub-second for typical docs."_
 - [ ] Typecheck passes (no code changes here, but the verification step keeps the story self-contained)
 
 ---
@@ -147,7 +147,7 @@ Stage 1 (`tasks/prd-import-pipeline-stage-1.md`) shipped fire-and-forget — the
 - No source-file archival (carried over from Stage 1)
 - No image/attachment extraction from `.docx` (carried over from Stage 1)
 - No retry-failed-pieces affordance on the partial-failure error card — the user must re-trigger import for any retries
-- No backend session/cache for converted markdown — the Stage 2 architecture is stateless. A SUGGESTIONS.md entry is added to revisit this when it becomes a real bottleneck
+- No backend session/cache for converted markdown — the Stage 2 architecture is stateless. A suggestions.md entry is added to revisit this when it becomes a real bottleneck
 - No reservation/locking of preview-shown keys against concurrent writes — preview is best-effort
 - No persistence of the picked `File` across page reloads (IndexedDB or otherwise)
 - No multi-file selection
@@ -170,7 +170,7 @@ Stage 1 (`tasks/prd-import-pipeline-stage-1.md`) shipped fire-and-forget — the
 
 ## Technical Considerations
 
-- **Architecture is stateless.** The frontend holds the `File` in memory and re-uploads on every options change. Mammoth + turndown for a typical `.docx` is sub-second; markdown/plaintext parsing is microseconds. Re-uploading a 1 MB file over localhost is negligible. The cost only matters once user-facing files routinely exceed ~5 MB or run over a slow link — at which point the SUGGESTIONS.md entry (backend session cache keyed by content hash) becomes the right next step
+- **Architecture is stateless.** The frontend holds the `File` in memory and re-uploads on every options change. Mammoth + turndown for a typical `.docx` is sub-second; markdown/plaintext parsing is microseconds. Re-uploading a 1 MB file over localhost is negligible. The cost only matters once user-facing files routinely exceed ~5 MB or run over a slow link — at which point the suggestions.md entry (backend session cache keyed by content hash) becomes the right next step
 - **Why a new command, not a flag on `createImportCommand`:** the existing command is single-purpose (commit + log + return UUIDs). A `dryRun` boolean would smear two intents and require returning a union of two result shapes. A second command costs ~50 lines, mirrors the existing structure, and keeps `commands/` honest
 - **Why a new route, not `?dryRun=true`:** same reasoning at the HTTP layer; cleaner OpenAPI surface, cleaner Orval-generated client
 - **`convertedMarkdown` in the response:** returning the full converted markdown means the frontend renders exactly what the backend split on, with no risk of client/server drift. The cost is response size — for a 1 MB markdown source the response is ~1 MB JSON, but for typical docs it's a few KB. The alternative (rendering pieces individually with their own tiptap instances) was rejected on perf grounds (N tiptap mounts) and on UX (loses the "single document" feel)
@@ -201,7 +201,7 @@ Stage 1 (`tasks/prd-import-pipeline-stage-1.md`) shipped fire-and-forget — the
 
 _All major decisions resolved during the grilling pass on 2026-05-16:_
 
-- ~~Stateful vs stateless preview architecture~~ → Stateless, re-upload on every options change. SUGGESTIONS.md entry for future backend session cache (US-005)
+- ~~Stateful vs stateless preview architecture~~ → Stateless, re-upload on every options change. suggestions.md entry for future backend session cache (US-005)
 - ~~Replace dialog vs add page alongside dialog~~ → Replace. `ImportDialog` deleted in US-004
 - ~~New endpoint vs `dryRun` flag on `/import`~~ → New endpoint `/import/preview`, dedicated command
 - ~~How to render rich preview~~ → One read-only tiptap instance with injected `<hr>` + banner markers

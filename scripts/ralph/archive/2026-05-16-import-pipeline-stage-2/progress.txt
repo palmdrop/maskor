@@ -75,7 +75,7 @@ Started: 2026-05-16
 - Updated acceptance criteria lines to reflect Stage 2 (preview exists, per-piece editing still deferred)
 - Added backend session cache optimization suggestion to `references/suggestions.md`
 - **Learnings for future iterations:**
-  - `references/SUGGESTIONS.md` is actually stored as `references/suggestions.md` (lowercase) — git add must use exact case
+  - `references/suggestions.md` is actually stored as `references/suggestions.md` (lowercase) — git add must use exact case
   - The stop condition spec entry uses the `scripts/ralph/archive/YYYY-MM-DD-<branch>/` path format
 ---
 

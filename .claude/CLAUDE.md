@@ -5,7 +5,7 @@ This is a greenfield project with no live users.
 ALWAYS KEEP THESE THINGS IN MIND:
 
 - Think critically. Push back on bad decisions. Flag unintended consequences.
-- Add suggestions to `@references/SUGGESTIONS.md` when encountering issues or surprises that are not immediately fixed.
+- Add suggestions to `@references/suggestions.md` when encountering issues or surprises that are not immediately fixed.
 - Be succinct. Short sentences, no fluff. Skip filler words. Sentence fragments are fine.
 - Reference `@references/CODEBASE_SNAPSHOT.md` instead of traversing the codebase. `grep` to locate symbols, keywords and code snippets. Regenerate with `bun run snapshot`.
 - When you've changed an API route and need the corresponding frontend queries/mutations, run `bun run codegen` from the repo root. It regenerates the OpenAPI snapshot from `packages/api` and then runs orval in `packages/frontend` — one command, no running API needed (the snapshot lives at `packages/frontend/src/api/openapi.json`). `bun run verify` fails if the snapshot is out of sync with the routes. (To run the steps individually: `bun run --cwd packages/api generate-openapi`, then `bun run --cwd packages/frontend codegen`.)

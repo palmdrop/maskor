@@ -131,7 +131,7 @@ ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests alrea
 - [x] Update `specifications/overview.md`:
   - Note that arc overlays, sections-UI, secondary sequences, and zoom/pan are deferred to follow-up plans.
   - Resolved two open questions (pool placement, overview as placement entry point).
-- [x] Add a suggestion to `references/SUGGESTIONS.md` if anything surprising surfaces during implementation (e.g. a clash between the no-watcher rule and a usability gap).
+- [x] Add a suggestion to `references/suggestions.md` if anything surprising surfaces during implementation (e.g. a clash between the no-watcher rule and a usability gap).
 
 ### Phase 12 — Verify
 

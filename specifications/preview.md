@@ -40,7 +40,7 @@ Preview is a reading surface, not an editing surface. A sidebar lists the fragme
 - Side-by-side comparison of sequences
 - Auto-refresh on vault changes (deliberately user-driven)
 - Multi-sequence preview (one sequence at a time)
-- Preview of draft snapshots (deferred — see `specifications/drafting.md` and `references/SUGGESTIONS.md`)
+- Preview of draft snapshots (deferred — see `specifications/drafting.md` and `references/suggestions.md`)
 
 > Preview is for reading. Anything that turns it into an editing or analysis surface is out of scope.
 

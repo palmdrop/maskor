@@ -15,7 +15,7 @@
 - `references/plans/storage-sync-spec-fixes.md` (Done)
 - `references/plans/fragment-editor.md` (Done)
 - `references/plans/vault-content-index.md` (Done, historical)
-- `references/SUGGESTIONS.md`
+- `references/suggestions.md`
 - `packages/shared/src/schemas/domain/fragment.ts` (live code)
 - `packages/storage/src/db/vault/schema.ts` (live code)
 - `packages/api/src/schemas/fragment.ts` (live code)
@@ -221,4 +221,4 @@ The domain `Fragment` type uses `updatedAt: Date`. The `IndexedFragment` API sch
 
 ### 5. Rebuild mutex has an async race window
 
-The `pause()` method sets a flag synchronously, but watcher handlers already past the guard and mid-`await` can still complete and upsert into the DB after `pause()` returns. Rebuild's subsequent transaction would then overwrite those upserts — the exact race the mutex intended to prevent. Flagged in SUGGESTIONS.md #24 as known debt requiring a draining-counter fix.
+The `pause()` method sets a flag synchronously, but watcher handlers already past the guard and mid-`await` can still complete and upsert into the DB after `pause()` returns. Rebuild's subsequent transaction would then overwrite those upserts — the exact race the mutex intended to prevent. Flagged in suggestions.md #24 as known debt requiring a draining-counter fix.

@@ -29,7 +29,7 @@ The mental model mirrors how writers traditionally work: keeping older versions 
 
 ### Out of scope
 
-- In-app draft preview / overview surfaces (deferred — see `references/SUGGESTIONS.md`)
+- In-app draft preview / overview surfaces (deferred — see `references/suggestions.md`)
 - Automatic snapshots, time-based history, or session checkpoints
 - Content-addressed deduplication between drafts
 - Draft forking, branching, or diffing UI
@@ -161,7 +161,7 @@ The "Per-draft markdown export at creation time" previously listed as deferred i
 - A draft is meant to be internally consistent — the storage layer enforces a full stop-the-world snapshot rather than a best-effort copy.
 - The DB inside a snapshot is captured via `VACUUM INTO`, never via raw file copy.
 - The live `action-log.jsonl` and `project.json` are preserved across restore. Both are snapshotted for backup purposes but not overwritten when restoring.
-- Snapshot creation must drain in-flight write handlers, not just set a flag (closes the async race window from `references/SUGGESTIONS.md`).
+- Snapshot creation must drain in-flight write handlers, not just set a flag (closes the async race window from `references/suggestions.md`).
 - Disk space sanity checks must run before any file is written.
 - Only one draft create-or-restore operation can be in flight at a time.
 
@@ -178,7 +178,7 @@ The "Per-draft markdown export at creation time" previously listed as deferred i
 - **Stop-the-world snapshot, not best-effort**: A partial snapshot (some files post-edit, some pre-edit, DB in a third state) is a latent bug that surfaces only after a restore. The cost — a brief write freeze during a rare user-initiated operation — is acceptable. The same write lock is useful for future bulk operations.
 - **Action log preserved across restore**: The action log is the user's audit trail of what they did. Rewinding it as part of a restore would erase the ability to answer "what did I do this week?" — which is exactly the kind of context the user may want after a restore.
 - **`project.json` preserved across restore**: It carries the user's current working environment (settings, editor preferences, suggestion thresholds) rather than snapshot-bound content. Restoring an old draft and finding the user's settings rolled back too would be surprising. The snapshot still captures `project.json` as a backup for manual recovery, mirroring the action log's treatment.
-- **Names are case-insensitively unique**: Matches the fragment-key convention from `storage-service.ts`. Avoids the case-sensitivity wart flagged for sequence names in `references/SUGGESTIONS.md`.
+- **Names are case-insensitively unique**: Matches the fragment-key convention from `storage-service.ts`. Avoids the case-sensitivity wart flagged for sequence names in `references/suggestions.md`.
 
 ---
 

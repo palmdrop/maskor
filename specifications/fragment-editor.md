@@ -99,7 +99,7 @@ An SSE connection notifies the editor when the vault changes. On relevant events
 
 ## Open questions
 
-- **`vimMode` settings wiring**: Where does the vim preference live? A per-user settings table, a local config file, or a project-level config? Unresolved — see `SUGGESTIONS.md`.
+- **`vimMode` settings wiring**: Where does the vim preference live? A per-user settings table, a local config file, or a project-level config? Unresolved — see `suggestions.md`.
 - **New aspect creation from the editor**: TODO.md marks this as open (`[ ] Allow adding new aspects on the fragment editor page`). Should aspects be creatable inline, or only via the project configuration view?
 - **`readyStatus` visual indicator**: The plan mentioned a color/dot indicator next to the title. Not yet implemented. What does it look like?
 - **Focus toggle shortcut**: Keyboard shortcut to switch focus between prose and metadata panels — desired but not yet defined.

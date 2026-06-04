@@ -79,7 +79,7 @@
 - [x] `Esc` from the argument picker returns to the command list with the prior query restored
 - [x] Zero-item arg: command renders disabled with explanation in the command list (no transition possible)
 - [x] Loading state for arg items: skeleton rows in the argument picker
-- [x] Failure: close the palette and surface the error via the existing toast mechanism (currently logs to console — no toast library exists yet; tracked in SUGGESTIONS.md)
+- [x] Failure: close the palette and surface the error via the existing toast mechanism (currently logs to console — no toast library exists yet; tracked in suggestions.md)
 - [x] Tests: ellipsis command opens arg picker; selecting an item invokes `run(arg)`; Esc returns to command list with restored query; zero-item command is disabled with explanation
 - [x] Update spec `Shipped:`
 - [x] `git commit` — "feat(command-palette): support parameterized two-step commands"
@@ -89,7 +89,7 @@
 > Populate the static registry with the v1 global commands so the palette is actually useful end-to-end.
 
 - [x] Navigation: `Go to Overview`, `Go to Fragment list`, `Go to Drafts`, `Go to Preview`, `Go to Project config`, `Go to Stats`, `Go to History`, `Go to Project management`
-- [x] Create: `Create fragment…`, `Create note…`, `Create reference…`, `Create aspect…` (navigate to creation page; dialog auto-open deferred — tracked in SUGGESTIONS.md)
+- [x] Create: `Create fragment…`, `Create note…`, `Create reference…`, `Create aspect…` (navigate to creation page; dialog auto-open deferred — tracked in suggestions.md)
 - [x] Project: `Switch project…` (parameterized — projects from registry), `Switch sequence…` (parameterized — sequences in current project); `Export sequence…` skipped — no API endpoint exists yet
 - [x] Decide whether the palette is mounted shell-wide (works on `/` for `Create project…`) or project-shell-only; resolve the open question in the spec before merging
 - [x] Tests: each registered command runs and lands on the expected route or invokes the expected mutation

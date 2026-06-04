@@ -50,7 +50,7 @@ const ENTITY_KEY_REGEX = /^[\p{L}\p{N} _-]+$/u;
 
 **Why the duplication exists**: `packages/shared/src/index.ts:4` re-exports `./logger`, and `logger/index.ts:15` references `process.stdout` (pino). Type-only imports from `@maskor/shared` work because TS erases them, but a **value** import (`import { ENTITY_KEY_REGEX } from "@maskor/shared"`) pulls the whole barrel into the frontend bundle, and `process` is undefined in the browser. So this is a working-around, not a slip.
 
-The real fix is upstream — see `references/SUGGESTIONS.md`. Until that lands, leave the duplicate but keep the regex character class identical to `ENTITY_KEY_CHAR_CLASS`. Drop the question mark from the TODO and reference the suggestion.
+The real fix is upstream — see `references/suggestions.md`. Until that lands, leave the duplicate but keep the regex character class identical to `ENTITY_KEY_CHAR_CLASS`. Drop the question mark from the TODO and reference the suggestion.
 
 ### 4. `validateExtractKey`'s discarded-clash branch is fragment-only but parameter accepts all four types
 

@@ -50,7 +50,7 @@ Started: [pending]
 - Extended `ErrorResponseSchema` (`packages/api/src/schemas/error.ts`) with an optional `reason` field and propagated `VaultError.context.reason` for `KEY_CONFLICT`/`FRAGMENT_NOT_DISCARDED` in `packages/api/src/errors.ts`. Frontend can now distinguish name conflicts from other 409s via `response.reason === "name_conflict"`.
 - Added 3 storage tests in `packages/storage/src/__tests__/storage-service.test.ts`: different-case names do NOT collide; rename-to-collision throws KEY_CONFLICT; self-rename no-op is permitted. Tightened the existing collision test to assert `context.reason === "name_conflict"`.
 - Added 3 API integration tests in `packages/api/src/__tests__/routes/sequences.test.ts`: rename-collision returns 409 with `reason: "name_conflict"`, self-rename returns 200, two sequences differing only by case can coexist. The existing create-collision test was tightened to assert the new `reason` field.
-- Added a SUGGESTIONS.md entry flagging the case-sensitivity inconsistency vs. fragment keys (sequence-name is case-sensitive per PRD; fragment-key is case-insensitive).
+- Added a suggestions.md entry flagging the case-sensitivity inconsistency vs. fragment keys (sequence-name is case-sensitive per PRD; fragment-key is case-insensitive).
 - Files changed: `packages/storage/src/service/storage-service.ts`, `packages/storage/src/__tests__/storage-service.test.ts`, `packages/api/src/schemas/error.ts`, `packages/api/src/errors.ts`, `packages/api/src/__tests__/routes/sequences.test.ts`, `references/suggestions.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
 - Verify: `bun run verify` passes (545 backend + 82 frontend tests + typecheck).
 - **Learnings for future iterations:**

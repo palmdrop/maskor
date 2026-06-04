@@ -123,7 +123,7 @@ Stat updates wired at action sites (synchronous, in same handler that performs t
 - [ ] Weight values — start with placeholder constants; expect tuning after first usage. Do not expose to users.
 - [ ] Avoidance accounting site — server-tracked (preferred, in the cooldown entry) vs. client-driven (`?previousWasEdited=bool` on Next). Server-tracked keeps the source of truth on the backend but means cooldown entries carry more state.
 - [ ] Package home for the suggestion module — `packages/storage/src/suggestion` (close to the DB) or `packages/sequencer` (closer to the algorithmic-selection cousin) or new `packages/suggestion` package. Affects import boundaries.
-- [ ] Auto-save reliability on Next — see suggestion in `references/SUGGESTIONS.md` about a temporary unsaved-edit cache. For this plan, auto-save is best-effort: if it fails, Next is blocked and the error surfaces inline; the user must save manually or fix the issue.
+- [ ] Auto-save reliability on Next — see suggestion in `references/suggestions.md` about a temporary unsaved-edit cache. For this plan, auto-save is best-effort: if it fails, Next is blocked and the error surfaces inline; the user must save manually or fix the issue.
 - [ ] Final user-facing label (nav tab is `Edit`; the page itself is unlabelled for now — confirm).
 - [ ] Should a fragment that was just edited and saved be excluded from Next's selection on that same session, even after the cooldown window? Currently, no — cooldown handles it. Confirm.
 

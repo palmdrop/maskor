@@ -74,7 +74,7 @@ Ships first so the enhanced adoption is in place before the redundant path is re
 - [x] `specifications/_glossary.md` — already updated this session (Piece removed, **Warning** added, dual-sense ambiguity dropped). No further action unless Part 2 naming changes.
 - [x] `specifications/import-pipeline.md`: remove the `pieces/` drop-zone out-of-scope line; rewrite the "Piece transience" section and the "Piece is transient" prior decision to reflect that import creates fragments directly and raw `.md` dropped into `fragments/` is auto-adopted with full frontmatter written back. Update `Shipped`.
 - [x] `references/dumps/storage-sync.md`: mark open question #7 (`pieces/` single-file routing) moot — resolved by removal. Strengthen the external-edit rule: "File created outside Maskor → for fragments, full default frontmatter written back" (not just UUID).
-- [x] Add a `references/SUGGESTIONS.md` entry only if a genuine surprise surfaces during implementation.
+- [x] Add a `references/suggestions.md` entry only if a genuine surprise surfaces during implementation.
 
 > Phase 3 docs may ship in the same PR as Phase 2 if preferred.
 

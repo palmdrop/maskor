@@ -88,7 +88,7 @@ Fix is small: after `unlink`, try `rmdir(dirname(absoluteOldPath))` and swallow 
 
 ### 7. Frontend duplicates `validateCategoryPath` regex
 
-`packages/frontend/src/components/category-field.tsx:8-33` re-implements `validateCategoryPath` because importing from `@maskor/shared` would pull in the pino logger and crash in the browser. This is documented in code and tracked in `references/SUGGESTIONS.md` as a known issue with the shared-package barrel. Not a new problem introduced here, just inheriting it.
+`packages/frontend/src/components/category-field.tsx:8-33` re-implements `validateCategoryPath` because importing from `@maskor/shared` would pull in the pino logger and crash in the browser. This is documented in code and tracked in `references/suggestions.md` as a known issue with the shared-package barrel. Not a new problem introduced here, just inheriting it.
 
 ### 8. `discardedFiles` ordering inside `vault.fragments.readAll`
 
