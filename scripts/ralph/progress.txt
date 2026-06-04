@@ -2,8 +2,10 @@
 - Vault DB migrations: hand-write SQL in `packages/storage/src/db/vault/migrations/<date>_<tag>.sql` and add an entry to `meta/_journal.json` (idx++, when = next sequential timestamp). No drizzle generate command needed.
 - The vault DB is per-project (one per vault); no `project_uuid` column needed in vault DB tables.
 - New vault DB table → add to `schema.ts` with `sqliteTable`, create accessor functions in `packages/storage/src/suggestion/` (or other relevant subdir).
-- After any API schema change run `bun run codegen` from repo root (runs `generate-openapi` + `orval` in one step).
+- Run `bun run codegen` from the WORKTREE root, NOT from the main repo root — the worktrees have independent packages and running from the main repo will regenerate from the wrong source.
+- After any API schema change run `bun run codegen` from worktree root (runs `generate-openapi` + `orval` in one step).
 - Tests use `createTestApp()` + `seedVault()` pattern; `freshContext.cleanup()` in `afterAll` or at end of test.
+- `@hono/zod-openapi`: GET and PUT on the same path (/current) work — but nested path segments (e.g. `/current/{id}` alongside `/current`) don't appear in `getOpenAPIDocument`. Prefer PUT with a JSON body over `POST /current/{id}` when you already have `GET /current`.
 
 # Ralph Progress Log
 Started: 2026-06-04
@@ -26,4 +28,25 @@ Started: 2026-06-04
   - `registry.updateProject` writes to the `project.json` manifest — avoid for session state that changes often; use vault DB instead.
   - Drizzle `onConflictDoUpdate` with `target: projectStateTable.id` enables upsert-or-create on the single-row state table.
   - The `_journal.json` `when` field uses Unix ms timestamps; just increment by 86400000 per day.
+---
+
+## 2026-06-04 - US-002
+- Implemented: fixed back-navigation landing on wrong fragment by syncing DB pointer whenever displayed fragment changes.
+- Root cause: `getNext` updated the DB pointer but browser back-navigation only changed the URL — the DB pointer remained on the most-recently-nexted fragment. Re-entering suggestion mode via nav link used the stale DB pointer.
+- Fix approach:
+  - Added `suggestion.setCurrent()` to storage service (wraps `setCurrentFragmentUUID` behind write lock)
+  - Added `PUT /projects/:projectId/suggestion/current` API route with `{ fragmentId }` body
+  - Added `useEffect` in `SuggestionModePage` that calls `useSetCurrentSuggestion` mutation whenever `fragmentId` URL param changes
+- Files changed:
+  - `packages/storage/src/service/storage-service.ts` (added `setCurrent` method)
+  - `packages/api/src/schemas/suggestion.ts` (added `SuggestionSetCurrentParamSchema`, `SuggestionSetCurrentBodySchema`)
+  - `packages/api/src/routes/suggestion.ts` (added `PUT /current` route)
+  - `packages/frontend/src/api/openapi.json` (regenerated)
+  - `packages/frontend/src/pages/SuggestionModePage/index.tsx` (added sync effect)
+  - `packages/api/src/__tests__/routes/suggestion.test.ts` (added PUT /current test)
+  - `specifications/prompting.md` (Shipped entry)
+- **Learnings for future iterations:**
+  - `@hono/zod-openapi`: `/current/{fragmentId}` as a POST silently disappears from `getOpenAPIDocument` when `GET /current` already exists. Use PUT with a JSON body instead.
+  - Run `bun run codegen` from the WORKTREE root, not the main repo. Both have independent `packages/` directories.
+  - React Query `useMutation` — extract `mutation.mutate` to a stable ref before using in `useEffect` deps to satisfy exhaustive-deps without re-running on every render.
 ---

@@ -44,7 +44,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-001 — the manifest pointer is the suspected cause."
     },
     {
