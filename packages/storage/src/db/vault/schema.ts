@@ -202,6 +202,14 @@ export const commentsTable = sqliteTable(
   ],
 );
 
+// Per-vault runtime state that is not re-derivable from vault files and should not churn the
+// project manifest. Single-row table (id = 1 by convention). Only add columns here for state
+// that is DB-only (not stored in any vault file).
+export const projectStateTable = sqliteTable("project_state", {
+  id: integer("id").primaryKey().default(1).notNull(),
+  currentFragmentUUID: text("current_fragment_uuid"),
+});
+
 export const fragmentPositionsTable = sqliteTable(
   "fragment_positions",
   {

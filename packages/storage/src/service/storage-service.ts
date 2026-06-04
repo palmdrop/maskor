@@ -85,6 +85,7 @@ import type { FragmentStats, ProjectStats } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 import { createActionLogWriter, readRecentEntries } from "../action-log";
 import type { ActionLogWriter } from "../action-log";
+import { getCurrentFragmentUUID, setCurrentFragmentUUID } from "../suggestion/project-state-repo";
 import { listWarnings, dismissWarning } from "../warnings/warnings-repo";
 import type { StoredWarning, DismissResult } from "../warnings/warnings-repo";
 import { createSwapStorage } from "../swap";
@@ -1654,9 +1655,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     suggestion: {
       async getCurrent(context: ProjectContext) {
         return withVaultWriteLock(context.vaultPath, async () => {
-          const project = await registry.findByUUID(context.projectUUID);
           const vaultDatabase = getVaultDatabase(context);
-          const currentFragmentUUID = project?.suggestion.currentFragmentUUID;
+          const currentFragmentUUID = getCurrentFragmentUUID(vaultDatabase);
 
           if (!currentFragmentUUID) {
             return {
@@ -1737,12 +1737,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const surfacedAt = new Date();
           cooldown.add(selectedUuid);
           incrementPromptAccept(vaultDatabase, selectedUuid, surfacedAt);
-
-          await registry.updateProject(context.projectUUID, {
-            suggestion: {
-              currentFragmentUUID: selectedUuid,
-            },
-          });
+          setCurrentFragmentUUID(vaultDatabase, selectedUuid);
 
           const fragmentStats = getStats(vaultDatabase, selectedUuid);
           return { fragmentUuid: selectedUuid, avoidanceCount: fragmentStats.avoidanceCount };

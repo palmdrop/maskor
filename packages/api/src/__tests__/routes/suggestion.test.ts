@@ -107,6 +107,47 @@ describe("GET /projects/:projectId/suggestion/next", () => {
   });
 });
 
+describe("GET /projects/:projectId/suggestion/current", () => {
+  it("returns null when no suggestion has been fetched yet", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+
+    const response = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/current`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { fragment: null; avoidanceCount: number };
+    expect(body.fragment).toBeNull();
+
+    await freshContext.cleanup();
+  });
+
+  it("pointer persists across requests — current returns the same fragment getNext returned", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+
+    const nextResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/next`,
+    );
+    expect(nextResponse.status).toBe(200);
+    const nextBody = (await nextResponse.json()) as SuggestionNextResponse;
+    expect(nextBody.fragment).not.toBeNull();
+    const nextUuid = nextBody.fragment!.uuid;
+
+    const currentResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/current`,
+    );
+    expect(currentResponse.status).toBe(200);
+    const currentBody = (await currentResponse.json()) as SuggestionNextResponse;
+    expect(currentBody.fragment).not.toBeNull();
+    expect(currentBody.fragment!.uuid).toBe(nextUuid);
+
+    await freshContext.cleanup();
+  });
+});
+
 describe("POST /projects/:projectId/suggestion/visit/:fragmentId", () => {
   it("returns 204", async () => {
     const listResponse = await testContext.app.request(
