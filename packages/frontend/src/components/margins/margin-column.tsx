@@ -367,7 +367,11 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       {/* No top chrome (margins-4 #3, #4): the scroller is flush to the column top so the
           origin-alignment effect pads the margin rows down to the editor's first line (rowsPaddingTop)
           and leaves the editor's own top offset at zero. Notes + controls live at the bottom. */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1" data-testid="margin-scroll">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto no-scrollbar pr-1"
+        data-testid="margin-scroll"
+      >
         {/* One slot per paragraph, flow-aligned to the editor (ADR 0009): each row's min-height is its
             block's slot height, and the editor injects a spacer when a comment is taller. */}
         <div className="flex flex-col" style={{ paddingTop: rowsPaddingTop || undefined }}>
@@ -465,7 +469,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     // `whitespace-pre-wrap` in both states keeps the comment's line breaks (collapsing no
                     // longer flattens the markdown onto one line — margins-4); the row clip above limits
                     // a collapsed comment to its paragraph's height.
-                    className="w-full whitespace-pre-wrap break-words text-left text-foreground/90"
+                    className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
                     style={serifText(fontSize)}
                     // Clicking a comment activates it for editing and reveals its bound paragraph in the
                     // editor (the left guide line is gone — margins-4 #11).
@@ -495,7 +499,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                   // with an ellipsis so the writer knows there's more (margins-4).
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 flex h-5 items-end justify-end bg-gradient-to-t from-background to-transparent pr-2 text-xs leading-none text-muted-foreground"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 flex h-5 items-end justify-end bg-linear-to-t from-background to-transparent pr-2 text-xs leading-none text-muted-foreground"
                   >
                     …
                   </div>
@@ -568,7 +572,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                   ) : (
                     <button
                       type="button"
-                      className="w-full whitespace-pre-wrap break-words text-left text-foreground/90"
+                      className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
                       style={serifText(fontSize)}
                       onClick={() => setActiveSlot({ kind: "comment", markerId: comment.markerId })}
                     >
@@ -627,7 +631,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               ) : (
                 <button
                   type="button"
-                  className="min-h-[1.5rem] w-full whitespace-pre-wrap text-left text-foreground/90"
+                  className="min-h-6 w-full whitespace-pre-wrap text-left text-foreground/90"
                   style={serifText(fontSize)}
                   onClick={() => setActiveSlot({ kind: "notes" })}
                 >

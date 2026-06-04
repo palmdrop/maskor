@@ -55,6 +55,16 @@
     /* Inherit so parent wrappers can set font-size; prose children use em() and scale. */
     font-size: inherit;
   }
+
+  .no-scrollbar {
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  }
+  .no-scrollbar::-webkit-scrollbar { /* WebKit */
+      width: 0;
+      height: 0;
+  }
 }
 
 @theme inline {
