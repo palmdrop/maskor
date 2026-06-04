@@ -320,6 +320,157 @@ describe("POST /projects/:projectId/suggestion/pick/:fragmentId", () => {
   });
 });
 
+describe("editCount — session-scoped increment", () => {
+  it("no-op save does not increment editCount", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const fragment = fragments.find((f) => !f.isDiscarded)!;
+
+    // Fetch first suggestion to start a session
+    const nextResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/next`,
+    );
+    expect(nextResponse.status).toBe(200);
+
+    const before = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+
+    // PATCH with the same content (no change)
+    const getResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+    );
+    const existing = (await getResponse.json()) as { content: string };
+
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: existing.content }),
+      },
+    );
+
+    const after = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+    expect(after.editCount).toBe(before.editCount);
+
+    await freshContext.cleanup();
+  });
+
+  it("changed save increments editCount by 1", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const fragment = fragments.find((f) => !f.isDiscarded)!;
+
+    // Surface the fragment
+    await freshContext.app.request(`/projects/${freshProject.projectUUID}/suggestion/next`);
+
+    const before = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Changed content for editCount test." }),
+      },
+    );
+
+    const after = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+    expect(after.editCount).toBe(before.editCount + 1);
+
+    await freshContext.cleanup();
+  });
+
+  it("repeated changed saves within one session increment editCount only once", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+    const projectContext = await freshContext.storageService.resolveProject(
+      freshProject.projectUUID,
+    );
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const fragment = fragments.find((f) => !f.isDiscarded)!;
+
+    // Pick the specific fragment to guarantee it has a cooldown/session entry
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/pick/${fragment.uuid}`,
+      { method: "POST" },
+    );
+
+    const before = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+
+    // Three distinct saves in one session
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "First save in session." }),
+      },
+    );
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Second save in session." }),
+      },
+    );
+    await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Third save in session." }),
+      },
+    );
+
+    const after = freshContext.storageService.suggestion.getFragmentStats(
+      projectContext,
+      fragment.uuid,
+    );
+    expect(after.editCount).toBe(before.editCount + 1);
+
+    await freshContext.cleanup();
+  });
+});
+
 describe("GET /suggestion/next — avoidance_count increment", () => {
   it("increments avoidance_count when Next is called without editing", async () => {
     const freshContext = createTestApp();

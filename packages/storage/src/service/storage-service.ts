@@ -1776,7 +1776,12 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         await withVaultWriteLock(context.vaultPath, async () => {
           const vaultDatabase = getVaultDatabase(context);
           const cooldown = getSuggestionCooldown(context);
-          incrementEdit(vaultDatabase, fragmentUuid);
+          // Only increment once per session (surfaced → navigated away).
+          // If the fragment has already been marked edited in this cooldown window,
+          // skip the DB increment to avoid counting every save as a separate edit.
+          if (!cooldown.wasEditedWhileSurfaced(fragmentUuid)) {
+            incrementEdit(vaultDatabase, fragmentUuid);
+          }
           cooldown.markEdited(fragmentUuid);
         });
       },

@@ -9,6 +9,7 @@
 - 2026-05-08 — Fragment word counts are persisted to the database and recomputed automatically on save or watcher-detected content change. (plan: references/plans/project-statistics.md)
 - 2026-05-08 — A read-only fragment stats inspector panel (prompting counters) is available in the editor sidebar, toggled per project from the Advanced section of the General tab. (plan: references/plans/project-statistics.md)
 - 2026-05-30 — Stats page per-fragment table has an "Include discarded" toggle (session-local, default off). When on, discarded fragments appear in the table with strikethrough key and muted styling; global aggregates are unaffected.
+- 2026-06-04 — `editCount` semantics tightened: the counter increments at most once per suggestion-mode visit (fragment open → navigate away), not once per save. A no-op save never increments. Multiple changed saves within one session count as one. (plan: `scripts/ralph/archive/2026-06-04-small-improvements/`)
 
 ---
 
