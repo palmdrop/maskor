@@ -8,6 +8,8 @@ import {
   SuggestionVisitParamSchema,
   SuggestionPickParamSchema,
   SuggestionCurrentResponseSchema,
+  SuggestionSetCurrentParamSchema,
+  SuggestionSetCurrentBodySchema,
 } from "../schemas/suggestion";
 import { ErrorResponseSchema } from "../schemas/error";
 
@@ -93,6 +95,29 @@ const recordPickRoute = createRoute({
   },
 });
 
+const setCurrentSuggestionRoute = createRoute({
+  operationId: "setCurrentSuggestion",
+  method: "put",
+  path: "/current",
+  tags: ["Suggestion"],
+  summary:
+    "Set the current-suggestion pointer to a specific fragment (e.g. after browser back-navigation).",
+  request: {
+    params: SuggestionSetCurrentParamSchema,
+    body: {
+      content: { "application/json": { schema: SuggestionSetCurrentBodySchema } },
+      required: true,
+    },
+  },
+  responses: {
+    204: { description: "Pointer updated" },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 suggestionRouter.openapi(getCurrentSuggestionRoute, async (ctx) => {
   try {
     const storageService = ctx.get("storageService");
@@ -156,6 +181,19 @@ suggestionRouter.openapi(recordPickRoute, async (ctx) => {
     const { fragmentId } = ctx.req.valid("param");
 
     await storageService.suggestion.recordPick(projectContext, fragmentId);
+    return ctx.body(null, 204);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+suggestionRouter.openapi(setCurrentSuggestionRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { fragmentId } = ctx.req.valid("json");
+
+    await storageService.suggestion.setCurrent(projectContext, fragmentId);
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

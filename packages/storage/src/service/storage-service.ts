@@ -1744,6 +1744,13 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         });
       },
 
+      async setCurrent(context: ProjectContext, fragmentUuid: string): Promise<void> {
+        await withVaultWriteLock(context.vaultPath, async () => {
+          const vaultDatabase = getVaultDatabase(context);
+          setCurrentFragmentUUID(vaultDatabase, fragmentUuid);
+        });
+      },
+
       async recordVisit(context: ProjectContext, fragmentUuid: string): Promise<void> {
         await withVaultWriteLock(context.vaultPath, async () => {
           const vaultDatabase = getVaultDatabase(context);

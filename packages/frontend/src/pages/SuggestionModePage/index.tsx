@@ -10,6 +10,7 @@ import { suggestionModeScope } from "@lib/commands/scopes/suggestion-mode";
 import {
   useGetCurrentSuggestion,
   getGetCurrentSuggestionQueryKey,
+  useSetCurrentSuggestion,
 } from "../../api/generated/suggestion/suggestion";
 
 // TODO: this should be configured globally and not in a random FE-component
@@ -24,6 +25,8 @@ export const SuggestionModePage = () => {
   const current = useGetCurrentSuggestion(projectId);
 
   const editorRef = useRef<FragmentEditorHandle>(null);
+
+  const setCurrentMutation = useSetCurrentSuggestion();
 
   const [avoidanceCount, setAvoidanceCount] = useState(0);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -58,6 +61,20 @@ export const SuggestionModePage = () => {
     },
     [projectId],
   );
+
+  const setCurrentMutate = setCurrentMutation.mutate;
+
+  // Keep the DB pointer in sync with the displayed fragment. Necessary when the
+  // user navigates via browser history (Previous button) — loadNext already
+  // updates the pointer, but going back doesn't. Without this, returning to
+  // suggestion mode via the nav link would land on the most-recently-nexted
+  // fragment instead of the one the user was on when they left.
+  useEffect(() => {
+    if (!fragmentId || isLoadingNext) {
+      return;
+    }
+    setCurrentMutate({ projectId, data: { fragmentId } });
+  }, [fragmentId, isLoadingNext, projectId, setCurrentMutate]);
 
   useEffect(() => {
     if (current.isLoading || isLoadingNext || fragmentId) {

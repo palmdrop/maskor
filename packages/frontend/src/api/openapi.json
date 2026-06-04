@@ -1956,6 +1956,19 @@
           "avoidanceCount"
         ]
       },
+      "SuggestionSetCurrentBody": {
+        "type": "object",
+        "properties": {
+          "fragmentId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+          }
+        },
+        "required": [
+          "fragmentId"
+        ]
+      },
       "ProjectStats": {
         "type": "object",
         "properties": {
@@ -6308,6 +6321,49 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setCurrentSuggestion",
+        "tags": [
+          "Suggestion"
+        ],
+        "summary": "Set the current-suggestion pointer to a specific fragment (e.g. after browser back-navigation).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionSetCurrentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Pointer updated"
           },
           "500": {
             "description": "Internal error",

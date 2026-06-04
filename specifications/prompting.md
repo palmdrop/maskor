@@ -11,6 +11,7 @@
 - 2026-05-07 — A readyStatus nudge banner appears when a fragment's avoidance count exceeds the configured threshold, prompting the user to raise its readyStatus or discard it. (plan: references/plans/suggestion-mode.md)
 - 2026-05-23 - Suggestion page remembers current fragment using query params and project manifest state. The same suggestion will surface until the user explicitly presses next. This makes sure the user can navigate away and back again and keep working on the same fragment.
 - 2026-05-26 — Quick-switcher picks made inside suggestion mode now enter cooldown via a dedicated `recordPick` storage path, and carry a "user-picked" flag the avoidance check honors. A picked fragment is not immediately re-surfaceable by the engine, and pressing Next on it does NOT count as avoidance (engine-surfaced picks remain the only avoidance source). (plan: references/plans/quick-switcher.md)
+- 2026-06-04 — Back-navigation is fixed: the current-fragment DB pointer is now updated synchronously whenever the displayed fragment changes (including back-nav via browser history). A new `PUT /suggestion/current` endpoint accepts a `fragmentId` body and writes directly to the `project_state` table. The frontend calls this endpoint via a `useEffect` on `fragmentId` changes so the pointer always reflects what's on screen; returning to suggestion mode via the nav link reliably restores the last-viewed fragment, never its predecessor. (plan: `scripts/ralph/archive/2026-06-04-small-improvements/`)
 
 ---
 

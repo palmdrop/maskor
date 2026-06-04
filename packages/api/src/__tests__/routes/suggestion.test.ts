@@ -148,6 +148,58 @@ describe("GET /projects/:projectId/suggestion/current", () => {
   });
 });
 
+describe("PUT /projects/:projectId/suggestion/current", () => {
+  it("sets the current pointer — getCurrent returns the fragment passed to setCurrent", async () => {
+    const freshContext = createTestApp();
+    const seeded = await seedVault(freshContext.storageService, freshContext.temporaryDirectory);
+    const freshProject = seeded.project;
+
+    const listResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/fragments`,
+    );
+    const fragments = (await listResponse.json()) as IndexedFragment[];
+    const active = fragments.filter((f) => !f.isDiscarded);
+    expect(active.length).toBeGreaterThanOrEqual(2);
+
+    const fragmentA = active[0]!;
+    const fragmentB = active[1]!;
+
+    // getNext sets the pointer to one fragment (could be A or B)
+    const nextResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/next`,
+    );
+    expect(nextResponse.status).toBe(200);
+    const nextBody = (await nextResponse.json()) as SuggestionNextResponse;
+    expect(nextBody.fragment).not.toBeNull();
+    const nextUuid = nextBody.fragment!.uuid;
+
+    // Pick a fragment different from what getNext returned (simulates back-nav to a previous one)
+    const backNavFragment = nextUuid === fragmentA.uuid ? fragmentB : fragmentA;
+
+    // setCurrentSuggestion: simulate the frontend syncing the pointer after back-navigation
+    const setResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/current`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fragmentId: backNavFragment.uuid }),
+      },
+    );
+    expect(setResponse.status).toBe(204);
+
+    // getCurrent must return the back-nav fragment, not the one getNext had returned
+    const currentResponse = await freshContext.app.request(
+      `/projects/${freshProject.projectUUID}/suggestion/current`,
+    );
+    expect(currentResponse.status).toBe(200);
+    const currentBody = (await currentResponse.json()) as SuggestionNextResponse;
+    expect(currentBody.fragment).not.toBeNull();
+    expect(currentBody.fragment!.uuid).toBe(backNavFragment.uuid);
+
+    await freshContext.cleanup();
+  });
+});
+
 describe("POST /projects/:projectId/suggestion/visit/:fragmentId", () => {
   it("returns 204", async () => {
     const listResponse = await testContext.app.request(

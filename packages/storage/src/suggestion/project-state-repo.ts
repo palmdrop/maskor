@@ -7,10 +7,7 @@ export const getCurrentFragmentUUID = (database: VaultDatabase): string | null =
   return row?.currentFragmentUUID ?? null;
 };
 
-export const setCurrentFragmentUUID = (
-  database: VaultDatabase,
-  uuid: string | null,
-): void => {
+export const setCurrentFragmentUUID = (database: VaultDatabase, uuid: string | null): void => {
   database
     .insert(projectStateTable)
     .values({ id: 1, currentFragmentUUID: uuid })
