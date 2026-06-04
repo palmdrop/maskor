@@ -1,3 +1,29 @@
+## Codebase Patterns
+- Vault DB migrations: hand-write SQL in `packages/storage/src/db/vault/migrations/<date>_<tag>.sql` and add an entry to `meta/_journal.json` (idx++, when = next sequential timestamp). No drizzle generate command needed.
+- The vault DB is per-project (one per vault); no `project_uuid` column needed in vault DB tables.
+- New vault DB table → add to `schema.ts` with `sqliteTable`, create accessor functions in `packages/storage/src/suggestion/` (or other relevant subdir).
+- After any API schema change run `bun run codegen` from repo root (runs `generate-openapi` + `orval` in one step).
+- Tests use `createTestApp()` + `seedVault()` pattern; `freshContext.cleanup()` in `afterAll` or at end of test.
+
 # Ralph Progress Log
-Started: [pending]
+Started: 2026-06-04
+---
+
+## 2026-06-04 - US-001
+- Implemented: moved `currentFragmentUUID` from project manifest to vault DB `project_state` table.
+- Files changed:
+  - `packages/storage/src/db/vault/migrations/20260604_add_project_state.sql` (new migration)
+  - `packages/storage/src/db/vault/migrations/meta/_journal.json` (added entry idx:22)
+  - `packages/storage/src/db/vault/schema.ts` (added `projectStateTable`)
+  - `packages/storage/src/suggestion/project-state-repo.ts` (new: `getCurrentFragmentUUID`, `setCurrentFragmentUUID`)
+  - `packages/storage/src/service/storage-service.ts` (updated `getCurrent` and `getNext` to use vault DB)
+  - `packages/shared/src/schemas/domain/project.ts` (removed `currentFragmentUUID` from `ProjectSchema` and `ProjectUpdateSchema`)
+  - `packages/frontend/src/api/openapi.json` (regenerated via `bun run codegen`)
+  - `packages/api/src/__tests__/routes/suggestion.test.ts` (added tests for `GET /current`)
+  - `specifications/storage-sync.md` (documented `project_state.currentFragmentUUID` as DB-only state)
+  - `specifications/project-config.md` (noted removal from manifest)
+- **Learnings for future iterations:**
+  - `registry.updateProject` writes to the `project.json` manifest — avoid for session state that changes often; use vault DB instead.
+  - Drizzle `onConflictDoUpdate` with `target: projectStateTable.id` enables upsert-or-create on the single-row state table.
+  - The `_journal.json` `when` field uses Unix ms timestamps; just increment by 86400000 per day.
 ---
