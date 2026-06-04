@@ -65,3 +65,18 @@ Started: 2026-06-04
   - No-op save (same content) already short-circuits before `recordEditSaved` in `updateFragmentCommand` (`anyNonKeyChanged` is false), so the "no increment on no-op" behavior is enforced at the command layer, not in `recordEditSaved`.
   - For "repeated saves" tests: use `suggestion/pick/:fragmentId` to explicitly add the fragment to cooldown before the saves, not `getNext` (which may surface a different fragment).
 ---
+
+## 2026-06-04 - US-004
+- Implemented: save no longer resets the TipTap caret via a spurious `setContent` call after a lossless save.
+- Root cause: TipTap's markdown serializer (`getMarkdown()`) produces trailing newlines (e.g., "Hello\n") while the server stores the body with `body.trim()` and the parse cycle adds exactly one trailing newline from the file structure. The comparison `cleanContent !== current` was comparing "Hello\n" (server) against "Hello\n\n" (TipTap serializer), which always differed, triggering `setContent` → caret reset to 0 → cursor restoration → visual flash.
+- Fix: Changed the comparison in `ProseEditor`'s content-sync useEffect to `cleanContent.trimEnd() !== current.trimEnd()`. Trailing-whitespace-only differences no longer trigger `setContent`.
+- Spec: Documented the save round-trip contract (body.trim() normalization, caret stability, unchanged-prose behavior) in `specifications/fragment-editor.md`.
+- Files changed:
+  - `packages/frontend/src/components/prose-editor.tsx` (comparison fix)
+  - `packages/frontend/src/components/entity-editor-shell.test.tsx` (new test: save does not call setContent)
+  - `specifications/fragment-editor.md` (save round-trip contract + Shipped entry)
+- **Learnings for future iterations:**
+  - TipTap's `getMarkdown()` adds a trailing `\n` (sometimes `\n\n`) to every serialized document. When comparing server content against editor content, always normalize trailing whitespace — the server's `body.trim()` strips it on write.
+  - The parse cycle adds exactly one trailing `\n` to the body: `serializeFile` appends `"\n"` and `parseFile` does `lines.slice(bodyStartIndex).join("\n")` which preserves the trailing empty string from `split`.
+  - `@uiw/react-codemirror` only dispatches a content replace when `value !== view.state.doc.toString()`. For CM6, the cursor maps through the change correctly; the dramatic reset is a TipTap-only issue (full `setContent` → cursor 0 → restore).
+---
