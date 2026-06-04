@@ -50,3 +50,18 @@ Started: 2026-06-04
   - Run `bun run codegen` from the WORKTREE root, not the main repo. Both have independent `packages/` directories.
   - React Query `useMutation` — extract `mutation.mutate` to a stable ref before using in `useEffect` deps to satisfy exhaustive-deps without re-running on every render.
 ---
+
+## 2026-06-04 - US-003
+- Implemented: `editCount` now increments at most once per suggestion-mode session, not on every save.
+- Root cause: `recordEditSaved` called `incrementEdit` unconditionally on every changed save. Multiple saves in one session inflated the counter.
+- Fix: gate `incrementEdit` on `!cooldown.wasEditedWhileSurfaced(fragmentUuid)`. The `CooldownSet` already tracked `editedWhileSurfaced`; we just needed to check it before incrementing.
+- Files changed:
+  - `packages/storage/src/service/storage-service.ts` (added guard in `recordEditSaved`)
+  - `packages/api/src/__tests__/routes/suggestion.test.ts` (added three tests: no-op save, changed save +1, repeated saves → +1)
+  - `specifications/prompting.md` (Shipped entry)
+  - `specifications/project-statistics.md` (Shipped entry)
+- **Learnings for future iterations:**
+  - `CooldownSet.wasEditedWhileSurfaced` is a session-boundary check — if it returns false, the fragment has not yet been edited this surfacing. Use it as a guard before any per-session-increment DB operation.
+  - No-op save (same content) already short-circuits before `recordEditSaved` in `updateFragmentCommand` (`anyNonKeyChanged` is false), so the "no increment on no-op" behavior is enforced at the command layer, not in `recordEditSaved`.
+  - For "repeated saves" tests: use `suggestion/pick/:fragmentId` to explicitly add the fragment to cooldown before the saves, not `getNext` (which may surface a different fragment).
+---
