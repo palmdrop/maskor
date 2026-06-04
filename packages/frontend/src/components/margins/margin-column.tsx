@@ -269,9 +269,12 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     [],
   );
 
-  // Type-to-create: the first non-empty keystroke in an empty slot mints a marker, injects it into
-  // that block, and seeds a bound comment with the typed text — then editing continues on the new
-  // comment. An untouched (still-empty) slot creates nothing.
+  // Type-to-create (margins-4 #5): the first non-empty keystroke in an empty slot mints a marker,
+  // injects it into that block, and seeds a bound comment with the typed text. The active slot stays
+  // pinned to the *block index* (not switched to a comment-kind slot), and the row renders through one
+  // unified `SlotEditor` whose key is stable across the draft→comment transition — so the same editor
+  // instance keeps editing (vim mode + caret survive; no remount). An untouched empty slot creates
+  // nothing.
   const handleBlockDraftChange = (blockIndex: number, blockText: string, next: string) => {
     if (next.trim() === "") {
       setDraft(next);
@@ -280,7 +283,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     const markerId = createCommentMarkerId();
     insertMarkerInBlock(blockIndex, markerId);
     addCommentStub({ markerId, excerpt: deriveExcerpt(blockText), body: next });
-    setActiveSlot({ kind: "comment", markerId });
+    // Keep the slot active by block index; the new comment binds to this block, so the unified editor
+    // below routes onChange to it on the next render. Clear the draft (now superseded by the comment).
     setDraft("");
   };
 
@@ -310,31 +314,36 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         <div className="flex flex-col" style={{ paddingTop: rowsPaddingTop || undefined }}>
           {rows.map((row, rowIndex) => {
             const minHeight = minHeightFor(row.block.index);
-            const isCommentActive =
-              activeSlot?.kind === "comment" && row.comment?.markerId === activeSlot.markerId;
-            const isBlockActive =
-              activeSlot?.kind === "block" && activeSlot.index === row.block.index;
-            const expanded = expandAll || isCommentActive || isBlockActive;
+            const comment = row.comment;
+            // One active-state per row, by the bound comment's marker or (for an un-annotated or
+            // just-created slot) the block index — so a slot stays active across type-to-create.
+            const isActive =
+              (activeSlot?.kind === "comment" && comment?.markerId === activeSlot.markerId) ||
+              (activeSlot?.kind === "block" && activeSlot.index === row.block.index);
+            const expanded = expandAll || isActive;
 
-            if (row.comment) {
-              const comment = row.comment;
-              return (
-                // Seamless flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the
-                // attachment cue, aligned (via flow padding) with the top of the bound paragraph. A
-                // faint full border appears only while editing, so the comment reads as a box only then.
-                <div
-                  key={comment.markerId}
-                  data-slot-marker={comment.markerId}
-                  data-row-index={row.block.index}
-                  className={`group relative border-t border-border/40 ${
-                    isCommentActive
-                      ? "rounded-b-sm border-x border-b border-border/60 bg-muted/20"
-                      : ""
-                  }`}
-                  style={{ minHeight }}
-                >
-                  {isCommentActive ? (
-                    <div className="px-2 py-1">
+            return (
+              // One row per paragraph, keyed by block index so the SAME node (and its single unified
+              // SlotEditor) survives the draft→comment transition — no remount (margins-4 #5). Seamless
+              // flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the attachment
+              // cue for an anchored comment, aligned (via flow padding) with the bound paragraph's top;
+              // a faint full border boxes the slot only while it is being edited.
+              <div
+                key={`row-${row.block.index}`}
+                data-row-index={row.block.index}
+                {...(comment
+                  ? { "data-slot-marker": comment.markerId }
+                  : { "data-slot-block": row.block.index })}
+                className={`group relative ${comment && !isActive ? "border-t border-border/40" : ""} ${
+                  isActive
+                    ? "rounded-b-sm border-x border-b border-t border-border/60 bg-muted/20"
+                    : ""
+                }`}
+                style={{ minHeight }}
+              >
+                {isActive ? (
+                  <div className="px-2 py-1">
+                    {comment && (
                       <div className="flex items-start justify-end">
                         <button
                           type="button"
@@ -353,74 +362,46 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                           ×
                         </button>
                       </div>
-                      <SlotEditor
-                        value={comment.body}
-                        mode={mode}
-                        fontSize={fontSize}
-                        focusOnMount
-                        placeholder="Add a comment…"
-                        onChange={(body) => updateCommentBody(comment.markerId, body)}
-                        onBlur={() => setActiveSlot(null)}
-                        onNext={() => navigate(rowIndex, "next")}
-                        onPrevious={() => navigate(rowIndex, "previous")}
-                        onEscape={() => {
-                          setActiveSlot(null);
-                          focusMarkerBlock(comment.markerId);
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className={`w-full py-1 text-left text-foreground/90 ${
-                        expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
-                      }`}
-                      style={serifText(fontSize)}
-                      // Clicking a comment activates it for editing and reveals its bound paragraph in
-                      // the editor (the left guide line is gone — margins-4 #11).
-                      onClick={() => {
-                        revealMarker(comment.markerId);
-                        setActiveSlot({ kind: "comment", markerId: comment.markerId });
-                        setDraft("");
-                      }}
-                    >
-                      {comment.body || <span className="text-muted-foreground">(empty)</span>}
-                    </button>
-                  )}
-                </div>
-              );
-            }
-
-            // Un-annotated paragraph: an empty slot revealed on hover; type-to-create on first input.
-            return (
-              <div
-                key={`block-${row.block.index}`}
-                data-slot-block={row.block.index}
-                data-row-index={row.block.index}
-                className={`group relative ${
-                  isBlockActive
-                    ? "rounded-b-sm border-x border-b border-t border-border/60 bg-muted/20"
-                    : ""
-                }`}
-                style={{ minHeight }}
-              >
-                {isBlockActive ? (
-                  <div className="px-2 py-1">
+                    )}
+                    {/* One unified editor: while the slot is a draft it routes to type-to-create; once
+                        a comment exists it routes to that comment — same instance, no branch swap. */}
                     <SlotEditor
-                      value={draft}
+                      value={comment ? comment.body : draft}
                       mode={mode}
                       fontSize={fontSize}
                       focusOnMount
-                      placeholder="Type to comment this paragraph…"
+                      placeholder={comment ? "Add a comment…" : "Type to comment this paragraph…"}
                       onChange={(next) =>
-                        handleBlockDraftChange(row.block.index, row.block.text, next)
+                        comment
+                          ? updateCommentBody(comment.markerId, next)
+                          : handleBlockDraftChange(row.block.index, row.block.text, next)
                       }
                       onBlur={() => setActiveSlot(null)}
                       onNext={() => navigate(rowIndex, "next")}
                       onPrevious={() => navigate(rowIndex, "previous")}
-                      onEscape={() => setActiveSlot(null)}
+                      onEscape={() => {
+                        setActiveSlot(null);
+                        if (comment) focusMarkerBlock(comment.markerId);
+                      }}
                     />
                   </div>
+                ) : comment ? (
+                  <button
+                    type="button"
+                    className={`w-full py-1 text-left text-foreground/90 ${
+                      expanded ? "whitespace-pre-wrap" : "line-clamp-3 overflow-hidden"
+                    }`}
+                    style={serifText(fontSize)}
+                    // Clicking a comment activates it for editing and reveals its bound paragraph in the
+                    // editor (the left guide line is gone — margins-4 #11).
+                    onClick={() => {
+                      revealMarker(comment.markerId);
+                      setActiveSlot({ kind: "comment", markerId: comment.markerId });
+                      setDraft("");
+                    }}
+                  >
+                    {comment.body || <span className="text-muted-foreground">(empty)</span>}
+                  </button>
                 ) : (
                   <button
                     type="button"
