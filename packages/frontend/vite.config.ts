@@ -5,6 +5,13 @@ import path from "path";
 import fs from "fs";
 
 const API_PREFIX_REGEX = /^\/api/;
+const REMOTE_DEV_SERVER_URL = "desk.ssh";
+const CERT_PATH = path.resolve(__dirname, `../../certs/${REMOTE_DEV_SERVER_URL}+2.pem`);
+const CERT_KEY_PATH = path.resolve(__dirname, `../../certs/${REMOTE_DEV_SERVER_URL}+2-key.pem`);
+
+const shouldUseHTTPs = () => {
+  return fs.existsSync(CERT_PATH) && fs.existsSync(CERT_KEY_PATH);
+};
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,11 +31,13 @@ export default defineConfig({
   },
   server: {
     host: "127.0.0.1",
-    allowedHosts: ["desk.ssh"],
-    https: {
-      cert: fs.readFileSync(path.resolve(__dirname, "../../certs/desk.ssh+2.pem")),
-      key: fs.readFileSync(path.resolve(__dirname, "../../certs/desk.ssh+2-key.pem")),
-    },
+    allowedHosts: [REMOTE_DEV_SERVER_URL],
+    https: shouldUseHTTPs()
+      ? {
+          cert: fs.readFileSync(CERT_PATH),
+          key: fs.readFileSync(CERT_KEY_PATH),
+        }
+      : undefined,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:3001",
