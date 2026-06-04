@@ -50,4 +50,24 @@ describe("tiptap anchors (ADR 0009)", () => {
     expect(serializeTiptapWithMarkers(editor)).not.toContain("<!--c:");
     editor.destroy();
   });
+
+  it("drops an anchor when its block is deleted, not mis-binding to the neighbour (margins-4 #7)", () => {
+    const editor = makeEditor("Alpha.\n\nBeta. <!--c:b-->");
+    extractTiptapAnchors(editor);
+    expect(tiptapAnchorBlockIndex(editor.state).get("b")).toBe(1);
+    // Delete the second paragraph (the block carrying the anchor).
+    let from = 0;
+    let to = 0;
+    editor.state.doc.forEach((node, offset, index) => {
+      if (index === 1) {
+        from = offset;
+        to = offset + node.nodeSize;
+      }
+    });
+    editor.view.dispatch(editor.state.tr.delete(from, to));
+    // The anchor is dropped (orphaned), not collapsed onto "Alpha." (block 0).
+    expect(tiptapAnchorBlockIndex(editor.state).has("b")).toBe(false);
+    expect(serializeTiptapWithMarkers(editor)).not.toContain("<!--c:b-->");
+    editor.destroy();
+  });
 });

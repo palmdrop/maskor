@@ -2,6 +2,7 @@ import {
   Decoration,
   type DecorationSet,
   EditorView,
+  MapMode,
   StateEffect,
   StateField,
   type EditorState,
@@ -26,10 +27,15 @@ export const cmAnchorField = StateField.define<ParsedAnchor[]>({
     }
     if (!transaction.docChanged) return value;
     // Map each offset forward; -1 bias keeps a block-end anchor before text appended at that spot.
-    return value.map((anchor) => ({
-      markerId: anchor.markerId,
-      offset: transaction.changes.mapPos(anchor.offset, -1),
-    }));
+    // `MapMode.TrackDel` returns `null` when the change deletes the content around the offset — drop
+    // that anchor (margins-4 #7) so a deleted paragraph orphans its comment, rather than collapsing
+    // the offset to the deletion boundary (which would mis-bind it to the adjacent block). The
+    // orphaned comment can re-attach by excerpt once the paragraph is pasted back.
+    return value.flatMap((anchor) => {
+      const offset = transaction.changes.mapPos(anchor.offset, -1, MapMode.TrackDel);
+      if (offset === null) return [];
+      return [{ markerId: anchor.markerId, offset }];
+    });
   },
 });
 

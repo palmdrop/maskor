@@ -112,11 +112,15 @@ export const tiptapAnchorExtension = Extension.create({
             if (next) return next;
             if (!transaction.docChanged) return value;
             // Map each position forward; -1 bias keeps a block-end anchor in its block when text is
-            // appended at that spot.
-            return value.map((anchor) => ({
-              markerId: anchor.markerId,
-              pos: transaction.mapping.map(anchor.pos, -1),
-            }));
+            // appended at that spot. `mapResult(...).deleted` is true when the change removed the
+            // content around the anchor — drop it (margins-4 #7) so a deleted paragraph orphans its
+            // comment, rather than collapsing the anchor to the deletion boundary (which would mis-bind
+            // it to the adjacent block). The orphaned comment re-attaches by excerpt on paste-back.
+            return value.flatMap((anchor) => {
+              const result = transaction.mapping.mapResult(anchor.pos, -1);
+              if (result.deleted) return [];
+              return [{ markerId: anchor.markerId, pos: result.pos }];
+            });
           },
         },
         props: {
