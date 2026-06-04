@@ -232,6 +232,32 @@ describe("EntityEditorShell — swap integration", () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
+  it("a successful save does not call setContent on the prose editor (no caret reset)", async () => {
+    const clear = vi.fn().mockResolvedValue(undefined);
+    swapHookMock.mockReturnValue({ recovery: null, clear });
+    const onContentSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={true}
+        onProseChange={() => {}}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={onContentSave}
+      />,
+      { wrapper: wrap },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    await act(async () => {});
+
+    // The shell's save path never calls setContent on the prose editor — only recovery and
+    // explicit restore-from-server do. The prose editor's own content-sync effect handles
+    // incoming server content changes without cursor reset when the content is equivalent.
+    expect(proseSetContentMock).not.toHaveBeenCalled();
+  });
+
   it("Restore from server replaces editor content, clears the swap, and calls onContentRevert", async () => {
     const clear = vi.fn().mockResolvedValue(undefined);
     swapHookMock.mockReturnValue({

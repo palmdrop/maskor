@@ -290,8 +290,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     // The buffer holds clean markdown, so compare against the clean content. A real change reloads:
     // set the marker-bearing content (markdown-it parses each marker into a transient `commentMarker`
     // node), then strip those nodes into mapped anchor positions, leaving a marker-free buffer.
+    // Trailing whitespace is normalized by the server on write (body.trim()), so trim both sides
+    // before comparing — a trailing-newline difference must not trigger a full setContent that resets
+    // the caret.
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
-    const didSyncContent = cleanContent !== current;
+    const didSyncContent = cleanContent.trimEnd() !== current.trimEnd();
     if (didSyncContent) {
       isLoadingRef.current = true;
       editor.commands.setContent(content, { emitUpdate: false });

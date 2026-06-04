@@ -23,6 +23,7 @@
 - 2026-06-01 — Margin anchor markers (`<!--c:ID-->`) render in both editor modes and survive editor round-trips. In rich (TipTap) mode the marker is a schema-modeled invisible inline node with matching markdown parse + serialize, so it survives markdown→ProseMirror→markdown byte-stable. In raw/vim (CM6) mode a decoration hides the whole marker with a zero-width replace (no gap), marks the line with a subtle line-end cue, and reveals the raw marker only when the cursor is on that line; the marker is preserved verbatim in the buffer. (plan: references/plans/margins.md, Phase 3)
 - 2026-06-02 — Vim/raw anchor markers are now always hidden (no reveal-on-cursor); annotated lines show a subtle line-end dot cue, and the raw markers are revealed only behind a per-project "show source" toggle (`editor:toggle-show-source`, default off; also in the editor's "Aa" display popover). (plan: references/plans/margins-2.md, Phase 1; ADR 0008)
 - 2026-06-02 — The fragment editor exposes block-level operations to its Margin column: inject a marker into an arbitrary block (type-to-create), strip a marker (delete), report the cursor block's index/marker (gesture jump), focus a marker's block (Escape from a comment), and surface scroll element + block heights for scroll-sync and margin-side padding. The "Comment this block" gesture is now a jump to the paragraph's margin slot. (plan: references/plans/margins-2.md, Phase 4; ADR 0008)
+- 2026-06-04 — Save round-trip contract: the rich editor (TipTap) no longer reloads its document on a save that round-trips equivalently (modulo trailing whitespace, which the server normalizes via body.trim()). The caret stays at its pre-save position. Unchanged prose skips the API call entirely. The normalization rule (body.trim()) is documented in the Save round-trip contract section. (plan: scripts/ralph/archive/2026-06-04-small-fixes/)
 
 ---
 
@@ -73,6 +74,15 @@ Two-tier save model:
 
 - **Prose content** — explicit Save button only. No auto-save.
 - **Metadata fields** (notes, references, aspect weights, ready status) — save instantly, per field, as the user edits (400 ms debounce, optimistic UI). No Save button required.
+
+### Save round-trip contract
+
+The save pipeline is designed to be non-destructive: a save that does not change the content must not move the cursor or alter the editor buffer.
+
+- **Whitespace normalization**: The server trims the fragment body on write (`body.trim()`). Leading and trailing whitespace in the saved content is stripped. This is the intended normalization; downstream tools rely on clean bodies.
+- **No caret reset on equivalent content**: After a successful save, when the server's returned content is equivalent to the editor's current content (modulo trailing whitespace from the normalization above), the rich editor (TipTap) does not reload its document. No `setContent` call fires, so the caret stays at its pre-save position.
+- **Unchanged prose skips the API call**: When the prose is clean (not dirty), `updateFragment` is never called during a content save. The caret and buffer are untouched regardless of whether the margin is dirty.
+- **CM6 (raw/vim)**: When the server's clean content (`body` from the vault parse, which includes a trailing newline from the file structure) differs from the editor's doc (e.g., after the user deletes a trailing newline), `@uiw/react-codemirror` maps the selection through the content change. The cursor position maps correctly; no dramatic jump occurs.
 
 ### Live updates
 
