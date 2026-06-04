@@ -1,274 +1,159 @@
 {
   "project": "Maskor",
-  "branchName": "ralph/small-improvements",
-  "description": "Small Improvements - Rolling batch of low-design-cost features and bug fixes triaged from references/TODO.md. Each story is small enough to ship in one focused session and includes a corresponding spec update. Stories are ordered by dependency and triage: bugs that block daily use first (US-009, US-008, US-015, US-011), then the aspect-orphan cluster (US-014 + US-016 coordinated), then remaining bugs and features.",
+  "branchName": "ralph/todo-triage-fixes",
+  "description": "TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle.",
   "specs": [
     "specifications/fragment-editor.md",
-    "specifications/navigation.md",
-    "specifications/overview.md",
-    "specifications/command-palette.md",
-    "specifications/action-log.md",
-    "specifications/project-statistics.md",
-    "specifications/project-config.md",
+    "specifications/margins.md",
     "specifications/aspect-arc-model.md",
-    "specifications/project-management.md",
+    "specifications/prompting.md",
+    "specifications/project-config.md",
+    "specifications/project-statistics.md",
     "specifications/storage-sync.md",
-    "specifications/import-pipeline.md"
+    "specifications/navigation.md"
   ],
   "userStories": [
     {
       "id": "US-001",
-      "title": "Bootstrap full vault folder skeleton on project creation",
-      "description": "As a writer creating a new project, I expect Maskor to create the full vault folder skeleton (fragments/, fragments/discarded/, aspects/, notes/, references/, pieces/) at project-creation time so that Discard fragment and other folder-dependent operations work without any pre-warming step.",
+      "title": "Move suggestion currentFragmentUUID from manifest to DB",
+      "description": "As a developer, I need the suggestion-mode current-fragment pointer stored as DB state, not in the project manifest, so it stops churning project.json and stops causing stale reads (root cause of the back-nav bug).",
       "acceptanceCriteria": [
-        "Project creation writes the full vault subdirectory skeleton up-front, including fragments/discarded/",
-        "Discarding a fragment in a brand-new project succeeds without any pre-warming step",
-        "Existing projects missing one or more skeleton folders are repaired on startup (lazy idempotent mkdir)",
-        "specifications/project-management.md is updated to list the skeleton folders that project bootstrap guarantees",
-        "Test added covering project-creation skeleton and the lazy-repair path",
-        "Typecheck passes",
-        "Tests pass"
+        "Add a per-project state table (or a column on an existing per-project state table) in the vault DB to hold currentFragmentUUID; generate and run the migration successfully",
+        "The suggestion read/write path in packages/storage/src/service/storage-service.ts reads and updates currentFragmentUUID from the DB, not the manifest",
+        "Remove currentFragmentUUID from the project manifest schema (packages/shared/src/schemas/domain/project.ts); project.json no longer carries or rewrites it on every suggestion advance",
+        "Run bun run codegen so the regenerated OpenAPI/frontend types drop the manifest field",
+        "Document the pointer as DB-only state (not re-derivable from the vault) in specifications/storage-sync.md and remove it from specifications/project-config.md; append a Shipped entry to both",
+        "Tests pass (pointer persists across requests via the DB)",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Case-only fragment rename preserves the fragment",
-      "description": "As a writer, I expect renaming a fragment from `Chapter One` to `chapter one` (or any case-only change) to succeed and preserve the fragment. Currently the rename causes a no-such-file error and the fragment becomes inaccessible.",
+      "title": "Fix suggestion back-navigation landing on the wrong fragment",
+      "description": "As a writer in suggestion mode, when I navigate away from a suggested fragment and back, I want to return to the exact fragment I left, never its predecessor.",
       "acceptanceCriteria": [
-        "Renaming a fragment to a case-different variant of its current key succeeds without error on case-insensitive filesystems (macOS default APFS, Windows NTFS)",
-        "The fragment's UUID and content survive the rename",
-        "All sequence placements, attachment references, and inline links continue to resolve",
-        "The action log records a single fragment:renamed entry",
-        "specifications/fragment-editor.md (or attachments.md if the rename logic is shared) is updated if a behavior clarification is needed",
-        "Test added covering case-only rename on a case-insensitive filesystem",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "Show rebuild-in-progress loading state on first launch / post-DB-loss",
-      "description": "As a writer opening Maskor for the first time (or after a DB loss), I expect a loading indicator while the index is being rebuilt. Currently the views show no fragments until I manually refresh, which suggests data loss.",
-      "acceptanceCriteria": [
-        "During an in-progress DB rebuild, the fragment list, overview, and project-config views render a loading state instead of an empty state",
-        "The loading state names the operation (Rebuilding project index…) rather than a generic spinner",
-        "When the rebuild completes, all views reflect the rebuilt data without requiring a manual refresh (SSE or query invalidation)",
-        "specifications/storage-sync.md is updated to describe the rebuild-in-progress UX contract",
-        "Test or manual scenario added covering first-launch and post-DB-loss flows",
+        "Navigating away from a suggestion and back returns to the exact fragment last shown, never its predecessor",
+        "The current-suggestion pointer (now DB-backed per US-001) is updated synchronously when the displayed fragment changes — no off-by-one between display and persisted pointer",
+        "Add a test covering away->back returns the same fragment",
+        "Update specifications/prompting.md (and navigation.md if back-nav is specced there) if a behavior clarification is needed; append a Shipped entry",
+        "Tests pass",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on US-001 — the manifest pointer is the suspected cause."
+    },
+    {
+      "id": "US-003",
+      "title": "Edit counter should count changed sessions, not every save",
+      "description": "As a writer, I want the suggestion-mode edit counter (fragment editCount) to increment only for editing sessions that actually changed the fragment, not on every save.",
+      "acceptanceCriteria": [
+        "A save with no content change does not increment fragment editCount",
+        "editCount increments at most once per suggestion-mode visit (fragment open -> navigate away) in which at least one save changed content",
+        "The increment is tied to the existing fragment-visit boundary, not the save handler",
+        "Document the counting rule in specifications/prompting.md (and project-statistics.md / storage-sync.md where editCount semantics live); append a Shipped entry",
+        "Add tests: no-op save -> no increment; changed save -> +1; repeated changed saves within one session -> +1",
+        "Tests pass",
+        "Typecheck passes"
+      ],
       "priority": 3,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Palette `Create <entity>…` commands open creation flow directly",
-      "description": "As a writer, I expect a palette command like `Create fragment…` to actually create a new entity (or at minimum open the creation modal). Currently selecting it just navigates to the entity list view without any creation affordance triggered.",
+      "title": "Save must not mutate whitespace or jump the cursor",
+      "description": "As a writer, I want saving after an edit to be deterministic — it must not strip whitespace or move my cursor — so saving never feels like data loss.",
       "acceptanceCriteria": [
-        "Each global `Create <entity>…` command in the palette opens the appropriate creation flow directly (modal or inline form) instead of routing to the list view",
-        "Cancelling the creation flow returns focus to the previous surface (not the list view, unless the user was already there)",
-        "specifications/command-palette.md is updated to clarify the expected behavior of `Create…` commands",
-        "Typecheck passes"
+        "Saving never moves the cursor; the caret stays at its pre-save position",
+        "When the save response is byte-equal to the editor content, the editor content state is NOT re-set from the response (no remount, no caret reset)",
+        "Whitespace handling on save is deterministic with no run-to-run variance; preserve trailing whitespace unless an existing intended normalization is found (record the decision in the spec)",
+        "Behavior is identical across rich, raw, and vim modes",
+        "Update specifications/fragment-editor.md with the save round-trip contract (no content/caret mutation on an unchanged save); append a Shipped entry",
+        "Add a test: save with unchanged content does not alter the buffer or caret",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Cmd/Ctrl+S saves the current document via the command system",
-      "description": "As a writer, I want Cmd+S (macOS) / Ctrl+S (Windows/Linux) to save the document I'm editing, so that muscle memory from every other editor works in Maskor and I don't trigger the browser's Save Page As dialog.",
+      "title": "Leading blank lines must not desync Margin alignment",
+      "description": "As a writer, when a fragment starts with one or more blank lines, I want the Margin column to stay aligned with the blocks it annotates instead of being vertically offset.",
       "acceptanceCriteria": [
-        "Cmd/Ctrl+S saves the open fragment, note, reference, or aspect body when any of those editors is focused",
-        "The browser's default Save Page As behavior is suppressed when an entity editor is the active focus surface",
-        "The shortcut works identically in rich (Tiptap), raw markdown, and vim editor modes",
-        "The save hotkey is registered through the command system per command-palette.md (a *.save command with hotkey: '⌘S'), not as a free-standing keydown handler",
-        "specifications/fragment-editor.md is updated to list the Save hotkey under the editor's view-scoped commands",
-        "Typecheck passes"
+        "Leading blank lines at the top of a fragment do not desync the Margin column; row N sits beside block N",
+        "The editor-driven block geometry / origin-alignment derivation accounts for leading empty blocks",
+        "Adding/removing leading blank lines live-reconciles the alignment",
+        "Works in both rich (Tiptap) and raw/vim (CM6) modes",
+        "Update specifications/margins.md if the alignment contract needs to state leading-whitespace handling; append a Shipped entry",
+        "Add or extend a unit test for block-index alignment with leading blank blocks",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Vim yank delete sync to the system clipboard",
-      "description": "As a vim user, I want y in vim mode to also copy the affected text into the system clipboard so that I can paste into other apps without manually re-selecting and copying.",
+      "title": "Enter in the aspect picker selects the highlighted option",
+      "description": "As a writer adding an aspect, I want Enter to select the highlighted existing option instead of creating a new aspect, so I stop creating accidental duplicate aspects.",
       "acceptanceCriteria": [
-        "Yanking (y, yy, Y) in the vim-mode editor writes the yanked text to the system clipboard",
-        "The vim register behavior is unchanged — \"<reg>p still pastes from the corresponding register",
-        "Paste (p, P) prefers vim register content, falling back to the system clipboard only when explicitly invoked via the unnamed clipboard register",
-        "specifications/fragment-editor.md is updated to document the system-clipboard sync behavior under the vim-mode section",
+        "With a highlighted option in the aspect picker, Enter selects the highlighted option and does not create a new aspect",
+        "Create-new-aspect fires only when no option is highlighted, or via an explicit 'Create <query>' affordance",
+        "Behavior is consistent across every aspect-add surface (fragment metadata editor TagCombobox and any other entry point)",
+        "Update specifications/aspect-arc-model.md (or fragment-editor.md if the picker behavior is documented there) if a clarification is needed; append a Shipped entry",
+        "Add a test: Enter selects highlighted vs creates when none highlighted",
+        "Tests pass",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Aspect/arc color picker",
-      "description": "As a writer arranging fragments, I want to assign a color to each aspect (and its associated arc) so that overview chips and arc curves are visually distinguishable at a glance.",
+      "title": "Automatic typographic substitution in the rich editor",
+      "description": "As a writer, I want common typographic substitutions (-- to em dash, ... to ellipsis, straight to curly quotes) applied as I type in the rich editor so my prose reads like a finished document.",
       "acceptanceCriteria": [
-        "The aspect editor surfaces a color picker; the chosen color is persisted on the aspect's frontmatter",
-        "The picker offers a constrained palette (recommended) or a full color picker — decision recorded in the spec update",
-        "Aspect chips in the fragment editor and overview render with the chosen color",
-        "Arc curves in the overview render with the corresponding aspect's color",
-        "An aspect without a color falls back to a deterministic default (e.g. hash of key) so existing aspects render sensibly",
-        "specifications/aspect-arc-model.md is updated to document the color field",
+        "Enable Tiptap's Typography extension in rich (Tiptap) mode: -- -> em dash, ... -> ellipsis, straight -> curly quotes (the extension's standard input-rule set)",
+        "Substitution is always on in rich mode (no setting); raw markdown and vim modes are untouched",
+        "Substituted characters are stored as the actual Unicode glyph in the saved markdown and round-trip byte-stable through save/load",
+        "Code spans / code blocks are excluded from substitution",
+        "Update specifications/fragment-editor.md to document rich-mode typography substitution; append a Shipped entry",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-008",
-      "title": "Aspect delete cascade — clean up references on fragments",
-      "description": "As a writer, I expect deleting an aspect from the project config to clean up references to it on all fragments. Currently the aspect entries persist in fragment frontmatter and continue to show up in the overview and sequencer as ghost dimensions. Coordinate with US-009 (orphan visibility in metadata editor).",
-      "acceptanceCriteria": [
-        "Deleting an aspect through Maskor either (a) strips the aspect from every fragment's frontmatter atomically, or (b) marks the aspect entries as orphaned and excludes them from overview/sequencer rendering — decision recorded in the spec update",
-        "Whichever path is taken, the overview and sequencer never render or score against a deleted aspect",
-        "If path (a): the action log records the cascade (single entry per fragment touched, or one summary entry — decided in spec)",
-        "If path (b): the project-config page surfaces orphaned aspect entries and offers a manual cleanup affordance",
-        "specifications/aspect-arc-model.md is updated to document the chosen behavior",
-        "Test added covering the post-delete state of fragments that referenced the deleted aspect",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-009",
-      "title": "Render orphaned aspects in the fragment metadata editor",
-      "description": "As a writer, I expect to see orphaned aspect entries on a fragment's metadata editor (with an orphan indicator) so I can clean them up manually. Currently they're visible in the overview but absent from the metadata editor, making it impossible to remove them from the affected fragment. May be partially or fully resolved by US-008's chosen path.",
+      "id": "US-008",
+      "title": "Per-project toggle for vim yank/delete to system clipboard",
+      "description": "As a vim user, I want a per-project setting controlling whether vim y/d also write to the system clipboard, so Maskor does not clobber my OS clipboard when I prefer vim registers only.",
       "acceptanceCriteria": [
-        "The fragment metadata editor lists all aspect entries on the fragment, including those whose aspect definition no longer exists",
-        "Orphaned aspect entries render with a distinct indicator (icon, muted color, orphan badge)",
-        "The user can detach an orphaned aspect entry from the metadata editor with the same affordance as a live aspect",
-        "Coordinate with US-008: if path (a) was chosen there, this story may reduce to ensuring no orphan rendering regression remains",
-        "specifications/fragment-editor.md is updated to document orphan rendering in the metadata editor",
+        "Add a per-project boolean in project.json editor config gating vim yank/delete -> system-clipboard sync; default on",
+        "When off, vim yank/delete affect only vim registers and leave the system clipboard untouched",
+        "When on, y/yy/Y and d/dd/D/x mirror affected text to the system clipboard; vim register behavior and p/P paste semantics are unchanged",
+        "Expose the toggle in the editor 'Aa' display popover / project-config editor section",
+        "Run bun run codegen if the project-config schema is part of the API surface",
+        "Update specifications/fragment-editor.md and specifications/project-config.md to document the setting; append a Shipped entry",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-010",
-      "title": "Log file imports in the action log",
-      "description": "As a writer reviewing the action log, I expect to see an entry whenever I import a file. Currently the import flow completes without writing any *:imported event, leaving a gap in the audit trail.",
-      "acceptanceCriteria": [
-        "Completing an import via the Stage 2 preview commits a single action-log entry per import operation",
-        "The entry uses the fragment:imported action type (or a new import:completed type — decision recorded in spec update)",
-        "Payload includes sourceFileName, fragmentCount, and the chosen delimiter / heading level",
-        "If the import created N fragments, the log shows one entry, not N (matches existing convention for batch operations)",
-        "specifications/action-log.md is updated with the new action type and payload shape",
-        "specifications/import-pipeline.md is updated to reference the action-log entry",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-011",
-      "title": "Persist overview density toggle across navigation and reloads",
-      "description": "As a writer, I expect the overview's density toggle to remember my last choice when I navigate away and back. Currently it resets to the default every time.",
-      "acceptanceCriteria": [
-        "The overview's density choice persists across navigation within the same session",
-        "The density choice persists across page reloads via project.json (matches preview toggle persistence in preview.md)",
-        "No additional action-log entry is generated for density changes — it remains a UI-local preference",
-        "specifications/overview.md is updated to document the persistence behavior",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-012",
-      "title": "Inline margin and font-size adjustment in the fragment editor",
-      "description": "As a writer, I want to adjust margin width and font size from inside the fragment editor (not in project config) so I can dial in reading comfort without breaking flow.",
-      "acceptanceCriteria": [
-        "The fragment editor surfaces an inline control (toolbar button, sidebar panel, or hotkey) to adjust margin width and font size",
-        "Adjustments persist per-project via project.json editor config (existing key, no new top-level setting)",
-        "Adjustments apply to the rich, raw, and vim editor modes",
-        "The control is invokable via a command in the palette as well as the inline affordance",
-        "specifications/fragment-editor.md is updated to describe the in-editor adjustment surface",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-013",
-      "title": "Arrow-key reordering of a focused fragment within a sequence",
-      "description": "As a writer arranging in the overview, I want to focus a fragment tile and move it with the arrow keys so I can reorder without dragging.",
-      "acceptanceCriteria": [
-        "A fragment tile can receive keyboard focus",
-        "Left/Right (or Up/Down — decided in the spec update) move the focused fragment one position within its section",
-        "Moving past the start/end of a section moves the fragment to the adjacent section's boundary, if any",
-        "Moves emit the same action-log entry as a drag-and-drop placement (no new action type)",
-        "specifications/overview.md is updated to describe keyboard fragment movement",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-014",
-      "title": "Re-order sections within a sequence (drag and keyboard)",
-      "description": "As a writer, I want to re-order sections within a sequence — not just fragments within sections — so I can restructure my draft at the chapter level.",
-      "acceptanceCriteria": [
-        "Sections can be reordered via drag-and-drop in the overview",
-        "Sections can be reordered via keyboard (matching US-013's pattern, scaled up to sections)",
-        "Section reorder is recorded in the action log under a new or existing sequence:section-reordered action type — decision recorded in spec update",
-        "specifications/overview.md is updated to describe section reordering",
-        "specifications/action-log.md is updated if a new action type is introduced",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
-    },
-    {
-      "id": "US-015",
-      "title": "Stats table toggle to include discarded fragments",
-      "description": "As a writer reviewing project stats, I want to optionally include discarded fragments in the per-fragment table so I can see what I've cut without leaving the Stats page.",
-      "acceptanceCriteria": [
-        "The Stats page exposes a toggle `Include discarded fragments` above the per-fragment table",
-        "Toggle off (default) matches current behavior — discarded fragments excluded",
-        "Toggle on lists discarded fragments in the same table, visually distinguished (strikethrough or muted row)",
-        "Global aggregates (counts, histogram, word count totals) remain unaffected by the toggle — they continue to exclude discarded per the spec",
-        "Toggle state is local to the session (not persisted) unless persistence is decided in the spec update",
-        "specifications/project-statistics.md open question `Should the per-fragment table optionally include discarded fragments behind a toggle?` is resolved and the spec updated",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": "Browser verification not performed (no browser MCP available). Manual verification required."
+      "priority": 8,
+      "passes": false,
+      "notes": "Coordinate with prd-small-improvements.md US-002 (vim clipboard sync) — fold together if that story is still unshipped."
     }
   ]
 }

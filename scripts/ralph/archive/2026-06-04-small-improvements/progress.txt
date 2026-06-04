@@ -1,0 +1,226 @@
+## Codebase Patterns
+- Vault skeleton dirs: fragments/, fragments/discarded/, aspects/, notes/, references/, pieces/
+- `resolveProject` in storage-service is the entry point for first project access — good place for startup repairs
+- Registry tests use `BASIC_VAULT` fixture (cpSync'd to tmp dir); storage-service tests do the same
+- `ensureVaultSkeleton` uses `mkdir(path, { recursive: true })` making it idempotent and safe anywhere
+- Fragment rename logic lives in `storage-service.ts` `fragments.write` — captures oldFilePath before write, then deletes old file if key changed
+- Use `readdirSync` (not `existsSync`) to check exact on-disk filename casing — `existsSync` is case-insensitive on macOS and will return true for wrong-case paths
+- Case-only rename fix: temp-file roundtrip (rename old→temp, write new, unlink temp); works on both case-sensitive (Linux) and case-insensitive (macOS/Windows) filesystems
+- Rebuild-state tracking lives in `packages/api/src/middleware/rebuild-state.ts` (module-level Maps/Sets); import `isProjectRebuilding` for status checks, `registerRebuild` for deduplication
+- Generated frontend API client is gitignored — always run `bun run codegen` in packages/frontend after adding/changing API endpoints
+- To add a new path alias in frontend: update tsconfig.app.json paths, vite.config.ts alias, AND vitest.config.ts alias — all three are required
+- Status endpoints that must NOT await rebuild: register in `projectsRouter` (under `/projects` prefix), not in `projectScopedApp` (which uses `resolveProject` middleware)
+- Aspect color utilities live in `packages/frontend/src/pages/OverviewPage/utils/aspectColors.ts` — `ASPECT_COLOR_PALETTE` (exported) and `resolveAspectColor(key, explicitColor)` for consistent color resolution everywhere
+- `AspectUpdateSchema.color` accepts `null` to explicitly clear the color (falls back to deterministic hash); `undefined` means "don't change the color field"
+- `aspect:updated` changedFields enum includes `"color"` — add to it when adding new aspect fields that use the catch-all log type
+- Project config sections (editor, suggestion, advanced, preview, overview) follow one pattern: add to `CONFIG_SECTION_KEYS`, `PROJECT_CONFIG_DEFAULTS`, `toProjectRecord`, and the `updateProject` conditional in `registry.ts`; also add to `ProjectSchema` and `ProjectUpdateSchema` in shared
+
+# Ralph Progress Log
+Started: [pending]
+---
+
+## 2026-05-22 - US-001
+- Implemented full vault skeleton bootstrap on project creation and lazy repair on startup
+- Created `packages/storage/src/utils/vault-skeleton.ts` with `VAULT_SKELETON_DIRS` and `ensureVaultSkeleton`
+- Updated `packages/storage/src/registry/registry.ts`: replaced single `aspects/` mkdir with `ensureVaultSkeleton(vaultPath)` in create mode
+- Updated `packages/storage/src/service/storage-service.ts`: added `ensureVaultSkeleton(vaultPath)` call in `resolveProject` after `cleanupStaleDirectories`
+- Updated `packages/storage/src/__tests__/registry.test.ts`: expanded skeleton test to assert all 6 dirs
+- Updated `packages/storage/src/__tests__/storage-service.test.ts`: added lazy-repair test using a minimal vault with only `.maskor/`
+- Updated `specifications/project-management.md`: listed all skeleton dirs including the new lazy-repair behavior
+- **Learnings for future iterations:**
+  - BASIC_VAULT has files in `fragments/discarded/` — can't use `rmdirSync` on non-empty dirs; use a purpose-built minimal vault in tests instead
+  - The `resolveProject` method is the right hook for startup-time repairs; it runs before any user-facing operation on a project
+  - The existing TODO comment in registry.ts (`// TODO: create helper function for creating entire repo structure`) was exactly what US-001 addressed
+---
+
+## 2026-05-22 - US-002
+- Fixed case-only fragment rename on case-insensitive filesystems (macOS APFS, Windows NTFS)
+- Root cause: `fragments.write` in storage-service.ts wrote new content to "chapter one.md", then called `unlink("Chapter One.md")` — on case-insensitive FS both paths are the same physical file, so the content was deleted
+- Fix: added `isCaseOnlyRename` detection in `storage-service.ts` `fragments.write`; when triggered, uses temp-file roundtrip (`rename old→temp`, `vault.write new`, `unlink temp`) instead of write-then-unlink
+- Added `rename` to imports from `node:fs/promises` in storage-service.ts
+- Updated `packages/storage/src/__tests__/storage-service.test.ts`: new describe block "case-only rename" with test verifying UUID/key survival and correct on-disk filename via `readdirSync`
+- Updated `specifications/fragment-editor.md`: added Prior decisions entry documenting the case-only rename behavior
+- **Learnings for future iterations:**
+  - Fragment key is derived from the on-disk filename (basename), not from frontmatter — if the file keeps the old case, the watcher will re-index with old key
+  - `existsSync` is case-insensitive on macOS — use `readdirSync` to verify exact filename casing in tests
+  - The `isCaseOnlyRename` check: `old !== new && old.toLowerCase() === new.toLowerCase()` correctly fires for case-only changes on both FS types
+  - `vault.fragments.write` derives path from `fragment.key` — after `rename old→temp`, writing creates a fresh file at the new-case path on both FS types
+---
+
+## 2026-05-22 - US-003
+- Fixed concurrent-request bug: changed `resolveProject` middleware from `Set<string>` (rebuilt flag) to `Map<string, Promise<void>>` via new `packages/api/src/middleware/rebuild-state.ts` module. All concurrent requests now await the same rebuild promise instead of the first one marking "done" before the await completes.
+- Added `GET /projects/:projectId/rebuild-status` endpoint (in `projectsRouter` — bypasses `resolveProject` middleware). Returns `{ rebuilding: boolean }` immediately without blocking.
+- Added `ProjectRebuildStatusSchema` to `packages/api/src/schemas/project.ts`.
+- Created `packages/frontend/src/contexts/RebuildStatusContext.tsx`: polls rebuild-status every 500ms while rebuilding; invalidates all project queries on completion.
+- Wrapped `<Outlet />` in `ProjectShellLayout.tsx` with `<RebuildStatusProvider>`.
+- Updated `FragmentListPage`, `OverviewPage`, and `ProjectConfigPage` to show "Rebuilding project index…" when `isRebuilding && isLoading`.
+- Added `@contexts` path alias to tsconfig.app.json, vite.config.ts, and vitest.config.ts.
+- Added tests: rebuild-status endpoint returns boolean; concurrent fragment requests all return same non-empty data (covers the race bug).
+- Updated `specifications/storage-sync.md` with rebuild-in-progress UX contract.
+- **Browser verification not performed** — no browser MCP available; manual verification required.
+- **Learnings for future iterations:**
+  - The concurrent-request bug: `rebuiltProjects.add(uuid)` ran synchronously BEFORE `await rebuild()`, so concurrent requests skipped the wait. Fix: promise map where all requests await the same promise.
+  - `projectsRouter` is mounted at `/projects` without `resolveProject` middleware — perfect for bypass routes. `projectScopedApp` runs `resolveProject` for ALL routes under `/projects/:projectId`.
+  - Orval-generated client files are gitignored. The `useGetProjectRebuildStatus` hook is generated from the OpenAPI spec after running `bun run codegen`.
+  - Three alias files to update: tsconfig.app.json, vite.config.ts, vitest.config.ts.
+---
+
+## 2026-05-25 - US-007
+- Added aspect color picker to the aspect editor (constrained 10-color palette)
+- Exported `ASPECT_COLOR_PALETTE` from `OverviewPage/utils/aspectColors.ts` for reuse
+- Fixed `storage-service.ts` aspects.update to apply `patch.color` (was missing)
+- Extended `AspectUpdateSchema.color` to `nullable().optional()` to support explicit color clearing (null = clear, undefined = no change)
+- Added `"color"` to `aspect:updated` changedFields enum in `action.ts`
+- Added `colorChanged` detection and `aspect:updated` log entry in `update-aspect.ts`
+- Updated `fragment-metadata-form.tsx` to show color dots next to aspect names
+- Added 3 API tests for color set, clear, and list persistence
+- Updated `specifications/aspect-arc-model.md` with color field docs and Prior decision
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - The storage-service aspect update was missing `color` in the patch spread — always check all optional fields are covered
+  - `useLiveFieldSave` with `string | null` serverValue works cleanly for nullable fields; use `null` not `""` for cleared state
+  - Sending `null` in the patch for a nullable schema field passes zod validation; `patch.color ?? undefined` converts null→undefined for the Aspect object
+  - Pre-existing `fragment-metadata-form.test.tsx` failure unrelated to this story (router mock issue)
+---
+
+## 2026-05-25 - US-004
+- `Create <entity>…` palette commands now open a creation modal directly instead of navigating to the entity list
+- Created `packages/frontend/src/components/global-create-dialogs.tsx`: shell-level component with 4 creation dialogs (fragment, note, reference, aspect). After creation, navigates to the new entity.
+- Updated `useProjectShellCommands.ts`: accepts a `createHandlers` parameter with callbacks for each entity type; commands call these callbacks instead of navigating
+- Updated `ProjectShellLayout.tsx`: manages `activeCreate` state, passes handlers to `useProjectShellCommands`, renders `GlobalCreateDialogs`
+- Updated `specifications/command-palette.md`: documented modal-handoff pattern for create commands
+- Updated tests in `useProjectShellCommands.test.tsx`: 4 new tests verify callbacks are invoked; removed old navigate-assertion tests
+- **Learnings for future iterations:**
+  - `GlobalCreateDialogs` uses if/else rendering (not `Dialog open={false}`) — avoids mounting unnecessary query hooks
+  - The modal-handoff pattern is documented in command-palette.md Prior decisions: palette opens modal, modal owns creation, success navigates to new entity
+  - `@components` alias already exists; `@tanstack/react-query`'s `useQueryClient` must be imported separately from `@tanstack/react-router`
+  - Pre-existing test failure: `fragment-metadata-form.test.tsx` fails due to incomplete router mock — unrelated to this story
+---
+
+## 2026-05-25 - US-008
+- Implemented aspect delete cascade: deleting an aspect now strips its weight key from all fragment frontmatter atomically and deletes the associated arc file
+- Added `cascadeAspectDelete` helper in `packages/storage/src/service/storage-service.ts` (mirrors `cascadeAspectKeyRename` but removes the key rather than renaming it)
+- Changed `aspects.delete` return type from `Promise<void>` to `Promise<{ cascadedFragments: string[] }>`
+- Updated `packages/api/src/commands/aspects/delete-aspect.ts` to extract cascade result and include `cascadeFragmentCount` in the `aspect:deleted` log payload
+- Updated `packages/shared/src/schemas/domain/action.ts`: `aspect:deleted` payload changed from `empty` to `z.object({ cascadeFragmentCount: z.number() })`
+- Updated `packages/frontend/src/pages/ProjectHistoryPage/renderers/aspect.tsx`: `aspect:deleted` render now shows cascade count
+- Added 5 tests in `packages/storage/src/__tests__/cascade.test.ts` covering: strip on disk, cascade UUIDs returned, empty cascade, arc deletion, no arc (silent)
+- Updated `specifications/aspect-arc-model.md`: prior decision and acceptance criteria updated to document cascade-delete as the chosen path
+- **Learnings for future iterations:**
+  - `cascadeAspectDelete` follows the same pattern as `cascadeAspectKeyRename` — cascade fragments first, then delete the aspect entity and commit in one transaction
+  - The arc delete happens before the fragment cascade so any error there aborts before touching fragment files
+  - `fragment_aspects` DB rows are cleaned up automatically: `cascadeFragments` re-upserts all touched fragments, and `upsertFragment` re-syncs `fragment_aspects` from the (now-updated) fragment object
+  - The `aspect:deleted` schema change is backward-compatible in practice (no existing clients depend on the exact payload shape for this type)
+---
+
+## 2026-05-25 - US-009
+- Rendered orphaned aspects (aspect keys on a fragment whose project definition was deleted) in the metadata editor with a muted style and "orphaned" badge
+- Changed `visibleAspects` → `liveAspects` (filtered to known project aspects) + added `orphanedAspects` (filtered to unknown keys) in `fragment-metadata-form.tsx`
+- Orphaned aspects render below live aspects with `opacity-50`, an empty circle (no color dot), the key + weight, an "orphaned" badge, and the same × detach button
+- Updated `getAttachedAspects` in the command hook call to include all attached keys (live + orphaned) so palette detach works on orphans too
+- Fixed pre-existing test failure in `fragment-metadata-form.test.tsx`: updated the `@tanstack/react-router` mock to use `importOriginal` so all router exports are available (prevents registry.ts import errors)
+- Added `CommandsProvider` to the test `wrap` function (required by `useCommands()` / `useFragmentMetadataCommands()`)
+- Added 2 new tests: orphaned aspect renders with badge; detaching an orphaned aspect removes it and fires the PATCH
+- Updated `specifications/fragment-editor.md`: added Shipped entry and Prior decision documenting orphan rendering
+- **Learnings for future iterations:**
+  - The `vi.mock("@tanstack/react-router")` in `fragment-metadata-form.test.tsx` was too narrow (only mocked `Link`), causing a suite-level error because `registry.ts` imports `createRootRouteWithContext`. Fix: use `importOriginal` + spread actual exports.
+  - Components using `useCommands()` or catalog command hooks require `CommandsProvider` in the test wrapper.
+  - Orphan indicator uses `opacity-50` + empty circle (no `backgroundColor`) + `"orphaned"` text badge — consistent with the muted treatment used elsewhere for deprecated/inactive items.
+---
+
+## 2026-05-28 - US-011
+- Persisted overview density toggle to `project.overview.density` in project.json
+- Added `overview` field to `ProjectSchema` and `ProjectUpdateSchema` in `packages/shared/src/schemas/domain/project.ts`
+- Added `"overview"` to `CONFIG_SECTION_KEYS`, `PROJECT_CONFIG_DEFAULTS`, and `toProjectRecord` in `packages/storage/src/registry/registry.ts`; wired up `updateProject` to write `patch.overview` to manifest
+- Made `?density=` URL param optional (no default) in `packages/frontend/src/router.ts` — absence falls back to project.json value
+- Updated `packages/frontend/src/pages/OverviewPage/index.tsx` to read `project.overview.density` via `useGetProject` and save via `useUpdateProject` on change; URL param still serves as a per-session override
+- Added 2 registry tests: overlay density update + default fallback
+- Updated `specifications/overview.md` with Shipped entry, navigation section, and Prior decision
+- **Learnings for future iterations:**
+  - Project config sections all follow the same registry pattern — one place to add each new section (CONFIG_SECTION_KEYS, defaults, toProjectRecord, updateProject); now documented in Codebase Patterns
+  - `ProjectManifest.config` is typed as `Omit<ProjectUpdate, "name">` — adding to `ProjectUpdateSchema` automatically makes the manifest accept the new field
+  - The generated `Project` type from orval requires the new field, so any test that mocks a full `Project` object needs updating (found and fixed `PreviewPage.test.tsx`)
+---
+
+## 2026-05-28 - US-010
+- Added `fragment:imported` action type to `packages/shared/src/schemas/domain/action.ts` with payload `{ sourceFileName, fragmentCount, format, delimiter?, headingLevel? }`
+- Updated `ImportInput` type in `import.ts` command to include `sourceFileName: string` in all three variants
+- Changed import command to emit a single `fragment:imported` entry instead of N individual `fragment:created` entries (no longer pushes `pieceLogEntries` from sub-calls to `createFragmentCommand.execute`)
+- Updated `packages/api/src/routes/import.ts` and `import-preview.ts` to pass `sourceFileName: file.name` in the input
+- Added `fragment:imported` case to `packages/frontend/src/pages/ProjectHistoryPage/renderers/fragment.tsx`
+- Added `fragment:imported` to `TERMINAL_TYPES` set in `renderers/registry.ts` (synthetic UUID target, not linkable)
+- Added tests in `packages/api/src/__tests__/routes/import.test.ts`: verifies single entry with correct payload, verifies no individual `fragment:created` entries emitted
+- Updated `packages/api/src/__tests__/commands/import.test.ts` and `preview-import.test.ts`: added `sourceFileName` to all command calls, updated log-entry test to expect one `fragment:imported` entry
+- Updated `specifications/action-log.md` and `specifications/import-pipeline.md` with the new action type
+- **Learnings for future iterations:**
+  - `ImportInput` is shared by both `import.ts` and `preview-import.ts` commands — changes to it require updating both routes and all tests that call `command.execute` directly
+  - The `TERMINAL_TYPES` set in `renderers/registry.ts` is for entries whose target uuid doesn't resolve to a real entity — add batch/synthetic-target types there
+  - Test isolation: action log accumulates across tests in the same file — filter by a unique `sourceFileName` rather than counting total `fragment:imported` entries
+---
+
+## 2026-05-28 - US-012
+- Added inline font size and paragraph width controls to the entity editor shell
+- Created `packages/frontend/src/components/ui/popover.tsx` wrapping Radix `Popover` primitive (mirrors `dropdown-menu.tsx` pattern)
+- Updated `packages/frontend/src/lib/commands/scopes/editor.ts`: added `fontSize`, `maxParagraphWidth`, `increaseFontSize`, `decreaseFontSize`, `increaseMargin`, `decreaseMargin` to `EditorContext`; added 4 new palette commands (`editor:increase-font-size`, `editor:decrease-font-size`, `editor:increase-margin`, `editor:decrease-margin`)
+- Updated `packages/frontend/src/components/entity-editor-shell.tsx`: imports `useUpdateProject`, local state for font size and margin, `persistFontSize`/`persistMaxParagraphWidth` handlers, an "Aa" popover button with sliders in the toolbar header, ProseEditor now uses local state values for immediate visual feedback
+- Updated `entity-editor-shell.test.tsx` and `scopes/__tests__/editor.test.ts` to add mocks/defaults for new fields
+- Updated `specifications/fragment-editor.md` with Shipped entry and Prior decision
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - Radix `Popover` is available via the `radix-ui` package (same import pattern as `DropdownMenu`); create a `popover.tsx` wrapper in `src/components/ui/`
+  - The `entity-editor-shell.test.tsx` needs mocks for `@api/generated/projects/projects` and `@tanstack/react-query` `useQueryClient` whenever the shell imports project-update hooks
+  - Local state for slider values + `onValueCommit` for persistence follows the GeneralTab pattern exactly
+  - The `EditorContext` in `editor.ts` must be extended for any new data/callbacks that palette commands need; update `makeCtx` in the test file to include defaults for new fields
+---
+
+## 2026-05-28 - US-013
+- Added ArrowLeft/ArrowRight keyboard reordering for fragment tiles in the overview
+- Modified `SortableTile.tsx`: added `onFocus={() => onSelect?.(fragment.uuid)}` so tabbing to a tile sets the selection state (tiles already have `tabIndex={0}` via `{...attributes}` from `useSortable`)
+- Modified `OverviewPage/index.tsx`: added `handleFragmentKeyboardMove(direction: "prev" | "next")` using `useCallback`; added `handleMainKeyDown` to guard against INPUT/TEXTAREA targets and delegate ArrowLeft/ArrowRight; added `data-testid="overview-main-content"` to the main div; added `onKeyDown={handleMainKeyDown}` to the same div
+- Added 7 keyboard movement tests to `OverviewPage.test.tsx`: within-section forward, within-section backward, cross-section forward (to next section start), cross-section backward (to prev section end), no-op at absolute first, no-op at absolute last, no-op with no selection, and input-guard test
+- Updated `specifications/overview.md`: Shipped entry, Rearrangement section (ArrowLeft/ArrowRight behavior + cross-section boundary), removed from deferred list, Prior decisions (ArrowLeft/Right choice rationale)
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - Only `PointerSensor` is registered in the DnD context — no `KeyboardSensor` — so dnd-kit's arrow-key drag navigation doesn't conflict with custom arrow-key handlers
+  - `{...listeners}` from `useSortable` only contains pointer events when only PointerSensor is configured; safe to add custom `onFocus`/`onKeyDown` to the tile div
+  - Arrow keys bubbling up from a focused SortableTile reach the outer `onKeyDown` handler; guard with `target.tagName === "INPUT"` prevents accidental moves when a section name input has focus
+  - For keyboard tests: add `data-testid` to the container div so tests can `fireEvent.keyDown` on it without selector magic
+  - `makeMultiSectionBundleResponse` helper needed for cross-section move tests; added alongside existing `makeBundleResponse`
+---
+
+## 2026-05-28 - US-014
+- Implemented section reordering via drag-and-drop and keyboard (Shift+ArrowLeft/Right)
+- Added `moveSection` function to `packages/sequencer/src/index.ts`: splices section array using current/target index, clamps to valid range, no-ops when position unchanged
+- Added `moveSectionCommand` in `packages/api/src/commands/sequences/move-section.ts`: reads sequence, validates section exists, calls `moveSection`, writes updated sequence, logs `sequence:section-reordered`
+- Added `sequence:section-reordered` action type to `packages/shared/src/schemas/domain/action.ts` with payload `{ sectionName: z.string() }`
+- Added `PATCH /{sequenceId}/sections/{sectionId}/position` route (`reorderSectionRoute`) in `packages/api/src/routes/sequences.ts` with `SectionReorderSchema` body schema in `packages/api/src/schemas/sequence.ts`
+- Added `sequence:section-reordered` case to `packages/frontend/src/pages/ProjectHistoryPage/renderers/sequence.tsx`
+- Refactored `SequenceSections.tsx` into a `SortableSection` component that uses `useSortable` from `@dnd-kit/sortable`; added `SortableContext` with `horizontalListSortingStrategy` wrapping sections; added drag handle button (6-dot grid icon) visible on hover when `totalSections > 1`
+- Updated `useSequenceDnD.ts`: extended `handleDragEnd` to detect section-vs-section drag (both IDs have `section:` prefix), compute `targetIndex`, call `mutations.moveSection.mutate`
+- Added `useReorderSection` mutation wrapping in `useSequenceMutations.ts` with optimistic update via `optimisticMoveSection`
+- Added `optimisticMoveSection` in `optimisticUpdates.ts`: splice-based section reorder on the client-side sequence
+- Added `handleSectionKeyboardMove` in `OverviewPage/index.tsx`: finds section containing selected fragment, shifts section index ±1, calls `moveSection.mutate`; wired to `Shift+ArrowLeft`/`Shift+ArrowRight` in `handleMainKeyDown`
+- Updated tests: 4 `moveSection` unit tests in `sequencer.test.ts`; 2 keyboard section move tests + 1 DnD section reorder test in `OverviewPage.test.tsx`; 2 API integration tests in `sequences.test.ts`
+- Updated `specifications/overview.md` and `specifications/action-log.md` with Shipped entry, Rearrangement section, Prior decision, and new action type row
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - Section DnD IDs use a `section:` prefix (`SECTION_ID_PREFIX`) so `handleDragEnd` can distinguish section drags from fragment drags without a separate type field
+  - `SortableContext` with `horizontalListSortingStrategy` is needed around sections even though fragments already have their own `SortableContext` inside each `SectionZone`; nesting two `SortableContext` instances in dnd-kit is valid as long as the item ID sets are disjoint
+  - `useReorderSection` was already generated by orval (the API endpoint existed in the OpenAPI spec prior to codegen); no codegen re-run was needed because the endpoint schema was registered via `createRoute`
+  - Drag handle should be rendered as a separate `<button>` that receives `{...attributes}` and `{...listeners}` — do NOT spread those onto the section `<section>` element itself, or the whole section header becomes a drag initiator and conflicts with click-to-rename
+  - Shift+Arrow for sections vs plain Arrow for fragments: modifier key chosen for consistency with spatial layout and to avoid conflict with fragment-level arrow keys
+---
+
+## 2026-05-30 - US-015
+- Added "Include discarded" checkbox toggle above the per-fragment table on the Stats page
+- Updated `packages/storage/src/suggestion/stats-repo.ts`: changed `getStatsForProject` to include ALL fragments (discarded + non-discarded) in the `fragments` array; `isDiscarded` flag already existed on `FragmentStatsSummary`
+- Updated `packages/frontend/src/pages/ProjectStatsPage/index.tsx`: added `useState(false)` for `includeDiscarded`; filters `visibleFragments` from the full list; discarded rows render with `line-through` key and `opacity-50` row class; key cell is a plain `<span>` (not a link) for discarded rows; toggle is a checkbox label above the table header
+- Updated `packages/api/src/__tests__/routes/stats.test.ts`: updated "fragments list excludes discarded fragments" test to instead assert discarded fragments are returned with `isDiscarded: true` and non-discarded count matches `global.totalCount`
+- Created `packages/frontend/src/pages/__tests__/ProjectStatsPage.test.tsx`: 4 tests covering hide-by-default, show-on-toggle, strikethrough styling, and global stats immutability
+- Updated `specifications/project-statistics.md`: added Shipped entry, resolved open question, updated Per-fragment table behavior section, added two Prior decisions
+- **Browser verification not performed** — no browser MCP available; manual verification required
+- **Learnings for future iterations:**
+  - The `FragmentStatsSummary` type and API schema already had `isDiscarded: boolean` — the storage layer just excluded discarded from the array. Changing to include all fragments was a one-line change in `getStatsForProject`.
+  - For discarded fragment rows, don't link the key — the fragment editor route resolves by UUID regardless of discard state, but navigating to a discarded fragment is confusing UX. Plain text with strikethrough is sufficient.
+  - `getByText("1")` is ambiguous when multiple tiles show the same number — use `getAllByText` or query by a more specific label when testing global stat tiles.
+---
