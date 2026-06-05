@@ -54,6 +54,9 @@ export { moveSectionCommand } from "./sequences/move-section";
 export { placeFragmentCommand } from "./sequences/place-fragment";
 export { moveFragmentCommand } from "./sequences/move-fragment";
 export { unplaceFragmentCommand } from "./sequences/unplace-fragment";
+export { groupFragmentsCommand } from "./sequences/group-fragments";
+export { moveFragmentsCommand } from "./sequences/move-fragments";
+export { splitSectionCommand } from "./sequences/split-section";
 
 export { registerProjectCommand } from "./projects/register-project";
 export { updateProjectCommand } from "./projects/update-project";

@@ -68,7 +68,14 @@ export const OverviewPage = () => {
     [updateProject, navigate, projectId],
   );
 
-  const [selectedFragmentUuid, setSelectedFragmentUuid] = useState<string | null>(null);
+  // Multi-selection on the reorder list. `selection` holds every selected
+  // fragment (for group/move/split); the primary (last-selected) drives the
+  // right detail panel and keyboard movement. `selectionAnchor` is the pivot for
+  // shift-range selection.
+  const [selection, setSelection] = useState<string[]>([]);
+  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
+  const selectionSet = useMemo(() => new Set(selection), [selection]);
+  const primarySelectedUuid = selection.at(-1) ?? null;
   const [arcOverlayOpen, setArcOverlayOpen] = useState(false);
   const [arcExpanded, setArcExpanded] = useState(false);
   const [verticalStripOpen, setVerticalStripOpen] = useState(false);
@@ -143,6 +150,45 @@ export const OverviewPage = () => {
   const fragmentByUuid = useMemo(
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
     [allFragments],
+  );
+
+  // Order used for shift-range selection: placed fragments in sequence order,
+  // then the pool.
+  const visibleOrder = useMemo(
+    () => [...allSequenceFragmentUuids, ...poolFragmentUuids],
+    [allSequenceFragmentUuids, poolFragmentUuids],
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelection([]);
+    setSelectionAnchor(null);
+  }, []);
+
+  const handleSelectFragment = useCallback(
+    (fragmentUuid: string, modifiers?: { toggle?: boolean; range?: boolean }) => {
+      if (modifiers?.range && selectionAnchor) {
+        const anchorIndex = visibleOrder.indexOf(selectionAnchor);
+        const targetIndex = visibleOrder.indexOf(fragmentUuid);
+        if (anchorIndex !== -1 && targetIndex !== -1) {
+          const [start, end] =
+            anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
+          setSelection(visibleOrder.slice(start, end + 1));
+          return;
+        }
+      }
+      if (modifiers?.toggle) {
+        setSelection((previous) =>
+          previous.includes(fragmentUuid)
+            ? previous.filter((uuid) => uuid !== fragmentUuid)
+            : [...previous, fragmentUuid],
+        );
+        setSelectionAnchor(fragmentUuid);
+        return;
+      }
+      setSelection([fragmentUuid]);
+      setSelectionAnchor(fragmentUuid);
+    },
+    [selectionAnchor, visibleOrder],
   );
 
   const sequenceByUuid = useMemo(
@@ -224,26 +270,26 @@ export const OverviewPage = () => {
 
   const handleFragmentKeyboardMove = useCallback(
     (direction: "prev" | "next") => {
-      if (!selectedFragmentUuid || !sequence || dnd.activeDragId) return;
+      if (!primarySelectedUuid || !sequence || dnd.activeDragId) return;
 
-      const target = computeStepMoveTarget(sectionsData, selectedFragmentUuid, direction);
+      const target = computeStepMoveTarget(sectionsData, primarySelectedUuid, direction);
       if (!target) return;
 
       sequenceMutations.moveFragment.mutate({
         projectId,
         sequenceId: sequence.uuid,
-        fragmentUuid: selectedFragmentUuid,
+        fragmentUuid: primarySelectedUuid,
         data: { sectionUuid: target.sectionUuid, position: target.position },
       });
     },
-    [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
+    [primarySelectedUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
   );
 
   const handleSectionKeyboardMove = useCallback(
     (direction: "prev" | "next") => {
-      if (!selectedFragmentUuid || !sequence || dnd.activeDragId) return;
+      if (!primarySelectedUuid || !sequence || dnd.activeDragId) return;
       const currentSectionIndex = sectionsData.findIndex((s) =>
-        s.fragmentUuids.includes(selectedFragmentUuid),
+        s.fragmentUuids.includes(primarySelectedUuid),
       );
       if (currentSectionIndex === -1) return;
       const targetIndex = direction === "prev" ? currentSectionIndex - 1 : currentSectionIndex + 1;
@@ -256,7 +302,7 @@ export const OverviewPage = () => {
         data: { position: targetIndex },
       });
     },
-    [selectedFragmentUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
+    [primarySelectedUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
   );
 
   const handleMainKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -290,6 +336,58 @@ export const OverviewPage = () => {
   const toggleArcExpanded = useCallback(() => setArcExpanded((expanded) => !expanded), []);
   const toggleVerticalArcStrip = useCallback(() => setVerticalStripOpen((open) => !open), []);
 
+  // Only the placed members of the selection participate in section operations.
+  const placedSelection = useMemo(
+    () => selection.filter((uuid) => fragmentSectionMap.has(uuid)),
+    [selection, fragmentSectionMap],
+  );
+
+  // Split needs exactly one placed fragment that is not already the first in its
+  // section (splitting there would do nothing).
+  const canSplitSelection = useMemo(() => {
+    if (placedSelection.length !== 1) return false;
+    const fragmentUuid = placedSelection[0]!;
+    const section = sectionsData.find((s) => s.fragmentUuids.includes(fragmentUuid));
+    return !!section && section.fragmentUuids[0] !== fragmentUuid;
+  }, [placedSelection, sectionsData]);
+
+  const groupSelection = useCallback(() => {
+    if (!sequence || placedSelection.length < 1) return;
+    sequenceMutations.groupFragments.mutate({
+      projectId,
+      sequenceId: sequence.uuid,
+      data: { fragmentUuids: placedSelection, name: "" },
+    });
+  }, [sequence, placedSelection, projectId, sequenceMutations]);
+
+  const splitSelection = useCallback(() => {
+    if (!sequence || !canSplitSelection) return;
+    sequenceMutations.splitSection.mutate({
+      projectId,
+      sequenceId: sequence.uuid,
+      data: { fragmentUuid: placedSelection[0]!, name: "" },
+    });
+  }, [sequence, canSplitSelection, placedSelection, projectId, sequenceMutations]);
+
+  const moveSelectionToSection = useCallback(
+    (sectionUuid: string) => {
+      if (!sequence || placedSelection.length < 1) return;
+      const targetSection = sectionsData.find((s) => s.uuid === sectionUuid);
+      const position = targetSection?.fragmentUuids.length ?? 0;
+      sequenceMutations.moveFragments.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        data: { fragmentUuids: placedSelection, sectionUuid, position },
+      });
+    },
+    [sequence, placedSelection, sectionsData, projectId, sequenceMutations],
+  );
+
+  const sectionsForMove = useMemo(
+    () => sectionsData.map((section) => ({ uuid: section.uuid, name: section.name })),
+    [sectionsData],
+  );
+
   useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
     designateMain: () => {
@@ -320,6 +418,12 @@ export const OverviewPage = () => {
     toggleArcOverlay,
     toggleArcExpanded,
     toggleVerticalArcStrip,
+    placedSelectionCount: placedSelection.length,
+    groupSelection,
+    canSplitSelection,
+    splitSelection,
+    sectionsForMove,
+    moveSelectionToSection,
   });
 
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
@@ -352,8 +456,8 @@ export const OverviewPage = () => {
               poolFragmentUuids={poolFragmentUuids}
               colorByAspectKey={arcData.colorByAspectKey}
               fragmentByUuid={fragmentByUuid}
-              selectedFragmentUuid={selectedFragmentUuid}
-              onSelectFragment={setSelectedFragmentUuid}
+              selectedFragmentUuids={selectionSet}
+              onSelectFragment={handleSelectFragment}
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}
               editingSectionId={sectionManager.editingSectionId}
@@ -384,7 +488,7 @@ export const OverviewPage = () => {
       <div
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
         data-testid="overview-main-content"
-        onClick={() => setSelectedFragmentUuid(null)}
+        onClick={clearSelection}
         onKeyDown={handleMainKeyDown}
       >
         {(bundleLoading || summariesLoading) && isRebuilding ? (
@@ -404,6 +508,36 @@ export const OverviewPage = () => {
               verticalStripOpen={verticalStripOpen}
               onToggleVerticalStrip={toggleVerticalArcStrip}
             />
+
+            {placedSelection.length > 0 && (
+              <div
+                className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
+                data-testid="selection-action-bar"
+              >
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {placedSelection.length} selected
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => commands.run("overview:group-selection")}
+                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    Group into section
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => commands.run("overview:split-at-selection")}
+                    disabled={!canSplitSelection}
+                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    Split here
+                  </button>
+                  {/* "Move to section…" is a parameterized command (opens a section
+                      picker); run it from the command palette. */}
+                </div>
+              </div>
+            )}
 
             {arcOverlayOpen && (
               <ArcOverlay
@@ -442,8 +576,8 @@ export const OverviewPage = () => {
                     detailLevel={detailLevel}
                     fragmentByUuid={fragmentByUuid}
                     contentByFragmentUuid={contentByFragmentUuid}
-                    selectedFragmentUuid={selectedFragmentUuid}
-                    onSelectFragment={setSelectedFragmentUuid}
+                    selectedFragmentUuids={selectionSet}
+                    onSelectFragment={handleSelectFragment}
                   />
                 </div>
               </div>
@@ -460,7 +594,7 @@ export const OverviewPage = () => {
       </div>
 
       <RightSidebar
-        fragment={selectedFragmentUuid ? fragmentByUuid.get(selectedFragmentUuid) : undefined}
+        fragment={primarySelectedUuid ? fragmentByUuid.get(primarySelectedUuid) : undefined}
         sequences={bundle?.sequences ?? []}
         violations={bundle?.violations ?? []}
         cycles={bundle?.cycles ?? []}

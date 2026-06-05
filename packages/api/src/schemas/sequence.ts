@@ -99,6 +99,41 @@ export const SectionReorderSchema = z
   .object({ position: z.number().int().min(0).openapi({ example: 1 }) })
   .openapi("SectionReorder");
 
+// Group a set of already-placed fragments into a new section.
+export const FragmentsGroupSchema = z
+  .object({
+    fragmentUuids: z
+      .array(z.uuid())
+      .min(1)
+      .openapi({
+        example: ["aaaaaaaa-0000-0000-0000-000000000001"],
+      }),
+    name: z.string().openapi({ example: "Act One" }),
+  })
+  .openapi("FragmentsGroup");
+
+// Move a set of already-placed fragments into an existing section as a block.
+export const FragmentsMoveSchema = z
+  .object({
+    fragmentUuids: z
+      .array(z.uuid())
+      .min(1)
+      .openapi({
+        example: ["aaaaaaaa-0000-0000-0000-000000000001"],
+      }),
+    sectionUuid: z.uuid().openapi({ example: "bbbbbbbb-0000-0000-0000-000000000001" }),
+    position: z.number().int().min(0).openapi({ example: 0 }),
+  })
+  .openapi("FragmentsMove");
+
+// Split a section at a marked fragment, inserting a new section boundary.
+export const SectionSplitSchema = z
+  .object({
+    fragmentUuid: z.uuid().openapi({ example: "aaaaaaaa-0000-0000-0000-000000000001" }),
+    name: z.string().openapi({ example: "Act Two" }),
+  })
+  .openapi("SectionSplit");
+
 export const SectionUUIDParamSchema = z.object({
   projectId: z.uuid(),
   sequenceId: z.uuid(),

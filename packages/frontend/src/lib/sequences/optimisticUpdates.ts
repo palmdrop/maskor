@@ -82,6 +82,126 @@ export function optimisticMove(
   };
 }
 
+type SectionFragments = Sequence["sections"][number]["fragments"];
+
+const compact = (fragments: SectionFragments): SectionFragments =>
+  [...fragments]
+    .sort((a, b) => a.position - b.position)
+    .map((f, index) => ({ ...f, position: index }));
+
+const flattenedOrder = (sequence: Sequence): string[] =>
+  sequence.sections.flatMap((section) =>
+    [...section.fragments].sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+  );
+
+// Optimistic mirror of `groupFragmentsIntoSection` from @maskor/sequencer.
+export function optimisticGroup(
+  sequence: Sequence,
+  fragmentUuids: string[],
+  sectionName: string,
+): Sequence {
+  const selected = new Set(fragmentUuids);
+  const selectedInOrder = flattenedOrder(sequence).filter((uuid) => selected.has(uuid));
+  if (selectedInOrder.length === 0) return sequence;
+
+  const firstSelected = selectedInOrder[0]!;
+  const insertIndex = sequence.sections.findIndex((section) =>
+    section.fragments.some((f) => f.fragmentUuid === firstSelected),
+  );
+
+  const stripped = sequence.sections.map((section) => ({
+    ...section,
+    fragments: compact(section.fragments.filter((f) => !selected.has(f.fragmentUuid))),
+  }));
+
+  const newSection = {
+    uuid: crypto.randomUUID(),
+    name: sectionName,
+    fragments: selectedInOrder.map((fragmentUuid, index) => ({
+      uuid: crypto.randomUUID(),
+      fragmentUuid,
+      position: index,
+    })),
+  };
+
+  const sections = [...stripped];
+  sections.splice(insertIndex < 0 ? stripped.length : insertIndex, 0, newSection);
+  return { ...sequence, sections };
+}
+
+// Optimistic mirror of `moveFragmentsToSection` from @maskor/sequencer.
+export function optimisticMoveMany(
+  sequence: Sequence,
+  fragmentUuids: string[],
+  targetSectionUuid: string,
+  position: number,
+): Sequence {
+  const selected = new Set(fragmentUuids);
+  const selectedInOrder = flattenedOrder(sequence).filter((uuid) => selected.has(uuid));
+  if (selectedInOrder.length === 0) return sequence;
+  if (!sequence.sections.some((s) => s.uuid === targetSectionUuid)) return sequence;
+
+  const positionByFragment = new Map<string, SectionFragments[number]>();
+  for (const section of sequence.sections) {
+    for (const fragmentPosition of section.fragments) {
+      if (selected.has(fragmentPosition.fragmentUuid)) {
+        positionByFragment.set(fragmentPosition.fragmentUuid, fragmentPosition);
+      }
+    }
+  }
+
+  const stripped = sequence.sections.map((section) => ({
+    ...section,
+    fragments: compact(section.fragments.filter((f) => !selected.has(f.fragmentUuid))),
+  }));
+
+  const strippedTarget = stripped.find((s) => s.uuid === targetSectionUuid)!;
+  const clampedPosition = Math.min(Math.max(0, position), strippedTarget.fragments.length);
+  const blockSize = selectedInOrder.length;
+
+  const shifted = strippedTarget.fragments.map((f) =>
+    f.position >= clampedPosition ? { ...f, position: f.position + blockSize } : f,
+  );
+  const insertedBlock = selectedInOrder.map((fragmentUuid, index) => ({
+    ...positionByFragment.get(fragmentUuid)!,
+    position: clampedPosition + index,
+  }));
+  const compactedTarget = compact([...shifted, ...insertedBlock]);
+
+  return {
+    ...sequence,
+    sections: stripped.map((s) =>
+      s.uuid === targetSectionUuid ? { ...s, fragments: compactedTarget } : s,
+    ),
+  };
+}
+
+// Optimistic mirror of `splitSectionAtFragment` from @maskor/sequencer.
+export function optimisticSplit(
+  sequence: Sequence,
+  fragmentUuid: string,
+  sectionName: string,
+): Sequence {
+  const sectionIndex = sequence.sections.findIndex((section) =>
+    section.fragments.some((f) => f.fragmentUuid === fragmentUuid),
+  );
+  if (sectionIndex === -1) return sequence;
+
+  const sourceSection = sequence.sections[sectionIndex]!;
+  const sorted = [...sourceSection.fragments].sort((a, b) => a.position - b.position);
+  const splitAt = sorted.findIndex((f) => f.fragmentUuid === fragmentUuid);
+  if (splitAt <= 0) return sequence;
+
+  const before = compact(sorted.slice(0, splitAt));
+  const after = compact(sorted.slice(splitAt));
+  const newSection = { uuid: crypto.randomUUID(), name: sectionName, fragments: after };
+
+  const sections = [...sequence.sections];
+  sections[sectionIndex] = { ...sourceSection, fragments: before };
+  sections.splice(sectionIndex + 1, 0, newSection);
+  return { ...sequence, sections };
+}
+
 export function optimisticUnplace(sequence: Sequence, fragmentUuid: string): Sequence {
   return {
     ...sequence,

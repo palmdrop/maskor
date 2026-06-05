@@ -35,13 +35,15 @@ const RowIndicators = ({ violationTooltips, cycleTooltips }: RowIndicatorsProps)
   </span>
 );
 
+type SelectModifiers = { toggle?: boolean; range?: boolean };
+
 interface ReorderRowProps {
   fragment: FragmentSummary;
   colorByAspectKey: Map<string, string>;
   violationTooltips: string[];
   cycleTooltips: string[];
   isSelected: boolean;
-  onSelect: (fragmentUuid: string) => void;
+  onSelect: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
 }
 
 const ReorderRow = ({
@@ -69,7 +71,10 @@ const ReorderRow = ({
       onFocus={() => onSelect(fragment.uuid)}
       onClick={(event) => {
         event.stopPropagation();
-        onSelect(fragment.uuid);
+        onSelect(fragment.uuid, {
+          toggle: event.metaKey || event.ctrlKey,
+          range: event.shiftKey,
+        });
       }}
       {...attributes}
       {...listeners}
@@ -128,8 +133,8 @@ interface SectionGroupProps {
   totalSections: number;
   colorByAspectKey: Map<string, string>;
   fragmentByUuid: Map<string, FragmentSummary>;
-  selectedFragmentUuid: string | null;
-  onSelectFragment: (fragmentUuid: string) => void;
+  selectedFragmentUuids: Set<string>;
+  onSelectFragment: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
   editingSectionId: string | null;
@@ -152,7 +157,7 @@ const SectionGroup = ({
   totalSections,
   colorByAspectKey,
   fragmentByUuid,
-  selectedFragmentUuid,
+  selectedFragmentUuids,
   onSelectFragment,
   getViolationTooltips,
   getCycleTooltips,
@@ -302,7 +307,7 @@ const SectionGroup = ({
               colorByAspectKey={colorByAspectKey}
               violationTooltips={getViolationTooltips(fragmentUuid)}
               cycleTooltips={getCycleTooltips(fragmentUuid)}
-              isSelected={selectedFragmentUuid === fragmentUuid}
+              isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
             />
           );
@@ -317,8 +322,8 @@ interface ReorderListProps {
   poolFragmentUuids: string[];
   colorByAspectKey: Map<string, string>;
   fragmentByUuid: Map<string, FragmentSummary>;
-  selectedFragmentUuid: string | null;
-  onSelectFragment: (fragmentUuid: string) => void;
+  selectedFragmentUuids: Set<string>;
+  onSelectFragment: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
   editingSectionId: string | null;
@@ -348,7 +353,7 @@ export const ReorderList = ({
   poolFragmentUuids,
   colorByAspectKey,
   fragmentByUuid,
-  selectedFragmentUuid,
+  selectedFragmentUuids,
   onSelectFragment,
   getViolationTooltips,
   getCycleTooltips,
@@ -378,7 +383,7 @@ export const ReorderList = ({
             totalSections={sectionsData.length}
             colorByAspectKey={colorByAspectKey}
             fragmentByUuid={fragmentByUuid}
-            selectedFragmentUuid={selectedFragmentUuid}
+            selectedFragmentUuids={selectedFragmentUuids}
             onSelectFragment={onSelectFragment}
             getViolationTooltips={getViolationTooltips}
             getCycleTooltips={getCycleTooltips}
@@ -427,7 +432,7 @@ export const ReorderList = ({
               colorByAspectKey={colorByAspectKey}
               violationTooltips={[]}
               cycleTooltips={getCycleTooltips(fragmentUuid)}
-              isSelected={selectedFragmentUuid === fragmentUuid}
+              isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
             />
           );

@@ -1295,3 +1295,181 @@ describe("GET /projects/:projectId/sequences/:sequenceId/contents", () => {
     expect(body.pool.every((entry) => typeof entry.content === "string")).toBe(true);
   });
 });
+
+describe("Phase 2 section operations", () => {
+  const createFragment = async (key: string, content: string) => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, content }),
+    });
+    return (await response.json()) as { uuid: string };
+  };
+
+  const createSequenceWithSection = async (name: string) => {
+    const createResponse = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, isMain: false, projectUuid: project.projectUUID }),
+    });
+    const bundle = (await createResponse.json()) as SequenceBundle;
+    const sequence = bundle.sequences.find((s) => s.name === name)!;
+    return sequence;
+  };
+
+  const place = async (
+    sequenceUuid: string,
+    sectionUuid: string,
+    fragmentUuid: string,
+    position: number,
+  ) => {
+    await testContext.app.request(`${baseUrl()}/${sequenceUuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid, sectionUuid, position }),
+    });
+  };
+
+  const fragmentOrder = (section: Section) =>
+    [...section.fragments].sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid);
+
+  it("groups selected fragments into a new section in sequence order", async () => {
+    const fa = await createFragment("p2-group-a", "A");
+    const fb = await createFragment("p2-group-b", "B");
+    const fc = await createFragment("p2-group-c", "C");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const sequence = await createSequenceWithSection("Group Test");
+    const sectionUuid = sequence.sections[0]!.uuid;
+    await place(sequence.uuid, sectionUuid, fa.uuid, 0);
+    await place(sequence.uuid, sectionUuid, fb.uuid, 1);
+    await place(sequence.uuid, sectionUuid, fc.uuid, 2);
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${sequence.uuid}/group-fragments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fragmentUuids: [fc.uuid, fa.uuid], name: "Grouped" }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+
+    const grouped = updated.sections.find((s) => s.name === "Grouped")!;
+    expect(fragmentOrder(grouped)).toEqual([fa.uuid, fc.uuid]);
+    const original = updated.sections.find((s) => s.uuid === sectionUuid)!;
+    expect(fragmentOrder(original)).toEqual([fb.uuid]);
+  });
+
+  it("moves selected fragments into an existing section as a block", async () => {
+    const fa = await createFragment("p2-move-a", "A");
+    const fb = await createFragment("p2-move-b", "B");
+    const fc = await createFragment("p2-move-c", "C");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const sequence = await createSequenceWithSection("Move Test");
+    const sectionOne = sequence.sections[0]!.uuid;
+    await place(sequence.uuid, sectionOne, fa.uuid, 0);
+    await place(sequence.uuid, sectionOne, fb.uuid, 1);
+
+    // Add a second section and place fc there.
+    const sectionBundle = (await (
+      await testContext.app.request(`${baseUrl()}/${sequence.uuid}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Two" }),
+      })
+    ).json()) as SequenceBundle;
+    const sectionTwo = sectionBundle.sequences
+      .find((s) => s.uuid === sequence.uuid)!
+      .sections.find((s) => s.name === "Two")!.uuid;
+    await place(sequence.uuid, sectionTwo, fc.uuid, 0);
+
+    const response = await testContext.app.request(`${baseUrl()}/${sequence.uuid}/move-fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fragmentUuids: [fa.uuid, fb.uuid],
+        sectionUuid: sectionTwo,
+        position: 0,
+      }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+
+    const target = updated.sections.find((s) => s.uuid === sectionTwo)!;
+    expect(fragmentOrder(target)).toEqual([fa.uuid, fb.uuid, fc.uuid]);
+    const source = updated.sections.find((s) => s.uuid === sectionOne)!;
+    expect(fragmentOrder(source)).toEqual([]);
+  });
+
+  it("splits a section at a marked fragment", async () => {
+    const fa = await createFragment("p2-split-a", "A");
+    const fb = await createFragment("p2-split-b", "B");
+    const fc = await createFragment("p2-split-c", "C");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const sequence = await createSequenceWithSection("Split Test");
+    const sectionUuid = sequence.sections[0]!.uuid;
+    await place(sequence.uuid, sectionUuid, fa.uuid, 0);
+    await place(sequence.uuid, sectionUuid, fb.uuid, 1);
+    await place(sequence.uuid, sectionUuid, fc.uuid, 2);
+
+    const response = await testContext.app.request(`${baseUrl()}/${sequence.uuid}/split-section`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: fb.uuid, name: "Part Two" }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+
+    const original = updated.sections.find((s) => s.uuid === sectionUuid)!;
+    expect(fragmentOrder(original)).toEqual([fa.uuid]);
+    const partTwo = updated.sections.find((s) => s.name === "Part Two")!;
+    expect(fragmentOrder(partTwo)).toEqual([fb.uuid, fc.uuid]);
+    // The new section is inserted immediately after the original.
+    const originalIndex = updated.sections.findIndex((s) => s.uuid === sectionUuid);
+    expect(updated.sections[originalIndex + 1]!.uuid).toBe(partTwo.uuid);
+  });
+
+  it("logs the group operation with the section name and fragment count", async () => {
+    const fa = await createFragment("p2-log-a", "A");
+    const fb = await createFragment("p2-log-b", "B");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+    const sequence = await createSequenceWithSection("Group Log Test");
+    const sectionUuid = sequence.sections[0]!.uuid;
+    await place(sequence.uuid, sectionUuid, fa.uuid, 0);
+    await place(sequence.uuid, sectionUuid, fb.uuid, 1);
+
+    await testContext.app.request(`${baseUrl()}/${sequence.uuid}/group-fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuids: [fa.uuid, fb.uuid], name: "Logged" }),
+    });
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const entry = entries.find((e) => e.type === "sequence:fragments-grouped");
+    expect(entry).toBeDefined();
+    expect((entry!.payload as { sectionName: string; fragmentCount: number }).sectionName).toBe(
+      "Logged",
+    );
+    expect((entry!.payload as { sectionName: string; fragmentCount: number }).fragmentCount).toBe(
+      2,
+    );
+  });
+});

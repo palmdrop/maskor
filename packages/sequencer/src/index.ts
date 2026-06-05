@@ -350,6 +350,170 @@ export function moveSection(sequence: Sequence, sectionUuid: string, newIndex: n
   return { ...sequence, sections };
 }
 
+// Group an arbitrary set of already-placed fragments into a brand-new section.
+// The fragments are removed from their current sections (preserving the relative
+// order in which they appear across the whole sequence) and gathered into a new
+// section inserted where the selection begins — at the index of the section that
+// currently holds the earliest-ordered selected fragment. Sections emptied by
+// the move are kept (deletion is a separate operation).
+export function groupFragmentsIntoSection(
+  sequence: Sequence,
+  fragmentUuids: string[],
+  newSectionName: string,
+): Sequence {
+  if (fragmentUuids.length === 0) {
+    throw new Error("Cannot group an empty selection into a section.");
+  }
+  const selected = new Set(fragmentUuids);
+  if (selected.size !== fragmentUuids.length) {
+    throw new Error("Cannot group a selection containing duplicate fragments.");
+  }
+
+  const order = getFragmentOrder(sequence);
+  const placed = new Set(order);
+  for (const fragmentUuid of fragmentUuids) {
+    if (!placed.has(fragmentUuid)) {
+      throw new Error(`Fragment ${fragmentUuid} is not placed in sequence "${sequence.name}".`);
+    }
+  }
+
+  const selectedInOrder = order.filter((fragmentUuid) => selected.has(fragmentUuid));
+  const firstSelected = selectedInOrder[0]!;
+  const insertIndex = sequence.sections.findIndex((section) =>
+    section.fragments.some((f) => f.fragmentUuid === firstSelected),
+  );
+
+  const strippedSections = sequence.sections.map((section) => ({
+    ...section,
+    fragments: compactPositions(section.fragments.filter((f) => !selected.has(f.fragmentUuid))),
+  }));
+
+  const newSection = {
+    uuid: crypto.randomUUID(),
+    name: newSectionName,
+    fragments: selectedInOrder.map((fragmentUuid, index) => ({
+      uuid: crypto.randomUUID(),
+      fragmentUuid,
+      position: index,
+    })),
+  };
+
+  const sections = [...strippedSections];
+  sections.splice(insertIndex, 0, newSection);
+
+  return { ...sequence, sections };
+}
+
+// Move a set of already-placed fragments into an existing section as a single
+// contiguous block at `targetPosition`, preserving their relative sequence
+// order. Equivalent to dragging many fragments into a section at once.
+export function moveFragmentsToSection(
+  sequence: Sequence,
+  fragmentUuids: string[],
+  targetSectionUuid: string,
+  targetPosition: number,
+): Sequence {
+  if (fragmentUuids.length === 0) {
+    throw new Error("Cannot move an empty selection.");
+  }
+  const selected = new Set(fragmentUuids);
+  if (selected.size !== fragmentUuids.length) {
+    throw new Error("Cannot move a selection containing duplicate fragments.");
+  }
+
+  const targetSection = sequence.sections.find((s) => s.uuid === targetSectionUuid);
+  if (!targetSection) {
+    throw new Error(`Section ${targetSectionUuid} not found in sequence "${sequence.name}".`);
+  }
+
+  const order = getFragmentOrder(sequence);
+  const placed = new Set(order);
+  for (const fragmentUuid of fragmentUuids) {
+    if (!placed.has(fragmentUuid)) {
+      throw new Error(`Fragment ${fragmentUuid} is not placed in sequence "${sequence.name}".`);
+    }
+  }
+
+  const selectedInOrder = order.filter((fragmentUuid) => selected.has(fragmentUuid));
+
+  // Preserve each moved fragment's existing position record (and its uuid).
+  const positionByFragment = new Map<string, FragmentPosition>();
+  for (const section of sequence.sections) {
+    for (const fragmentPosition of section.fragments) {
+      if (selected.has(fragmentPosition.fragmentUuid)) {
+        positionByFragment.set(fragmentPosition.fragmentUuid, fragmentPosition);
+      }
+    }
+  }
+
+  const strippedSections = sequence.sections.map((section) => ({
+    ...section,
+    fragments: compactPositions(section.fragments.filter((f) => !selected.has(f.fragmentUuid))),
+  }));
+
+  const strippedTarget = strippedSections.find((s) => s.uuid === targetSectionUuid)!;
+  const clampedPosition = Math.min(Math.max(0, targetPosition), strippedTarget.fragments.length);
+  const blockSize = selectedInOrder.length;
+
+  const shifted = strippedTarget.fragments.map((f) =>
+    f.position >= clampedPosition ? { ...f, position: f.position + blockSize } : f,
+  );
+  const insertedBlock = selectedInOrder.map((fragmentUuid, index) => ({
+    ...positionByFragment.get(fragmentUuid)!,
+    position: clampedPosition + index,
+  }));
+  const compactedTarget = compactPositions([...shifted, ...insertedBlock]);
+
+  return {
+    ...sequence,
+    sections: strippedSections.map((s) =>
+      s.uuid === targetSectionUuid ? { ...s, fragments: compactedTarget } : s,
+    ),
+  };
+}
+
+// Split a section at a marked fragment: the marked fragment and everything after
+// it (by position) move into a new section inserted immediately after the
+// original, which keeps the fragments before the split point. Splitting at the
+// first fragment of a section is rejected — the boundary already exists there
+// and splitting would only create an empty section.
+export function splitSectionAtFragment(
+  sequence: Sequence,
+  fragmentUuid: string,
+  newSectionName: string,
+): Sequence {
+  const sectionIndex = sequence.sections.findIndex((section) =>
+    section.fragments.some((f) => f.fragmentUuid === fragmentUuid),
+  );
+  if (sectionIndex === -1) {
+    throw new Error(`Fragment ${fragmentUuid} is not placed in sequence "${sequence.name}".`);
+  }
+
+  const sourceSection = sequence.sections[sectionIndex]!;
+  const sorted = [...sourceSection.fragments].sort((a, b) => a.position - b.position);
+  const splitAt = sorted.findIndex((f) => f.fragmentUuid === fragmentUuid);
+  if (splitAt === 0) {
+    throw new Error(
+      `Fragment ${fragmentUuid} already starts its section; there is nothing to split.`,
+    );
+  }
+
+  const before = compactPositions(sorted.slice(0, splitAt));
+  const after = compactPositions(sorted.slice(splitAt));
+
+  const newSection = {
+    uuid: crypto.randomUUID(),
+    name: newSectionName,
+    fragments: after,
+  };
+
+  const sections = [...sequence.sections];
+  sections[sectionIndex] = { ...sourceSection, fragments: before };
+  sections.splice(sectionIndex + 1, 0, newSection);
+
+  return { ...sequence, sections };
+}
+
 export function getUnassignedFragmentUuids(
   sequence: Sequence,
   allFragmentUuids: string[],

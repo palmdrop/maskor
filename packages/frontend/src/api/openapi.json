@@ -2471,6 +2471,79 @@
           "position"
         ]
       },
+      "FragmentsGroup": {
+        "type": "object",
+        "properties": {
+          "fragmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "example": [
+              "aaaaaaaa-0000-0000-0000-000000000001"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Act One"
+          }
+        },
+        "required": [
+          "fragmentUuids",
+          "name"
+        ]
+      },
+      "FragmentsMove": {
+        "type": "object",
+        "properties": {
+          "fragmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "example": [
+              "aaaaaaaa-0000-0000-0000-000000000001"
+            ]
+          },
+          "sectionUuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "bbbbbbbb-0000-0000-0000-000000000001"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 0
+          }
+        },
+        "required": [
+          "fragmentUuids",
+          "sectionUuid",
+          "position"
+        ]
+      },
+      "SectionSplit": {
+        "type": "object",
+        "properties": {
+          "fragmentUuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "aaaaaaaa-0000-0000-0000-000000000001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Act Two"
+          }
+        },
+        "required": [
+          "fragmentUuid",
+          "name"
+        ]
+      },
       "ImportResult": {
         "type": "object",
         "properties": {
@@ -11353,6 +11426,245 @@
                           "type": {
                             "type": "string",
                             "enum": [
+                              "sequence:fragments-grouped"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "sectionName": {
+                                "type": "string"
+                              },
+                              "fragmentCount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "sectionName",
+                              "fragmentCount"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "sequence:fragments-moved"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "sectionName": {
+                                "type": "string"
+                              },
+                              "fragmentCount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "sectionName",
+                              "fragmentCount"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "sequence:section-split"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "sectionName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "sectionName"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
                               "draft:created"
                             ]
                           },
@@ -12725,6 +13037,219 @@
           },
           "404": {
             "description": "Sequence or section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sequences/{sequenceId}/group-fragments": {
+      "post": {
+        "operationId": "groupFragments",
+        "tags": [
+          "Sequences"
+        ],
+        "summary": "Group a set of placed fragments into a new section",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sequenceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FragmentsGroup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated sequence bundle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SequenceBundledResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sequence or fragment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sequences/{sequenceId}/move-fragments": {
+      "post": {
+        "operationId": "moveFragments",
+        "tags": [
+          "Sequences"
+        ],
+        "summary": "Move a set of placed fragments into an existing section as a block",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sequenceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FragmentsMove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated sequence bundle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SequenceBundledResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sequence, section, or fragment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sequences/{sequenceId}/split-section": {
+      "post": {
+        "operationId": "splitSection",
+        "tags": [
+          "Sequences"
+        ],
+        "summary": "Split a section at a marked fragment, inserting a new section boundary",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sequenceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionSplit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated sequence bundle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SequenceBundledResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sequence or fragment not found",
             "content": {
               "application/json": {
                 "schema": {

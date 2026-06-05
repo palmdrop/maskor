@@ -20,6 +20,12 @@ export interface OverviewContext {
   toggleArcOverlay: () => void;
   toggleArcExpanded: () => void;
   toggleVerticalArcStrip: () => void;
+  placedSelectionCount: number;
+  groupSelection: () => void;
+  canSplitSelection: boolean;
+  splitSelection: () => void;
+  sectionsForMove: ReadonlyArray<{ uuid: string; name: string }>;
+  moveSelectionToSection: (sectionUuid: string) => void;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {
@@ -87,6 +93,40 @@ const toggleVerticalArcStrip = defineScopeCommand(overviewScope, {
   run: (ctx) => ctx.toggleVerticalArcStrip(),
 });
 
+const groupSelection = defineScopeCommand(overviewScope, {
+  id: "overview:group-selection",
+  label: "Group selected fragments into a new section",
+  category: "create",
+  disabled: (ctx) =>
+    ctx.placedSelectionCount < 1 ? "Select placed fragments to group" : undefined,
+  run: (ctx) => ctx.groupSelection(),
+});
+
+const splitAtSelection = defineScopeCommand(overviewScope, {
+  id: "overview:split-at-selection",
+  label: "Split section at selected fragment",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.canSplitSelection
+      ? undefined
+      : "Select one placed fragment that is not the first in its section",
+  run: (ctx) => ctx.splitSelection(),
+});
+
+const moveSelectionToSection = defineScopeCommand(overviewScope, {
+  id: "overview:move-selection-to-section",
+  label: "Move selected fragments to section…",
+  category: "other",
+  disabled: (ctx) => (ctx.placedSelectionCount < 1 ? "Select placed fragments to move" : undefined),
+  arg: {
+    items: (ctx) => ctx.sectionsForMove,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => item.name || "Untitled section",
+    placeholder: "Move selection to section…",
+  },
+  run: (ctx, target) => ctx.moveSelectionToSection(target.uuid),
+});
+
 export const overviewCommands = [
   designateMain,
   addSection,
@@ -95,4 +135,7 @@ export const overviewCommands = [
   toggleArcOverlay,
   toggleArcExpanded,
   toggleVerticalArcStrip,
+  groupSelection,
+  splitAtSelection,
+  moveSelectionToSection,
 ] as const;

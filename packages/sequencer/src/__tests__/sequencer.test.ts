@@ -11,6 +11,9 @@ import {
   getUnassignedFragmentUuids,
   validateSequenceInvariants,
   getFragmentOrder,
+  groupFragmentsIntoSection,
+  moveFragmentsToSection,
+  splitSectionAtFragment,
 } from "../index";
 
 const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
@@ -636,5 +639,152 @@ describe("moveSection", () => {
   it("throws when section UUID does not exist", () => {
     const sequence = makeThreeSectionSequence();
     expect(() => moveSection(sequence, "nonexistent-uuid", 0)).toThrow();
+  });
+});
+
+describe("groupFragmentsIntoSection", () => {
+  function makeTwoSectionSequence(): Sequence {
+    let sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2] };
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[1]!.uuid, 0);
+    sequence = placeFragment(sequence, FD, sequence.sections[1]!.uuid, 1);
+    return sequence;
+  }
+
+  it("gathers selected fragments into a new section in sequence order", () => {
+    const sequence = makeTwoSectionSequence();
+    // Select in scrambled input order; output should follow sequence order FB, FC.
+    const result = groupFragmentsIntoSection(sequence, [FC, FB], "Grouped");
+    const grouped = result.sections.find((s) => s.name === "Grouped")!;
+    expect(
+      grouped.fragments.sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+    ).toEqual([FB, FC]);
+  });
+
+  it("removes the grouped fragments from their original sections and compacts", () => {
+    const sequence = makeTwoSectionSequence();
+    const result = groupFragmentsIntoSection(sequence, [FB, FC], "Grouped");
+    const sectionA = result.sections.find((s) => s.fragments.some((f) => f.fragmentUuid === FA))!;
+    const sectionD = result.sections.find((s) => s.fragments.some((f) => f.fragmentUuid === FD))!;
+    expect(sectionA.fragments.map((f) => f.fragmentUuid)).toEqual([FA]);
+    expect(sectionD.fragments.map((f) => f.fragmentUuid)).toEqual([FD]);
+    validateSequenceInvariants(result);
+  });
+
+  it("inserts the new section where the selection begins", () => {
+    const sequence = makeTwoSectionSequence();
+    // Earliest selected (FB) lives in section 0, so the new section lands at index 0.
+    const result = groupFragmentsIntoSection(sequence, [FB, FD], "Grouped");
+    expect(result.sections[0]!.name).toBe("Grouped");
+  });
+
+  it("throws on an empty selection", () => {
+    expect(() => groupFragmentsIntoSection(makeTwoSectionSequence(), [], "x")).toThrow();
+  });
+
+  it("throws on duplicate fragments in the selection", () => {
+    expect(() => groupFragmentsIntoSection(makeTwoSectionSequence(), [FA, FA], "x")).toThrow();
+  });
+
+  it("throws when a selected fragment is not placed", () => {
+    const unplaced = "eeeeeeee-0000-0000-0000-000000000001";
+    expect(() =>
+      groupFragmentsIntoSection(makeTwoSectionSequence(), [FA, unplaced], "x"),
+    ).toThrow();
+  });
+});
+
+describe("moveFragmentsToSection", () => {
+  function makeTwoSectionSequence(): Sequence {
+    let sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2] };
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[1]!.uuid, 0);
+    sequence = placeFragment(sequence, FD, sequence.sections[1]!.uuid, 1);
+    return sequence;
+  }
+
+  it("moves a block into the target section at the requested position", () => {
+    const sequence = makeTwoSectionSequence();
+    const targetUuid = sequence.sections[1]!.uuid;
+    // Move FA, FB into Act 2 at position 1 (between FC and FD).
+    const result = moveFragmentsToSection(sequence, [FA, FB], targetUuid, 1);
+    const target = result.sections.find((s) => s.uuid === targetUuid)!;
+    expect(
+      target.fragments.sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+    ).toEqual([FC, FA, FB, FD]);
+    validateSequenceInvariants(result);
+  });
+
+  it("empties the source section when all its fragments move out", () => {
+    const sequence = makeTwoSectionSequence();
+    const targetUuid = sequence.sections[1]!.uuid;
+    const result = moveFragmentsToSection(sequence, [FA, FB], targetUuid, 0);
+    const source = result.sections.find((s) => s.uuid === sequence.sections[0]!.uuid)!;
+    expect(source.fragments).toEqual([]);
+  });
+
+  it("clamps an out-of-range target position to the tail", () => {
+    const sequence = makeTwoSectionSequence();
+    const targetUuid = sequence.sections[1]!.uuid;
+    const result = moveFragmentsToSection(sequence, [FA], targetUuid, 999);
+    const target = result.sections.find((s) => s.uuid === targetUuid)!;
+    expect(
+      target.fragments.sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+    ).toEqual([FC, FD, FA]);
+  });
+
+  it("throws when the target section does not exist", () => {
+    expect(() => moveFragmentsToSection(makeTwoSectionSequence(), [FA], "nope", 0)).toThrow();
+  });
+
+  it("throws on an empty selection", () => {
+    const sequence = makeTwoSectionSequence();
+    expect(() => moveFragmentsToSection(sequence, [], sequence.sections[1]!.uuid, 0)).toThrow();
+  });
+});
+
+describe("splitSectionAtFragment", () => {
+  function makeOneSectionSequence(): Sequence {
+    let sequence = makeSequence();
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[0]!.uuid, 2);
+    return sequence;
+  }
+
+  it("moves the marked fragment and everything after it into a new section", () => {
+    const sequence = makeOneSectionSequence();
+    const result = splitSectionAtFragment(sequence, FB, "Part Two");
+    expect(result.sections).toHaveLength(2);
+    expect(result.sections[0]!.fragments.map((f) => f.fragmentUuid)).toEqual([FA]);
+    const newSection = result.sections[1]!;
+    expect(newSection.name).toBe("Part Two");
+    expect(
+      newSection.fragments.sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+    ).toEqual([FB, FC]);
+    validateSequenceInvariants(result);
+  });
+
+  it("inserts the new section immediately after the source section", () => {
+    let sequence = makeOneSectionSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Tail", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2] };
+    const result = splitSectionAtFragment(sequence, FC, "Split");
+    expect(result.sections.map((s) => s.name)).toEqual(["Main", "Split", "Tail"]);
+  });
+
+  it("throws when splitting at the first fragment of a section", () => {
+    expect(() => splitSectionAtFragment(makeOneSectionSequence(), FA, "x")).toThrow();
+  });
+
+  it("throws when the fragment is not placed", () => {
+    const unplaced = "eeeeeeee-0000-0000-0000-000000000001";
+    expect(() => splitSectionAtFragment(makeOneSectionSequence(), unplaced, "x")).toThrow();
   });
 });

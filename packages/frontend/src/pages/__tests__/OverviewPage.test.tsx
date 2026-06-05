@@ -87,6 +87,9 @@ const placeMutate = vi.fn();
 const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
 const moveSectionMutate = vi.fn();
+const groupMutate = vi.fn();
+const moveManyMutate = vi.fn();
+const splitMutate = vi.fn();
 const updateProjectMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
@@ -96,6 +99,9 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
   useReorderSection: vi.fn(() => ({ mutate: moveSectionMutate })),
+  useGroupFragments: vi.fn(() => ({ mutate: groupMutate })),
+  useMoveFragments: vi.fn(() => ({ mutate: moveManyMutate })),
+  useSplitSection: vi.fn(() => ({ mutate: splitMutate })),
   useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
@@ -517,6 +523,105 @@ describe("OverviewPage — arc overlay and vertical strip", () => {
     expect(screen.queryByTestId("vertical-arc-strip")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Strip" }));
     expect(screen.getByTestId("vertical-arc-strip")).toBeInTheDocument();
+  });
+});
+
+describe("OverviewPage — multi-select section operations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  const selectRow = (fragmentUuid: string, options?: { meta?: boolean; shift?: boolean }) => {
+    const list = screen.getByTestId("reorder-list");
+    const row = list.querySelector(`[data-fragment-uuid="${fragmentUuid}"]`)!;
+    fireEvent.click(row, { metaKey: options?.meta ?? false, shiftKey: options?.shift ?? false });
+  };
+
+  it("meta-click adds rows to the selection and shows the action bar count", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_A);
+    selectRow(FRAG_C, { meta: true });
+
+    expect(screen.getByTestId("selection-action-bar")).toHaveTextContent("2 selected");
+  });
+
+  it("Group into section groups the current selection", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_A);
+    selectRow(FRAG_C, { meta: true });
+    fireEvent.click(screen.getByRole("button", { name: "Group into section" }));
+
+    expect(groupMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      data: { fragmentUuids: [FRAG_A, FRAG_C], name: "" },
+    });
+  });
+
+  it("shift-click selects a contiguous range", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_A);
+    selectRow(FRAG_C, { shift: true });
+    fireEvent.click(screen.getByRole("button", { name: "Group into section" }));
+
+    expect(groupMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      data: { fragmentUuids: [FRAG_A, FRAG_B, FRAG_C], name: "" },
+    });
+  });
+
+  it("Split here splits at a single non-first selected fragment", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_B);
+    fireEvent.click(screen.getByRole("button", { name: "Split here" }));
+
+    expect(splitMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      data: { fragmentUuid: FRAG_B, name: "" },
+    });
+  });
+
+  it("disables Split here when the selected fragment is first in its section", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B] }]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_A);
+    expect(screen.getByRole("button", { name: "Split here" })).toBeDisabled();
   });
 });
 

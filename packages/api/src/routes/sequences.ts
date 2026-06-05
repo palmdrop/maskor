@@ -14,6 +14,9 @@ import {
   SectionCreateSchema,
   SectionRenameSchema,
   SectionReorderSchema,
+  FragmentsGroupSchema,
+  FragmentsMoveSchema,
+  SectionSplitSchema,
   SequenceBundledResponseSchema,
   SequenceContentsResponseSchema,
 } from "../schemas/sequence";
@@ -33,6 +36,9 @@ import {
   placeFragmentCommand,
   moveFragmentCommand,
   unplaceFragmentCommand,
+  groupFragmentsCommand,
+  moveFragmentsCommand,
+  splitSectionCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { StorageService, ProjectContext } from "@maskor/storage";
@@ -448,6 +454,93 @@ const unplaceFragmentRoute = createRoute({
   },
 });
 
+const groupFragmentsRoute = createRoute({
+  operationId: "groupFragments",
+  method: "post",
+  path: "/{sequenceId}/group-fragments",
+  tags: ["Sequences"],
+  summary: "Group a set of placed fragments into a new section",
+  request: {
+    params: SequenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: FragmentsGroupSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or fragment not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const moveFragmentsRoute = createRoute({
+  operationId: "moveFragments",
+  method: "post",
+  path: "/{sequenceId}/move-fragments",
+  tags: ["Sequences"],
+  summary: "Move a set of placed fragments into an existing section as a block",
+  request: {
+    params: SequenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: FragmentsMoveSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence, section, or fragment not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const splitSectionRoute = createRoute({
+  operationId: "splitSection",
+  method: "post",
+  path: "/{sequenceId}/split-section",
+  tags: ["Sequences"],
+  summary: "Split a section at a marked fragment, inserting a new section boundary",
+  request: {
+    params: SequenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: SectionSplitSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or fragment not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 // --- handlers ---
 
 sequencesRouter.openapi(listSequencesRoute, async (ctx) => {
@@ -791,6 +884,87 @@ sequencesRouter.openapi(unplaceFragmentRoute, async (ctx) => {
       fragmentUuid,
       sequenceName: indexedSequence.name,
       fragmentKey: indexedFragment.key,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(groupFragmentsRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+    const { fragmentUuids, name } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
+    await executeCommand(groupFragmentsCommand, commandContext, {
+      sequenceId,
+      fragmentUuids,
+      sectionName: name,
+      sequenceName: indexedSequence.name,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(moveFragmentsRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+    const { fragmentUuids, sectionUuid, position } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
+    const section = indexedSequence.sections.find((s) => s.uuid === sectionUuid);
+    await executeCommand(moveFragmentsCommand, commandContext, {
+      sequenceId,
+      fragmentUuids,
+      sectionUuid,
+      position,
+      sequenceName: indexedSequence.name,
+      sectionName: section?.name ?? sectionUuid,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(splitSectionRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+    const { fragmentUuid, name } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
+    await executeCommand(splitSectionCommand, commandContext, {
+      sequenceId,
+      fragmentUuid,
+      sectionName: name,
+      sequenceName: indexedSequence.name,
     });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);

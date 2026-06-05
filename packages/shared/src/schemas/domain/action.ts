@@ -58,6 +58,9 @@ export const ActionTypeSchema = z.enum([
   "sequence:activated",
   "sequence:deactivated",
   "sequence:section-reordered",
+  "sequence:fragments-grouped",
+  "sequence:fragments-moved",
+  "sequence:section-split",
   "draft:created",
   "draft:deleted",
   "draft:restored",
@@ -176,6 +179,15 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("sequence:activated", empty),
   entry("sequence:deactivated", empty),
   entry("sequence:section-reordered", z.object({ sectionName: z.string() })),
+  entry(
+    "sequence:fragments-grouped",
+    z.object({ sectionName: z.string(), fragmentCount: z.number() }),
+  ),
+  entry(
+    "sequence:fragments-moved",
+    z.object({ sectionName: z.string(), fragmentCount: z.number() }),
+  ),
+  entry("sequence:section-split", z.object({ sectionName: z.string() })),
   entry("draft:created", z.object({ name: z.string(), note: z.string().optional() })),
   entry("draft:deleted", z.object({ name: z.string() })),
   entry(

@@ -92,7 +92,7 @@ interface SpineSectionProps {
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
-  selectedFragmentUuid: string | null;
+  selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
 }
 
@@ -101,7 +101,7 @@ const SpineSection = ({
   detailLevel,
   fragmentByUuid,
   contentByFragmentUuid,
-  selectedFragmentUuid,
+  selectedFragmentUuids,
   onSelectFragment,
 }: SpineSectionProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: section.uuid });
@@ -133,7 +133,7 @@ const SpineSection = ({
                 fragment={fragment}
                 content={contentByFragmentUuid.get(fragmentUuid) ?? ""}
                 detailLevel={detailLevel}
-                isSelected={selectedFragmentUuid === fragmentUuid}
+                isSelected={selectedFragmentUuids.has(fragmentUuid)}
                 onSelect={onSelectFragment}
               />
             );
@@ -149,7 +149,7 @@ interface ProseSpineProps {
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
-  selectedFragmentUuid: string | null;
+  selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
 }
 
@@ -165,7 +165,7 @@ export const ProseSpine = ({
   detailLevel,
   fragmentByUuid,
   contentByFragmentUuid,
-  selectedFragmentUuid,
+  selectedFragmentUuids,
   onSelectFragment,
 }: ProseSpineProps) => {
   // Only bail out entirely when the sequence has no sections at all. Empty
@@ -188,7 +188,7 @@ export const ProseSpine = ({
           detailLevel={detailLevel}
           fragmentByUuid={fragmentByUuid}
           contentByFragmentUuid={contentByFragmentUuid}
-          selectedFragmentUuid={selectedFragmentUuid}
+          selectedFragmentUuids={selectedFragmentUuids}
           onSelectFragment={onSelectFragment}
         />
       ))}

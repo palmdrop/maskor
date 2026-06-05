@@ -26,6 +26,12 @@ describe("scopes/overview", () => {
     toggleArcOverlay: vi.fn(),
     toggleArcExpanded: vi.fn(),
     toggleVerticalArcStrip: vi.fn(),
+    placedSelectionCount: 0,
+    groupSelection: vi.fn(),
+    canSplitSelection: false,
+    splitSelection: vi.fn(),
+    sectionsForMove: [],
+    moveSelectionToSection: vi.fn(),
   };
 
   it("designate-main runs and disables when sequence is already main", () => {
@@ -75,6 +81,28 @@ describe("scopes/overview", () => {
   it("toggle-vertical-arc-strip runs", () => {
     find(overviewCommands, "overview:toggle-vertical-arc-strip").run(ctx);
     expect(ctx.toggleVerticalArcStrip).toHaveBeenCalled();
+  });
+
+  it("group-selection runs and is gated on having a placed selection", () => {
+    const cmd = find(overviewCommands, "overview:group-selection");
+    expect(cmd.disabled?.({ ...ctx, placedSelectionCount: 0 })).toMatch(/Select placed fragments/);
+    cmd.run({ ...ctx, placedSelectionCount: 2 });
+    expect(ctx.groupSelection).toHaveBeenCalled();
+  });
+
+  it("split-at-selection is gated on canSplitSelection", () => {
+    const cmd = find(overviewCommands, "overview:split-at-selection");
+    expect(cmd.disabled?.({ ...ctx, canSplitSelection: false })).toMatch(/not the first/);
+    expect(cmd.disabled?.({ ...ctx, canSplitSelection: true })).toBeUndefined();
+    cmd.run({ ...ctx, canSplitSelection: true });
+    expect(ctx.splitSelection).toHaveBeenCalled();
+  });
+
+  it("move-selection-to-section runs with the chosen section", () => {
+    const cmd = find(overviewCommands, "overview:move-selection-to-section");
+    expect(cmd.disabled?.({ ...ctx, placedSelectionCount: 0 })).toMatch(/Select placed fragments/);
+    cmd.run({ ...ctx, placedSelectionCount: 1 }, { uuid: "sec-1", name: "One" });
+    expect(ctx.moveSelectionToSection).toHaveBeenCalledWith("sec-1");
   });
 });
 

@@ -42,10 +42,10 @@ Decisions are recorded in `references/adr/0010-overview-vertical-read-reorder-su
 
 ### Phase 2 — Multi-select → section / split
 
-- [ ] **Sequencer-side ops** (`@maskor/sequencer` + API), not frontend-only: group a selected set of fragments into a new section; drag many fragments into an existing section; split a sequence at a marked point by inserting a new section boundary. Define API routes + schemas, `bun run codegen`.
-- [ ] Frontend multi-select on the reorder list + commands for group/split via `overviewScope`
-- [ ] Tests for the sequencer ops (ordering correctness, robustness) and the frontend selection/commands
-- [ ] `bun run format` + `bun run verify`; update spec `Shipped`; `git commit`
+- [x] **Sequencer-side ops** (`@maskor/sequencer` + API), not frontend-only: group a selected set of fragments into a new section; drag many fragments into an existing section; split a sequence at a marked point by inserting a new section boundary. Define API routes + schemas, `bun run codegen`.
+- [x] Frontend multi-select on the reorder list + commands for group/split via `overviewScope`
+- [x] Tests for the sequencer ops (ordering correctness, robustness) and the frontend selection/commands
+- [x] `bun run format` + `bun run verify`; update spec `Shipped`; `git commit`
 
 ### Phase 3 — Clone / merge sequences
 

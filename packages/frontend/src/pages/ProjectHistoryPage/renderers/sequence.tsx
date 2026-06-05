@@ -24,6 +24,12 @@ export const renderSequenceEntryText = (entry: LogEntry): string => {
       return `Sequence "${sequenceName(entry)}" deactivated as a constraint`;
     case "sequence:section-reordered":
       return `Section "${entry.payload.sectionName}" reordered in sequence "${sequenceName(entry)}"`;
+    case "sequence:fragments-grouped":
+      return `${entry.payload.fragmentCount} fragment${entry.payload.fragmentCount === 1 ? "" : "s"} grouped into section "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
+    case "sequence:fragments-moved":
+      return `${entry.payload.fragmentCount} fragment${entry.payload.fragmentCount === 1 ? "" : "s"} moved into section "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
+    case "sequence:section-split":
+      return `Section split into "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
     default:
       return `Sequence action on "${sequenceName(entry)}"`;
   }
