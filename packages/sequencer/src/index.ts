@@ -378,10 +378,29 @@ export function groupFragmentsIntoSection(
   }
 
   const selectedInOrder = order.filter((fragmentUuid) => selected.has(fragmentUuid));
+
+  // Home section = the section holding the earliest selected fragment. Place the
+  // new section before or after it based on the selection's centre of mass
+  // within that section: a selection in the top half lands before the (remaining)
+  // home section, one in the bottom half lands after. (Pulling a block out
+  // collapses the leftovers into one contiguous section, so before/after is the
+  // only meaningful choice.)
   const firstSelected = selectedInOrder[0]!;
-  const insertIndex = sequence.sections.findIndex((section) =>
+  const homeIndex = sequence.sections.findIndex((section) =>
     section.fragments.some((f) => f.fragmentUuid === firstSelected),
   );
+  const homeSorted = [...sequence.sections[homeIndex]!.fragments].sort(
+    (a, b) => a.position - b.position,
+  );
+  const selectedPositionsInHome = homeSorted
+    .map((fragment, index) => ({ fragmentUuid: fragment.fragmentUuid, index }))
+    .filter((entry) => selected.has(entry.fragmentUuid))
+    .map((entry) => entry.index);
+  const meanPosition =
+    selectedPositionsInHome.reduce((sum, position) => sum + position, 0) /
+    selectedPositionsInHome.length;
+  const homeMidpoint = (homeSorted.length - 1) / 2;
+  const insertIndex = meanPosition <= homeMidpoint ? homeIndex : homeIndex + 1;
 
   const strippedSections = sequence.sections.map((section) => ({
     ...section,
@@ -510,6 +529,39 @@ export function splitSectionAtFragment(
   const sections = [...sequence.sections];
   sections[sectionIndex] = { ...sourceSection, fragments: before };
   sections.splice(sectionIndex + 1, 0, newSection);
+
+  return { ...sequence, sections };
+}
+
+// Merge a section into the one immediately below it: the lower section's
+// fragments are appended to this section (preserving order) and the lower
+// section's boundary is removed. The upper section survives (keeps its uuid,
+// name, and slot). This is the inverse of a split, and the primitive behind
+// "merge up" / "merge down" (merge up = merge the previous section with this
+// one). Throws if the section is the last one (nothing below to merge).
+export function mergeSectionWithNext(sequence: Sequence, sectionUuid: string): Sequence {
+  const index = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
+  if (index === -1) {
+    throw new Error(`Section ${sectionUuid} not found in sequence "${sequence.name}".`);
+  }
+  if (index === sequence.sections.length - 1) {
+    throw new Error(`Section ${sectionUuid} has no following section to merge with.`);
+  }
+
+  const upper = sequence.sections[index]!;
+  const lower = sequence.sections[index + 1]!;
+  const upperSorted = [...upper.fragments].sort((a, b) => a.position - b.position);
+  const lowerSorted = [...lower.fragments].sort((a, b) => a.position - b.position);
+  // Renumber by concatenation order — both sections number positions from 0, so
+  // compacting (which sorts by position) would interleave them.
+  const merged = [...upperSorted, ...lowerSorted].map((fragment, position) => ({
+    ...fragment,
+    position,
+  }));
+
+  const sections = sequence.sections
+    .filter((_, sectionIndex) => sectionIndex !== index + 1)
+    .map((section) => (section.uuid === sectionUuid ? { ...section, fragments: merged } : section));
 
   return { ...sequence, sections };
 }

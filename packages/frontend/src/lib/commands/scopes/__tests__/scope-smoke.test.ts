@@ -34,6 +34,10 @@ describe("scopes/overview", () => {
     splitAfter: vi.fn(),
     sectionsForMove: [],
     moveSelectionToSection: vi.fn(),
+    mergeableUpSections: [],
+    mergeableDownSections: [],
+    mergeSectionUp: vi.fn(),
+    mergeSectionDown: vi.fn(),
   };
 
   it("designate-main runs and disables when sequence is already main", () => {
@@ -113,6 +117,26 @@ describe("scopes/overview", () => {
     expect(cmd.disabled?.({ ...ctx, placedSelectionCount: 0 })).toMatch(/Select placed fragments/);
     cmd.run({ ...ctx, placedSelectionCount: 1 }, { uuid: "sec-1", name: "One" });
     expect(ctx.moveSelectionToSection).toHaveBeenCalledWith("sec-1");
+  });
+
+  it("merge-section-up runs with the chosen section and is gated on eligibility", () => {
+    const cmd = find(overviewCommands, "overview:merge-section-up");
+    expect(cmd.disabled?.({ ...ctx, mergeableUpSections: [] })).toMatch(/No section to merge up/);
+    const eligible = { ...ctx, mergeableUpSections: [{ uuid: "sec-2", name: "Two" }] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, { uuid: "sec-2", name: "Two" });
+    expect(ctx.mergeSectionUp).toHaveBeenCalledWith("sec-2");
+  });
+
+  it("merge-section-down runs with the chosen section and is gated on eligibility", () => {
+    const cmd = find(overviewCommands, "overview:merge-section-down");
+    expect(cmd.disabled?.({ ...ctx, mergeableDownSections: [] })).toMatch(
+      /No section to merge down/,
+    );
+    const eligible = { ...ctx, mergeableDownSections: [{ uuid: "sec-1", name: "One" }] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, { uuid: "sec-1", name: "One" });
+    expect(ctx.mergeSectionDown).toHaveBeenCalledWith("sec-1");
   });
 });
 

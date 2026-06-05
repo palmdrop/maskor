@@ -17,6 +17,7 @@ vi.mock("@api/generated/sequences/sequences", () => ({
   useGroupFragments: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useMoveFragments: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useSplitSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useMergeSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useCreateSection: vi.fn(() => ({ mutate: createSectionMutate, isPending: false })),
   useDeleteSection: vi.fn(() => ({ mutate: deleteSectionMutate, isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],

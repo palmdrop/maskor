@@ -7,6 +7,7 @@ import {
   useGroupFragments,
   useMoveFragments,
   useSplitSection,
+  useMergeSection,
   type ListSequencesResponse,
 } from "@api/generated/sequences/sequences";
 import {
@@ -17,6 +18,7 @@ import {
   optimisticGroup,
   optimisticMoveMany,
   optimisticSplit,
+  optimisticMergeWithNext,
 } from "./optimisticUpdates";
 
 export const useSequenceMutations = (listQueryKey: readonly unknown[]) => {
@@ -225,6 +227,35 @@ export const useSequenceMutations = (listQueryKey: readonly unknown[]) => {
     },
   });
 
+  const mergeSection = useMergeSection({
+    mutation: {
+      onMutate: async ({ sequenceId, sectionId }) => {
+        await queryClient.cancelQueries({ queryKey: listQueryKey });
+        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
+        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
+          if (!previous || previous.status !== 200) return previous;
+          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
+          if (!currentSequence) return previous;
+          const updated = optimisticMergeWithNext(currentSequence, sectionId);
+          return {
+            ...previous,
+            data: {
+              ...previous.data,
+              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
+            },
+          };
+        });
+        return { snapshot };
+      },
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
+      },
+      onError: (_error, _variables, context) => {
+        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
+      },
+    },
+  });
+
   return {
     placeFragment,
     moveFragment,
@@ -233,5 +264,6 @@ export const useSequenceMutations = (listQueryKey: readonly unknown[]) => {
     groupFragments,
     moveFragments,
     splitSection,
+    mergeSection,
   };
 };

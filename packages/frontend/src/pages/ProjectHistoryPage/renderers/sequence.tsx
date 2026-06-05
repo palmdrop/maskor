@@ -30,6 +30,8 @@ export const renderSequenceEntryText = (entry: LogEntry): string => {
       return `${entry.payload.fragmentCount} fragment${entry.payload.fragmentCount === 1 ? "" : "s"} moved into section "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
     case "sequence:section-split":
       return `Section split into "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
+    case "sequence:sections-merged":
+      return `Section "${entry.payload.sectionName}" merged with the next section in sequence "${sequenceName(entry)}"`;
     default:
       return `Sequence action on "${sequenceName(entry)}"`;
   }

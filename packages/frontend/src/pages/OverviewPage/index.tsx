@@ -408,6 +408,46 @@ export const OverviewPage = () => {
     [sectionsData],
   );
 
+  // Merge dissolves a section boundary by fusing a section with the one below it
+  // (the backend op). "Merge up" applies it to the previous section; "down" to
+  // this one. A section can merge up if it has a predecessor, down if a successor.
+  const mergeableUpSections = useMemo(
+    () => sectionsData.slice(1).map((section) => ({ uuid: section.uuid, name: section.name })),
+    [sectionsData],
+  );
+  const mergeableDownSections = useMemo(
+    () => sectionsData.slice(0, -1).map((section) => ({ uuid: section.uuid, name: section.name })),
+    [sectionsData],
+  );
+
+  const mergeSectionUp = useCallback(
+    (sectionUuid: string) => {
+      if (!sequence) return;
+      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
+      if (index <= 0) return;
+      sequenceMutations.mergeSection.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        sectionId: sectionsData[index - 1]!.uuid,
+      });
+    },
+    [sequence, sectionsData, projectId, sequenceMutations],
+  );
+
+  const mergeSectionDown = useCallback(
+    (sectionUuid: string) => {
+      if (!sequence) return;
+      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
+      if (index === -1 || index >= sectionsData.length - 1) return;
+      sequenceMutations.mergeSection.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        sectionId: sectionUuid,
+      });
+    },
+    [sequence, sectionsData, projectId, sequenceMutations],
+  );
+
   useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
     designateMain: () => {
@@ -446,6 +486,10 @@ export const OverviewPage = () => {
     splitAfter,
     sectionsForMove,
     moveSelectionToSection,
+    mergeableUpSections,
+    mergeableDownSections,
+    mergeSectionUp,
+    mergeSectionDown,
   });
 
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
@@ -491,6 +535,8 @@ export const OverviewPage = () => {
               handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
               handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
               onDeleteSection={() => commands.run("overview:delete-section")}
+              onMergeUp={(section) => commands.run("overview:merge-section-up", section)}
+              onMergeDown={(section) => commands.run("overview:merge-section-down", section)}
               hasSequence={!!sequence}
               createSectionPending={sectionManager.createSection.isPending}
               onAddSection={() => commands.run("overview:add-section")}

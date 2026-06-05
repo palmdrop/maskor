@@ -144,8 +144,11 @@ const ListDropZone = ({
   );
 };
 
+type SectionRef = { uuid: string; name: string };
+
 interface SectionGroupProps {
   section: SectionData;
+  sectionIndex: number;
   totalSections: number;
   colorByAspectKey: Map<string, string>;
   fragmentByUuid: Map<string, FragmentSummary>;
@@ -166,10 +169,13 @@ interface SectionGroupProps {
     originalName: string,
   ) => void;
   onDeleteSection: () => void;
+  onMergeUp: (section: SectionRef) => void;
+  onMergeDown: (section: SectionRef) => void;
 }
 
 const SectionGroup = ({
   section,
+  sectionIndex,
   totalSections,
   colorByAspectKey,
   fragmentByUuid,
@@ -186,6 +192,8 @@ const SectionGroup = ({
   handleSectionRenameCommit,
   handleSectionRenameKeyDown,
   onDeleteSection,
+  onMergeUp,
+  onMergeDown,
 }: SectionGroupProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: toSectionDragId(section.uuid),
@@ -280,31 +288,81 @@ const SectionGroup = ({
           <span className="text-xs text-muted-foreground tabular-nums">
             ({section.fragmentUuids.length})
           </span>
-          {totalSections > 1 && (
-            <button
-              type="button"
-              onClick={() => setConfirmingDeleteSectionId(section.uuid)}
-              className="ml-auto p-0.5 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-              aria-label={`Delete section "${section.name || "Untitled section"}"`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          <div className="ml-auto flex items-center">
+            {sectionIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => onMergeUp({ uuid: section.uuid, name: section.name })}
+                className="p-0.5 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                aria-label={`Merge section "${section.name || "Untitled section"}" into the previous section`}
+                title="Merge into previous section"
               >
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4h6v2" />
-              </svg>
-            </button>
-          )}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 19V5" />
+                  <path d="M5 12l7-7 7 7" />
+                </svg>
+              </button>
+            )}
+            {sectionIndex < totalSections - 1 && (
+              <button
+                type="button"
+                onClick={() => onMergeDown({ uuid: section.uuid, name: section.name })}
+                className="p-0.5 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                aria-label={`Merge section "${section.name || "Untitled section"}" into the next section`}
+                title="Merge into next section"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 5v14" />
+                  <path d="M5 12l7 7 7-7" />
+                </svg>
+              </button>
+            )}
+            {totalSections > 1 && (
+              <button
+                type="button"
+                onClick={() => setConfirmingDeleteSectionId(section.uuid)}
+                className="p-0.5 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                aria-label={`Delete section "${section.name || "Untitled section"}"`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4h6v2" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       )}
       <ListDropZone
@@ -355,6 +413,8 @@ interface ReorderListProps {
     originalName: string,
   ) => void;
   onDeleteSection: () => void;
+  onMergeUp: (section: SectionRef) => void;
+  onMergeDown: (section: SectionRef) => void;
   hasSequence: boolean;
   createSectionPending: boolean;
   onAddSection: () => void;
@@ -382,6 +442,8 @@ export const ReorderList = ({
   handleSectionRenameCommit,
   handleSectionRenameKeyDown,
   onDeleteSection,
+  onMergeUp,
+  onMergeDown,
   hasSequence,
   createSectionPending,
   onAddSection,
@@ -392,10 +454,11 @@ export const ReorderList = ({
       strategy={verticalListSortingStrategy}
     >
       <div className="flex flex-col gap-3">
-        {sectionsData.map((section) => (
+        {sectionsData.map((section, sectionIndex) => (
           <SectionGroup
             key={section.uuid}
             section={section}
+            sectionIndex={sectionIndex}
             totalSections={sectionsData.length}
             colorByAspectKey={colorByAspectKey}
             fragmentByUuid={fragmentByUuid}
@@ -412,6 +475,8 @@ export const ReorderList = ({
             handleSectionRenameCommit={handleSectionRenameCommit}
             handleSectionRenameKeyDown={handleSectionRenameKeyDown}
             onDeleteSection={onDeleteSection}
+            onMergeUp={onMergeUp}
+            onMergeDown={onMergeDown}
           />
         ))}
       </div>

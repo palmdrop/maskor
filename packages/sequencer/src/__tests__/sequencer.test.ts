@@ -14,6 +14,7 @@ import {
   groupFragmentsIntoSection,
   moveFragmentsToSection,
   splitSectionAtFragment,
+  mergeSectionWithNext,
 } from "../index";
 
 const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
@@ -674,11 +675,26 @@ describe("groupFragmentsIntoSection", () => {
     validateSequenceInvariants(result);
   });
 
-  it("inserts the new section where the selection begins", () => {
+  it("places the new section before the home section when the selection is in its top half", () => {
     const sequence = makeTwoSectionSequence();
-    // Earliest selected (FB) lives in section 0, so the new section lands at index 0.
-    const result = groupFragmentsIntoSection(sequence, [FB, FD], "Grouped");
-    expect(result.sections[0]!.name).toBe("Grouped");
+    // section 0 = [FA, FB]; selecting FA (top half) → new section before section 0.
+    const result = groupFragmentsIntoSection(sequence, [FA], "Grouped");
+    const groupedIndex = result.sections.findIndex((s) => s.name === "Grouped");
+    const homeIndex = result.sections.findIndex((s) =>
+      s.fragments.some((f) => f.fragmentUuid === FB),
+    );
+    expect(groupedIndex).toBeLessThan(homeIndex);
+  });
+
+  it("places the new section after the home section when the selection is in its bottom half", () => {
+    const sequence = makeTwoSectionSequence();
+    // section 0 = [FA, FB]; selecting FB (bottom half) → new section after section 0.
+    const result = groupFragmentsIntoSection(sequence, [FB], "Grouped");
+    const groupedIndex = result.sections.findIndex((s) => s.name === "Grouped");
+    const homeIndex = result.sections.findIndex((s) =>
+      s.fragments.some((f) => f.fragmentUuid === FA),
+    );
+    expect(groupedIndex).toBeGreaterThan(homeIndex);
   });
 
   it("throws on an empty selection", () => {
@@ -786,5 +802,61 @@ describe("splitSectionAtFragment", () => {
   it("throws when the fragment is not placed", () => {
     const unplaced = "eeeeeeee-0000-0000-0000-000000000001";
     expect(() => splitSectionAtFragment(makeOneSectionSequence(), unplaced, "x")).toThrow();
+  });
+});
+
+describe("mergeSectionWithNext", () => {
+  function makeThreeSectionSequence(): Sequence {
+    let sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] };
+    const sec3 = { uuid: "33333333-0000-0000-0000-000000000001", name: "Act 3", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2, sec3] };
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[1]!.uuid, 0);
+    sequence = placeFragment(sequence, FD, sequence.sections[2]!.uuid, 0);
+    return sequence;
+  }
+
+  it("appends the next section's fragments and removes its boundary", () => {
+    const sequence = makeThreeSectionSequence();
+    const result = mergeSectionWithNext(sequence, sequence.sections[0]!.uuid);
+    expect(result.sections).toHaveLength(2);
+    const survivor = result.sections[0]!;
+    expect(survivor.uuid).toBe(sequence.sections[0]!.uuid);
+    expect(survivor.name).toBe("Main");
+    expect(
+      survivor.fragments.sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid),
+    ).toEqual([FA, FB, FC]);
+    validateSequenceInvariants(result);
+  });
+
+  it("is the inverse of a split", () => {
+    let sequence = makeSequence();
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[0]!.uuid, 2);
+    const originalUuid = sequence.sections[0]!.uuid;
+
+    const split = splitSectionAtFragment(sequence, FB, "Part Two");
+    expect(split.sections).toHaveLength(2);
+
+    const merged = mergeSectionWithNext(split, originalUuid);
+    expect(merged.sections).toHaveLength(1);
+    expect(
+      merged.sections[0]!.fragments.sort((a, b) => a.position - b.position).map(
+        (f) => f.fragmentUuid,
+      ),
+    ).toEqual([FA, FB, FC]);
+  });
+
+  it("throws when the section is the last one", () => {
+    const sequence = makeThreeSectionSequence();
+    const lastUuid = sequence.sections[2]!.uuid;
+    expect(() => mergeSectionWithNext(sequence, lastUuid)).toThrow();
+  });
+
+  it("throws when the section does not exist", () => {
+    expect(() => mergeSectionWithNext(makeThreeSectionSequence(), "nope")).toThrow();
   });
 });

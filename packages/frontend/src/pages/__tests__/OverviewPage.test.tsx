@@ -90,6 +90,7 @@ const moveSectionMutate = vi.fn();
 const groupMutate = vi.fn();
 const moveManyMutate = vi.fn();
 const splitMutate = vi.fn();
+const mergeMutate = vi.fn();
 const updateProjectMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
@@ -102,6 +103,7 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useGroupFragments: vi.fn(() => ({ mutate: groupMutate })),
   useMoveFragments: vi.fn(() => ({ mutate: moveManyMutate })),
   useSplitSection: vi.fn(() => ({ mutate: splitMutate })),
+  useMergeSection: vi.fn(() => ({ mutate: mergeMutate })),
   useDesignateSequenceMain: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useRenameSection: vi.fn(() => ({ mutate: vi.fn() })),
@@ -647,6 +649,59 @@ describe("OverviewPage — multi-select section operations", () => {
     selectRow(FRAG_B);
     expect(screen.getByRole("button", { name: "Split after" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Split before" })).not.toBeDisabled();
+  });
+});
+
+describe("OverviewPage — merge sections", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("merge-up on the second section merges the first into it (merges the previous section's boundary)", () => {
+    mockMultiSectionSequence([
+      { uuid: "sec-1", fragmentUuids: [FRAG_A] },
+      { uuid: "sec-2", fragmentUuids: [FRAG_B] },
+    ]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    const upButtons = list.querySelectorAll('[aria-label*="into the previous section"]');
+    // Only the second section can merge up.
+    expect(upButtons).toHaveLength(1);
+    fireEvent.click(upButtons[0]!);
+
+    // Merge up on sec-2 merges sec-1 (the upper section) with its next.
+    expect(mergeMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      sectionId: "sec-1",
+    });
+  });
+
+  it("merge-down on the first section merges it with the next", () => {
+    mockMultiSectionSequence([
+      { uuid: "sec-1", fragmentUuids: [FRAG_A] },
+      { uuid: "sec-2", fragmentUuids: [FRAG_B] },
+    ]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    const downButtons = list.querySelectorAll('[aria-label*="into the next section"]');
+    // Only the first section can merge down.
+    expect(downButtons).toHaveLength(1);
+    fireEvent.click(downButtons[0]!);
+
+    expect(mergeMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      sectionId: "sec-1",
+    });
   });
 });
 

@@ -28,6 +28,10 @@ export interface OverviewContext {
   splitAfter: () => void;
   sectionsForMove: ReadonlyArray<{ uuid: string; name: string }>;
   moveSelectionToSection: (sectionUuid: string) => void;
+  mergeableUpSections: ReadonlyArray<{ uuid: string; name: string }>;
+  mergeableDownSections: ReadonlyArray<{ uuid: string; name: string }>;
+  mergeSectionUp: (sectionUuid: string) => void;
+  mergeSectionDown: (sectionUuid: string) => void;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {
@@ -140,6 +144,35 @@ const moveSelectionToSection = defineScopeCommand(overviewScope, {
   run: (ctx, target) => ctx.moveSelectionToSection(target.uuid),
 });
 
+const mergeSectionUp = defineScopeCommand(overviewScope, {
+  id: "overview:merge-section-up",
+  label: "Merge section into previous…",
+  category: "other",
+  disabled: (ctx) => (ctx.mergeableUpSections.length > 0 ? undefined : "No section to merge up"),
+  arg: {
+    items: (ctx) => ctx.mergeableUpSections,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => item.name || "Untitled section",
+    placeholder: "Merge section into previous…",
+  },
+  run: (ctx, target) => ctx.mergeSectionUp(target.uuid),
+});
+
+const mergeSectionDown = defineScopeCommand(overviewScope, {
+  id: "overview:merge-section-down",
+  label: "Merge section into next…",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.mergeableDownSections.length > 0 ? undefined : "No section to merge down",
+  arg: {
+    items: (ctx) => ctx.mergeableDownSections,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => item.name || "Untitled section",
+    placeholder: "Merge section into next…",
+  },
+  run: (ctx, target) => ctx.mergeSectionDown(target.uuid),
+});
+
 export const overviewCommands = [
   designateMain,
   addSection,
@@ -152,4 +185,6 @@ export const overviewCommands = [
   splitBefore,
   splitAfter,
   moveSelectionToSection,
+  mergeSectionUp,
+  mergeSectionDown,
 ] as const;

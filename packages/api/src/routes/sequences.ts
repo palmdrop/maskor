@@ -39,6 +39,7 @@ import {
   groupFragmentsCommand,
   moveFragmentsCommand,
   splitSectionCommand,
+  mergeSectionCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { StorageService, ProjectContext } from "@maskor/storage";
@@ -541,6 +542,33 @@ const splitSectionRoute = createRoute({
   },
 });
 
+const mergeSectionRoute = createRoute({
+  operationId: "mergeSection",
+  method: "post",
+  path: "/{sequenceId}/sections/{sectionId}/merge-next",
+  tags: ["Sequences"],
+  summary: "Merge a section into the one immediately below it (drops the boundary)",
+  request: { params: SectionUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or section not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Section has no following section to merge with",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 // --- handlers ---
 
 sequencesRouter.openapi(listSequencesRoute, async (ctx) => {
@@ -965,6 +993,32 @@ sequencesRouter.openapi(splitSectionRoute, async (ctx) => {
       fragmentUuid,
       sectionName: name,
       sequenceName: indexedSequence.name,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(mergeSectionRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId, sectionId } = ctx.req.valid("param");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
+    const section = indexedSequence.sections.find((s) => s.uuid === sectionId);
+    await executeCommand(mergeSectionCommand, commandContext, {
+      sequenceId,
+      sectionId,
+      sequenceName: indexedSequence.name,
+      sectionName: section?.name ?? sectionId,
     });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);

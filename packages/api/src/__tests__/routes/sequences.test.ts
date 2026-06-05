@@ -1472,4 +1472,39 @@ describe("Phase 2 section operations", () => {
       2,
     );
   });
+
+  it("merges a section with the next one (inverse of split) via merge-next", async () => {
+    const fa = await createFragment("p2-merge-a", "A");
+    const fb = await createFragment("p2-merge-b", "B");
+    const fc = await createFragment("p2-merge-c", "C");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const sequence = await createSequenceWithSection("Merge Test");
+    const sectionUuid = sequence.sections[0]!.uuid;
+    await place(sequence.uuid, sectionUuid, fa.uuid, 0);
+    await place(sequence.uuid, sectionUuid, fb.uuid, 1);
+    await place(sequence.uuid, sectionUuid, fc.uuid, 2);
+
+    // Split before B → [A] [B, C], then merge the first section with the next.
+    await testContext.app.request(`${baseUrl()}/${sequence.uuid}/split-section`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: fb.uuid, name: "Tail" }),
+    });
+
+    const response = await testContext.app.request(
+      `${baseUrl()}/${sequence.uuid}/sections/${sectionUuid}/merge-next`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === sequence.uuid)!;
+
+    // Back to a single section with the original order.
+    const survivor = updated.sections.find((s) => s.uuid === sectionUuid)!;
+    expect(updated.sections.filter((s) => s.fragments.length > 0)).toHaveLength(1);
+    expect(fragmentOrder(survivor)).toEqual([fa.uuid, fb.uuid, fc.uuid]);
+  });
 });

@@ -202,6 +202,27 @@ export function optimisticSplit(
   return { ...sequence, sections };
 }
 
+// Optimistic mirror of `mergeSectionWithNext` from @maskor/sequencer.
+export function optimisticMergeWithNext(sequence: Sequence, sectionUuid: string): Sequence {
+  const index = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
+  if (index === -1 || index === sequence.sections.length - 1) return sequence;
+
+  const upper = sequence.sections[index]!;
+  const lower = sequence.sections[index + 1]!;
+  const upperSorted = [...upper.fragments].sort((a, b) => a.position - b.position);
+  const lowerSorted = [...lower.fragments].sort((a, b) => a.position - b.position);
+  const merged = [...upperSorted, ...lowerSorted].map((fragment, position) => ({
+    ...fragment,
+    position,
+  }));
+
+  const sections = sequence.sections
+    .filter((_, sectionIndex) => sectionIndex !== index + 1)
+    .map((section) => (section.uuid === sectionUuid ? { ...section, fragments: merged } : section));
+
+  return { ...sequence, sections };
+}
+
 export function optimisticUnplace(sequence: Sequence, fragmentUuid: string): Sequence {
   return {
     ...sequence,
