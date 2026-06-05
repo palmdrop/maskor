@@ -111,11 +111,20 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useUpdateSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useCloneSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useInsertSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
+  getGetSequenceContentsQueryKey: (projectId: string, sequenceId: string) => [
+    `/projects/${projectId}/sequences/${sequenceId}/contents`,
+  ],
 }));
 
 vi.mock("../../api/generated/fragments/fragments", () => ({
   useListFragmentSummaries: vi.fn(),
+  useUpdateFragment: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  getListFragmentSummariesQueryKey: (projectId: string) => [
+    `/projects/${projectId}/fragments/summaries`,
+  ],
 }));
 
 vi.mock("../../api/generated/aspects/aspects", () => ({

@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { PencilIcon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
 import type { OverviewDetailLevel } from "../../../router";
 
@@ -34,11 +36,15 @@ interface FragmentProseProps {
   excerpt?: string;
   isSelected?: boolean;
   onSelect?: (fragmentUuid: string) => void;
+  // When set, the rendered body becomes select-to-edit: selecting text (or the
+  // hover pencil) reveals an inline editor seeded with this fragment's markdown.
+  // Saving routes the new content back to this fragmentUuid via the existing
+  // fragment update path (ADR 0011 — the spine is a working surface, not export).
+  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
 }
 
 // Shared single-fragment renderer used by both the prose spine and the right
 // detail panel. Exposes a stable anchor id (`fragment-<uuid>`) for navigation.
-// The edit affordance is deferred to Phase 4.
 export const FragmentProse = ({
   fragmentUuid,
   title,
@@ -47,39 +53,161 @@ export const FragmentProse = ({
   excerpt,
   isSelected,
   onSelect,
+  onSaveContent,
 }: FragmentProseProps) => {
+  const editable = !!onSaveContent;
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+  const [isSaving, setIsSaving] = useState(false);
+  // Surfaces the edit affordance once the reader selects text inside this chunk.
+  const [hasSelection, setHasSelection] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Re-seed the draft if the underlying content changes while not editing
+  // (e.g. an optimistic reorder reflow or a save elsewhere).
+  useEffect(() => {
+    if (!isEditing) setDraft(content);
+  }, [content, isEditing]);
+
+  useEffect(() => {
+    if (isEditing) textareaRef.current?.focus();
+  }, [isEditing]);
+
   const selectedClass = isSelected
     ? "border-primary bg-primary/5"
     : "border-transparent hover:border-border";
 
+  const beginEditing = () => {
+    setDraft(content);
+    setHasSelection(false);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setDraft(content);
+    setIsEditing(false);
+  };
+
+  const saveEditing = async () => {
+    if (!onSaveContent) return;
+    setIsSaving(true);
+    try {
+      await onSaveContent(fragmentUuid, draft);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Reflect whether the current document selection lies inside this chunk, so a
+  // reader who highlights a passage is offered the edit affordance for *this*
+  // fragment (the selection maps back to this fragmentUuid).
+  const handleSelectionChange = () => {
+    if (!editable || isEditing) return;
+    const selection = window.getSelection?.();
+    const collapsed = !selection || selection.isCollapsed || selection.toString().length === 0;
+    const within =
+      !collapsed &&
+      !!selection &&
+      selection.anchorNode != null &&
+      !!containerRef.current?.contains(selection.anchorNode);
+    setHasSelection(within);
+  };
+
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
+      ref={containerRef}
       id={fragmentAnchorId(fragmentUuid)}
       data-fragment-uuid={fragmentUuid}
       data-detail-level={detailLevel}
       onClick={(event) => {
         event.stopPropagation();
-        onSelect?.(fragmentUuid);
+        if (!isEditing) onSelect?.(fragmentUuid);
       }}
-      className={`scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass}`}
+      onMouseUp={handleSelectionChange}
+      className={`group/prose relative scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass}`}
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-
-      {detailLevel === "excerpt" && (
-        <p className="mt-1 text-sm leading-snug text-muted-foreground">
-          {deriveExcerpt(content) || excerpt || ""}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
         </p>
-      )}
+        {editable && !isEditing && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              beginEditing();
+            }}
+            aria-label={`Edit "${title}"`}
+            title="Edit this fragment"
+            className={`shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus:opacity-100 ${
+              hasSelection ? "opacity-100" : "opacity-0 group-hover/prose:opacity-100"
+            }`}
+          >
+            <PencilIcon size={12} />
+          </button>
+        )}
+      </div>
 
-      {detailLevel === "prose" && (
-        <div className="mt-1">
-          <ReadonlyProse
-            content={content}
-            fontSize={SPINE_FONT_SIZE}
-            maxParagraphWidth={SPINE_MAX_PARAGRAPH_WIDTH}
+      {isEditing ? (
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+        <div className="mt-1 flex flex-col gap-2" onClick={(event) => event.stopPropagation()}>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancelEditing();
+              } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                void saveEditing();
+              }
+            }}
+            rows={Math.min(20, Math.max(4, draft.split("\n").length + 1))}
+            className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void saveEditing()}
+              disabled={isSaving}
+              className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={cancelEditing}
+              disabled={isSaving}
+              className="rounded bg-muted px-2 py-0.5 text-xs hover:bg-muted/80 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <span className="text-xs text-muted-foreground">⌘↵ to save, Esc to cancel</span>
+          </div>
         </div>
+      ) : (
+        <>
+          {detailLevel === "excerpt" && (
+            <p className="mt-1 text-sm leading-snug text-muted-foreground">
+              {deriveExcerpt(content) || excerpt || ""}
+            </p>
+          )}
+
+          {detailLevel === "prose" && (
+            <div className="mt-1">
+              <ReadonlyProse
+                content={content}
+                fontSize={SPINE_FONT_SIZE}
+                maxParagraphWidth={SPINE_MAX_PARAGRAPH_WIDTH}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import type { Cycle, FragmentSummary, Sequence, Violation } from "@api/generated/maskorAPI.schemas";
+import { FragmentProse } from "./FragmentProse";
 
 type MembershipEntry = {
   sequenceName: string;
@@ -41,6 +42,10 @@ type Props = {
   violations: Violation[];
   cycles: Cycle[];
   fragmentByUuid: Map<string, FragmentSummary>;
+  // Full markdown body of the selected fragment (from the bulk-content endpoint),
+  // enabling in-context editing of the same fragment shown in the spine.
+  selectedContent?: string;
+  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
 };
 
 export const RightSidebar = ({
@@ -49,6 +54,8 @@ export const RightSidebar = ({
   violations,
   cycles,
   fragmentByUuid,
+  selectedContent,
+  onSaveContent,
 }: Props) => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const navigate = useNavigate();
@@ -72,6 +79,8 @@ export const RightSidebar = ({
           violations={violations}
           fragmentByUuid={fragmentByUuid}
           projectId={projectId}
+          selectedContent={selectedContent}
+          onSaveContent={onSaveContent}
           onOpen={() =>
             void navigate({
               to: "/projects/$projectId/fragments/$fragmentId",
@@ -98,6 +107,8 @@ type FragmentDetailProps = {
   violations: Violation[];
   fragmentByUuid: Map<string, FragmentSummary>;
   projectId: string;
+  selectedContent?: string;
+  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
   onOpen: () => void;
 };
 
@@ -106,6 +117,8 @@ const FragmentDetail = ({
   sequences,
   violations,
   fragmentByUuid,
+  selectedContent,
+  onSaveContent,
   onOpen,
 }: FragmentDetailProps) => {
   const membership = buildMembership(fragment.uuid, sequences);
@@ -116,12 +129,24 @@ const FragmentDetail = ({
 
   return (
     <div className="flex flex-col gap-4 p-3">
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-foreground">{fragment.key}</span>
-        {fragment.excerpt && (
-          <span className="text-xs text-muted-foreground leading-snug">{fragment.excerpt}</span>
-        )}
-      </div>
+      {onSaveContent && selectedContent !== undefined ? (
+        // In-context editing of the same fragment shown in the spine.
+        <FragmentProse
+          fragmentUuid={fragment.uuid}
+          title={fragment.key}
+          content={selectedContent}
+          detailLevel="prose"
+          excerpt={fragment.excerpt ?? undefined}
+          onSaveContent={onSaveContent}
+        />
+      ) : (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold text-foreground">{fragment.key}</span>
+          {fragment.excerpt && (
+            <span className="text-xs text-muted-foreground leading-snug">{fragment.excerpt}</span>
+          )}
+        </div>
+      )}
 
       <button
         type="button"

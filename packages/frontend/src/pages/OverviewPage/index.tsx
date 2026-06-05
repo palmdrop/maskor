@@ -9,8 +9,13 @@ import {
   useDesignateSequenceMain,
   useGetSequenceContents,
   getListSequencesQueryKey,
+  getGetSequenceContentsQueryKey,
 } from "@api/generated/sequences/sequences";
-import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
+import {
+  useListFragmentSummaries,
+  useUpdateFragment,
+  getListFragmentSummariesQueryKey,
+} from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
 import {
   useGetProject,
@@ -256,6 +261,27 @@ export const OverviewPage = () => {
       },
     },
   });
+
+  // In-context editing: save a fragment's edited markdown body via the shared
+  // fragment update path, then refresh the spine content and summaries so the
+  // edited chunk (and its excerpt) reflow. The selection→fragment mapping is the
+  // fragmentUuid the editor was opened for (each chunk owns its own editor).
+  const { mutateAsync: updateFragmentContent } = useUpdateFragment();
+
+  const handleSaveFragmentContent = useCallback(
+    async (fragmentUuid: string, content: string) => {
+      await updateFragmentContent({ projectId, fragmentId: fragmentUuid, data: { content } });
+      if (sequence) {
+        void queryClient.invalidateQueries({
+          queryKey: getGetSequenceContentsQueryKey(projectId, sequence.uuid),
+        });
+      }
+      void queryClient.invalidateQueries({
+        queryKey: getListFragmentSummariesQueryKey(projectId),
+      });
+    },
+    [updateFragmentContent, projectId, sequence, queryClient],
+  );
 
   const sectionManager = useSectionManager({ projectId, sequence, listQueryKey });
 
@@ -654,6 +680,7 @@ export const OverviewPage = () => {
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
                     onSelectFragment={handleSelectFragment}
+                    onSaveContent={handleSaveFragmentContent}
                   />
                 </div>
               </div>
@@ -675,6 +702,10 @@ export const OverviewPage = () => {
         violations={bundle?.violations ?? []}
         cycles={bundle?.cycles ?? []}
         fragmentByUuid={fragmentByUuid}
+        selectedContent={
+          primarySelectedUuid ? contentByFragmentUuid.get(primarySelectedUuid) : undefined
+        }
+        onSaveContent={handleSaveFragmentContent}
       />
     </div>
   );
