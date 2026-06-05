@@ -1,7 +1,7 @@
 # Overview redesign — vertical read/reorder surface with arc overlay
 
 **Date**: 05-06-2026
-**Status**: In Progress
+**Status**: Done
 **Specs**: `specifications/sequencer.md`, `specifications/aspect-arc-model.md`, `specifications/_glossary.md`
 
 ---
@@ -49,16 +49,18 @@ Decisions are recorded in `references/adr/0010-overview-vertical-read-reorder-su
 
 ### Phase 3 — Clone / merge sequences
 
-- [ ] **Clone a sequence** and **insert one sequence into another** (at a position): backend ops + schemas, `bun run codegen`
-- [ ] Frontend affordances in the sequence sidebar + `overviewScope`/global commands
-- [ ] Tests for clone/merge semantics (section + position integrity, no UUID collisions)
-- [ ] `bun run format` + `bun run verify`; update spec `Shipped`; `git commit`
+- [x] **Clone a sequence** and **insert one sequence into another** (at a position): backend ops + schemas, `bun run codegen`
+- [x] Frontend affordances in the sequence sidebar + `overviewScope`/global commands
+- [x] Tests for clone/merge semantics (section + position integrity, no UUID collisions)
+- [x] `bun run format` + `bun run verify`; update spec `Shipped`; `git commit`
+
+> Decisions: insert position = section index (source sections spliced into the target's section list); duplicate fragments already placed in the target are skipped (one-placement invariant preserved, emptied inserted sections kept); affordances exposed in both the sidebar and the command palette. Insert appends the source as a trailing section block of the open sequence (finer placement is a follow-up).
 
 ### Phase 4 — In-context fragment editing
 
-- [ ] **Select-to-edit on the shared per-fragment renderer.** Enable selecting text in a rendered fragment (spine or right panel) and entering a simple editor for that fragment; save via the existing fragment update path. Each chunk maps the edit back to its `fragmentUuid`.
-- [ ] Tests for edit-from-context save round-trip and selection→fragment mapping
-- [ ] `bun run format` + `bun run verify`; update spec `Shipped` (and `vision.md`/editor specs if relevant); `git commit`
+- [x] **Select-to-edit on the shared per-fragment renderer.** Enable selecting text in a rendered fragment (spine or right panel) and entering a simple editor for that fragment; save via the existing fragment update path. Each chunk maps the edit back to its `fragmentUuid`.
+- [x] Tests for edit-from-context save round-trip and selection→fragment mapping
+- [x] `bun run format` + `bun run verify`; update spec `Shipped` (and `vision.md`/editor specs if relevant); `git commit`
 
 ---
 
