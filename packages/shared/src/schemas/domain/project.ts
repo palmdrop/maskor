@@ -13,6 +13,7 @@ export const ProjectSchema = z.object({
     rawMarkdownMode: z.boolean(),
     fontSize: z.number().int().min(12).max(24),
     maxParagraphWidth: z.number().int().min(40).max(120),
+    vimClipboardSync: z.boolean(),
   }),
   suggestion: z.object({
     readinessThreshold: z.number().min(0).max(1),
@@ -49,6 +50,7 @@ export const ProjectUpdateSchema = z.object({
       rawMarkdownMode: z.boolean().optional(),
       fontSize: z.number().int().min(12).max(24).optional(),
       maxParagraphWidth: z.number().int().min(40).max(120).optional(),
+      vimClipboardSync: z.boolean().optional(),
     })
     .optional(),
   suggestion: z

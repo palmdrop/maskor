@@ -34,6 +34,7 @@ vi.mock("@hooks/useProjectEditorConfig", () => ({
     rawMarkdownMode: false,
     fontSize: 16,
     maxParagraphWidth: 72,
+    vimClipboardSync: true,
   }),
 }));
 
@@ -63,7 +64,13 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
   userUUID: "local",
   name: "Test Project",
   vaultPath: "/vault",
-  editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
+  editor: {
+    vimMode: false,
+    rawMarkdownMode: false,
+    fontSize: 16,
+    maxParagraphWidth: 72,
+    vimClipboardSync: true,
+  },
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" },

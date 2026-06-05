@@ -27,14 +27,14 @@ function cursorMin(...args: any[]): any {
  * yank with system register copying enabled
  */
 
-export function yankGenerator(registerController: any, unnamedplus: boolean): any {
+export function yankGenerator(registerController: any, getUnnamedplus: () => boolean): any {
   function yank(cm: any, args: any, ranges: any, oldAnchor: any): any {
     const vim = cm.state.vim;
     const text = cm.getSelection();
     const endPos = vim.visualMode
       ? cursorMin(vim.sel.anchor, vim.sel.head, ranges[0].head, ranges[0].anchor)
       : oldAnchor;
-    const useUnamedplus = !args.registerName && unnamedplus;
+    const useUnamedplus = !args.registerName && getUnnamedplus();
     if (["+", "*"].indexOf(args.registerName) !== -1 || useUnamedplus) {
       navigator.clipboard.writeText(text).catch((err) => {
         // This can happen if the user denies clipboard permissions:

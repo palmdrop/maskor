@@ -96,6 +96,7 @@ vi.mock("@hooks/useProjectEditorConfig", () => ({
     rawMarkdownMode: false,
     fontSize: 14,
     maxParagraphWidth: 80,
+    vimClipboardSync: true,
   }),
 }));
 

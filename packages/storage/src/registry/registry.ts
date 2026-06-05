@@ -64,7 +64,13 @@ const writeVaultManifest = async (
 };
 
 const PROJECT_CONFIG_DEFAULTS = {
-  editor: { vimMode: false, rawMarkdownMode: false, fontSize: 16, maxParagraphWidth: 72 },
+  editor: {
+    vimMode: false,
+    rawMarkdownMode: false,
+    fontSize: 16,
+    maxParagraphWidth: 72,
+    vimClipboardSync: true,
+  },
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" as const },

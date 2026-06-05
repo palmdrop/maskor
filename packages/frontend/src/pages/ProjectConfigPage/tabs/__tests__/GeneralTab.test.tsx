@@ -37,7 +37,13 @@ const makeProject = () => ({
   projectUUID: PROJECT_ID,
   name: "Test Project",
   suggestion: { readinessThreshold: 0.8 },
-  editor: { fontSize: 16, maxParagraphWidth: 80, vimMode: false, rawMarkdownMode: false },
+  editor: {
+    fontSize: 16,
+    maxParagraphWidth: 80,
+    vimMode: false,
+    rawMarkdownMode: false,
+    vimClipboardSync: true,
+  },
   advanced: { showFragmentStats: false },
 });
 

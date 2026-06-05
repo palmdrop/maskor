@@ -5,6 +5,7 @@ export type ProjectEditorConfig = {
   rawMarkdownMode: boolean;
   fontSize: number;
   maxParagraphWidth: number;
+  vimClipboardSync: boolean;
 };
 
 export const useProjectEditorConfig = (projectId: string): ProjectEditorConfig => {
@@ -15,5 +16,6 @@ export const useProjectEditorConfig = (projectId: string): ProjectEditorConfig =
     rawMarkdownMode: project?.editor?.rawMarkdownMode ?? false,
     fontSize: project?.editor?.fontSize ?? 16,
     maxParagraphWidth: project?.editor?.maxParagraphWidth ?? 72,
+    vimClipboardSync: project?.editor?.vimClipboardSync ?? true,
   };
 };

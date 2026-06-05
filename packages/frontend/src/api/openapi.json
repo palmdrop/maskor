@@ -46,13 +46,17 @@
                 "type": "integer",
                 "minimum": 40,
                 "maximum": 120
+              },
+              "vimClipboardSync": {
+                "type": "boolean"
               }
             },
             "required": [
               "vimMode",
               "rawMarkdownMode",
               "fontSize",
-              "maxParagraphWidth"
+              "maxParagraphWidth",
+              "vimClipboardSync"
             ]
           },
           "suggestion": {
@@ -228,6 +232,9 @@
                 "type": "integer",
                 "minimum": 40,
                 "maximum": 120
+              },
+              "vimClipboardSync": {
+                "type": "boolean"
               }
             }
           },

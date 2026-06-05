@@ -29,6 +29,7 @@ import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Switch } from "./ui/switch";
 import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -204,6 +205,18 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       setLocalMaxParagraphWidth(next);
       void persistMaxParagraphWidth(next);
     }, [editorConfig.maxParagraphWidth, persistMaxParagraphWidth]);
+
+    const handleToggleVimClipboardSync = useCallback(
+      async (checked: boolean) => {
+        await updateProject.mutateAsync({
+          projectId,
+          data: { editor: { vimClipboardSync: checked } },
+        });
+        invalidateProject();
+      },
+      [updateProject, projectId, invalidateProject],
+    );
+
     const cursor = usePersistedCursor(
       `maskor:cursor:${projectId}:${entityKind}:${entityUUID}:${editorMode}`,
     );
@@ -585,6 +598,15 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
                     onValueCommit={([value]) => void persistMaxParagraphWidth(value!)}
                   />
                 </div>
+                {editorConfig.vimMode && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Yank/delete to clipboard</Label>
+                    <Switch
+                      checked={editorConfig.vimClipboardSync}
+                      onCheckedChange={(checked) => void handleToggleVimClipboardSync(checked)}
+                    />
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
             <Button
@@ -642,6 +664,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               rawMarkdownMode={editorConfig.rawMarkdownMode}
               fontSize={localFontSize}
               maxParagraphWidth={localMaxParagraphWidth}
+              vimClipboardSync={editorConfig.vimClipboardSync}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
               cursor={cursor}

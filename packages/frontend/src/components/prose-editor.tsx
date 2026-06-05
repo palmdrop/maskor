@@ -31,6 +31,7 @@ import {
 import { blockRanges } from "@lib/margins/block-ranges";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
+import { patchDeleteClipboard } from "../lib/vim/delete";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
 import { useHandleCommandEvent } from "../lib/commands/useHandleCommandEvent";
 
@@ -120,13 +121,24 @@ type Props = {
   rawMarkdownMode: boolean;
   fontSize: number;
   maxParagraphWidth: number;
+  vimClipboardSync: boolean;
   onSave?: () => void;
   onChange?: () => void;
   cursor?: PersistedCursor;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
-  { content, vimMode, rawMarkdownMode, fontSize, maxParagraphWidth, onSave, onChange, cursor },
+  {
+    content,
+    vimMode,
+    rawMarkdownMode,
+    fontSize,
+    maxParagraphWidth,
+    vimClipboardSync,
+    onSave,
+    onChange,
+    cursor,
+  },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
@@ -150,6 +162,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   onChangeRef.current = onChange;
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
+  const vimClipboardSyncRef = useRef(vimClipboardSync);
+  vimClipboardSyncRef.current = vimClipboardSync;
   // Identity of the cursor target the rich editor has already restored, so
   // restore runs once and never fights the user's caret while editing.
   const restoredCursorRef = useRef<PersistedCursor | null>(null);
@@ -579,7 +593,10 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             Vim.defineEx("w", "", () => onSaveRef.current?.());
             // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37
             if (vimMode) {
-              Vim.defineOperator("yank", yankGenerator(Vim.getRegisterController(), true));
+              const registerController = Vim.getRegisterController();
+              const getClipboardSync = () => vimClipboardSyncRef.current;
+              Vim.defineOperator("yank", yankGenerator(registerController, getClipboardSync));
+              patchDeleteClipboard(registerController, getClipboardSync);
             }
             focusAndCenterCaret(view);
           }}
