@@ -120,3 +120,27 @@ Started: 2026-06-04
   - cmdk auto-highlights the first item on mount/list-change even in controlled mode — `onValueChange` fires in a useEffect, so it's available after `await act(async () => {})` + `waitFor` in tests.
   - happy-dom + Radix Popover.Portal: portals render to `document.body` and are fully query-able via `screen` — no special mocks needed.
 ---
+
+## 2026-06-05 - US-008
+- Implemented per-project toggle for vim yank/delete → system clipboard sync.
+- Default `vimClipboardSync: true`; toggle exposed in the editor's "Aa" popover (visible only in vim mode).
+- Extends the previous vim clipboard sync (yank only) to also cover delete operations (d/dd/D/x) via `patchDeleteClipboard`.
+- Refactored `yankGenerator` to accept a getter `() => boolean` instead of a plain boolean so the live toggle value is always reflected without re-mounting the editor.
+- Files changed:
+  - `packages/shared/src/schemas/domain/project.ts` (added `vimClipboardSync` to editor schema)
+  - `packages/storage/src/registry/registry.ts` (default `vimClipboardSync: true`)
+  - `packages/frontend/src/hooks/useProjectEditorConfig.ts` (returned `vimClipboardSync`)
+  - `packages/frontend/src/lib/vim/yank.ts` (getter-based `unnamedplus`)
+  - `packages/frontend/src/lib/vim/delete.ts` (new: `patchDeleteClipboard`)
+  - `packages/frontend/src/lib/vim/delete.test.ts` (new: 5 unit tests)
+  - `packages/frontend/src/components/prose-editor.tsx` (added `vimClipboardSync` prop + ref + wired to yank/delete)
+  - `packages/frontend/src/components/entity-editor-shell.tsx` (toggle in "Aa" popover)
+  - `packages/frontend/src/api/openapi.json` (regenerated)
+  - `specifications/fragment-editor.md` (Shipped entry)
+  - `specifications/project-config.md` (Shipped entry)
+- **Learnings for future iterations:**
+  - `Vim.defineOperator` replaces operators globally (module-level singleton). Use a ref/getter closure to allow live toggle updates without re-mounting the editor.
+  - `patchDeleteClipboard` uses a module-level `patched` flag — safe since the patch idempotently wraps the same function. With `vi.resetModules()` in tests the flag resets cleanly per test.
+  - The codemirror-vim `registerController.pushText` signature: `(registerName, operator, text, linewise, blockwise)`. A falsy `registerName` (empty string or undefined) means the unnamed register — that's the gate for "did user specify a register?".
+  - The "Aa" popover in `entity-editor-shell.tsx` conditionally shows the clipboard toggle only when `editorConfig.vimMode` is true — no need to add a separate setting location.
+---

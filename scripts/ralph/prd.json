@@ -152,7 +152,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Coordinate with prd-small-improvements.md US-002 (vim clipboard sync) — fold together if that story is still unshipped."
     }
   ]

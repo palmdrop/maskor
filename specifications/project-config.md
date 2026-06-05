@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-06-05 — `editor.vimClipboardSync` added to `project.json`: a per-project boolean (default `true`) controlling whether vim yank/delete operations mirror text to the system clipboard. Toggled from the editor's "Aa" popover when vim mode is active. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-06-04 — `suggestion.currentFragmentUUID` removed from the project manifest schema. The pointer was config-section state that churned `project.json` on every suggestion advance; it now lives in `project_state` in the vault DB (see `specifications/storage-sync.md`). (plan: `scripts/ralph/archive/2026-06-04-small-improvements/`)
 - 2026-06-01 — The General tab's Index section adds a **Reset database** button beside **Rebuild index** (drops + re-derives the vault DB on demand, behind a confirmation; for breakage rebuild can't fix), and both buttons now surface success/failure instead of failing silently. The Diagnostics tab also renders the `INVALID_ENTITY_FILE` warning kind (unparseable entity files). (plan: references/plans/resilient-rebuild-and-db-reset.md)
