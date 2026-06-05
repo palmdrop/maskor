@@ -8,8 +8,6 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] implement editor fixes, see `.worktrees/editor-flicker`
-
 - [x] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
 - [x] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
@@ -28,7 +26,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] investigate spelling, language settings
 
-- [ ] add way to select many fragments in sequence, way of making them into a section
+- [x] add way to select many fragments in sequence, way of making them into a section
   - way of easily dragging many into an existing section
   - way of marking a fragment, then "splitting" the sequence by introducing a new section at that location
   - NOTE: this logic needs to be robust, i.e not just frontend. Should live in the sequencer code.
@@ -69,13 +67,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] Ctrl+k etc triggers BOTH quick-switcher AND the editor, triggering a vim cut action. This could result in accidentally deleting text without noticing. Make sure command system triggers first and prevents the events from reaching the editor.
 
-- [ ] suggestion.currentFragmentUUID is state rather than config and should prob not be stored in project manifest. Investigate and move to a table instead
+- [x] suggestion.currentFragmentUUID is state rather than config and should prob not be stored in project manifest. Investigate and move to a table instead
 
 - [x] subfolders for organizing aspects/arcs
   - do not duplicate obsidian functionality... make this a companion app for obsidian, a layer above, not a replacement? at least for now.
   - focus on adding features that make the gap seamless
 
-- [ ] edit counter seems off in suggestion mode. Should only count every session that results in a change, not every save
+- [x] edit counter seems off in suggestion mode. Should only count every session that results in a change, not every save
 
 - [x] investigate code changes required for small schema/manifest changes: commit hash 32bb4fa8320c62d0c6e38b551b52982d536746e2
   - intermediate manifest types, schemas, types that could be inferred, etc
@@ -83,7 +81,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [x] back button for suggestion mode
 - [-] explicit search in suggestion mode
 
-- [ ] find a way to automatically create em-dashes etc
+- [x] find a way to automatically create em-dashes etc
 
 - [x] italics and such flickers in editor when editing in vim/raw mode...
 
@@ -96,7 +94,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - more granular than fragment? arrows that link to a section in the text? note-based, non-linear commenting/notation engine?
   - graph structure pointing to other fragments using inline links or comments/references?
 
-- [ ] fragment-specific notes, viewing fragment and comments/notes side by side in same view
+- [x] fragment-specific notes, viewing fragment and comments/notes side by side in same view
 
 - [ ] extract in suggestion, how should that work?
 
@@ -106,7 +104,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] specs claim command palette and quick-switcher use the same underlying picker component, but neither does. Instead, they define their own logic. There is a picker component, but it is never used in the code (except for test).
 
-- [ ] add project-wide setting for yanking to clipboard or not in vim mode
+- [x] add project-wide setting for yanking to clipboard or not in vim mode
 
 ## Workflow / tooling
 
