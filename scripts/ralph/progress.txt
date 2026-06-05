@@ -80,3 +80,18 @@ Started: 2026-06-04
   - The parse cycle adds exactly one trailing `\n` to the body: `serializeFile` appends `"\n"` and `parseFile` does `lines.slice(bodyStartIndex).join("\n")` which preserves the trailing empty string from `split`.
   - `@uiw/react-codemirror` only dispatches a content replace when `value !== view.state.doc.toString()`. For CM6, the cursor maps through the change correctly; the dramatic reset is a TipTap-only issue (full `setContent` → cursor 0 → restore).
 ---
+
+## 2026-06-05 - US-005
+- Implemented: margin alignment no longer desyncs when a fragment starts with leading blank lines.
+- Root cause: In CM6 (raw/vim) mode, `blockRanges` skips blank lines — block 0 is the first non-blank paragraph, which sits below the content origin by the blank-line height. The origin-alignment effect only accounted for the chrome gap between the two scroll containers, not for the internal offset of block 0 within the editor.
+- Fix: Read `editorBlocks[0]?.top` in the origin-alignment `useEffect`. Compute `leadingOffset = max(0, block0Top - max(0, delta))` and add it to `rowsPaddingTop`. With no blank lines, `block0Top ≈ max(0, delta)` in steady state, so `leadingOffset ≈ 0` (no regression). With blank lines of height H, `leadingOffset ≈ H`, pushing column row 0 down to align with block 0.
+- TipTap mode: unaffected — empty paragraphs ARE included as ProseMirror nodes, so block 0 is the first empty paragraph at the content origin.
+- Files changed:
+  - `packages/frontend/src/components/margins/margin-column.tsx` (origin-alignment effect + `data-testid="margin-rows"`)
+  - `packages/frontend/src/components/margins/margin-column.test.tsx` (new test: leading block offset)
+  - `specifications/margins.md` (Shipped entry)
+- **Learnings for future iterations:**
+  - `blockRanges` in CM6 mode is intentionally blank-line-aware (skips them), so `editorBlocks[0].top` is NOT always 0 when there's leading whitespace. Always subtract `max(0, delta)` to get the blank-line surplus — don't just add `block0Top` raw (that would double-count the chrome gap).
+  - The `data-testid="margin-rows"` attribute on the rows container makes it easy to assert `rowsPaddingTop` (the inline style `paddingTop`) in unit tests.
+  - Adding `editorBlocks` to the origin-alignment effect's dependency array is safe: `editorBlocks` only changes on the same triggers as the effect itself (`geometryTick`, `mode`, `fontSize`, `getBlocks`), so no extra re-runs.
+---
