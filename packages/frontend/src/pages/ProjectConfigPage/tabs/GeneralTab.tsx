@@ -230,6 +230,14 @@ export const GeneralTab = ({ project }: { project: Project }) => {
     }
   };
 
+  const handleToggleVimClipboardSync = async (checked: boolean) => {
+    await updateProject.mutateAsync({
+      projectId: project.projectUUID,
+      data: { editor: { vimClipboardSync: checked } },
+    });
+    invalidateProject();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSave();
     if (e.key === "Escape") {
@@ -407,6 +415,21 @@ export const GeneralTab = ({ project }: { project: Project }) => {
             id="show-fragment-stats"
             checked={project.advanced.showFragmentStats}
             onCheckedChange={handleToggleShowFragmentStats}
+            disabled={updateProject.isPending}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="show-fragment-stats">Copy to system clipboard in vim mode</Label>
+            <p className="text-xs text-muted-foreground">
+              When using the &quot;yank&quot; vim action, copy the selected text to the system
+              clipboard.
+            </p>
+          </div>
+          <Switch
+            id="yank-to-clipboard"
+            checked={project.editor.vimClipboardSync}
+            onCheckedChange={handleToggleVimClipboardSync}
             disabled={updateProject.isPending}
           />
         </div>
