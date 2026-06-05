@@ -24,6 +24,7 @@
 - 2026-06-02 — Vim/raw anchor markers are now always hidden (no reveal-on-cursor); annotated lines show a subtle line-end dot cue, and the raw markers are revealed only behind a per-project "show source" toggle (`editor:toggle-show-source`, default off; also in the editor's "Aa" display popover). (plan: references/plans/margins-2.md, Phase 1; ADR 0008)
 - 2026-06-02 — The fragment editor exposes block-level operations to its Margin column: inject a marker into an arbitrary block (type-to-create), strip a marker (delete), report the cursor block's index/marker (gesture jump), focus a marker's block (Escape from a comment), and surface scroll element + block heights for scroll-sync and margin-side padding. The "Comment this block" gesture is now a jump to the paragraph's margin slot. (plan: references/plans/margins-2.md, Phase 4; ADR 0008)
 - 2026-06-04 — Save round-trip contract: the rich editor (TipTap) no longer reloads its document on a save that round-trips equivalently (modulo trailing whitespace, which the server normalizes via body.trim()). The caret stays at its pre-save position. Unchanged prose skips the API call entirely. The normalization rule (body.trim()) is documented in the Save round-trip contract section. (plan: scripts/ralph/archive/2026-06-04-small-fixes/)
+- 2026-06-05 — Rich-mode automatic typography substitution: the Tiptap `@tiptap/extension-typography` extension is active in rich (TipTap) mode, converting `--` to em dash (—), `...` to ellipsis (…), and straight quotes to curly quotes as the user types. Substitution is always on in rich mode (no setting); raw markdown and vim (CM6) modes are unaffected. Substituted characters are stored as their Unicode glyphs in the saved markdown and round-trip byte-stable through save/load. Code spans and code blocks are excluded from substitution by the extension's input rules. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 
 ---
 
@@ -67,6 +68,16 @@ Two modes, regular or vim mode.
 
 - **Default mode**: WYSIWYG-ish markdown editor. User edits rich text, the markdown is hidden from view. No frontmatter — body only.
 - **Vim mode**: Raw markdown source with full vim modal editing.
+
+### Rich-mode typography substitution
+
+The rich editor (TipTap) applies automatic typographic substitutions as the user types via the `@tiptap/extension-typography` extension:
+
+- `--` → em dash (—)
+- `...` → ellipsis (…)
+- Straight quotes → curly/smart quotes (" " and ' ')
+
+This is always on in rich mode. Raw markdown and vim modes are untouched. Substituted characters are stored as Unicode glyphs in the saved markdown and round-trip byte-stable. Code spans and code blocks are excluded from substitution.
 
 ### Save contract
 
