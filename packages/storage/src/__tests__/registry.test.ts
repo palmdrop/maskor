@@ -324,17 +324,17 @@ describe("registry.updateProject", () => {
     expect(manifest.config.preview.separator).toBe("horizontal-rule");
   });
 
-  it("updates overview density and persists to manifest", async () => {
+  it("updates overview detail level and persists to manifest", async () => {
     const registry = makeRegistry();
     const record = await registry.registerProject("My Project", vaultDir, "adopt");
     const updated = await registry.updateProject(record.projectUUID, {
-      overview: { density: "compact" },
+      overview: { detailLevel: "excerpt" },
     });
 
-    expect(updated.overview.density).toBe("compact");
+    expect(updated.overview.detailLevel).toBe("excerpt");
 
     const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
-    expect(manifest.config.overview.density).toBe("compact");
+    expect(manifest.config.overview.detailLevel).toBe("excerpt");
   });
 });
 
@@ -368,7 +368,7 @@ describe("registry overview defaults", () => {
     await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
 
     const found = await registry.findByUUID(record.projectUUID);
-    expect(found?.overview.density).toBe("full");
+    expect(found?.overview.detailLevel).toBe("prose");
   });
 });
 

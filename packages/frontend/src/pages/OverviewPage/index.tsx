@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
-import type { OverviewDensity } from "../../router";
+import type { OverviewDetailLevel } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 
 import {
   useListSequences,
   useDesignateSequenceMain,
+  useGetSequenceContents,
   getListSequencesQueryKey,
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
@@ -18,16 +19,13 @@ import {
 } from "@api/generated/projects/projects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
-import { TileContent } from "./components/TileContent";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
-import { ArcPanel } from "./components/ArcPanel";
-import { ArcLegend } from "./components/ArcLegend";
-import { PoolZone } from "./components/PoolZone";
-import { SortableTile } from "./components/SortableTile";
 import { SequenceHeader } from "./components/SequenceHeader";
-import { SequenceSections } from "./components/SequenceSections";
-import { computeSequenceLayout } from "./utils/layout";
+import { ReorderList } from "./components/ReorderList";
+import { ProseSpine } from "./components/ProseSpine";
+import { ArcOverlay } from "./components/ArcOverlay";
+import { VerticalArcStrip } from "./components/VerticalArcStrip";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
@@ -40,15 +38,15 @@ import { useArcData } from "./hooks/useArcData";
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
   const { projectId } = useParams({ from });
-  const { sequence: sequenceParam, density: urlDensity } = useSearch({ from });
+  const { sequence: sequenceParam, detail: urlDetailLevel } = useSearch({ from });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: projectEnvelope } = useGetProject(projectId);
   const project = projectEnvelope?.status === 200 ? projectEnvelope.data : undefined;
-  const persistedDensity = project?.overview?.density as OverviewDensity | undefined;
+  const persistedDetailLevel = project?.overview?.detailLevel as OverviewDetailLevel | undefined;
 
-  const density: OverviewDensity = urlDensity ?? persistedDensity ?? "full";
+  const detailLevel: OverviewDetailLevel = urlDetailLevel ?? persistedDetailLevel ?? "prose";
 
   const { mutate: updateProject } = useUpdateProject({
     mutation: {
@@ -58,16 +56,22 @@ export const OverviewPage = () => {
     },
   });
 
-  const handleDensityChange = (next: OverviewDensity) => {
-    updateProject({ projectId, data: { overview: { density: next } } });
-    void navigate({
-      to: from,
-      params: { projectId },
-      search: (previous) => ({ ...previous, density: next }),
-    });
-  };
+  const handleSetDetailLevel = useCallback(
+    (next: OverviewDetailLevel) => {
+      updateProject({ projectId, data: { overview: { detailLevel: next } } });
+      void navigate({
+        to: from,
+        params: { projectId },
+        search: (previous) => ({ ...previous, detail: next }),
+      });
+    },
+    [updateProject, navigate, projectId],
+  );
 
   const [selectedFragmentUuid, setSelectedFragmentUuid] = useState<string | null>(null);
+  const [arcOverlayOpen, setArcOverlayOpen] = useState(false);
+  const [arcExpanded, setArcExpanded] = useState(false);
+  const [verticalStripOpen, setVerticalStripOpen] = useState(false);
 
   const { isRebuilding } = useRebuildStatus();
 
@@ -90,6 +94,18 @@ export const OverviewPage = () => {
     bundle?.sequences.find((s) => s.isMain);
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
+
+  const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence?.uuid ?? "", {
+    query: { enabled: !!sequence },
+  });
+  const contentByFragmentUuid = useMemo(() => {
+    const map = new Map<string, string>();
+    if (contentsEnvelope?.status !== 200) return map;
+    for (const entry of [...contentsEnvelope.data.placed, ...contentsEnvelope.data.pool]) {
+      map.set(entry.fragmentUuid, entry.content);
+    }
+    return map;
+  }, [contentsEnvelope]);
 
   const sectionsData = useMemo(() => {
     if (!sequence) return [];
@@ -127,11 +143,6 @@ export const OverviewPage = () => {
   const fragmentByUuid = useMemo(
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
     [allFragments],
-  );
-
-  const sequenceLayout = useMemo(
-    () => computeSequenceLayout(sectionsData, density),
-    [sectionsData, density],
   );
 
   const sequenceByUuid = useMemo(
@@ -251,30 +262,33 @@ export const OverviewPage = () => {
   const handleMainKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-    if (event.shiftKey && event.key === "ArrowLeft") {
+    if (event.shiftKey && event.key === "ArrowUp") {
       event.preventDefault();
       handleSectionKeyboardMove("prev");
-    } else if (event.shiftKey && event.key === "ArrowRight") {
+    } else if (event.shiftKey && event.key === "ArrowDown") {
       event.preventDefault();
       handleSectionKeyboardMove("next");
-    } else if (!event.shiftKey && event.key === "ArrowLeft") {
+    } else if (!event.shiftKey && event.key === "ArrowUp") {
       event.preventDefault();
       handleFragmentKeyboardMove("prev");
-    } else if (!event.shiftKey && event.key === "ArrowRight") {
+    } else if (!event.shiftKey && event.key === "ArrowDown") {
       event.preventDefault();
       handleFragmentKeyboardMove("next");
     }
   };
 
   const arcData = useArcData({
-    activeDragId: dnd.activeDragId,
-    sequenceLayout,
     fragmentByUuid,
     aspectList,
     allFragments,
+    placedFragmentUuids: allSequenceFragmentUuids,
   });
 
   const commands = useCommands();
+
+  const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
+  const toggleArcExpanded = useCallback(() => setArcExpanded((expanded) => !expanded), []);
+  const toggleVerticalArcStrip = useCallback(() => setVerticalStripOpen((open) => !open), []);
 
   useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
@@ -300,6 +314,12 @@ export const OverviewPage = () => {
         });
       }
     },
+    detailLevel,
+    setDetailLevel: handleSetDetailLevel,
+    arcOverlayOpen,
+    toggleArcOverlay,
+    toggleArcExpanded,
+    toggleVerticalArcStrip,
   });
 
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
@@ -315,120 +335,112 @@ export const OverviewPage = () => {
         />
       )}
 
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div
-        className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
-        data-testid="overview-main-content"
-        onClick={() => setSelectedFragmentUuid(null)}
-        onKeyDown={handleMainKeyDown}
+      <DndContext
+        sensors={dnd.sensors}
+        collisionDetection={dnd.collisionDetection}
+        onDragStart={dnd.handleDragStart}
+        onDragEnd={dnd.handleDragEnd}
       >
-        {(bundleLoading || summariesLoading) && isRebuilding ? (
-          <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
-        ) : bundleLoading || summariesLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : (
-          <>
-            <SequenceHeader
-              sequence={sequence}
-              density={density}
-              designateMainPending={designateMain.isPending}
-              onDesignateMain={() => commands.run("overview:designate-main")}
-              onDensityChange={handleDensityChange}
+        {!bundleLoading && !summariesLoading && (
+          <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
+            <ReorderList
+              sectionsData={sectionsData}
+              poolFragmentUuids={poolFragmentUuids}
+              colorByAspectKey={arcData.colorByAspectKey}
+              fragmentByUuid={fragmentByUuid}
+              selectedFragmentUuid={selectedFragmentUuid}
+              onSelectFragment={setSelectedFragmentUuid}
+              getViolationTooltips={getViolationTooltips}
+              getCycleTooltips={getCycleTooltips}
+              editingSectionId={sectionManager.editingSectionId}
+              setEditingSectionId={sectionManager.setEditingSectionId}
+              editingSectionValue={sectionManager.editingSectionValue}
+              setEditingSectionValue={sectionManager.setEditingSectionValue}
+              confirmingDeleteSectionId={sectionManager.confirmingDeleteSectionId}
+              setConfirmingDeleteSectionId={sectionManager.setConfirmingDeleteSectionId}
+              handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
+              handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
+              onDeleteSection={() => commands.run("overview:delete-section")}
+              hasSequence={!!sequence}
+              createSectionPending={sectionManager.createSection.isPending}
+              onAddSection={() => commands.run("overview:add-section")}
             />
+          </aside>
+        )}
 
-            <DndContext
-              sensors={dnd.sensors}
-              collisionDetection={dnd.collisionDetection}
-              onDragStart={dnd.handleDragStart}
-              onDragEnd={dnd.handleDragEnd}
-            >
-              {sequenceLayout.totalWidth > 0 && arcData.arcAspectKeys.length > 0 && (
-                <ArcLegend
-                  aspectKeys={arcData.arcAspectKeys}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+        <div
+          className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
+          data-testid="overview-main-content"
+          onClick={() => setSelectedFragmentUuid(null)}
+          onKeyDown={handleMainKeyDown}
+        >
+          {(bundleLoading || summariesLoading) && isRebuilding ? (
+            <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
+          ) : bundleLoading || summariesLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              <SequenceHeader
+                sequence={sequence}
+                detailLevel={detailLevel}
+                designateMainPending={designateMain.isPending}
+                onDesignateMain={() => commands.run("overview:designate-main")}
+                onSetDetailLevel={handleSetDetailLevel}
+                arcOverlayOpen={arcOverlayOpen}
+                onToggleArcOverlay={toggleArcOverlay}
+                verticalStripOpen={verticalStripOpen}
+                onToggleVerticalStrip={toggleVerticalArcStrip}
+              />
+
+              {arcOverlayOpen && (
+                <ArcOverlay
+                  sectionsData={sectionsData}
+                  fragmentByUuid={fragmentByUuid}
                   colorByAspectKey={arcData.colorByAspectKey}
+                  arcAspectKeys={arcData.arcAspectKeys}
                   hiddenAspectKeys={arcData.hiddenAspectKeys}
-                  onToggle={arcData.toggleAspectVisibility}
+                  onToggleAspectVisibility={arcData.toggleAspectVisibility}
+                  isExpanded={arcExpanded}
+                  onToggleExpanded={toggleArcExpanded}
+                  onClose={toggleArcOverlay}
                 />
               )}
 
-              {sequenceLayout.totalWidth > 0 && (
-                <div
-                  ref={arcData.arcScrollerRef}
-                  className="overflow-x-hidden shrink-0 sticky top-0 z-10"
-                >
-                  <ArcPanel
-                    width={sequenceLayout.totalWidth}
-                    series={arcData.visibleArcSeries}
-                    colorByAspectKey={arcData.colorByAspectKey}
+              <div className="flex gap-4">
+                {verticalStripOpen && (
+                  <div className="sticky top-0 self-start">
+                    <VerticalArcStrip
+                      orderedFragmentUuids={allSequenceFragmentUuids}
+                      fragmentByUuid={fragmentByUuid}
+                      colorByAspectKey={arcData.colorByAspectKey}
+                      hiddenAspectKeys={arcData.hiddenAspectKeys}
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <ProseSpine
+                    sectionsData={sectionsData}
+                    detailLevel={detailLevel}
+                    fragmentByUuid={fragmentByUuid}
+                    contentByFragmentUuid={contentByFragmentUuid}
+                    selectedFragmentUuid={selectedFragmentUuid}
+                    onSelectFragment={setSelectedFragmentUuid}
                   />
                 </div>
-              )}
+              </div>
+            </>
+          )}
+        </div>
 
-              <SequenceSections
-                ref={arcData.tileScrollerRef}
-                sectionsData={sectionsData}
-                sequenceLayout={sequenceLayout}
-                density={density}
-                colorByAspectKey={arcData.colorByAspectKey}
-                fragmentByUuid={fragmentByUuid}
-                selectedFragmentUuid={selectedFragmentUuid}
-                onSelectFragment={setSelectedFragmentUuid}
-                getViolationTooltips={getViolationTooltips}
-                getCycleTooltips={getCycleTooltips}
-                editingSectionId={sectionManager.editingSectionId}
-                setEditingSectionId={sectionManager.setEditingSectionId}
-                editingSectionValue={sectionManager.editingSectionValue}
-                setEditingSectionValue={sectionManager.setEditingSectionValue}
-                confirmingDeleteSectionId={sectionManager.confirmingDeleteSectionId}
-                setConfirmingDeleteSectionId={sectionManager.setConfirmingDeleteSectionId}
-                handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
-                handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
-                onDeleteSection={() => commands.run("overview:delete-section")}
-                hasSequence={!!sequence}
-                createSectionPending={sectionManager.createSection.isPending}
-                onAddSection={() => commands.run("overview:add-section")}
-                onScroll={arcData.handleTileScroll}
-              />
-
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
-                </h2>
-                <PoolZone
-                  isEmpty={poolFragmentUuids.length === 0}
-                  poolFragmentUuids={poolFragmentUuids}
-                >
-                  {poolFragmentUuids.map((uuid) => {
-                    const fragment = fragmentByUuid.get(uuid);
-                    if (!fragment) return null;
-                    return (
-                      <SortableTile
-                        key={uuid}
-                        fragment={fragment}
-                        density={density}
-                        colorByAspectKey={arcData.colorByAspectKey}
-                        cycleTooltips={getCycleTooltips(uuid)}
-                        isSelected={selectedFragmentUuid === uuid}
-                        onSelect={setSelectedFragmentUuid}
-                      />
-                    );
-                  })}
-                </PoolZone>
-              </section>
-
-              <DragOverlay dropAnimation={null}>
-                {activeDragFragment ? (
-                  <TileContent
-                    fragment={activeDragFragment}
-                    density={density}
-                    colorByAspectKey={arcData.colorByAspectKey}
-                  />
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </>
-        )}
-      </div>
+        <DragOverlay dropAnimation={null}>
+          {activeDragFragment ? (
+            <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+              {activeDragFragment.key}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <RightSidebar
         fragment={selectedFragmentUuid ? fragmentByUuid.get(selectedFragmentUuid) : undefined}

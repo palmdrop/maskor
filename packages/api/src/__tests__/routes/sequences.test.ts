@@ -1227,3 +1227,70 @@ describe("sequence fragment action log entries", () => {
     expect((entry!.payload as { fragmentKey: string }).fragmentKey).toBe(placedFragment.key);
   });
 });
+
+describe("GET /projects/:projectId/sequences/:sequenceId/contents", () => {
+  type FragmentContent = { fragmentUuid: string; key: string; content: string };
+  type ContentsResponse = { placed: FragmentContent[]; pool: FragmentContent[] };
+
+  // Self-contained: create a fresh sequence and two new fragments so the test
+  // does not depend on placement state left behind by earlier tests in the file.
+  const createFragment = async (key: string, content: string) => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, content }),
+      },
+    );
+    return (await response.json()) as { uuid: string };
+  };
+
+  it("returns placed fragments in sequence order plus the pool, with content", async () => {
+    const firstContent = "The first fragment body.";
+    const secondContent = "The second fragment body.";
+    const first = await createFragment("contents-first", firstContent);
+    const second = await createFragment("contents-second", secondContent);
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const createResponse = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Contents Test", isMain: false, projectUuid: project.projectUUID }),
+    });
+    const createdBundle = (await createResponse.json()) as SequenceBundle;
+    const sequence = createdBundle.sequences.find((s) => s.name === "Contents Test")!;
+    const sectionUuid = sequence.sections[0]!.uuid;
+
+    // Place in reversed order (second first) to prove the endpoint reflects
+    // sequence position, not fragment-creation order.
+    await testContext.app.request(`${baseUrl()}/${sequence.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: second.uuid, sectionUuid, position: 0 }),
+    });
+    await testContext.app.request(`${baseUrl()}/${sequence.uuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid: first.uuid, sectionUuid, position: 1 }),
+    });
+
+    const response = await testContext.app.request(`${baseUrl()}/${sequence.uuid}/contents`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as ContentsResponse;
+
+    // Placed: exactly the two fragments, in sequence order, with their content.
+    expect(body.placed.map((entry) => entry.fragmentUuid)).toEqual([second.uuid, first.uuid]);
+    expect(body.placed[0]!.content.trim()).toBe(secondContent);
+    expect(body.placed[0]!.key).toBe("contents-second");
+    expect(body.placed[1]!.content.trim()).toBe(firstContent);
+
+    // Pool: excludes the placed fragments; every entry carries content.
+    const poolUuids = body.pool.map((entry) => entry.fragmentUuid);
+    expect(poolUuids).not.toContain(first.uuid);
+    expect(poolUuids).not.toContain(second.uuid);
+    expect(body.pool.every((entry) => typeof entry.content === "string")).toBe(true);
+  });
+});

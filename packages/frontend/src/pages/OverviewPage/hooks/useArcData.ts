@@ -1,24 +1,24 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import { resolveAspectColor } from "../utils/aspectColors";
-import { buildArcSeries, type ArcSeries } from "../utils/arcData";
-import { ARC_PANEL_HEIGHT } from "../components/ArcPanel";
-import type { computeSequenceLayout } from "../utils/layout";
 
 interface UseArcDataParams {
-  activeDragId: string | null;
-  sequenceLayout: ReturnType<typeof computeSequenceLayout>;
   fragmentByUuid: Map<string, FragmentSummary>;
   aspectList: Array<{ key: string; color?: string }>;
   allFragments: FragmentSummary[];
+  placedFragmentUuids: string[];
 }
 
+// Arc colour + visibility state for the vertical Overview. The arc curves
+// themselves are built per-width by the consumers (horizontal overlay, vertical
+// strip) from `arcLayout` x-coordinates; this hook owns only the cross-cutting
+// concerns: the deterministic colour map, which aspects are toggled off, and the
+// set of aspect keys that actually appear (with a weight) on placed fragments.
 export const useArcData = ({
-  activeDragId,
-  sequenceLayout,
   fragmentByUuid,
   aspectList,
   allFragments,
+  placedFragmentUuids,
 }: UseArcDataParams) => {
   const [hiddenAspectKeys, setHiddenAspectKeys] = useState<Set<string>>(new Set());
 
@@ -39,7 +39,7 @@ export const useArcData = ({
       seenKeys.add(aspect.key);
     }
     // Cover aspect keys present on fragments but not (yet) in the aspects index —
-    // fall back to the deterministic palette so the tile color matches the arc.
+    // fall back to the deterministic palette so every plotted point has a colour.
     for (const fragment of allFragments) {
       for (const aspectKey of Object.keys(fragment.aspects)) {
         if (!seenKeys.has(aspectKey)) {
@@ -51,53 +51,24 @@ export const useArcData = ({
     return map;
   }, [aspectList, allFragments]);
 
-  // Stale-while-drag: hold the previously rendered arc series until the drag
-  // ends. The user's optimistic in-flight reorderings still update tile DOM
-  // positions, but the curve only catches up after `onDragEnd` clears
-  // `activeDragId`. Avoids per-frame recomputation while the user drags.
-  const arcSeriesCacheRef = useRef<ArcSeries[]>([]);
-
-  // Refs for syncing horizontal scroll between the sticky arc panel wrapper and
-  // the tile scroller. The arc wrapper uses overflow-x:hidden so the SVG is
-  // clipped to the viewport; its scrollLeft mirrors the tile scroller so the
-  // curves stay aligned with their tiles during horizontal scroll.
-  const tileScrollerRef = useRef<HTMLDivElement>(null);
-  const arcScrollerRef = useRef<HTMLDivElement>(null);
-
-  const handleTileScroll = useCallback(() => {
-    if (tileScrollerRef.current && arcScrollerRef.current) {
-      arcScrollerRef.current.scrollLeft = tileScrollerRef.current.scrollLeft;
+  // Aspect keys with at least one weighted point among the placed fragments,
+  // sorted for a stable legend order regardless of arc width.
+  const arcAspectKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const fragmentUuid of placedFragmentUuids) {
+      const fragment = fragmentByUuid.get(fragmentUuid);
+      if (!fragment) continue;
+      for (const [aspectKey, value] of Object.entries(fragment.aspects)) {
+        if (value.weight !== undefined) keys.add(aspectKey);
+      }
     }
-  }, []);
-
-  const arcSeries = useMemo<ArcSeries[]>(() => {
-    if (activeDragId !== null) return arcSeriesCacheRef.current;
-    const next = buildArcSeries(
-      sequenceLayout.sections.flatMap((section) => section.fragmentUuids),
-      fragmentByUuid,
-      sequenceLayout.centerByFragmentUuid,
-      ARC_PANEL_HEIGHT,
-    );
-    arcSeriesCacheRef.current = next;
-    return next;
-  }, [activeDragId, sequenceLayout, fragmentByUuid]);
-
-  const arcAspectKeys = useMemo(() => arcSeries.map((series) => series.aspectKey), [arcSeries]);
-
-  const visibleArcSeries = useMemo(
-    () => arcSeries.filter((series) => !hiddenAspectKeys.has(series.aspectKey)),
-    [arcSeries, hiddenAspectKeys],
-  );
+    return [...keys].sort((a, b) => a.localeCompare(b));
+  }, [placedFragmentUuids, fragmentByUuid]);
 
   return {
     colorByAspectKey,
     hiddenAspectKeys,
     toggleAspectVisibility,
-    arcSeries,
     arcAspectKeys,
-    visibleArcSeries,
-    tileScrollerRef,
-    arcScrollerRef,
-    handleTileScroll,
   };
 };

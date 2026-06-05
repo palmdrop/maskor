@@ -15,6 +15,7 @@ import {
   SectionRenameSchema,
   SectionReorderSchema,
   SequenceBundledResponseSchema,
+  SequenceContentsResponseSchema,
 } from "../schemas/sequence";
 import { ErrorResponseSchema } from "../schemas/error";
 import { projectIdParamSchema } from "../schemas/shared";
@@ -101,6 +102,29 @@ const getSequenceRoute = createRoute({
     200: {
       content: { "application/json": { schema: SequenceSchema } },
       description: "Sequence",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const getSequenceContentsRoute = createRoute({
+  operationId: "getSequenceContents",
+  method: "get",
+  path: "/{sequenceId}/contents",
+  tags: ["Sequences"],
+  summary: "Get per-fragment markdown content for a sequence (placed, ordered) plus the pool",
+  request: { params: SequenceUUIDParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceContentsResponseSchema } },
+      description: "Ordered placed-fragment content and pool-fragment content",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -459,6 +483,55 @@ sequencesRouter.openapi(getSequenceRoute, async (ctx) => {
     const { sequenceId } = ctx.req.valid("param");
     const sequence = await storageService.sequences.read(projectContext, sequenceId);
     return ctx.json(sequence, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(getSequenceContentsRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+
+    const [sequence, indexedFragments] = await Promise.all([
+      storageService.sequences.read(projectContext, sequenceId),
+      storageService.fragments.readAll(projectContext),
+    ]);
+
+    const placedUuids = sequence.sections.flatMap((section) =>
+      [...section.fragments]
+        .sort((a, b) => a.position - b.position)
+        .map((position) => position.fragmentUuid),
+    );
+    const placedSet = new Set(placedUuids);
+
+    const poolUuids = indexedFragments
+      .filter((fragment) => !fragment.isDiscarded && !placedSet.has(fragment.uuid))
+      .map((fragment) => fragment.uuid);
+
+    // The index omits fragment content (it is an index summary), so read the full
+    // body per fragment — mirrors the preview route's per-fragment read.
+    const neededUuids = [...new Set([...placedUuids, ...poolUuids])];
+    const fragmentResults = await Promise.allSettled(
+      neededUuids.map((uuid) => storageService.fragments.read(projectContext, uuid)),
+    );
+    const fragmentByUuid = new Map(
+      fragmentResults.flatMap((result) =>
+        result.status === "fulfilled" ? [[result.value.uuid, result.value]] : [],
+      ),
+    );
+
+    const toContent = (fragmentUuid: string) => {
+      const fragment = fragmentByUuid.get(fragmentUuid);
+      if (!fragment) return [];
+      return [{ fragmentUuid, key: fragment.key, content: fragment.content }];
+    };
+
+    const placed = placedUuids.flatMap(toContent);
+    const pool = poolUuids.flatMap(toContent);
+
+    return ctx.json({ placed, pool }, 200);
   } catch (error) {
     return throwStorageError(error);
   }

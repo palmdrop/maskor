@@ -1,11 +1,10 @@
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
-import type { OverviewDensity } from "../../../router";
-import { TILE_DIMENSIONS_BY_DENSITY } from "../utils/layout";
+import { TILE_DIMENSIONS_BY_DENSITY, type TileDensity } from "../utils/layout";
 import { AspectColorBar } from "./AspectColorBar";
 
 interface TileContentProps {
   fragment: FragmentSummary;
-  density: OverviewDensity;
+  density: TileDensity;
   colorByAspectKey: Map<string, string>;
   violationTooltips?: string[];
   cycleTooltips?: string[];

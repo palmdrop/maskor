@@ -42,7 +42,7 @@ describe("global/navigation", () => {
     expect(command.disabled?.()).toBe("No active project");
   });
 
-  it("navigates to overview with active project and density=full", () => {
+  it("navigates to overview with active project and detail=prose", () => {
     matchesRef.value = [{ params: { projectId: "p-1" } }];
     const command = byId("navigation:go-to-overview");
     expect(command.disabled?.()).toBeUndefined();
@@ -50,7 +50,7 @@ describe("global/navigation", () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/projects/$projectId/overview",
       params: { projectId: "p-1" },
-      search: { density: "full" },
+      search: { detail: "prose" },
     });
   });
 

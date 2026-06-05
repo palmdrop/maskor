@@ -1,21 +1,35 @@
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
-import type { OverviewDensity } from "../../../router";
+import type { OverviewDetailLevel } from "../../../router";
 import { Heading } from "@components/heading";
+
+const DETAIL_LEVELS: ReadonlyArray<{ level: OverviewDetailLevel; label: string }> = [
+  { level: "prose", label: "Prose" },
+  { level: "excerpt", label: "Excerpt" },
+  { level: "title", label: "Title" },
+];
 
 interface SequenceHeaderProps {
   sequence: Sequence | undefined;
-  density: OverviewDensity;
+  detailLevel: OverviewDetailLevel;
   designateMainPending: boolean;
   onDesignateMain: () => void;
-  onDensityChange: (density: OverviewDensity) => void;
+  onSetDetailLevel: (detailLevel: OverviewDetailLevel) => void;
+  arcOverlayOpen: boolean;
+  onToggleArcOverlay: () => void;
+  verticalStripOpen: boolean;
+  onToggleVerticalStrip: () => void;
 }
 
 export const SequenceHeader = ({
   sequence,
-  density,
+  detailLevel,
   designateMainPending,
   onDesignateMain,
-  onDensityChange,
+  onSetDetailLevel,
+  arcOverlayOpen,
+  onToggleArcOverlay,
+  verticalStripOpen,
+  onToggleVerticalStrip,
 }: SequenceHeaderProps) => (
   <div className="flex items-center gap-3">
     <Heading level={1}>{sequence?.name ?? "Overview"}</Heading>
@@ -34,29 +48,57 @@ export const SequenceHeader = ({
         Main
       </span>
     )}
-    <div
-      role="group"
-      aria-label="Tile density"
-      className="ml-auto flex items-center rounded border border-border overflow-hidden"
-    >
-      {(["full", "compact", "mini"] as const).map((tier) => {
-        const isActive = density === tier;
-        return (
-          <button
-            key={tier}
-            type="button"
-            aria-pressed={isActive}
-            onClick={() => onDensityChange(tier)}
-            className={`text-xs px-2 py-1 capitalize transition-colors ${
-              isActive
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            {tier}
-          </button>
-        );
-      })}
+
+    <div className="ml-auto flex items-center gap-2">
+      <button
+        type="button"
+        aria-pressed={verticalStripOpen}
+        onClick={onToggleVerticalStrip}
+        className={`text-xs px-2 py-1 rounded border transition-colors ${
+          verticalStripOpen
+            ? "border-border bg-muted text-foreground"
+            : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+        }`}
+      >
+        Strip
+      </button>
+      <button
+        type="button"
+        aria-pressed={arcOverlayOpen}
+        onClick={onToggleArcOverlay}
+        className={`text-xs px-2 py-1 rounded border transition-colors ${
+          arcOverlayOpen
+            ? "border-border bg-muted text-foreground"
+            : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+        }`}
+      >
+        Arcs
+      </button>
+
+      <div
+        role="group"
+        aria-label="Spine detail level"
+        className="flex items-center rounded border border-border overflow-hidden"
+      >
+        {DETAIL_LEVELS.map(({ level, label }) => {
+          const isActive = detailLevel === level;
+          return (
+            <button
+              key={level}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onSetDetailLevel(level)}
+              className={`text-xs px-2 py-1 transition-colors ${
+                isActive
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   </div>
 );

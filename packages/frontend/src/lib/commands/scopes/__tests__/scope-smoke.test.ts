@@ -20,6 +20,12 @@ describe("scopes/overview", () => {
     createSection: vi.fn(),
     confirmingDeleteSectionId: null,
     deleteSection: vi.fn(),
+    detailLevel: "prose",
+    setDetailLevel: vi.fn(),
+    arcOverlayOpen: false,
+    toggleArcOverlay: vi.fn(),
+    toggleArcExpanded: vi.fn(),
+    toggleVerticalArcStrip: vi.fn(),
   };
 
   it("designate-main runs and disables when sequence is already main", () => {
@@ -45,6 +51,30 @@ describe("scopes/overview", () => {
         confirmingDeleteSectionId: null,
       }),
     ).toMatch(/No section selected/);
+  });
+
+  it("set-detail-level runs with the chosen level", () => {
+    const cmd = find(overviewCommands, "overview:set-detail-level");
+    cmd.run(ctx, { level: "title", label: "Title only" });
+    expect(ctx.setDetailLevel).toHaveBeenCalledWith("title");
+  });
+
+  it("toggle-arc-overlay runs", () => {
+    find(overviewCommands, "overview:toggle-arc-overlay").run(ctx);
+    expect(ctx.toggleArcOverlay).toHaveBeenCalled();
+  });
+
+  it("toggle-arc-expanded is gated on the overlay being open", () => {
+    const cmd = find(overviewCommands, "overview:toggle-arc-expanded");
+    expect(cmd.disabled?.({ ...ctx, arcOverlayOpen: false })).toMatch(/Open the arc overlay/);
+    expect(cmd.disabled?.({ ...ctx, arcOverlayOpen: true })).toBeUndefined();
+    cmd.run({ ...ctx, arcOverlayOpen: true });
+    expect(ctx.toggleArcExpanded).toHaveBeenCalled();
+  });
+
+  it("toggle-vertical-arc-strip runs", () => {
+    find(overviewCommands, "overview:toggle-vertical-arc-strip").run(ctx);
+    expect(ctx.toggleVerticalArcStrip).toHaveBeenCalled();
   });
 });
 

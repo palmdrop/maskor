@@ -127,3 +127,23 @@ export const SequenceBundledResponseSchema = z
     cycles: z.array(CycleSchema),
   })
   .openapi("SequenceBundledResponse");
+
+// One fragment's full markdown body, keyed by uuid. Used by the vertical
+// Overview spine to render and reorder prose client-side per fragment.
+export const SequenceFragmentContentSchema = z
+  .object({
+    fragmentUuid: z.uuid(),
+    key: z.string(),
+    content: z.string(),
+  })
+  .openapi("SequenceFragmentContent");
+
+// Per-fragment bulk content for a sequence: the placed fragments in sequence
+// order (sections in order, fragments by position), plus the unassigned-pool
+// fragments (non-discarded, not placed in this sequence).
+export const SequenceContentsResponseSchema = z
+  .object({
+    placed: z.array(SequenceFragmentContentSchema),
+    pool: z.array(SequenceFragmentContentSchema),
+  })
+  .openapi("SequenceContentsResponse");

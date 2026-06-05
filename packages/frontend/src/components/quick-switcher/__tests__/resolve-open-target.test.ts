@@ -140,10 +140,10 @@ describe("resolveOpenTarget — sequence picks", () => {
     expect(typeof result.search).toBe("function");
   });
 
-  it("search merge preserves previous keys (e.g. density)", () => {
+  it("search merge preserves previous keys (e.g. detail)", () => {
     const result = resolveOpenTarget("overview", sequence, projectId);
     const merge = result.search as (previous: Record<string, unknown>) => Record<string, unknown>;
-    expect(merge({ density: "compact" })).toEqual({ density: "compact", sequence: "s-1" });
+    expect(merge({ detail: "excerpt" })).toEqual({ detail: "excerpt", sequence: "s-1" });
     expect(merge({})).toEqual({ sequence: "s-1" });
   });
 });

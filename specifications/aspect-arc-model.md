@@ -15,6 +15,7 @@
 - 2026-06-02 — Unmanaged user frontmatter on an aspect file (keys Maskor does not own, e.g. Obsidian `tags`/`aliases`) is preserved across a Maskor write via an `extraFrontmatter` round-trip; the managed `uuid`/`color`/`notes` keys are still rebuilt. (plan: references/plans/margins-2.md, Phase 6)
 - 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-06-05 — Aspect picker (TagCombobox) Enter key now selects the highlighted existing option instead of creating a new aspect; create fires only when no option is highlighted or via the explicit "Create <query>" affordance. (plan: `scripts/ralph/archive/2026-06-05-todo-triage-fixes/`)
+- 2026-06-05 — In the redesigned Overview, aspect arcs moved into a summonable horizontal overlay (compressed multi-aspect graph with a minimized sections bar, expandable to a full zoomable/scrollable view) whose x-axis is re-mapped from sequence index / fit-to-width rather than tile centers, plus an optional inline vertical arc strip aligned to fragment rows (sequence position = vertical, weight = horizontal deviation). (plan: `references/plans/overview-redesign.md`, ADRs 0010/0011)
 
 ---
 

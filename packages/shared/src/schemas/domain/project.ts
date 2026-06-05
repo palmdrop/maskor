@@ -27,7 +27,7 @@ export const ProjectSchema = z.object({
     separator: z.enum(["blank-line", "horizontal-rule", "none"]),
   }),
   overview: z.object({
-    density: z.enum(["full", "compact", "mini"]),
+    detailLevel: z.enum(["prose", "excerpt", "title"]),
   }),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -72,7 +72,7 @@ export const ProjectUpdateSchema = z.object({
     .optional(),
   overview: z
     .object({
-      density: z.enum(["full", "compact", "mini"]).optional(),
+      detailLevel: z.enum(["prose", "excerpt", "title"]).optional(),
     })
     .optional(),
 });

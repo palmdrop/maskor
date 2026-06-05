@@ -57,9 +57,9 @@ export const RightSidebar = ({
     void navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      // Preserve current density (required by validateSearch); narrow `prev`
+      // Preserve current detail level (required by validateSearch); narrow `prev`
       // to only the keys the target route expects.
-      search: (prev) => ({ density: prev.density ?? "full", sequence: sequenceId }),
+      search: (prev) => ({ detail: prev.detail ?? "prose", sequence: sequenceId }),
     });
   };
 

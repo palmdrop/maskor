@@ -63,11 +63,13 @@ const fragmentRoute = createRoute({
   component: FragmentPage,
 });
 
-const validDensities = ["full", "compact", "mini"] as const;
-export type OverviewDensity = (typeof validDensities)[number];
+const validDetailLevels = ["prose", "excerpt", "title"] as const;
+export type OverviewDetailLevel = (typeof validDetailLevels)[number];
 
-export const parseOverviewDensity = (value: unknown): OverviewDensity =>
-  validDensities.includes(value as OverviewDensity) ? (value as OverviewDensity) : "full";
+export const parseOverviewDetailLevel = (value: unknown): OverviewDetailLevel =>
+  validDetailLevels.includes(value as OverviewDetailLevel)
+    ? (value as OverviewDetailLevel)
+    : "prose";
 
 const overviewRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
@@ -75,12 +77,12 @@ const overviewRoute = createRoute({
   component: OverviewPage,
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sequence?: string; density?: OverviewDensity } => ({
+  ): { sequence?: string; detail?: OverviewDetailLevel } => ({
     sequence: typeof search.sequence === "string" ? search.sequence : undefined,
-    density:
-      typeof search.density === "string" &&
-      validDensities.includes(search.density as OverviewDensity)
-        ? (search.density as OverviewDensity)
+    detail:
+      typeof search.detail === "string" &&
+      validDetailLevels.includes(search.detail as OverviewDetailLevel)
+        ? (search.detail as OverviewDetailLevel)
         : undefined,
   }),
 });

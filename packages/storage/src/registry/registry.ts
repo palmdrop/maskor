@@ -74,7 +74,7 @@ const PROJECT_CONFIG_DEFAULTS = {
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" as const },
-  overview: { density: "full" as const },
+  overview: { detailLevel: "prose" as const },
 };
 
 const toProjectRecord = (

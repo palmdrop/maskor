@@ -74,7 +74,7 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" },
-  overview: { density: "full" },
+  overview: { detailLevel: "prose" },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
   ...overrides,

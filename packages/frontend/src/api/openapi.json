@@ -110,17 +110,17 @@
           "overview": {
             "type": "object",
             "properties": {
-              "density": {
+              "detailLevel": {
                 "type": "string",
                 "enum": [
-                  "full",
-                  "compact",
-                  "mini"
+                  "prose",
+                  "excerpt",
+                  "title"
                 ]
               }
             },
             "required": [
-              "density"
+              "detailLevel"
             ]
           },
           "projectUUID": {
@@ -278,12 +278,12 @@
           "overview": {
             "type": "object",
             "properties": {
-              "density": {
+              "detailLevel": {
                 "type": "string",
                 "enum": [
-                  "full",
-                  "compact",
-                  "mini"
+                  "prose",
+                  "excerpt",
+                  "title"
                 ]
               }
             }
@@ -2277,6 +2277,47 @@
         "required": [
           "sequenceUuids",
           "fragmentUuids"
+        ]
+      },
+      "SequenceContentsResponse": {
+        "type": "object",
+        "properties": {
+          "placed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SequenceFragmentContent"
+            }
+          },
+          "pool": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SequenceFragmentContent"
+            }
+          }
+        },
+        "required": [
+          "placed",
+          "pool"
+        ]
+      },
+      "SequenceFragmentContent": {
+        "type": "object",
+        "properties": {
+          "fragmentUuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fragmentUuid",
+          "key",
+          "content"
         ]
       },
       "SequenceCreate": {
@@ -12024,6 +12065,67 @@
           },
           "409": {
             "description": "Cannot delete main sequence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sequences/{sequenceId}/contents": {
+      "get": {
+        "operationId": "getSequenceContents",
+        "tags": [
+          "Sequences"
+        ],
+        "summary": "Get per-fragment markdown content for a sequence (placed, ordered) plus the pool",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sequenceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered placed-fragment content and pool-fragment content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SequenceContentsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sequence not found",
             "content": {
               "application/json": {
                 "schema": {

@@ -85,9 +85,9 @@ export const resolveOpenTarget = (
         params: { projectId, referenceId: picked.uuid },
       };
     case "sequence":
-      // Preserve density when already on overview by merging into previous
+      // Preserve detail level when already on overview by merging into previous
       // search; cross-route navigations let the overview route's validator
-      // default density (currently "full").
+      // default the detail level (currently "prose").
       return {
         to: "/projects/$projectId/overview",
         params: { projectId },

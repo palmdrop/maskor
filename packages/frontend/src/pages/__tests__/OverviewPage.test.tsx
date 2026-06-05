@@ -6,13 +6,20 @@ import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type * as DndKitCore from "@dnd-kit/core";
 import type * as DndKitSortable from "@dnd-kit/sortable";
-import type { OverviewDensity } from "../../router";
+import type { OverviewDetailLevel } from "../../router";
+
+// jsdom lacks ResizeObserver, which the arc overlay uses to fit to width.
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;
 
 // --- router mock ---
 
-let currentSearch: { sequence?: string; density: OverviewDensity } = {
+let currentSearch: { sequence?: string; detail?: OverviewDetailLevel } = {
   sequence: undefined,
-  density: "full",
+  detail: "title",
 };
 const navigateMock = vi.fn();
 
@@ -45,7 +52,7 @@ vi.mock("@dnd-kit/core", async (importOriginal) => {
       onDragStart?: (event: unknown) => void;
     }) => {
       capturedOnDragEnd = onDragEnd;
-      void onDragStart; // unused in tests
+      void onDragStart;
       return <>{children}</>;
     },
     DragOverlay: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -74,15 +81,17 @@ vi.mock("@dnd-kit/sortable", async (importOriginal) => {
   };
 });
 
-// --- mutation mocks ---
+// --- mutation / query mocks ---
 
 const placeMutate = vi.fn();
 const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
 const moveSectionMutate = vi.fn();
+const updateProjectMutate = vi.fn();
 
 vi.mock("../../api/generated/sequences/sequences", () => ({
   useListSequences: vi.fn(() => ({ data: undefined, isLoading: false })),
+  useGetSequenceContents: vi.fn(() => ({ data: { status: 200, data: { placed: [], pool: [] } } })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
@@ -105,6 +114,12 @@ vi.mock("../../api/generated/aspects/aspects", () => ({
   useListAspects: vi.fn(() => ({ data: { status: 200, data: [] }, isLoading: false })),
 }));
 
+vi.mock("../../api/generated/projects/projects", () => ({
+  useGetProject: vi.fn(() => ({ data: undefined })),
+  useUpdateProject: vi.fn(() => ({ mutate: updateProjectMutate })),
+  getGetProjectQueryKey: (projectId: string) => [`/projects/${projectId}`],
+}));
+
 // --- test data ---
 
 const PROJECT_ID = "proj-1";
@@ -114,37 +129,6 @@ const FRAG_A = "frag-aaa";
 const FRAG_B = "frag-bbb";
 const FRAG_C = "frag-ccc";
 
-const makeBundleResponse = (fragmentUuids: string[] = []) => ({
-  status: 200 as const,
-  data: {
-    sequences: [
-      {
-        uuid: SEQUENCE_UUID,
-        name: "Main",
-        isMain: true,
-        projectUuid: PROJECT_ID,
-        filePath: `${SEQUENCE_UUID}.yaml`,
-        contentHash: "hash",
-        sections: [
-          {
-            uuid: SECTION_UUID,
-            name: "Main",
-            fragments: fragmentUuids.map((uuid, index) => ({
-              uuid: `pos-${index}`,
-              fragmentUuid: uuid,
-              position: index,
-            })),
-          },
-        ],
-      },
-    ],
-    violations: [],
-    cycles: [],
-  },
-});
-
-const SECTION_UUID_2 = "sec-2";
-
 const makeMultiSectionBundleResponse = (sections: { uuid: string; fragmentUuids: string[] }[]) => ({
   status: 200 as const,
   data: {
@@ -153,6 +137,7 @@ const makeMultiSectionBundleResponse = (sections: { uuid: string; fragmentUuids:
         uuid: SEQUENCE_UUID,
         name: "Main",
         isMain: true,
+        active: true,
         projectUuid: PROJECT_ID,
         filePath: `${SEQUENCE_UUID}.yaml`,
         contentHash: "hash",
@@ -172,18 +157,15 @@ const makeMultiSectionBundleResponse = (sections: { uuid: string; fragmentUuids:
   },
 });
 
+const makeBundleResponse = (fragmentUuids: string[] = []) =>
+  makeMultiSectionBundleResponse([{ uuid: SECTION_UUID, fragmentUuids }]);
+
 const makeFragment = (
   uuid: string,
   key: string,
   excerpt: string | null = "Some text content here.",
   aspects: Record<string, { weight: number }> = {},
-) => ({
-  uuid,
-  key,
-  isDiscarded: false,
-  excerpt,
-  aspects,
-});
+) => ({ uuid, key, isDiscarded: false, excerpt, aspects });
 
 const makeFragmentsResponse = (fragments: ReturnType<typeof makeFragment>[]) => ({
   status: 200 as const,
@@ -192,7 +174,8 @@ const makeFragmentsResponse = (fragments: ReturnType<typeof makeFragment>[]) => 
 
 // --- helpers ---
 
-const { useListSequences } = await import("../../api/generated/sequences/sequences");
+const { useListSequences, useGetSequenceContents } =
+  await import("../../api/generated/sequences/sequences");
 const { useListFragmentSummaries } = await import("../../api/generated/fragments/fragments");
 
 const mockSequence = (fragmentUuids: string[] = []) => {
@@ -202,10 +185,26 @@ const mockSequence = (fragmentUuids: string[] = []) => {
   });
 };
 
+const mockMultiSectionSequence = (sections: { uuid: string; fragmentUuids: string[] }[]) => {
+  (useListSequences as Mock).mockReturnValue({
+    data: makeMultiSectionBundleResponse(sections),
+    isLoading: false,
+  });
+};
+
 const mockFragments = (fragments: ReturnType<typeof makeFragment>[]) => {
   (useListFragmentSummaries as Mock).mockReturnValue({
     data: makeFragmentsResponse(fragments),
     isLoading: false,
+  });
+};
+
+const mockContents = (
+  placed: { fragmentUuid: string; key: string; content: string }[],
+  pool: { fragmentUuid: string; key: string; content: string }[] = [],
+) => {
+  (useGetSequenceContents as Mock).mockReturnValue({
+    data: { status: 200, data: { placed, pool } },
   });
 };
 
@@ -219,7 +218,6 @@ const wrap = () => {
   return Wrapper;
 };
 
-// Trigger a drag-end event as if a tile was dragged
 function triggerDragEnd(activeId: string, overId: string) {
   act(() => {
     capturedOnDragEnd?.({
@@ -241,7 +239,6 @@ function triggerDragEnd(activeId: string, overId: string) {
   });
 }
 
-// --- import component after mocks ---
 const { OverviewPage } = await import("../OverviewPage");
 
 // ---
@@ -249,830 +246,292 @@ const { OverviewPage } = await import("../OverviewPage");
 describe("OverviewPage — rendering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
   });
 
   it("shows loading state while data is fetching", () => {
     (useListSequences as Mock).mockReturnValue({ data: undefined, isLoading: true });
     (useListFragmentSummaries as Mock).mockReturnValue({ data: undefined, isLoading: true });
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
-  it("renders section and Pool headings", () => {
-    mockSequence([]);
-    mockFragments([]);
-
+  it("renders the reorder list and pool heading", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
     render(<OverviewPage />, { wrapper: wrap() });
-
-    const headings = screen.getAllByRole("heading", { level: 2 });
-    // section heading uses the section name (e.g. "Main") or "Untitled section"
-    expect(headings.length).toBeGreaterThan(0);
-    expect(headings.some((h) => /pool/i.test(h.textContent ?? ""))).toBe(true);
+    expect(screen.getByTestId("reorder-list")).toBeInTheDocument();
+    expect(screen.getByText(/Pool/)).toBeInTheDocument();
   });
 
-  it("renders empty-sequence prompt when no fragments are placed", () => {
+  it("renders the prose spine with placed fragments at title level", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+    const spine = screen.getByTestId("prose-spine");
+    // The fragment title appears in the spine (and in the reorder list).
+    expect(screen.getAllByText("alpha").length).toBeGreaterThanOrEqual(1);
+    expect(spine).toBeInTheDocument();
+  });
+
+  it("shows the empty-spine prompt when no fragments are placed", () => {
     mockSequence([]);
     mockFragments([makeFragment(FRAG_A, "alpha")]);
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText(/drag fragments here/i)).toBeInTheDocument();
+    expect(screen.getByText(/No fragments placed yet/)).toBeInTheDocument();
   });
 
-  it("renders placed fragment tiles in the sequence zone", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText("alpha")).toBeInTheDocument();
-    expect(screen.getByText("beta")).toBeInTheDocument();
-  });
-
-  it("renders unplaced non-discarded fragments in the pool", () => {
+  it("lists unplaced non-discarded fragments in the pool", () => {
     mockSequence([FRAG_A]);
     mockFragments([
       makeFragment(FRAG_A, "alpha"),
       makeFragment(FRAG_B, "beta"),
-      makeFragment(FRAG_C, "gamma"),
+      { ...makeFragment(FRAG_C, "gamma"), isDiscarded: true },
     ]);
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    // alpha is in sequence — beta and gamma are in pool
+    expect(screen.getByRole("heading", { name: /Pool/ })).toHaveTextContent("Pool (1)");
+    // beta is in the pool; gamma is discarded and excluded.
     expect(screen.getByText("beta")).toBeInTheDocument();
-    expect(screen.getByText("gamma")).toBeInTheDocument();
-  });
-
-  it("excludes discarded fragments from the pool", () => {
-    mockSequence([]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha"),
-      { ...makeFragment(FRAG_B, "beta"), isDiscarded: true },
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText("alpha")).toBeInTheDocument();
-    expect(screen.queryByText("beta")).not.toBeInTheDocument();
-  });
-
-  it("shows all-placed message when pool is empty", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText(/all fragments are placed/i)).toBeInTheDocument();
-  });
-
-  it("shows correct counts in headings", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Pool count is in the <h2> for the pool section
-    const headings = screen.getAllByRole("heading", { level: 2 });
-    const poolHeading = headings.find((h) => /pool/i.test(h.textContent ?? ""));
-    // section has 1 placed fragment; pool has 1 unplaced
-    expect(poolHeading?.textContent).toMatch(/\(1\)/);
-    expect(poolHeading?.textContent).toMatch(/\(1\)/);
+    expect(screen.queryByText("gamma")).toBeNull();
   });
 });
 
-describe("OverviewPage — drag interactions", () => {
+describe("OverviewPage — detail-level axis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
+    currentSearch = { sequence: undefined, detail: "title" };
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", "The river was wide.")]);
+    mockContents([{ fragmentUuid: FRAG_A, key: "alpha", content: "The river was wide." }]);
   });
 
-  it("calls placeFragment when a pool tile is dropped onto a sequence tile", () => {
+  it("renders the three detail-level buttons", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+    const group = screen.getByRole("group", { name: /spine detail level/i });
+    expect(group).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prose" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excerpt" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Title" })).toBeInTheDocument();
+  });
+
+  it("marks the URL detail level active", () => {
+    currentSearch = { sequence: undefined, detail: "excerpt" };
+    render(<OverviewPage />, { wrapper: wrap() });
+    expect(screen.getByRole("button", { name: "Excerpt" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("title level shows only the title (no excerpt text)", () => {
+    currentSearch = { sequence: undefined, detail: "title" };
+    render(<OverviewPage />, { wrapper: wrap() });
+    const spine = screen.getByTestId("prose-spine");
+    expect(spine.querySelector('[data-detail-level="title"]')).not.toBeNull();
+    expect(spine.textContent).not.toContain("The river was wide.");
+  });
+
+  it("excerpt level renders the derived excerpt in the spine", () => {
+    currentSearch = { sequence: undefined, detail: "excerpt" };
+    render(<OverviewPage />, { wrapper: wrap() });
+    const spine = screen.getByTestId("prose-spine");
+    expect(spine.querySelector('[data-detail-level="excerpt"]')).not.toBeNull();
+    expect(spine.textContent).toContain("The river was wide.");
+  });
+
+  it("navigates with the chosen detail level when a button is clicked", () => {
+    currentSearch = { sequence: "seq-1", detail: "title" };
+    render(<OverviewPage />, { wrapper: wrap() });
+    fireEvent.click(screen.getByRole("button", { name: "Excerpt" }));
+
+    expect(updateProjectMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      data: { overview: { detailLevel: "excerpt" } },
+    });
+    const call = navigateMock.mock.calls.at(-1)?.[0];
+    expect(call.to).toBe("/projects/$projectId/overview");
+    expect(call.search({ sequence: "seq-1", detail: "title" })).toEqual({
+      sequence: "seq-1",
+      detail: "excerpt",
+    });
+  });
+});
+
+describe("OverviewPage — drag interactions (vertical list)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("places a pool fragment dropped onto a placed fragment", () => {
     mockSequence([FRAG_A]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    // FRAG_B is in pool; drop it over FRAG_A (in sequence) → place at index 0
     triggerDragEnd(FRAG_B, FRAG_A);
-
     expect(placeMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
       sequenceId: SEQUENCE_UUID,
-      data: {
-        fragmentUuid: FRAG_B,
-        sectionUuid: SECTION_UUID,
-        position: 0,
-      },
+      data: { fragmentUuid: FRAG_B, sectionUuid: SECTION_UUID, position: 0 },
     });
   });
 
-  it("calls placeFragment at tail when dropped onto the section zone container", () => {
+  it("places a pool fragment at the tail when dropped onto the section zone", () => {
     mockSequence([FRAG_A]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    // Drop FRAG_B onto the section zone itself (zone id = section UUID) → append
     triggerDragEnd(FRAG_B, SECTION_UUID);
-
     expect(placeMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
       sequenceId: SEQUENCE_UUID,
-      data: {
-        fragmentUuid: FRAG_B,
-        sectionUuid: SECTION_UUID,
-        position: 1, // section has 1 item → append at index 1
-      },
+      data: { fragmentUuid: FRAG_B, sectionUuid: SECTION_UUID, position: 1 },
     });
   });
 
-  it("calls moveFragment when a sequence tile is dropped onto another sequence tile", () => {
+  it("moves a placed fragment dropped onto another placed fragment", () => {
     mockSequence([FRAG_A, FRAG_B]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
     render(<OverviewPage />, { wrapper: wrap() });
-
-    // Move FRAG_A (index 0) over FRAG_B (index 1) → should call move with position 1
-    triggerDragEnd(FRAG_A, FRAG_B);
-
-    expect(moveMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_A,
-      data: {
-        sectionUuid: SECTION_UUID,
-        position: 1,
-      },
-    });
-  });
-
-  it("calls unplaceFragment when a sequence tile is dropped onto the pool zone", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Drag FRAG_A from sequence to the pool zone
-    triggerDragEnd(FRAG_A, "pool-zone");
-
-    expect(unplaceMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_A,
-    });
-  });
-
-  it("calls unplaceFragment when a sequence tile is dropped onto a pool tile", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Drag FRAG_A (in sequence) over FRAG_B (in pool)
-    triggerDragEnd(FRAG_A, FRAG_B);
-
-    expect(unplaceMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_A,
-    });
-  });
-
-  it("does not call any mutation when dropping a pool tile onto another pool tile", () => {
-    mockSequence([]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Both FRAG_A and FRAG_B are in pool; dropping one over the other is a no-op
-    triggerDragEnd(FRAG_A, FRAG_B);
-
-    expect(placeMutate).not.toHaveBeenCalled();
-    expect(moveMutate).not.toHaveBeenCalled();
-    expect(unplaceMutate).not.toHaveBeenCalled();
-  });
-
-  it("does not call moveFragment when dropping a sequence tile onto itself", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Drop FRAG_A over itself → no-op
-    triggerDragEnd(FRAG_A, FRAG_A);
-
-    expect(moveMutate).not.toHaveBeenCalled();
-  });
-});
-
-describe("OverviewPage — density toggle", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-    mockSequence([]);
-    mockFragments([]);
-  });
-
-  it("renders all three density tier buttons", () => {
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const group = screen.getByRole("group", { name: /tile density/i });
-    const buttons = group.querySelectorAll("button");
-    expect(buttons).toHaveLength(3);
-    expect(buttons[0]?.textContent?.toLowerCase()).toBe("full");
-    expect(buttons[1]?.textContent?.toLowerCase()).toBe("compact");
-    expect(buttons[2]?.textContent?.toLowerCase()).toBe("mini");
-  });
-
-  it("marks 'full' active by default", () => {
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const fullButton = screen.getByRole("button", { name: /^full$/i });
-    expect(fullButton.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("reflects the density URL param in the active button", () => {
-    currentSearch = { sequence: undefined, density: "compact" };
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByRole("button", { name: /^full$/i }).getAttribute("aria-pressed")).toBe(
-      "false",
-    );
-    expect(screen.getByRole("button", { name: /^compact$/i }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
-    expect(screen.getByRole("button", { name: /^mini$/i }).getAttribute("aria-pressed")).toBe(
-      "false",
-    );
-  });
-
-  it("calls navigate with updated density when a tier button is clicked", () => {
-    currentSearch = { sequence: "seq-existing", density: "full" };
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByRole("button", { name: /^mini$/i }));
-
-    expect(navigateMock).toHaveBeenCalledTimes(1);
-    const navigateCall = navigateMock.mock.calls[0][0];
-    expect(navigateCall.to).toBe("/projects/$projectId/overview");
-    expect(navigateCall.params).toEqual({ projectId: PROJECT_ID });
-    // search is a function that merges into previous params
-    expect(typeof navigateCall.search).toBe("function");
-    const previousSearch = { sequence: "seq-existing", density: "full" as const };
-    expect(navigateCall.search(previousSearch)).toEqual({
-      sequence: "seq-existing",
-      density: "mini",
-    });
-  });
-});
-
-describe("OverviewPage — density-aware tile rendering", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-  });
-
-  it("renders fragment excerpt and aspect chips when density is full", () => {
-    currentSearch = { sequence: undefined, density: "full" };
-    mockSequence([]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", "This is the excerpt for alpha.", {
-        grief: { weight: 0.6 },
-        city: { weight: 0.3 },
-      }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText("This is the excerpt for alpha.")).toBeInTheDocument();
-    expect(screen.getByText("grief")).toBeInTheDocument();
-    expect(screen.getByText("city")).toBeInTheDocument();
-  });
-
-  it("hides excerpt and shows a color bar when density is compact", () => {
-    currentSearch = { sequence: undefined, density: "compact" };
-    mockSequence([]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", "This excerpt should not be rendered.", {
-        grief: { weight: 0.6 },
-      }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByText("alpha")).toBeInTheDocument();
-    expect(screen.queryByText("This excerpt should not be rendered.")).not.toBeInTheDocument();
-
-    const compactTile = document.querySelector('[data-density="compact"]');
-    expect(compactTile).not.toBeNull();
-    expect(compactTile?.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-  });
-
-  it("renders only the color bar (no key text) when density is mini", () => {
-    currentSearch = { sequence: undefined, density: "mini" };
-    mockSequence([]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", "Hidden excerpt.", {
-        grief: { weight: 0.6 },
-        city: { weight: 0.4 },
-      }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // No visible key or excerpt at mini.
-    expect(screen.queryByText("alpha")).not.toBeInTheDocument();
-    expect(screen.queryByText("Hidden excerpt.")).not.toBeInTheDocument();
-
-    const miniTile = document.querySelector('[data-density="mini"]');
-    expect(miniTile).not.toBeNull();
-    expect(miniTile?.getAttribute("aria-label")).toBe("alpha");
-    expect(miniTile?.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-    expect(miniTile?.querySelector('[data-aspect-key="city"]')).not.toBeNull();
-  });
-
-  it("renders an empty color bar fallback for fragments with no aspect weights", () => {
-    currentSearch = { sequence: undefined, density: "mini" };
-    mockSequence([]);
-    mockFragments([makeFragment(FRAG_A, "alpha", null, {})]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const miniTile = document.querySelector('[data-density="mini"]');
-    expect(miniTile).not.toBeNull();
-    // No aspect segments are rendered when there are no weights.
-    expect(miniTile?.querySelector("[data-aspect-key]")).toBeNull();
-  });
-});
-
-describe("OverviewPage — arc panel", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-  });
-
-  it("does not render the arc panel when the sequence has no sections", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: { status: 200, data: { sequences: [], violations: [], cycles: [] } },
-      isLoading: false,
-    });
-    mockFragments([]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.queryByTestId("arc-panel")).toBeNull();
-  });
-
-  it("renders the arc panel when sections exist, even if empty", () => {
-    mockSequence([]);
-    mockFragments([]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.getByTestId("arc-panel")).toBeInTheDocument();
-  });
-
-  it("renders one curve per aspect that has any weighted point", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
-      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 } }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const panel = screen.getByTestId("arc-panel");
-    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-    // city has only one point — renders as a circle, also tagged with data-aspect-key
-    expect(panel.querySelector('[data-aspect-key="city"]')).not.toBeNull();
-  });
-
-  it("omits an aspect when no placed fragment has weight for it", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 } })]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const panel = screen.getByTestId("arc-panel");
-    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-    expect(panel.querySelector('[data-aspect-key="city"]')).toBeNull();
-  });
-});
-
-describe("OverviewPage — arc legend and toggles", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-  });
-
-  it("renders a legend chip for every aspect present in the arc", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
-      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 } }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const legend = screen.getByTestId("arc-legend");
-    expect(legend.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-    expect(legend.querySelector('[data-aspect-key="city"]')).not.toBeNull();
-  });
-
-  it("does not render the legend when no aspect has data", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha", null, {})]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    expect(screen.queryByTestId("arc-legend")).toBeNull();
-  });
-
-  it("hides the matching arc when its legend chip is toggled off", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
-      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 }, city: { weight: 0.4 } }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const panel = screen.getByTestId("arc-panel");
-    expect(panel.querySelector('[data-aspect-key="grief"]')).not.toBeNull();
-
-    const legend = screen.getByTestId("arc-legend");
-    const griefToggle = legend.querySelector('[data-aspect-key="grief"]') as HTMLButtonElement;
-    fireEvent.click(griefToggle);
-
-    expect(panel.querySelector('[data-aspect-key="grief"]')).toBeNull();
-    // city still visible
-    expect(panel.querySelector('[data-aspect-key="city"]')).not.toBeNull();
-    // toggle reports its new state
-    expect(griefToggle.getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("keeps panel height stable when all aspects are toggled off", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 }, city: { weight: 0.3 } }),
-      makeFragment(FRAG_B, "beta", null, { grief: { weight: 0.8 }, city: { weight: 0.4 } }),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const panelBefore = screen.getByTestId("arc-panel") as HTMLElement;
-    const heightBefore = panelBefore.style.height;
-
-    const legend = screen.getByTestId("arc-legend");
-    for (const aspectKey of ["grief", "city"]) {
-      const toggle = legend.querySelector(`[data-aspect-key="${aspectKey}"]`) as HTMLButtonElement;
-      fireEvent.click(toggle);
-    }
-
-    const panelAfter = screen.getByTestId("arc-panel") as HTMLElement;
-    expect(panelAfter.style.height).toBe(heightBefore);
-    // No aspect-bearing SVG elements remain.
-    expect(panelAfter.querySelector("[data-aspect-key]")).toBeNull();
-  });
-
-  it("re-shows the curve when the chip is toggled back on", () => {
-    mockSequence([FRAG_A]);
-    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.6 } })]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-    const legend = screen.getByTestId("arc-legend");
-    const griefToggle = legend.querySelector('[data-aspect-key="grief"]') as HTMLButtonElement;
-
-    fireEvent.click(griefToggle);
-    expect(screen.getByTestId("arc-panel").querySelector('[data-aspect-key="grief"]')).toBeNull();
-
-    fireEvent.click(griefToggle);
-    expect(
-      screen.getByTestId("arc-panel").querySelector('[data-aspect-key="grief"]'),
-    ).not.toBeNull();
-  });
-});
-
-describe("OverviewPage — keyboard fragment movement", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-  });
-
-  it("ArrowRight moves selected fragment one position forward in its section", () => {
-    mockSequence([FRAG_A, FRAG_B, FRAG_C]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha"),
-      makeFragment(FRAG_B, "beta"),
-      makeFragment(FRAG_C, "gamma"),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // Select FRAG_A by clicking its tile key text
-    fireEvent.click(screen.getByText("alpha"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight" });
-
-    expect(moveMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_A,
-      data: { sectionUuid: SECTION_UUID, position: 1 },
-    });
-  });
-
-  it("ArrowLeft moves selected fragment one position backward in its section", () => {
-    mockSequence([FRAG_A, FRAG_B, FRAG_C]);
-    mockFragments([
-      makeFragment(FRAG_A, "alpha"),
-      makeFragment(FRAG_B, "beta"),
-      makeFragment(FRAG_C, "gamma"),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("gamma"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowLeft" });
-
-    expect(moveMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_C,
-      data: { sectionUuid: SECTION_UUID, position: 1 },
-    });
-  });
-
-  it("ArrowRight at last position in a section moves to start of next section", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A, FRAG_B] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_C] },
-      ]),
-      isLoading: false,
-    });
-    mockFragments([
-      makeFragment(FRAG_A, "alpha"),
-      makeFragment(FRAG_B, "beta"),
-      makeFragment(FRAG_C, "gamma"),
-    ]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    // FRAG_B is at position 1 (last) in section 1
-    fireEvent.click(screen.getByText("beta"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight" });
-
+    triggerDragEnd(FRAG_B, FRAG_A);
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
       sequenceId: SEQUENCE_UUID,
       fragmentUuid: FRAG_B,
-      data: { sectionUuid: SECTION_UUID_2, position: 0 },
+      data: { sectionUuid: SECTION_UUID, position: 0 },
     });
   });
 
-  it("ArrowLeft at first position in a section moves to end of previous section", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A, FRAG_B] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_C] },
-      ]),
-      isLoading: false,
+  it("unplaces a placed fragment dropped onto the pool zone", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+    triggerDragEnd(FRAG_A, "pool-zone");
+    expect(unplaceMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
     });
-    mockFragments([
-      makeFragment(FRAG_A, "alpha"),
-      makeFragment(FRAG_B, "beta"),
-      makeFragment(FRAG_C, "gamma"),
-    ]);
+  });
 
+  it("does not mutate when dropping a pool fragment onto another pool fragment", () => {
+    mockSequence([]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+    triggerDragEnd(FRAG_A, FRAG_B);
+    expect(placeMutate).not.toHaveBeenCalled();
+    expect(moveMutate).not.toHaveBeenCalled();
+    expect(unplaceMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("OverviewPage — keyboard fragment movement (vertical)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("ArrowDown moves the selected fragment one position forward", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
     render(<OverviewPage />, { wrapper: wrap() });
 
-    // FRAG_C is at position 0 (first) in section 2
-    fireEvent.click(screen.getByText("gamma"));
+    // Select the first fragment via its reorder row.
+    const list = screen.getByTestId("reorder-list");
+    const row = list.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!;
+    fireEvent.click(row);
 
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowLeft" });
+    const main = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(main, { key: "ArrowDown" });
 
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
       sequenceId: SEQUENCE_UUID,
-      fragmentUuid: FRAG_C,
-      data: { sectionUuid: SECTION_UUID, position: 2 },
+      fragmentUuid: FRAG_A,
+      data: { sectionUuid: SECTION_UUID, position: 1 },
     });
   });
 
-  it("ArrowLeft at absolute first position is a no-op", () => {
-    mockSequence([FRAG_A, FRAG_B]);
+  it("Shift+ArrowDown moves the selected fragment's section forward", () => {
+    mockMultiSectionSequence([
+      { uuid: "sec-1", fragmentUuids: [FRAG_A] },
+      { uuid: "sec-2", fragmentUuids: [FRAG_B] },
+    ]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
     render(<OverviewPage />, { wrapper: wrap() });
 
-    fireEvent.click(screen.getByText("alpha"));
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(list.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!);
 
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowLeft" });
-
-    expect(moveMutate).not.toHaveBeenCalled();
-  });
-
-  it("ArrowRight at absolute last position is a no-op", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("beta"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight" });
-
-    expect(moveMutate).not.toHaveBeenCalled();
-  });
-
-  it("does not move when no fragment is selected", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight" });
-
-    expect(moveMutate).not.toHaveBeenCalled();
-  });
-
-  it("ignores arrow keys fired from an input element", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("alpha"));
-
-    // Fire keyDown from an input (simulates typing in section name input)
-    const input = document.createElement("input");
-    const container = screen.getByTestId("overview-main-content");
-    container.appendChild(input);
-    fireEvent.keyDown(input, { key: "ArrowRight" });
-
-    expect(moveMutate).not.toHaveBeenCalled();
-  });
-});
-
-describe("OverviewPage — keyboard section movement", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedOnDragEnd = undefined;
-    currentSearch = { sequence: undefined, density: "full" };
-  });
-
-  it("Shift+ArrowRight moves the section containing the selected fragment forward", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
-      ]),
-      isLoading: false,
-    });
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("alpha"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
+    const main = screen.getByTestId("overview-main-content");
+    fireEvent.keyDown(main, { key: "ArrowDown", shiftKey: true });
 
     expect(moveSectionMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
       sequenceId: SEQUENCE_UUID,
-      sectionId: SECTION_UUID,
+      sectionId: "sec-1",
       data: { position: 1 },
     });
   });
+});
 
-  it("Shift+ArrowLeft moves the section containing the selected fragment backward", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
-      ]),
-      isLoading: false,
-    });
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("beta"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowLeft", shiftKey: true });
-
-    expect(moveSectionMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_UUID,
-      sectionId: SECTION_UUID_2,
-      data: { position: 0 },
+describe("OverviewPage — arc overlay and vertical strip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
     });
   });
 
-  it("Shift+ArrowLeft at the first section is a no-op", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
-      ]),
-      isLoading: false,
-    });
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
+  it("summons the arc overlay when the Arcs toggle is clicked", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.5 } })]);
     render(<OverviewPage />, { wrapper: wrap() });
 
-    fireEvent.click(screen.getByText("alpha"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowLeft", shiftKey: true });
-
-    expect(moveSectionMutate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("arc-overlay")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Arcs" }));
+    expect(screen.getByTestId("arc-overlay")).toBeInTheDocument();
   });
 
-  it("Shift+ArrowRight at the last section is a no-op", () => {
-    (useListSequences as Mock).mockReturnValue({
-      data: makeMultiSectionBundleResponse([
-        { uuid: SECTION_UUID, fragmentUuids: [FRAG_A] },
-        { uuid: SECTION_UUID_2, fragmentUuids: [FRAG_B] },
-      ]),
-      isLoading: false,
-    });
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
+  it("toggles the vertical arc strip", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.5 } })]);
     render(<OverviewPage />, { wrapper: wrap() });
 
-    fireEvent.click(screen.getByText("beta"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
-
-    expect(moveSectionMutate).not.toHaveBeenCalled();
-  });
-
-  it("Shift+Arrow does not trigger fragment move, only plain Arrow does", () => {
-    mockSequence([FRAG_A, FRAG_B]);
-    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
-
-    render(<OverviewPage />, { wrapper: wrap() });
-
-    fireEvent.click(screen.getByText("alpha"));
-
-    const container = screen.getByTestId("overview-main-content");
-    fireEvent.keyDown(container, { key: "ArrowRight", shiftKey: true });
-
-    // No fragment move since Shift was held
-    expect(moveMutate).not.toHaveBeenCalled();
-    // No section move since single section
-    expect(moveSectionMutate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("vertical-arc-strip")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Strip" }));
+    expect(screen.getByTestId("vertical-arc-strip")).toBeInTheDocument();
   });
 });
 
-describe("parseOverviewDensity", () => {
-  it("returns 'full' as the default when value is undefined", async () => {
-    const { parseOverviewDensity } = await import("../../router");
-    expect(parseOverviewDensity(undefined)).toBe("full");
+describe("parseOverviewDetailLevel", () => {
+  it("defaults to prose for undefined", async () => {
+    const { parseOverviewDetailLevel } = await import("../../router");
+    expect(parseOverviewDetailLevel(undefined)).toBe("prose");
   });
 
-  it("returns 'full' for unknown string values", async () => {
-    const { parseOverviewDensity } = await import("../../router");
-    expect(parseOverviewDensity("bogus")).toBe("full");
-    expect(parseOverviewDensity("")).toBe("full");
+  it("defaults to prose for unknown values", async () => {
+    const { parseOverviewDetailLevel } = await import("../../router");
+    expect(parseOverviewDetailLevel("bogus")).toBe("prose");
+    expect(parseOverviewDetailLevel("")).toBe("prose");
   });
 
-  it("returns the value when it is a valid density tier", async () => {
-    const { parseOverviewDensity } = await import("../../router");
-    expect(parseOverviewDensity("full")).toBe("full");
-    expect(parseOverviewDensity("compact")).toBe("compact");
-    expect(parseOverviewDensity("mini")).toBe("mini");
+  it("passes through valid values", async () => {
+    const { parseOverviewDetailLevel } = await import("../../router");
+    expect(parseOverviewDetailLevel("prose")).toBe("prose");
+    expect(parseOverviewDetailLevel("excerpt")).toBe("excerpt");
+    expect(parseOverviewDetailLevel("title")).toBe("title");
   });
 
-  it("returns 'full' for non-string inputs", async () => {
-    const { parseOverviewDensity } = await import("../../router");
-    expect(parseOverviewDensity(null)).toBe("full");
-    expect(parseOverviewDensity(42)).toBe("full");
-    expect(parseOverviewDensity({})).toBe("full");
+  it("defaults to prose for non-string values", async () => {
+    const { parseOverviewDetailLevel } = await import("../../router");
+    expect(parseOverviewDetailLevel(null)).toBe("prose");
+    expect(parseOverviewDetailLevel(42)).toBe("prose");
+    expect(parseOverviewDetailLevel({})).toBe("prose");
   });
 });

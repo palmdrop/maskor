@@ -13,7 +13,7 @@ The legacy Overview laid fragments out as a horizontal row of tiles with aspect 
 ## Considered options
 
 - **Keep horizontal, fix with zoom-to-fit** (compress tiles to thin columns). Rejected: keeps the awkward axis for reading prose and still can't show the writing coherently.
-- **Vertical arcs beside the spine as the primary arc view.** Rejected as primary because vertical rise/fall is harder to read; retained as a *secondary* lightweight glance strip (Phase 1b), not the analytical surface.
+- **Vertical arcs beside the spine as the primary arc view.** Rejected as primary because vertical rise/fall is harder to read; retained as a _secondary_ lightweight glance strip (Phase 1b), not the analytical surface.
 - **A separate dedicated Arc page.** Rejected: the expand-overlay covers deep arc work without a second route; revisit only if arc editing / interleaving / key-fragment authoring outgrows an overlay.
 
 ## Consequences

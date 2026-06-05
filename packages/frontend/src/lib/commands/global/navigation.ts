@@ -25,7 +25,7 @@ const goToOverview = defineGlobalCommand({
     void router.navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      search: { density: "full" },
+      search: { detail: "prose" },
     });
   },
 });

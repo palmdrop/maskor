@@ -11,8 +11,7 @@ import {
 } from "@dnd-kit/core";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import type { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
-import { isSectionDragId, fromSectionDragId } from "../components/SequenceSections";
-import { POOL_ZONE_ID } from "../constants";
+import { isSectionDragId, fromSectionDragId, POOL_ZONE_ID } from "../utils/dndIds";
 
 interface UseSequenceDnDParams {
   sequence: Sequence | undefined;
