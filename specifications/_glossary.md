@@ -76,9 +76,9 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Cooldown**: The transient, in-memory exclusion of a recently surfaced fragment from the eligible pool, preventing immediate re-surfacing. _Avoid_: debounce, suppression, exclusion window.
 
-**Overview**: The primary visual surface for inspecting and rearranging the sequence — a horizontal layout of fragment tiles with arc overlays; a read-and-rearrange surface, not an editing surface. _Avoid_: sequencer view, timeline view, dashboard.
+**Overview**: The primary working surface for reading and rearranging a sequence — a vertical spine of fragments (rendered as flowing prose, or condensed to title rows) flanked by a draggable reorder list with the unassigned pool, a selected-fragment detail panel, and a summonable aspect-arc overlay that expands into a full zoomable arc view. A read-and-rearrange surface; in-context fragment editing is a planned addition. _Avoid_: sequencer view, timeline view, dashboard, tile grid.
 
-**Tile**: The visual representation of a single placed fragment in the overview, rendered with density-dependent content (key, excerpt, aspect chips, or color bar). _Avoid_: card (used generically elsewhere in the UI), cell, block.
+**Tile** (being retired): The horizontal-grid representation of a single placed fragment in the legacy Overview, rendered with density-dependent content (key, excerpt, aspect chips, or color bar). The redesigned vertical Overview replaces tiles with per-fragment prose blocks and condensed title rows; do not reuse "tile" for the new surface's rows or blocks. _Avoid_: card (used generically elsewhere in the UI), cell, block.
 
 **Key fragment**: A fragment pinned to a target normalized position in the sequence with a user-defined tolerance radius; respected by all placement modes. _Avoid_: anchored fragment, pinned fragment, fixed fragment.
 
