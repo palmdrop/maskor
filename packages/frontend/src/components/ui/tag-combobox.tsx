@@ -23,6 +23,7 @@ export function TagCombobox({
 }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [highlightedValue, setHighlightedValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const commandRef = useRef<HTMLDivElement>(null);
 
@@ -92,18 +93,29 @@ export function TagCombobox({
             }
 
             if (event.key === "Enter" && open) {
+              event.preventDefault();
+              // If cmdk has a highlighted item, let cmdk handle selection/creation.
+              // This ensures a highlighted existing option is selected even when the
+              // showCreate affordance is also visible.
+              if (highlightedValue) {
+                commandRef.current?.dispatchEvent(
+                  new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+                );
+                return;
+              }
+              // No highlighted item: fall back to create or single-option shortcuts.
               const firstOption = filteredGroups[0]?.options[0];
               const singleOption =
                 hasOptions && filteredGroups.flatMap((g) => g.options).length === 1;
-              if (showCreate || singleOption) {
-                event.preventDefault();
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                showCreate ? handleCreate() : firstOption && handleSelect(firstOption);
-                return;
+              if (showCreate) {
+                handleCreate();
+              } else if (singleOption && firstOption) {
+                handleSelect(firstOption);
               }
+              return;
             }
 
-            if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key) && open) {
+            if (["ArrowUp", "ArrowDown"].includes(event.key) && open) {
               event.preventDefault();
               commandRef.current?.dispatchEvent(
                 new KeyboardEvent("keydown", { key: event.key, bubbles: true }),
@@ -132,7 +144,12 @@ export function TagCombobox({
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           )}
         >
-          <Command ref={commandRef} shouldFilter={false}>
+          <Command
+            ref={commandRef}
+            shouldFilter={false}
+            value={highlightedValue}
+            onValueChange={setHighlightedValue}
+          >
             <Command.List className="max-h-48 overflow-y-auto p-1">
               {!hasOptions && !showCreate && (
                 <Command.Empty className="py-2 px-3 text-sm text-muted-foreground">
