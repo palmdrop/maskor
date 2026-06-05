@@ -230,19 +230,35 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   // vertical gap between the two scrollers' content tops (their chrome — notes header, toolbars —
   // differs) and closing it. Usually this column sits lower (the notes header), so the editor's
   // content is padded down; the rare opposite case pads the rows. Measured from the stable scroller
-  // boxes, so neither padding feeds back into the measurement. ---
+  // boxes, so neither padding feeds back into the measurement.
+  //
+  // In CM6 (raw/vim) mode, blockRanges skips leading blank lines, so block 0 may sit below the
+  // content origin by the blank-line height. We read editorBlocks[0].top (measured relative to the
+  // scroller's content origin after the current top-padding is applied) and carry the surplus over
+  // max(0, delta) into rowsPaddingTop so row 0 lands beside block 0, not at the content origin. ---
   useEffect(() => {
     const editorScroll = getScrollElement();
     const columnScroll = scrollRef.current;
     if (!editorScroll || !columnScroll) return;
     const delta =
       columnScroll.getBoundingClientRect().top - editorScroll.getBoundingClientRect().top;
+    // Extra offset when block 0 is not at the content origin (leading blank lines in CM6 mode).
+    const block0Top = editorBlocks[0]?.top ?? 0;
+    const leadingOffset = Math.max(0, block0Top - Math.max(0, delta));
     setEditorTopPadding(Math.max(0, delta));
     setRowsPaddingTop((previous) => {
-      const next = Math.max(0, -delta);
+      const next = Math.max(0, -delta) + leadingOffset;
       return Math.abs(previous - next) < 0.5 ? previous : next;
     });
-  }, [getScrollElement, setEditorTopPadding, notesOpen, mode, fontSize, geometryTick]);
+  }, [
+    getScrollElement,
+    setEditorTopPadding,
+    notesOpen,
+    mode,
+    fontSize,
+    geometryTick,
+    editorBlocks,
+  ]);
 
   // --- Mutual flow alignment (ADR 0009). Each row is as tall as the taller of its block-slot and its
   // comment: the column pads short comments up to the slot (min-height), and the editor pushes the
@@ -374,7 +390,11 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       >
         {/* One slot per paragraph, flow-aligned to the editor (ADR 0009): each row's min-height is its
             block's slot height, and the editor injects a spacer when a comment is taller. */}
-        <div className="flex flex-col" style={{ paddingTop: rowsPaddingTop || undefined }}>
+        <div
+          className="flex flex-col"
+          style={{ paddingTop: rowsPaddingTop || undefined }}
+          data-testid="margin-rows"
+        >
           {rows.map((row, rowIndex) => {
             const minHeight = minHeightFor(row.block.index);
             const comment = row.comment;

@@ -114,7 +114,7 @@ When a story requires a spec update, the update is part of the acceptance criter
 
 #### US-006: Back-navigation in suggestion mode lands on the wrong (preceding) fragment
 
-**Description:** As a writer in suggestion mode, navigating away from a suggested fragment and back sometimes lands on the fragment *before* the one I was viewing, not the one I left. The persisted current-fragment pointer appears stale. (TODO: "when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown… Backend state is probably not updated properly.")
+**Description:** As a writer in suggestion mode, navigating away from a suggested fragment and back sometimes lands on the fragment _before_ the one I was viewing, not the one I left. The persisted current-fragment pointer appears stale. (TODO: "when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown… Backend state is probably not updated properly.")
 
 **Acceptance Criteria:**
 

@@ -2,9 +2,7 @@
   "project": "Maskor",
   "branchName": "ralph/import-pipeline-stage-2",
   "description": "Import Pipeline Stage 2 - Preview and review step. After picking a .md/.txt/.docx file, the user lands on a new full-page preview that shows the converted document split into pieces, the count and derived keys of fragments-to-be-created, and live updates as heading level (md/docx) or delimiter (txt) changes. Pressing Import commits via the existing Stage 1 endpoint. Preview is read-only; per-piece edit (merge/discard/retitle/adjustable splits) remains deferred.",
-  "specs": [
-    "specifications/import-pipeline.md"
-  ],
+  "specs": ["specifications/import-pipeline.md"],
   "userStories": [
     {
       "id": "US-001",

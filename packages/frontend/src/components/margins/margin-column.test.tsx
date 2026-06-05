@@ -384,6 +384,48 @@ describe("MarginColumn", () => {
     expect(setEditorTopPadding).toHaveBeenCalledWith(40);
   });
 
+  it("offsets rows down to align row 0 with block 0 when leading blank lines push the first block below the content origin (CM6 mode)", () => {
+    // In CM6 (raw/vim) mode blockRanges skips leading blank lines, so block 0 can sit below the
+    // content origin. The origin-alignment effect must carry that offset into rowsPaddingTop so
+    // row 0 lands beside block 0 instead of at the content top.
+    //
+    // Scenario: containers at the same visual top (delta = 0), but block 0 measured at top = 30
+    // (30px of leading blank lines that blockRanges does not capture as blocks).
+    const editorScroll = {
+      getBoundingClientRect: () => ({ top: 100 }) as DOMRect,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLElement;
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const top = this.getAttribute("data-testid") === "margin-scroll" ? 100 : 0;
+        return {
+          height: 0,
+          top,
+          left: 0,
+          right: 0,
+          bottom: top,
+          width: 0,
+          x: 0,
+          y: top,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+    try {
+      renderColumn({
+        fragmentContent: "First.",
+        getScrollElement: () => editorScroll,
+        // Block 0 at top=30: simulates 30px of leading blank lines that blockRanges skips.
+        getBlocks: () => [{ markerId: null, text: "First.", top: 30, height: 20 }],
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    const rows = screen.getByTestId("margin-rows");
+    expect(rows.style.paddingTop).toBe("30px");
+  });
+
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {
     const removeAnchor = vi.fn();
     const removeComment = vi.fn();
