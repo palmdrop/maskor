@@ -28,8 +28,10 @@ describe("scopes/overview", () => {
     toggleVerticalArcStrip: vi.fn(),
     placedSelectionCount: 0,
     groupSelection: vi.fn(),
-    canSplitSelection: false,
-    splitSelection: vi.fn(),
+    canSplitBefore: false,
+    splitBefore: vi.fn(),
+    canSplitAfter: false,
+    splitAfter: vi.fn(),
     sectionsForMove: [],
     moveSelectionToSection: vi.fn(),
   };
@@ -90,12 +92,20 @@ describe("scopes/overview", () => {
     expect(ctx.groupSelection).toHaveBeenCalled();
   });
 
-  it("split-at-selection is gated on canSplitSelection", () => {
-    const cmd = find(overviewCommands, "overview:split-at-selection");
-    expect(cmd.disabled?.({ ...ctx, canSplitSelection: false })).toMatch(/not the first/);
-    expect(cmd.disabled?.({ ...ctx, canSplitSelection: true })).toBeUndefined();
-    cmd.run({ ...ctx, canSplitSelection: true });
-    expect(ctx.splitSelection).toHaveBeenCalled();
+  it("split-before-selection is gated on canSplitBefore", () => {
+    const cmd = find(overviewCommands, "overview:split-before-selection");
+    expect(cmd.disabled?.({ ...ctx, canSplitBefore: false })).toMatch(/not the first/);
+    expect(cmd.disabled?.({ ...ctx, canSplitBefore: true })).toBeUndefined();
+    cmd.run({ ...ctx, canSplitBefore: true });
+    expect(ctx.splitBefore).toHaveBeenCalled();
+  });
+
+  it("split-after-selection is gated on canSplitAfter", () => {
+    const cmd = find(overviewCommands, "overview:split-after-selection");
+    expect(cmd.disabled?.({ ...ctx, canSplitAfter: false })).toMatch(/not the last/);
+    expect(cmd.disabled?.({ ...ctx, canSplitAfter: true })).toBeUndefined();
+    cmd.run({ ...ctx, canSplitAfter: true });
+    expect(ctx.splitAfter).toHaveBeenCalled();
   });
 
   it("move-selection-to-section runs with the chosen section", () => {

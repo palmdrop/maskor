@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -58,6 +59,11 @@ const ReorderRow = ({
     id: fragment.uuid,
   });
 
+  // Focus fires before click. A pointer-driven focus would single-select the
+  // row and clobber the modifier (cmd/shift) handled on the subsequent click —
+  // so only the keyboard-driven focus (Tab, no preceding pointerdown) selects.
+  const pointerFocusRef = useRef(false);
+
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
@@ -68,13 +74,23 @@ const ReorderRow = ({
         opacity: isDragging ? 0.4 : 1,
       }}
       data-fragment-uuid={fragment.uuid}
-      onFocus={() => onSelect(fragment.uuid)}
+      onPointerDownCapture={() => {
+        pointerFocusRef.current = true;
+      }}
+      onFocus={() => {
+        if (pointerFocusRef.current) return;
+        onSelect(fragment.uuid);
+      }}
       onClick={(event) => {
         event.stopPropagation();
+        pointerFocusRef.current = false;
         onSelect(fragment.uuid, {
           toggle: event.metaKey || event.ctrlKey,
           range: event.shiftKey,
         });
+      }}
+      onBlur={() => {
+        pointerFocusRef.current = false;
       }}
       {...attributes}
       {...listeners}

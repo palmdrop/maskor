@@ -596,7 +596,7 @@ describe("OverviewPage — multi-select section operations", () => {
     });
   });
 
-  it("Split here splits at a single non-first selected fragment", () => {
+  it("Split before splits at the selected fragment", () => {
     mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
     mockFragments([
       makeFragment(FRAG_A, "alpha"),
@@ -606,7 +606,7 @@ describe("OverviewPage — multi-select section operations", () => {
     render(<OverviewPage />, { wrapper: wrap() });
 
     selectRow(FRAG_B);
-    fireEvent.click(screen.getByRole("button", { name: "Split here" }));
+    fireEvent.click(screen.getByRole("button", { name: "Split before" }));
 
     expect(splitMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
@@ -615,13 +615,38 @@ describe("OverviewPage — multi-select section operations", () => {
     });
   });
 
-  it("disables Split here when the selected fragment is first in its section", () => {
+  it("Split after splits before the next fragment in the section", () => {
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    selectRow(FRAG_B);
+    fireEvent.click(screen.getByRole("button", { name: "Split after" }));
+
+    // Splitting "after B" inserts the boundary before C.
+    expect(splitMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      data: { fragmentUuid: FRAG_C, name: "" },
+    });
+  });
+
+  it("disables Split before for the first fragment and Split after for the last", () => {
     mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B] }]);
     mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
     render(<OverviewPage />, { wrapper: wrap() });
 
     selectRow(FRAG_A);
-    expect(screen.getByRole("button", { name: "Split here" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Split before" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Split after" })).not.toBeDisabled();
+
+    selectRow(FRAG_B);
+    expect(screen.getByRole("button", { name: "Split after" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Split before" })).not.toBeDisabled();
   });
 });
 

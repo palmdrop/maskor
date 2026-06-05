@@ -22,8 +22,10 @@ export interface OverviewContext {
   toggleVerticalArcStrip: () => void;
   placedSelectionCount: number;
   groupSelection: () => void;
-  canSplitSelection: boolean;
-  splitSelection: () => void;
+  canSplitBefore: boolean;
+  splitBefore: () => void;
+  canSplitAfter: boolean;
+  splitAfter: () => void;
   sectionsForMove: ReadonlyArray<{ uuid: string; name: string }>;
   moveSelectionToSection: (sectionUuid: string) => void;
 }
@@ -102,15 +104,26 @@ const groupSelection = defineScopeCommand(overviewScope, {
   run: (ctx) => ctx.groupSelection(),
 });
 
-const splitAtSelection = defineScopeCommand(overviewScope, {
-  id: "overview:split-at-selection",
-  label: "Split section at selected fragment",
+const splitBefore = defineScopeCommand(overviewScope, {
+  id: "overview:split-before-selection",
+  label: "Split section before selected fragment",
   category: "other",
   disabled: (ctx) =>
-    ctx.canSplitSelection
+    ctx.canSplitBefore
       ? undefined
       : "Select one placed fragment that is not the first in its section",
-  run: (ctx) => ctx.splitSelection(),
+  run: (ctx) => ctx.splitBefore(),
+});
+
+const splitAfter = defineScopeCommand(overviewScope, {
+  id: "overview:split-after-selection",
+  label: "Split section after selected fragment",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.canSplitAfter
+      ? undefined
+      : "Select one placed fragment that is not the last in its section",
+  run: (ctx) => ctx.splitAfter(),
 });
 
 const moveSelectionToSection = defineScopeCommand(overviewScope, {
@@ -136,6 +149,7 @@ export const overviewCommands = [
   toggleArcExpanded,
   toggleVerticalArcStrip,
   groupSelection,
-  splitAtSelection,
+  splitBefore,
+  splitAfter,
   moveSelectionToSection,
 ] as const;

@@ -342,14 +342,25 @@ export const OverviewPage = () => {
     [selection, fragmentSectionMap],
   );
 
-  // Split needs exactly one placed fragment that is not already the first in its
-  // section (splitting there would do nothing).
-  const canSplitSelection = useMemo(() => {
-    if (placedSelection.length !== 1) return false;
+  // Split operates on a single placed fragment. The backend op splits *before*
+  // the given fragment; "split after X" is the same op applied to the next
+  // fragment in X's section.
+  const splitContext = useMemo(() => {
+    if (placedSelection.length !== 1) return undefined;
     const fragmentUuid = placedSelection[0]!;
     const section = sectionsData.find((s) => s.fragmentUuids.includes(fragmentUuid));
-    return !!section && section.fragmentUuids[0] !== fragmentUuid;
+    if (!section) return undefined;
+    const index = section.fragmentUuids.indexOf(fragmentUuid);
+    return {
+      fragmentUuid,
+      nextFragmentUuid: section.fragmentUuids[index + 1],
+      isFirst: index === 0,
+      isLast: index === section.fragmentUuids.length - 1,
+    };
   }, [placedSelection, sectionsData]);
+
+  const canSplitBefore = !!splitContext && !splitContext.isFirst;
+  const canSplitAfter = !!splitContext && !splitContext.isLast;
 
   const groupSelection = useCallback(() => {
     if (!sequence || placedSelection.length < 1) return;
@@ -360,14 +371,23 @@ export const OverviewPage = () => {
     });
   }, [sequence, placedSelection, projectId, sequenceMutations]);
 
-  const splitSelection = useCallback(() => {
-    if (!sequence || !canSplitSelection) return;
+  const splitBefore = useCallback(() => {
+    if (!sequence || !splitContext || splitContext.isFirst) return;
     sequenceMutations.splitSection.mutate({
       projectId,
       sequenceId: sequence.uuid,
-      data: { fragmentUuid: placedSelection[0]!, name: "" },
+      data: { fragmentUuid: splitContext.fragmentUuid, name: "" },
     });
-  }, [sequence, canSplitSelection, placedSelection, projectId, sequenceMutations]);
+  }, [sequence, splitContext, projectId, sequenceMutations]);
+
+  const splitAfter = useCallback(() => {
+    if (!sequence || !splitContext || splitContext.isLast || !splitContext.nextFragmentUuid) return;
+    sequenceMutations.splitSection.mutate({
+      projectId,
+      sequenceId: sequence.uuid,
+      data: { fragmentUuid: splitContext.nextFragmentUuid, name: "" },
+    });
+  }, [sequence, splitContext, projectId, sequenceMutations]);
 
   const moveSelectionToSection = useCallback(
     (sectionUuid: string) => {
@@ -420,8 +440,10 @@ export const OverviewPage = () => {
     toggleVerticalArcStrip,
     placedSelectionCount: placedSelection.length,
     groupSelection,
-    canSplitSelection,
-    splitSelection,
+    canSplitBefore,
+    splitBefore,
+    canSplitAfter,
+    splitAfter,
     sectionsForMove,
     moveSelectionToSection,
   });
@@ -527,11 +549,19 @@ export const OverviewPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => commands.run("overview:split-at-selection")}
-                    disabled={!canSplitSelection}
+                    onClick={() => commands.run("overview:split-before-selection")}
+                    disabled={!canSplitBefore}
                     className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                   >
-                    Split here
+                    Split before
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => commands.run("overview:split-after-selection")}
+                    disabled={!canSplitAfter}
+                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    Split after
                   </button>
                   {/* "Move to section…" is a parameterized command (opens a section
                       picker); run it from the command palette. */}
