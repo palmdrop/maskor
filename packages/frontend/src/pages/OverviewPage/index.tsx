@@ -335,13 +335,17 @@ export const OverviewPage = () => {
         />
       )}
 
-      <DndContext
-        sensors={dnd.sensors}
-        collisionDetection={dnd.collisionDetection}
-        onDragStart={dnd.handleDragStart}
-        onDragEnd={dnd.handleDragEnd}
-      >
-        {!bundleLoading && !summariesLoading && (
+      {/* Two independent DnD contexts share the same handlers. The reorder list
+          and the prose spine both use raw fragment uuids as draggable ids;
+          dnd-kit ids must be unique within a context, so the surfaces are kept
+          in separate contexts rather than colliding in one. */}
+      {!bundleLoading && !summariesLoading && (
+        <DndContext
+          sensors={dnd.sensors}
+          collisionDetection={dnd.collisionDetection}
+          onDragStart={dnd.handleDragStart}
+          onDragEnd={dnd.handleDragEnd}
+        >
           <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
             <ReorderList
               sectionsData={sectionsData}
@@ -366,47 +370,61 @@ export const OverviewPage = () => {
               onAddSection={() => commands.run("overview:add-section")}
             />
           </aside>
-        )}
+          <DragOverlay dropAnimation={null}>
+            {activeDragFragment ? (
+              <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+                {activeDragFragment.key}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
 
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div
-          className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
-          data-testid="overview-main-content"
-          onClick={() => setSelectedFragmentUuid(null)}
-          onKeyDown={handleMainKeyDown}
-        >
-          {(bundleLoading || summariesLoading) && isRebuilding ? (
-            <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
-          ) : bundleLoading || summariesLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <>
-              <SequenceHeader
-                sequence={sequence}
-                detailLevel={detailLevel}
-                designateMainPending={designateMain.isPending}
-                onDesignateMain={() => commands.run("overview:designate-main")}
-                onSetDetailLevel={handleSetDetailLevel}
-                arcOverlayOpen={arcOverlayOpen}
-                onToggleArcOverlay={toggleArcOverlay}
-                verticalStripOpen={verticalStripOpen}
-                onToggleVerticalStrip={toggleVerticalArcStrip}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
+        data-testid="overview-main-content"
+        onClick={() => setSelectedFragmentUuid(null)}
+        onKeyDown={handleMainKeyDown}
+      >
+        {(bundleLoading || summariesLoading) && isRebuilding ? (
+          <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
+        ) : bundleLoading || summariesLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <>
+            <SequenceHeader
+              sequence={sequence}
+              detailLevel={detailLevel}
+              designateMainPending={designateMain.isPending}
+              onDesignateMain={() => commands.run("overview:designate-main")}
+              onSetDetailLevel={handleSetDetailLevel}
+              arcOverlayOpen={arcOverlayOpen}
+              onToggleArcOverlay={toggleArcOverlay}
+              verticalStripOpen={verticalStripOpen}
+              onToggleVerticalStrip={toggleVerticalArcStrip}
+            />
+
+            {arcOverlayOpen && (
+              <ArcOverlay
+                sectionsData={sectionsData}
+                fragmentByUuid={fragmentByUuid}
+                colorByAspectKey={arcData.colorByAspectKey}
+                arcAspectKeys={arcData.arcAspectKeys}
+                hiddenAspectKeys={arcData.hiddenAspectKeys}
+                onToggleAspectVisibility={arcData.toggleAspectVisibility}
+                isExpanded={arcExpanded}
+                onToggleExpanded={toggleArcExpanded}
+                onClose={toggleArcOverlay}
               />
+            )}
 
-              {arcOverlayOpen && (
-                <ArcOverlay
-                  sectionsData={sectionsData}
-                  fragmentByUuid={fragmentByUuid}
-                  colorByAspectKey={arcData.colorByAspectKey}
-                  arcAspectKeys={arcData.arcAspectKeys}
-                  hiddenAspectKeys={arcData.hiddenAspectKeys}
-                  onToggleAspectVisibility={arcData.toggleAspectVisibility}
-                  isExpanded={arcExpanded}
-                  onToggleExpanded={toggleArcExpanded}
-                  onClose={toggleArcOverlay}
-                />
-              )}
-
+            <DndContext
+              sensors={dnd.sensors}
+              collisionDetection={dnd.collisionDetection}
+              onDragStart={dnd.handleDragStart}
+              onDragEnd={dnd.handleDragEnd}
+            >
               <div className="flex gap-4">
                 {verticalStripOpen && (
                   <div className="sticky top-0 self-start">
@@ -429,18 +447,17 @@ export const OverviewPage = () => {
                   />
                 </div>
               </div>
-            </>
-          )}
-        </div>
-
-        <DragOverlay dropAnimation={null}>
-          {activeDragFragment ? (
-            <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
-              {activeDragFragment.key}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+              <DragOverlay dropAnimation={null}>
+                {activeDragFragment ? (
+                  <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+                    {activeDragFragment.key}
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </>
+        )}
+      </div>
 
       <RightSidebar
         fragment={selectedFragmentUuid ? fragmentByUuid.get(selectedFragmentUuid) : undefined}

@@ -277,11 +277,22 @@ describe("OverviewPage — rendering", () => {
     expect(spine).toBeInTheDocument();
   });
 
-  it("shows the empty-spine prompt when no fragments are placed", () => {
+  it("renders an empty section as a drop target when no fragments are placed", () => {
     mockSequence([]);
     mockFragments([makeFragment(FRAG_A, "alpha")]);
     render(<OverviewPage />, { wrapper: wrap() });
-    expect(screen.getByText(/No fragments placed yet/)).toBeInTheDocument();
+    // The spine keeps the (empty) section droppable so the first fragment can be
+    // dropped straight in.
+    expect(screen.getByTestId("prose-spine")).toBeInTheDocument();
+    expect(screen.getAllByText("Drag fragments here.").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("exposes a drag handle on each spine fragment (reorderable at any detail level)", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+    const spine = screen.getByTestId("prose-spine");
+    expect(spine.querySelector('[aria-label^="Drag to reorder"]')).not.toBeNull();
   });
 
   it("lists unplaced non-discarded fragments in the pool", () => {

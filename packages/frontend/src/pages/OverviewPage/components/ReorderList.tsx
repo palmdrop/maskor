@@ -109,7 +109,7 @@ const ListDropZone = ({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col gap-1 min-h-10 rounded-md border border-dashed p-1 transition-colors ${
+      className={`flex flex-col gap-1 min-h-16 rounded-md border border-dashed p-2 pb-4 transition-colors ${
         isOver ? "border-primary/50 bg-primary/5" : "border-border/50"
       }`}
     >

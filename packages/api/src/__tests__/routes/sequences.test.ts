@@ -1235,14 +1235,11 @@ describe("GET /projects/:projectId/sequences/:sequenceId/contents", () => {
   // Self-contained: create a fresh sequence and two new fragments so the test
   // does not depend on placement state left behind by earlier tests in the file.
   const createFragment = async (key: string, content: string) => {
-    const response = await testContext.app.request(
-      `/projects/${project.projectUUID}/fragments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, content }),
-      },
-    );
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, content }),
+    });
     return (await response.json()) as { uuid: string };
   };
 
@@ -1258,7 +1255,11 @@ describe("GET /projects/:projectId/sequences/:sequenceId/contents", () => {
     const createResponse = await testContext.app.request(baseUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Contents Test", isMain: false, projectUuid: project.projectUUID }),
+      body: JSON.stringify({
+        name: "Contents Test",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
     });
     const createdBundle = (await createResponse.json()) as SequenceBundle;
     const sequence = createdBundle.sequences.find((s) => s.name === "Contents Test")!;
