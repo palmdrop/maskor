@@ -14,6 +14,8 @@ type Props = {
   onCreate?: (query: string) => void | Promise<void>;
 };
 
+const getCreateKey = (query: string) => `__create:${query}`;
+
 export function TagCombobox({
   availableOptions,
   groups,
@@ -73,6 +75,7 @@ export function TagCombobox({
     }
   }
 
+  console.log({ query, highlightedValue, hasOptions, showCreate });
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Anchor asChild>
@@ -83,6 +86,17 @@ export function TagCombobox({
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
+
+            if (hasOptions && showCreate) {
+              const firstOption = filteredGroups[0]?.options[0];
+              if (firstOption) {
+                setHighlightedValue(firstOption);
+              }
+            }
+
+            if (!hasOptions && showCreate) {
+              setHighlightedValue(getCreateKey(event.target.value.trim()));
+            }
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => {
@@ -195,8 +209,8 @@ export function TagCombobox({
               )}
               {showCreate && (
                 <Command.Item
-                  key="__create"
-                  value={`__create:${trimmedQuery}`}
+                  key={"__create"}
+                  value={getCreateKey(trimmedQuery)}
                   onSelect={handleCreate}
                   className={cn(
                     "cursor-pointer rounded-md px-2 py-1.5 text-sm outline-none text-muted-foreground",
