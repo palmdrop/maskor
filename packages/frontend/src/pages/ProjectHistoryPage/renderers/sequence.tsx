@@ -32,6 +32,10 @@ export const renderSequenceEntryText = (entry: LogEntry): string => {
       return `Section split into "${entry.payload.sectionName}" in sequence "${sequenceName(entry)}"`;
     case "sequence:sections-merged":
       return `Section "${entry.payload.sectionName}" merged with the next section in sequence "${sequenceName(entry)}"`;
+    case "sequence:cloned":
+      return `Sequence "${entry.payload.sourceName}" cloned as "${sequenceName(entry)}"`;
+    case "sequence:inserted":
+      return `Sequence "${entry.payload.sourceName}" inserted into sequence "${sequenceName(entry)}" (${entry.payload.sectionCount} section${entry.payload.sectionCount === 1 ? "" : "s"})`;
     default:
       return `Sequence action on "${sequenceName(entry)}"`;
   }

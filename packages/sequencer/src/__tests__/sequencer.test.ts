@@ -15,6 +15,8 @@ import {
   moveFragmentsToSection,
   splitSectionAtFragment,
   mergeSectionWithNext,
+  cloneSequence,
+  insertSequenceIntoSequence,
 } from "../index";
 
 const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
@@ -858,5 +860,159 @@ describe("mergeSectionWithNext", () => {
 
   it("throws when the section does not exist", () => {
     expect(() => mergeSectionWithNext(makeThreeSectionSequence(), "nope")).toThrow();
+  });
+});
+
+describe("cloneSequence", () => {
+  function makeTwoSectionSequence(): Sequence {
+    let sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Act 2", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2] };
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[0]!.uuid, 1);
+    sequence = placeFragment(sequence, FC, sequence.sections[1]!.uuid, 0);
+    return sequence;
+  }
+
+  it("preserves section names, order, and fragment placements", () => {
+    const sequence = makeTwoSectionSequence();
+    const clone = cloneSequence(sequence, "Copy");
+    expect(clone.name).toBe("Copy");
+    expect(clone.sections.map((s) => s.name)).toEqual(["Main", "Act 2"]);
+    expect(getFragmentOrder(clone)).toEqual([FA, FB, FC]);
+    validateSequenceInvariants(clone);
+  });
+
+  it("regenerates the sequence, section, and position uuids (no collisions)", () => {
+    const sequence = makeTwoSectionSequence();
+    const clone = cloneSequence(sequence, "Copy");
+    expect(clone.uuid).not.toBe(sequence.uuid);
+    sequence.sections.forEach((section, index) => {
+      expect(clone.sections[index]!.uuid).not.toBe(section.uuid);
+    });
+    const originalPositionUuids = new Set(
+      sequence.sections.flatMap((s) => s.fragments.map((f) => f.uuid)),
+    );
+    for (const section of clone.sections) {
+      for (const fragment of section.fragments) {
+        expect(originalPositionUuids.has(fragment.uuid)).toBe(false);
+      }
+    }
+  });
+
+  it("is never main and copies the active flag", () => {
+    const sequence = makeTwoSectionSequence();
+    expect(sequence.isMain).toBe(true);
+    const clone = cloneSequence(sequence, "Copy");
+    expect(clone.isMain).toBe(false);
+    expect(clone.active).toBe(sequence.active);
+    expect(clone.projectUuid).toBe(sequence.projectUuid);
+  });
+
+  it("does not mutate the source sequence", () => {
+    const sequence = makeTwoSectionSequence();
+    const before = JSON.stringify(sequence);
+    cloneSequence(sequence, "Copy");
+    expect(JSON.stringify(sequence)).toBe(before);
+  });
+});
+
+describe("insertSequenceIntoSequence", () => {
+  function makeTarget(): Sequence {
+    let sequence = makeSequence();
+    const sec2 = { uuid: "22222222-0000-0000-0000-000000000001", name: "Target B", fragments: [] };
+    sequence = { ...sequence, sections: [sequence.sections[0]!, sec2] };
+    sequence = placeFragment(sequence, FA, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FB, sequence.sections[1]!.uuid, 0);
+    return sequence;
+  }
+
+  function makeSource(): Sequence {
+    let sequence = createDefaultSequence(PROJECT_UUID, "Source");
+    const sec1 = { ...sequence.sections[0]!, name: "Source 1" };
+    const sec2 = { uuid: "44444444-0000-0000-0000-000000000001", name: "Source 2", fragments: [] };
+    sequence = { ...sequence, isMain: false, sections: [sec1, sec2] };
+    sequence = placeFragment(sequence, FC, sequence.sections[0]!.uuid, 0);
+    sequence = placeFragment(sequence, FD, sequence.sections[1]!.uuid, 0);
+    return sequence;
+  }
+
+  it("splices the source's sections into the target at the given index", () => {
+    const result = insertSequenceIntoSequence(makeTarget(), makeSource(), 1);
+    expect(result.sections.map((s) => s.name)).toEqual([
+      "Main",
+      "Source 1",
+      "Source 2",
+      "Target B",
+    ]);
+    expect(getFragmentOrder(result)).toEqual([FA, FC, FD, FB]);
+    validateSequenceInvariants(result);
+  });
+
+  it("appends at the tail when the index is at or beyond the end", () => {
+    const result = insertSequenceIntoSequence(makeTarget(), makeSource(), 999);
+    expect(result.sections.map((s) => s.name)).toEqual([
+      "Main",
+      "Target B",
+      "Source 1",
+      "Source 2",
+    ]);
+  });
+
+  it("prepends when the index is 0", () => {
+    const result = insertSequenceIntoSequence(makeTarget(), makeSource(), 0);
+    expect(result.sections.map((s) => s.name)).toEqual([
+      "Source 1",
+      "Source 2",
+      "Main",
+      "Target B",
+    ]);
+  });
+
+  it("regenerates the inserted section and position uuids (no collisions)", () => {
+    const source = makeSource();
+    const result = insertSequenceIntoSequence(makeTarget(), source, 1);
+    const sourceSectionUuids = new Set(source.sections.map((s) => s.uuid));
+    const sourcePositionUuids = new Set(
+      source.sections.flatMap((s) => s.fragments.map((f) => f.uuid)),
+    );
+    for (const section of result.sections) {
+      expect(sourceSectionUuids.has(section.uuid)).toBe(false);
+      for (const fragment of section.fragments) {
+        expect(sourcePositionUuids.has(fragment.uuid)).toBe(false);
+      }
+    }
+  });
+
+  it("skips fragments already placed in the target, keeping the invariant", () => {
+    // Source shares FA with the target; FA must not be inserted again.
+    let source = createDefaultSequence(PROJECT_UUID, "Source");
+    source = { ...source, isMain: false };
+    source = placeFragment(source, FA, source.sections[0]!.uuid, 0);
+    source = placeFragment(source, FC, source.sections[0]!.uuid, 1);
+
+    const result = insertSequenceIntoSequence(makeTarget(), source, 1);
+    expect(getFragmentOrder(result)).toEqual([FA, FC, FB]);
+    const inserted = result.sections[1]!;
+    expect(inserted.fragments.map((f) => f.fragmentUuid)).toEqual([FC]);
+    validateSequenceInvariants(result);
+  });
+
+  it("keeps an inserted section that is emptied by de-duplication", () => {
+    let source = createDefaultSequence(PROJECT_UUID, "Source");
+    source = { ...source, isMain: false };
+    source = placeFragment(source, FA, source.sections[0]!.uuid, 0);
+
+    const result = insertSequenceIntoSequence(makeTarget(), source, 1);
+    expect(result.sections).toHaveLength(3);
+    expect(result.sections[1]!.fragments).toEqual([]);
+    validateSequenceInvariants(result);
+  });
+
+  it("does not mutate the source sequence", () => {
+    const source = makeSource();
+    const before = JSON.stringify(source);
+    insertSequenceIntoSequence(makeTarget(), source, 1);
+    expect(JSON.stringify(source)).toBe(before);
   });
 });

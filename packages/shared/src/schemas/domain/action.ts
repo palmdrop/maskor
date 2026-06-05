@@ -62,6 +62,8 @@ export const ActionTypeSchema = z.enum([
   "sequence:fragments-moved",
   "sequence:section-split",
   "sequence:sections-merged",
+  "sequence:cloned",
+  "sequence:inserted",
   "draft:created",
   "draft:deleted",
   "draft:restored",
@@ -190,6 +192,8 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   ),
   entry("sequence:section-split", z.object({ sectionName: z.string() })),
   entry("sequence:sections-merged", z.object({ sectionName: z.string() })),
+  entry("sequence:cloned", z.object({ sourceName: z.string() })),
+  entry("sequence:inserted", z.object({ sourceName: z.string(), sectionCount: z.number() })),
   entry("draft:created", z.object({ name: z.string(), note: z.string().optional() })),
   entry("draft:deleted", z.object({ name: z.string() })),
   entry(

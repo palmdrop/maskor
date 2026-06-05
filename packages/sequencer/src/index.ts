@@ -566,6 +566,72 @@ export function mergeSectionWithNext(sequence: Sequence, sectionUuid: string): S
   return { ...sequence, sections };
 }
 
+// Clone a sequence into a fresh, independent copy. Every identity is
+// regenerated — the sequence uuid, every section uuid, and every fragment
+// position uuid — so the clone shares no record identity with its source (no
+// UUID collisions). Placements are preserved verbatim: the same fragments sit
+// in the same sections at the same positions. The clone is never main (a
+// project has exactly one main sequence) and is active by default; the caller
+// supplies the new name. Only the domain `Sequence` fields are carried over,
+// so passing a storage-indexed sequence drops its file-level metadata.
+export function cloneSequence(sequence: Sequence, newName: string): Sequence {
+  return {
+    uuid: crypto.randomUUID(),
+    name: newName,
+    isMain: false,
+    active: sequence.active,
+    projectUuid: sequence.projectUuid,
+    ...(sequence.origin ? { origin: sequence.origin } : {}),
+    sections: sequence.sections.map((section) => ({
+      uuid: crypto.randomUUID(),
+      name: section.name,
+      fragments: [...section.fragments]
+        .sort((a, b) => a.position - b.position)
+        .map((fragment, index) => ({
+          uuid: crypto.randomUUID(),
+          fragmentUuid: fragment.fragmentUuid,
+          position: index,
+        })),
+    })),
+  };
+}
+
+// Insert the whole `source` sequence into `target` as a block of sections,
+// spliced into `target`'s section list at `sectionIndex` (clamped to
+// [0, target.sections.length]). The inserted sections get fresh uuids and
+// fresh fragment-position uuids so they never collide with target's records.
+// A fragment can only be placed once per sequence, so any source fragment
+// already placed anywhere in target is skipped (dropped from the inserted
+// block); target's existing placement wins. Inserted sections emptied by this
+// de-duplication are still inserted (deletion is a separate operation, matching
+// group/split). The source sequence is left untouched.
+export function insertSequenceIntoSequence(
+  target: Sequence,
+  source: Sequence,
+  sectionIndex: number,
+): Sequence {
+  const alreadyPlaced = new Set<string>();
+  for (const section of target.sections) {
+    for (const fragmentPosition of section.fragments) {
+      alreadyPlaced.add(fragmentPosition.fragmentUuid);
+    }
+  }
+
+  const insertedSections = source.sections.map((section) => ({
+    uuid: crypto.randomUUID(),
+    name: section.name,
+    fragments: compactPositions(
+      section.fragments.filter((fragment) => !alreadyPlaced.has(fragment.fragmentUuid)),
+    ).map((fragment) => ({ ...fragment, uuid: crypto.randomUUID() })),
+  }));
+
+  const clampedIndex = Math.max(0, Math.min(sectionIndex, target.sections.length));
+  const sections = [...target.sections];
+  sections.splice(clampedIndex, 0, ...insertedSections);
+
+  return { ...target, sections };
+}
+
 export function getUnassignedFragmentUuids(
   sequence: Sequence,
   allFragmentUuids: string[],

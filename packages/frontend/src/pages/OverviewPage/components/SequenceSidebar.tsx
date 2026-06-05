@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link2Icon, Link2OffIcon, Trash2Icon } from "lucide-react";
+import { CopyIcon, ImportIcon, Link2Icon, Link2OffIcon, Trash2Icon } from "lucide-react";
 import type { Cycle, Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import {
   useCreateSequence,
   useUpdateSequence,
   useDeleteSequence,
+  useCloneSequence,
+  useInsertSequence,
   getListSequencesQueryKey,
+  getGetSequenceContentsQueryKey,
 } from "@api/generated/sequences/sequences";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -41,6 +44,16 @@ const generateDefaultName = (existingNames: Set<string>): string => {
     counter++;
   }
   return `${base} ${counter}`;
+};
+
+const generateCloneName = (baseName: string, existingNames: Set<string>): string => {
+  const candidate = `${baseName} (copy)`;
+  if (!existingNames.has(candidate)) return candidate;
+  let counter = 2;
+  while (existingNames.has(`${baseName} (copy ${counter})`)) {
+    counter++;
+  }
+  return `${baseName} (copy ${counter})`;
 };
 
 const StatusDot = ({ status }: { status: "cycle" | "violation" | "ok" }) => {
@@ -139,6 +152,26 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     },
   });
 
+  const cloneSequence = useCloneSequence({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
+      },
+    },
+  });
+
+  const insertSequence = useInsertSequence({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: listQueryKey });
+      },
+    },
+  });
+
+  // The sequence currently open in the overview is the insert target.
+  const insertTarget =
+    sequences.find((s) => s.uuid === activeSequenceId) ?? sequences.find((s) => s.isMain);
+
   const sorted = [...sequences].sort((a, b) => {
     if (a.isMain !== b.isMain) return a.isMain ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -201,6 +234,48 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     updateSequence.mutate({ projectId, sequenceId, data: { active } });
   };
 
+  const handleClone = (sequenceId: string) => {
+    const source = sequences.find((s) => s.uuid === sequenceId);
+    if (!source) return;
+    const existingNames = new Set(sequences.map((s) => s.name));
+    const name = generateCloneName(source.name, existingNames);
+    cloneSequence.mutate(
+      { projectId, sequenceId, data: { name } },
+      {
+        onSuccess: (response) => {
+          if (response.status !== 201) return;
+          const created = response.data.sequences.find((s) => s.name === name);
+          if (!created) return;
+          void navigate({
+            to: "/projects/$projectId/overview",
+            params: { projectId },
+            search: (prev) => ({ detail: prev.detail ?? "prose", sequence: created.uuid }),
+          });
+        },
+      },
+    );
+  };
+
+  const handleInsert = (sourceSequenceId: string) => {
+    if (!insertTarget) return;
+    const targetId = insertTarget.uuid;
+    insertSequence.mutate(
+      {
+        projectId,
+        sequenceId: targetId,
+        // Append the source as a trailing block; finer placement is a follow-up.
+        data: { sourceSequenceId, sectionIndex: insertTarget.sections.length },
+      },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({
+            queryKey: getGetSequenceContentsQueryKey(projectId, targetId),
+          });
+        },
+      },
+    );
+  };
+
   useCommandScope(sequenceSidebarScope, {
     createSequencePending: createSequence.isPending,
     createSequence: handleCreate,
@@ -210,6 +285,11 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     },
     toggleableSequences: sequences.filter((s) => !s.isMain),
     setSequenceActive: handleSetActive,
+    cloneableSequences: sequences,
+    cloneSequence: handleClone,
+    insertSourceSequences: sequences.filter((s) => s.uuid !== insertTarget?.uuid),
+    insertTargetName: insertTarget?.name,
+    insertSequence: handleInsert,
   });
 
   const handleCommitRename = async (
@@ -314,45 +394,75 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                       {count}
                     </span>
                   </button>
-                  {!seq.isMain && (
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        commands.run("overview:clone-sequence", seq);
+                      }}
+                      disabled={cloneSequence.isPending}
+                      className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-50"
+                      aria-label={`Clone sequence "${seq.name}"`}
+                      title="Clone this sequence"
+                    >
+                      <CopyIcon size={12} />
+                    </button>
+                    {insertTarget && insertTarget.uuid !== seq.uuid && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          commands.run("overview:toggle-sequence-active", seq);
+                          commands.run("overview:insert-sequence", seq);
                         }}
-                        className={`p-1 rounded hover:text-foreground hover:bg-background/80 transition-opacity ${
-                          seq.active
-                            ? "text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            : "text-amber-600 dark:text-amber-500"
-                        }`}
-                        aria-label={
-                          seq.active
-                            ? `Deactivate sequence "${seq.name}" as a constraint`
-                            : `Activate sequence "${seq.name}" as a constraint`
-                        }
-                        title={
-                          seq.active
-                            ? "Active constraint — click to deactivate"
-                            : "Inactive — click to use as a constraint"
-                        }
+                        disabled={insertSequence.isPending}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-50"
+                        aria-label={`Insert sequence "${seq.name}" into "${insertTarget.name}"`}
+                        title={`Insert into "${insertTarget.name}"`}
                       >
-                        {seq.active ? <Link2Icon size={12} /> : <Link2OffIcon size={12} />}
+                        <ImportIcon size={12} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmingDeleteId(seq.uuid);
-                        }}
-                        className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                        aria-label={`Delete sequence "${seq.name}"`}
-                      >
-                        <Trash2Icon size={12} />
-                      </button>
-                    </div>
-                  )}
+                    )}
+                    {!seq.isMain && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            commands.run("overview:toggle-sequence-active", seq);
+                          }}
+                          className={`p-1 rounded hover:text-foreground hover:bg-background/80 transition-opacity ${
+                            seq.active
+                              ? "text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              : "text-amber-600 dark:text-amber-500"
+                          }`}
+                          aria-label={
+                            seq.active
+                              ? `Deactivate sequence "${seq.name}" as a constraint`
+                              : `Activate sequence "${seq.name}" as a constraint`
+                          }
+                          title={
+                            seq.active
+                              ? "Active constraint — click to deactivate"
+                              : "Inactive — click to use as a constraint"
+                          }
+                        >
+                          {seq.active ? <Link2Icon size={12} /> : <Link2OffIcon size={12} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmingDeleteId(seq.uuid);
+                          }}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          aria-label={`Delete sequence "${seq.name}"`}
+                        >
+                          <Trash2Icon size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </li>

@@ -1508,3 +1508,160 @@ describe("Phase 2 section operations", () => {
     expect(fragmentOrder(survivor)).toEqual([fa.uuid, fb.uuid, fc.uuid]);
   });
 });
+
+describe("Phase 3 clone / insert operations", () => {
+  const createFragment = async (key: string, content: string) => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, content }),
+    });
+    return (await response.json()) as { uuid: string };
+  };
+
+  const createSequenceWithSection = async (name: string) => {
+    const createResponse = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, isMain: false, projectUuid: project.projectUUID }),
+    });
+    const bundle = (await createResponse.json()) as SequenceBundle;
+    return bundle.sequences.find((s) => s.name === name)!;
+  };
+
+  const place = async (
+    sequenceUuid: string,
+    sectionUuid: string,
+    fragmentUuid: string,
+    position: number,
+  ) => {
+    await testContext.app.request(`${baseUrl()}/${sequenceUuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid, sectionUuid, position }),
+    });
+  };
+
+  const fragmentOrder = (section: Section) =>
+    [...section.fragments].sort((a, b) => a.position - b.position).map((f) => f.fragmentUuid);
+
+  it("clones a sequence into a fresh independent copy with no uuid collisions", async () => {
+    const fa = await createFragment("p3-clone-a", "A");
+    const fb = await createFragment("p3-clone-b", "B");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const source = await createSequenceWithSection("Clone Source");
+    const sectionUuid = source.sections[0]!.uuid;
+    await place(source.uuid, sectionUuid, fa.uuid, 0);
+    await place(source.uuid, sectionUuid, fb.uuid, 1);
+
+    const response = await testContext.app.request(`${baseUrl()}/${source.uuid}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Clone Copy" }),
+    });
+    expect(response.status).toBe(201);
+    const bundle = (await response.json()) as SequenceBundle;
+
+    const clone = bundle.sequences.find((s) => s.name === "Clone Copy")!;
+    expect(clone).toBeDefined();
+    expect(clone.uuid).not.toBe(source.uuid);
+    expect(clone.isMain).toBe(false);
+    // Placements preserved.
+    const cloneSection = clone.sections[0]!;
+    expect(fragmentOrder(cloneSection)).toEqual([fa.uuid, fb.uuid]);
+    // Section and position uuids regenerated.
+    expect(cloneSection.uuid).not.toBe(sectionUuid);
+    const sourceFresh = bundle.sequences.find((s) => s.uuid === source.uuid)!;
+    const sourcePositionUuids = new Set(
+      sourceFresh.sections.flatMap((s) => s.fragments.map((f) => f.uuid)),
+    );
+    for (const fragment of cloneSection.fragments) {
+      expect(sourcePositionUuids.has(fragment.uuid)).toBe(false);
+    }
+  });
+
+  it("logs the clone operation with the source name", async () => {
+    const source = await createSequenceWithSection("Clone Log Source");
+    await testContext.app.request(`${baseUrl()}/${source.uuid}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Clone Log Copy" }),
+    });
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=10`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const entry = entries.find((e) => e.type === "sequence:cloned");
+    expect(entry).toBeDefined();
+    expect((entry!.payload as { sourceName: string }).sourceName).toBe("Clone Log Source");
+  });
+
+  it("inserts a source sequence's sections into a target at the given index", async () => {
+    const fa = await createFragment("p3-insert-a", "A");
+    const fb = await createFragment("p3-insert-b", "B");
+    const fc = await createFragment("p3-insert-c", "C");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const target = await createSequenceWithSection("Insert Target");
+    const targetSection = target.sections[0]!.uuid;
+    await place(target.uuid, targetSection, fa.uuid, 0);
+
+    const sourceSeq = await createSequenceWithSection("Insert Source");
+    const sourceSection = sourceSeq.sections[0]!.uuid;
+    await place(sourceSeq.uuid, sourceSection, fb.uuid, 0);
+    await place(sourceSeq.uuid, sourceSection, fc.uuid, 1);
+
+    const response = await testContext.app.request(`${baseUrl()}/${target.uuid}/insert-sequence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceSequenceId: sourceSeq.uuid, sectionIndex: 0 }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === target.uuid)!;
+
+    // Inserted section prepended; flattened order is [B, C, A].
+    const flat = updated.sections.flatMap(fragmentOrder);
+    expect(flat).toEqual([fb.uuid, fc.uuid, fa.uuid]);
+    // Source is untouched.
+    const sourceFresh = bundle.sequences.find((s) => s.uuid === sourceSeq.uuid)!;
+    expect(sourceFresh.sections.flatMap(fragmentOrder)).toEqual([fb.uuid, fc.uuid]);
+  });
+
+  it("skips fragments already placed in the target when inserting", async () => {
+    const shared = await createFragment("p3-insert-shared", "shared");
+    const only = await createFragment("p3-insert-only", "only");
+    await testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, {
+      method: "POST",
+    });
+
+    const target = await createSequenceWithSection("Insert Dedup Target");
+    const targetSection = target.sections[0]!.uuid;
+    await place(target.uuid, targetSection, shared.uuid, 0);
+
+    const sourceSeq = await createSequenceWithSection("Insert Dedup Source");
+    const sourceSection = sourceSeq.sections[0]!.uuid;
+    await place(sourceSeq.uuid, sourceSection, shared.uuid, 0);
+    await place(sourceSeq.uuid, sourceSection, only.uuid, 1);
+
+    const response = await testContext.app.request(`${baseUrl()}/${target.uuid}/insert-sequence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceSequenceId: sourceSeq.uuid, sectionIndex: 1 }),
+    });
+    expect(response.status).toBe(200);
+    const bundle = (await response.json()) as SequenceBundle;
+    const updated = bundle.sequences.find((s) => s.uuid === target.uuid)!;
+
+    // shared stays in its original target slot; only `only` is inserted.
+    const flat = updated.sections.flatMap(fragmentOrder);
+    expect(flat).toEqual([shared.uuid, only.uuid]);
+    const occurrences = flat.filter((uuid) => uuid === shared.uuid);
+    expect(occurrences).toHaveLength(1);
+  });
+});

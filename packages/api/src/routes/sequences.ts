@@ -17,6 +17,8 @@ import {
   FragmentsGroupSchema,
   FragmentsMoveSchema,
   SectionSplitSchema,
+  SequenceCloneSchema,
+  SequenceInsertSchema,
   SequenceBundledResponseSchema,
   SequenceContentsResponseSchema,
 } from "../schemas/sequence";
@@ -40,6 +42,8 @@ import {
   moveFragmentsCommand,
   splitSectionCommand,
   mergeSectionCommand,
+  cloneSequenceCommand,
+  insertSequenceCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { StorageService, ProjectContext } from "@maskor/storage";
@@ -569,6 +573,64 @@ const mergeSectionRoute = createRoute({
   },
 });
 
+const cloneSequenceRoute = createRoute({
+  operationId: "cloneSequence",
+  method: "post",
+  path: "/{sequenceId}/clone",
+  tags: ["Sequences"],
+  summary: "Clone a sequence into a fresh independent copy",
+  request: {
+    params: SequenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: SequenceCloneSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Sequence cloned, bundle of all sequences",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+const insertSequenceRoute = createRoute({
+  operationId: "insertSequence",
+  method: "post",
+  path: "/{sequenceId}/insert-sequence",
+  tags: ["Sequences"],
+  summary: "Insert another sequence's sections into this one at a section index",
+  request: {
+    params: SequenceUUIDParamSchema,
+    body: {
+      content: { "application/json": { schema: SequenceInsertSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Updated sequence bundle",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Target or source sequence not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 // --- handlers ---
 
 sequencesRouter.openapi(listSequencesRoute, async (ctx) => {
@@ -1019,6 +1081,50 @@ sequencesRouter.openapi(mergeSectionRoute, async (ctx) => {
       sectionId,
       sequenceName: indexedSequence.name,
       sectionName: section?.name ?? sectionId,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(cloneSequenceRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+    const { name } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    await executeCommand(cloneSequenceCommand, commandContext, { sequenceId, name });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 201);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(insertSequenceRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+    const { sourceSequenceId, sectionIndex } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      logger: ctx.get("logger"),
+    };
+    await executeCommand(insertSequenceCommand, commandContext, {
+      targetSequenceId: sequenceId,
+      sourceSequenceId,
+      sectionIndex,
     });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);

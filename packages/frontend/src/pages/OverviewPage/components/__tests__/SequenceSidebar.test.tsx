@@ -19,6 +19,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 const updateMutate = vi.fn();
+const cloneMutate = vi.fn();
+const insertMutate = vi.fn();
 
 vi.mock("@api/generated/sequences/sequences", () => ({
   useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
@@ -28,7 +30,10 @@ vi.mock("@api/generated/sequences/sequences", () => ({
     isPending: false,
   })),
   useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useCloneSequence: vi.fn(() => ({ mutate: cloneMutate, isPending: false })),
+  useInsertSequence: vi.fn(() => ({ mutate: insertMutate, isPending: false })),
   getListSequencesQueryKey: () => [`/projects/${PROJECT_ID}/sequences`],
+  getGetSequenceContentsQueryKey: () => [`/projects/${PROJECT_ID}/sequences/contents`],
 }));
 
 const { SequenceSidebar } = await import("../SequenceSidebar");
@@ -112,5 +117,67 @@ describe("SequenceSidebar — active toggle", () => {
       sequenceId: "sec",
       data: { active: false },
     });
+  });
+});
+
+describe("SequenceSidebar — clone / insert", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("clones a sequence with a generated '(copy)' name via the clone button", () => {
+    render(
+      <SequenceSidebar
+        sequences={[makeSequence({ uuid: "main", name: "Main", isMain: true })]}
+        violations={[]}
+        cycles={[]}
+        activeSequenceId={undefined}
+      />,
+      { wrapper: wrap },
+    );
+
+    const clone = screen.getByRole("button", { name: /Clone sequence "Main"/i });
+    fireEvent.click(clone);
+
+    expect(cloneMutate).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, sequenceId: "main", data: { name: "Main (copy)" } },
+      expect.anything(),
+    );
+  });
+
+  it("inserts a source sequence into the open target at the tail section index", () => {
+    const main = makeSequence({
+      uuid: "main",
+      name: "Main",
+      isMain: true,
+      sections: [
+        { uuid: "s1", name: "One", fragments: [] },
+        { uuid: "s2", name: "Two", fragments: [] },
+      ],
+    });
+    const secondary = makeSequence({ uuid: "sec", name: "Side order" });
+
+    render(
+      <SequenceSidebar
+        sequences={[main, secondary]}
+        violations={[]}
+        cycles={[]}
+        activeSequenceId={undefined}
+      />,
+      { wrapper: wrap },
+    );
+
+    // The non-target row (the secondary) offers an insert-into-target control.
+    const insert = screen.getByRole("button", {
+      name: /Insert sequence "Side order" into "Main"/i,
+    });
+    fireEvent.click(insert);
+
+    expect(insertMutate).toHaveBeenCalledWith(
+      {
+        projectId: PROJECT_ID,
+        sequenceId: "main",
+        data: { sourceSequenceId: "sec", sectionIndex: 2 },
+      },
+      expect.anything(),
+    );
   });
 });

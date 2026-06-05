@@ -58,6 +58,8 @@ export { groupFragmentsCommand } from "./sequences/group-fragments";
 export { moveFragmentsCommand } from "./sequences/move-fragments";
 export { splitSectionCommand } from "./sequences/split-section";
 export { mergeSectionCommand } from "./sequences/merge-section";
+export { cloneSequenceCommand } from "./sequences/clone-sequence";
+export { insertSequenceCommand } from "./sequences/insert-sequence";
 
 export { registerProjectCommand } from "./projects/register-project";
 export { updateProjectCommand } from "./projects/update-project";

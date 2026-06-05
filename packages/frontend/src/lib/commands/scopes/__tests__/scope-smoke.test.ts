@@ -141,6 +141,9 @@ describe("scopes/overview", () => {
 });
 
 describe("scopes/sequence-sidebar", () => {
+  const sequence = (uuid: string, name: string) =>
+    ({ uuid, name }) as SequenceSidebarContext["cloneableSequences"][number];
+
   const ctx: SequenceSidebarContext = {
     createSequencePending: false,
     createSequence: vi.fn(),
@@ -148,6 +151,11 @@ describe("scopes/sequence-sidebar", () => {
     deleteSequence: vi.fn(),
     toggleableSequences: [],
     setSequenceActive: vi.fn(),
+    cloneableSequences: [],
+    cloneSequence: vi.fn(),
+    insertSourceSequences: [],
+    insertTargetName: undefined,
+    insertSequence: vi.fn(),
   };
 
   it("create-sequence runs and reports Creating… while pending", () => {
@@ -161,6 +169,24 @@ describe("scopes/sequence-sidebar", () => {
     expect(find(sequenceSidebarCommands, "overview:delete-sequence").disabled?.(ctx)).toMatch(
       /No sequence selected/,
     );
+  });
+
+  it("clone-sequence clones the chosen sequence", () => {
+    const cmd = find(sequenceSidebarCommands, "overview:clone-sequence");
+    const target = sequence("seq-1", "Main");
+    cmd.run({ ...ctx, cloneableSequences: [target] }, target);
+    expect(ctx.cloneSequence).toHaveBeenCalledWith("seq-1");
+  });
+
+  it("insert-sequence disables without an open target or source, runs otherwise", () => {
+    const cmd = find(sequenceSidebarCommands, "overview:insert-sequence");
+    const source = sequence("seq-2", "Other");
+    expect(cmd.disabled?.(ctx)).toMatch(/No open sequence/);
+    expect(cmd.disabled?.({ ...ctx, insertTargetName: "Main" })).toMatch(/No other sequence/);
+    const eligible = { ...ctx, insertTargetName: "Main", insertSourceSequences: [source] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, source);
+    expect(ctx.insertSequence).toHaveBeenCalledWith("seq-2");
   });
 });
 

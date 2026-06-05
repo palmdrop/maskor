@@ -134,6 +134,19 @@ export const SectionSplitSchema = z
   })
   .openapi("SectionSplit");
 
+// Clone a sequence into a fresh independent copy with a new name.
+export const SequenceCloneSchema = z
+  .object({ name: z.string().min(1).openapi({ example: "Revised Order (copy)" }) })
+  .openapi("SequenceClone");
+
+// Insert another sequence's sections into this one at a section index.
+export const SequenceInsertSchema = z
+  .object({
+    sourceSequenceId: z.uuid().openapi({ example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }),
+    sectionIndex: z.number().int().min(0).openapi({ example: 1 }),
+  })
+  .openapi("SequenceInsert");
+
 export const SectionUUIDParamSchema = z.object({
   projectId: z.uuid(),
   sequenceId: z.uuid(),
