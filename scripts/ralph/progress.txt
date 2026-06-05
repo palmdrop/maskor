@@ -95,3 +95,28 @@ Started: 2026-06-04
   - The `data-testid="margin-rows"` attribute on the rows container makes it easy to assert `rowsPaddingTop` (the inline style `paddingTop`) in unit tests.
   - Adding `editorBlocks` to the origin-alignment effect's dependency array is safe: `editorBlocks` only changes on the same triggers as the effect itself (`geometryTick`, `mode`, `fontSize`, `getBlocks`), so no extra re-runs.
 ---
+
+## 2026-06-05 - US-007
+- The `@tiptap/extension-typography` extension was already included in `buildSharedProseExtensions()` prior to this PR — typography substitution was already functional in the rich editor.
+- Work done: wrote 4 unit tests verifying round-trip stability of em dashes, ellipsis, curly quotes, and code-span non-substitution; documented the feature in `specifications/fragment-editor.md` (Shipped entry + new prose section).
+- Files changed:
+  - `packages/frontend/src/components/typography.test.ts` (new: 4 round-trip tests)
+  - `specifications/fragment-editor.md` (rich-mode typography section + Shipped entry)
+- **Learnings for future iterations:**
+  - The Typography extension was already wired in. When a story says "enable X", always grep first — it may already be done.
+  - Input rules fire only on real user input in a mounted DOM view; headless Editor tests can only verify round-trip stability (load → getMarkdown), not the substitution trigger itself. That's enough for a formatting extension backed by a well-tested third-party library.
+---
+
+## 2026-06-05 - US-006
+- Implemented: Enter in the aspect picker now selects the highlighted existing option instead of always creating.
+- Root cause: the `onKeyDown` handler's `showCreate || singleOption` branch fired `handleCreate()` unconditionally before cmdk had a chance to handle the Enter, so even when the user navigated to an existing option, Enter would create a new aspect.
+- Fix: added `highlightedValue` state tracked via `value`/`onValueChange` on the `Command` element. If `highlightedValue` is non-empty (any item is highlighted), Enter dispatches to cmdk instead of calling `handleCreate`. Fallback to `showCreate`/`singleOption` only when nothing is highlighted.
+- Files changed:
+  - `packages/frontend/src/components/ui/tag-combobox.tsx` (highlighted value tracking + Enter handler rewrite)
+  - `packages/frontend/src/components/ui/tag-combobox.test.tsx` (new: two tests for Enter key behavior)
+  - `specifications/aspect-arc-model.md` (Shipped entry)
+- **Learnings for future iterations:**
+  - cmdk `Command` component: pass `value` + `onValueChange` to track the highlighted item as controlled state. cmdk fires `onValueChange` on auto-select (first item) AND on user navigation — reliable for detecting "is anything highlighted".
+  - cmdk auto-highlights the first item on mount/list-change even in controlled mode — `onValueChange` fires in a useEffect, so it's available after `await act(async () => {})` + `waitFor` in tests.
+  - happy-dom + Radix Popover.Portal: portals render to `document.body` and are fully query-able via `screen` — no special mocks needed.
+---
