@@ -1,0 +1,221 @@
+# Fragment editor + Margin: flicker/alignment fixes and component refactor
+
+**Date**: 05-06-2026
+**Status**: In progress
+**Specs**: `specifications/margins.md`
+
+---
+
+## Goal
+
+> In **vim/raw (CM6) mode**: saving a fragment no longer flickers or jumps the caret; each Margin
+> comment stays level with its paragraph on long fragments (no broken offsets, no extra inter-paragraph
+> spacing); the Margin reads at the app's text size in a wider column; document-side spacers are gone
+> and comments are **absolutely anchored** at their block's top (prose never moves); hovering/focusing
+> a comment highlights its bound paragraph and vice-versa. The four oversized editor components are
+> decomposed into focused sub-components/hooks with no behavioural regressions. Rich (TipTap) mode is
+> out of scope for the bug fixes but must not regress.
+
+---
+
+## Background
+
+Root causes established during investigation (vim/raw mode only — rich mode is insulated because
+ProseMirror does not virtualize and uses Tailwind `prose` line-height):
+
+- **A — Geometry breaks under virtualization.** `ProseEditor.getBlocks()` (vim/raw branch) measures
+  blocks with `view.coordsAtPos`, which returns `null` for positions outside CM6's rendered viewport.
+  Off-screen blocks fall back to `{top:0,height:0}`, corrupting `naturalSlotHeights` → wrong
+  min-heights/spacers. It does not recover on scroll (the `ResizeObserver` only fires on size change).
+- **B — Save flicker + caret jump.** `@uiw/react-codemirror` reacts to a changed `value` prop with a
+  full-document replace (`changes: {from:0, to:len, insert:value}`, no selection preserved). After
+  save, the refetched content is vault-normalized (`serialize.ts` does `body.trim() + "\n"`) and
+  differs from the live buffer, triggering the replace. The rich path guards this with a `trimEnd`
+  comparison; the CM path has no guard.
+- **C — Line-height mismatch.** Margin text uses `MARGIN_LINE_HEIGHT = 1.75`; the CM editor renders at
+  its base-theme `.cm-content { line-height: 1.4 }`. Equal text is ~25% taller in the margin → phantom
+  document-side spacers and per-line drift.
+
+Decisions taken with the developer (discussion 2026-06-05):
+
+- Scope the bug fixes to **vim mode** (rich mode unchanged but must not regress).
+- **Drop document-side spacers entirely, in both modes.** They were the fragile half and the main
+  source of "extra spacing"; keeping them for rich only would retain ~all the machinery (both spacer
+  extensions + the freeze-while-focused / reconcile-on-blur dance) for almost no simplification. The
+  fragment prose never moves to accommodate a comment.
+- **Absolute top-anchored Margin.** With spacers gone the old min-height row chain would drift (it was
+  the partner of the push), so each comment is positioned at its block's measured top. No cumulative
+  drift; a tall comment overflows downward and the **focused** comment renders as an elevated overlay
+  (bg + z-index) over its neighbours, collapsing on blur. Scroll-sync already keeps comment *i* level
+  with block *i*, so this preserves "look straight left" alignment at all times.
+- **Reciprocal connection highlight.** Hover/focus a comment tints its bound paragraph in the editor
+  (a CM line decoration keyed by the tracked anchor); putting the caret in a paragraph highlights its
+  comment. This is the disambiguation cue for adjacency/overlap — no leader lines, no in-prose marks,
+  no persistent gutter ticks (kept the quiet margins-4 aesthetic).
+- **Expand-all relaxes alignment.** When expand-all is on, the Margin becomes a plain readable column
+  (comments stack, top-anchoring relaxed); collapsing restores per-block alignment.
+- With spacers gone, **make the Margin fit more text**: drop the prose-font-size coupling (it only
+  existed to make pixel-exact mutual alignment work) and render the Margin at the **app's default text
+  size** (smaller than the prose), in a **wider column**.
+- **Normalize the live buffer to the vault's form** (trim + single trailing newline) so the post-save
+  round-trip is a no-op and no re-sync fires.
+- Refactor the four oversized components (`margin-column.tsx` 698, `prose-editor.tsx` 628,
+  `entity-editor-shell.tsx` 712, `fragment-editor.tsx` 442) into sub-components/hooks while touching
+  them.
+
+Also flagged: `references/CODEBASE_SNAPSHOT.md` was missing and has been regenerated (`bun run
+snapshot`).
+
+---
+
+## Tasks
+
+### Phase 0 — Commit the plan
+
+Work continues on the current branch (`agent/editor-flicker`); no new branch.
+
+- [x] `git commit` the plan (and any other doc changes; the regenerated `CODEBASE_SNAPSHOT.md` is
+      gitignored, so the plan file is the only doc to commit). _(2026-06-07)_
+
+### Phase 1 — Save flicker + caret jump (root cause B)
+
+Smallest, highest-impact, lowest-risk. Land first.
+
+- [ ] Make the CM (vim/raw) buffer the authoritative source for save: ensure `getContent()` returns
+      content normalized to the vault form (trim trailing whitespace, single trailing `\n`) so what is
+      sent matches what the server stores and returns. Confirm against `serialize.ts` normalization.
+- [ ] Guard the `value`-driven re-sync so a server round-trip that differs only by trailing whitespace
+      does **not** replace the CM document (mirror the rich path's `trimEnd` comparison). Prefer
+      driving CM content imperatively (diff + `setContent` with selection preserved) over relying on
+      `@uiw`'s raw `value` prop replace, OR keep `value` but feed it a normalized string that already
+      equals the buffer after a clean save.
+- [ ] Verify the caret is preserved across a save in vim mode (no jump to top/bottom) and the editor
+      does not visibly re-render/flicker.
+- [ ] Tests: a save→reload→save round-trip leaves the CM buffer byte-stable and the selection
+      unchanged; trailing-newline-only server differences do not trigger a doc replace. (Geometry/caret
+      that jsdom can't validate goes to the manual smoke list, see Testing.)
+- [ ] `git commit`.
+
+### Phase 2 — Remove document-side spacers; line-height; Margin sizing (root C + design)
+
+- [ ] Remove the document-side spacer mechanism in **both** modes: delete the spacer extensions
+      (`block-spacer-cm.ts`, `block-spacer-tiptap.ts`) and their wiring, drop `setBlockSpacers` from
+      the `ProseEditorHandle` / shell / bridge, and remove `MAX_SPACER`, the `spacer` half of
+      `computeBlockAlignment`, and the `currentSpacersRef` back-out. With the push gone, also delete the
+      freeze-while-focused / reconcile-on-blur logic in the alignment effect.
+- [ ] Decouple the Margin from the prose font size: render comment/notes text and the slot editors at
+      the **app default text size** (not `fontSize`). Remove `fontSize` from the Margin's layout
+      inputs; keep it only where genuinely needed (if anywhere).
+- [ ] Align line-height: set the CM fragment editor `.cm-content` line-height so block and comment
+      rhythm don't jump. (Alignment no longer depends on pixel-exact comment height, so this is purely
+      a "no visual rhythm jump" concern.)
+- [ ] Widen the Margin column (`entity-editor-shell.tsx` right-panel width) and confirm comment text
+      wraps comfortably at the new size.
+- [ ] Tests: column logic still binds comments to blocks; no spacer is ever emitted by any path.
+- [ ] `git commit`.
+
+### Phase 3 — Absolute top-anchored Margin + virtualization-safe geometry (root A + design)
+
+- [ ] Replace `coordsAtPos`-based block geometry in the vim/raw `getBlocks()` with a height-map query
+      defined for off-screen positions (e.g. `view.lineBlockAt(pos)` / `lineBlockAtHeight`), so every
+      block reports a real `top` regardless of the viewport.
+- [ ] Re-measure on scroll (not only on resize/content change): newly revealed blocks must pick up
+      correct geometry. Throttle to animation frames.
+- [ ] Switch the Margin layout from the min-height row chain to **absolute top-anchoring**: a
+      positioned rows container; each comment positioned at its block's measured top. No cumulative
+      drift. Collapsed comments clip to a small cap; the **focused** comment renders as an elevated
+      overlay (bg + z-index) over neighbours and collapses on blur. **Expand-all** relaxes anchoring —
+      the column becomes a plain stacked readable list.
+- [ ] Replace/retire the origin-alignment effect and its `editorBlocks[0].top` feedback dependency:
+      with absolute positioning, comment tops come straight from the (now stable) height-map tops, so
+      the `geometryTick`/rAF settle loop and `rowsPaddingTop` chase can largely go.
+- [ ] Reciprocal connection highlight: hovering/focusing a comment tints its bound paragraph via a CM
+      line decoration keyed by the tracked anchor; placing the caret in a paragraph highlights its
+      comment. Reuse the existing per-mode anchor store for the binding.
+- [ ] Tests: pure geometry→layout mapping (height-map tops → comment offsets) unit-tested; the
+      `coordsAtPos`-null hole covered by a regression fixture; the anchor→highlighted-line mapping
+      unit-tested. Pixel/scroll behaviour goes to the manual smoke.
+- [ ] `git commit`.
+
+### Phase 4 — Component decomposition (refactor)
+
+No behavioural change; structural only. Split each oversized file into a thin orchestrator plus
+focused sub-components and hooks. Co-locate tests with the units they cover.
+
+- [ ] `prose-editor.tsx` (628) — split the rich (TipTap) and raw/vim (CM6) editors into two
+      components behind one shared `ProseEditorHandle`, resolving the existing "Split into two
+      components?" NOTE. Extract per-mode handle construction and `getBlocks` geometry into helpers/
+      hooks. The current `ProseEditor` becomes a thin selector.
+- [ ] `margin-column.tsx` (698) — extract `MarginRow`, the orphan group (`OrphanList`/`OrphanRow`),
+      `MarginNotesSection`, and `MarginFooterControls` as components; move the alignment/geometry
+      effect, scroll-sync, and origin-alignment into hooks (e.g. `useMarginAlignment`,
+      `useScrollSync`). The component becomes orchestration + layout.
+- [ ] `entity-editor-shell.tsx` (712) — extract the header/key-edit bar, the display-settings popover,
+      and the extract/insert dialog wiring into sub-components; move swap/recovery and the imperative
+      handle into hooks. Keep the public `EntityEditorShellHandle` stable.
+- [ ] `fragment-editor.tsx` (442) — extract the editor↔Margin bridge callbacks and the linked
+      swap-pair coordination into hooks (e.g. `useFragmentMarginBridge`, `useLinkedSwapPair`).
+- [ ] Run `bun run format`, fix lint, ensure `bun run typecheck` passes (per frontend CLAUDE.md, use
+      `bun run typecheck`, not `tsc --noEmit`).
+- [ ] Tests: existing component/unit tests pass against the new structure; add tests for any newly
+      extracted pure hook/helper where behaviour wasn't previously covered.
+- [ ] `git commit`.
+
+### Phase 5 — Verify, spec, snapshot
+
+- [ ] `bun run format` then `bun run verify`; fix any failures.
+- [ ] Manual browser smoke (vim mode): long fragment with many short blank-line-separated blocks —
+      each comment stays level with its paragraph on scroll; save preserves caret with no flicker;
+      comments read at app size in the wider column; no extra inter-paragraph spacing; focused comment
+      overlays neighbours and collapses on blur; hover/focus highlights the bound paragraph both ways;
+      expand-all reads as a plain column; type-to-create, delete→paste re-attach, Tab/Esc focus keymap
+      all still work.
+- [ ] Update `specifications/margins.md`: add a Shipped entry (document-side spacers removed in both
+      modes; Margin absolutely top-anchored; reciprocal paragraph↔comment highlight; expand-all relaxes
+      alignment; Margin de-coupled from prose font size and widened; virtualization-safe height-map
+      geometry; save round-trip no longer disturbs the CM buffer/caret) and reconcile the "mutual flow
+      alignment" / "document-side push" prose + Prior decisions (ADR 0008/0009) with the new
+      absolute-anchored, margin-only model.
+- [ ] Regenerate `references/CODEBASE_SNAPSHOT.md` (`bun run snapshot`) after the refactor.
+- [ ] `git commit`.
+
+---
+
+## Testing
+
+ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests already exist.
+
+Geometry, caret position, and real virtualized scrolling cannot be validated in jsdom/happy-dom (per
+`references/suggestions.md`). Unit-test the pure pieces (normalization, value-sync guard, column
+binding, margin-side alignment mapping, height-map→row layout). Everything pixel/caret/scroll lands on
+the **manual vim-mode browser smoke** in Phase 5.
+
+---
+
+## Resolved questions (discussion 2026-06-05)
+
+1. **Document-side spacers** — dropped everywhere (both modes). Keeping rich-only retained ~all the
+   machinery for no simplification, and the inherent prose-motion was the disliked behaviour, which
+   solidity wouldn't change.
+2. **Alignment model** — absolute top-anchoring (each comment at its block's measured top), not the
+   min-height chain. The chain was the partner of the push and drifts without it.
+3. **Expand-all** — relaxes anchoring into a plain readable column; collapsing restores alignment.
+4. **Connection cue** — reciprocal hover/focus highlight only (no leader lines, gutter ticks, or
+   in-prose numbers). Scroll-sync already keeps comments level with their blocks, so the cue only needs
+   to disambiguate adjacency/overlap.
+
+---
+
+## Notes
+
+DO NOT IMPLEMENT until clearly stated by the developer.
+
+When clearly stated to implement, continue on the current branch (`agent/editor-flicker`) — no new
+branch. Start with Phase 0 (commit the plan).
+
+Once a phase, or sensible set of changes, is done, check off the relevant tasks, make a `git commit`
+and describe what has been added.
+
+When the plan is implemented, fully or partially, set the plan status to `Done` or `In progress`.
+ALSO update `specifications/margins.md` frontmatter — add an item to the `Shipped` section describing
+the features implemented (no granular tasks or implementation detail).
