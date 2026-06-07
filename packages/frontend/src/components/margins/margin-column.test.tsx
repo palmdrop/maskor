@@ -246,6 +246,34 @@ describe("MarginColumn", () => {
     expect(activeRow.className).not.toContain("border-t-border/40");
   });
 
+  it("highlights the bound paragraph while a comment is hovered (reciprocal cue)", () => {
+    const highlightAnchor = vi.fn();
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->",
+      marginEditor: buildMarginEditor({ comments: [comment("a", "on a")] }),
+      highlightAnchor,
+    });
+    const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    fireEvent.mouseEnter(row);
+    expect(highlightAnchor).toHaveBeenLastCalledWith("a");
+    fireEvent.mouseLeave(row);
+    expect(highlightAnchor).toHaveBeenLastCalledWith(null);
+  });
+
+  it("tints the comment whose block holds the caret (highlightedMarkerId)", () => {
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->\n\nSecond. <!--c:b-->",
+      marginEditor: buildMarginEditor({
+        comments: [comment("a", "on a"), comment("b", "on b")],
+      }),
+      highlightedMarkerId: "b",
+    });
+    const rowB = document.querySelector('[data-slot-marker="b"]') as HTMLElement;
+    const rowA = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    expect(rowB.className).toContain("bg-muted/40");
+    expect(rowA.className).not.toContain("bg-muted/40");
+  });
+
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {
     const removeAnchor = vi.fn();
     const removeComment = vi.fn();

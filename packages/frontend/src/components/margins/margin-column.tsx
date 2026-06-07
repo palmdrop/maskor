@@ -65,6 +65,11 @@ type Props = {
   removeAnchor: (markerId: string) => void;
   revealAnchor: (markerId: string) => void;
   focusAnchorBlock: (markerId: string) => void;
+  // Reciprocal connection cue. `highlightAnchor` tints the bound paragraph in the editor while a
+  // comment is hovered/focused (pass null to clear); `highlightedMarkerId` is the comment whose block
+  // the caret is currently in, so the column tints that comment back.
+  highlightAnchor?: (markerId: string | null) => void;
+  highlightedMarkerId?: string | null;
   getScrollElement: () => HTMLElement | null;
   // The editor's authoritative block list (ADR 0009): the column renders one row per entry, binds
   // comments by markerId, and anchors each comment at the block's measured `top`.
@@ -84,6 +89,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     removeAnchor,
     revealAnchor,
     focusAnchorBlock,
+    highlightAnchor,
+    highlightedMarkerId,
     getScrollElement,
     getBlocks,
   },
@@ -98,6 +105,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
 
   const [activeSlot, setActiveSlot] = useState<ActiveSlot>(null);
   const [draft, setDraft] = useState("");
+  // The comment the pointer is over — drives the editor-side highlight (alongside the focused one).
+  const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
   // Bumped after mount / content change / resize to re-pull the editor's measured geometry. The block
   // list itself comes from the editor (ADR 0009) — the single source of enumeration and geometry.
   const [geometryTick, setGeometryTick] = useState(0);
@@ -205,6 +214,26 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     return () => observer.disconnect();
   }, [getScrollElement, remeasure]);
 
+  // Refine geometry after the editor settles from a scroll: the height map (`lineBlockAt`) gives
+  // scroll-independent tops, but CM6 *estimates* off-screen line heights and only measures them when
+  // they enter the viewport, so a far-off comment's top can be slightly off until its block is
+  // revealed. Re-pull once scrolling pauses (debounced — not per frame, which would re-render the
+  // whole column on every scroll tick). Scroll-position mirroring stays in the scroll-sync effect.
+  useEffect(() => {
+    const editorScroll = getScrollElement();
+    if (!editorScroll) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(remeasure, 150);
+    };
+    editorScroll.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      editorScroll.removeEventListener("scroll", onScroll);
+    };
+  }, [getScrollElement, remeasure, geometryTick]);
+
   // --- Anchored geometry (ADR 0009, absolute model). The rows container matches the editor's content
   // height (so the two scroll in lockstep) and each comment is positioned at its block's measured top.
   // A collapsed comment taller than its block-clip gets an overflow cue. Re-runs on geometry/comment
@@ -228,6 +257,15 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       pixelArraysEqual(previous, overflowing) ? previous : overflowing,
     );
   }, [editorBlocks, blocks, comments, expandAll, mode, fontSize, getScrollElement]);
+
+  // --- Reciprocal highlight (margin → editor). Tint the bound paragraph for the comment under the
+  // pointer, or the focused one when nothing is hovered. Clears (null) when neither applies. ---
+  const activeCommentMarker = activeSlot?.kind === "comment" ? activeSlot.markerId : null;
+  useEffect(() => {
+    if (!highlightAnchor) return;
+    highlightAnchor(hoveredMarkerId ?? activeCommentMarker);
+    return () => highlightAnchor(null);
+  }, [highlightAnchor, hoveredMarkerId, activeCommentMarker]);
 
   // --- Fuzzy recovery (ADR 0009). An orphaned comment whose last-known excerpt still uniquely matches
   // an un-anchored block re-anchors to it. Conservative and self-terminating; gated on `fragmentDirty`
@@ -395,6 +433,9 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             const isOverflowing = clip && overflowingBlocks.includes(row.block.index);
 
             const positioned = !expandAll;
+            // Caret-in-block reflection: tint the comment whose paragraph the caret is in (unless it's
+            // the active/edited one, which already reads as the focused overlay).
+            const isCaretBlock = !!comment && comment.markerId === highlightedMarkerId && !isActive;
             return (
               <div
                 key={`row-${row.block.index}`}
@@ -402,9 +443,13 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 {...(comment
                   ? { "data-slot-marker": comment.markerId }
                   : { "data-slot-block": row.block.index })}
+                onMouseEnter={comment ? () => setHoveredMarkerId(comment.markerId) : undefined}
+                onMouseLeave={comment ? () => setHoveredMarkerId(null) : undefined}
                 className={`group relative border border-transparent pb-1 pl-6 pr-2 ${
                   comment && !isActive ? "border-t-border/40" : ""
-                } ${isActive ? "z-10 rounded-sm border-border/60 bg-background shadow-sm" : ""}`}
+                } ${isActive ? "z-10 rounded-sm border-border/60 bg-background shadow-sm" : ""} ${
+                  isCaretBlock ? "rounded-sm bg-muted/40" : ""
+                }`}
                 style={{
                   ...(positioned
                     ? { position: "absolute", top, left: 0, right: 0 }

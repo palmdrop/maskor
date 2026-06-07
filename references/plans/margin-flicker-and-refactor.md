@@ -114,11 +114,11 @@ Smallest, highest-impact, lowest-risk. Land first.
 
 ### Phase 3 — Absolute top-anchored Margin + virtualization-safe geometry (root A + design)
 
-- [ ] Replace `coordsAtPos`-based block geometry in the vim/raw `getBlocks()` with a height-map query
-      defined for off-screen positions (e.g. `view.lineBlockAt(pos)` / `lineBlockAtHeight`), so every
-      block reports a real `top` regardless of the viewport.
-- [ ] Re-measure on scroll (not only on resize/content change): newly revealed blocks must pick up
-      correct geometry. Throttle to animation frames.
+- [x] Replaced `coordsAtPos`-based block geometry in the vim/raw `getBlocks()` with a height-map query
+      (`view.lineBlockAt` + `documentTop`), defined for off-screen positions, so every block reports a
+      real scroll-independent `top` regardless of the viewport. _(2026-06-07)_
+- [x] Re-measure (debounced) when the editor settles from a scroll, so CM6's estimated off-screen line
+      heights refine as blocks are revealed. _(2026-06-07)_
 - [x] Switched the Margin layout from the min-height row chain to **absolute top-anchoring**: a
       positioned rows container as tall as the editor content; each comment positioned at its block's
       measured top. Collapsed comments clip to their block height; the **focused** comment lifts onto an
@@ -126,12 +126,14 @@ Smallest, highest-impact, lowest-risk. Land first.
       anchoring into a plain stacked column. _(2026-06-07 — done with Phase 2 commit)_
 - [x] Retired the origin-alignment effect, `rowsPaddingTop`, and the `editorBlocks[0].top` feedback —
       absolute positioning uses block tops directly. _(2026-06-07 — done with Phase 2 commit)_
-- [ ] Reciprocal connection highlight: hovering/focusing a comment tints its bound paragraph via a CM
-      line decoration keyed by the tracked anchor; placing the caret in a paragraph highlights its
-      comment. Reuse the existing per-mode anchor store for the binding.
-- [ ] Tests: pure geometry→layout mapping (height-map tops → comment offsets) unit-tested; the
-      `coordsAtPos`-null hole covered by a regression fixture; the anchor→highlighted-line mapping
-      unit-tested. Pixel/scroll behaviour goes to the manual smoke.
+- [x] Reciprocal connection highlight: a new `anchor-highlight-cm` extension tints the bound block's
+      line(s) while a comment is hovered/focused (driven by `setHighlightedAnchor` through the bridge);
+      the editor reports the caret's block via `onActiveBlockChange` so the column tints the matching
+      comment back. vim/raw only (rich is a no-op this iteration). _(2026-06-07)_
+- [x] Tests: `anchor-highlight-cm.test.ts` covers the anchor→highlighted-line mapping (single block,
+      multi-line block, missing/cleared marker); `margin-column.test.tsx` covers hover→`highlightAnchor`
+      and `highlightedMarkerId`→comment tint, plus absolute-top / clip / expand-all. Geometry pixel/
+      caret/scroll behaviour goes to the manual smoke (jsdom can't measure CM). _(2026-06-07)_
 - [ ] `git commit`.
 
 ### Phase 4 — Component decomposition (refactor)
