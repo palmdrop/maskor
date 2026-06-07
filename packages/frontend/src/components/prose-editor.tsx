@@ -29,6 +29,7 @@ import {
   serializeTiptapWithMarkers,
 } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
+import { isTrailingWhitespaceEquivalent } from "./buffer-sync";
 import { ProseToolbar } from "./prose-toolbar";
 import { yankGenerator } from "../lib/vim/yank";
 import { patchDeleteClipboard } from "../lib/vim/delete";
@@ -177,6 +178,27 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     return { anchor: Math.min(Math.max(offset, 0), cleanContent.length) };
   });
 
+  // The value handed to CodeMirror. @uiw replaces the whole document whenever this prop differs from
+  // the live doc (dropping the caret to the doc end and flickering) — so we only let it change on a
+  // *genuine* content change. A save round-trip re-normalizes the body (trim + trailing newline) on the
+  // server, which would otherwise trip a needless replace; the guard effect below keeps `cmValue` equal
+  // to the live doc in that case so @uiw skips it (mirrors the rich path's trailing-whitespace guard).
+  const [cmValue, setCmValue] = useState(cleanContent);
+  useEffect(() => {
+    if (!(vimMode || rawMarkdownMode)) return;
+    const view = viewRef.current;
+    const current = view ? view.state.doc.toString() : cmValue;
+    if (isTrailingWhitespaceEquivalent(cleanContent, current)) {
+      // Equivalent modulo trailing whitespace: hand back the live doc string so `value === doc` and
+      // @uiw performs no replace, leaving the caret untouched.
+      if (cmValue !== current) setCmValue(current);
+      return;
+    }
+    // `cmValue` is intentionally not a dependency: this effect decides whether to adopt `cleanContent`,
+    // and re-running it on its own output would loop.
+    setCmValue(cleanContent);
+  }, [cleanContent, vimMode, rawMarkdownMode]);
+
   // The `selection` prop places the caret on the initial state; this focuses
   // the fresh view and centers that caret in the viewport (like vim `zz`).
   const focusAndCenterCaret = useCallback(
@@ -308,7 +330,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     // before comparing — a trailing-newline difference must not trigger a full setContent that resets
     // the caret.
     const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
-    const didSyncContent = cleanContent.trimEnd() !== current.trimEnd();
+    const didSyncContent = !isTrailingWhitespaceEquivalent(cleanContent, current);
     if (didSyncContent) {
       isLoadingRef.current = true;
       editor.commands.setContent(content, { emitUpdate: false });
@@ -352,7 +374,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
           if (!view) return content;
-          return insertCommentMarkers(view.state.doc.toString(), getCmAnchors(view.state));
+          // Trailing-trim to match the vault's normalization (it stores `body.trim() + "\n"`), so the
+          // saved form is idempotent. Anchors sit at block ends, before any trailing whitespace, so
+          // their offsets are unaffected.
+          const clean = view.state.doc.toString().trimEnd();
+          return insertCommentMarkers(clean, getCmAnchors(view.state));
         }
         if (!editor) return content;
         return serializeTiptapWithMarkers(editor);
@@ -366,6 +392,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             changes: { from: 0, to: view.state.doc.length, insert: clean },
             effects: setCmAnchorsEffect.of(anchors),
           });
+          // Track the new doc so the guarded `value` prop stays equal to it (no @uiw replace-back).
+          setCmValue(clean);
           return;
         }
         if (!editor) return;
@@ -582,7 +610,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     return (
       <div className="h-full mx-auto w-full" style={widthStyle}>
         <CodeMirror
-          value={cleanContent}
+          value={cmValue}
           selection={initialSelection}
           extensions={vimMode ? vimExtensions : rawExtensions}
           onCreateEditor={(view) => {
