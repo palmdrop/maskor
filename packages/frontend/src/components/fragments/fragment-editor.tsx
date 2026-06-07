@@ -30,6 +30,7 @@ import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
+import { useFragmentMarginBridge } from "./use-fragment-margin-bridge";
 import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
 import { Separator } from "@components/ui/separator";
 import { useMarginEditor } from "@hooks/useMarginEditor";
@@ -290,28 +291,12 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     commentBlock: handleCommentBlock,
   });
 
-  // Editor bridges the margin column drives: marker injection (type-to-create), the coordinated
-  // delete strip, reveal/focus, and geometry for scroll-sync + margin-side padding.
-  const addAnchorAtBlock = useCallback((blockIndex: number, markerId: string) => {
-    shellRef.current?.addAnchorAtBlock(blockIndex, markerId);
-  }, []);
-  const removeAnchor = useCallback((markerId: string) => {
-    shellRef.current?.removeAnchor(markerId);
-  }, []);
-  const handleRevealAnchor = useCallback((markerId: string) => {
-    shellRef.current?.revealAnchor(markerId);
-  }, []);
-  const handleFocusAnchorBlock = useCallback((markerId: string) => {
-    shellRef.current?.focusAnchorBlock(markerId);
-  }, []);
-  // Reciprocal connection cue: the Margin highlights the bound paragraph (hover/focus a comment), and
-  // the editor reports the caret's block so the Margin highlights the matching comment.
-  const handleHighlightAnchor = useCallback((markerId: string | null) => {
-    shellRef.current?.setHighlightedAnchor(markerId);
-  }, []);
+  // The editor operations the Margin column drives (anchor edits, reveal/focus, reciprocal highlight,
+  // geometry), all delegating to the shell handle. Reciprocal cue: the Margin highlights the bound
+  // paragraph (hover/focus a comment), and the editor reports the caret's block (`activeBlockMarker`,
+  // set via `onActiveBlockChange`) so the Margin highlights the matching comment back.
+  const bridge = useFragmentMarginBridge(shellRef);
   const [activeBlockMarker, setActiveBlockMarker] = useState<string | null>(null);
-  const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
-  const getBlocks = useCallback(() => shellRef.current?.getBlocks() ?? [], []);
 
   const extraActions = useMemo(() => {
     const discardButton = (
@@ -398,14 +383,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             mode={marginMode}
             fontSize={editorConfig.fontSize}
             onCommentBlock={() => commands.run("margin:comment-block")}
-            addAnchorAtBlock={addAnchorAtBlock}
-            removeAnchor={removeAnchor}
-            revealAnchor={handleRevealAnchor}
-            focusAnchorBlock={handleFocusAnchorBlock}
-            highlightAnchor={handleHighlightAnchor}
+            addAnchorAtBlock={bridge.addAnchorAtBlock}
+            removeAnchor={bridge.removeAnchor}
+            revealAnchor={bridge.revealAnchor}
+            focusAnchorBlock={bridge.focusAnchorBlock}
+            highlightAnchor={bridge.highlightAnchor}
             highlightedMarkerId={activeBlockMarker}
-            getScrollElement={getScrollElement}
-            getBlocks={getBlocks}
+            getScrollElement={bridge.getScrollElement}
+            getBlocks={bridge.getBlocks}
           />
         }
         onProseChange={() => setIsProseDirty(true)}
