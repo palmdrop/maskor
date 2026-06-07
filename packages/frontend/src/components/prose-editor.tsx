@@ -19,6 +19,7 @@ import {
   getCmAnchors,
   cmAnchorBlockIndex,
 } from "./anchor-cm";
+import { cmAnchorHighlightExtension, setHighlightedAnchorEffect } from "./anchor-highlight-cm";
 import {
   tiptapAnchorExtension,
   tiptapAnchorKey,
@@ -73,6 +74,9 @@ export type ProseEditorHandle = {
   // markdown parse and the editor's DOM nodes. `top`/`height` are content-relative pixels (0 when
   // geometry can't yet be measured); `text` is the marker-stripped block opening for type-to-create.
   getBlocks: () => EditorBlock[];
+  // Highlight the block a Margin comment is anchored to (the reciprocal connection cue), or null to
+  // clear. Presentation only (a line decoration). vim/raw only; rich is a no-op in this iteration.
+  setHighlightedAnchor: (markerId: string | null) => void;
 };
 
 // One block as the editor reports it: its comment anchor (the first marker on the block, or null),
@@ -118,6 +122,9 @@ type Props = {
   onSave?: () => void;
   onChange?: () => void;
   cursor?: PersistedCursor;
+  // The comment markerId of the block the caret is in (or null), reported on selection change so the
+  // Margin can highlight that block's comment — the reciprocal half of the connection cue.
+  onActiveBlockChange?: (markerId: string | null) => void;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
@@ -131,6 +138,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     onSave,
     onChange,
     cursor,
+    onActiveBlockChange,
   },
   ref,
 ) {
@@ -149,6 +157,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   );
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onActiveBlockChangeRef = useRef(onActiveBlockChange);
+  onActiveBlockChangeRef.current = onActiveBlockChange;
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
   const vimClipboardSyncRef = useRef(vimClipboardSync);
@@ -239,6 +249,16 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       EditorView.updateListener.of((update) => {
         if (update.selectionSet && update.view.hasFocus) {
           cursorRef.current?.save(update.state.selection.main.head);
+          // Report the caret's block (by its comment markerId, or null) so the Margin can highlight
+          // the matching comment — the reciprocal half of the connection cue.
+          if (onActiveBlockChangeRef.current) {
+            const head = update.state.selection.main.head;
+            const ranges = blockRanges(update.state.doc.toString());
+            const index = ranges.findIndex((range) => head >= range.from && head <= range.to);
+            const markerId =
+              index === -1 ? null : markerForBlock(cmAnchorBlockIndex(update.state), index);
+            onActiveBlockChangeRef.current(markerId);
+          }
         }
       }),
     [],
@@ -276,11 +296,12 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       EditorView.lineWrapping,
       selectionListener,
       cmAnchorExtension,
+      cmAnchorHighlightExtension,
     ],
     [cmTheme, selectionListener],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener, cmAnchorExtension],
+    () => [markdown(), cmTheme, selectionListener, cmAnchorExtension, cmAnchorHighlightExtension],
     [cmTheme, selectionListener],
   );
 
@@ -524,23 +545,27 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           const view = viewRef.current;
           if (!view) return [];
           const scroller = view.scrollDOM;
-          // Content-relative origin: subtract the scroller's viewport top and add its scroll offset
-          // so `top` is independent of the current scroll position.
-          const contentOrigin = scroller.getBoundingClientRect().top - scroller.scrollTop;
+          // Use the height map (`lineBlockAt`), not `coordsAtPos`: the latter returns null for
+          // positions outside the rendered viewport, so a long fragment's off-screen blocks would
+          // report zero geometry and the Margin would misalign. `lineBlockAt` is defined for every
+          // position. Its tops are document-relative; `documentTop` converts them to a scroll-
+          // independent offset from the scroller's content origin (so the Margin can anchor to them).
+          const docOffset =
+            view.documentTop - scroller.getBoundingClientRect().top + scroller.scrollTop;
           // markerId comes from the anchor field (the buffer has no markers — ADR 0009).
           const byBlock = cmAnchorBlockIndex(view.state);
+          const docLength = view.state.doc.length;
           return blockRanges(view.state.doc.toString()).map((range, index) => {
             const raw = view.state.doc.sliceString(range.from, range.to);
             const markerId = markerForBlock(byBlock, index);
             const text = stripCommentMarkers(raw).trim();
-            const top = view.coordsAtPos(range.from);
-            const bottom = view.coordsAtPos(range.to);
-            if (!top || !bottom) return { markerId, text, top: 0, height: 0 };
+            const first = view.lineBlockAt(Math.min(range.from, docLength));
+            const last = view.lineBlockAt(Math.min(range.to, docLength));
             return {
               markerId,
               text,
-              top: top.top - contentOrigin,
-              height: Math.max(0, bottom.bottom - top.top),
+              top: first.top + docOffset,
+              height: Math.max(0, last.bottom - first.top),
             };
           });
         }
@@ -563,6 +588,12 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           }
         });
         return blocks;
+      },
+      setHighlightedAnchor: (markerId: string | null) => {
+        // vim/raw only (the bug-fix + cue scope). Rich mode is a no-op for now.
+        if (vimMode || rawMarkdownMode) {
+          viewRef.current?.dispatch({ effects: setHighlightedAnchorEffect.of(markerId) });
+        }
       },
     }),
     [vimMode, rawMarkdownMode, editor, content],

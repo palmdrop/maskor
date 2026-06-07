@@ -304,6 +304,12 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const handleFocusAnchorBlock = useCallback((markerId: string) => {
     shellRef.current?.focusAnchorBlock(markerId);
   }, []);
+  // Reciprocal connection cue: the Margin highlights the bound paragraph (hover/focus a comment), and
+  // the editor reports the caret's block so the Margin highlights the matching comment.
+  const handleHighlightAnchor = useCallback((markerId: string | null) => {
+    shellRef.current?.setHighlightedAnchor(markerId);
+  }, []);
+  const [activeBlockMarker, setActiveBlockMarker] = useState<string | null>(null);
   const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
   const getBlocks = useCallback(() => shellRef.current?.getBlocks() ?? [], []);
 
@@ -381,6 +387,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}
         onLiveContentChange={setFragmentContent}
+        onActiveBlockChange={setActiveBlockMarker}
         rightPanel={
           <MarginColumn
             ref={marginColumnRef}
@@ -395,6 +402,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             removeAnchor={removeAnchor}
             revealAnchor={handleRevealAnchor}
             focusAnchorBlock={handleFocusAnchorBlock}
+            highlightAnchor={handleHighlightAnchor}
+            highlightedMarkerId={activeBlockMarker}
             getScrollElement={getScrollElement}
             getBlocks={getBlocks}
           />

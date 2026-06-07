@@ -55,6 +55,7 @@ export type EntityEditorShellHandle = {
   focusAnchorBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
   getBlocks: () => EditorBlock[];
+  setHighlightedAnchor: (markerId: string | null) => void;
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
   restoreFromServer: () => void;
@@ -86,6 +87,9 @@ type Props = {
   // Live prose content on every edit — lets a paired Margin panel track the fragment's anchor
   // markers (for comment ordering and orphan detection).
   onLiveContentChange?: (content: string) => void;
+  // The comment markerId of the block the caret is in (or null) — lets a paired Margin highlight the
+  // matching comment (the reciprocal connection cue).
+  onActiveBlockChange?: (markerId: string | null) => void;
   // When true, this shell does not render its own unsaved-recovery banner — a parent coordinates a
   // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
   suppressRecoveryBanner?: boolean;
@@ -129,6 +133,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onKeySave,
       onContentSave,
       onLiveContentChange,
+      onActiveBlockChange,
       suppressRecoveryBanner = false,
       onRecoveryChange,
     },
@@ -337,6 +342,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         focusAnchorBlock: (markerId: string) => proseEditorRef.current?.focusAnchorBlock(markerId),
         getScrollElement: () => proseEditorRef.current?.getScrollElement() ?? null,
         getBlocks: () => proseEditorRef.current?.getBlocks() ?? [],
+        setHighlightedAnchor: (markerId: string | null) =>
+          proseEditorRef.current?.setHighlightedAnchor(markerId),
         restoreFromServer: () => handleRestoreFromServer(),
       }),
       [saveContent, handleRestoreFromServer],
@@ -663,6 +670,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               vimClipboardSync={editorConfig.vimClipboardSync}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
+              onActiveBlockChange={onActiveBlockChange}
               cursor={cursor}
             />
           </main>
