@@ -46,8 +46,8 @@ Decisions taken with the developer (discussion 2026-06-05):
 - **Absolute top-anchored Margin.** With spacers gone the old min-height row chain would drift (it was
   the partner of the push), so each comment is positioned at its block's measured top. No cumulative
   drift; a tall comment overflows downward and the **focused** comment renders as an elevated overlay
-  (bg + z-index) over its neighbours, collapsing on blur. Scroll-sync already keeps comment *i* level
-  with block *i*, so this preserves "look straight left" alignment at all times.
+  (bg + z-index) over its neighbours, collapsing on blur. Scroll-sync already keeps comment _i_ level
+  with block _i_, so this preserves "look straight left" alignment at all times.
 - **Reciprocal connection highlight.** Hover/focus a comment tints its bound paragraph in the editor
   (a CM line decoration keyed by the tracked anchor); putting the caret in a paragraph highlights its
   comment. This is the disambiguation cue for adjacency/overlap — no leader lines, no in-prose marks,
@@ -81,19 +81,16 @@ Work continues on the current branch (`agent/editor-flicker`); no new branch.
 
 Smallest, highest-impact, lowest-risk. Land first.
 
-- [ ] Make the CM (vim/raw) buffer the authoritative source for save: ensure `getContent()` returns
-      content normalized to the vault form (trim trailing whitespace, single trailing `\n`) so what is
-      sent matches what the server stores and returns. Confirm against `serialize.ts` normalization.
-- [ ] Guard the `value`-driven re-sync so a server round-trip that differs only by trailing whitespace
-      does **not** replace the CM document (mirror the rich path's `trimEnd` comparison). Prefer
-      driving CM content imperatively (diff + `setContent` with selection preserved) over relying on
-      `@uiw`'s raw `value` prop replace, OR keep `value` but feed it a normalized string that already
-      equals the buffer after a clean save.
-- [ ] Verify the caret is preserved across a save in vim mode (no jump to top/bottom) and the editor
-      does not visibly re-render/flicker.
-- [ ] Tests: a save→reload→save round-trip leaves the CM buffer byte-stable and the selection
-      unchanged; trailing-newline-only server differences do not trigger a doc replace. (Geometry/caret
-      that jsdom can't validate goes to the manual smoke list, see Testing.)
+- [x] Make the CM (vim/raw) buffer the authoritative source for save: `getContent()` now trailing-trims
+      the doc before re-emitting markers, matching the vault's `body.trim() + "\n"` normalization so the
+      saved form is idempotent. _(2026-06-07)_
+- [x] Guard the `value`-driven re-sync via a shared `isTrailingWhitespaceEquivalent` predicate: the CM
+      path holds `value` equal to the live doc when the incoming content differs only by trailing
+      whitespace (so `@uiw` skips its full-document replace), and the rich path reuses the same
+      predicate. Imperative `setContent` keeps `cmValue` in sync to avoid a replace-back. _(2026-06-07)_
+- [-] Verify caret preserved / no flicker — manual vim smoke (Phase 5); cannot be validated in jsdom.
+- [x] Tests: `buffer-sync.test.ts` covers the predicate (trailing-newline-only equivalence; real edits,
+      leading-whitespace, and interior-whitespace differences treated as genuine changes). _(2026-06-07)_
 - [ ] `git commit`.
 
 ### Phase 2 — Remove document-side spacers; line-height; Margin sizing (root C + design)
