@@ -8,10 +8,15 @@ import { buildSharedProseExtensions, proseClassName } from "../shared-prose-exte
 export type EditorMode = "rich" | "vim" | "raw";
 
 // The line-height the Margin text (static comments, notes, and the active slot editors) shares so the
-// column reads in the same serif rhythm as the prose editor beside it (margins-4 findings #1, #2).
-// Matches the prose body line-height; the document-side push is measured, so equal line-heights keep
-// multi-line comments from drifting against their block.
-export const MARGIN_LINE_HEIGHT = 1.75;
+// column reads in a consistent serif rhythm. No longer needs to match the prose editor's line-height:
+// comments are absolutely anchored at their block's top, so alignment doesn't depend on pixel-exact
+// comment heights.
+export const MARGIN_LINE_HEIGHT = 1.6;
+
+// The Margin reads at the app's text size — decoupled from the (larger) prose font size now that
+// alignment no longer needs the comment height to track the block height. Smaller text fits more in
+// the column.
+export const MARGIN_FONT_SIZE = 14;
 
 // CodeMirror's base theme forces a monospace family and its own line padding on `.cm-content` /
 // `.cm-scroller`. Override them so the raw/vim comment editor reads in the same serif rhythm as the

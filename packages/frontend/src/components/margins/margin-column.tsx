@@ -20,22 +20,18 @@ import {
   planOrphanRebinds,
   type FragmentBlock,
 } from "@lib/margins/column";
-import { computeBlockAlignment, naturalSlotHeights, spacersEqual } from "@lib/margins/alignment";
+import { pixelArraysEqual } from "@lib/margins/alignment";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
-import { SlotEditor, type EditorMode, MARGIN_LINE_HEIGHT } from "./slot-editor";
+import { SlotEditor, type EditorMode, MARGIN_LINE_HEIGHT, MARGIN_FONT_SIZE } from "./slot-editor";
 
 // Serif text styling shared by the column's static (non-editing) comment and notes text, so they read
-// in the same family + rhythm as the prose editor and the active slot editors (margins-4 #1, #2).
-const serifText = (fontSize: number) => ({
+// in the same family + rhythm as the active slot editors. Rendered at the app text size (decoupled
+// from the larger prose font now that alignment no longer depends on pixel-exact comment heights).
+const serifText = {
   fontFamily: "var(--font-serif)",
   lineHeight: MARGIN_LINE_HEIGHT,
-  fontSize,
-});
-
-// Safety cap on a single document-side spacer so one runaway comment can't open an absurd gap. A
-// collapsed comment is already clipped to its block height (so it needs no spacer); a focused/expanded
-// one is intentionally uncapped within this bound.
-const MAX_SPACER = 4000;
+  fontSize: MARGIN_FONT_SIZE,
+};
 
 export type MarginColumnHandle = {
   // Jump focus to a paragraph's slot (the "Comment this block" gesture, now a jump). Focuses the
@@ -60,8 +56,8 @@ type Props = {
   fragmentDirty: boolean;
   // The fragment editor mode, so the active slot edits in the matching idiom (one active editor).
   mode: EditorMode;
-  // The fragment editor's font size — applied to comment text so it reads at the same scale as the
-  // prose, and a trigger to re-measure alignment when the size changes.
+  // The fragment editor's font size — a trigger to re-measure block geometry when the size changes.
+  // The Margin text itself renders at the app size (see `serifText`).
   fontSize: number;
   onCommentBlock?: () => void;
   // Editor bridge (coordinated buffer edits + geometry), wired from the fragment editor shell.
@@ -70,15 +66,9 @@ type Props = {
   revealAnchor: (markerId: string) => void;
   focusAnchorBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
-  // The editor's authoritative block list (ADR 0009): the column renders one row per entry and binds
-  // comments by markerId, so its block-index space matches the editor's geometry exactly.
+  // The editor's authoritative block list (ADR 0009): the column renders one row per entry, binds
+  // comments by markerId, and anchors each comment at the block's measured `top`.
   getBlocks: () => EditorBlock[];
-  // Push document-side spacers (pixels, by block index) so a comment taller than its block pushes the
-  // next paragraph down — the document side of mutual flow alignment.
-  setBlockSpacers: (spacers: number[]) => void;
-  // Pad the editor content's top so block 0 lines up with this column's row 0 despite the columns'
-  // differing chrome (the notes header etc.). The column measures the gap and reports it.
-  setEditorTopPadding: (px: number) => void;
 };
 
 export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function MarginColumn(
@@ -96,16 +86,14 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     focusAnchorBlock,
     getScrollElement,
     getBlocks,
-    setBlockSpacers,
-    setEditorTopPadding,
   },
   ref,
 ) {
   const { notes, comments, setNotes, updateCommentBody, addCommentStub } = marginEditor;
 
   const [notesOpen, , toggleNotes] = usePersistedBoolean(`marginNotesOpen_${projectId}`, true);
-  // Global default: collapsed (comments clipped to their paragraph's height). Expand-all reveals
-  // every comment in full; the focused slot always expands regardless.
+  // Global default: collapsed (comments clipped to their paragraph's height). Expand-all relaxes the
+  // anchoring into a plain readable column; the focused slot always expands regardless.
   const [expandAll, , toggleExpandAll] = usePersistedBoolean(`marginExpandAll_${projectId}`, false);
 
   const [activeSlot, setActiveSlot] = useState<ActiveSlot>(null);
@@ -113,24 +101,16 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   // Bumped after mount / content change / resize to re-pull the editor's measured geometry. The block
   // list itself comes from the editor (ADR 0009) — the single source of enumeration and geometry.
   const [geometryTick, setGeometryTick] = useState(0);
-  // Per-block row min-heights (margin side): a short comment fills its block's slot. Populated by the
-  // alignment pass below from the editor's measured geometry.
-  const [minHeights, setMinHeights] = useState<number[]>([]);
-  // Top padding for the rows when the editor's content origin sits *below* this column's (rare). The
-  // common case — this column lower, because of the notes header — is handled by padding the editor.
-  const [rowsPaddingTop, setRowsPaddingTop] = useState(0);
-  // The spacers we last pushed to the editor — backed out when recovering the natural slot heights so
-  // the alignment pass converges (the spacer never feeds into its own input).
-  const currentSpacersRef = useRef<number[]>([]);
-  // Block indices whose collapsed comment is taller than its clip — they get an overflow cue so the
-  // writer knows there's more text than the slot shows.
+  // Total scrollable height of the anchored rows container, kept equal to the editor's content height
+  // so the two columns scroll in lockstep (absolute anchoring; the rows float over this box).
+  const [contentHeight, setContentHeight] = useState(0);
+  // Block indices whose collapsed comment is taller than its clip — they get an overflow cue.
   const [overflowingBlocks, setOverflowingBlocks] = useState<number[]>([]);
 
   const editorBlocks = useMemo(
     () => getBlocks(),
     [getBlocks, fragmentContent, mode, fontSize, geometryTick],
   );
-  // Structural rows in the editor's block order; geometry stays indexed alongside for padding.
   const blocks = useMemo<FragmentBlock[]>(
     () =>
       editorBlocks.map((block, index) => ({
@@ -206,9 +186,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     // returns null (the editor isn't laid out yet) and the listeners would never attach otherwise.
   }, [getScrollElement, geometryTick]);
 
-  // --- Block geometry: re-pull the editor's measured block list for margin-side padding when the
-  // content changes or the editor resizes. A tick bump re-runs `getBlocks()` (the editor is the
-  // single source of geometry) after layout has settled. ---
+  // --- Block geometry: re-pull the editor's measured block list when the content changes or the
+  // editor resizes. A tick bump re-runs `getBlocks()` after layout has settled. ---
   const remeasure = useCallback(() => {
     setGeometryTick((tick) => tick + 1);
   }, []);
@@ -226,95 +205,33 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     return () => observer.disconnect();
   }, [getScrollElement, remeasure]);
 
-  // --- Origin alignment: line up this column's row 0 with the editor's block 0 by measuring the
-  // vertical gap between the two scrollers' content tops (their chrome — notes header, toolbars —
-  // differs) and closing it. Usually this column sits lower (the notes header), so the editor's
-  // content is padded down; the rare opposite case pads the rows. Measured from the stable scroller
-  // boxes, so neither padding feeds back into the measurement.
-  //
-  // In CM6 (raw/vim) mode, blockRanges skips leading blank lines, so block 0 may sit below the
-  // content origin by the blank-line height. We read editorBlocks[0].top (measured relative to the
-  // scroller's content origin after the current top-padding is applied) and carry the surplus over
-  // max(0, delta) into rowsPaddingTop so row 0 lands beside block 0, not at the content origin. ---
-  useEffect(() => {
-    const editorScroll = getScrollElement();
-    const columnScroll = scrollRef.current;
-    if (!editorScroll || !columnScroll) return;
-    const delta =
-      columnScroll.getBoundingClientRect().top - editorScroll.getBoundingClientRect().top;
-    // Extra offset when block 0 is not at the content origin (leading blank lines in CM6 mode).
-    const block0Top = editorBlocks[0]?.top ?? 0;
-    const leadingOffset = Math.max(0, block0Top - Math.max(0, delta));
-    setEditorTopPadding(Math.max(0, delta));
-    setRowsPaddingTop((previous) => {
-      const next = Math.max(0, -delta) + leadingOffset;
-      return Math.abs(previous - next) < 0.5 ? previous : next;
-    });
-  }, [
-    getScrollElement,
-    setEditorTopPadding,
-    notesOpen,
-    mode,
-    fontSize,
-    geometryTick,
-    editorBlocks,
-  ]);
-
-  // --- Mutual flow alignment (ADR 0009). Each row is as tall as the taller of its block-slot and its
-  // comment: the column pads short comments up to the slot (min-height), and the editor pushes the
-  // next block down by a spacer for a taller comment. Both are derived from natural (spacer-excluded)
-  // geometry so a single pass converges. Re-runs when the geometry or any comment height changes. ---
+  // --- Anchored geometry (ADR 0009, absolute model). The rows container matches the editor's content
+  // height (so the two scroll in lockstep) and each comment is positioned at its block's measured top.
+  // A collapsed comment taller than its block-clip gets an overflow cue. Re-runs on geometry/comment
+  // change. ---
   useEffect(() => {
     const scroll = scrollRef.current;
     if (!scroll) return;
-    const tops = editorBlocks.map((block) => block.top);
-    const heights = editorBlocks.map((block) => block.height);
-    const slots = naturalSlotHeights(tops, heights, currentSpacersRef.current);
-    // The rendered row height is already max(slot, comment) because the row carries min-height = slot,
-    // so feeding it as the comment height yields the right spacer without a separate content probe.
+    const editorScroll = getScrollElement();
+    const measuredHeight =
+      editorScroll?.scrollHeight ??
+      editorBlocks.reduce((max, block) => Math.max(max, block.top + block.height), 0);
+    setContentHeight((previous) =>
+      Math.abs(previous - measuredHeight) < 0.5 ? previous : measuredHeight,
+    );
     const overflowing: number[] = [];
-    const rowHeights = slots.map((_, index) => {
-      const node = scroll.querySelector<HTMLElement>(`[data-row-index="${index}"]`);
-      if (!node) return 0;
-      // A clipped (collapsed) row hides content when its scrollHeight exceeds its client height — flag
-      // it so the writer gets an overflow cue.
-      if (node.scrollHeight - node.clientHeight > 1) overflowing.push(index);
-      return node.getBoundingClientRect().height;
-    });
-    setOverflowingBlocks((previous) =>
-      spacersEqual(previous, overflowing) ? previous : overflowing,
-    );
-    const alignment = computeBlockAlignment(
-      slots.map((slot, index) => ({ naturalSlotHeight: slot, commentHeight: rowHeights[index]! })),
-      MAX_SPACER,
-    );
-    const spacers = alignment.map((row) => row.spacer);
-    const mins = alignment.map((row) => row.minHeight);
-    // Margin-side padding always tracks the live geometry (a short comment keeps filling its slot).
-    setMinHeights((previous) => (spacersEqual(previous, mins) ? previous : mins));
-    // Document-side push is frozen while a slot is focused (margins-4 #6): the fragment paragraphs do
-    // not shift per keystroke. It reconciles on blur — when `activeSlot` returns to null this effect
-    // re-runs and applies the settled spacers. The `spacersEqual` guard keeps the reconcile a single
-    // settle.
-    if (activeSlot !== null) return;
-    if (!spacersEqual(spacers, currentSpacersRef.current)) {
-      currentSpacersRef.current = spacers;
-      setBlockSpacers(spacers);
-      // Applying spacers shifts the editor's block tops, but the scroll container's own size is
-      // unchanged, so the ResizeObserver won't fire. Re-pull the geometry on the next frame so the
-      // following pass reads the settled tops and converges — without this, repeated expand/collapse
-      // toggles leave stale tops and the two columns desync (margins-4).
-      const id = requestAnimationFrame(remeasure);
-      return () => cancelAnimationFrame(id);
+    for (const block of blocks) {
+      const node = scroll.querySelector<HTMLElement>(`[data-row-index="${block.index}"]`);
+      if (node && node.scrollHeight - node.clientHeight > 2) overflowing.push(block.index);
     }
-  }, [editorBlocks, comments, activeSlot, expandAll, mode, fontSize, setBlockSpacers, remeasure]);
+    setOverflowingBlocks((previous) =>
+      pixelArraysEqual(previous, overflowing) ? previous : overflowing,
+    );
+  }, [editorBlocks, blocks, comments, expandAll, mode, fontSize, getScrollElement]);
 
   // --- Fuzzy recovery (ADR 0009). An orphaned comment whose last-known excerpt still uniquely matches
-  // an un-anchored block re-anchors to it (adding the anchor; the marker re-emits on the next save).
-  // Conservative — only unambiguous matches — and self-terminating: once rebound the comment is no
-  // longer an orphan, so the next pass finds nothing. Gated on `fragmentDirty` (review #6): rebinding
-  // only runs after a user edit (e.g. pasting a deleted paragraph back), so opening a clean fragment
-  // never silently re-anchors an orphan and marks it dirty. ---
+  // an un-anchored block re-anchors to it. Conservative and self-terminating; gated on `fragmentDirty`
+  // (review #6) so opening a clean fragment never silently re-anchors an orphan. ---
   useEffect(() => {
     if (!fragmentDirty) return;
     for (const { blockIndex, markerId } of planOrphanRebinds(blocks, orphans)) {
@@ -344,12 +261,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     [],
   );
 
-  // Type-to-create (margins-4 #5): the first non-empty keystroke in an empty slot mints a marker,
-  // injects it into that block, and seeds a bound comment with the typed text. The active slot stays
-  // pinned to the *block index* (not switched to a comment-kind slot), and the row renders through one
-  // unified `SlotEditor` whose key is stable across the draft→comment transition — so the same editor
-  // instance keeps editing (vim mode + caret survive; no remount). An untouched empty slot creates
-  // nothing.
+  // Type-to-create: the first non-empty keystroke in an empty slot mints a marker, injects it into that
+  // block, and seeds a bound comment with the typed text. An untouched empty slot creates nothing.
   const handleBlockDraftChange = (blockIndex: number, blockText: string, next: string) => {
     if (next.trim() === "") {
       setDraft(next);
@@ -358,8 +271,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     const markerId = createCommentMarkerId();
     addAnchorAtBlock(blockIndex, markerId);
     addCommentStub({ markerId, excerpt: deriveExcerpt(blockText), body: next });
-    // Keep the slot active by block index; the new comment binds to this block, so the unified editor
-    // below routes onChange to it on the next render. Clear the draft (now superseded by the comment).
     setDraft("");
   };
 
@@ -373,150 +284,136 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     setDraft("");
   };
 
-  const minHeightFor = (blockIndex: number): number | undefined => {
-    const height = minHeights[blockIndex];
-    return height && height > 0 ? height : undefined;
+  const renderRowInner = (row: (typeof rows)[number], isActive: boolean, rowIndex: number) => {
+    const comment = row.comment;
+    return (
+      <>
+        {comment && (
+          // Floating remove control in the left gutter — visible on hover (or while editing) so a
+          // comment can be deleted without offsetting its box. Coordinated delete: strip the marker
+          // from the fragment buffer and drop the comment; each persists on its own save.
+          <button
+            type="button"
+            className={`absolute left-1 top-1.5 text-xs leading-none text-muted-foreground transition-opacity hover:text-destructive ${
+              isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+            aria-label="Remove comment"
+            title="Remove comment (strips its anchor)"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              removeAnchor(comment.markerId);
+              marginEditor.removeComment(comment.markerId);
+              setActiveSlot(null);
+            }}
+          >
+            ×
+          </button>
+        )}
+
+        {isActive ? (
+          <SlotEditor
+            value={comment ? comment.body : draft}
+            mode={mode}
+            fontSize={MARGIN_FONT_SIZE}
+            focusOnMount
+            placeholder={comment ? "Add a comment…" : "Type to comment this paragraph…"}
+            onChange={(next) =>
+              comment
+                ? updateCommentBody(comment.markerId, next)
+                : handleBlockDraftChange(row.block.index, row.block.text, next)
+            }
+            onBlur={() => {
+              if (comment) deleteCommentIfEmpty(comment.markerId);
+              setActiveSlot(null);
+            }}
+            onNext={() => navigate(rowIndex, "next")}
+            onPrevious={() => navigate(rowIndex, "previous")}
+            onEscape={() => {
+              setActiveSlot(null);
+              if (comment && !deleteCommentIfEmpty(comment.markerId)) {
+                focusAnchorBlock(comment.markerId);
+              }
+            }}
+          />
+        ) : comment ? (
+          <button
+            type="button"
+            className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
+            style={serifText}
+            onClick={() => {
+              revealAnchor(comment.markerId);
+              setActiveSlot({ kind: "comment", markerId: comment.markerId });
+              setDraft("");
+            }}
+          >
+            {comment.body}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="w-full text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+            onClick={() => {
+              setActiveSlot({ kind: "block", index: row.block.index });
+              setDraft("");
+            }}
+          >
+            + comment
+          </button>
+        )}
+      </>
+    );
   };
 
   return (
     <div className="flex h-full flex-col overflow-hidden" data-testid="margin-column">
-      {/* No top chrome (margins-4 #3, #4): the scroller is flush to the column top so the
-          origin-alignment effect pads the margin rows down to the editor's first line (rowsPaddingTop)
-          and leaves the editor's own top offset at zero. Notes + controls live at the bottom. */}
+      {/* No top chrome: the scroller is flush to the editor's first line, and each comment is anchored
+          to its block's measured top. Notes + controls live at the bottom. */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto no-scrollbar pr-1"
         data-testid="margin-scroll"
       >
-        {/* One slot per paragraph, flow-aligned to the editor (ADR 0009): each row's min-height is its
-            block's slot height, and the editor injects a spacer when a comment is taller. */}
+        {/* Anchored mode: a relative box as tall as the editor's content, comments floating at each
+            block's top. Expand-all relaxes into a plain stacked column (alignment dropped for reading). */}
         <div
-          className="flex flex-col"
-          style={{ paddingTop: rowsPaddingTop || undefined }}
+          className={expandAll ? "flex flex-col" : "relative"}
+          style={expandAll ? undefined : { height: contentHeight || undefined }}
           data-testid="margin-rows"
         >
           {rows.map((row, rowIndex) => {
-            const minHeight = minHeightFor(row.block.index);
             const comment = row.comment;
-            // One active-state per row, by the bound comment's marker or (for an un-annotated or
-            // just-created slot) the block index — so a slot stays active across type-to-create.
             const isActive =
               (activeSlot?.kind === "comment" && comment?.markerId === activeSlot.markerId) ||
               (activeSlot?.kind === "block" && activeSlot.index === row.block.index);
 
-            // Clip every idle/collapsed row to its paragraph's height (margins-4 #4, #6) so neither a
-            // collapsed comment nor an empty slot's padding inflates the row above the block — only an
-            // expanded (expand-all) or actively-edited comment pushes the fragment down. The box
-            // dimensions (1px border + padding) are reserved on every row so activating a slot changes
-            // only colour/background, not layout (margins-4 #3).
-            const clipToBlock = !isActive && !(comment && expandAll) && minHeight !== undefined;
-            const isOverflowing = clipToBlock && overflowingBlocks.includes(row.block.index);
+            const geometry = editorBlocks[row.block.index];
+            const top = geometry?.top ?? 0;
+            const blockHeight = geometry?.height ?? 0;
+            // Collapse every idle row to its paragraph's height so a comment never visually runs into
+            // its neighbour; the focused comment lifts onto an opaque overlay above its neighbours.
+            const clip = !expandAll && !isActive;
+            const isOverflowing = clip && overflowingBlocks.includes(row.block.index);
+
+            const positioned = !expandAll;
             return (
-              // One row per paragraph, keyed by block index so the SAME node (and its single unified
-              // SlotEditor) survives the draft→comment transition — no remount (margins-4 #5). Seamless
-              // flowing text (margins-4 #8, #9, #11): no left box; a thin top rule is the attachment cue
-              // for an anchored comment, aligned (via flow padding) with the bound paragraph's top; a
-              // faint full border boxes the slot only while it is being edited. The left gutter (pl-6)
-              // holds the floating remove control.
               <div
                 key={`row-${row.block.index}`}
                 data-row-index={row.block.index}
                 {...(comment
                   ? { "data-slot-marker": comment.markerId }
                   : { "data-slot-block": row.block.index })}
-                className={`group relative border border-transparent py-1 pl-6 pr-2 ${
+                className={`group relative border border-transparent pb-1 pl-6 pr-2 ${
                   comment && !isActive ? "border-t-border/40" : ""
-                } ${isActive ? "rounded-sm border-border/60 bg-muted/20" : ""}`}
+                } ${isActive ? "z-10 rounded-sm border-border/60 bg-background shadow-sm" : ""}`}
                 style={{
-                  minHeight,
-                  ...(clipToBlock ? { maxHeight: minHeight, overflow: "hidden" } : {}),
+                  ...(positioned
+                    ? { position: "absolute", top, left: 0, right: 0 }
+                    : { position: "relative" }),
+                  ...(clip ? { maxHeight: blockHeight || undefined, overflow: "hidden" } : {}),
                 }}
               >
-                {comment && (
-                  // Floating remove control in the left gutter — visible on hover (or while editing) so
-                  // a comment can be deleted without offsetting its box (margins-4). Coordinated delete:
-                  // strip the marker from the fragment buffer and drop the comment; each persists on its
-                  // own save.
-                  <button
-                    type="button"
-                    className={`absolute left-1 top-1.5 text-xs leading-none text-muted-foreground transition-opacity hover:text-destructive ${
-                      isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    }`}
-                    aria-label="Remove comment"
-                    title="Remove comment (strips its anchor)"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      removeAnchor(comment.markerId);
-                      marginEditor.removeComment(comment.markerId);
-                      setActiveSlot(null);
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-
-                {isActive ? (
-                  // One unified editor: while the slot is a draft it routes to type-to-create; once a
-                  // comment exists it routes to that comment — same instance, no branch swap.
-                  <SlotEditor
-                    value={comment ? comment.body : draft}
-                    mode={mode}
-                    fontSize={fontSize}
-                    focusOnMount
-                    placeholder={comment ? "Add a comment…" : "Type to comment this paragraph…"}
-                    onChange={(next) =>
-                      comment
-                        ? updateCommentBody(comment.markerId, next)
-                        : handleBlockDraftChange(row.block.index, row.block.text, next)
-                    }
-                    // Blur (or Escape) on an emptied comment removes it rather than leaving a blank slot.
-                    onBlur={() => {
-                      if (comment) deleteCommentIfEmpty(comment.markerId);
-                      setActiveSlot(null);
-                    }}
-                    onNext={() => navigate(rowIndex, "next")}
-                    onPrevious={() => navigate(rowIndex, "previous")}
-                    onEscape={() => {
-                      setActiveSlot(null);
-                      if (comment && !deleteCommentIfEmpty(comment.markerId)) {
-                        focusAnchorBlock(comment.markerId);
-                      }
-                    }}
-                  />
-                ) : comment ? (
-                  <button
-                    type="button"
-                    // `whitespace-pre-wrap` in both states keeps the comment's line breaks (collapsing no
-                    // longer flattens the markdown onto one line — margins-4); the row clip above limits
-                    // a collapsed comment to its paragraph's height.
-                    className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
-                    style={serifText(fontSize)}
-                    // Clicking a comment activates it for editing and reveals its bound paragraph in the
-                    // editor (the left guide line is gone — margins-4 #11).
-                    onClick={() => {
-                      revealAnchor(comment.markerId);
-                      setActiveSlot({ kind: "comment", markerId: comment.markerId });
-                      setDraft("");
-                    }}
-                  >
-                    {comment.body}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="w-full text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => {
-                      setActiveSlot({ kind: "block", index: row.block.index });
-                      setDraft("");
-                    }}
-                  >
-                    + comment
-                  </button>
-                )}
-
+                {renderRowInner(row, isActive, rowIndex)}
                 {isOverflowing && (
-                  // The collapsed comment is taller than its slot — fade its clipped foot and mark it
-                  // with an ellipsis so the writer knows there's more (margins-4).
                   <div
                     aria-hidden
                     className="pointer-events-none absolute inset-x-0 bottom-0 flex h-5 items-end justify-end bg-linear-to-t from-background to-transparent pr-2 text-xs leading-none text-muted-foreground"
@@ -535,9 +432,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               Orphaned ({orphans.length})
             </p>
             {orphans.map((comment) => {
-              // Orphans reuse the column's seamless serif slot (review #8) — the body edits through the
-              // same mode-coupled SlotEditor as anchored comments, not a separate textarea. The lost
-              // block's last-known excerpt is shown as context (anchored comments hide it).
               const isActive =
                 activeSlot?.kind === "comment" && activeSlot.markerId === comment.markerId;
               const excerpt = liveExcerpts[comment.markerId] ?? comment.excerpt;
@@ -576,7 +470,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     <SlotEditor
                       value={comment.body}
                       mode={mode}
-                      fontSize={fontSize}
+                      fontSize={MARGIN_FONT_SIZE}
                       focusOnMount
                       placeholder="Re-add the text or remove this comment…"
                       onChange={(next) => updateCommentBody(comment.markerId, next)}
@@ -593,7 +487,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                     <button
                       type="button"
                       className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
-                      style={serifText(fontSize)}
+                      style={serifText}
                       onClick={() => setActiveSlot({ kind: "comment", markerId: comment.markerId })}
                     >
                       {comment.body || (
@@ -615,8 +509,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           </p>
         )}
 
-        {/* Notes: bottom-placed (margins-4 #3) — a collapsible section reached only after scrolling
-            past the fragment text, scrolling with the content rather than offsetting the top. */}
+        {/* Notes: bottom-placed — a collapsible section reached only after scrolling past the fragment
+            text, scrolling with the content rather than offsetting the top. */}
         <section
           className="mt-8 flex flex-col gap-1 border-t border-border pt-3"
           data-testid="margin-notes"
@@ -641,7 +535,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 <SlotEditor
                   value={notes}
                   mode={mode}
-                  fontSize={fontSize}
+                  fontSize={MARGIN_FONT_SIZE}
                   focusOnMount
                   placeholder="Thoughts on structure, character, things to rewrite…"
                   onChange={setNotes}
@@ -652,7 +546,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 <button
                   type="button"
                   className="min-h-6 w-full whitespace-pre-wrap text-left text-foreground/90"
-                  style={serifText(fontSize)}
+                  style={serifText}
                   onClick={() => setActiveSlot({ kind: "notes" })}
                 >
                   {notes || (
@@ -667,9 +561,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         </section>
       </div>
 
-      {/* Column controls: a pinned footer at the bottom of the column (margins-4 #4) — the jump-to-slot
-          gesture and the expand-all toggle. The margin no longer has its own Save button: the editor's
-          save persists the fragment and the Margin together (margins-4 #13). */}
+      {/* Column controls: a pinned footer — the jump-to-slot gesture and the expand-all toggle. The
+          margin saves with the editor (no separate Save button). */}
       <div
         className="flex shrink-0 items-center justify-end gap-3 border-t border-border pt-2"
         data-testid="margin-controls"

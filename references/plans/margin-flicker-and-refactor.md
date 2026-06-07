@@ -95,20 +95,21 @@ Smallest, highest-impact, lowest-risk. Land first.
 
 ### Phase 2 — Remove document-side spacers; line-height; Margin sizing (root C + design)
 
-- [ ] Remove the document-side spacer mechanism in **both** modes: delete the spacer extensions
-      (`block-spacer-cm.ts`, `block-spacer-tiptap.ts`) and their wiring, drop `setBlockSpacers` from
-      the `ProseEditorHandle` / shell / bridge, and remove `MAX_SPACER`, the `spacer` half of
-      `computeBlockAlignment`, and the `currentSpacersRef` back-out. With the push gone, also delete the
-      freeze-while-focused / reconcile-on-blur logic in the alignment effect.
-- [ ] Decouple the Margin from the prose font size: render comment/notes text and the slot editors at
-      the **app default text size** (not `fontSize`). Remove `fontSize` from the Margin's layout
-      inputs; keep it only where genuinely needed (if anywhere).
-- [ ] Align line-height: set the CM fragment editor `.cm-content` line-height so block and comment
-      rhythm don't jump. (Alignment no longer depends on pixel-exact comment height, so this is purely
-      a "no visual rhythm jump" concern.)
-- [ ] Widen the Margin column (`entity-editor-shell.tsx` right-panel width) and confirm comment text
-      wraps comfortably at the new size.
-- [ ] Tests: column logic still binds comments to blocks; no spacer is ever emitted by any path.
+- [x] Removed the document-side spacer mechanism in **both** modes: deleted the spacer extensions
+      (`block-spacer-cm.ts`, `block-spacer-tiptap.ts`) and all wiring, dropped `setBlockSpacers` from
+      the `ProseEditorHandle` / shell / bridge, removed `MAX_SPACER` / the spacer math / the
+      `currentSpacersRef` back-out, and the freeze-while-focused / reconcile-on-blur logic. Also removed
+      the now-obsolete top-padding mechanism (`setTopPadding` / `--cm-top-pad` / `richTopPadding`), since
+      absolute anchoring uses block tops directly. `alignment.ts` reduced to `pixelArraysEqual`.
+      _(2026-06-07)_
+- [x] Decoupled the Margin from the prose font size: comment/notes text and the slot editors render at
+      `MARGIN_FONT_SIZE` (app size). `fontSize` is kept only as a re-measure trigger. _(2026-06-07)_
+- [x] Set the CM fragment editor `.cm-content` line-height to 1.75 (prose rhythm, no longer cramped at
+      CM6's base 1.4); `MARGIN_LINE_HEIGHT` dropped to 1.6. _(2026-06-07)_
+- [x] Widened the Margin column (`lg:w-80` → `lg:w-96`). _(2026-06-07)_
+- [x] Tests: `alignment.test.ts` rewritten for `pixelArraysEqual`; `margin-column.test.tsx` updated for
+      the absolute-anchored model (no spacer/top-padding tests; added absolute-top + clip + expand-all
+      relax tests). Full suite green (550). _(2026-06-07)_
 - [ ] `git commit`.
 
 ### Phase 3 — Absolute top-anchored Margin + virtualization-safe geometry (root A + design)
@@ -118,14 +119,13 @@ Smallest, highest-impact, lowest-risk. Land first.
       block reports a real `top` regardless of the viewport.
 - [ ] Re-measure on scroll (not only on resize/content change): newly revealed blocks must pick up
       correct geometry. Throttle to animation frames.
-- [ ] Switch the Margin layout from the min-height row chain to **absolute top-anchoring**: a
-      positioned rows container; each comment positioned at its block's measured top. No cumulative
-      drift. Collapsed comments clip to a small cap; the **focused** comment renders as an elevated
-      overlay (bg + z-index) over neighbours and collapses on blur. **Expand-all** relaxes anchoring —
-      the column becomes a plain stacked readable list.
-- [ ] Replace/retire the origin-alignment effect and its `editorBlocks[0].top` feedback dependency:
-      with absolute positioning, comment tops come straight from the (now stable) height-map tops, so
-      the `geometryTick`/rAF settle loop and `rowsPaddingTop` chase can largely go.
+- [x] Switched the Margin layout from the min-height row chain to **absolute top-anchoring**: a
+      positioned rows container as tall as the editor content; each comment positioned at its block's
+      measured top. Collapsed comments clip to their block height; the **focused** comment lifts onto an
+      opaque overlay (bg + z-10 + shadow) over neighbours and collapses on blur. **Expand-all** relaxes
+      anchoring into a plain stacked column. _(2026-06-07 — done with Phase 2 commit)_
+- [x] Retired the origin-alignment effect, `rowsPaddingTop`, and the `editorBlocks[0].top` feedback —
+      absolute positioning uses block tops directly. _(2026-06-07 — done with Phase 2 commit)_
 - [ ] Reciprocal connection highlight: hovering/focusing a comment tints its bound paragraph via a CM
       line decoration keyed by the tracked anchor; placing the caret in a paragraph highlights its
       comment. Reuse the existing per-mode anchor store for the binding.
