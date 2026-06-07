@@ -28,8 +28,17 @@ import {
   serializeTiptapWithMarkers,
 } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
+import {
+  cmEditorBlocks,
+  richEditorBlocks,
+  markerForBlock,
+  type EditorBlock,
+} from "./editor-geometry";
 import { isTrailingWhitespaceEquivalent } from "./buffer-sync";
 import { ProseToolbar } from "./prose-toolbar";
+
+// Re-exported so existing consumers keep importing the block shape from the editor entry point.
+export type { EditorBlock };
 import { yankGenerator } from "../lib/vim/yank";
 import { patchDeleteClipboard } from "../lib/vim/delete";
 import type { PersistedCursor } from "@hooks/usePersistedCursor";
@@ -77,24 +86,6 @@ export type ProseEditorHandle = {
   // Highlight the block a Margin comment is anchored to (the reciprocal connection cue), or null to
   // clear. Presentation only (a line decoration). vim/raw only; rich is a no-op in this iteration.
   setHighlightedAnchor: (markerId: string | null) => void;
-};
-
-// One block as the editor reports it: its comment anchor (the first marker on the block, or null),
-// the marker-stripped opening text, and its content-relative top/height in pixels.
-export type EditorBlock = {
-  markerId: string | null;
-  text: string;
-  top: number;
-  height: number;
-};
-
-// The marker id anchored to a given block index, or null — the first match in a markerId→blockIndex
-// map (one comment per block; ADR 0008).
-const markerForBlock = (byBlock: Map<string, number>, index: number): string | null => {
-  for (const [markerId, blockIndex] of byBlock) {
-    if (blockIndex === index) return markerId;
-  }
-  return null;
 };
 
 // Append an anchor at a CM6 offset (block end) — a coordinated edit held as an anchor, not buffer
@@ -543,51 +534,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       getBlocks: (): EditorBlock[] => {
         if (vimMode || rawMarkdownMode) {
           const view = viewRef.current;
-          if (!view) return [];
-          const scroller = view.scrollDOM;
-          // Use the height map (`lineBlockAt`), not `coordsAtPos`: the latter returns null for
-          // positions outside the rendered viewport, so a long fragment's off-screen blocks would
-          // report zero geometry and the Margin would misalign. `lineBlockAt` is defined for every
-          // position. Its tops are document-relative; `documentTop` converts them to a scroll-
-          // independent offset from the scroller's content origin (so the Margin can anchor to them).
-          const docOffset =
-            view.documentTop - scroller.getBoundingClientRect().top + scroller.scrollTop;
-          // markerId comes from the anchor field (the buffer has no markers — ADR 0009).
-          const byBlock = cmAnchorBlockIndex(view.state);
-          const docLength = view.state.doc.length;
-          return blockRanges(view.state.doc.toString()).map((range, index) => {
-            const raw = view.state.doc.sliceString(range.from, range.to);
-            const markerId = markerForBlock(byBlock, index);
-            const text = stripCommentMarkers(raw).trim();
-            const first = view.lineBlockAt(Math.min(range.from, docLength));
-            const last = view.lineBlockAt(Math.min(range.to, docLength));
-            return {
-              markerId,
-              text,
-              top: first.top + docOffset,
-              height: Math.max(0, last.bottom - first.top),
-            };
-          });
+          return view ? cmEditorBlocks(view) : [];
         }
-        if (!editor) return [];
-        const scroller = richScrollerRef.current;
-        const contentOrigin = scroller
-          ? scroller.getBoundingClientRect().top - scroller.scrollTop
-          : 0;
-        const byBlock = tiptapAnchorBlockIndex(editor.state);
-        const blocks: EditorBlock[] = [];
-        editor.state.doc.forEach((node, offset, childIndex) => {
-          const markerId = markerForBlock(byBlock, childIndex);
-          const text = stripCommentMarkers(node.textContent).trim();
-          const dom = editor.view.nodeDOM(offset);
-          if (dom instanceof HTMLElement) {
-            const rect = dom.getBoundingClientRect();
-            blocks.push({ markerId, text, top: rect.top - contentOrigin, height: rect.height });
-          } else {
-            blocks.push({ markerId, text, top: 0, height: 0 });
-          }
-        });
-        return blocks;
+        return editor ? richEditorBlocks(editor, richScrollerRef.current) : [];
       },
       setHighlightedAnchor: (markerId: string | null) => {
         // vim/raw only (the bug-fix + cue scope). Rich mode is a no-op for now.
