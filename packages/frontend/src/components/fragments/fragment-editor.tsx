@@ -306,11 +306,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   }, []);
   const getScrollElement = useCallback(() => shellRef.current?.getScrollElement() ?? null, []);
   const getBlocks = useCallback(() => shellRef.current?.getBlocks() ?? [], []);
-  const setBlockSpacers = useCallback(
-    (spacers: number[]) => shellRef.current?.setBlockSpacers(spacers),
-    [],
-  );
-  const setEditorTopPadding = useCallback((px: number) => shellRef.current?.setTopPadding(px), []);
 
   const extraActions = useMemo(() => {
     const discardButton = (
@@ -402,8 +397,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             focusAnchorBlock={handleFocusAnchorBlock}
             getScrollElement={getScrollElement}
             getBlocks={getBlocks}
-            setBlockSpacers={setBlockSpacers}
-            setEditorTopPadding={setEditorTopPadding}
           />
         }
         onProseChange={() => setIsProseDirty(true)}

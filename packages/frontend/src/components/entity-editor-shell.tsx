@@ -55,8 +55,6 @@ export type EntityEditorShellHandle = {
   focusAnchorBlock: (markerId: string) => void;
   getScrollElement: () => HTMLElement | null;
   getBlocks: () => EditorBlock[];
-  setBlockSpacers: (spacers: number[]) => void;
-  setTopPadding: (px: number) => void;
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
   restoreFromServer: () => void;
@@ -339,8 +337,6 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         focusAnchorBlock: (markerId: string) => proseEditorRef.current?.focusAnchorBlock(markerId),
         getScrollElement: () => proseEditorRef.current?.getScrollElement() ?? null,
         getBlocks: () => proseEditorRef.current?.getBlocks() ?? [],
-        setBlockSpacers: (spacers: number[]) => proseEditorRef.current?.setBlockSpacers(spacers),
-        setTopPadding: (px: number) => proseEditorRef.current?.setTopPadding(px),
         restoreFromServer: () => handleRestoreFromServer(),
       }),
       [saveContent, handleRestoreFromServer],
@@ -673,7 +669,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           {rightPanel && (
             // A faint vertical separator with padding so the fragment editor and the Margin read as two
             // seamless pieces of text (margins-4 #12).
-            <div className="flex w-full shrink-0 flex-col lg:w-80 min-h-0 border-t border-border/50 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            <div className="flex w-full shrink-0 flex-col lg:w-96 min-h-0 border-t border-border/50 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
               {rightPanel}
             </div>
           )}

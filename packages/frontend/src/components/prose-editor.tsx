@@ -13,8 +13,6 @@ import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import { stripCommentMarkers, splitCommentMarkers, insertCommentMarkers } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
-import { blockSpacerExtension, blockSpacerKey } from "./block-spacer-tiptap";
-import { cmBlockSpacerExtension, setCmSpacersEffect } from "./block-spacer-cm";
 import {
   cmAnchorExtension,
   setCmAnchorsEffect,
@@ -75,12 +73,6 @@ export type ProseEditorHandle = {
   // markdown parse and the editor's DOM nodes. `top`/`height` are content-relative pixels (0 when
   // geometry can't yet be measured); `text` is the marker-stripped block opening for type-to-create.
   getBlocks: () => EditorBlock[];
-  // Push document-side spacers (pixels, indexed by block) so a tall Margin comment pushes the next
-  // block down, keeping rows aligned. A decoration only — never a buffer edit (ADR 0009).
-  setBlockSpacers: (spacers: number[]) => void;
-  // Pad the top of the editor content (pixels) so block 0 lines up with the Margin's row 0 despite the
-  // two columns' differing chrome (e.g. the notes header). Inside the scroller — never a buffer edit.
-  setTopPadding: (px: number) => void;
 };
 
 // One block as the editor reports it: its comment anchor (the first marker on the block, or null),
@@ -148,10 +140,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   const isLoadingRef = useRef(false);
   // The rich-mode scroll container, for scroll-sync with the margin column.
   const richScrollerRef = useRef<HTMLDivElement | null>(null);
-  // Top padding applied inside the editor content so the Margin column can align row 0 with block 0
-  // across the two columns' differing chrome heights (the notes header etc.). Set imperatively by the
-  // margin via `setTopPadding`; rich uses React state, CM6 a CSS variable on the editor DOM.
-  const [richTopPadding, setRichTopPadding] = useState(0);
   // The on-disk content carries `<!--c:ID-->` markers; the live editor buffer never does (ADR 0009).
   // Strip them here, keeping the marker-free text the editor shows and each marker's offset (the
   // anchor) — seeded into the per-mode anchor store and re-emitted on save.
@@ -226,9 +214,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         },
         ".cm-content": {
           padding: "1rem",
-          // Top padding is variable so the Margin column can shift the content down to align row 0
-          // with block 0 across differing chrome heights (ADR 0009). Defaults to the base 1rem.
-          paddingTop: "var(--cm-top-pad, 1rem)",
+          // Prose reads better than CM6's cramped base-theme 1.4; the Margin is absolutely anchored to
+          // measured block tops, so this no longer needs to match the Margin's line-height.
+          lineHeight: "1.75",
         },
         ".cm-focused": {
           outline: "none",
@@ -288,18 +276,17 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       EditorView.lineWrapping,
       selectionListener,
       cmAnchorExtension,
-      cmBlockSpacerExtension,
     ],
     [cmTheme, selectionListener],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener, cmAnchorExtension, cmBlockSpacerExtension],
+    () => [markdown(), cmTheme, selectionListener, cmAnchorExtension],
     [cmTheme, selectionListener],
   );
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
-    extensions: [...buildSharedProseExtensions(), blockSpacerExtension, tiptapAnchorExtension],
+    extensions: [...buildSharedProseExtensions(), tiptapAnchorExtension],
     content,
     onUpdate: () => {
       // The marker-stripping load transaction changes the doc but must not dirty the buffer.
@@ -577,26 +564,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         });
         return blocks;
       },
-      setBlockSpacers: (spacers: number[]) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          // Effect-only dispatch: no doc change, so the buffer is never dirtied.
-          view.dispatch({ effects: setCmSpacersEffect.of(spacers) });
-          return;
-        }
-        if (!editor) return;
-        // Meta-only transaction: `docChanged` is false, so TipTap's onUpdate never fires.
-        editor.view.dispatch(editor.state.tr.setMeta(blockSpacerKey, spacers));
-      },
-      setTopPadding: (px: number) => {
-        if (vimMode || rawMarkdownMode) {
-          // A CSS variable read by the `.cm-content` rule — no reconfiguration, no buffer change.
-          viewRef.current?.dom.style.setProperty("--cm-top-pad", `${px}px`);
-          return;
-        }
-        setRichTopPadding(px);
-      },
     }),
     [vimMode, rawMarkdownMode, editor, content],
   );
@@ -645,7 +612,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
           style={{
             fontSize: `${fontSize}px`,
             maxWidth: `${maxParagraphWidth}ch`,
-            paddingTop: richTopPadding || undefined,
           }}
         >
           <EditorContent editor={editor} />

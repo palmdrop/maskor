@@ -20,7 +20,8 @@ const blocksFromContent = (content: string): EditorBlock[] =>
 // SlotEditor wraps TipTap/CM6 (not meaningful in happy-dom); stub it as a textarea that surfaces
 // value + onChange so the column's create/edit wiring is testable.
 vi.mock("./slot-editor", () => ({
-  MARGIN_LINE_HEIGHT: 1.75,
+  MARGIN_LINE_HEIGHT: 1.6,
+  MARGIN_FONT_SIZE: 14,
   SlotEditor: ({
     value,
     onChange,
@@ -83,8 +84,6 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       focusAnchorBlock={vi.fn()}
       getScrollElement={() => null}
       getBlocks={() => blocksFromContent(fragmentContent)}
-      setBlockSpacers={vi.fn()}
-      setEditorTopPadding={vi.fn()}
       {...props}
     />,
   );
@@ -104,7 +103,7 @@ describe("MarginColumn", () => {
     expect(screen.getByText("on a")).toBeTruthy();
   });
 
-  it("shows no excerpt for anchored comments (alignment + guide line convey the binding)", () => {
+  it("shows no excerpt for anchored comments (alignment + highlight convey the binding)", () => {
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a", "the excerpt")] }),
@@ -174,113 +173,49 @@ describe("MarginColumn", () => {
     expect(screen.getByText("on body")).toBeTruthy();
   });
 
-  it("pushes a document-side spacer when a comment is taller than its block slot", () => {
-    // jsdom reports zero geometry; stub each row's height by its data-row-index so the alignment pass
-    // has something to measure. Row 0 (the long comment) renders 200px against a 60px slot → a 140px
-    // spacer pushes block 1 down; the short last row needs none.
-    const rect = (height: number) =>
-      ({
-        height,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: height,
-        width: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
-    const spy = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function (this: HTMLElement) {
-        return rect(this.getAttribute("data-row-index") === "0" ? 200 : 40);
-      });
-    const setBlockSpacers = vi.fn();
-    try {
-      renderColumn({
-        fragmentContent: "Long. <!--c:a-->\n\nShort.",
-        marginEditor: buildMarginEditor({ comments: [comment("a", "a very long comment body")] }),
-        getBlocks: () => [
-          { markerId: "a", text: "Long.", top: 0, height: 50 },
-          { markerId: null, text: "Short.", top: 60, height: 40 },
-        ],
-        setBlockSpacers,
-      });
-    } finally {
-      spy.mockRestore();
-    }
-    expect(setBlockSpacers).toHaveBeenCalled();
-    expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
+  it("anchors each comment at its block's measured top (absolute positioning)", () => {
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->\n\nSecond. <!--c:b-->",
+      marginEditor: buildMarginEditor({
+        comments: [comment("a", "on a"), comment("b", "on b")],
+      }),
+      getBlocks: () => [
+        { markerId: "a", text: "First.", top: 0, height: 24 },
+        { markerId: "b", text: "Second.", top: 80, height: 24 },
+      ],
+    });
+    const rowB = document.querySelector('[data-slot-marker="b"]') as HTMLElement;
+    expect(rowB.style.position).toBe("absolute");
+    expect(rowB.style.top).toBe("80px");
   });
 
-  it("freezes the document-side spacers while a slot is active, reconciling on blur (margins-4 #6)", () => {
-    const rect = (height: number) =>
-      ({
-        height,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: height,
-        width: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
-    // Mutable per-row heights so the active comment can "grow" mid-test.
-    const rowHeights: Record<string, number> = { "0": 200 };
-    const spy = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function (this: HTMLElement) {
-        const index = this.getAttribute("data-row-index");
-        return rect(index && rowHeights[index] !== undefined ? rowHeights[index]! : 40);
-      });
-    const setBlockSpacers = vi.fn();
-    const getBlocks = (): EditorBlock[] => [
-      { markerId: "a", text: "Long.", top: 0, height: 50 },
-      { markerId: null, text: "Short.", top: 60, height: 40 },
-    ];
-    const baseProps = {
-      projectId: "project-1",
+  it("clips an idle comment row to its block's height so a tall comment can't run into its neighbour", () => {
+    renderColumn({
       fragmentContent: "Long. <!--c:a-->\n\nShort.",
-      fragmentDirty: false,
-      mode: "rich" as const,
-      fontSize: 16,
-      addAnchorAtBlock: vi.fn(),
-      removeAnchor: vi.fn(),
-      revealAnchor: vi.fn(),
-      focusAnchorBlock: vi.fn(),
-      getScrollElement: () => null,
-      getBlocks,
-      setBlockSpacers,
-      setEditorTopPadding: vi.fn(),
-    };
-    try {
-      const view = render(
-        <MarginColumn
-          {...baseProps}
-          marginEditor={buildMarginEditor({ comments: [comment("a", "body")] })}
-        />,
-      );
-      // Idle (no active slot): the 200px comment over a 60px slot pushes a 140px spacer on block 0.
-      expect(setBlockSpacers.mock.calls.at(-1)![0]).toEqual([140, 0]);
-      setBlockSpacers.mockClear();
-      // Activate the comment, then grow its measured height (as if typing).
-      fireEvent.click(screen.getByText("body"));
-      rowHeights["0"] = 500;
-      view.rerender(
-        <MarginColumn
-          {...baseProps}
-          marginEditor={buildMarginEditor({ comments: [comment("a", "body grown")] })}
-        />,
-      );
-      // Frozen while editing: the document-side spacer is not re-pushed to reflect the growth.
-      expect(setBlockSpacers).not.toHaveBeenCalled();
-    } finally {
-      spy.mockRestore();
-    }
+      marginEditor: buildMarginEditor({ comments: [comment("a", "a tall comment body")] }),
+      getBlocks: () => [
+        { markerId: "a", text: "Long.", top: 0, height: 50 },
+        { markerId: null, text: "Short.", top: 60, height: 40 },
+      ],
+    });
+    const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    expect(row.style.overflow).toBe("hidden");
+    expect(row.style.maxHeight).toBe("50px");
   });
 
-  it("places notes at the bottom of the scroller, with no top toolbar (margins-4 #3, #4)", () => {
+  it("expand-all relaxes anchoring into a plain stacked column (no absolute tops)", () => {
+    renderColumn({
+      fragmentContent: "First. <!--c:a-->",
+      marginEditor: buildMarginEditor({ comments: [comment("a", "on a")] }),
+      getBlocks: () => [{ markerId: "a", text: "First.", top: 30, height: 24 }],
+    });
+    fireEvent.click(screen.getByText("Expand all"));
+    const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    expect(row.style.position).toBe("relative");
+    expect(row.style.maxHeight).toBe("");
+  });
+
+  it("places notes at the bottom of the scroller, with no top toolbar", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
     const notes = screen.getByTestId("margin-notes");
     const scroll = screen.getByTestId("margin-scroll");
@@ -294,136 +229,21 @@ describe("MarginColumn", () => {
     expect(column.firstElementChild).toBe(scroll);
   });
 
-  it("renders an idle comment as flowing text (top rule only) and boxes only the active one", () => {
+  it("renders an idle comment as flowing text (top rule only) and lifts the active one onto an overlay", () => {
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({ comments: [comment("a", "on a")] }),
     });
     const row = document.querySelector('[data-slot-marker="a"]')!;
-    // The attachment rule (coloured top border) shows when idle; the box background only while editing.
+    // The attachment rule (coloured top border) shows when idle; no opaque box background.
     expect(row.className).toContain("border-t-border/40");
-    expect(row.className).not.toContain("bg-muted/20");
-    // Activating the comment boxes it (background + full border colour); the reserved transparent
-    // border means activation changes only colour, not layout.
+    expect(row.className).not.toContain("bg-background");
+    // Activating the comment lifts it onto an opaque overlay (background + full border colour) above
+    // its neighbours; the reserved transparent border means activation changes only colour, not layout.
     fireEvent.click(screen.getByText("on a"));
     const activeRow = document.querySelector('[data-slot-marker="a"]')!;
-    expect(activeRow.className).toContain("bg-muted/20");
+    expect(activeRow.className).toContain("bg-background");
     expect(activeRow.className).not.toContain("border-t-border/40");
-  });
-
-  it("clips an idle/collapsed comment row to its block height so it adds no document spacer (margins-4 #4, #6)", () => {
-    const rect = (height: number) =>
-      ({
-        height,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: height,
-        width: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
-    const spy = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function (this: HTMLElement) {
-        return rect(this.getAttribute("data-row-index") === "0" ? 200 : 40);
-      });
-    try {
-      renderColumn({
-        fragmentContent: "Long. <!--c:a-->\n\nShort.",
-        marginEditor: buildMarginEditor({ comments: [comment("a", "a tall comment body")] }),
-        getBlocks: () => [
-          { markerId: "a", text: "Long.", top: 0, height: 50 },
-          { markerId: null, text: "Short.", top: 60, height: 40 },
-        ],
-      });
-      // The block-0 slot height is 60px (tops 0→60); the idle comment row is clipped to it.
-      const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
-      expect(row.style.overflow).toBe("hidden");
-      expect(row.style.maxHeight).toBe("60px");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  it("pads the editor's top to close the chrome gap (notes header offset)", () => {
-    // The margin scroller sits 40px below the editor scroller (its extra chrome — notes header etc.).
-    // The column measures that gap and asks the editor to pad its content down to align row 0.
-    const spy = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function (this: HTMLElement) {
-        const top = this.getAttribute("data-testid") === "margin-scroll" ? 140 : 0;
-        return {
-          height: 0,
-          top,
-          left: 0,
-          right: 0,
-          bottom: top,
-          width: 0,
-          x: 0,
-          y: top,
-          toJSON: () => ({}),
-        } as DOMRect;
-      });
-    const editorScroll = {
-      getBoundingClientRect: () => ({ top: 100 }) as DOMRect,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as HTMLElement;
-    const setEditorTopPadding = vi.fn();
-    try {
-      renderColumn({
-        fragmentContent: "First.",
-        getScrollElement: () => editorScroll,
-        setEditorTopPadding,
-      });
-    } finally {
-      spy.mockRestore();
-    }
-    expect(setEditorTopPadding).toHaveBeenCalledWith(40);
-  });
-
-  it("offsets rows down to align row 0 with block 0 when leading blank lines push the first block below the content origin (CM6 mode)", () => {
-    // In CM6 (raw/vim) mode blockRanges skips leading blank lines, so block 0 can sit below the
-    // content origin. The origin-alignment effect must carry that offset into rowsPaddingTop so
-    // row 0 lands beside block 0 instead of at the content top.
-    //
-    // Scenario: containers at the same visual top (delta = 0), but block 0 measured at top = 30
-    // (30px of leading blank lines that blockRanges does not capture as blocks).
-    const editorScroll = {
-      getBoundingClientRect: () => ({ top: 100 }) as DOMRect,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as HTMLElement;
-    const spy = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function (this: HTMLElement) {
-        const top = this.getAttribute("data-testid") === "margin-scroll" ? 100 : 0;
-        return {
-          height: 0,
-          top,
-          left: 0,
-          right: 0,
-          bottom: top,
-          width: 0,
-          x: 0,
-          y: top,
-          toJSON: () => ({}),
-        } as DOMRect;
-      });
-    try {
-      renderColumn({
-        fragmentContent: "First.",
-        getScrollElement: () => editorScroll,
-        // Block 0 at top=30: simulates 30px of leading blank lines that blockRanges skips.
-        getBlocks: () => [{ markerId: null, text: "First.", top: 30, height: 20 }],
-      });
-    } finally {
-      spy.mockRestore();
-    }
-    const rows = screen.getByTestId("margin-rows");
-    expect(rows.style.paddingTop).toBe("30px");
   });
 
   it("delete on an active comment strips its marker and removes it (coordinated edit)", () => {
