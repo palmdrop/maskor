@@ -45,7 +45,7 @@ export const FragmentAnchor = Node.create({
       mergeAttributes(HTMLAttributes, {
         ...(anchorId ? { id: `fragment-${anchorId}` } : {}),
         "aria-hidden": "true",
-        class: "fragment-anchor",
+        class: "fragment-anchor scroll-m-15",
       }),
     ];
   },

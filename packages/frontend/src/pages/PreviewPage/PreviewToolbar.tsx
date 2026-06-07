@@ -27,6 +27,7 @@ type Props = {
     showSectionHeadings?: boolean;
     separator?: SeparatorType;
   }) => void;
+  children?: React.ReactNode;
 };
 
 export const PreviewToolbar = ({
@@ -37,6 +38,7 @@ export const PreviewToolbar = ({
   showSectionHeadings,
   separator,
   hasSections,
+  children,
   onPatch,
 }: Props) => {
   const navigate = useNavigate();
@@ -108,6 +110,7 @@ export const PreviewToolbar = ({
           </SelectContent>
         </Select>
       </div>
+      {children ?? <div className="flex items-center gap-1.5">{children}</div>}
     </header>
   );
 };
