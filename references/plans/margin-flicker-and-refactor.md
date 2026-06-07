@@ -1,7 +1,8 @@
 # Fragment editor + Margin: flicker/alignment fixes and component refactor
 
 **Date**: 05-06-2026
-**Status**: In progress
+**Status**: In progress <!-- code complete; manual vim-mode browser smoke owed (Phase 5) -->
+**Closed**: —
 **Specs**: `specifications/margins.md`
 
 ---
@@ -141,41 +142,39 @@ Smallest, highest-impact, lowest-risk. Land first.
 No behavioural change; structural only. Split each oversized file into a thin orchestrator plus
 focused sub-components and hooks. Co-locate tests with the units they cover.
 
-- [ ] `prose-editor.tsx` (628) — split the rich (TipTap) and raw/vim (CM6) editors into two
-      components behind one shared `ProseEditorHandle`, resolving the existing "Split into two
-      components?" NOTE. Extract per-mode handle construction and `getBlocks` geometry into helpers/
-      hooks. The current `ProseEditor` becomes a thin selector.
-- [ ] `margin-column.tsx` (698) — extract `MarginRow`, the orphan group (`OrphanList`/`OrphanRow`),
-      `MarginNotesSection`, and `MarginFooterControls` as components; move the alignment/geometry
-      effect, scroll-sync, and origin-alignment into hooks (e.g. `useMarginAlignment`,
-      `useScrollSync`). The component becomes orchestration + layout.
-- [ ] `entity-editor-shell.tsx` (712) — extract the header/key-edit bar, the display-settings popover,
-      and the extract/insert dialog wiring into sub-components; move swap/recovery and the imperative
-      handle into hooks. Keep the public `EntityEditorShellHandle` stable.
-- [ ] `fragment-editor.tsx` (442) — extract the editor↔Margin bridge callbacks and the linked
-      swap-pair coordination into hooks (e.g. `useFragmentMarginBridge`, `useLinkedSwapPair`).
-- [ ] Run `bun run format`, fix lint, ensure `bun run typecheck` passes (per frontend CLAUDE.md, use
-      `bun run typecheck`, not `tsc --noEmit`).
-- [ ] Tests: existing component/unit tests pass against the new structure; add tests for any newly
-      extracted pure hook/helper where behaviour wasn't previously covered.
-- [ ] `git commit`.
+- [x] `margin-column.tsx` (698 → 368) — extracted `MarginRow`, `MarginOrphanGroup`,
+      `MarginNotesSection`, the shared `margin-styles`, and the `useMarginGeometry` / `useScrollSync`
+      hooks. The component is now orchestration + layout. _(2026-06-07)_
+- [~] `prose-editor.tsx` (653 → 602) — extracted block geometry (`EditorBlock`, `markerForBlock`, the
+  CM6/TipTap `getBlocks` bodies) into `editor-geometry.ts`. The full rich/CM two-component split was
+  **deliberately not done**: it is the riskiest change (CM/TipTap behaviour can't be validated in
+  jsdom) and would sit directly on top of the just-landed save/cursor fixes. Left as a follow-up;
+  the "Split into two components?" NOTE remains. _(2026-06-07)_
+- [~] `entity-editor-shell.tsx` (716 → 669) — extracted the `EditorDisplaySettings` popover. The
+  insert/extract dialog orchestration and swap/recovery hooks were left in place (tightly coupled to
+  the command scope + registry; lower value/higher churn for this pass). _(2026-06-07)_
+- [x] `fragment-editor.tsx` (444 → 429) — extracted the editor↔Margin bridge callbacks into
+      `useFragmentMarginBridge`. _(2026-06-07)_
+- [x] `bun run format` + `bun run typecheck` pass. _(2026-06-07)_
+- [x] Tests: new `editor-geometry`/highlight/buffer-sync units added; existing component tests pass
+      against the new structure (557 green). _(2026-06-07)_
+- [x] `git commit`. _(2026-06-07 — committed across four refactor commits)_
 
 ### Phase 5 — Verify, spec, snapshot
 
-- [ ] `bun run format` then `bun run verify`; fix any failures.
-- [ ] Manual browser smoke (vim mode): long fragment with many short blank-line-separated blocks —
+- [x] `bun run format` then `bun run verify` — green (typecheck, openapi, backend 888, frontend 557).
+      _(2026-06-07)_
+- [ ] **Manual browser smoke (vim mode) — OWED by the developer** (jsdom can't validate geometry/caret;
+      see `references/suggestions.md`): long fragment with many short blank-line-separated blocks —
       each comment stays level with its paragraph on scroll; save preserves caret with no flicker;
       comments read at app size in the wider column; no extra inter-paragraph spacing; focused comment
       overlays neighbours and collapses on blur; hover/focus highlights the bound paragraph both ways;
       expand-all reads as a plain column; type-to-create, delete→paste re-attach, Tab/Esc focus keymap
       all still work.
-- [ ] Update `specifications/margins.md`: add a Shipped entry (document-side spacers removed in both
-      modes; Margin absolutely top-anchored; reciprocal paragraph↔comment highlight; expand-all relaxes
-      alignment; Margin de-coupled from prose font size and widened; virtualization-safe height-map
-      geometry; save round-trip no longer disturbs the CM buffer/caret) and reconcile the "mutual flow
-      alignment" / "document-side push" prose + Prior decisions (ADR 0008/0009) with the new
-      absolute-anchored, margin-only model.
-- [ ] Regenerate `references/CODEBASE_SNAPSHOT.md` (`bun run snapshot`) after the refactor.
+- [x] Updated `specifications/margins.md`: Shipped entry added; the mutual-flow / document-side-push
+      Behavior bullet and the ADR 0008/0009 Prior decision reconciled with the absolute-anchored model;
+      reciprocal-cue bullet added. _(2026-06-07)_
+- [x] Regenerated `references/CODEBASE_SNAPSHOT.md`. _(2026-06-07)_
 - [ ] `git commit`.
 
 ---
