@@ -25,11 +25,8 @@ import {
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { Slider } from "./ui/slider";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Switch } from "./ui/switch";
+import { EditorDisplaySettings } from "./editor-display-settings";
 import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -557,61 +554,17 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           </div>
           <div className="flex items-center gap-2">
             {extraActions}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Display settings"
-                  aria-label="Display settings"
-                >
-                  Aa
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Font size</Label>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {localFontSize}px
-                    </span>
-                  </div>
-                  <Slider
-                    min={12}
-                    max={24}
-                    step={1}
-                    value={[localFontSize]}
-                    onValueChange={([value]) => setLocalFontSize(value!)}
-                    onValueCommit={([value]) => void persistFontSize(value!)}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Paragraph width</Label>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {localMaxParagraphWidth}ch
-                    </span>
-                  </div>
-                  <Slider
-                    min={40}
-                    max={120}
-                    step={4}
-                    value={[localMaxParagraphWidth]}
-                    onValueChange={([value]) => setLocalMaxParagraphWidth(value!)}
-                    onValueCommit={([value]) => void persistMaxParagraphWidth(value!)}
-                  />
-                </div>
-                {editorConfig.vimMode && (
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Yank/delete to clipboard</Label>
-                    <Switch
-                      checked={editorConfig.vimClipboardSync}
-                      onCheckedChange={(checked) => void handleToggleVimClipboardSync(checked)}
-                    />
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+            <EditorDisplaySettings
+              fontSize={localFontSize}
+              maxParagraphWidth={localMaxParagraphWidth}
+              onFontSizeChange={setLocalFontSize}
+              onFontSizeCommit={(value) => void persistFontSize(value)}
+              onMaxParagraphWidthChange={setLocalMaxParagraphWidth}
+              onMaxParagraphWidthCommit={(value) => void persistMaxParagraphWidth(value)}
+              vimMode={editorConfig.vimMode}
+              vimClipboardSync={editorConfig.vimClipboardSync}
+              onToggleVimClipboardSync={(checked) => void handleToggleVimClipboardSync(checked)}
+            />
             <Button
               size="sm"
               disabled={isPending || !isDirty}
