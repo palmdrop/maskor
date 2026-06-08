@@ -168,8 +168,8 @@ Changes in `packages/frontend/src/pages/ProjectHistoryPage/`.
   - Secondary: timestamp
   - "Details" disclosure (collapsible): `commandId`, `correlationId`, `technicalMessage`
   - No undo affordance
-- [ ] Add a filter toggle to the history page header: "Show errors" (default: on); hides/shows `command:error` rows without affecting other entries
-- [ ] `git commit`
+- [x] Add a filter toggle to the history page header: "Show errors" (default: on); hides/shows `command:error` rows without affecting other entries
+- [x] `git commit`
 
 ---
 

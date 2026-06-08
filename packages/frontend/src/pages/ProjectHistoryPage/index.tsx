@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useActionLog } from "@api/action-log";
 import { useListFragments } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
 import { useListReferences } from "@api/generated/references/references";
+import { Switch } from "@components/ui/switch";
+import { Label } from "@components/ui/label";
 import { ActionLogList, type ExistenceMaps } from "./ActionLogList";
 
 const buildExistenceSet = <T extends { status: number; data: unknown } | undefined>(
@@ -22,6 +24,7 @@ export const ProjectHistoryPage = () => {
   const { data: aspects } = useListAspects(projectId);
   const { data: notes } = useListNotes(projectId);
   const { data: references } = useListReferences(projectId);
+  const [showErrors, setShowErrors] = useState(true);
 
   const existence: ExistenceMaps = useMemo(
     () => ({
@@ -49,17 +52,29 @@ export const ProjectHistoryPage = () => {
     );
   }
 
+  const entries = showErrors
+    ? envelope.data
+    : envelope.data.filter((entry) => entry.type !== "command:error");
+
   return (
     <div className="p-6 flex flex-col gap-4 overflow-y-auto h-full">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Recent Actions
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Actions taken through Maskor. External vault edits are not tracked.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Recent Actions
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Actions taken through Maskor. External vault edits are not tracked.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Switch id="show-errors" checked={showErrors} onCheckedChange={setShowErrors} />
+          <Label htmlFor="show-errors" className="text-xs text-muted-foreground">
+            Show errors
+          </Label>
+        </div>
       </div>
-      <ActionLogList projectId={projectId} entries={envelope.data} existence={existence} />
+      <ActionLogList projectId={projectId} entries={entries} existence={existence} />
     </div>
   );
 };
