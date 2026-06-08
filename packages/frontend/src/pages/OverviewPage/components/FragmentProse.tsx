@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { PencilIcon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
+import { InlineFragmentEditor } from "@components/inline-fragment-editor";
 import type { OverviewDetailLevel } from "../../../router";
 
 // Fixed reading style for the working surface. Per ADR 0011 the spine is NOT
@@ -27,6 +28,7 @@ export const deriveExcerpt = (content: string, limit = 240): string => {
 };
 
 interface FragmentProseProps {
+  projectId: string;
   fragmentUuid: string;
   title: string;
   content: string;
@@ -36,16 +38,17 @@ interface FragmentProseProps {
   excerpt?: string;
   isSelected?: boolean;
   onSelect?: (fragmentUuid: string) => void;
-  // When set, the rendered body becomes select-to-edit: selecting text (or the
-  // hover pencil) reveals an inline editor seeded with this fragment's markdown.
-  // Saving routes the new content back to this fragmentUuid via the existing
-  // fragment update path (ADR 0011 — the spine is a working surface, not export).
+  // When set, the rendered body becomes double-click/pencil-to-edit: the inline
+  // editor is seeded with this fragment's markdown. Saving routes the new content
+  // back to this fragmentUuid via the existing fragment update path (ADR 0011 —
+  // the spine is a working surface, not export).
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
 }
 
 // Shared single-fragment renderer used by both the prose spine and the right
 // detail panel. Exposes a stable anchor id (`fragment-<uuid>`) for navigation.
 export const FragmentProse = ({
+  projectId,
   fragmentUuid,
   title,
   content,
@@ -57,43 +60,31 @@ export const FragmentProse = ({
 }: FragmentProseProps) => {
   const editable = !!onSaveContent;
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   // Surfaces the edit affordance once the reader selects text inside this chunk.
   const [hasSelection, setHasSelection] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Re-seed the draft if the underlying content changes while not editing
-  // (e.g. an optimistic reorder reflow or a save elsewhere).
-  useEffect(() => {
-    if (!isEditing) setDraft(content);
-  }, [content, isEditing]);
-
-  useEffect(() => {
-    if (isEditing) textareaRef.current?.focus();
-  }, [isEditing]);
 
   const selectedClass = isSelected
     ? "border-primary bg-primary/5"
     : "border-transparent hover:border-border";
 
   const beginEditing = () => {
-    setDraft(content);
     setHasSelection(false);
     setIsEditing(true);
+    // Clear any stray DOM text selection made by the double-click gesture.
+    window.getSelection?.()?.removeAllRanges();
   };
 
   const cancelEditing = () => {
-    setDraft(content);
     setIsEditing(false);
   };
 
-  const saveEditing = async () => {
+  const handleSave = async (newContent: string) => {
     if (!onSaveContent) return;
     setIsSaving(true);
     try {
-      await onSaveContent(fragmentUuid, draft);
+      await onSaveContent(fragmentUuid, newContent);
       setIsEditing(false);
     } finally {
       setIsSaving(false);
@@ -126,6 +117,10 @@ export const FragmentProse = ({
         event.stopPropagation();
         if (!isEditing) onSelect?.(fragmentUuid);
       }}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        if (editable && !isEditing) beginEditing();
+      }}
       onMouseUp={handleSelectionChange}
       className={`group/prose relative scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass}`}
     >
@@ -153,42 +148,14 @@ export const FragmentProse = ({
 
       {isEditing ? (
         // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-        <div className="mt-1 flex flex-col gap-2" onClick={(event) => event.stopPropagation()}>
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault();
-                cancelEditing();
-              } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                void saveEditing();
-              }
-            }}
-            rows={Math.min(20, Math.max(4, draft.split("\n").length + 1))}
-            className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        <div className="mt-1" onClick={(event) => event.stopPropagation()}>
+          <InlineFragmentEditor
+            projectId={projectId}
+            content={content}
+            onSave={handleSave}
+            onCancel={cancelEditing}
+            isSaving={isSaving}
           />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void saveEditing()}
-              disabled={isSaving}
-              className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={cancelEditing}
-              disabled={isSaving}
-              className="rounded bg-muted px-2 py-0.5 text-xs hover:bg-muted/80 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <span className="text-xs text-muted-foreground">⌘↵ to save, Esc to cancel</span>
-          </div>
         </div>
       ) : (
         <>

@@ -1,13 +1,65 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { FragmentProse } from "../FragmentProse";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+
+const PROJECT_ID = "proj-1";
+
+// --- Mocks ---
+
+// InlineFragmentEditor stub: renders a controlled textarea for testability.
+// Captures onSave/onCancel so tests can drive save/cancel flows.
+let capturedOnSave: ((content: string) => void) | undefined;
+let capturedOnCancel: (() => void) | undefined;
+let capturedContent: string | undefined;
+
+vi.mock("@components/inline-fragment-editor", () => ({
+  InlineFragmentEditor: ({
+    content,
+    onSave,
+    onCancel,
+    isSaving,
+  }: {
+    projectId: string;
+    content: string;
+    onSave: (content: string) => void;
+    onCancel: () => void;
+    isSaving: boolean;
+  }) => {
+    capturedOnSave = onSave;
+    capturedOnCancel = onCancel;
+    capturedContent = content;
+    return (
+      <div data-testid="inline-editor">
+        <button type="button" onClick={() => onSave(content)} disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save"}
+        </button>
+        <button type="button" onClick={onCancel} disabled={isSaving}>
+          Cancel
+        </button>
+      </div>
+    );
+  },
+}));
+
+vi.mock("@components/readonly-prose", () => ({
+  ReadonlyProse: ({ content }: { content: string }) => <div data-testid="readonly-prose">{content}</div>,
+}));
+
+const { FragmentProse } = await import("../FragmentProse");
 
 const FRAGMENT_UUID = "frag-uuid-1";
 
 describe("FragmentProse — in-context editing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnSave = undefined;
+    capturedOnCancel = undefined;
+    capturedContent = undefined;
+  });
+
   it("renders no edit affordance when onSaveContent is absent", () => {
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Hello world"
@@ -17,10 +69,11 @@ describe("FragmentProse — in-context editing", () => {
     expect(screen.queryByRole("button", { name: /Edit/i })).not.toBeInTheDocument();
   });
 
-  it("opens an editor seeded with the fragment content and saves the edit back to its uuid", async () => {
+  it("pencil button enters edit mode seeded with the fragment content", async () => {
     const onSaveContent = vi.fn().mockResolvedValue(undefined);
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
@@ -31,22 +84,80 @@ describe("FragmentProse — in-context editing", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
 
-    const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-    expect(textarea.value).toBe("Original body");
+    expect(screen.getByTestId("inline-editor")).toBeInTheDocument();
+    expect(capturedContent).toBe("Original body");
+  });
 
-    fireEvent.change(textarea, { target: { value: "Edited body" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+  it("double-clicking the container enters edit mode", () => {
+    const onSaveContent = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Original body"
+        detailLevel="prose"
+        onSaveContent={onSaveContent}
+      />,
+    );
+
+    fireEvent.doubleClick(container.firstChild as Element);
+
+    expect(screen.getByTestId("inline-editor")).toBeInTheDocument();
+  });
+
+  it("single click selects the fragment without entering edit mode", () => {
+    const onSelect = vi.fn();
+    const onSaveContent = vi.fn();
+    render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Original body"
+        detailLevel="prose"
+        onSelect={onSelect}
+        onSaveContent={onSaveContent}
+      />,
+    );
+
+    // Click the container (not the pencil button)
+    const container = screen.getByTestId("readonly-prose").parentElement!.parentElement!;
+    fireEvent.click(container);
+
+    expect(onSelect).toHaveBeenCalledWith(FRAGMENT_UUID);
+    expect(screen.queryByTestId("inline-editor")).not.toBeInTheDocument();
+  });
+
+  it("save calls onSaveContent with the fragment uuid and new content", async () => {
+    const onSaveContent = vi.fn().mockResolvedValue(undefined);
+    render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Original body"
+        detailLevel="prose"
+        onSaveContent={onSaveContent}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
+    // Trigger save via the stub's save path (passes the new content to onSave)
+    await act(async () => {
+      capturedOnSave?.("Edited body");
+    });
 
     await waitFor(() => {
-      // The selection→fragment mapping: the editor saves to its own fragmentUuid.
       expect(onSaveContent).toHaveBeenCalledWith(FRAGMENT_UUID, "Edited body");
     });
   });
 
-  it("cancels editing without saving and restores the original content", () => {
+  it("cancel closes the editor without saving", async () => {
     const onSaveContent = vi.fn();
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
@@ -56,37 +167,30 @@ describe("FragmentProse — in-context editing", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
-    const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-    fireEvent.change(textarea, { target: { value: "Discarded edit" } });
-    fireEvent.click(screen.getByRole("button", { name: /Cancel/ }));
+    await act(async () => {
+      capturedOnCancel?.();
+    });
 
+    expect(screen.queryByTestId("inline-editor")).not.toBeInTheDocument();
     expect(onSaveContent).not.toHaveBeenCalled();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-
-    // Re-opening shows the unchanged original, not the discarded draft.
-    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
-    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Original body");
   });
 
-  it("saves on ⌘/Ctrl+Enter from within the editor", async () => {
-    const onSaveContent = vi.fn().mockResolvedValue(undefined);
+  it("pencil icon is still shown and still enters edit mode when onSaveContent is set", () => {
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
-        content="Body"
+        content="body"
         detailLevel="prose"
-        onSaveContent={onSaveContent}
+        onSaveContent={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "Quick saved" } });
-    fireEvent.keyDown(textarea, { key: "Enter", metaKey: true });
+    const pencil = screen.getByRole("button", { name: /Edit "frag-one"/i });
+    expect(pencil).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(onSaveContent).toHaveBeenCalledWith(FRAGMENT_UUID, "Quick saved");
-    });
+    fireEvent.click(pencil);
+    expect(screen.getByTestId("inline-editor")).toBeInTheDocument();
   });
 });

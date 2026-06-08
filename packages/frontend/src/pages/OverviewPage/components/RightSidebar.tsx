@@ -133,6 +133,7 @@ const FragmentDetail = ({
       {onSaveContent && selectedContent !== undefined ? (
         // In-context editing of the same fragment shown in the spine.
         <FragmentProse
+          projectId={projectId}
           fragmentUuid={fragment.uuid}
           title={fragment.key}
           content={selectedContent}

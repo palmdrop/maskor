@@ -39,6 +39,7 @@ const DragHandle = ({ attributes, listeners, label }: SortableHandleProps & { la
 );
 
 interface SortableSpineFragmentProps {
+  projectId: string;
   fragment: FragmentSummary;
   content: string;
   detailLevel: OverviewDetailLevel;
@@ -48,6 +49,7 @@ interface SortableSpineFragmentProps {
 }
 
 const SortableSpineFragment = ({
+  projectId,
   fragment,
   content,
   detailLevel,
@@ -76,6 +78,7 @@ const SortableSpineFragment = ({
       />
       <div className="flex-1 min-w-0">
         <FragmentProse
+          projectId={projectId}
           fragmentUuid={fragment.uuid}
           title={fragment.key}
           content={content}
@@ -91,6 +94,7 @@ const SortableSpineFragment = ({
 };
 
 interface SpineSectionProps {
+  projectId: string;
   section: SectionData;
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
@@ -101,6 +105,7 @@ interface SpineSectionProps {
 }
 
 const SpineSection = ({
+  projectId,
   section,
   detailLevel,
   fragmentByUuid,
@@ -135,6 +140,7 @@ const SpineSection = ({
             return (
               <SortableSpineFragment
                 key={fragmentUuid}
+                projectId={projectId}
                 fragment={fragment}
                 content={contentByFragmentUuid.get(fragmentUuid) ?? ""}
                 detailLevel={detailLevel}
@@ -151,6 +157,7 @@ const SpineSection = ({
 };
 
 interface ProseSpineProps {
+  projectId: string;
   sectionsData: SectionData[];
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
@@ -168,6 +175,7 @@ interface ProseSpineProps {
 // DndContext). Content comes from the per-fragment bulk endpoint, held
 // client-side so reorders reflow optimistically.
 export const ProseSpine = ({
+  projectId,
   sectionsData,
   detailLevel,
   fragmentByUuid,
@@ -192,6 +200,7 @@ export const ProseSpine = ({
       {sectionsData.map((section) => (
         <SpineSection
           key={section.uuid}
+          projectId={projectId}
           section={section}
           detailLevel={detailLevel}
           fragmentByUuid={fragmentByUuid}
