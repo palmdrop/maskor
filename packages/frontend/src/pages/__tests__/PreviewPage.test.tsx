@@ -7,6 +7,7 @@ import type {
   Project,
   SequenceBundledResponse,
 } from "@api/generated/maskorAPI.schemas";
+import { anchorSentinel } from "@maskor/shared/sentinel";
 
 const PROJECT_ID = "project-uuid-1";
 const SEQUENCE_UUID = "sequence-uuid-1";
@@ -57,6 +58,48 @@ vi.mock("@api/generated/sequences/sequences", () => ({
 
 vi.mock("@api/generated/preview/preview", () => ({
   useGetAssembledSequence: vi.fn(),
+  getGetAssembledSequenceQueryKey: vi.fn(() => ["assembled", "preview"]),
+}));
+
+vi.mock("@api/generated/fragments/fragments", () => ({
+  useGetFragment: vi.fn(),
+  useUpdateFragment: vi.fn(),
+  getGetFragmentQueryKey: vi.fn((projectId: string, fragmentId: string) => [
+    "fragment",
+    projectId,
+    fragmentId,
+  ]),
+}));
+
+// Capture the last onSave/onCancel so tests can drive the editor.
+let capturedEditorOnSave: ((content: string) => void) | undefined;
+let capturedEditorOnCancel: (() => void) | undefined;
+
+vi.mock("@components/inline-fragment-editor", () => ({
+  InlineFragmentEditor: ({
+    content,
+    onSave,
+    onCancel,
+  }: {
+    projectId: string;
+    content: string;
+    onSave: (content: string) => void;
+    onCancel: () => void;
+    isSaving: boolean;
+  }) => {
+    capturedEditorOnSave = onSave;
+    capturedEditorOnCancel = onCancel;
+    return (
+      <div data-testid="inline-fragment-editor" data-content={content}>
+        <button type="button" onClick={() => onSave(content)}>
+          Save
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    );
+  },
 }));
 
 const makeProject = (overrides?: Partial<Project>): Project => ({
@@ -115,9 +158,13 @@ const wrap = () => {
 const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
 const { useListSequences } = await import("@api/generated/sequences/sequences");
 const { useGetAssembledSequence } = await import("@api/generated/preview/preview");
+const { useGetFragment, useUpdateFragment } = await import(
+  "@api/generated/fragments/fragments"
+);
 const { PreviewPage } = await import("../PreviewPage");
 
 const mockMutate = vi.fn();
+const mockUpdateFragment = vi.fn().mockResolvedValue({ status: 200, data: {} });
 
 const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?: 200 | 404 }) => {
   const assembled = overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
@@ -140,6 +187,10 @@ const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?:
       data: { status: 200 as const, data: assembled },
     });
   }
+
+  // Fragment hooks default to no data; override per-test as needed.
+  (useGetFragment as Mock).mockReturnValue({ data: undefined });
+  (useUpdateFragment as Mock).mockReturnValue({ mutateAsync: mockUpdateFragment });
 };
 
 // The toggle params the page passed on its most recent render.
@@ -149,6 +200,8 @@ describe("PreviewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocation.hash = "";
+    capturedEditorOnSave = undefined;
+    capturedEditorOnCancel = undefined;
   });
 
   it("renders fragment keys in the sidebar", () => {
@@ -263,5 +316,172 @@ describe("PreviewPage", () => {
     });
 
     expect(lastQueryParams()).toMatchObject({ showTitles: "false" });
+  });
+});
+
+// --- Helpers for inline editing tests ---
+
+// Assembled markdown with sentinel tokens for two fragments.
+const makeAssembledWithSentinels = (): PreviewResult => ({
+  markdown: [
+    anchorSentinel("frag-1"),
+    "First fragment body.",
+    "",
+    anchorSentinel("frag-2"),
+    "Second fragment body.",
+  ].join("\n"),
+  sections: [
+    {
+      uuid: "section-1",
+      name: "",
+      fragments: [
+        { uuid: "frag-1", key: "opening" },
+        { uuid: "frag-2", key: "crossing" },
+      ],
+    },
+  ],
+});
+
+const makeFragmentData = (uuid: string, content: string) => ({
+  uuid,
+  key: "opening",
+  content,
+  readiness: 0,
+  contentHash: "",
+  references: [],
+  isDiscarded: false,
+  aspects: {},
+  updatedAt: "",
+});
+
+// Inject a `.fragment-anchor` element into the main element so double-click
+// resolution can find a preceding anchor (simulates what ReadonlyProse renders).
+const injectFragmentAnchor = (main: Element, uuid: string): HTMLDivElement => {
+  const anchor = document.createElement("div");
+  anchor.className = "fragment-anchor";
+  anchor.id = `fragment-${uuid}`;
+  main.appendChild(anchor);
+  return anchor;
+};
+
+describe("PreviewPage — inline editing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLocation.hash = "";
+    capturedEditorOnSave = undefined;
+    capturedEditorOnCancel = undefined;
+  });
+
+  it("double-click on content after a fragment anchor resolves the correct uuid and opens the editor", () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+    (useGetFragment as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeFragmentData("frag-1", "raw body of frag-1") },
+    });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+
+    const anchor = injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    textNode.textContent = "paragraph after frag-1";
+    main.appendChild(textNode);
+
+    // Sanity-check: the text node follows the anchor in document order.
+    expect(
+      anchor.compareDocumentPosition(textNode) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    fireEvent.doubleClick(textNode);
+
+    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
+    expect(screen.getByTestId("inline-fragment-editor")).toHaveAttribute(
+      "data-content",
+      "raw body of frag-1",
+    );
+  });
+
+  it("double-click before any anchor resolves to nothing and does not open the editor", () => {
+    setupMocks();
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+
+    // No anchors injected — double-click before any anchor → no editor.
+    fireEvent.doubleClick(main);
+
+    expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
+  });
+
+  it("cancel closes the editor", async () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+    (useGetFragment as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeFragmentData("frag-1", "raw body") },
+    });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    main.appendChild(textNode);
+
+    fireEvent.doubleClick(textNode);
+    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
+
+    await act(async () => {
+      capturedEditorOnCancel?.();
+    });
+
+    expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
+  });
+
+  it("save calls updateFragment with the correct fragment id and new content", async () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+    (useGetFragment as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeFragmentData("frag-1", "original") },
+    });
+    (useUpdateFragment as Mock).mockReturnValue({ mutateAsync: mockUpdateFragment });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    main.appendChild(textNode);
+
+    fireEvent.doubleClick(textNode);
+
+    await act(async () => {
+      capturedEditorOnSave?.("updated content");
+    });
+
+    expect(mockUpdateFragment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: PROJECT_ID,
+        fragmentId: "frag-1",
+        data: { content: "updated content" },
+      }),
+    );
+  });
+
+  it("a second double-click is blocked while an editor is open", () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+    (useGetFragment as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeFragmentData("frag-1", "body") },
+    });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const target1 = document.createElement("p");
+    main.appendChild(target1);
+    injectFragmentAnchor(main, "frag-2");
+    const target2 = document.createElement("p");
+    main.appendChild(target2);
+
+    fireEvent.doubleClick(target1);
+    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
+
+    // Second double-click while editor is open — should not open a new one.
+    fireEvent.doubleClick(target2);
+    expect(screen.getAllByTestId("inline-fragment-editor")).toHaveLength(1);
   });
 });

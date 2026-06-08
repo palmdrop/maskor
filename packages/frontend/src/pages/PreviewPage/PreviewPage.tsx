@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,12 +7,20 @@ import {
   getGetProjectQueryKey,
 } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
-import { useGetAssembledSequence } from "@api/generated/preview/preview";
+import { useGetAssembledSequence, getGetAssembledSequenceQueryKey } from "@api/generated/preview/preview";
+import {
+  useGetFragment,
+  useUpdateFragment,
+  getGetFragmentQueryKey,
+} from "@api/generated/fragments/fragments";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
+import { ReadonlyProse } from "@components/readonly-prose";
+import { InlineFragmentEditor } from "@components/inline-fragment-editor";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { PreviewProse } from "./PreviewProse";
+import { splitAroundFragment } from "@lib/preview/split-around-fragment";
 import {
   ProjectPreviewSeparator,
   type GetAssembledSequenceParams,
@@ -98,9 +106,109 @@ export const PreviewPage = () => {
 
   const [activeFragmentId, setActiveFragmentId] = useState<string | null>(null);
 
+  // --- Inline editing state ---
+  const [editingFragmentUuid, setEditingFragmentUuid] = useState<string | null>(null);
+  const [isSavingFragment, setIsSavingFragment] = useState(false);
+  // After save, track which fragment to scroll to once the refetch renders.
+  const [pendingScrollUuid, setPendingScrollUuid] = useState<string | null>(null);
+
+  // Fetch the raw body of the fragment being edited (the assembled markdown is NOT
+  // the raw body — titles/headings/separators are injected, anchors stripped).
+  const { data: editingFragmentEnvelope } = useGetFragment(
+    projectId,
+    editingFragmentUuid ?? "",
+    { query: { enabled: !!editingFragmentUuid } },
+  );
+  const editingFragment =
+    editingFragmentEnvelope?.status === 200 ? editingFragmentEnvelope.data : null;
+
+  const { mutateAsync: updateFragment } = useUpdateFragment();
+
+  // Scroll to the saved fragment once the assembled markdown refetches and renders.
+  useEffect(() => {
+    if (!pendingScrollUuid || !assembled) return;
+    const uuid = pendingScrollUuid;
+    setPendingScrollUuid(null);
+    // Defer one tick so the ReadonlyProse has finished rendering the new content.
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`fragment-${uuid}`)
+        ?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+  }, [assembled, pendingScrollUuid]);
+
+  const handleSaveFragment = useCallback(
+    async (content: string) => {
+      if (!editingFragmentUuid || !activeSequenceUuid) return;
+      setIsSavingFragment(true);
+      try {
+        await updateFragment({
+          projectId,
+          fragmentId: editingFragmentUuid,
+          data: { content },
+        });
+        // Invalidate the assembled sequence so the preview reloads with updated content.
+        await queryClient.invalidateQueries({
+          queryKey: getGetAssembledSequenceQueryKey(projectId, activeSequenceUuid, previewParams),
+        });
+        // Invalidate the fragment cache so stale raw body is not served if re-opened.
+        await queryClient.invalidateQueries({
+          queryKey: getGetFragmentQueryKey(projectId, editingFragmentUuid),
+        });
+        setPendingScrollUuid(editingFragmentUuid);
+        setEditingFragmentUuid(null);
+      } finally {
+        setIsSavingFragment(false);
+      }
+    },
+    [editingFragmentUuid, activeSequenceUuid, projectId, updateFragment, queryClient, previewParams],
+  );
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingFragmentUuid(null);
+  }, []);
+
+  // Resolve the double-clicked fragment UUID from the nearest preceding
+  // `.fragment-anchor` element (the invisible sentinel nodes rendered by
+  // FragmentAnchor). Clicks before any anchor or inside injected headings → null.
+  const resolveFragmentFromDoubleClick = useCallback(
+    (event: React.MouseEvent): string | null => {
+      const main = mainRef.current;
+      if (!main) return null;
+      const target = event.target as Node;
+      const anchors = [...main.getElementsByClassName("fragment-anchor")];
+      // Among all anchors that precede the click target, pick the last one (the
+      // nearest one). `compareDocumentPosition` bit 4 (DOCUMENT_POSITION_FOLLOWING)
+      // is set when the argument follows the reference node.
+      const preceding = anchors.filter(
+        (anchor) => anchor.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      const nearest = preceding.at(-1) as Element | undefined;
+      if (!nearest) return null;
+      const id = nearest.id;
+      if (!id.startsWith("fragment-")) return null;
+      return id.slice("fragment-".length);
+    },
+    [],
+  );
+
+  const handleMainDoubleClick = useCallback(
+    (event: React.MouseEvent) => {
+      // Block opening a second editor while one is already open.
+      if (editingFragmentUuid) return;
+      const uuid = resolveFragmentFromDoubleClick(event);
+      if (!uuid) return;
+      setEditingFragmentUuid(uuid);
+    },
+    [editingFragmentUuid, resolveFragmentFromDoubleClick],
+  );
+
   useEffect(() => {
     if (!previewReady) return;
     const main = mainRef.current;
+    // In editing mode the assembled markdown is split across two ReadonlyProse
+    // instances; observe the anchors in both.
+    const fragmentAnchors = [...main!.getElementsByClassName("fragment-anchor")];
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -117,9 +225,9 @@ export const PreviewPage = () => {
       },
     );
 
-    const fragmentAnchors = [...main!.getElementsByClassName("fragment-anchor")];
     fragmentAnchors.forEach((anchor) => observer.observe(anchor));
-  }, [previewReady]);
+    return () => observer.disconnect();
+  }, [previewReady, assembled, editingFragmentUuid]);
 
   const allFragments = useMemo(
     () => assembled?.sections.flatMap((section) => section.fragments) ?? [],
@@ -144,6 +252,12 @@ export const PreviewPage = () => {
   if (!assembled) {
     return null;
   }
+
+  // Compute the split regions once when editing is active.
+  const editSplit =
+    editingFragmentUuid && editingFragment
+      ? splitAroundFragment(assembled.markdown, editingFragmentUuid)
+      : null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -170,10 +284,43 @@ export const PreviewPage = () => {
             </div>
           }
         />
-        <main className="flex-1 overflow-y-auto" ref={mainRef}>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        <main
+          className="flex-1 overflow-y-auto"
+          ref={mainRef}
+          onDoubleClick={handleMainDoubleClick}
+        >
           {allFragments.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-muted-foreground">Sequence empty.</p>
+            </div>
+          ) : editSplit ? (
+            // Inline editing: split the assembled markdown around the edited fragment.
+            // Two ReadonlyProse instances flank the InlineFragmentEditor in normal
+            // document flow so the editor expands/reflows naturally as text is added.
+            <div className="py-6 px-6">
+              <ReadonlyProse
+                content={editSplit.before}
+                fontSize={fontSize}
+                maxParagraphWidth={maxParagraphWidth}
+              />
+              <div
+                className="mx-auto w-full border rounded-md p-3 my-4"
+                style={{ maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` }}
+              >
+                <InlineFragmentEditor
+                  projectId={projectId}
+                  content={editingFragment!.content}
+                  onSave={handleSaveFragment}
+                  onCancel={handleCancelEdit}
+                  isSaving={isSavingFragment}
+                />
+              </div>
+              <ReadonlyProse
+                content={editSplit.after}
+                fontSize={fontSize}
+                maxParagraphWidth={maxParagraphWidth}
+              />
             </div>
           ) : (
             <PreviewProse
