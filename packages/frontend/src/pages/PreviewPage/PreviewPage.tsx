@@ -270,9 +270,11 @@ export const PreviewPage = () => {
     return splitAroundFragment(assembled.markdown, editingFragmentUuid);
   }, [assembled, editingFragmentUuid, editingFragment]);
 
-  // When the split editor becomes ready, scroll the edit region (title + editor) to
-  // the top to counteract ProseEditor's cursor-restore scrollIntoView.
-  // Parent effects run AFTER child effects — ProseEditor's scroll has already fired.
+  // When the split editor becomes ready, snap the edit region (title + editor) to
+  // the top. Tiptap initializes the editor in a second render (editor: null →
+  // non-null); ProseEditor's setContent transaction in that second render may
+  // scroll. RAF fires after React has processed both renders — before the next
+  // paint — so our scroll wins without flicker.
   useEffect(() => {
     if (!editingFragmentUuid) {
       hasScrolledToEditorRef.current = false;
@@ -280,7 +282,10 @@ export const PreviewPage = () => {
     }
     if (!editSplit || hasScrolledToEditorRef.current) return;
     hasScrolledToEditorRef.current = true;
-    editRegionRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    const id = requestAnimationFrame(() => {
+      editRegionRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
   }, [editSplit, editingFragmentUuid]);
 
   if (assembledEnvelope?.status === 404) {

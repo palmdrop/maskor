@@ -116,11 +116,17 @@ export const FragmentProse = ({
     }
   };
 
-  // Snap to top of fragment on enter-edit, counteracting ProseEditor's cursor-restore
-  // scrollIntoView. Parent useEffect fires after child effects, so this wins.
+  // Snap to top of fragment on enter-edit. Tiptap initializes the editor in a
+  // second render (editor starts null, becomes non-null after onRender useEffect).
+  // ProseEditor's setContent transaction in that second render may scroll. By
+  // scheduling our scroll in a requestAnimationFrame we fire after React has
+  // processed both renders and their effects — before the next paint, no flicker.
   useEffect(() => {
     if (!isEditing) return;
-    containerRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    const id = requestAnimationFrame(() => {
+      containerRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
   }, [isEditing]);
 
   // On cancel: restore the viewport's scroll position via the captured anchor so
