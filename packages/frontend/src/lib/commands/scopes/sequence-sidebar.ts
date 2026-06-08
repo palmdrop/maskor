@@ -25,6 +25,7 @@ export const sequenceSidebarScope = defineScope<SequenceSidebarContext>("sequenc
 
 const createSequence = defineScopeCommand(sequenceSidebarScope, {
   id: "overview:create-sequence",
+  onFailure: "Failed to create sequence.",
   label: "New sequence",
   category: "create",
   disabled: (ctx) => (ctx.createSequencePending ? "Creating…" : undefined),
@@ -33,6 +34,7 @@ const createSequence = defineScopeCommand(sequenceSidebarScope, {
 
 const deleteSequence = defineScopeCommand(sequenceSidebarScope, {
   id: "overview:delete-sequence",
+  onFailure: "Failed to delete sequence.",
   label: "Delete sequence",
   category: "other",
   disabled: (ctx) =>
@@ -42,6 +44,7 @@ const deleteSequence = defineScopeCommand(sequenceSidebarScope, {
 
 const toggleSequenceActive = defineScopeCommand(sequenceSidebarScope, {
   id: "overview:toggle-sequence-active",
+  onFailure: "Failed to update sequence.",
   label: "Toggle sequence as constraint",
   category: "other",
   arg: {
@@ -55,6 +58,7 @@ const toggleSequenceActive = defineScopeCommand(sequenceSidebarScope, {
 
 const cloneSequence = defineScopeCommand(sequenceSidebarScope, {
   id: "overview:clone-sequence",
+  onFailure: "Failed to clone sequence.",
   label: "Clone sequence…",
   category: "create",
   arg: {
@@ -68,6 +72,7 @@ const cloneSequence = defineScopeCommand(sequenceSidebarScope, {
 
 const insertSequence = defineScopeCommand(sequenceSidebarScope, {
   id: "overview:insert-sequence",
+  onFailure: "Failed to insert sequence.",
   label: "Insert sequence into current…",
   category: "other",
   disabled: (ctx) =>

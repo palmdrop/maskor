@@ -13,6 +13,7 @@ export const projectConfigScope = defineScope<ProjectConfigContext>("project-con
 
 const rebuildIndex = defineScopeCommand(projectConfigScope, {
   id: "config:rebuild-index",
+  onFailure: "Index rebuild failed.",
   label: "Rebuild index",
   category: "project",
   disabled: (ctx) => (ctx.rebuildIndexPending ? "Rebuilding…" : undefined),
@@ -21,6 +22,7 @@ const rebuildIndex = defineScopeCommand(projectConfigScope, {
 
 const resetDatabase = defineScopeCommand(projectConfigScope, {
   id: "config:reset-database",
+  onFailure: "Database reset failed.",
   label: "Reset database",
   category: "project",
   disabled: (ctx) => (ctx.resetDatabasePending ? "Resetting…" : undefined),

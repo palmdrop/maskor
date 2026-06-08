@@ -5,12 +5,13 @@ import { defineScope, defineGlobalCommand, defineScopeCommand } from "../define"
 import { ApiRequestError } from "@api/errors";
 import type { CommandErrorFilter } from "../CommandsProvider";
 
-const toastError = vi.fn();
-vi.mock("sonner", () => ({ toast: { error: (...args: unknown[]) => toastError(...args) } }));
-
-const recordCommandError = vi.fn(async () => undefined);
+const { toastError, recordCommandError } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  recordCommandError: vi.fn(async () => undefined),
+}));
+vi.mock("sonner", () => ({ toast: { error: toastError } }));
 vi.mock("@api/generated/action-log/action-log", () => ({
-  RecordCommandError: (...args: unknown[]) => recordCommandError(...args),
+  RecordCommandError: recordCommandError,
 }));
 
 vi.mock("../router-helpers", () => ({ getActiveProjectId: () => "project-1" }));

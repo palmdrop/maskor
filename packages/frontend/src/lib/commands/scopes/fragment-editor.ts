@@ -16,6 +16,7 @@ export const fragmentEditorScope = defineScope<FragmentEditorContext>("fragment-
 
 const discard = defineScopeCommand(fragmentEditorScope, {
   id: "fragment:discard",
+  onFailure: "Failed to discard fragment.",
   label: "Discard fragment",
   // TODO: previous catalog used "navigation" — likely incorrect; "other" fits better
   category: "other",
@@ -30,6 +31,7 @@ const discard = defineScopeCommand(fragmentEditorScope, {
 
 const restore = defineScopeCommand(fragmentEditorScope, {
   id: "fragment:restore",
+  onFailure: "Failed to restore fragment.",
   label: "Restore fragment",
   category: "other",
   disabled: (ctx) =>

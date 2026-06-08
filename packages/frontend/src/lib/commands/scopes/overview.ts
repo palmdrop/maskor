@@ -40,6 +40,7 @@ export const overviewScope = defineScope<OverviewContext>("overview", {
 
 const designateMain = defineScopeCommand(overviewScope, {
   id: "overview:designate-main",
+  onFailure: "Failed to designate main sequence.",
   label: "Make main",
   category: "project",
   disabled: (ctx) =>
@@ -49,6 +50,7 @@ const designateMain = defineScopeCommand(overviewScope, {
 
 const addSection = defineScopeCommand(overviewScope, {
   id: "overview:add-section",
+  onFailure: "Failed to add section.",
   label: "Add section",
   category: "create",
   disabled: (ctx) => (ctx.createSectionPending ? "Adding section…" : undefined),
@@ -57,6 +59,7 @@ const addSection = defineScopeCommand(overviewScope, {
 
 const deleteSection = defineScopeCommand(overviewScope, {
   id: "overview:delete-section",
+  onFailure: "Failed to delete section.",
   label: "Delete section",
   category: "other",
   disabled: (ctx) =>
@@ -101,6 +104,7 @@ const toggleVerticalArcStrip = defineScopeCommand(overviewScope, {
 
 const groupSelection = defineScopeCommand(overviewScope, {
   id: "overview:group-selection",
+  onFailure: "Failed to group fragments.",
   label: "Group selected fragments into a new section",
   category: "create",
   disabled: (ctx) =>
@@ -110,6 +114,7 @@ const groupSelection = defineScopeCommand(overviewScope, {
 
 const splitBefore = defineScopeCommand(overviewScope, {
   id: "overview:split-before-selection",
+  onFailure: "Failed to split section.",
   label: "Split section before selected fragment",
   category: "other",
   disabled: (ctx) =>
@@ -121,6 +126,7 @@ const splitBefore = defineScopeCommand(overviewScope, {
 
 const splitAfter = defineScopeCommand(overviewScope, {
   id: "overview:split-after-selection",
+  onFailure: "Failed to split section.",
   label: "Split section after selected fragment",
   category: "other",
   disabled: (ctx) =>
@@ -132,6 +138,7 @@ const splitAfter = defineScopeCommand(overviewScope, {
 
 const moveSelectionToSection = defineScopeCommand(overviewScope, {
   id: "overview:move-selection-to-section",
+  onFailure: "Failed to move fragments.",
   label: "Move selected fragments to section…",
   category: "other",
   disabled: (ctx) => (ctx.placedSelectionCount < 1 ? "Select placed fragments to move" : undefined),
@@ -146,6 +153,7 @@ const moveSelectionToSection = defineScopeCommand(overviewScope, {
 
 const mergeSectionUp = defineScopeCommand(overviewScope, {
   id: "overview:merge-section-up",
+  onFailure: "Failed to merge sections.",
   label: "Merge section into previous…",
   category: "other",
   disabled: (ctx) => (ctx.mergeableUpSections.length > 0 ? undefined : "No section to merge up"),
@@ -160,6 +168,7 @@ const mergeSectionUp = defineScopeCommand(overviewScope, {
 
 const mergeSectionDown = defineScopeCommand(overviewScope, {
   id: "overview:merge-section-down",
+  onFailure: "Failed to merge sections.",
   label: "Merge section into next…",
   category: "other",
   disabled: (ctx) =>

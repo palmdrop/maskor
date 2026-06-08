@@ -153,7 +153,7 @@ Audit every command in `packages/frontend/src/lib/commands/` and add `onFailure`
 - `fragment:place-in-sequence` — opens a modal, no direct mutation
 - `create:fragment / note / reference / aspect` — open creation dialogs; dialog owns its own error handling
 
-- [ ] `git commit`
+- [x] `git commit`
 
 ---
 

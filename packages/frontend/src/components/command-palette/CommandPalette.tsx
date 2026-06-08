@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { CommandEmpty, CommandGroup, CommandItem, defaultFilter } from "cmdk";
 import { cn } from "@/lib/utils";
 import { Picker } from "@/components/picker/Picker";
@@ -270,7 +271,11 @@ export const CommandPalette = () => {
       setArgItems(resolvedItems);
     } catch (error) {
       if (argGenerationRef.current !== generation) return;
-      console.error("[command-palette] Failed to load arg items:", error);
+      // Loading the arg items failed (not a command failure) — surface it to the
+      // user rather than silently closing.
+      toast.error("Couldn't load options.", {
+        description: error instanceof Error ? error.message : undefined,
+      });
       run("command-palette:close");
     } finally {
       if (argGenerationRef.current === generation) {
