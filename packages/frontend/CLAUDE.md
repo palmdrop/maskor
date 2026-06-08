@@ -107,6 +107,38 @@ const find = <Id extends MyCommand["id"]>(id: Id): Extract<MyCommand, { id: Id }
   myCommands.find((c) => c.id === id) as Extract<MyCommand, { id: Id }>;
 ```
 
+## Command failure handling
+
+Failures of commands dispatched through `commands.run` are surfaced automatically — you don't write try/catch in components. The contract is the `onFailure` field on a command definition.
+
+**`onFailure` field.** Declare it on any command that can realistically fail (API mutation or async work). Two forms:
+
+```ts
+onFailure: "Save failed.",                                   // static friendly message
+onFailure: (error) => ({ message: "Import failed.", detail: String(error) }), // derive message + detail
+```
+
+When a command with `onFailure` throws (sync or rejected promise), `CommandsProvider.run` resolves the message/detail and shows `toast.error`. If the thrown error is an `ApiRequestError` carrying a `correlationId`, the backend already recorded the failure as a `command:error` action-log entry — the frontend only toasts. Otherwise (network/pre-flight failure, or a pure-frontend command) the frontend posts its own intent-level `command:error` entry to `POST /projects/:projectId/action-log/errors` (best-effort) before toasting. See `references/adr/0012-command-failure-observability.md`.
+
+**Convention — declare `onFailure` vs. handle internally:**
+
+- A command with **no dedicated in-place error UI** must declare `onFailure` if it can throw. Without it, a throw only `console.error`s in dev (no toast) — treated as a developer error.
+- A command that renders its **own in-place error** (e.g. `suggestion:next` catches a save error and shows it via `ctx.setSaveError`) handles that path internally and does not route it through `onFailure`. It may still declare `onFailure` for the parts that have no in-place UI.
+- Pure navigation / local-UI commands (router nav, toggles, font size, opening a dialog) cannot throw — no `onFailure`.
+
+**`onCommandError` filter on `useCommandScope`.** A scope can intercept failures of its own commands to render them in-place instead of the default toast:
+
+```ts
+useCommandScope(myScope, ctx, {
+  onCommandError: (commandId, error) => {
+    // return true to claim the failure (suppresses the default toast + log POST)
+    return commandId === "my:thing" && showInline(error);
+  },
+});
+```
+
+Returning `true` suppresses the default handling entirely; returning `false`/`undefined` lets it proceed.
+
 ## Typechecking
 
 `bun run typecheck` runs `tsc -b --pretty false`. **Don't change it to `tsc --noEmit`** — the frontend's root `tsconfig.json` has `"files": []` and only `references`, so `tsc --noEmit` checks zero files and silently reports success while VSCode catches real errors per-file via `tsconfig.app.json`. Run `bun run typecheck` before claiming a refactor compiles.

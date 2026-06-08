@@ -1,7 +1,7 @@
 # Command failure observability: toast errors, correlation IDs, and action log error entries
 
 **Date**: 2026-06-08
-**Status**: In Progress
+**Status**: Done
 **Specs**: `specifications/command-palette.md`
 **ADR**: `references/adr/0012-command-failure-observability.md`
 
@@ -175,13 +175,13 @@ Changes in `packages/frontend/src/pages/ProjectHistoryPage/`.
 
 ### Phase 7 — Documentation + spec updates
 
-- [ ] Update `packages/frontend/CLAUDE.md` — add a **Command failure handling** section documenting:
+- [x] Update `packages/frontend/CLAUDE.md` — add a **Command failure handling** section documenting:
   - `onFailure` field: when to add it, string vs. function form
   - Convention: commands with in-place error UI catch internally and do not declare `onFailure`; commands without dedicated in-place UI must declare `onFailure` if they can throw
   - `onCommandError` filter on `useCommandScope`: when to use it (suppress default toast in favour of in-place display)
-- [ ] Update `specifications/command-palette.md` — add to `Shipped` frontmatter: command failure observability (toast + action log `command:error` entries + correlation IDs)
-- [ ] Run `bun run format && bun run verify` — fix any remaining issues
-- [ ] `git commit`
+- [x] Update `specifications/command-palette.md` — add to `Shipped` frontmatter: command failure observability (toast + action log `command:error` entries + correlation IDs)
+- [x] Run `bun run format && bun run verify` — fix any remaining issues
+- [x] `git commit`
 
 ---
 
