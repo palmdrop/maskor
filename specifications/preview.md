@@ -1,13 +1,14 @@
 # Spec: Preview
 
 **Status**: Partial
-**Last updated**: 2026-05-30
+**Last updated**: 2026-06-08
 **Shipped**:
 
 - Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
 - 2026-05-30 — Rendering refactor: preview and import render through one shared read-only Tiptap renderer fed by a complete server-assembled **markdown string** from `@maskor/exporter`. Toggles apply server-side (sent as request options); sidebar navigation uses invisible anchor sentinels (a custom markdown-it rule + schema-modeled Tiptap node rendering `id="fragment-<id>"`, `html` stays `false`). `StaticMarkdown` / `dangerouslySetInnerHTML` removed. (plan: `references/plans/preview-import-shared-renderer.md`)
 - 2026-05-31 — Preview and import share one `FragmentNavSidebar` component and one `useFragmentAnchor` hook. The active fragment lives in the URL hash (`#fragment-<id>`) — the native browser anchor token, so a preview anchor is shareable and restored on reload; the hook scrolls once the assembled markdown has rendered (covering the async-fetch gap the router's native hash scroll cannot). Sidebar rows highlight the active fragment via `aria-current`. The per-page sidebar duplicates (`PreviewSidebar`, the import inline `<aside>`, and the `scrollToPiece` helper) are removed.
 - 2026-06-01 — The shared `assembleMarkdown` path strips Margin anchor markers (`<!--c:ID-->`) from fragment bodies, so the preview surface never shows them. (plan: `references/plans/margins.md`, Phase 2b)
+- 2026-06-08 — Double-click inline editing: double-clicking a fragment in the Preview page opens an `InlineFragmentEditor` in place (vim/rich/raw per the global setting). The assembled markdown is split at the fragment's anchor sentinel; a `ReadonlyProse before` / `InlineFragmentEditor` / `ReadonlyProse after` triptych replaces the single renderer while editing. The editor is seeded from the raw fragment body (separate `useGetFragment` fetch — not from the assembled markdown). Save calls `useUpdateFragment`, invalidates the assembled sequence and fragment query keys, and re-scrolls to the anchor. Margin-comment anchors (`<!--c:ID-->`) are preserved verbatim through the round-trip. (plan: `references/plans/preview-inline-fragment-editing.md`)
 
 ---
 
@@ -35,15 +36,15 @@ Preview is a reading surface, not an editing surface. A sidebar lists the fragme
 ### Out of scope
 
 - File export (handled by `specifications/export.md`)
-- In-prose interactivity (no click-to-edit, no inline comments, no annotations)
+- In-prose annotations or inline comments
 - In-app search within the preview (browser-native Cmd+F is the answer)
 - Custom typography controls (uses project-wide editor config)
 - Side-by-side comparison of sequences
 - Auto-refresh on vault changes (deliberately user-driven)
 - Multi-sequence preview (one sequence at a time)
 - Preview of draft snapshots (deferred — see `specifications/drafting.md` and `references/suggestions.md`)
-
-> Preview is for reading. Anything that turns it into an editing or analysis surface is out of scope.
+- Metadata editing from preview (body-only; full editor is at the fragment editor page)
+- Swap-recovery and extract/insert from the inline preview editor (accepted tradeoff vs the full `EntityEditorShell`)
 
 ---
 

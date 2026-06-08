@@ -118,6 +118,7 @@ const FragmentDetail = ({
   sequences,
   violations,
   fragmentByUuid,
+  projectId,
   selectedContent,
   onSaveContent,
   onOpen,
