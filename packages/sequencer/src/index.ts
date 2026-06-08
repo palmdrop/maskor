@@ -572,8 +572,11 @@ export function mergeSectionWithNext(sequence: Sequence, sectionUuid: string): S
 // UUID collisions). Placements are preserved verbatim: the same fragments sit
 // in the same sections at the same positions. The clone is never main (a
 // project has exactly one main sequence) and is active by default; the caller
-// supplies the new name. Only the domain `Sequence` fields are carried over,
-// so passing a storage-indexed sequence drops its file-level metadata.
+// supplies the new name. `origin` (import provenance) is intentionally NOT
+// carried over — a clone is authored in-app, not imported from a source file,
+// so inheriting it would mislabel the clone as imported. Only the domain
+// `Sequence` fields are carried over, so passing a storage-indexed sequence
+// drops its file-level metadata.
 export function cloneSequence(sequence: Sequence, newName: string): Sequence {
   return {
     uuid: crypto.randomUUID(),
@@ -581,7 +584,6 @@ export function cloneSequence(sequence: Sequence, newName: string): Sequence {
     isMain: false,
     active: sequence.active,
     projectUuid: sequence.projectUuid,
-    ...(sequence.origin ? { origin: sequence.origin } : {}),
     sections: sequence.sections.map((section) => ({
       uuid: crypto.randomUUID(),
       name: section.name,

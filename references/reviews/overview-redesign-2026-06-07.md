@@ -7,6 +7,15 @@
 
 ---
 
+> **Resolution (2026-06-08):** all five findings (#1–#5) fixed. `optimisticGroup`
+> now mirrors the server's centre-of-mass placement; navigation no longer forces
+> `detail` into the URL; `cloneSequence` drops `origin`; `getSequenceContents`
+> logs dropped reads; the DnD unplace branch is narrowed to explicit pool drops.
+> Added tests (sequencer clone-origin, `optimisticGroup` placement) and updated
+> the navigation test. `bun run verify` green: 930 backend + 558 frontend.
+
+---
+
 ## Overall
 
 Cohesive, well-executed implementation covering all four phases of the plan. The pure-function sequencer ops are clean and thoroughly commented; the command/route/optimistic plumbing follows project conventions faithfully (commands pipeline for every mutation, generated orval client throughout, no direct `useMutation` in components, no abbreviated names). Branch is green: 929 backend + 554 frontend tests pass, typecheck clean, OpenAPI snapshot in sync. No surprising data-layer changes — the storage/registry diff is purely the `density → detailLevel` rename.
@@ -19,7 +28,7 @@ Three behavior issues are worth addressing before this is considered done: an op
 
 ### 1. `optimisticGroup` does not mirror the server's section-placement rule
 
-`packages/frontend/src/lib/sequences/optimisticUpdates.ts:98` vs `packages/sequencer/src/index.ts:359` (`groupFragmentsIntoSection`) — the backend decides the new section's slot by the selection's center of mass within its home section: a selection in the top half lands *before* the (remaining) home section, one in the bottom half lands *after* it. The optimistic mirror always splices the new section *before* the home section:
+`packages/frontend/src/lib/sequences/optimisticUpdates.ts:98` vs `packages/sequencer/src/index.ts:359` (`groupFragmentsIntoSection`) — the backend decides the new section's slot by the selection's center of mass within its home section: a selection in the top half lands _before_ the (remaining) home section, one in the bottom half lands _after_ it. The optimistic mirror always splices the new section _before_ the home section:
 
 ```ts
 sections.splice(insertIndex < 0 ? stripped.length : insertIndex, 0, newSection);
@@ -39,7 +48,7 @@ Fix: replicate the center-of-mass before/after decision from `groupFragmentsInto
 `packages/frontend/src/pages/OverviewPage/components/SequenceSidebar.tsx:188,223,252,309`, `components/RightSidebar.tsx:67`, `lib/commands/global/navigation.ts:28` — `project.overview.detailLevel` is persisted via `useUpdateProject`, and `OverviewPage` resolves `detailLevel = urlDetailLevel ?? persistedDetailLevel ?? "prose"`. But every in-app navigation forces `detail` into the URL with a hardcoded `"prose"` fallback:
 
 ```ts
-search: (prev) => ({ detail: prev.detail ?? "prose", sequence: uuid })
+search: (prev) => ({ detail: prev.detail ?? "prose", sequence: uuid });
 // goToOverview: search: { detail: "prose" }
 ```
 

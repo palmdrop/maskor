@@ -64,9 +64,10 @@ export const RightSidebar = ({
     void navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      // Preserve current detail level (required by validateSearch); narrow `prev`
-      // to only the keys the target route expects.
-      search: (prev) => ({ detail: prev.detail ?? "prose", sequence: sequenceId }),
+      // Preserve the current detail level if one is in the URL; leave it
+      // undefined otherwise so the persisted per-project preference resolves.
+      // Narrow `prev` to only the keys the target route expects.
+      search: (prev) => ({ detail: prev.detail, sequence: sequenceId }),
     });
   };
 

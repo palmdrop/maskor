@@ -181,11 +181,11 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     void navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      // Preserve current detail level (required by validateSearch); a literal
-      // omitting detail would fail the router's search-param type. The
-      // updater form's `prev` is the union of all sibling routes' search
-      // params, so we destructure only the keys the target route expects.
-      search: (prev) => ({ detail: prev.detail ?? "prose", sequence: uuid }),
+      // Preserve the current detail level if one is in the URL; leave it
+      // undefined otherwise so the persisted per-project preference resolves.
+      // The updater form's `prev` is the union of all sibling routes' search
+      // params, so we pass only the keys the target route expects.
+      search: (prev) => ({ detail: prev.detail, sequence: uuid }),
     });
   };
 
@@ -220,7 +220,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
             void navigate({
               to: "/projects/$projectId/overview",
               params: { projectId },
-              search: (prev) => ({ detail: prev.detail ?? "prose" }),
+              search: (prev) => ({ detail: prev.detail }),
             });
           }
         },
@@ -249,7 +249,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
           void navigate({
             to: "/projects/$projectId/overview",
             params: { projectId },
-            search: (prev) => ({ detail: prev.detail ?? "prose", sequence: created.uuid }),
+            search: (prev) => ({ detail: prev.detail, sequence: created.uuid }),
           });
         },
       },
@@ -306,7 +306,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
         void navigate({
           to: "/projects/$projectId/overview",
           params: { projectId },
-          search: (prev) => ({ detail: prev.detail ?? "prose", sequence: sequenceId }),
+          search: (prev) => ({ detail: prev.detail, sequence: sequenceId }),
         });
         return null;
       }

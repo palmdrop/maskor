@@ -113,7 +113,11 @@ export const useSequenceDnD = ({
           });
         }
       }
-    } else if (isActiveInSequence && (isOverInPool || (!isOverInSequence && !isOverInPool))) {
+    } else if (isActiveInSequence && isOverInPool) {
+      // Unplace only on an explicit drop onto the pool (the pool zone or a pool
+      // row). A drop on anything unrecognised is a no-op rather than a surprise
+      // unplace — the collision fallback always resolves `over` to a real
+      // droppable, so there is no legitimate "dropped on nothing" unplace path.
       mutations.unplaceFragment.mutate({
         projectId,
         sequenceId: sequence.uuid,

@@ -104,15 +104,35 @@ export function optimisticGroup(
   const selectedInOrder = flattenedOrder(sequence).filter((uuid) => selected.has(uuid));
   if (selectedInOrder.length === 0) return sequence;
 
-  const firstSelected = selectedInOrder[0]!;
-  const insertIndex = sequence.sections.findIndex((section) =>
-    section.fragments.some((f) => f.fragmentUuid === firstSelected),
-  );
-
   const stripped = sequence.sections.map((section) => ({
     ...section,
     fragments: compact(section.fragments.filter((f) => !selected.has(f.fragmentUuid))),
   }));
+
+  // Mirror groupFragmentsIntoSection's placement exactly: the new section lands
+  // before or after its home section (the one holding the earliest selected
+  // fragment) based on the selection's centre of mass within that home section.
+  // A top-half selection lands before, a bottom-half selection after.
+  const firstSelected = selectedInOrder[0]!;
+  const homeIndex = sequence.sections.findIndex((section) =>
+    section.fragments.some((f) => f.fragmentUuid === firstSelected),
+  );
+
+  let insertIndex = stripped.length;
+  if (homeIndex !== -1) {
+    const homeSorted = [...sequence.sections[homeIndex]!.fragments].sort(
+      (a, b) => a.position - b.position,
+    );
+    const selectedPositionsInHome = homeSorted
+      .map((fragment, index) => ({ fragmentUuid: fragment.fragmentUuid, index }))
+      .filter((entry) => selected.has(entry.fragmentUuid))
+      .map((entry) => entry.index);
+    const meanPosition =
+      selectedPositionsInHome.reduce((sum, position) => sum + position, 0) /
+      selectedPositionsInHome.length;
+    const homeMidpoint = (homeSorted.length - 1) / 2;
+    insertIndex = meanPosition <= homeMidpoint ? homeIndex : homeIndex + 1;
+  }
 
   const newSection = {
     uuid: crypto.randomUUID(),
@@ -125,7 +145,7 @@ export function optimisticGroup(
   };
 
   const sections = [...stripped];
-  sections.splice(insertIndex < 0 ? stripped.length : insertIndex, 0, newSection);
+  sections.splice(insertIndex, 0, newSection);
   return { ...sequence, sections };
 }
 

@@ -25,7 +25,9 @@ const goToOverview = defineGlobalCommand({
     void router.navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
-      search: { detail: "prose" },
+      // Omit `detail` so the persisted per-project detail level resolves; forcing
+      // a value here would override the saved preference on every navigation.
+      search: {},
     });
   },
 });

@@ -699,6 +699,20 @@ sequencesRouter.openapi(getSequenceContentsRoute, async (ctx) => {
     const fragmentResults = await Promise.allSettled(
       neededUuids.map((uuid) => storageService.fragments.read(projectContext, uuid)),
     );
+
+    // A fragment whose read rejects is dropped from the response (the spine
+    // simply omits its chunk). Log it so a content row silently missing from the
+    // spine — while still listed in the reorder list — is diagnosable.
+    const logger = ctx.get("logger");
+    fragmentResults.forEach((result, index) => {
+      if (result.status === "rejected") {
+        logger.warn(
+          { fragmentUuid: neededUuids[index], error: result.reason },
+          "Failed to read fragment content for sequence contents endpoint",
+        );
+      }
+    });
+
     const fragmentByUuid = new Map(
       fragmentResults.flatMap((result) =>
         result.status === "fulfilled" ? [[result.value.uuid, result.value]] : [],

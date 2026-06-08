@@ -915,6 +915,20 @@ describe("cloneSequence", () => {
     cloneSequence(sequence, "Copy");
     expect(JSON.stringify(sequence)).toBe(before);
   });
+
+  it("does not carry over the source's import origin (a clone is not imported)", () => {
+    const sequence: Sequence = {
+      ...makeTwoSectionSequence(),
+      origin: {
+        fileName: "chapter-one.docx",
+        archivePath: ".maskor/imports/a1b2c3d4.docx",
+        format: "docx",
+        importedAt: "2026-05-31T10:00:00.000Z",
+      },
+    };
+    const clone = cloneSequence(sequence, "Copy");
+    expect(clone.origin).toBeUndefined();
+  });
 });
 
 describe("insertSequenceIntoSequence", () => {
