@@ -70,11 +70,11 @@ Changes in `packages/shared/src/schemas/domain/action.ts`.
 
 ### Phase 3 — Frontend: `ApiRequestError` + `customFetch` correlation ID extraction
 
-- [ ] Add `correlationId?: string` to `ApiRequestError` in `packages/frontend/src/api/errors.ts`
-- [ ] Update `customFetch` in `packages/frontend/src/api/fetch.ts`:
+- [x] Add `correlationId?: string` to `ApiRequestError` in `packages/frontend/src/api/errors.ts`
+- [x] Update `customFetch` in `packages/frontend/src/api/fetch.ts`:
   - On a non-OK response, read `correlationId` from the `X-Correlation-Id` response header (`response.headers.get(...)`), **not** the body — the body is unreliable across error paths (`throwStorageError` builds its own response, bypassing any body-level injection)
   - Pass it to the `ApiRequestError` constructor
-- [ ] `git commit`
+- [x] `git commit`
 
 ---
 

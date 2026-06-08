@@ -4,7 +4,11 @@ export const customFetch = async <T>(url: string, options: RequestInit): Promise
   const response = await fetch(`/api${url}`, options);
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new ApiRequestError(response.status, body);
+    // Read from the header, not the body: error responses are built by various
+    // paths (e.g. throwStorageError constructs its own response), but the
+    // correlation id is stamped on every error response in app.onError.
+    const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
+    throw new ApiRequestError(response.status, body, correlationId);
   }
   const data = response.status === 204 ? undefined : await response.json();
   return { data, status: response.status, headers: response.headers } as T;
