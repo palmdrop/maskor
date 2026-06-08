@@ -213,6 +213,30 @@ describe("InlineFragmentEditor", () => {
     });
   });
 
+  // Phase 4 — margin-anchor safety: the editor must pass getContent() output to
+  // onSave verbatim. ProseEditor.getContent() re-inserts <!--c:ID--> markers from
+  // the anchor store on save; InlineFragmentEditor must not strip them.
+  it("preserves margin-comment anchors verbatim when saving (round-trip safety)", async () => {
+    mockEditorContent = "Body text with marker <!--c:abc123--> preserved.";
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InlineFragmentEditor
+        projectId={PROJECT_ID}
+        content="Body text with marker <!--c:abc123--> preserved."
+        onSave={onSave}
+        onCancel={vi.fn()}
+        isSaving={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith("Body text with marker <!--c:abc123--> preserved.");
+    });
+  });
+
   it("shows 'Saving…' label and disables buttons while isSaving", () => {
     render(
       <InlineFragmentEditor
