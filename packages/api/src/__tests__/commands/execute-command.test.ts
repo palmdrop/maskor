@@ -52,7 +52,7 @@ describe("executeCommand", () => {
       correlationId: "test-correlation",
     };
 
-    const result = await executeCommand(command, "test:success", commandContext, "hello");
+    const result = await executeCommand(command, "fragment:update", commandContext, "hello");
     expect(result).toBe("ok:hello");
   });
 
@@ -80,9 +80,9 @@ describe("executeCommand", () => {
       appended.push(entry as never);
     };
 
-    await expect(executeCommand(command, "test:fail", commandContext, undefined)).rejects.toThrow(
-      "mutation failed",
-    );
+    await expect(
+      executeCommand(command, "fragment:update", commandContext, undefined),
+    ).rejects.toThrow("mutation failed");
 
     testContext.storageService.actionLog.append = originalAppend;
 
@@ -90,7 +90,7 @@ describe("executeCommand", () => {
     expect(appended[0]!.type).toBe("command:error");
     expect(appended[0]!.correlationId).toBe("test-correlation");
     expect(appended[0]!.payload).toMatchObject({
-      commandId: "test:fail",
+      commandId: "fragment:update",
       technicalMessage: "mutation failed",
     });
   });
@@ -132,7 +132,7 @@ describe("executeCommand", () => {
       correlationId: "test-correlation",
     };
 
-    const result = await executeCommand(command, "test:append-fail", commandContext, "value");
+    const result = await executeCommand(command, "fragment:update", commandContext, "value");
     expect(result).toBe("value");
     expect(appendCalled).toBe(true);
     expect(logger.errors.length).toBeGreaterThan(0);

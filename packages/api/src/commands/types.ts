@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Logger } from "@maskor/shared/logger";
 import type { LogEntry } from "@maskor/shared";
 import type { StorageService, ProjectContext } from "@maskor/storage";
+import type { CommandLabel } from "./command-labels";
 
 export type CommandContext = {
   storageService: StorageService;
@@ -26,7 +27,7 @@ export const executeCommand = async <TInput, TOutput>(
   // Canonical backend domain label (e.g. "fragment:update"). Recorded on the
   // command:error entry if execution throws. Passed at the call site rather than
   // stored on the Command, so command definitions and their tests stay untouched.
-  commandId: string,
+  commandId: CommandLabel,
   ctx: CommandContext,
   input: TInput,
 ): Promise<TOutput> => {
