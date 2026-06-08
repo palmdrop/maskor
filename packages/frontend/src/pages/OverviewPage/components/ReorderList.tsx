@@ -3,7 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
-import { AspectColorBar } from "./AspectColorBar";
+// import { AspectColorBar } from "./AspectColorBar";
 import { POOL_ZONE_ID, toSectionDragId } from "../utils/dndIds";
 
 interface SectionData {
@@ -49,7 +49,7 @@ interface ReorderRowProps {
 
 const ReorderRow = ({
   fragment,
-  colorByAspectKey,
+  /* colorByAspectKey,*/
   violationTooltips,
   cycleTooltips,
   isSelected,
@@ -100,11 +100,14 @@ const ReorderRow = ({
           : "border-border bg-card text-foreground hover:bg-muted"
       }`}
     >
+      {/*
+      // HIDDEN FOR NOW SINCE IT COVERS THE FRAGMENT TITLE 
       <AspectColorBar
         aspects={fragment.aspects}
         colorByAspectKey={colorByAspectKey}
         className="h-3 w-1 rounded-sm shrink-0"
       />
+      */}
       <span className="truncate flex-1">{fragment.key}</span>
       <RowIndicators violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
     </div>
