@@ -8,13 +8,15 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
+- [ ] implement editor fixes, see `.worktrees/editor-flicker`
 
-- [ ] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
+- [x] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
-- [ ] when adding an aspect, even when navigating to select an option, enter creates a new aspect, unless the full aspect name is inputted in the search field
+- [x] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
 
-- [ ] when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown instead. Backend state is probably not updated properly?
+- [x] when adding an aspect, even when navigating to select an option, enter creates a new aspect, unless the full aspect name is inputted in the search field
+
+- [x] when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown instead. Backend state is probably not updated properly?
 
 - [ ] sticky fragment titles showing which fragment we are in during import/preview/export
   - even when fragment titles are hidden
@@ -22,7 +24,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
 
-- [ ] make it possible to "clone" a sequence, or insert one sequence into another, etc
+- [x] make it possible to "clone" a sequence, or insert one sequence into another, etc
 
 - [ ] investigate spelling, language settings
 
@@ -31,7 +33,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - way of marking a fragment, then "splitting" the sequence by introducing a new section at that location
   - NOTE: this logic needs to be robust, i.e not just frontend. Should live in the sequencer code.
 
-- [ ] sequences: pool is unnecessarily wide, includes too much
+- [x] sequences: pool is unnecessarily wide, includes too much
 - [x] sequences: quick-add popup, add a fragment to a sequence, or the main sequence, actions for adding last, first, or select position. Accessible from editor
 
 - [x] when moving a fragment across sections with arrow keys, focus is lost, and the fragment has to be clicked again
