@@ -713,6 +713,7 @@ export const OverviewPage = () => {
                 )}
                 <div className="flex-1">
                   <ProseSpine
+                    projectId={projectId}
                     sectionsData={sectionsData}
                     detailLevel={detailLevel}
                     fragmentByUuid={fragmentByUuid}
