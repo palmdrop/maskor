@@ -45,6 +45,7 @@ interface SortableSpineFragmentProps {
   isSelected: boolean;
   onSelect: (fragmentUuid: string) => void;
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
 const SortableSpineFragment = ({
@@ -54,6 +55,7 @@ const SortableSpineFragment = ({
   isSelected,
   onSelect,
   onSaveContent,
+  onRemoveFragment,
 }: SortableSpineFragmentProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -85,6 +87,7 @@ const SortableSpineFragment = ({
           isSelected={isSelected}
           onSelect={onSelect}
           onSaveContent={onSaveContent}
+          onRemove={onRemoveFragment ? () => onRemoveFragment(fragment.uuid) : undefined}
         />
       </div>
     </div>
@@ -99,6 +102,7 @@ interface SpineSectionProps {
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
 const SpineSection = ({
@@ -109,6 +113,7 @@ const SpineSection = ({
   selectedFragmentUuids,
   onSelectFragment,
   onSaveContent,
+  onRemoveFragment,
 }: SpineSectionProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: section.uuid });
 
@@ -142,6 +147,7 @@ const SpineSection = ({
                 isSelected={selectedFragmentUuids.has(fragmentUuid)}
                 onSelect={onSelectFragment}
                 onSaveContent={onSaveContent}
+                onRemoveFragment={onRemoveFragment}
               />
             );
           })}
@@ -159,6 +165,7 @@ interface ProseSpineProps {
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
 // The vertical reading spine: placed fragments rendered as flowing prose in
@@ -176,6 +183,7 @@ export const ProseSpine = ({
   selectedFragmentUuids,
   onSelectFragment,
   onSaveContent,
+  onRemoveFragment,
 }: ProseSpineProps) => {
   // Only bail out entirely when the sequence has no sections at all. Empty
   // sections still render as droppable zones so the first fragment can be
@@ -200,6 +208,7 @@ export const ProseSpine = ({
           selectedFragmentUuids={selectedFragmentUuids}
           onSelectFragment={onSelectFragment}
           onSaveContent={onSaveContent}
+          onRemoveFragment={onRemoveFragment}
         />
       ))}
     </div>

@@ -11,6 +11,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Hello world"
+        isDiscarded={false}
         detailLevel="prose"
       />,
     );
@@ -24,6 +25,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
+        isDiscarded={false}
         detailLevel="prose"
         onSaveContent={onSaveContent}
       />,
@@ -50,6 +52,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
+        isDiscarded={false}
         detailLevel="prose"
         onSaveContent={onSaveContent}
       />,
@@ -75,6 +78,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Body"
+        isDiscarded={false}
         detailLevel="prose"
         onSaveContent={onSaveContent}
       />,
@@ -88,5 +92,39 @@ describe("FragmentProse — in-context editing", () => {
     await waitFor(() => {
       expect(onSaveContent).toHaveBeenCalledWith(FRAGMENT_UUID, "Quick saved");
     });
+  });
+});
+
+describe("FragmentProse — remove from sequence", () => {
+  it("renders no remove affordance when onRemove is absent", () => {
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Remove "frag-one" from sequence/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("invokes onRemove when the trash affordance is clicked", () => {
+    const onRemove = vi.fn();
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+        onRemove={onRemove}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove "frag-one" from sequence/i }));
+    expect(onRemove).toHaveBeenCalledTimes(1);
   });
 });

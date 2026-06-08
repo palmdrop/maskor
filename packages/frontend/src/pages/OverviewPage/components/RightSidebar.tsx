@@ -46,6 +46,9 @@ type Props = {
   // enabling in-context editing of the same fragment shown in the spine.
   selectedContent?: string;
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  // When set, the selected fragment is placed in the active sequence and can be
+  // removed from it (returned to the pool).
+  onRemoveFragment?: (fragmentUuid: string) => void;
 };
 
 export const RightSidebar = ({
@@ -56,6 +59,7 @@ export const RightSidebar = ({
   fragmentByUuid,
   selectedContent,
   onSaveContent,
+  onRemoveFragment,
 }: Props) => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const navigate = useNavigate();
@@ -82,6 +86,7 @@ export const RightSidebar = ({
           projectId={projectId}
           selectedContent={selectedContent}
           onSaveContent={onSaveContent}
+          onRemoveFragment={onRemoveFragment}
           onOpen={() =>
             void navigate({
               to: "/projects/$projectId/fragments/$fragmentId",
@@ -110,6 +115,7 @@ type FragmentDetailProps = {
   projectId: string;
   selectedContent?: string;
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onRemoveFragment?: (fragmentUuid: string) => void;
   onOpen: () => void;
 };
 
@@ -120,6 +126,7 @@ const FragmentDetail = ({
   fragmentByUuid,
   selectedContent,
   onSaveContent,
+  onRemoveFragment,
   onOpen,
 }: FragmentDetailProps) => {
   const membership = buildMembership(fragment.uuid, sequences);
@@ -152,13 +159,24 @@ const FragmentDetail = ({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onOpen}
-        className="text-xs text-left px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors self-start"
-      >
-        Open fragment
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-xs text-left px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors self-start"
+        >
+          Open fragment
+        </button>
+        {onRemoveFragment && (
+          <button
+            type="button"
+            onClick={() => onRemoveFragment(fragment.uuid)}
+            className="text-xs text-left px-2 py-1 rounded border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors self-start"
+          >
+            Remove from sequence
+          </button>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

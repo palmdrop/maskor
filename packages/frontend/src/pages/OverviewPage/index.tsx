@@ -474,6 +474,42 @@ export const OverviewPage = () => {
     [sequence, sectionsData, projectId, sequenceMutations],
   );
 
+  // Unplace a single fragment from the active sequence, returning it to the
+  // pool. Shares the optimistic mutation used by drag-to-pool; surfaced as a
+  // direct button on each placed fragment (spine, left column, right panel).
+  const unplaceFragment = useCallback(
+    (fragmentUuid: string) => {
+      if (!sequence) return;
+      sequenceMutations.unplaceFragment.mutate({
+        projectId,
+        sequenceId: sequence.uuid,
+        fragmentUuid,
+      });
+    },
+    [sequence, projectId, sequenceMutations],
+  );
+
+  const placedFragmentsForUnplace = useMemo(
+    () =>
+      allSequenceFragmentUuids.map((uuid) => ({
+        uuid,
+        key: fragmentByUuid.get(uuid)?.key ?? uuid,
+      })),
+    [allSequenceFragmentUuids, fragmentByUuid],
+  );
+
+  // Per-fragment "remove from sequence" trigger shared by the spine, the left
+  // column, and the right panel. Dispatches the parameterized unplace command
+  // with the fragment's key so the palette entry reads sensibly too.
+  const handleRemoveFragment = useCallback(
+    (fragmentUuid: string) =>
+      commands.run("overview:unplace-fragment", {
+        uuid: fragmentUuid,
+        key: fragmentByUuid.get(fragmentUuid)?.key ?? fragmentUuid,
+      }),
+    [commands, fragmentByUuid],
+  );
+
   useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
     designateMain: () =>
@@ -516,6 +552,8 @@ export const OverviewPage = () => {
     mergeableDownSections,
     mergeSectionUp,
     mergeSectionDown,
+    placedFragmentsForUnplace,
+    unplaceFragment,
   });
 
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
@@ -550,6 +588,7 @@ export const OverviewPage = () => {
               fragmentByUuid={fragmentByUuid}
               selectedFragmentUuids={selectionSet}
               onSelectFragment={handleSelectFragment}
+              onRemoveFragment={handleRemoveFragment}
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}
               editingSectionId={sectionManager.editingSectionId}
@@ -680,6 +719,7 @@ export const OverviewPage = () => {
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
                     onSelectFragment={handleSelectFragment}
+                    onRemoveFragment={handleRemoveFragment}
                     onSaveContent={handleSaveFragmentContent}
                   />
                 </div>
@@ -706,6 +746,13 @@ export const OverviewPage = () => {
           primarySelectedUuid ? contentByFragmentUuid.get(primarySelectedUuid) : undefined
         }
         onSaveContent={handleSaveFragmentContent}
+        // Only offer "remove from sequence" when the selected fragment is placed
+        // in the active sequence (the unplace target).
+        onRemoveFragment={
+          primarySelectedUuid && fragmentSectionMap.has(primarySelectedUuid)
+            ? handleRemoveFragment
+            : undefined
+        }
       />
     </div>
   );

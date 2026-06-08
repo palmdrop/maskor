@@ -32,6 +32,8 @@ export interface OverviewContext {
   mergeableDownSections: ReadonlyArray<{ uuid: string; name: string }>;
   mergeSectionUp: (sectionUuid: string) => Promise<void>;
   mergeSectionDown: (sectionUuid: string) => Promise<void>;
+  placedFragmentsForUnplace: ReadonlyArray<{ uuid: string; key: string }>;
+  unplaceFragment: (fragmentUuid: string) => Promise<void>;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {
@@ -182,6 +184,22 @@ const mergeSectionDown = defineScopeCommand(overviewScope, {
   run: (ctx, target) => ctx.mergeSectionDown(target.uuid),
 });
 
+const unplaceFragment = defineScopeCommand(overviewScope, {
+  id: "overview:unplace-fragment",
+  onFailure: "Failed to remove fragment from sequence.",
+  label: "Remove fragment from sequence…",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.placedFragmentsForUnplace.length > 0 ? undefined : "No placed fragments to remove",
+  arg: {
+    items: (ctx) => ctx.placedFragmentsForUnplace,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => item.key,
+    placeholder: "Remove fragment from sequence…",
+  },
+  run: (ctx, target) => ctx.unplaceFragment(target.uuid),
+});
+
 export const overviewCommands = [
   designateMain,
   addSection,
@@ -196,4 +214,5 @@ export const overviewCommands = [
   moveSelectionToSection,
   mergeSectionUp,
   mergeSectionDown,
+  unplaceFragment,
 ] as const;
