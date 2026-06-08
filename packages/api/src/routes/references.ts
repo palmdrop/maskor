@@ -279,6 +279,7 @@ referencesRouter.openapi(extractReferenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
@@ -291,14 +292,19 @@ referencesRouter.openapi(extractReferenceRoute, async (ctx) => {
 
     const newReference: Reference = { uuid: randomUUID(), key, content };
 
-    const reference = await executeCommand(extractReferenceCommand, commandContext, {
-      newReference,
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const reference = await executeCommand(
+      extractReferenceCommand,
+      "reference:extract",
+      commandContext,
+      {
+        newReference,
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
 
     return ctx.json(reference, 201);
   } catch (error) {
@@ -316,6 +322,7 @@ referencesRouter.openapi(appendReferenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -324,18 +331,23 @@ referencesRouter.openapi(appendReferenceRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const reference = await executeCommand(insertReferenceCommand, commandContext, {
-      referenceId,
-      insertedBody,
-      position: "append",
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const reference = await executeCommand(
+      insertReferenceCommand,
+      "reference:insert",
+      commandContext,
+      {
+        referenceId,
+        insertedBody,
+        position: "append",
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
     if (sourceMode !== "cut") return ctx.json({ reference, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -356,6 +368,7 @@ referencesRouter.openapi(prependReferenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -364,18 +377,23 @@ referencesRouter.openapi(prependReferenceRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const reference = await executeCommand(insertReferenceCommand, commandContext, {
-      referenceId,
-      insertedBody,
-      position: "prepend",
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const reference = await executeCommand(
+      insertReferenceCommand,
+      "reference:insert",
+      commandContext,
+      {
+        referenceId,
+        insertedBody,
+        position: "prepend",
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
     if (sourceMode !== "cut") return ctx.json({ reference, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -424,10 +442,16 @@ referencesRouter.openapi(createReferenceRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const reference: Reference = { uuid: randomUUID(), key, content };
-    const result = await executeCommand(createReferenceCommand, commandContext, reference);
+    const result = await executeCommand(
+      createReferenceCommand,
+      "reference:create",
+      commandContext,
+      reference,
+    );
     return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -460,14 +484,20 @@ referencesRouter.openapi(updateReferenceRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const source: UpdateSource = patch.content !== undefined ? "user-content-save" : "programmatic";
-    const updated = await executeCommand(updateReferenceCommand, commandContext, {
-      referenceId,
-      patch,
-      source,
-    });
+    const updated = await executeCommand(
+      updateReferenceCommand,
+      "reference:update",
+      commandContext,
+      {
+        referenceId,
+        patch,
+        source,
+      },
+    );
     return ctx.json(updated, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -484,11 +514,12 @@ referencesRouter.openapi(deleteReferenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const reference = await storageService.references.read(projectContext, referenceId);
-    await executeCommand(deleteReferenceCommand, commandContext, {
+    await executeCommand(deleteReferenceCommand, "reference:delete", commandContext, {
       referenceId,
       referenceKey: reference.key,
     });

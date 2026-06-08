@@ -650,9 +650,15 @@ sequencesRouter.openapi(getMainSequenceRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    const sequence = await executeCommand(ensureMainSequenceCommand, commandContext, undefined);
+    const sequence = await executeCommand(
+      ensureMainSequenceCommand,
+      "sequence:ensure-main",
+      commandContext,
+      undefined,
+    );
     return ctx.json(sequence, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -743,9 +749,10 @@ sequencesRouter.openapi(createSequenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(createSequenceCommand, commandContext, {
+    await executeCommand(createSequenceCommand, "sequence:create", commandContext, {
       name,
       isMain: isMain ?? false,
       active,
@@ -768,9 +775,10 @@ sequencesRouter.openapi(updateSequenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(updateSequenceCommand, commandContext, {
+    await executeCommand(updateSequenceCommand, "sequence:update", commandContext, {
       sequenceId,
       patch,
     });
@@ -790,9 +798,10 @@ sequencesRouter.openapi(deleteSequenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(deleteSequenceCommand, commandContext, { sequenceId });
+    await executeCommand(deleteSequenceCommand, "sequence:delete", commandContext, { sequenceId });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
@@ -809,9 +818,12 @@ sequencesRouter.openapi(designateSequenceMainRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(designateSequenceMainCommand, commandContext, { sequenceId });
+    await executeCommand(designateSequenceMainCommand, "sequence:designate-main", commandContext, {
+      sequenceId,
+    });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
@@ -829,13 +841,14 @@ sequencesRouter.openapi(placeFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const [indexedSequence, indexedFragment] = await Promise.all([
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    await executeCommand(placeFragmentCommand, commandContext, {
+    await executeCommand(placeFragmentCommand, "sequence:place-fragment", commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
@@ -860,13 +873,14 @@ sequencesRouter.openapi(moveFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const [indexedSequence, indexedFragment] = await Promise.all([
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    await executeCommand(moveFragmentCommand, commandContext, {
+    await executeCommand(moveFragmentCommand, "sequence:move-fragment", commandContext, {
       sequenceId,
       fragmentUuid,
       sectionUuid,
@@ -891,9 +905,13 @@ sequencesRouter.openapi(createSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(createSectionCommand, commandContext, { sequenceId, name });
+    await executeCommand(createSectionCommand, "sequence:create-section", commandContext, {
+      sequenceId,
+      name,
+    });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
@@ -911,9 +929,14 @@ sequencesRouter.openapi(renameSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(renameSectionCommand, commandContext, { sequenceId, sectionId, name });
+    await executeCommand(renameSectionCommand, "sequence:rename-section", commandContext, {
+      sequenceId,
+      sectionId,
+      name,
+    });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
@@ -931,11 +954,12 @@ sequencesRouter.openapi(reorderSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
     const section = indexedSequence.sections.find((s) => s.uuid === sectionId);
-    await executeCommand(moveSectionCommand, commandContext, {
+    await executeCommand(moveSectionCommand, "sequence:move-section", commandContext, {
       sequenceId,
       sectionId,
       position,
@@ -958,9 +982,13 @@ sequencesRouter.openapi(deleteSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(deleteSectionCommand, commandContext, { sequenceId, sectionId });
+    await executeCommand(deleteSectionCommand, "sequence:delete-section", commandContext, {
+      sequenceId,
+      sectionId,
+    });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
@@ -977,13 +1005,14 @@ sequencesRouter.openapi(unplaceFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const [indexedSequence, indexedFragment] = await Promise.all([
       storageService.sequences.read(projectContext, sequenceId),
       storageService.fragments.read(projectContext, fragmentUuid),
     ]);
-    await executeCommand(unplaceFragmentCommand, commandContext, {
+    await executeCommand(unplaceFragmentCommand, "sequence:unplace-fragment", commandContext, {
       sequenceId,
       fragmentUuid,
       sequenceName: indexedSequence.name,
@@ -1006,10 +1035,11 @@ sequencesRouter.openapi(groupFragmentsRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
-    await executeCommand(groupFragmentsCommand, commandContext, {
+    await executeCommand(groupFragmentsCommand, "sequence:group-fragments", commandContext, {
       sequenceId,
       fragmentUuids,
       sectionName: name,
@@ -1032,11 +1062,12 @@ sequencesRouter.openapi(moveFragmentsRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
     const section = indexedSequence.sections.find((s) => s.uuid === sectionUuid);
-    await executeCommand(moveFragmentsCommand, commandContext, {
+    await executeCommand(moveFragmentsCommand, "sequence:move-fragments", commandContext, {
       sequenceId,
       fragmentUuids,
       sectionUuid,
@@ -1061,10 +1092,11 @@ sequencesRouter.openapi(splitSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
-    await executeCommand(splitSectionCommand, commandContext, {
+    await executeCommand(splitSectionCommand, "sequence:split-section", commandContext, {
       sequenceId,
       fragmentUuid,
       sectionName: name,
@@ -1086,11 +1118,12 @@ sequencesRouter.openapi(mergeSectionRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const indexedSequence = await storageService.sequences.read(projectContext, sequenceId);
     const section = indexedSequence.sections.find((s) => s.uuid === sectionId);
-    await executeCommand(mergeSectionCommand, commandContext, {
+    await executeCommand(mergeSectionCommand, "sequence:merge-section", commandContext, {
       sequenceId,
       sectionId,
       sequenceName: indexedSequence.name,
@@ -1113,9 +1146,13 @@ sequencesRouter.openapi(cloneSequenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(cloneSequenceCommand, commandContext, { sequenceId, name });
+    await executeCommand(cloneSequenceCommand, "sequence:clone", commandContext, {
+      sequenceId,
+      name,
+    });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 201);
   } catch (error) {
@@ -1133,9 +1170,10 @@ sequencesRouter.openapi(insertSequenceRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    await executeCommand(insertSequenceCommand, commandContext, {
+    await executeCommand(insertSequenceCommand, "sequence:insert", commandContext, {
       targetSequenceId: sequenceId,
       sourceSequenceId,
       sectionIndex,

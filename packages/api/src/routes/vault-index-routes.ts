@@ -34,9 +34,15 @@ vaultIndexRouter.openapi(rebuildIndexRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    const stats = await executeCommand(rebuildIndexCommand, commandContext, undefined);
+    const stats = await executeCommand(
+      rebuildIndexCommand,
+      "index:rebuild",
+      commandContext,
+      undefined,
+    );
     return ctx.json(stats, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -72,9 +78,15 @@ vaultIndexRouter.openapi(resetDatabaseRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    const stats = await executeCommand(resetDatabaseCommand, commandContext, undefined);
+    const stats = await executeCommand(
+      resetDatabaseCommand,
+      "database:reset",
+      commandContext,
+      undefined,
+    );
     return ctx.json(stats, 200);
   } catch (error) {
     return throwStorageError(error);

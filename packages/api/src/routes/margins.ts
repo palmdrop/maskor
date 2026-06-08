@@ -9,12 +9,13 @@ import type { CommandContext } from "../commands";
 export const marginsRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 const commandContextFrom = (ctx: {
-  get: (key: "storageService" | "projectContext" | "logger") => unknown;
+  get: (key: "storageService" | "projectContext" | "logger" | "correlationId") => unknown;
 }): CommandContext => ({
   storageService: ctx.get("storageService") as CommandContext["storageService"],
   projectContext: ctx.get("projectContext") as CommandContext["projectContext"],
   actor: "user",
   logger: ctx.get("logger") as CommandContext["logger"],
+  correlationId: ctx.get("correlationId") as CommandContext["correlationId"],
 });
 
 const getMarginRoute = createRoute({
@@ -88,11 +89,16 @@ marginsRouter.openapi(writeMarginRoute, async (ctx) => {
   try {
     const { fragmentId } = ctx.req.valid("param");
     const { notes, comments } = ctx.req.valid("json");
-    const margin = await executeCommand(writeMarginCommand, commandContextFrom(ctx), {
-      fragmentUuid: fragmentId,
-      notes,
-      comments,
-    });
+    const margin = await executeCommand(
+      writeMarginCommand,
+      "margin:write",
+      commandContextFrom(ctx),
+      {
+        fragmentUuid: fragmentId,
+        notes,
+        comments,
+      },
+    );
     return ctx.json(margin, 200);
   } catch (error) {
     return throwStorageError(error);

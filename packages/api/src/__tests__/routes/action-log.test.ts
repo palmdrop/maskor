@@ -71,6 +71,58 @@ describe("GET /projects/:projectId/action-log", () => {
   });
 });
 
+describe("POST /projects/:projectId/action-log/errors", () => {
+  it("records a command:error entry and returns 204", async () => {
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log/errors`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commandId: "editor:save",
+          correlationId: "corr-frontend-1",
+          friendlyMessage: "Save failed.",
+          technicalMessage: "Network error",
+        }),
+      },
+    );
+    expect(response.status).toBe(204);
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=50`,
+    );
+    const entries = (await logResponse.json()) as (LogEntry & {
+      correlationId: string;
+      payload: { commandId: string; friendlyMessage?: string; technicalMessage: string };
+    })[];
+    const errorEntry = entries.find((entry) => entry.type === "command:error");
+    expect(errorEntry).toBeDefined();
+    expect(errorEntry!.correlationId).toBe("corr-frontend-1");
+    expect(errorEntry!.payload.commandId).toBe("editor:save");
+    expect(errorEntry!.payload.friendlyMessage).toBe("Save failed.");
+  });
+});
+
+describe("correlation id", () => {
+  it("echoes X-Correlation-Id on success responses", async () => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/action-log`);
+    expect(response.headers.get("X-Correlation-Id")).toBeTruthy();
+  });
+
+  it("reuses a client-supplied X-Correlation-Id", async () => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/action-log`, {
+      headers: { "X-Correlation-Id": "client-supplied-id" },
+    });
+    expect(response.headers.get("X-Correlation-Id")).toBe("client-supplied-id");
+  });
+
+  it("stamps X-Correlation-Id on error responses (HTTPException path)", async () => {
+    const response = await testContext.app.request(`/projects/does-not-exist/action-log`);
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.headers.get("X-Correlation-Id")).toBeTruthy();
+  });
+});
+
 describe("POST /projects/:projectId/fragments — produces a log entry", () => {
   it("creates a fragment and records a fragment:created entry", async () => {
     const createResponse = await testContext.app.request(

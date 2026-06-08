@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
@@ -33,6 +34,7 @@ export type AppVariables = {
   settingsService: SettingsService;
   projectContext?: ProjectContext;
   logger: Logger;
+  correlationId: string;
 };
 
 export const createApp = (
@@ -66,9 +68,21 @@ export const createApp = (
         path: new URL(ctx.req.url).pathname,
         status: ctx.res.status,
         durationMs: Date.now() - start,
+        correlationId: ctx.get("correlationId"),
       },
       "request",
     );
+  });
+
+  // Correlation ID: one per request, reused from the client header if supplied,
+  // otherwise generated. Echoed on success responses; error responses get it
+  // stamped in `onError` (a thrown HTTPException replaces ctx.res, dropping
+  // headers set here). Every action log entry carries this id (see executeCommand).
+  app.use("*", async (ctx, next) => {
+    const correlationId = ctx.req.header("X-Correlation-Id") ?? randomUUID();
+    ctx.set("correlationId", correlationId);
+    await next();
+    ctx.header("X-Correlation-Id", correlationId);
   });
 
   const settingsService = createSettingsService(configDirectory);
@@ -115,17 +129,26 @@ export const createApp = (
   app.get("/ui", swaggerUI({ url: "/doc" }));
 
   app.onError((error, ctx) => {
+    // Single chokepoint for stamping the correlation ID onto error responses —
+    // covers every path, including HTTPExceptions built by throwStorageError
+    // whose custom response would otherwise drop the header set in middleware.
+    const correlationId = ctx.get("correlationId") ?? randomUUID();
     if (error instanceof HTTPException) {
-      return error.getResponse();
+      const response = error.getResponse();
+      const withCorrelation = new Response(response.body, response);
+      withCorrelation.headers.set("X-Correlation-Id", correlationId);
+      return withCorrelation;
     }
     log.error(
       {
         method: ctx.req.method,
         path: new URL(ctx.req.url).pathname,
         errorMessage: error instanceof Error ? error.message : String(error),
+        correlationId,
       },
       "unhandled error",
     );
+    ctx.header("X-Correlation-Id", correlationId);
     return ctx.json({ error: "INTERNAL_ERROR", message: "An unexpected error occurred" }, 500);
   });
 

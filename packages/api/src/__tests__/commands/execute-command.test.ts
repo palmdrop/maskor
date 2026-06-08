@@ -49,13 +49,14 @@ describe("executeCommand", () => {
       projectContext: context,
       actor: "user",
       logger,
+      correlationId: "test-correlation",
     };
 
-    const result = await executeCommand(command, commandContext, "hello");
+    const result = await executeCommand(command, "test:success", commandContext, "hello");
     expect(result).toBe("ok:hello");
   });
 
-  it("propagates mutation errors and does not append log entries", async () => {
+  it("appends a command:error entry and re-throws on mutation failure", async () => {
     const context = await testContext.storageService.resolveProject(project.projectUUID);
     const logger = makeLogger();
 
@@ -70,11 +71,28 @@ describe("executeCommand", () => {
       projectContext: context,
       actor: "user",
       logger,
+      correlationId: "test-correlation",
     };
 
-    await expect(executeCommand(command, commandContext, undefined)).rejects.toThrow(
+    const appended: { type: string; payload: unknown; correlationId: string }[] = [];
+    const originalAppend = testContext.storageService.actionLog.append;
+    testContext.storageService.actionLog.append = async (_projectContext, entry) => {
+      appended.push(entry as never);
+    };
+
+    await expect(executeCommand(command, "test:fail", commandContext, undefined)).rejects.toThrow(
       "mutation failed",
     );
+
+    testContext.storageService.actionLog.append = originalAppend;
+
+    expect(appended).toHaveLength(1);
+    expect(appended[0]!.type).toBe("command:error");
+    expect(appended[0]!.correlationId).toBe("test-correlation");
+    expect(appended[0]!.payload).toMatchObject({
+      commandId: "test:fail",
+      technicalMessage: "mutation failed",
+    });
   });
 
   it("swallows log append failures and still returns the result", async () => {
@@ -111,9 +129,10 @@ describe("executeCommand", () => {
       projectContext: context,
       actor: "user",
       logger,
+      correlationId: "test-correlation",
     };
 
-    const result = await executeCommand(command, commandContext, "value");
+    const result = await executeCommand(command, "test:append-fail", commandContext, "value");
     expect(result).toBe("value");
     expect(appendCalled).toBe(true);
     expect(logger.errors.length).toBeGreaterThan(0);

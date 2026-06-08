@@ -144,10 +144,14 @@ draftsRouter.openapi(createDraftRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const { name, note } = ctx.req.valid("json");
-    const draft = await executeCommand(createDraftCommand, commandContext, { name, note });
+    const draft = await executeCommand(createDraftCommand, "draft:create", commandContext, {
+      name,
+      note,
+    });
     return ctx.json(draft, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -160,10 +164,13 @@ draftsRouter.openapi(deleteDraftRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const { draftId } = ctx.req.valid("param");
-    await executeCommand(deleteDraftCommand, commandContext, { draftUuid: draftId });
+    await executeCommand(deleteDraftCommand, "draft:delete", commandContext, {
+      draftUuid: draftId,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);
@@ -176,11 +183,12 @@ draftsRouter.openapi(restoreDraftRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const { draftId } = ctx.req.valid("param");
     const { saveCurrentFirst, preRestoreName } = ctx.req.valid("json");
-    const result = await executeCommand(restoreDraftCommand, commandContext, {
+    const result = await executeCommand(restoreDraftCommand, "draft:restore", commandContext, {
       draftUuid: draftId,
       saveCurrentFirst,
       preRestoreName,

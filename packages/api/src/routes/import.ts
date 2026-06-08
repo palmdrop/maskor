@@ -79,6 +79,7 @@ importRouter.openapi(importRoute, async (ctx) => {
     storageService: ctx.get("storageService"),
     projectContext: ctx.get("projectContext")!,
     actor: "user",
+    correlationId: ctx.get("correlationId"),
     logger: ctx.get("logger"),
   };
 
@@ -102,7 +103,7 @@ importRouter.openapi(importRoute, async (ctx) => {
   }
 
   try {
-    const result = await executeCommand(command, commandContext, input);
+    const result = await executeCommand(command, "fragment:import", commandContext, input);
     return ctx.json(result, 200);
   } catch (error) {
     return throwStorageError(error);

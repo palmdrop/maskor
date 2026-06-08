@@ -286,6 +286,7 @@ aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
@@ -303,7 +304,7 @@ aspectsRouter.openapi(extractAspectRoute, async (ctx) => {
       notes: [],
     };
 
-    const aspect = await executeCommand(extractAspectCommand, commandContext, {
+    const aspect = await executeCommand(extractAspectCommand, "aspect:extract", commandContext, {
       newAspect,
       sourceType,
       sourceKey,
@@ -328,6 +329,7 @@ aspectsRouter.openapi(appendAspectRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -336,7 +338,7 @@ aspectsRouter.openapi(appendAspectRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const aspect = await executeCommand(insertAspectCommand, commandContext, {
+    const aspect = await executeCommand(insertAspectCommand, "aspect:insert", commandContext, {
       aspectId,
       insertedBody,
       position: "append",
@@ -347,7 +349,7 @@ aspectsRouter.openapi(appendAspectRoute, async (ctx) => {
       navigated,
     });
     if (sourceMode !== "cut") return ctx.json({ aspect, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -368,6 +370,7 @@ aspectsRouter.openapi(prependAspectRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -376,7 +379,7 @@ aspectsRouter.openapi(prependAspectRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const aspect = await executeCommand(insertAspectCommand, commandContext, {
+    const aspect = await executeCommand(insertAspectCommand, "aspect:insert", commandContext, {
       aspectId,
       insertedBody,
       position: "prepend",
@@ -387,7 +390,7 @@ aspectsRouter.openapi(prependAspectRoute, async (ctx) => {
       navigated,
     });
     if (sourceMode !== "cut") return ctx.json({ aspect, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -436,10 +439,16 @@ aspectsRouter.openapi(createAspectRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const aspect: Aspect = { uuid: randomUUID(), key, description, notes: notes ?? [] };
-    const result = await executeCommand(createAspectCommand, commandContext, aspect);
+    const result = await executeCommand(
+      createAspectCommand,
+      "aspect:create",
+      commandContext,
+      aspect,
+    );
     return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -456,11 +465,12 @@ aspectsRouter.openapi(deleteAspectRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const aspect = await storageService.aspects.read(projectContext, aspectId);
-    await executeCommand(deleteAspectCommand, commandContext, {
+    await executeCommand(deleteAspectCommand, "aspect:delete", commandContext, {
       aspectId,
       aspectKey: aspect.key,
     });
@@ -496,10 +506,11 @@ aspectsRouter.openapi(updateAspectRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const source = classifyAspectSource(patch);
-    const updated = await executeCommand(updateAspectCommand, commandContext, {
+    const updated = await executeCommand(updateAspectCommand, "aspect:update", commandContext, {
       aspectId,
       patch,
       source,

@@ -422,6 +422,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
@@ -437,7 +438,12 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       updatedAt: new Date(),
     };
 
-    const fragment = await executeCommand(createFragmentCommand, commandContext, draft);
+    const fragment = await executeCommand(
+      createFragmentCommand,
+      "fragment:create",
+      commandContext,
+      draft,
+    );
     return ctx.json(fragment, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -469,6 +475,7 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
@@ -491,14 +498,19 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       updatedAt: new Date(),
     };
 
-    const fragment = await executeCommand(extractFragmentCommand, commandContext, {
-      newFragment,
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const fragment = await executeCommand(
+      extractFragmentCommand,
+      "fragment:extract",
+      commandContext,
+      {
+        newFragment,
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
 
     return ctx.json(fragment, 201);
   } catch (error) {
@@ -516,6 +528,7 @@ fragmentsRouter.openapi(appendFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -524,18 +537,23 @@ fragmentsRouter.openapi(appendFragmentRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const fragment = await executeCommand(insertFragmentCommand, commandContext, {
-      fragmentId,
-      insertedBody,
-      position: "append",
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const fragment = await executeCommand(
+      insertFragmentCommand,
+      "fragment:insert",
+      commandContext,
+      {
+        fragmentId,
+        insertedBody,
+        position: "append",
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
     if (sourceMode !== "cut") return ctx.json({ fragment, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -556,6 +574,7 @@ fragmentsRouter.openapi(prependFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -564,18 +583,23 @@ fragmentsRouter.openapi(prependFragmentRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const fragment = await executeCommand(insertFragmentCommand, commandContext, {
-      fragmentId,
-      insertedBody,
-      position: "prepend",
-      sourceType,
-      sourceKey,
-      sourceUuid,
-      sourceMode,
-      navigated,
-    });
+    const fragment = await executeCommand(
+      insertFragmentCommand,
+      "fragment:insert",
+      commandContext,
+      {
+        fragmentId,
+        insertedBody,
+        position: "prepend",
+        sourceType,
+        sourceKey,
+        sourceUuid,
+        sourceMode,
+        navigated,
+      },
+    );
     if (sourceMode !== "cut") return ctx.json({ fragment, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -607,16 +631,22 @@ fragmentsRouter.openapi(updateFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const existing = await storageService.fragments.read(projectContext, fragmentId);
     const source = classifyFragmentSource(update);
-    const fragment = await executeCommand(updateFragmentCommand, commandContext, {
-      existing,
-      patch: update,
-      source,
-    });
+    const fragment = await executeCommand(
+      updateFragmentCommand,
+      "fragment:update",
+      commandContext,
+      {
+        existing,
+        patch: update,
+        source,
+      },
+    );
 
     return ctx.json({ fragment, warnings: [] }, 200);
   } catch (error) {
@@ -634,12 +664,13 @@ fragmentsRouter.openapi(discardFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     // Read the fragment key before discard for the log entry.
     const indexed = await storageService.fragments.read(projectContext, fragmentId);
-    await executeCommand(discardFragmentCommand, commandContext, {
+    await executeCommand(discardFragmentCommand, "fragment:discard", commandContext, {
       fragmentId,
       fragmentKey: indexed.key,
     });
@@ -659,11 +690,12 @@ fragmentsRouter.openapi(deleteFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const indexed = await storageService.fragments.read(projectContext, fragmentId);
-    await executeCommand(deleteFragmentCommand, commandContext, {
+    await executeCommand(deleteFragmentCommand, "fragment:delete", commandContext, {
       fragmentId,
       fragmentKey: indexed.key,
     });
@@ -683,11 +715,12 @@ fragmentsRouter.openapi(restoreFragmentRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const indexed = await storageService.fragments.read(projectContext, fragmentId);
-    await executeCommand(restoreFragmentCommand, commandContext, {
+    await executeCommand(restoreFragmentCommand, "fragment:restore", commandContext, {
       fragmentId,
       fragmentKey: indexed.key,
     });

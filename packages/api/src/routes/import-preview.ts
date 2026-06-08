@@ -86,6 +86,7 @@ importPreviewRouter.openapi(importPreviewRoute, async (ctx) => {
     storageService: ctx.get("storageService"),
     projectContext: ctx.get("projectContext")!,
     actor: "user",
+    correlationId: ctx.get("correlationId"),
     logger: ctx.get("logger"),
   };
 
@@ -109,7 +110,7 @@ importPreviewRouter.openapi(importPreviewRoute, async (ctx) => {
   }
 
   try {
-    const result = await executeCommand(command, commandContext, input);
+    const result = await executeCommand(command, "import:preview", commandContext, input);
     // Map pieces -> blocks -> assembled markdown via the shared exporter core, so
     // import preview and sequence preview render through the same renderer.
     const assembled = assemblePieces(result.pieces);

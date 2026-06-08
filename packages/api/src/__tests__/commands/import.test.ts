@@ -46,6 +46,7 @@ const makeCommandContext = async (): Promise<CommandContext> => {
     storageService: testContext.storageService,
     projectContext,
     actor: "user",
+    correlationId: "test-correlation",
     logger: makeLogger(),
   };
 };

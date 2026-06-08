@@ -84,9 +84,12 @@ warningsRouter.openapi(dismissWarningRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
-    const result = await executeCommand(dismissWarningCommand, commandContext, { id });
+    const result = await executeCommand(dismissWarningCommand, "warning:dismiss", commandContext, {
+      id,
+    });
     if (result === "not_found") {
       return ctx.json({ error: "NOT_FOUND", message: `Warning ${id} not found` }, 404);
     }

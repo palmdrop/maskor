@@ -273,6 +273,7 @@ notesRouter.openapi(extractNoteRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
@@ -285,7 +286,7 @@ notesRouter.openapi(extractNoteRoute, async (ctx) => {
 
     const newNote: Note = { uuid: randomUUID(), key, content };
 
-    const note = await executeCommand(extractNoteCommand, commandContext, {
+    const note = await executeCommand(extractNoteCommand, "note:extract", commandContext, {
       newNote,
       sourceType,
       sourceKey,
@@ -310,6 +311,7 @@ notesRouter.openapi(appendNoteRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -318,7 +320,7 @@ notesRouter.openapi(appendNoteRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const note = await executeCommand(insertNoteCommand, commandContext, {
+    const note = await executeCommand(insertNoteCommand, "note:insert", commandContext, {
       noteId,
       insertedBody,
       position: "append",
@@ -329,7 +331,7 @@ notesRouter.openapi(appendNoteRoute, async (ctx) => {
       navigated,
     });
     if (sourceMode !== "cut") return ctx.json({ note, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -350,6 +352,7 @@ notesRouter.openapi(prependNoteRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const sourceKey = await resolveSourceKey(
@@ -358,7 +361,7 @@ notesRouter.openapi(prependNoteRoute, async (ctx) => {
       sourceUuid,
       sourceType,
     );
-    const note = await executeCommand(insertNoteCommand, commandContext, {
+    const note = await executeCommand(insertNoteCommand, "note:insert", commandContext, {
       noteId,
       insertedBody,
       position: "prepend",
@@ -369,7 +372,7 @@ notesRouter.openapi(prependNoteRoute, async (ctx) => {
       navigated,
     });
     if (sourceMode !== "cut") return ctx.json({ note, sourceCutFailed: false }, 200);
-    const cutSuccess = await executeCommand(cutBodyCommand, commandContext, {
+    const cutSuccess = await executeCommand(cutBodyCommand, "source:cut-body", commandContext, {
       sourceType,
       sourceId: sourceUuid,
       textToRemove: insertedBody,
@@ -418,10 +421,11 @@ notesRouter.openapi(createNoteRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const note: Note = { uuid: randomUUID(), key, content };
-    const result = await executeCommand(createNoteCommand, commandContext, note);
+    const result = await executeCommand(createNoteCommand, "note:create", commandContext, note);
     return ctx.json(result, 201);
   } catch (error) {
     return throwStorageError(error);
@@ -454,10 +458,11 @@ notesRouter.openapi(updateNoteRoute, async (ctx) => {
       storageService: ctx.get("storageService"),
       projectContext: ctx.get("projectContext")!,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
     const source: UpdateSource = patch.content !== undefined ? "user-content-save" : "programmatic";
-    const updated = await executeCommand(updateNoteCommand, commandContext, {
+    const updated = await executeCommand(updateNoteCommand, "note:update", commandContext, {
       noteId,
       patch,
       source,
@@ -478,11 +483,15 @@ notesRouter.openapi(deleteNoteRoute, async (ctx) => {
       storageService,
       projectContext,
       actor: "user",
+      correlationId: ctx.get("correlationId"),
       logger: ctx.get("logger"),
     };
 
     const note = await storageService.notes.read(projectContext, noteId);
-    await executeCommand(deleteNoteCommand, commandContext, { noteId, noteKey: note.key });
+    await executeCommand(deleteNoteCommand, "note:delete", commandContext, {
+      noteId,
+      noteKey: note.key,
+    });
     return ctx.body(null, 204);
   } catch (error) {
     return throwStorageError(error);

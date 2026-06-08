@@ -42,29 +42,29 @@ Changes in `packages/shared/src/schemas/domain/action.ts`.
 
 ### Phase 2 — Backend: correlation ID middleware + `executeCommand` failure capture
 
-- [ ] Add `correlationId: string` to `AppVariables` in `packages/api/src/app.ts`
-- [ ] Add correlation ID middleware in `app.ts` (after the existing logger middleware):
+- [x] Add `correlationId: string` to `AppVariables` in `packages/api/src/app.ts`
+- [x] Add correlation ID middleware in `app.ts` (after the existing logger middleware):
   - Reads `X-Correlation-Id` request header if present, otherwise generates a `randomUUID()`
   - Sets it on `ctx` via `ctx.set("correlationId", ...)`
   - Includes it in the existing structured request log line
   - Echoes it on the **success** response (`ctx.header("X-Correlation-Id", ...)` after `next()`). Error responses are handled by `onError` below — a thrown `HTTPException` replaces `ctx.res`, dropping headers set here, so the header must be re-applied there.
-- [ ] Add `correlationId: string` to `CommandContext` in `packages/api/src/commands/types.ts` (commands may want it for their own logging; `executeCommand` reads it from `ctx`)
-- [ ] Add a `commandId: string` parameter to `executeCommand` — the canonical domain label (e.g. `"fragment:update"`), used only when writing a failure entry. **No `label` field on the `Command` interface** — keeping it a call-site argument avoids editing every command file and every command test.
-- [ ] Update `executeCommand` to:
+- [x] Add `correlationId: string` to `CommandContext` in `packages/api/src/commands/types.ts` (commands may want it for their own logging; `executeCommand` reads it from `ctx`)
+- [x] Add a `commandId: string` parameter to `executeCommand` — the canonical domain label (e.g. `"fragment:update"`), used only when writing a failure entry. **No `label` field on the `Command` interface** — keeping it a call-site argument avoids editing every command file and every command test. **Deviation from plan:** `commandId` is the **2nd** parameter (`executeCommand(command, commandId, ctx, input)`), not the 4th — a 2nd-position arg is a single-line, per-command substitution at each call site, whereas a trailing arg would mean editing the close of every multi-line `input` literal.
+- [x] Update `executeCommand` to:
   - Attach `ctx.correlationId` to every success log entry
   - Wrap `command.execute()` in try/catch; on failure: append a `command:error` entry (best-effort, same catch pattern as today's append failures) carrying `commandId`, `ctx.correlationId`, `technicalMessage` from the error, **no** `friendlyMessage`, `target` omitted — then **re-throw the original error unchanged** (do not mutate it or its response)
-- [ ] Update all `executeCommand` call sites across route handlers to pass `ctx.get("correlationId")` into the `CommandContext` and the domain label as the new `commandId` argument
-- [ ] Update `app.ts` `onError` to stamp `X-Correlation-Id: ctx.get("correlationId")` on the outgoing response for **both** branches — this is the single chokepoint guaranteeing every error response carries the ID regardless of how the error was thrown:
+- [x] Update all `executeCommand` call sites across route handlers to pass `ctx.get("correlationId")` into the `CommandContext` and the domain label as the new `commandId` argument
+- [x] Update `app.ts` `onError` to stamp `X-Correlation-Id: ctx.get("correlationId")` on the outgoing response for **both** branches — this is the single chokepoint guaranteeing every error response carries the ID regardless of how the error was thrown:
   - `HTTPException`: clone `error.getResponse()` and add the header (the custom `res` built by `throwStorageError` does not carry headers set earlier on `ctx`)
   - 500 branch: add the header to the JSON response
-- [ ] Add `POST /projects/{projectId}/action-log/errors` route in `packages/api/src/routes/action-log.ts`:
+- [x] Add `POST /projects/{projectId}/action-log/errors` route in `packages/api/src/routes/action-log.ts`:
   - Accepts body: `{ commandId: string; correlationId: string; friendlyMessage?: string; technicalMessage: string }`
   - Appends a `command:error` log entry (actor: system, target: undefined)
   - Returns `204`
   - **Note**: this endpoint is for frontend-only command failures that never reached the backend. No `executeCommand` wrapper — direct append.
-- [ ] Run `bun run codegen` from repo root
-- [ ] Run `bun run verify` — fix any type errors from `CommandContext` and `Command` interface changes
-- [ ] `git commit`
+- [x] Run `bun run codegen` from repo root
+- [x] Run `bun run verify` — fix any type errors from `CommandContext` and `Command` interface changes
+- [x] `git commit`
 
 ---
 
