@@ -1,11 +1,11 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 import { renderFragmentEntryText } from "./fragment";
 import { renderAspectEntryText } from "./aspect";
 import { renderNoteEntryText } from "./note";
 import { renderReferenceEntryText } from "./reference";
 import { renderSequenceEntryText } from "./sequence";
 
-export const DOMAIN_LABELS: Record<LogEntry["target"]["type"], string> = {
+export const DOMAIN_LABELS: Record<ActionLogEntry["target"]["type"], string> = {
   fragment: "FRAGMENTS",
   aspect: "ASPECTS",
   note: "NOTES",
@@ -15,7 +15,7 @@ export const DOMAIN_LABELS: Record<LogEntry["target"]["type"], string> = {
   margin: "MARGINS",
 };
 
-export const renderEntryText = (entry: LogEntry): string => {
+export const renderEntryText = (entry: ActionLogEntry): string => {
   switch (entry.target.type) {
     case "fragment":
       return renderFragmentEntryText(entry);
@@ -37,14 +37,14 @@ export const renderEntryText = (entry: LogEntry): string => {
 
 // Entries whose nature is "the entity no longer exists" or "no single entity target"
 // — never render a link.
-const TERMINAL_TYPES = new Set<LogEntry["type"]>([
+const TERMINAL_TYPES = new Set<ActionLogEntry["type"]>([
   "aspect:deleted",
   "note:deleted",
   "reference:deleted",
   "fragment:imported",
 ]);
 
-export const isLinkable = (entry: LogEntry): boolean => {
+export const isLinkable = (entry: ActionLogEntry): boolean => {
   if (TERMINAL_TYPES.has(entry.type)) return false;
   if (entry.target.type === "sequence") return false;
   // Margins have no standalone entity page — they live beside their fragment.

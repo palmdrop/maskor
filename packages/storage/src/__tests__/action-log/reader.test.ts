@@ -9,6 +9,7 @@ const makeEntry = (id: string): LogEntry =>
   ({
     id,
     timestamp: `2026-05-08T10:00:0${id}.000Z`,
+    correlationId: `corr-${id}`,
     type: "fragment:created",
     actor: "user",
     target: { type: "fragment", uuid: `uuid-${id}`, key: `fragment-${id}` },

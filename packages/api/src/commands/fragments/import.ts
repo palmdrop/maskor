@@ -208,7 +208,7 @@ export const createImportCommand = (
             ...(importSequenceUuid ? { importSequenceUuid } : {}),
           };
 
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [
+    const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [
       {
         type: "fragment:imported",
         actor: "user",

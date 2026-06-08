@@ -69,6 +69,7 @@ export const ActionTypeSchema = z.enum([
   "draft:restored",
   "fragment:imported",
   "margin:updated",
+  "command:error",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
@@ -85,6 +86,9 @@ export type LogEntryTarget = z.infer<typeof LogEntryTargetSchema>;
 const base = z.object({
   id: z.string(),
   timestamp: z.string(),
+  // Required on every entry — ties the action back to the originating request
+  // (echoed via the X-Correlation-Id response header) and the backend logs.
+  correlationId: z.string(),
   actor: z.enum(["user", "system"]),
   target: LogEntryTargetSchema,
   undoable: z.boolean(),
@@ -212,8 +216,33 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
     }),
   ),
   entry("margin:updated", empty),
+  // Command failure. Unlike every other entry, this records "what happened"
+  // rather than "what the user did": actor is always the system, and target is
+  // optional because a failed command may have no resolved target. Written by
+  // `executeCommand` (backend-reached failures) or via the action-log errors
+  // endpoint (frontend-only failures). `friendlyMessage` is optional — the
+  // backend has no source for it, only the frontend sets it.
+  base.extend({
+    type: z.literal("command:error"),
+    actor: z.literal("system"),
+    target: LogEntryTargetSchema.optional(),
+    undoable: z.literal(false),
+    payload: z.object({
+      commandId: z.string(),
+      friendlyMessage: z.string().optional(),
+      technicalMessage: z.string(),
+    }),
+  }),
 ]);
 
 export type LogEntry = z.infer<typeof LogEntrySchema>;
 export type ActionPayload = LogEntry["payload"];
 export const LogEntryListSchema = z.array(LogEntrySchema);
+
+// A command failure entry — "what happened" rather than "what the user did".
+export type CommandErrorEntry = Extract<LogEntry, { type: "command:error" }>;
+
+// Every other entry — a user action with a resolved target. These always carry a
+// required `target`; only `command:error` makes it optional. Renderers that assume
+// a target should take this narrower type, not the full `LogEntry` union.
+export type ActionLogEntry = Exclude<LogEntry, { type: "command:error" }>;

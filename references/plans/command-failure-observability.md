@@ -1,7 +1,7 @@
 # Command failure observability: toast errors, correlation IDs, and action log error entries
 
 **Date**: 2026-06-08
-**Status**: Todo
+**Status**: In Progress
 **Specs**: `specifications/command-palette.md`
 **ADR**: `references/adr/0012-command-failure-observability.md`
 
@@ -27,16 +27,16 @@ Every failure of a command-system dispatch is surfaced to the user via a toast (
 
 Changes in `packages/shared/src/schemas/domain/action.ts`.
 
-- [ ] Add `correlationId: z.string()` to the `base` LogEntry schema (required on every entry; existing `.jsonl` files on disk can be discarded — greenfield, no backward-compat needed)
-- [ ] Add `"command:error"` to `ActionTypeSchema`
-- [ ] Add a `command:error` member to `LogEntrySchema` discriminated union:
+- [x] Add `correlationId: z.string()` to the `base` LogEntry schema (required on every entry; existing `.jsonl` files on disk can be discarded — greenfield, no backward-compat needed)
+- [x] Add `"command:error"` to `ActionTypeSchema`
+- [x] Add a `command:error` member to `LogEntrySchema` discriminated union:
   - `actor: z.literal("system")` (override base's `z.enum(["user", "system"])`)
   - `target: LogEntryTargetSchema.optional()` (override the required base field — only `command:error` makes target optional)
   - Payload: `z.object({ commandId: z.string(), friendlyMessage: z.string().optional(), technicalMessage: z.string() })` — `friendlyMessage` optional because backend-written entries (from `executeCommand`) have no source for it; only frontend-written entries set it
   - `undoable: z.literal(false)`
-- [ ] Run `bun run codegen` from repo root to regenerate frontend API types
-- [ ] Run `bun run verify` — fix any type errors caused by the now-required `correlationId` field on existing action log test fixtures
-- [ ] `git commit`
+- [x] Run `bun run codegen` from repo root to regenerate frontend API types
+- [x] Run `bun run verify` — fix any type errors caused by the now-required `correlationId` field on existing action log test fixtures
+- [x] `git commit`
 
 ---
 
@@ -145,6 +145,7 @@ Audit every command in `packages/frontend/src/lib/commands/` and add `onFailure`
 - `project:switch-project` (global) — the `arg.items` async loader already closes the palette on failure (existing `console.error`); replace that with `toast.error` directly (the items loader failure is not a command failure — it's an arg-loading failure; fix the palette's `handleSelectCommand` catch block to call `toast.error` rather than `console.error`)
 
 **Commands that do NOT need `onFailure`** (pure navigation or local UI state, cannot throw):
+
 - All `navigation:go-to-*` — router navigation only
 - `command-palette:open/close`, `quick-switcher:open/close` — pure UI state
 - `editor:increase-font-size / decrease-font-size / increase-margin / decrease-margin` — local settings, synchronous
@@ -160,8 +161,8 @@ Audit every command in `packages/frontend/src/lib/commands/` and add `onFailure`
 
 Changes in `packages/frontend/src/pages/ProjectHistoryPage/`.
 
-- [ ] Update all existing action row renderers to guard against `entry.target` being `undefined` (now possible for `command:error` entries — TypeScript will enforce this after the schema change in Phase 1)
-- [ ] Add a `CommandFailureRow` component that renders a `command:error` entry:
+- [x] Update all existing action row renderers to guard against `entry.target` being `undefined` (done in Phase 1: introduced `ActionLogEntry` = `LogEntry` minus `command:error`; renderers/`EntryLink`/`entityExists` take the narrower type, `ActionLogList` narrows `command:error` at the boundary)
+- [x] Add a `CommandFailureRow` component that renders a `command:error` entry (added in Phase 1, wired into `ActionLogList`):
   - Distinct styling: destructive/warning left border or icon, not an action chip
   - Primary text: `entry.payload.friendlyMessage ?? entry.payload.technicalMessage` (backend-written entries omit `friendlyMessage`)
   - Secondary: timestamp
@@ -189,6 +190,7 @@ Changes in `packages/frontend/src/pages/ProjectHistoryPage/`.
 ALWAYS CREATE TESTS for the behavior implemented, unless appropriate tests already exist.
 
 Key test surfaces:
+
 - `CommandsProvider`: commands with `onFailure` that throw → toast called, error POST fired (mock the POST). Commands without `onFailure` that throw → no toast, `console.error` only.
 - `CommandsProvider`: `onCommandError` filter returning `true` suppresses the toast.
 - `customFetch`: non-OK response with `X-Correlation-Id` header → `ApiRequestError.correlationId` is set. Include a case where the error is an `HTTPException` from `throwStorageError` to prove the header survives that path (the case the body approach would miss).

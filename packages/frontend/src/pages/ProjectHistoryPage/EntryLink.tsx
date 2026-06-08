@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 
 type Props = {
-  entry: LogEntry;
+  entry: ActionLogEntry;
   projectId: string;
   children: ReactNode;
 };

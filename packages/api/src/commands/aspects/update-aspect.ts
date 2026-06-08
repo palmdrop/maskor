@@ -31,7 +31,7 @@ export const updateAspectCommand: Command<UpdateAspectInput, AspectUpdateRespons
       patch,
     );
 
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [];
+    const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [];
 
     if (keyChanged && patch.key) {
       logEntries.push({

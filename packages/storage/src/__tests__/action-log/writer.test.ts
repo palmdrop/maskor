@@ -9,6 +9,7 @@ const makeEntry = (overrides: Partial<LogEntry> = {}): LogEntry =>
   ({
     id: "test-id",
     timestamp: "2026-05-08T10:00:00.000Z",
+    correlationId: "test-correlation",
     type: "fragment:created",
     actor: "user",
     target: { type: "fragment", uuid: "uuid-1", key: "my-fragment" },

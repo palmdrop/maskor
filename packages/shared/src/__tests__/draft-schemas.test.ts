@@ -55,6 +55,7 @@ describe("draft action-log entries", () => {
     const entry = LogEntrySchema.parse({
       id: "e1",
       timestamp: "2026-05-18T12:00:00.000Z",
+      correlationId: "corr-e1",
       type: "draft:created",
       actor: "user",
       target: { type: "draft", uuid: "u1", title: "Draft 1" },
@@ -72,6 +73,7 @@ describe("draft action-log entries", () => {
     const entry = LogEntrySchema.parse({
       id: "e2",
       timestamp: "2026-05-18T12:00:00.000Z",
+      correlationId: "corr-e2",
       type: "draft:deleted",
       actor: "user",
       target: { type: "draft", uuid: "u1", title: "Draft 1" },
@@ -85,6 +87,7 @@ describe("draft action-log entries", () => {
     const entry = LogEntrySchema.parse({
       id: "e3",
       timestamp: "2026-05-18T12:00:00.000Z",
+      correlationId: "corr-e3",
       type: "draft:restored",
       actor: "user",
       target: { type: "draft", uuid: "u1", title: "Draft 1" },

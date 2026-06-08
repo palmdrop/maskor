@@ -1,8 +1,8 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 
-const key = (entry: LogEntry) => entry.target.key ?? entry.target.uuid;
+const key = (entry: ActionLogEntry) => entry.target.key ?? entry.target.uuid;
 
-export const renderReferenceEntryText = (entry: LogEntry): string => {
+export const renderReferenceEntryText = (entry: ActionLogEntry): string => {
   switch (entry.type) {
     case "reference:created":
       return `Reference "${key(entry)}" created`;

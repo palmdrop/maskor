@@ -1,8 +1,8 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 
-const key = (entry: LogEntry) => entry.target.key ?? entry.target.uuid;
+const key = (entry: ActionLogEntry) => entry.target.key ?? entry.target.uuid;
 
-export const renderAspectEntryText = (entry: LogEntry): string => {
+export const renderAspectEntryText = (entry: ActionLogEntry): string => {
   switch (entry.type) {
     case "aspect:created":
       return `Aspect "${key(entry)}" created`;

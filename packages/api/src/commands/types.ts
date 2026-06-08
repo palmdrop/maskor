@@ -16,7 +16,7 @@ export type Command<TInput, TOutput> = {
     input: TInput,
   ): Promise<{
     result: TOutput;
-    logEntries: Omit<LogEntry, "id" | "timestamp">[];
+    logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[];
   }>;
 };
 
@@ -32,6 +32,7 @@ export const executeCommand = async <TInput, TOutput>(
       ...entry,
       id: randomUUID(),
       timestamp: new Date().toISOString(),
+      correlationId: randomUUID(),
     } as LogEntry;
 
     try {

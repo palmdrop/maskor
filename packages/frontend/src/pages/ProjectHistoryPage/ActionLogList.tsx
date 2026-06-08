@@ -1,6 +1,7 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry, LogEntry } from "@maskor/shared";
 import { DOMAIN_LABELS, isLinkable, renderEntryText } from "./renderers/registry";
 import { EntryLink } from "./EntryLink";
+import { CommandFailureRow } from "./CommandFailureRow";
 
 export type ExistenceMaps = {
   fragment: ReadonlySet<string>;
@@ -40,7 +41,7 @@ const groupByDay = (entries: LogEntry[]): [string, LogEntry[]][] => {
   return [...groups.entries()];
 };
 
-const entityExists = (entry: LogEntry, existence: ExistenceMaps): boolean => {
+const entityExists = (entry: ActionLogEntry, existence: ExistenceMaps): boolean => {
   switch (entry.target.type) {
     case "fragment":
       return existence.fragment.has(entry.target.uuid);
@@ -76,6 +77,9 @@ export const ActionLogList = ({ projectId, entries, existence }: Props) => {
           </h3>
           <ul className="flex flex-col">
             {dayEntries.map((entry) => {
+              if (entry.type === "command:error") {
+                return <CommandFailureRow key={entry.id} entry={entry} />;
+              }
               const text = renderEntryText(entry);
               const linkable = isLinkable(entry) && entityExists(entry, existence);
               const body = linkable ? (

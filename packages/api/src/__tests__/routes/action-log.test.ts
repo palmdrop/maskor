@@ -35,6 +35,7 @@ describe("GET /projects/:projectId/action-log", () => {
       await testContext.storageService.actionLog.append(context, {
         id: `test-id-${index}`,
         timestamp: new Date().toISOString(),
+        correlationId: `corr-${index}`,
         type: "fragment:created",
         actor: "user",
         target: { type: "fragment", uuid: `uuid-${index}`, key: `fragment-${index}` },

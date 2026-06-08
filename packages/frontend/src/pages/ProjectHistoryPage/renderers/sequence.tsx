@@ -1,8 +1,8 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 
-const sequenceName = (entry: LogEntry) => entry.target.title ?? entry.target.uuid;
+const sequenceName = (entry: ActionLogEntry) => entry.target.title ?? entry.target.uuid;
 
-export const renderSequenceEntryText = (entry: LogEntry): string => {
+export const renderSequenceEntryText = (entry: ActionLogEntry): string => {
   switch (entry.type) {
     case "sequence:fragment-placed":
       return `Fragment "${entry.payload.fragmentKey}" placed in sequence "${sequenceName(entry)}"`;

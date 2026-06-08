@@ -100,6 +100,7 @@ describe("StorageService.drafts", () => {
     await service.actionLog.append(context, {
       id: "post-snapshot",
       timestamp: new Date().toISOString(),
+      correlationId: "corr-post-snapshot",
       type: "fragment:created",
       actor: "user",
       target: { type: "fragment", uuid: "post" },

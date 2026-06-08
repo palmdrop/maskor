@@ -6761,6 +6761,9 @@
                           "timestamp": {
                             "type": "string"
                           },
+                          "correlationId": {
+                            "type": "string"
+                          },
                           "actor": {
                             "type": "string",
                             "enum": [
@@ -6849,6 +6852,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -6863,6 +6867,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -6953,6 +6960,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -6967,6 +6975,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7057,6 +7068,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7071,6 +7083,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7161,6 +7176,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7175,6 +7191,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7265,6 +7284,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7279,6 +7299,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7369,6 +7392,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7383,6 +7407,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7473,6 +7500,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7487,6 +7515,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7577,6 +7608,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7591,6 +7623,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7681,6 +7716,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7695,6 +7731,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7785,6 +7824,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7799,6 +7839,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7889,6 +7932,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -7903,6 +7947,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -7993,6 +8040,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8007,6 +8055,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8063,6 +8114,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8077,6 +8129,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8133,6 +8188,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8147,6 +8203,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8220,6 +8279,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8234,6 +8294,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8301,6 +8364,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8315,6 +8379,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8371,6 +8438,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8385,6 +8453,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8441,6 +8512,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8455,6 +8527,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8511,6 +8586,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8525,6 +8601,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8592,6 +8671,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8606,6 +8686,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8669,6 +8752,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8683,6 +8767,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8746,6 +8833,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8760,6 +8848,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8823,6 +8914,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8837,6 +8929,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8900,6 +8995,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8914,6 +9010,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -8981,6 +9080,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -8995,6 +9095,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9058,6 +9161,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9072,6 +9176,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9143,6 +9250,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9157,6 +9265,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9213,6 +9324,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9227,6 +9339,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9283,6 +9398,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9297,6 +9413,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9369,6 +9488,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9383,6 +9503,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9450,6 +9573,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9464,6 +9588,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9527,6 +9654,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9541,6 +9669,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9604,6 +9735,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9618,6 +9750,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9681,6 +9816,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9695,6 +9831,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9758,6 +9897,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9772,6 +9912,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9828,6 +9971,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9842,6 +9986,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9898,6 +10045,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9912,6 +10060,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -9981,6 +10132,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -9995,6 +10147,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10062,6 +10217,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10076,6 +10232,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10132,6 +10291,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10146,6 +10306,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10209,6 +10372,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10223,6 +10387,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10279,6 +10446,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10293,6 +10461,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10349,6 +10520,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10363,6 +10535,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10432,6 +10607,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10446,6 +10622,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10513,6 +10692,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10527,6 +10707,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10583,6 +10766,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10597,6 +10781,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10660,6 +10847,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10674,6 +10862,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10737,6 +10928,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10751,6 +10943,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10814,6 +11009,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10828,6 +11024,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10891,6 +11090,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10905,6 +11105,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -10961,6 +11164,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -10975,6 +11179,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11042,6 +11249,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11056,6 +11264,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11112,6 +11323,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11126,6 +11338,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11182,6 +11397,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11196,6 +11412,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11252,6 +11471,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11266,6 +11486,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11322,6 +11545,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11336,6 +11560,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11399,6 +11626,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11413,6 +11641,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11480,6 +11711,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11494,6 +11726,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11561,6 +11796,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11575,6 +11811,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11638,6 +11877,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11652,6 +11892,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11715,6 +11958,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11729,6 +11973,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11792,6 +12039,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11806,6 +12054,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11873,6 +12124,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11887,6 +12139,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -11953,6 +12208,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -11967,6 +12223,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -12030,6 +12289,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -12044,6 +12304,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -12110,6 +12373,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -12124,6 +12388,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -12204,6 +12471,7 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
                           "undoable",
@@ -12218,6 +12486,9 @@
                             "type": "string"
                           },
                           "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
                             "type": "string"
                           },
                           "actor": {
@@ -12274,8 +12545,98 @@
                         "required": [
                           "id",
                           "timestamp",
+                          "correlationId",
                           "actor",
                           "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean",
+                            "enum": [
+                              false
+                            ]
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "command:error"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "commandId": {
+                                "type": "string"
+                              },
+                              "friendlyMessage": {
+                                "type": "string"
+                              },
+                              "technicalMessage": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "commandId",
+                              "technicalMessage"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "correlationId",
+                          "actor",
                           "undoable",
                           "type",
                           "payload"

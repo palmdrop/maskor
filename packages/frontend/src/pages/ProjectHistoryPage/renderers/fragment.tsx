@@ -1,8 +1,8 @@
-import type { LogEntry } from "@maskor/shared";
+import type { ActionLogEntry } from "@maskor/shared";
 
-const key = (entry: LogEntry) => entry.target.key ?? entry.target.uuid;
+const key = (entry: ActionLogEntry) => entry.target.key ?? entry.target.uuid;
 
-export const renderFragmentEntryText = (entry: LogEntry): string => {
+export const renderFragmentEntryText = (entry: ActionLogEntry): string => {
   switch (entry.type) {
     case "fragment:created":
       return `Fragment "${key(entry)}" created`;

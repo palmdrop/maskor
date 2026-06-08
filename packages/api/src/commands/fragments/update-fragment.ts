@@ -49,7 +49,7 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       ctx.storageService.suggestion.recordEditSaved(ctx.projectContext, existing.uuid);
     }
 
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [];
+    const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [];
 
     if (keyChanged) {
       logEntries.push({

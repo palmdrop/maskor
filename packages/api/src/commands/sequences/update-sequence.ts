@@ -10,7 +10,7 @@ type UpdateSequenceInput = {
 export const updateSequenceCommand: Command<UpdateSequenceInput, IndexedSequence> = {
   async execute(ctx, { sequenceId, patch }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [];
+    const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [];
 
     if (patch.isMain === true && !indexed.isMain) {
       await ctx.storageService.sequences.setMain(ctx.projectContext, sequenceId);
