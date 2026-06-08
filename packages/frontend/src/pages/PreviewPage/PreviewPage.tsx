@@ -7,7 +7,10 @@ import {
   getGetProjectQueryKey,
 } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
-import { useGetAssembledSequence, getGetAssembledSequenceQueryKey } from "@api/generated/preview/preview";
+import {
+  useGetAssembledSequence,
+  getGetAssembledSequenceQueryKey,
+} from "@api/generated/preview/preview";
 import {
   useGetFragment,
   useUpdateFragment,
@@ -114,11 +117,9 @@ export const PreviewPage = () => {
 
   // Fetch the raw body of the fragment being edited (the assembled markdown is NOT
   // the raw body — titles/headings/separators are injected, anchors stripped).
-  const { data: editingFragmentEnvelope } = useGetFragment(
-    projectId,
-    editingFragmentUuid ?? "",
-    { query: { enabled: !!editingFragmentUuid } },
-  );
+  const { data: editingFragmentEnvelope } = useGetFragment(projectId, editingFragmentUuid ?? "", {
+    query: { enabled: !!editingFragmentUuid },
+  });
   const editingFragment =
     editingFragmentEnvelope?.status === 200 ? editingFragmentEnvelope.data : null;
 
@@ -161,7 +162,14 @@ export const PreviewPage = () => {
         setIsSavingFragment(false);
       }
     },
-    [editingFragmentUuid, activeSequenceUuid, projectId, updateFragment, queryClient, previewParams],
+    [
+      editingFragmentUuid,
+      activeSequenceUuid,
+      projectId,
+      updateFragment,
+      queryClient,
+      previewParams,
+    ],
   );
 
   const handleCancelEdit = useCallback(() => {
@@ -171,26 +179,23 @@ export const PreviewPage = () => {
   // Resolve the double-clicked fragment UUID from the nearest preceding
   // `.fragment-anchor` element (the invisible sentinel nodes rendered by
   // FragmentAnchor). Clicks before any anchor or inside injected headings → null.
-  const resolveFragmentFromDoubleClick = useCallback(
-    (event: React.MouseEvent): string | null => {
-      const main = mainRef.current;
-      if (!main) return null;
-      const target = event.target as Node;
-      const anchors = [...main.getElementsByClassName("fragment-anchor")];
-      // Among all anchors that precede the click target, pick the last one (the
-      // nearest one). `compareDocumentPosition` bit 4 (DOCUMENT_POSITION_FOLLOWING)
-      // is set when the argument follows the reference node.
-      const preceding = anchors.filter(
-        (anchor) => anchor.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-      const nearest = preceding.at(-1) as Element | undefined;
-      if (!nearest) return null;
-      const id = nearest.id;
-      if (!id.startsWith("fragment-")) return null;
-      return id.slice("fragment-".length);
-    },
-    [],
-  );
+  const resolveFragmentFromDoubleClick = useCallback((event: React.MouseEvent): string | null => {
+    const main = mainRef.current;
+    if (!main) return null;
+    const target = event.target as Node;
+    const anchors = [...main.getElementsByClassName("fragment-anchor")];
+    // Among all anchors that precede the click target, pick the last one (the
+    // nearest one). `compareDocumentPosition` bit 4 (DOCUMENT_POSITION_FOLLOWING)
+    // is set when the argument follows the reference node.
+    const preceding = anchors.filter(
+      (anchor) => anchor.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    const nearest = preceding.at(-1) as Element | undefined;
+    if (!nearest) return null;
+    const id = nearest.id;
+    if (!id.startsWith("fragment-")) return null;
+    return id.slice("fragment-".length);
+  }, []);
 
   const handleMainDoubleClick = useCallback(
     (event: React.MouseEvent) => {

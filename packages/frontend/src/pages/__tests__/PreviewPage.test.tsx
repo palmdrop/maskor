@@ -158,9 +158,7 @@ const wrap = () => {
 const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
 const { useListSequences } = await import("@api/generated/sequences/sequences");
 const { useGetAssembledSequence } = await import("@api/generated/preview/preview");
-const { useGetFragment, useUpdateFragment } = await import(
-  "@api/generated/fragments/fragments"
-);
+const { useGetFragment, useUpdateFragment } = await import("@api/generated/fragments/fragments");
 const { PreviewPage } = await import("../PreviewPage");
 
 const mockMutate = vi.fn();

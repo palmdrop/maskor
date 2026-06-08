@@ -29,11 +29,7 @@ vi.mock("@components/prose-editor", () => ({
       setHighlightedAnchor: vi.fn(),
     }));
     return (
-      <div
-        data-testid="prose-editor-stub"
-        data-content={content}
-        data-vim-mode={String(vimMode)}
-      />
+      <div data-testid="prose-editor-stub" data-content={content} data-vim-mode={String(vimMode)} />
     );
   }),
 }));

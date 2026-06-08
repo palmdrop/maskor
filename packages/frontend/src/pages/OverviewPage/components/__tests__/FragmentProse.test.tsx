@@ -41,7 +41,9 @@ vi.mock("@components/inline-fragment-editor", () => ({
 }));
 
 vi.mock("@components/readonly-prose", () => ({
-  ReadonlyProse: ({ content }: { content: string }) => <div data-testid="readonly-prose">{content}</div>,
+  ReadonlyProse: ({ content }: { content: string }) => (
+    <div data-testid="readonly-prose">{content}</div>
+  ),
 }));
 
 const { FragmentProse } = await import("../FragmentProse");
