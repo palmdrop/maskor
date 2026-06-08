@@ -98,7 +98,7 @@ const ReorderRow = ({
         isSelected
           ? "border-primary bg-primary/5 text-foreground"
           : "border-border bg-card text-foreground hover:bg-muted"
-      }`}
+      } ${fragment.isDiscarded ? "bg-muted" : ""}`}
     >
       {/*
       // HIDDEN FOR NOW SINCE IT COVERS THE FRAGMENT TITLE 

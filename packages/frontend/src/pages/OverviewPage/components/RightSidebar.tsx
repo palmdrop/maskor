@@ -128,6 +128,8 @@ const FragmentDetail = ({
     ? violations.filter((v) => v.fragmentUuid === fragment.uuid)
     : [];
 
+  const isDiscarded = fragment.isDiscarded;
+
   return (
     <div className="flex flex-col gap-4 p-3">
       {onSaveContent && selectedContent !== undefined ? (
@@ -136,6 +138,7 @@ const FragmentDetail = ({
           fragmentUuid={fragment.uuid}
           title={fragment.key}
           content={selectedContent}
+          isDiscarded={isDiscarded}
           detailLevel="prose"
           excerpt={fragment.excerpt ?? undefined}
           onSaveContent={onSaveContent}
