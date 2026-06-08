@@ -123,10 +123,10 @@ export const FragmentProse = ({
   // processed both renders and their effects — before the next paint, no flicker.
   useEffect(() => {
     if (!isEditing) return;
-    const id = requestAnimationFrame(() => {
+    const id = setTimeout(() => {
       containerRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
+    }, 0);
+    return () => clearTimeout(id);
   }, [isEditing]);
 
   // On cancel: restore the viewport's scroll position via the captured anchor so
@@ -139,11 +139,11 @@ export const FragmentProse = ({
 
     if (reason === "cancel" && scrollAnchorRef.current) {
       if (containerRef.current) {
-        restoreScrollAnchor(findScrollContainer(containerRef.current), scrollAnchorRef.current);
+        // restoreScrollAnchor(findScrollContainer(containerRef.current), scrollAnchorRef.current);
       }
       scrollAnchorRef.current = null;
     } else if (reason === "save") {
-      containerRef.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
+      // containerRef.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
     }
   }, [isEditing]);
 

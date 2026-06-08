@@ -282,10 +282,10 @@ export const PreviewPage = () => {
     }
     if (!editSplit || hasScrolledToEditorRef.current) return;
     hasScrolledToEditorRef.current = true;
-    const id = requestAnimationFrame(() => {
+    const id = setTimeout(() => {
       editRegionRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
+    }, 0);
+    return () => clearTimeout(id);
   }, [editSplit, editingFragmentUuid]);
 
   if (assembledEnvelope?.status === 404) {
@@ -325,7 +325,7 @@ export const PreviewPage = () => {
             </div>
           }
         />
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        {}
         <main
           className="flex-1 overflow-y-auto"
           ref={mainRef}
