@@ -484,11 +484,11 @@ describe("PreviewPage — inline editing", () => {
   });
 
   it("save scrolls to the saved fragment's anchor once the editor closes", async () => {
-    const originalRaf = window.requestAnimationFrame;
-    window.requestAnimationFrame = (callback) => {
-      callback(0);
-      return 0;
-    };
+    const scrollIntoView = vi.fn();
+    document.getElementById = vi.fn().mockImplementation((id: string) => {
+      if (id === "fragment-frag-1") return { scrollIntoView };
+      return null;
+    });
 
     setupMocks({ assembled: makeAssembledWithSentinels() });
     (useGetFragment as Mock).mockReturnValue({
@@ -497,19 +497,45 @@ describe("PreviewPage — inline editing", () => {
 
     const { container } = render(<PreviewPage />, { wrapper: wrap() });
     const main = container.querySelector("main")!;
-    const anchor = injectFragmentAnchor(main, "frag-1");
-    anchor.scrollIntoView = vi.fn();
+    injectFragmentAnchor(main, "frag-1");
     const textNode = document.createElement("p");
     main.appendChild(textNode);
 
     fireEvent.doubleClick(textNode);
 
     await act(async () => {
-      capturedEditorOnSave?.("new content");
+      await capturedEditorOnSave?.("new content");
     });
 
-    expect(anchor.scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+  });
 
-    window.requestAnimationFrame = originalRaf;
+  it("cancel scrolls back to the fragment anchor", async () => {
+    const scrollIntoView = vi.fn();
+    document.getElementById = vi.fn().mockImplementation((id: string) => {
+      if (id === "fragment-frag-1") return { scrollIntoView };
+      return null;
+    });
+
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+    (useGetFragment as Mock).mockReturnValue({
+      data: { status: 200 as const, data: makeFragmentData("frag-1", "body") },
+    });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    main.appendChild(textNode);
+
+    fireEvent.doubleClick(textNode);
+    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
+
+    await act(async () => {
+      capturedEditorOnCancel?.();
+    });
+
+    expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
   });
 });

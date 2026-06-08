@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,6 +43,9 @@ export const PreviewPage = () => {
   const { fontSize, maxParagraphWidth } = useProjectEditorConfig(projectId);
 
   const mainRef = useRef<HTMLElement>(null);
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  // Prevents duplicate enter-edit scrolls when assembled refetches while editing.
+  const hasScrolledToEditorRef = useRef(false);
 
   const queryClient = useQueryClient();
 
@@ -125,17 +128,18 @@ export const PreviewPage = () => {
 
   const { mutateAsync: updateFragment } = useUpdateFragment();
 
-  // Scroll to the saved fragment once the assembled markdown refetches and renders.
-  useEffect(() => {
+  // Scroll to the saved/cancelled fragment once the prose has re-rendered.
+  // useLayoutEffect: fires synchronously after DOM commit so the scroll happens
+  // before paint (no flicker), and reliably within act() in tests.
+  // Tiptap mounts via useLayoutEffect in children, which fires before this parent
+  // useLayoutEffect, so the fragment anchor is already in the DOM here.
+  useLayoutEffect(() => {
     if (!pendingScrollUuid || !assembled) return;
     const uuid = pendingScrollUuid;
     setPendingScrollUuid(null);
-    // Defer one tick so the ReadonlyProse has finished rendering the new content.
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`fragment-${uuid}`)
-        ?.scrollIntoView({ behavior: "instant", block: "start" });
-    });
+    document
+      .getElementById(`fragment-${uuid}`)
+      ?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [assembled, pendingScrollUuid]);
 
   const handleSaveFragment = useCallback(
@@ -173,8 +177,9 @@ export const PreviewPage = () => {
   );
 
   const handleCancelEdit = useCallback(() => {
+    setPendingScrollUuid(editingFragmentUuid);
     setEditingFragmentUuid(null);
-  }, []);
+  }, [editingFragmentUuid]);
 
   // Resolve the double-clicked fragment UUID from the nearest preceding
   // `.fragment-anchor` element (the invisible sentinel nodes rendered by
@@ -251,6 +256,20 @@ export const PreviewPage = () => {
     return splitAroundFragment(assembled.markdown, editingFragmentUuid);
   }, [assembled, editingFragmentUuid, editingFragment]);
 
+  // When the split editor becomes ready, scroll to the editor wrapper to counteract
+  // the scroll displacement caused by ProseEditor's cursor-restore scrollIntoView.
+  // Parent effects run AFTER child effects — ProseEditor's synchronous scrollIntoView
+  // has already fired, so this scroll wins without needing a RAF.
+  useEffect(() => {
+    if (!editingFragmentUuid) {
+      hasScrolledToEditorRef.current = false;
+      return;
+    }
+    if (!editSplit || hasScrolledToEditorRef.current) return;
+    hasScrolledToEditorRef.current = true;
+    editorWrapperRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+  }, [editSplit, editingFragmentUuid]);
+
   if (assembledEnvelope?.status === 404) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -309,7 +328,8 @@ export const PreviewPage = () => {
                 maxParagraphWidth={maxParagraphWidth}
               />
               <div
-                className="mx-auto w-full border rounded-md p-3 my-4"
+                ref={editorWrapperRef}
+                className="mx-auto w-full border rounded-md p-3 my-4 scroll-mt-6"
                 style={{ maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` }}
               >
                 <InlineFragmentEditor
