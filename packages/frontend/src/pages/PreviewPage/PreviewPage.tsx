@@ -24,6 +24,7 @@ import { InlineFragmentEditor } from "@components/inline-fragment-editor";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { PreviewProse } from "./PreviewProse";
 import { splitAroundFragment } from "@lib/preview/split-around-fragment";
+import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from "@lib/scroll-anchor";
 import {
   ProjectPreviewSeparator,
   type GetAssembledSequenceParams,
@@ -43,9 +44,11 @@ export const PreviewPage = () => {
   const { fontSize, maxParagraphWidth } = useProjectEditorConfig(projectId);
 
   const mainRef = useRef<HTMLElement>(null);
-  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  // Wraps the title (when visible) + editor so enter-edit snaps both into view.
+  const editRegionRef = useRef<HTMLDivElement>(null);
   // Prevents duplicate enter-edit scrolls when assembled refetches while editing.
   const hasScrolledToEditorRef = useRef(false);
+  const cancelScrollAnchorRef = useRef<ScrollAnchor | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -128,19 +131,28 @@ export const PreviewPage = () => {
 
   const { mutateAsync: updateFragment } = useUpdateFragment();
 
-  // Scroll to the saved/cancelled fragment once the prose has re-rendered.
-  // useLayoutEffect: fires synchronously after DOM commit so the scroll happens
-  // before paint (no flicker), and reliably within act() in tests.
-  // Tiptap mounts via useLayoutEffect in children, which fires before this parent
-  // useLayoutEffect, so the fragment anchor is already in the DOM here.
+  // After save: scroll the saved fragment into view if not already visible.
+  // block:"nearest" avoids snapping to top when the fragment is already on screen.
+  // useLayoutEffect fires synchronously after DOM commit and reliably within act().
   useLayoutEffect(() => {
     if (!pendingScrollUuid || !assembled) return;
     const uuid = pendingScrollUuid;
     setPendingScrollUuid(null);
     document
       .getElementById(`fragment-${uuid}`)
-      ?.scrollIntoView({ behavior: "instant", block: "start" });
+      ?.scrollIntoView({ behavior: "instant", block: "nearest" });
   }, [assembled, pendingScrollUuid]);
+
+  // After cancel: restore the viewport position through the height change
+  // (editor → prose). Uses the anchor captured just before setEditingFragmentUuid(null).
+  useLayoutEffect(() => {
+    if (editingFragmentUuid || !cancelScrollAnchorRef.current || !assembled) return;
+    const anchor = cancelScrollAnchorRef.current;
+    cancelScrollAnchorRef.current = null;
+    if (mainRef.current) {
+      restoreScrollAnchor(mainRef.current, anchor);
+    }
+  }, [editingFragmentUuid, assembled]);
 
   const handleSaveFragment = useCallback(
     async (content: string) => {
@@ -177,9 +189,11 @@ export const PreviewPage = () => {
   );
 
   const handleCancelEdit = useCallback(() => {
-    setPendingScrollUuid(editingFragmentUuid);
+    if (mainRef.current) {
+      cancelScrollAnchorRef.current = captureScrollAnchor(mainRef.current, ".fragment-anchor");
+    }
     setEditingFragmentUuid(null);
-  }, [editingFragmentUuid]);
+  }, []);
 
   // Resolve the double-clicked fragment UUID from the nearest preceding
   // `.fragment-anchor` element (the invisible sentinel nodes rendered by
@@ -256,10 +270,9 @@ export const PreviewPage = () => {
     return splitAroundFragment(assembled.markdown, editingFragmentUuid);
   }, [assembled, editingFragmentUuid, editingFragment]);
 
-  // When the split editor becomes ready, scroll to the editor wrapper to counteract
-  // the scroll displacement caused by ProseEditor's cursor-restore scrollIntoView.
-  // Parent effects run AFTER child effects — ProseEditor's synchronous scrollIntoView
-  // has already fired, so this scroll wins without needing a RAF.
+  // When the split editor becomes ready, scroll the edit region (title + editor) to
+  // the top to counteract ProseEditor's cursor-restore scrollIntoView.
+  // Parent effects run AFTER child effects — ProseEditor's scroll has already fired.
   useEffect(() => {
     if (!editingFragmentUuid) {
       hasScrolledToEditorRef.current = false;
@@ -267,7 +280,7 @@ export const PreviewPage = () => {
     }
     if (!editSplit || hasScrolledToEditorRef.current) return;
     hasScrolledToEditorRef.current = true;
-    editorWrapperRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    editRegionRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [editSplit, editingFragmentUuid]);
 
   if (assembledEnvelope?.status === 404) {
@@ -327,18 +340,26 @@ export const PreviewPage = () => {
                 fontSize={fontSize}
                 maxParagraphWidth={maxParagraphWidth}
               />
-              <div
-                ref={editorWrapperRef}
-                className="mx-auto w-full border rounded-md p-3 my-4 scroll-mt-6"
-                style={{ maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` }}
-              >
-                <InlineFragmentEditor
-                  projectId={projectId}
-                  content={editingFragment!.content}
-                  onSave={handleSaveFragment}
-                  onCancel={handleCancelEdit}
-                  isSaving={isSavingFragment}
-                />
+              <div ref={editRegionRef} className="scroll-mt-6">
+                {preview.showTitles && fragmentsMap.get(editingFragmentUuid!)?.key && (
+                  <ReadonlyProse
+                    content={`### ${fragmentsMap.get(editingFragmentUuid!)!.key}`}
+                    fontSize={fontSize}
+                    maxParagraphWidth={maxParagraphWidth}
+                  />
+                )}
+                <div
+                  className="mx-auto w-full border rounded-md p-3 my-4"
+                  style={{ maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` }}
+                >
+                  <InlineFragmentEditor
+                    projectId={projectId}
+                    content={editingFragment!.content}
+                    onSave={handleSaveFragment}
+                    onCancel={handleCancelEdit}
+                    isSaving={isSavingFragment}
+                  />
+                </div>
               </div>
               <ReadonlyProse
                 content={editSplit.after}

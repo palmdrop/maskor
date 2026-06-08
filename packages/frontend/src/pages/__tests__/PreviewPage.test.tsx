@@ -507,16 +507,10 @@ describe("PreviewPage — inline editing", () => {
       await capturedEditorOnSave?.("new content");
     });
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "nearest" });
   });
 
-  it("cancel scrolls back to the fragment anchor", async () => {
-    const scrollIntoView = vi.fn();
-    document.getElementById = vi.fn().mockImplementation((id: string) => {
-      if (id === "fragment-frag-1") return { scrollIntoView };
-      return null;
-    });
-
+  it("cancel restores scroll via anchor technique (does not scrollIntoView the fragment anchor)", async () => {
     setupMocks({ assembled: makeAssembledWithSentinels() });
     (useGetFragment as Mock).mockReturnValue({
       data: { status: 200 as const, data: makeFragmentData("frag-1", "body") },
@@ -531,11 +525,19 @@ describe("PreviewPage — inline editing", () => {
     fireEvent.doubleClick(textNode);
     expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
 
+    // Set up the mock AFTER entering edit so we can tell if cancel triggers it.
+    const scrollIntoView = vi.fn();
+    document.getElementById = vi.fn().mockImplementation((id: string) => {
+      if (id === "fragment-frag-1") return { scrollIntoView };
+      return null;
+    });
+
     await act(async () => {
       capturedEditorOnCancel?.();
     });
 
     expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    // Cancel uses restoreScrollAnchor (scrollTop adjustment), not scrollIntoView.
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });

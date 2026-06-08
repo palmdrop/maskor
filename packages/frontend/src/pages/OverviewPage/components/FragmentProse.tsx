@@ -1,4 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  captureScrollAnchor,
+  findScrollContainer,
+  restoreScrollAnchor,
+  type ScrollAnchor,
+} from "@lib/scroll-anchor";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
 import { InlineFragmentEditor } from "@components/inline-fragment-editor";
@@ -71,6 +77,8 @@ export const FragmentProse = ({
   // Surfaces the edit affordance once the reader selects text inside this chunk.
   const [hasSelection, setHasSelection] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
+  const exitReasonRef = useRef<"cancel" | "save" | null>(null);
 
   const selectedClass = isSelected
     ? "border-primary bg-primary/5"
@@ -84,6 +92,15 @@ export const FragmentProse = ({
   };
 
   const cancelEditing = () => {
+    if (containerRef.current) {
+      const scrollContainer = findScrollContainer(containerRef.current);
+      scrollAnchorRef.current = captureScrollAnchor(
+        scrollContainer,
+        "[data-fragment-uuid]",
+        containerRef.current,
+      );
+    }
+    exitReasonRef.current = "cancel";
     setIsEditing(false);
   };
 
@@ -92,11 +109,37 @@ export const FragmentProse = ({
     setIsSaving(true);
     try {
       await onSaveContent(fragmentUuid, newContent);
+      exitReasonRef.current = "save";
       setIsEditing(false);
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Snap to top of fragment on enter-edit, counteracting ProseEditor's cursor-restore
+  // scrollIntoView. Parent useEffect fires after child effects, so this wins.
+  useEffect(() => {
+    if (!isEditing) return;
+    containerRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+  }, [isEditing]);
+
+  // On cancel: restore the viewport's scroll position via the captured anchor so
+  // height shrinkage (editor → prose) does not cause a visible jump.
+  // On save: scroll the fragment into view if it is not already visible.
+  useLayoutEffect(() => {
+    if (isEditing || !exitReasonRef.current) return;
+    const reason = exitReasonRef.current;
+    exitReasonRef.current = null;
+
+    if (reason === "cancel" && scrollAnchorRef.current) {
+      if (containerRef.current) {
+        restoreScrollAnchor(findScrollContainer(containerRef.current), scrollAnchorRef.current);
+      }
+      scrollAnchorRef.current = null;
+    } else if (reason === "save") {
+      containerRef.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
+    }
+  }, [isEditing]);
 
   // Reflect whether the current document selection lies inside this chunk, so a
   // reader who highlights a passage is offered the edit affordance for *this*

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 const PROJECT_ID = "proj-1";
@@ -201,6 +201,90 @@ describe("FragmentProse — in-context editing", () => {
 
     fireEvent.click(pencil);
     expect(screen.getByTestId("inline-editor")).toBeInTheDocument();
+  });
+});
+
+describe("FragmentProse — scroll behaviour", () => {
+  let scrollIntoView: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnSave = undefined;
+    capturedOnCancel = undefined;
+    scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    scrollIntoView.mockRestore();
+  });
+
+  it("entering edit mode scrolls the container to the top (block:start)", async () => {
+    render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Body"
+        isDiscarded={false}
+        detailLevel="prose"
+        onSaveContent={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    });
+  });
+
+  it("save scrolls the container into nearest view (block:nearest)", async () => {
+    render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Body"
+        isDiscarded={false}
+        detailLevel="prose"
+        onSaveContent={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
+
+    await act(async () => {
+      await capturedOnSave?.("Updated body");
+    });
+
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ behavior: "instant", block: "nearest" });
+  });
+
+  it("cancel uses anchor restore and does not scrollIntoView again after enter-edit", async () => {
+    render(
+      <FragmentProse
+        projectId={PROJECT_ID}
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Body"
+        isDiscarded={false}
+        detailLevel="prose"
+        onSaveContent={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit "frag-one"/i }));
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledTimes(1); // enter-edit scroll
+    });
+
+    await act(async () => {
+      capturedOnCancel?.();
+    });
+
+    // restoreScrollAnchor adjusts scrollTop — no additional scrollIntoView on cancel.
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });
 
