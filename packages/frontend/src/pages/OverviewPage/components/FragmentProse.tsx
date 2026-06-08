@@ -30,6 +30,7 @@ interface FragmentProseProps {
   fragmentUuid: string;
   title: string;
   content: string;
+  isDiscarded: boolean;
   detailLevel: OverviewDetailLevel;
   // Server-derived excerpt fallback used at the "excerpt" detail level when the
   // full content has not yet loaded.
@@ -49,6 +50,7 @@ export const FragmentProse = ({
   fragmentUuid,
   title,
   content,
+  isDiscarded,
   detailLevel,
   excerpt,
   isSelected,
@@ -132,6 +134,7 @@ export const FragmentProse = ({
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
+          {isDiscarded && " (discarded)"}
         </p>
         {editable && !isEditing && (
           <button

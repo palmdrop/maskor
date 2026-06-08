@@ -67,7 +67,7 @@ const SortableSpineFragment = ({
         transition: isDragging ? undefined : transition,
         opacity: isDragging ? 0.4 : 1,
       }}
-      className="flex items-start gap-1"
+      className={`flex items-start gap-1 ${fragment.isDiscarded ? "bg-muted" : ""}`}
     >
       <DragHandle
         attributes={attributes}
@@ -78,6 +78,7 @@ const SortableSpineFragment = ({
         <FragmentProse
           fragmentUuid={fragment.uuid}
           title={fragment.key}
+          isDiscarded={fragment.isDiscarded}
           content={content}
           excerpt={fragment.excerpt ?? undefined}
           detailLevel={detailLevel}
