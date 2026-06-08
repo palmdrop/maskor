@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, Trash2Icon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
 import type { OverviewDetailLevel } from "../../../router";
 
@@ -42,6 +42,10 @@ interface FragmentProseProps {
   // Saving routes the new content back to this fragmentUuid via the existing
   // fragment update path (ADR 0011 — the spine is a working surface, not export).
   onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  // When set, a trash affordance in the header removes this fragment from the
+  // active sequence (returns it to the pool). Only passed where the fragment is
+  // actually placed.
+  onRemove?: () => void;
 }
 
 // Shared single-fragment renderer used by both the prose spine and the right
@@ -56,6 +60,7 @@ export const FragmentProse = ({
   isSelected,
   onSelect,
   onSaveContent,
+  onRemove,
 }: FragmentProseProps) => {
   const editable = !!onSaveContent;
   const [isEditing, setIsEditing] = useState(false);
@@ -136,21 +141,39 @@ export const FragmentProse = ({
           {title}
           {isDiscarded && " (discarded)"}
         </p>
-        {editable && !isEditing && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              beginEditing();
-            }}
-            aria-label={`Edit "${title}"`}
-            title="Edit this fragment"
-            className={`shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus:opacity-100 ${
-              hasSelection ? "opacity-100" : "opacity-0 group-hover/prose:opacity-100"
-            }`}
-          >
-            <PencilIcon size={12} />
-          </button>
+        {!isEditing && (editable || onRemove) && (
+          <div className="flex shrink-0 items-center gap-1">
+            {editable && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  beginEditing();
+                }}
+                aria-label={`Edit "${title}"`}
+                title="Edit this fragment"
+                className={`rounded p-1 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus:opacity-100 ${
+                  hasSelection ? "opacity-100" : "opacity-0 group-hover/prose:opacity-100"
+                }`}
+              >
+                <PencilIcon size={12} />
+              </button>
+            )}
+            {onRemove && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemove();
+                }}
+                aria-label={`Remove "${title}" from sequence`}
+                title="Remove from sequence"
+                className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover/prose:opacity-100"
+              >
+                <Trash2Icon size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
@@ -711,6 +711,88 @@ describe("OverviewPage — merge sections", () => {
       sequenceId: SEQUENCE_UUID,
       sectionId: "sec-1",
     });
+  });
+});
+
+describe("OverviewPage — remove fragment from sequence", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("removes a placed fragment from the left reorder column", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(within(list).getByRole("button", { name: /Remove "alpha" from sequence/i }));
+
+    expect(unplaceMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+    });
+  });
+
+  it("does not offer a remove affordance on pool fragments", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    // beta sits in the pool, so it gets no remove button.
+    expect(
+      within(list).queryByRole("button", { name: /Remove "beta" from sequence/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("removes a placed fragment from the prose spine", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const spine = screen.getByTestId("prose-spine");
+    fireEvent.click(within(spine).getByRole("button", { name: /Remove "alpha" from sequence/i }));
+
+    expect(unplaceMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+    });
+  });
+
+  it("removes the selected fragment from the right detail panel", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Select the placed fragment so the right panel shows its detail.
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(list.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove from sequence" }));
+
+    expect(unplaceMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+    });
+  });
+
+  it("offers no right-panel remove button for an unplaced (pool) fragment", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Select the pool fragment (beta) from its pool row.
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(list.querySelector(`[data-fragment-uuid="${FRAG_B}"]`)!);
+
+    expect(screen.queryByRole("button", { name: "Remove from sequence" })).not.toBeInTheDocument();
   });
 });
 

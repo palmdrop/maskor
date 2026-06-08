@@ -38,6 +38,8 @@ describe("scopes/overview", () => {
     mergeableDownSections: [],
     mergeSectionUp: vi.fn(),
     mergeSectionDown: vi.fn(),
+    placedFragmentsForUnplace: [],
+    unplaceFragment: vi.fn(),
   };
 
   it("designate-main runs and disables when sequence is already main", () => {
@@ -137,6 +139,17 @@ describe("scopes/overview", () => {
     expect(cmd.disabled?.(eligible)).toBeUndefined();
     cmd.run(eligible, { uuid: "sec-1", name: "One" });
     expect(ctx.mergeSectionDown).toHaveBeenCalledWith("sec-1");
+  });
+
+  it("unplace-fragment runs with the chosen fragment and is gated on placement", () => {
+    const cmd = find(overviewCommands, "overview:unplace-fragment");
+    expect(cmd.disabled?.({ ...ctx, placedFragmentsForUnplace: [] })).toMatch(
+      /No placed fragments/,
+    );
+    const eligible = { ...ctx, placedFragmentsForUnplace: [{ uuid: "frag-1", key: "frag-one" }] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, { uuid: "frag-1", key: "frag-one" });
+    expect(ctx.unplaceFragment).toHaveBeenCalledWith("frag-1");
   });
 });
 

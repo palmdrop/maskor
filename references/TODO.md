@@ -87,7 +87,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] use command system to trigger quick-switcher and command palette too instead of custom keybind handlers in components
 
-- [ ] rework note system -- side by side view of note + fragment should be available
+- [x] rework note system -- side by side view of note + fragment should be available
   - goal: a way to write general notes, but also annotate text, point to specific parts
   - also, possibly include with comment system.
   - attach part of note to specific line/word(s). One long note with expandable-retractable comment lines, combined note + comment view?

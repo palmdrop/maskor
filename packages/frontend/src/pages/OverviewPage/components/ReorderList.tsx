@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Trash2Icon } from "lucide-react";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -45,6 +46,9 @@ interface ReorderRowProps {
   cycleTooltips: string[];
   isSelected: boolean;
   onSelect: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
+  // When set, a hover trash affordance removes this fragment from the sequence.
+  // Only passed for placed rows (pool rows are already unplaced).
+  onRemove?: (fragmentUuid: string) => void;
 }
 
 const ReorderRow = ({
@@ -54,6 +58,7 @@ const ReorderRow = ({
   cycleTooltips,
   isSelected,
   onSelect,
+  onRemove,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -94,7 +99,7 @@ const ReorderRow = ({
       }}
       {...attributes}
       {...listeners}
-      className={`flex items-center gap-2 rounded border px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none transition-colors ${
+      className={`group flex items-center gap-2 rounded border px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none transition-colors ${
         isSelected
           ? "border-primary bg-primary/5 text-foreground"
           : "border-border bg-card text-foreground hover:bg-muted"
@@ -110,6 +115,23 @@ const ReorderRow = ({
       */}
       <span className="truncate flex-1">{fragment.key}</span>
       <RowIndicators violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
+      {onRemove && (
+        <button
+          type="button"
+          // Stop the pointer event before it reaches the sortable listeners,
+          // otherwise pressing the trash starts a drag instead of a click.
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove(fragment.uuid);
+          }}
+          aria-label={`Remove "${fragment.key}" from sequence`}
+          title="Remove from sequence"
+          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+        >
+          <Trash2Icon size={12} />
+        </button>
+      )}
     </div>
   );
 };
@@ -157,6 +179,7 @@ interface SectionGroupProps {
   fragmentByUuid: Map<string, FragmentSummary>;
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
+  onRemoveFragment: (fragmentUuid: string) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
   editingSectionId: string | null;
@@ -184,6 +207,7 @@ const SectionGroup = ({
   fragmentByUuid,
   selectedFragmentUuids,
   onSelectFragment,
+  onRemoveFragment,
   getViolationTooltips,
   getCycleTooltips,
   editingSectionId,
@@ -386,6 +410,7 @@ const SectionGroup = ({
               cycleTooltips={getCycleTooltips(fragmentUuid)}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
+              onRemove={onRemoveFragment}
             />
           );
         })}
@@ -401,6 +426,7 @@ interface ReorderListProps {
   fragmentByUuid: Map<string, FragmentSummary>;
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string, modifiers?: SelectModifiers) => void;
+  onRemoveFragment: (fragmentUuid: string) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
   editingSectionId: string | null;
@@ -434,6 +460,7 @@ export const ReorderList = ({
   fragmentByUuid,
   selectedFragmentUuids,
   onSelectFragment,
+  onRemoveFragment,
   getViolationTooltips,
   getCycleTooltips,
   editingSectionId,
@@ -467,6 +494,7 @@ export const ReorderList = ({
             fragmentByUuid={fragmentByUuid}
             selectedFragmentUuids={selectedFragmentUuids}
             onSelectFragment={onSelectFragment}
+            onRemoveFragment={onRemoveFragment}
             getViolationTooltips={getViolationTooltips}
             getCycleTooltips={getCycleTooltips}
             editingSectionId={editingSectionId}
