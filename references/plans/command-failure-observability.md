@@ -82,27 +82,27 @@ Changes in `packages/shared/src/schemas/domain/action.ts`.
 
 **Types and definitions** (`packages/frontend/src/lib/commands/`):
 
-- [ ] Add `onFailure?: string | ((error: unknown) => { message: string; detail?: string })` to `CommonCommandDef` in `define.ts` and the corresponding interfaces in `types.ts` (`GlobalCommandDef`, `ScopeCommandDef`, and both `GlobalCommandInput*` / `ScopeCommandInput*` variants)
-- [ ] Add `onFailure` pass-through in `makeViewForGlobal` and `makeViewForScope` in `CommandsProvider.tsx` so it is accessible on `MergedCommandView`
+- [x] Add `onFailure?: string | ((error: unknown) => { message: string; detail?: string })` to `CommonCommandDef` (types.ts) and `CommandInputBase` (define.ts) — the latter is extended by every `*Input*` variant and by `MergedCommandView`, so one addition covers inputs + view. Exported `OnFailure` / `CommandFailureInfo` types.
+- [x] Add `onFailure` pass-through in `makeViewForGlobal` and `makeViewForScope` in `CommandsProvider.tsx` so it is accessible on `MergedCommandView`
 
 **`CommandsProvider.run()`**:
 
-- [ ] For commands that have `onFailure` declared, dispatch via `Promise.resolve().then(() => def.run(arg)).catch(handleFailure)` so synchronous throws are caught too — not only rejected promises:
+- [x] For commands that have `onFailure` declared, dispatch with error capture. **Deviation:** call `def.run(arg)` synchronously inside try/catch (catches sync throws) and attach `.catch` only when it returns a promise — `Promise.resolve().then(...)` would defer the success path to a microtask and break synchronous-invocation timing (palette/hotkey/tests):
   - Resolve the friendly message and detail from `onFailure`
   - If the error is an `ApiRequestError` with a `correlationId` → backend already logged it; call `toast.error(message, { description: detail })` only
   - If the error has no `correlationId` → generate a fresh `crypto.randomUUID()`, then post a `command:error` entry to `POST /projects/:projectId/action-log/errors` (best-effort, fire-and-forget) with that `correlationId`, `commandId` = the **frontend command id**, `friendlyMessage` = resolved message, `technicalMessage` = the error's message; then toast
   - **`commandId` principle — the most specific operation that actually failed.** A failure that reached the backend is logged by the backend with the backend command label (mutation-level, consistent with how successes are logged). A failure that never reached a backend command (network/pre-flight, or a pure-frontend command) has no mutation to name, so the frontend writes the frontend command id (intent-level). Do **not** try to map the frontend id onto a backend label — a single frontend command can fan out to several backend commands (e.g. `editor:save` → `fragment:update` + `margin:updated`), so the frontend cannot honestly pick one. Cross-path correlation is by `correlationId`, not by `commandId` equality.
   - The project ID for the POST is read from the router at fire time (same pattern as `getActiveProjectId()` in `router-helpers.ts`)
   - If the project ID is unavailable (global command with no active project), skip the POST and only toast
-- [ ] Commands without `onFailure` that throw: `console.error` in dev, no toast (developer error — they must declare `onFailure` or handle internally)
+- [x] Commands without `onFailure` that throw: `console.error` in dev, no toast (developer error — they must declare `onFailure` or handle internally)
 
 **`useCommandScope` filter**:
 
-- [ ] Update `useCommandScope` to accept an optional third argument: `options?: { onCommandError?: (commandId: string, error: unknown) => boolean | void }`
-- [ ] Thread the filter through `publishScope` in `CommandsProvider` — store it alongside the scope's `ctxRef`
-- [ ] In `CommandsProvider.run()`, before invoking the default `onFailure` toast path, check if the scope has an `onCommandError` filter; if it returns `true`, suppress the toast (the component handles it)
+- [x] Update `useCommandScope` to accept an optional third argument: `options?: { onCommandError?: (commandId: string, error: unknown) => boolean | void }`
+- [x] Thread the filter through `publishScope` in `CommandsProvider` — store it alongside the scope's `ctxRef`
+- [x] In `CommandsProvider.run()`, before invoking the default `onFailure` toast path, check if the scope has an `onCommandError` filter; if it returns `true`, suppress the toast (the component handles it)
 
-- [ ] `git commit`
+- [x] `git commit`
 
 ---
 

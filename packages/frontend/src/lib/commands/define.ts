@@ -6,6 +6,7 @@ import type {
   ScopeMeta,
   CommandArg,
   CommandCategory,
+  OnFailure,
 } from "./types";
 
 export const defineScope = <Ctx>(id: string, meta: { label: string }): Scope<Ctx> =>
@@ -16,6 +17,7 @@ export interface CommandInputBase<Id extends string> {
   label: string;
   category: CommandCategory;
   hotkey?: string | string[];
+  onFailure?: OnFailure;
 }
 
 // =====================================================================

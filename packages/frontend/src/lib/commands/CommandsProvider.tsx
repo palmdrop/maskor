@@ -7,14 +7,27 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { toast } from "sonner";
 import type {
   AnyCommandDef,
   MergedCommandView,
   GlobalCommandDef,
   ScopeCommandDef,
   ScopeMeta,
+  OnFailure,
+  CommandFailureInfo,
 } from "./types";
 import { allCommands } from "./catalog";
+import { ApiRequestError } from "@api/errors";
+import { RecordCommandError } from "@api/generated/action-log/action-log";
+import { getActiveProjectId } from "./router-helpers";
+
+// A scope may intercept failures of its own commands to render them in-place
+// instead of the default toast. Returning `true` suppresses the default handling.
+export type CommandErrorFilter = (commandId: string, error: unknown) => boolean | void;
+
+const resolveFailureInfo = (onFailure: OnFailure, error: unknown): CommandFailureInfo =>
+  typeof onFailure === "string" ? { message: onFailure } : onFailure(error);
 
 // =====================================================================
 // Active scope tracking
@@ -24,6 +37,7 @@ export interface ActiveScope {
   readonly meta: ScopeMeta;
   readonly mountOrder: number;
   readonly ctxRef: RefObject<unknown>;
+  readonly onCommandError?: CommandErrorFilter;
 }
 
 // =====================================================================
@@ -31,7 +45,11 @@ export interface ActiveScope {
 // =====================================================================
 
 export interface CommandsContextValue {
-  publishScope: (meta: ScopeMeta, ctxRef: RefObject<unknown>) => () => void;
+  publishScope: (
+    meta: ScopeMeta,
+    ctxRef: RefObject<unknown>,
+    onCommandError?: CommandErrorFilter,
+  ) => () => void;
   getActiveScopes: () => readonly ActiveScope[];
   run: (id: string, arg?: unknown) => void;
   getMap: () => ReadonlyMap<string, MergedCommandView>;
@@ -57,6 +75,7 @@ const makeViewForGlobal = (def: GlobalCommandDef<string, unknown>): MergedComman
   category: def.category,
   hotkey: def.hotkey,
   arg: def.arg,
+  onFailure: def.onFailure,
   get disabledReason() {
     return def.disabled?.();
   },
@@ -72,6 +91,7 @@ const makeViewForScope = (
   scope: def.scopeId,
   category: def.category,
   hotkey: def.hotkey,
+  onFailure: def.onFailure,
   // Scope commands' `arg.items` takes ctx; the view exposes a parameterless
   // thunk by capturing getCtx() so the palette and binder don't need ctx.
   get arg() {
@@ -134,7 +154,7 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const publishScope = useCallback(
-    (meta: ScopeMeta, ctxRef: RefObject<unknown>) => {
+    (meta: ScopeMeta, ctxRef: RefObject<unknown>, onCommandError?: CommandErrorFilter) => {
       initIfNeeded();
       if (import.meta.env.DEV && activeScopesRef.current.has(meta.id)) {
         console.warn(
@@ -142,7 +162,7 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
         );
       }
       const mountOrder = ++mountCounterRef.current;
-      activeScopesRef.current.set(meta.id, { meta, mountOrder, ctxRef });
+      activeScopesRef.current.set(meta.id, { meta, mountOrder, ctxRef, onCommandError });
 
       const merged = mergedMapRef.current!;
       const addedIds: string[] = [];
@@ -174,6 +194,36 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
     return mergedMapRef.current!;
   }, [initIfNeeded]);
 
+  const handleFailure = useCallback((view: MergedCommandView, error: unknown) => {
+    // A scope may claim the failure (in-place UI) and suppress the default path.
+    if (view.scope !== "global") {
+      const filter = activeScopesRef.current.get(view.scope)?.onCommandError;
+      if (filter?.(view.id, error) === true) return;
+    }
+
+    const { message, detail } = resolveFailureInfo(view.onFailure!, error);
+
+    // If the backend already logged it (correlationId on the response), only
+    // toast. Otherwise this never reached a backend command — post our own
+    // intent-level command:error entry (best-effort), then toast.
+    const correlationId = error instanceof ApiRequestError ? error.correlationId : undefined;
+    if (!correlationId) {
+      const projectId = getActiveProjectId();
+      if (projectId) {
+        void RecordCommandError(projectId, {
+          commandId: view.id,
+          correlationId: crypto.randomUUID(),
+          friendlyMessage: message,
+          technicalMessage: error instanceof Error ? error.message : String(error),
+        }).catch(() => {
+          // best-effort: a failed log POST must not mask the original failure
+        });
+      }
+    }
+
+    toast.error(message, detail ? { description: detail } : undefined);
+  }, []);
+
   const run = useCallback(
     (id: string, arg?: unknown) => {
       const def = getMap().get(id);
@@ -185,9 +235,31 @@ export const CommandsProvider = ({ children }: { children: ReactNode }) => {
         console.warn(`[commands] Command "${id}" is disabled: ${def.disabledReason}`);
         return;
       }
-      void def.run(arg);
+      const onError = (error: unknown) => {
+        if (def.onFailure) {
+          handleFailure(def, error);
+        } else if (import.meta.env.DEV) {
+          // No onFailure declared: a thrown command is a developer error — it
+          // must declare onFailure or handle errors internally.
+          console.error(`[commands] Command "${id}" threw without onFailure:`, error);
+        }
+      };
+
+      // Run synchronously so synchronous commands stay synchronous (the palette,
+      // hotkey binder, and tests observe their effects immediately). Catch both
+      // a synchronous throw and a rejected promise.
+      let outcome: void | Promise<void>;
+      try {
+        outcome = def.run(arg);
+      } catch (error) {
+        onError(error);
+        return;
+      }
+      if (outcome instanceof Promise) {
+        void outcome.catch(onError);
+      }
     },
-    [getMap],
+    [getMap, handleFailure],
   );
 
   const value = useMemo<CommandsContextValue>(

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Scope } from "./types";
-import { useCommandsContext } from "./CommandsProvider";
+import { useCommandsContext, type CommandErrorFilter } from "./CommandsProvider";
 
 // Publishes a scope's context while the component is mounted. The provider keeps
 // a ref to the latest published value; on every render this hook updates the ref
@@ -26,25 +26,40 @@ import { useCommandsContext } from "./CommandsProvider";
 // `Scope<ProjectShellContext>` *not* assignable to a `Scope<unknown>` bound,
 // so the prior `S extends Scope<unknown>` signature rejected every concrete
 // scope at the call site.
-export const useCommandScope = <Ctx>(scope: Scope<Ctx>, ctx: Ctx) => {
+export const useCommandScope = <Ctx>(
+  scope: Scope<Ctx>,
+  ctx: Ctx,
+  options?: { onCommandError?: CommandErrorFilter },
+) => {
   const { publishScope } = useCommandsContext();
   const ctxRef = useRef<unknown>(ctx);
   ctxRef.current = ctx;
 
+  // Kept in a ref so the published filter always reads the latest closure
+  // without re-publishing the scope each render.
+  const onCommandErrorRef = useRef(options?.onCommandError);
+  onCommandErrorRef.current = options?.onCommandError;
+
   const unpublishRef = useRef<(() => void) | null>(null);
+  const publish = () =>
+    publishScope(scope, ctxRef, (commandId, error) =>
+      onCommandErrorRef.current?.(commandId, error),
+    );
   if (unpublishRef.current === null) {
-    unpublishRef.current = publishScope(scope, ctxRef);
+    unpublishRef.current = publish();
   }
 
   useEffect(() => {
     // Re-publish if StrictMode's simulated unmount cleared the ref between
     // the render-phase publish and the effect running.
     if (!unpublishRef.current) {
-      unpublishRef.current = publishScope(scope, ctxRef);
+      unpublishRef.current = publish();
     }
     return () => {
       unpublishRef.current?.();
       unpublishRef.current = null;
     };
+    // `publish` closes over refs + scope and is intentionally not a dependency,
+    // preserving the publish-once-per-mount behaviour.
   }, [publishScope, scope]);
 };

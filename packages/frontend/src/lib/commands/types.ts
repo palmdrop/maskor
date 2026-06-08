@@ -57,10 +57,25 @@ export type ContextOf<S> = S extends Scope<infer Ctx> ? Ctx : never;
 // v2: command definitions
 // =====================================================================
 
+// Resolved presentation for a command failure: a friendly headline and an
+// optional technical detail line shown in the toast description.
+export interface CommandFailureInfo {
+  message: string;
+  detail?: string;
+}
+
+// Declared per command. String form is a static friendly message; function form
+// derives message/detail from the thrown error. Its presence opts the command
+// into the default failure handling (toast + action-log entry) in
+// CommandsProvider.run; commands without it are expected to handle errors
+// internally (e.g. in-place UI). See packages/frontend/CLAUDE.md.
+export type OnFailure = string | ((error: unknown) => CommandFailureInfo);
+
 interface CommonCommandDef {
   readonly label: string;
   readonly category: CommandCategory;
   readonly hotkey?: string;
+  readonly onFailure?: OnFailure;
 }
 
 // `RunArgs` collapses the second-arg tuple to `[]` when A is void, so a
@@ -106,5 +121,6 @@ export interface MergedCommandView<T = unknown> extends CommandInputBase<string>
   scope: string; // "global" or scope id
   arg?: CommandArg<T>;
   disabledReason?: string;
+  onFailure?: OnFailure;
   run: (arg?: T) => void | Promise<void>;
 }
