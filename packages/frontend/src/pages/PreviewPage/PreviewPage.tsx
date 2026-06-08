@@ -246,6 +246,11 @@ export const PreviewPage = () => {
     }, new Map<string, PreviewNavFragment>());
   }, [allFragments]);
 
+  const editSplit = useMemo(() => {
+    if (!assembled || !editingFragmentUuid || !editingFragment) return null;
+    return splitAroundFragment(assembled.markdown, editingFragmentUuid);
+  }, [assembled, editingFragmentUuid, editingFragment]);
+
   if (assembledEnvelope?.status === 404) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -257,12 +262,6 @@ export const PreviewPage = () => {
   if (!assembled) {
     return null;
   }
-
-  // Compute the split regions once when editing is active.
-  const editSplit =
-    editingFragmentUuid && editingFragment
-      ? splitAroundFragment(assembled.markdown, editingFragmentUuid)
-      : null;
 
   return (
     <div className="flex flex-col h-full min-h-0">

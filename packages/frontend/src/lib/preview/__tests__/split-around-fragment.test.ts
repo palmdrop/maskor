@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { anchorSentinel } from "@maskor/shared/sentinel";
 import { splitAroundFragment } from "../split-around-fragment";
 
-const sent = anchorSentinel;
+const sentinel = anchorSentinel;
 
 describe("splitAroundFragment", () => {
   it("returns null when the sentinel for the uuid is not present", () => {
@@ -14,13 +14,13 @@ describe("splitAroundFragment", () => {
     const markdown = [
       "## Chapter One",
       "",
-      sent("frag-1"),
+      sentinel("frag-1"),
       "First fragment body.",
       "",
-      sent("frag-2"),
+      sentinel("frag-2"),
       "Second fragment body.",
       "",
-      sent("frag-3"),
+      sentinel("frag-3"),
       "Third fragment body.",
     ].join("\n");
 
@@ -30,16 +30,22 @@ describe("splitAroundFragment", () => {
     // Before ends just before the frag-2 sentinel (frag-1 content included).
     expect(result!.before).toContain("First fragment body.");
     expect(result!.before).not.toContain("Second fragment body.");
-    expect(result!.before).not.toContain(sent("frag-2"));
+    expect(result!.before).not.toContain(sentinel("frag-2"));
 
     // After starts at the frag-3 sentinel (frag-2 body hidden).
-    expect(result!.after).toContain(sent("frag-3"));
+    expect(result!.after).toContain(sentinel("frag-3"));
     expect(result!.after).toContain("Third fragment body.");
     expect(result!.after).not.toContain("Second fragment body.");
   });
 
   it("splits correctly for the first fragment", () => {
-    const markdown = [sent("frag-1"), "First body.", "", sent("frag-2"), "Second body."].join("\n");
+    const markdown = [
+      sentinel("frag-1"),
+      "First body.",
+      "",
+      sentinel("frag-2"),
+      "Second body.",
+    ].join("\n");
 
     const result = splitAroundFragment(markdown, "frag-1");
     expect(result).not.toBeNull();
@@ -48,13 +54,15 @@ describe("splitAroundFragment", () => {
     expect(result!.before).toBe("");
 
     // After starts at the next sentinel.
-    expect(result!.after).toContain(sent("frag-2"));
+    expect(result!.after).toContain(sentinel("frag-2"));
     expect(result!.after).toContain("Second body.");
     expect(result!.after).not.toContain("First body.");
   });
 
   it("after is empty when the edited fragment is the last one", () => {
-    const markdown = [sent("frag-1"), "First body.", "", sent("frag-2"), "Last body."].join("\n");
+    const markdown = [sentinel("frag-1"), "First body.", "", sentinel("frag-2"), "Last body."].join(
+      "\n",
+    );
 
     const result = splitAroundFragment(markdown, "frag-2");
     expect(result).not.toBeNull();
@@ -65,7 +73,7 @@ describe("splitAroundFragment", () => {
   });
 
   it("trims trailing whitespace from the before region", () => {
-    const markdown = `Content.\n\n${sent("frag-1")}\nBody.`;
+    const markdown = `Content.\n\n${sentinel("frag-1")}\nBody.`;
 
     const result = splitAroundFragment(markdown, "frag-1");
     expect(result).not.toBeNull();
@@ -73,9 +81,9 @@ describe("splitAroundFragment", () => {
   });
 
   it("the after region starts with the sentinel (parseable by ReadonlyProse)", () => {
-    const markdown = [sent("frag-1"), "A.", "", sent("frag-2"), "B."].join("\n");
+    const markdown = [sentinel("frag-1"), "A.", "", sentinel("frag-2"), "B."].join("\n");
 
     const result = splitAroundFragment(markdown, "frag-1");
-    expect(result!.after.startsWith(sent("frag-2"))).toBe(true);
+    expect(result!.after.startsWith(sentinel("frag-2"))).toBe(true);
   });
 });

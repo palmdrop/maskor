@@ -9,10 +9,10 @@ import { anchorSentinel, ANCHOR_SENTINEL_PATTERN } from "@maskor/shared/sentinel
 // Returns `null` when the sentinel for `uuid` is not found — the double-click
 // resolved outside any fragment (before the first anchor, or within an injected
 // heading), which the caller should ignore.
-export function splitAroundFragment(
+export const splitAroundFragment = (
   markdown: string,
   uuid: string,
-): { before: string; after: string } | null {
+): { before: string; after: string } | null => {
   const sentinel = anchorSentinel(uuid);
   const sentinelIndex = markdown.indexOf(sentinel);
   if (sentinelIndex === -1) return null;
@@ -27,4 +27,4 @@ export function splitAroundFragment(
   const after = nextMatch ? remainder.slice(nextMatch.index) : "";
 
   return { before, after };
-}
+};
