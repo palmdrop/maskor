@@ -15,9 +15,7 @@
             "description": "True while the vault index rebuild is in progress"
           }
         },
-        "required": [
-          "rebuilding"
-        ]
+        "required": ["rebuilding"]
       },
       "Project": {
         "type": "object",
@@ -68,9 +66,7 @@
                 "maximum": 1
               }
             },
-            "required": [
-              "readinessThreshold"
-            ]
+            "required": ["readinessThreshold"]
           },
           "advanced": {
             "type": "object",
@@ -79,9 +75,7 @@
                 "type": "boolean"
               }
             },
-            "required": [
-              "showFragmentStats"
-            ]
+            "required": ["showFragmentStats"]
           },
           "preview": {
             "type": "object",
@@ -94,34 +88,20 @@
               },
               "separator": {
                 "type": "string",
-                "enum": [
-                  "blank-line",
-                  "horizontal-rule",
-                  "none"
-                ]
+                "enum": ["blank-line", "horizontal-rule", "none"]
               }
             },
-            "required": [
-              "showTitles",
-              "showSectionHeadings",
-              "separator"
-            ]
+            "required": ["showTitles", "showSectionHeadings", "separator"]
           },
           "overview": {
             "type": "object",
             "properties": {
               "detailLevel": {
                 "type": "string",
-                "enum": [
-                  "prose",
-                  "excerpt",
-                  "title"
-                ]
+                "enum": ["prose", "excerpt", "title"]
               }
             },
-            "required": [
-              "detailLevel"
-            ]
+            "required": ["detailLevel"]
           },
           "projectUUID": {
             "type": "string",
@@ -175,10 +155,7 @@
             "example": "name_conflict"
           }
         },
-        "required": [
-          "error",
-          "message"
-        ]
+        "required": ["error", "message"]
       },
       "ProjectCreate": {
         "type": "object",
@@ -195,17 +172,11 @@
           },
           "mode": {
             "type": "string",
-            "enum": [
-              "adopt",
-              "create"
-            ],
+            "enum": ["adopt", "create"],
             "example": "adopt"
           }
         },
-        "required": [
-          "name",
-          "mode"
-        ]
+        "required": ["name", "mode"]
       },
       "ProjectUpdate": {
         "type": "object",
@@ -267,11 +238,7 @@
               },
               "separator": {
                 "type": "string",
-                "enum": [
-                  "blank-line",
-                  "horizontal-rule",
-                  "none"
-                ]
+                "enum": ["blank-line", "horizontal-rule", "none"]
               }
             }
           },
@@ -280,11 +247,7 @@
             "properties": {
               "detailLevel": {
                 "type": "string",
-                "enum": [
-                  "prose",
-                  "excerpt",
-                  "title"
-                ]
+                "enum": ["prose", "excerpt", "title"]
               }
             }
           }
@@ -303,25 +266,18 @@
             "example": false
           }
         },
-        "required": [
-          "newPath"
-        ]
+        "required": ["newPath"]
       },
       "ProjectDeleteResult": {
         "type": "object",
         "properties": {
           "method": {
             "type": "string",
-            "enum": [
-              "trash",
-              "hard-delete"
-            ],
+            "enum": ["trash", "hard-delete"],
             "example": "trash"
           }
         },
-        "required": [
-          "method"
-        ]
+        "required": ["method"]
       },
       "ProjectDeleteInput": {
         "type": "object",
@@ -340,9 +296,7 @@
             "example": "/Users/me"
           }
         },
-        "required": [
-          "homedir"
-        ]
+        "required": ["homedir"]
       },
       "FsListResponse": {
         "type": "object",
@@ -363,11 +317,7 @@
             }
           }
         },
-        "required": [
-          "path",
-          "parent",
-          "entries"
-        ]
+        "required": ["path", "parent", "entries"]
       },
       "FsEntry": {
         "type": "object",
@@ -378,10 +328,7 @@
           },
           "kind": {
             "type": "string",
-            "enum": [
-              "file",
-              "directory"
-            ],
+            "enum": ["file", "directory"],
             "example": "directory"
           },
           "hidden": {
@@ -397,13 +344,7 @@
             "example": false
           }
         },
-        "required": [
-          "name",
-          "kind",
-          "hidden",
-          "hasMaskorManifest",
-          "hasObsidianDir"
-        ]
+        "required": ["name", "kind", "hidden", "hasMaskorManifest", "hasObsidianDir"]
       },
       "SettingsResponse": {
         "type": "object",
@@ -417,9 +358,7 @@
             "example": "Settings file could not be parsed; using defaults."
           }
         },
-        "required": [
-          "maskorManagedRoot"
-        ]
+        "required": ["maskorManagedRoot"]
       },
       "SettingsPatch": {
         "type": "object",
@@ -430,9 +369,7 @@
             "example": "/Users/me/Documents/Maskor"
           }
         },
-        "required": [
-          "maskorManagedRoot"
-        ]
+        "required": ["maskorManagedRoot"]
       },
       "FragmentSummary": {
         "type": "object",
@@ -463,19 +400,11 @@
                   "type": "number"
                 }
               },
-              "required": [
-                "weight"
-              ]
+              "required": ["weight"]
             }
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "isDiscarded",
-          "excerpt",
-          "aspects"
-        ]
+        "required": ["uuid", "key", "isDiscarded", "excerpt", "aspects"]
       },
       "IndexedFragment": {
         "type": "object",
@@ -514,9 +443,7 @@
                   "type": "number"
                 }
               },
-              "required": [
-                "weight"
-              ]
+              "required": ["weight"]
             }
           },
           "filePath": {
@@ -615,10 +542,7 @@
             "example": "The lights flickered at dusk..."
           }
         },
-        "required": [
-          "key",
-          "content"
-        ]
+        "required": ["key", "content"]
       },
       "FragmentExtract": {
         "type": "object",
@@ -640,19 +564,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep"
-            ],
+            "enum": ["keep"],
             "example": "keep"
           },
           "navigated": {
@@ -660,14 +577,7 @@
             "example": true
           }
         },
-        "required": [
-          "key",
-          "content",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["key", "content", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "FragmentInsertionResponse": {
         "type": "object",
@@ -680,10 +590,7 @@
             "example": false
           }
         },
-        "required": [
-          "fragment",
-          "sourceCutFailed"
-        ]
+        "required": ["fragment", "sourceCutFailed"]
       },
       "FragmentInsertion": {
         "type": "object",
@@ -700,20 +607,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep",
-              "cut"
-            ],
+            "enum": ["keep", "cut"],
             "example": "keep"
           },
           "navigated": {
@@ -721,13 +620,7 @@
             "example": true
           }
         },
-        "required": [
-          "insertedBody",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["insertedBody", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "FragmentUpdateResponse": {
         "type": "object",
@@ -742,10 +635,7 @@
             }
           }
         },
-        "required": [
-          "fragment",
-          "warnings"
-        ]
+        "required": ["fragment", "warnings"]
       },
       "FragmentUpdate": {
         "type": "object",
@@ -857,11 +747,7 @@
             }
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "notes"
-        ]
+        "required": ["uuid", "key", "notes"]
       },
       "AspectExtract": {
         "type": "object",
@@ -883,19 +769,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep"
-            ],
+            "enum": ["keep"],
             "example": "keep"
           },
           "navigated": {
@@ -903,14 +782,7 @@
             "example": true
           }
         },
-        "required": [
-          "key",
-          "description",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["key", "description", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "AspectInsertionResponse": {
         "type": "object",
@@ -923,10 +795,7 @@
             "example": false
           }
         },
-        "required": [
-          "aspect",
-          "sourceCutFailed"
-        ]
+        "required": ["aspect", "sourceCutFailed"]
       },
       "AspectInsertion": {
         "type": "object",
@@ -943,20 +812,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep",
-              "cut"
-            ],
+            "enum": ["keep", "cut"],
             "example": "keep"
           },
           "navigated": {
@@ -964,13 +825,7 @@
             "example": true
           }
         },
-        "required": [
-          "insertedBody",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["insertedBody", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "IndexedAspect": {
         "type": "object",
@@ -1003,12 +858,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "notes",
-          "filePath"
-        ]
+        "required": ["uuid", "key", "notes", "filePath"]
       },
       "AspectCreate": {
         "type": "object",
@@ -1033,9 +883,7 @@
             "default": []
           }
         },
-        "required": [
-          "key"
-        ]
+        "required": ["key"]
       },
       "AspectUpdateResponse": {
         "type": "object",
@@ -1050,10 +898,7 @@
             }
           }
         },
-        "required": [
-          "aspect",
-          "warnings"
-        ]
+        "required": ["aspect", "warnings"]
       },
       "AspectUpdate": {
         "type": "object",
@@ -1105,11 +950,7 @@
             "minItems": 2
           }
         },
-        "required": [
-          "uuid",
-          "aspectKey",
-          "points"
-        ]
+        "required": ["uuid", "aspectKey", "points"]
       },
       "ArcPoint": {
         "type": "object",
@@ -1127,10 +968,7 @@
             "example": 0.5
           }
         },
-        "required": [
-          "x",
-          "y"
-        ]
+        "required": ["x", "y"]
       },
       "ArcCreate": {
         "type": "object",
@@ -1143,9 +981,7 @@
             "minItems": 2
           }
         },
-        "required": [
-          "points"
-        ]
+        "required": ["points"]
       },
       "Note": {
         "type": "object",
@@ -1167,11 +1003,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "content"
-        ]
+        "required": ["uuid", "key", "content"]
       },
       "NoteExtract": {
         "type": "object",
@@ -1193,19 +1025,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep"
-            ],
+            "enum": ["keep"],
             "example": "keep"
           },
           "navigated": {
@@ -1213,14 +1038,7 @@
             "example": true
           }
         },
-        "required": [
-          "key",
-          "content",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["key", "content", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "NoteInsertionResponse": {
         "type": "object",
@@ -1233,10 +1051,7 @@
             "example": false
           }
         },
-        "required": [
-          "note",
-          "sourceCutFailed"
-        ]
+        "required": ["note", "sourceCutFailed"]
       },
       "NoteInsertion": {
         "type": "object",
@@ -1253,20 +1068,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep",
-              "cut"
-            ],
+            "enum": ["keep", "cut"],
             "example": "keep"
           },
           "navigated": {
@@ -1274,13 +1081,7 @@
             "example": true
           }
         },
-        "required": [
-          "insertedBody",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["insertedBody", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "IndexedNote": {
         "type": "object",
@@ -1302,11 +1103,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "filePath"
-        ]
+        "required": ["uuid", "key", "filePath"]
       },
       "NoteCreate": {
         "type": "object",
@@ -1321,10 +1118,7 @@
             "example": "A note body..."
           }
         },
-        "required": [
-          "key",
-          "content"
-        ]
+        "required": ["key", "content"]
       },
       "NoteUpdateResponse": {
         "type": "object",
@@ -1348,16 +1142,10 @@
                 }
               }
             },
-            "required": [
-              "fragments",
-              "aspects"
-            ]
+            "required": ["fragments", "aspects"]
           }
         },
-        "required": [
-          "note",
-          "warnings"
-        ]
+        "required": ["note", "warnings"]
       },
       "NoteUpdate": {
         "type": "object",
@@ -1398,11 +1186,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "content"
-        ]
+        "required": ["uuid", "key", "content"]
       },
       "ReferenceExtract": {
         "type": "object",
@@ -1424,19 +1208,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep"
-            ],
+            "enum": ["keep"],
             "example": "keep"
           },
           "navigated": {
@@ -1444,14 +1221,7 @@
             "example": true
           }
         },
-        "required": [
-          "key",
-          "content",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["key", "content", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "ReferenceInsertionResponse": {
         "type": "object",
@@ -1464,10 +1234,7 @@
             "example": false
           }
         },
-        "required": [
-          "reference",
-          "sourceCutFailed"
-        ]
+        "required": ["reference", "sourceCutFailed"]
       },
       "ReferenceInsertion": {
         "type": "object",
@@ -1484,20 +1251,12 @@
           },
           "sourceType": {
             "type": "string",
-            "enum": [
-              "fragment",
-              "note",
-              "reference",
-              "aspect"
-            ],
+            "enum": ["fragment", "note", "reference", "aspect"],
             "example": "fragment"
           },
           "sourceMode": {
             "type": "string",
-            "enum": [
-              "keep",
-              "cut"
-            ],
+            "enum": ["keep", "cut"],
             "example": "keep"
           },
           "navigated": {
@@ -1505,13 +1264,7 @@
             "example": true
           }
         },
-        "required": [
-          "insertedBody",
-          "sourceUuid",
-          "sourceType",
-          "sourceMode",
-          "navigated"
-        ]
+        "required": ["insertedBody", "sourceUuid", "sourceType", "sourceMode", "navigated"]
       },
       "IndexedReference": {
         "type": "object",
@@ -1533,11 +1286,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "uuid",
-          "key",
-          "filePath"
-        ]
+        "required": ["uuid", "key", "filePath"]
       },
       "ReferenceCreate": {
         "type": "object",
@@ -1552,10 +1301,7 @@
             "example": "Hemingway. Santiago. Marlin."
           }
         },
-        "required": [
-          "key",
-          "content"
-        ]
+        "required": ["key", "content"]
       },
       "ReferenceUpdateResponse": {
         "type": "object",
@@ -1573,15 +1319,10 @@
                 }
               }
             },
-            "required": [
-              "fragments"
-            ]
+            "required": ["fragments"]
           }
         },
-        "required": [
-          "reference",
-          "warnings"
-        ]
+        "required": ["reference", "warnings"]
       },
       "ReferenceUpdate": {
         "type": "object",
@@ -1633,14 +1374,7 @@
             "example": "2026-06-01T00:00:00.000Z"
           }
         },
-        "required": [
-          "fragmentUuid",
-          "fragmentKey",
-          "notes",
-          "comments",
-          "createdAt",
-          "updatedAt"
-        ]
+        "required": ["fragmentUuid", "fragmentKey", "notes", "comments", "createdAt", "updatedAt"]
       },
       "Comment": {
         "type": "object",
@@ -1658,11 +1392,7 @@
             "example": "Too literal — rework."
           }
         },
-        "required": [
-          "markerId",
-          "excerpt",
-          "body"
-        ]
+        "required": ["markerId", "excerpt", "body"]
       },
       "MarginWrite": {
         "type": "object",
@@ -1678,10 +1408,7 @@
             }
           }
         },
-        "required": [
-          "notes",
-          "comments"
-        ]
+        "required": ["notes", "comments"]
       },
       "RebuildStats": {
         "type": "object",
@@ -1708,9 +1435,7 @@
               "properties": {
                 "kind": {
                   "type": "string",
-                  "enum": [
-                    "UNKNOWN_ASPECT_KEY"
-                  ]
+                  "enum": ["UNKNOWN_ASPECT_KEY"]
                 },
                 "aspectKey": {
                   "type": "string"
@@ -1723,22 +1448,11 @@
                   }
                 }
               },
-              "required": [
-                "kind",
-                "aspectKey",
-                "fragmentUuids"
-              ]
+              "required": ["kind", "aspectKey", "fragmentUuids"]
             }
           }
         },
-        "required": [
-          "fragments",
-          "aspects",
-          "notes",
-          "references",
-          "durationMs",
-          "warnings"
-        ]
+        "required": ["fragments", "aspects", "notes", "references", "durationMs", "warnings"]
       },
       "VaultWarningList": {
         "type": "array",
@@ -1756,19 +1470,14 @@
               },
               "category": {
                 "type": "string",
-                "enum": [
-                  "state",
-                  "event"
-                ]
+                "enum": ["state", "event"]
               },
               "createdAt": {
                 "type": "string"
               },
               "kind": {
                 "type": "string",
-                "enum": [
-                  "UNKNOWN_ASPECT_KEY"
-                ]
+                "enum": ["UNKNOWN_ASPECT_KEY"]
               },
               "aspectKey": {
                 "type": "string"
@@ -1780,14 +1489,7 @@
                 }
               }
             },
-            "required": [
-              "id",
-              "category",
-              "createdAt",
-              "kind",
-              "aspectKey",
-              "fragmentUuids"
-            ]
+            "required": ["id", "category", "createdAt", "kind", "aspectKey", "fragmentUuids"]
           },
           {
             "type": "object",
@@ -1797,31 +1499,20 @@
               },
               "category": {
                 "type": "string",
-                "enum": [
-                  "state",
-                  "event"
-                ]
+                "enum": ["state", "event"]
               },
               "createdAt": {
                 "type": "string"
               },
               "kind": {
                 "type": "string",
-                "enum": [
-                  "WRONG_FORMAT_FILE"
-                ]
+                "enum": ["WRONG_FORMAT_FILE"]
               },
               "filePath": {
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "category",
-              "createdAt",
-              "kind",
-              "filePath"
-            ]
+            "required": ["id", "category", "createdAt", "kind", "filePath"]
           },
           {
             "type": "object",
@@ -1831,19 +1522,14 @@
               },
               "category": {
                 "type": "string",
-                "enum": [
-                  "state",
-                  "event"
-                ]
+                "enum": ["state", "event"]
               },
               "createdAt": {
                 "type": "string"
               },
               "kind": {
                 "type": "string",
-                "enum": [
-                  "UUID_COLLISION"
-                ]
+                "enum": ["UUID_COLLISION"]
               },
               "filePath": {
                 "type": "string"
@@ -1873,47 +1559,27 @@
               },
               "category": {
                 "type": "string",
-                "enum": [
-                  "state",
-                  "event"
-                ]
+                "enum": ["state", "event"]
               },
               "createdAt": {
                 "type": "string"
               },
               "kind": {
                 "type": "string",
-                "enum": [
-                  "INVALID_ENTITY_FILE"
-                ]
+                "enum": ["INVALID_ENTITY_FILE"]
               },
               "filePath": {
                 "type": "string"
               },
               "entityKind": {
                 "type": "string",
-                "enum": [
-                  "fragment",
-                  "aspect",
-                  "note",
-                  "reference",
-                  "sequence",
-                  "margin"
-                ]
+                "enum": ["fragment", "aspect", "note", "reference", "sequence", "margin"]
               },
               "error": {
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "category",
-              "createdAt",
-              "kind",
-              "filePath",
-              "entityKind",
-              "error"
-            ]
+            "required": ["id", "category", "createdAt", "kind", "filePath", "entityKind", "error"]
           }
         ]
       },
@@ -1935,10 +1601,7 @@
             "minimum": 0
           }
         },
-        "required": [
-          "fragment",
-          "avoidanceCount"
-        ]
+        "required": ["fragment", "avoidanceCount"]
       },
       "SuggestionNextResponse": {
         "type": "object",
@@ -1958,10 +1621,7 @@
             "minimum": 0
           }
         },
-        "required": [
-          "fragment",
-          "avoidanceCount"
-        ]
+        "required": ["fragment", "avoidanceCount"]
       },
       "SuggestionSetCurrentBody": {
         "type": "object",
@@ -1972,9 +1632,7 @@
             "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
           }
         },
-        "required": [
-          "fragmentId"
-        ]
+        "required": ["fragmentId"]
       },
       "ProjectStats": {
         "type": "object",
@@ -2005,13 +1663,7 @@
                 },
                 "minItems": 5,
                 "maxItems": 5,
-                "example": [
-                  10,
-                  8,
-                  12,
-                  7,
-                  5
-                ]
+                "example": [10, 8, 12, 7, 5]
               },
               "totalWordCount": {
                 "type": "integer",
@@ -2039,10 +1691,7 @@
             }
           }
         },
-        "required": [
-          "global",
-          "fragments"
-        ]
+        "required": ["global", "fragments"]
       },
       "FragmentStatsSummary": {
         "type": "object",
@@ -2072,14 +1721,7 @@
             "example": false
           }
         },
-        "required": [
-          "fragmentUuid",
-          "key",
-          "wordCount",
-          "updatedAt",
-          "readiness",
-          "isDiscarded"
-        ]
+        "required": ["fragmentUuid", "key", "wordCount", "updatedAt", "readiness", "isDiscarded"]
       },
       "SequenceBundledResponse": {
         "type": "object",
@@ -2103,11 +1745,7 @@
             }
           }
         },
-        "required": [
-          "sequences",
-          "violations",
-          "cycles"
-        ]
+        "required": ["sequences", "violations", "cycles"]
       },
       "Sequence": {
         "type": "object",
@@ -2171,23 +1809,14 @@
           },
           "format": {
             "type": "string",
-            "enum": [
-              "markdown",
-              "docx",
-              "plaintext"
-            ]
+            "enum": ["markdown", "docx", "plaintext"]
           },
           "importedAt": {
             "type": "string",
             "example": "2026-05-31T10:00:00.000Z"
           }
         },
-        "required": [
-          "fileName",
-          "archivePath",
-          "format",
-          "importedAt"
-        ]
+        "required": ["fileName", "archivePath", "format", "importedAt"]
       },
       "Section": {
         "type": "object",
@@ -2206,11 +1835,7 @@
             }
           }
         },
-        "required": [
-          "uuid",
-          "name",
-          "fragments"
-        ]
+        "required": ["uuid", "name", "fragments"]
       },
       "FragmentPosition": {
         "type": "object",
@@ -2228,11 +1853,7 @@
             "minimum": 0
           }
         },
-        "required": [
-          "uuid",
-          "fragmentUuid",
-          "position"
-        ]
+        "required": ["uuid", "fragmentUuid", "position"]
       },
       "Violation": {
         "type": "object",
@@ -2250,11 +1871,7 @@
             "format": "uuid"
           }
         },
-        "required": [
-          "fragmentUuid",
-          "predecessorUuid",
-          "secondaryUuid"
-        ]
+        "required": ["fragmentUuid", "predecessorUuid", "secondaryUuid"]
       },
       "Cycle": {
         "type": "object",
@@ -2274,10 +1891,7 @@
             }
           }
         },
-        "required": [
-          "sequenceUuids",
-          "fragmentUuids"
-        ]
+        "required": ["sequenceUuids", "fragmentUuids"]
       },
       "SequenceContentsResponse": {
         "type": "object",
@@ -2295,10 +1909,7 @@
             }
           }
         },
-        "required": [
-          "placed",
-          "pool"
-        ]
+        "required": ["placed", "pool"]
       },
       "SequenceFragmentContent": {
         "type": "object",
@@ -2314,11 +1925,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "fragmentUuid",
-          "key",
-          "content"
-        ]
+        "required": ["fragmentUuid", "key", "content"]
       },
       "SequenceCreate": {
         "type": "object",
@@ -2351,28 +1958,16 @@
               },
               "format": {
                 "type": "string",
-                "enum": [
-                  "markdown",
-                  "docx",
-                  "plaintext"
-                ]
+                "enum": ["markdown", "docx", "plaintext"]
               },
               "importedAt": {
                 "type": "string"
               }
             },
-            "required": [
-              "fileName",
-              "archivePath",
-              "format",
-              "importedAt"
-            ]
+            "required": ["fileName", "archivePath", "format", "importedAt"]
           }
         },
-        "required": [
-          "name",
-          "projectUuid"
-        ]
+        "required": ["name", "projectUuid"]
       },
       "SequenceUpdate": {
         "type": "object",
@@ -2409,11 +2004,7 @@
             "example": 0
           }
         },
-        "required": [
-          "fragmentUuid",
-          "sectionUuid",
-          "position"
-        ]
+        "required": ["fragmentUuid", "sectionUuid", "position"]
       },
       "FragmentPositionMove": {
         "type": "object",
@@ -2429,10 +2020,7 @@
             "example": 1
           }
         },
-        "required": [
-          "sectionUuid",
-          "position"
-        ]
+        "required": ["sectionUuid", "position"]
       },
       "SectionCreate": {
         "type": "object",
@@ -2442,9 +2030,7 @@
             "example": ""
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "SectionRename": {
         "type": "object",
@@ -2454,9 +2040,7 @@
             "example": "Act One"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "SectionReorder": {
         "type": "object",
@@ -2467,9 +2051,7 @@
             "example": 1
           }
         },
-        "required": [
-          "position"
-        ]
+        "required": ["position"]
       },
       "FragmentsGroup": {
         "type": "object",
@@ -2481,19 +2063,14 @@
               "format": "uuid"
             },
             "minItems": 1,
-            "example": [
-              "aaaaaaaa-0000-0000-0000-000000000001"
-            ]
+            "example": ["aaaaaaaa-0000-0000-0000-000000000001"]
           },
           "name": {
             "type": "string",
             "example": "Act One"
           }
         },
-        "required": [
-          "fragmentUuids",
-          "name"
-        ]
+        "required": ["fragmentUuids", "name"]
       },
       "FragmentsMove": {
         "type": "object",
@@ -2505,9 +2082,7 @@
               "format": "uuid"
             },
             "minItems": 1,
-            "example": [
-              "aaaaaaaa-0000-0000-0000-000000000001"
-            ]
+            "example": ["aaaaaaaa-0000-0000-0000-000000000001"]
           },
           "sectionUuid": {
             "type": "string",
@@ -2520,11 +2095,7 @@
             "example": 0
           }
         },
-        "required": [
-          "fragmentUuids",
-          "sectionUuid",
-          "position"
-        ]
+        "required": ["fragmentUuids", "sectionUuid", "position"]
       },
       "SectionSplit": {
         "type": "object",
@@ -2539,10 +2110,7 @@
             "example": "Act Two"
           }
         },
-        "required": [
-          "fragmentUuid",
-          "name"
-        ]
+        "required": ["fragmentUuid", "name"]
       },
       "SequenceClone": {
         "type": "object",
@@ -2553,9 +2121,7 @@
             "example": "Revised Order (copy)"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "SequenceInsert": {
         "type": "object",
@@ -2571,10 +2137,7 @@
             "example": 1
           }
         },
-        "required": [
-          "sourceSequenceId",
-          "sectionIndex"
-        ]
+        "required": ["sourceSequenceId", "sectionIndex"]
       },
       "ImportResult": {
         "type": "object",
@@ -2584,9 +2147,7 @@
             "items": {
               "type": "string"
             },
-            "example": [
-              "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
-            ]
+            "example": ["f1a2b3c4-d5e6-7890-abcd-ef1234567890"]
           },
           "errors": {
             "type": "array",
@@ -2599,10 +2160,7 @@
             "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
           }
         },
-        "required": [
-          "created",
-          "errors"
-        ]
+        "required": ["created", "errors"]
       },
       "ImportError": {
         "type": "object",
@@ -2620,10 +2178,7 @@
             "example": "empty piece"
           }
         },
-        "required": [
-          "pieceIndex",
-          "error"
-        ]
+        "required": ["pieceIndex", "error"]
       },
       "ImportPreviewResult": {
         "allOf": [
@@ -2658,11 +2213,7 @@
             }
           }
         },
-        "required": [
-          "uuid",
-          "name",
-          "fragments"
-        ]
+        "required": ["uuid", "name", "fragments"]
       },
       "PreviewNavFragment": {
         "type": "object",
@@ -2676,10 +2227,7 @@
             "example": "the-crossing"
           }
         },
-        "required": [
-          "uuid",
-          "key"
-        ]
+        "required": ["uuid", "key"]
       },
       "PriorImport": {
         "type": "object",
@@ -2693,10 +2241,7 @@
             "example": "2026-05-31T10:00:00.000Z"
           }
         },
-        "required": [
-          "sequenceName",
-          "importedAt"
-        ]
+        "required": ["sequenceName", "importedAt"]
       },
       "PreviewResult": {
         "type": "object",
@@ -2712,10 +2257,7 @@
             }
           }
         },
-        "required": [
-          "markdown",
-          "sections"
-        ]
+        "required": ["markdown", "sections"]
       },
       "Draft": {
         "type": "object",
@@ -2741,12 +2283,7 @@
             "$ref": "#/components/schemas/DraftEntityCounts"
           }
         },
-        "required": [
-          "uuid",
-          "name",
-          "createdAt",
-          "entityCounts"
-        ]
+        "required": ["uuid", "name", "createdAt", "entityCounts"]
       },
       "DraftEntityCounts": {
         "type": "object",
@@ -2772,13 +2309,7 @@
             "minimum": 0
           }
         },
-        "required": [
-          "fragments",
-          "aspects",
-          "notes",
-          "references",
-          "sequences"
-        ]
+        "required": ["fragments", "aspects", "notes", "references", "sequences"]
       },
       "DraftCreateBody": {
         "type": "object",
@@ -2793,9 +2324,7 @@
             "example": "after first chapter"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "DraftRestoreResponse": {
         "type": "object",
@@ -2807,9 +2336,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "restoredDraftUuid"
-        ]
+        "required": ["restoredDraftUuid"]
       },
       "DraftRestoreBody": {
         "type": "object",
@@ -2822,9 +2349,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "saveCurrentFirst"
-        ]
+        "required": ["saveCurrentFirst"]
       },
       "SwapWriteResponse": {
         "type": "object",
@@ -2834,9 +2359,7 @@
             "example": "2026-05-19T10:00:00.000Z"
           }
         },
-        "required": [
-          "savedAt"
-        ]
+        "required": ["savedAt"]
       },
       "SwapWriteBody": {
         "type": "object",
@@ -2846,9 +2369,7 @@
             "example": "draft content the user is typing"
           }
         },
-        "required": [
-          "content"
-        ]
+        "required": ["content"]
       },
       "SwapReadResponse": {
         "type": "object",
@@ -2862,10 +2383,7 @@
             "nullable": true
           }
         },
-        "required": [
-          "content",
-          "savedAt"
-        ]
+        "required": ["content", "savedAt"]
       }
     },
     "parameters": {}
@@ -2874,9 +2392,7 @@
     "/projects/{projectId}/rebuild-status": {
       "get": {
         "operationId": "getProjectRebuildStatus",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Check if a vault index rebuild is in progress",
         "parameters": [
           {
@@ -2907,9 +2423,7 @@
     "/projects": {
       "get": {
         "operationId": "listProjects",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "List all registered projects",
         "responses": {
           "200": {
@@ -2939,9 +2453,7 @@
       },
       "post": {
         "operationId": "createProject",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Register a new project",
         "requestBody": {
           "required": true,
@@ -3000,9 +2512,7 @@
     "/projects/{projectId}": {
       "get": {
         "operationId": "getProject",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Get a project by UUID",
         "parameters": [
           {
@@ -3051,9 +2561,7 @@
       },
       "patch": {
         "operationId": "updateProject",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Update a project",
         "parameters": [
           {
@@ -3122,9 +2630,7 @@
       },
       "delete": {
         "operationId": "deleteProject",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Remove a registered project",
         "parameters": [
           {
@@ -3188,9 +2694,7 @@
     "/projects/{projectId}/vault-path": {
       "patch": {
         "operationId": "updateProjectVaultPath",
-        "tags": [
-          "Projects"
-        ],
+        "tags": ["Projects"],
         "summary": "Re-point a project's vault to a new path",
         "parameters": [
           {
@@ -3271,9 +2775,7 @@
     "/fs/home": {
       "get": {
         "operationId": "getHomeDirectory",
-        "tags": [
-          "Filesystem"
-        ],
+        "tags": ["Filesystem"],
         "summary": "Get the current user's home directory",
         "responses": {
           "200": {
@@ -3292,9 +2794,7 @@
     "/fs/list": {
       "get": {
         "operationId": "listDirectory",
-        "tags": [
-          "Filesystem"
-        ],
+        "tags": ["Filesystem"],
         "summary": "List directory contents for filesystem browsing",
         "parameters": [
           {
@@ -3364,9 +2864,7 @@
     "/settings": {
       "get": {
         "operationId": "getSettings",
-        "tags": [
-          "Settings"
-        ],
+        "tags": ["Settings"],
         "summary": "Get current settings",
         "responses": {
           "200": {
@@ -3383,9 +2881,7 @@
       },
       "patch": {
         "operationId": "patchSettings",
-        "tags": [
-          "Settings"
-        ],
+        "tags": ["Settings"],
         "summary": "Update settings",
         "requestBody": {
           "required": true,
@@ -3424,9 +2920,7 @@
     "/projects/{projectId}/fragments/summaries": {
       "get": {
         "operationId": "listFragmentSummaries",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "List minimal fragment data (uuid, key, isDiscarded, excerpt) for all fragments",
         "parameters": [
           {
@@ -3469,9 +2963,7 @@
     "/projects/{projectId}/fragments": {
       "get": {
         "operationId": "listFragments",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "List all indexed fragments for a project",
         "parameters": [
           {
@@ -3512,9 +3004,7 @@
       },
       "post": {
         "operationId": "createFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Write a new fragment to the vault",
         "parameters": [
           {
@@ -3584,9 +3074,7 @@
     "/projects/{projectId}/fragments/{fragmentId}": {
       "get": {
         "operationId": "getFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Get a single fragment by UUID",
         "parameters": [
           {
@@ -3654,9 +3142,7 @@
       },
       "patch": {
         "operationId": "updateFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Partially update a fragment's fields",
         "parameters": [
           {
@@ -3754,9 +3240,7 @@
       },
       "delete": {
         "operationId": "discardFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Discard a fragment (moves to discarded/)",
         "parameters": [
           {
@@ -3819,9 +3303,7 @@
     "/projects/{projectId}/fragments/extract": {
       "post": {
         "operationId": "extractFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Extract selected text into a new fragment",
         "parameters": [
           {
@@ -3901,9 +3383,7 @@
     "/projects/{projectId}/fragments/{fragmentId}/append": {
       "post": {
         "operationId": "appendFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Append selected text to an existing fragment",
         "parameters": [
           {
@@ -3973,9 +3453,7 @@
     "/projects/{projectId}/fragments/{fragmentId}/prepend": {
       "post": {
         "operationId": "prependFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Prepend selected text to an existing fragment",
         "parameters": [
           {
@@ -4045,9 +3523,7 @@
     "/projects/{projectId}/fragments/{fragmentId}/permanent": {
       "delete": {
         "operationId": "deleteFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Permanently delete a discarded fragment (removes the file)",
         "parameters": [
           {
@@ -4120,9 +3596,7 @@
     "/projects/{projectId}/fragments/{fragmentId}/restore": {
       "post": {
         "operationId": "restoreFragment",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Restore a discarded fragment (moves out of discarded/)",
         "parameters": [
           {
@@ -4195,9 +3669,7 @@
     "/projects/{projectId}/fragments/{fragmentId}/stats": {
       "get": {
         "operationId": "getFragmentStats",
-        "tags": [
-          "Stats"
-        ],
+        "tags": ["Stats"],
         "summary": "Get stats for a single fragment",
         "parameters": [
           {
@@ -4247,9 +3719,7 @@
     "/projects/{projectId}/aspects/extract": {
       "post": {
         "operationId": "extractAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Extract selected text into a new aspect",
         "parameters": [
           {
@@ -4329,9 +3799,7 @@
     "/projects/{projectId}/aspects/{aspectId}/append": {
       "post": {
         "operationId": "appendAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Append selected text to an existing aspect",
         "parameters": [
           {
@@ -4401,9 +3869,7 @@
     "/projects/{projectId}/aspects/{aspectId}/prepend": {
       "post": {
         "operationId": "prependAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Prepend selected text to an existing aspect",
         "parameters": [
           {
@@ -4473,9 +3939,7 @@
     "/projects/{projectId}/aspects": {
       "get": {
         "operationId": "listAspects",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "List all indexed aspects for a project",
         "parameters": [
           {
@@ -4516,9 +3980,7 @@
       },
       "post": {
         "operationId": "createAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Create a new aspect in the vault",
         "parameters": [
           {
@@ -4578,9 +4040,7 @@
     "/projects/{projectId}/aspects/{aspectId}": {
       "get": {
         "operationId": "getAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Get a single aspect by UUID",
         "parameters": [
           {
@@ -4648,9 +4108,7 @@
       },
       "delete": {
         "operationId": "deleteAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Delete an aspect from the vault",
         "parameters": [
           {
@@ -4711,9 +4169,7 @@
       },
       "patch": {
         "operationId": "updateAspect",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Update an aspect's key, description, category, or notes",
         "parameters": [
           {
@@ -4803,9 +4259,7 @@
     "/projects/{projectId}/aspects/{aspectId}/arc": {
       "get": {
         "operationId": "getArc",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Get the arc for an aspect",
         "parameters": [
           {
@@ -4863,9 +4317,7 @@
       },
       "put": {
         "operationId": "putArc",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Create or replace the arc for an aspect",
         "parameters": [
           {
@@ -4943,9 +4395,7 @@
       },
       "delete": {
         "operationId": "deleteArc",
-        "tags": [
-          "Aspects"
-        ],
+        "tags": ["Aspects"],
         "summary": "Delete the arc for an aspect",
         "parameters": [
           {
@@ -5008,9 +4458,7 @@
     "/projects/{projectId}/notes/extract": {
       "post": {
         "operationId": "extractNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Extract selected text into a new note",
         "parameters": [
           {
@@ -5090,9 +4538,7 @@
     "/projects/{projectId}/notes/{noteId}/append": {
       "post": {
         "operationId": "appendNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Append selected text to an existing note",
         "parameters": [
           {
@@ -5162,9 +4608,7 @@
     "/projects/{projectId}/notes/{noteId}/prepend": {
       "post": {
         "operationId": "prependNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Prepend selected text to an existing note",
         "parameters": [
           {
@@ -5234,9 +4678,7 @@
     "/projects/{projectId}/notes": {
       "get": {
         "operationId": "listNotes",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "List all indexed notes for a project",
         "parameters": [
           {
@@ -5277,9 +4719,7 @@
       },
       "post": {
         "operationId": "createNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Create a new note in the vault",
         "parameters": [
           {
@@ -5339,9 +4779,7 @@
     "/projects/{projectId}/notes/{noteId}": {
       "get": {
         "operationId": "getNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Get a single note by UUID",
         "parameters": [
           {
@@ -5409,9 +4847,7 @@
       },
       "patch": {
         "operationId": "updateNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Update a note in the vault",
         "parameters": [
           {
@@ -5499,9 +4935,7 @@
       },
       "delete": {
         "operationId": "deleteNote",
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "Delete a note from the vault",
         "parameters": [
           {
@@ -5564,9 +4998,7 @@
     "/projects/{projectId}/references/extract": {
       "post": {
         "operationId": "extractReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Extract selected text into a new reference",
         "parameters": [
           {
@@ -5646,9 +5078,7 @@
     "/projects/{projectId}/references/{referenceId}/append": {
       "post": {
         "operationId": "appendReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Append selected text to an existing reference",
         "parameters": [
           {
@@ -5718,9 +5148,7 @@
     "/projects/{projectId}/references/{referenceId}/prepend": {
       "post": {
         "operationId": "prependReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Prepend selected text to an existing reference",
         "parameters": [
           {
@@ -5790,9 +5218,7 @@
     "/projects/{projectId}/references": {
       "get": {
         "operationId": "listReferences",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "List all indexed references for a project",
         "parameters": [
           {
@@ -5833,9 +5259,7 @@
       },
       "post": {
         "operationId": "createReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Create a new reference in the vault",
         "parameters": [
           {
@@ -5895,9 +5319,7 @@
     "/projects/{projectId}/references/{referenceId}": {
       "get": {
         "operationId": "getReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Get a single reference by UUID",
         "parameters": [
           {
@@ -5965,9 +5387,7 @@
       },
       "patch": {
         "operationId": "updateReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Update a reference in the vault",
         "parameters": [
           {
@@ -6055,9 +5475,7 @@
       },
       "delete": {
         "operationId": "deleteReference",
-        "tags": [
-          "References"
-        ],
+        "tags": ["References"],
         "summary": "Delete a reference from the vault",
         "parameters": [
           {
@@ -6120,9 +5538,7 @@
     "/projects/{projectId}/margins/{fragmentId}": {
       "get": {
         "operationId": "getMargin",
-        "tags": [
-          "Margins"
-        ],
+        "tags": ["Margins"],
         "summary": "Read a fragment's Margin",
         "parameters": [
           {
@@ -6180,9 +5596,7 @@
       },
       "put": {
         "operationId": "writeMargin",
-        "tags": [
-          "Margins"
-        ],
+        "tags": ["Margins"],
         "summary": "Replace a fragment's Margin (notes + comments)",
         "parameters": [
           {
@@ -6252,9 +5666,7 @@
     "/projects/{projectId}/index/rebuild": {
       "post": {
         "operationId": "rebuildIndex",
-        "tags": [
-          "Index"
-        ],
+        "tags": ["Index"],
         "summary": "Trigger a full vault index rebuild",
         "parameters": [
           {
@@ -6294,9 +5706,7 @@
     "/projects/{projectId}/index/reset": {
       "post": {
         "operationId": "resetDatabase",
-        "tags": [
-          "Index"
-        ],
+        "tags": ["Index"],
         "summary": "Drop and re-derive the vault database",
         "description": "Manual hard reset: drops the vault DB and rebuilds it from the vault. Recovers from DB corruption / schema drift that a plain rebuild cannot fix. Discards DB-only state (fragment_stats telemetry, dismissed UUID_COLLISION warnings).",
         "parameters": [
@@ -6337,9 +5747,7 @@
     "/projects/{projectId}/warnings": {
       "get": {
         "operationId": "listWarnings",
-        "tags": [
-          "Warnings"
-        ],
+        "tags": ["Warnings"],
         "summary": "List current (non-dismissed) vault warnings",
         "parameters": [
           {
@@ -6379,9 +5787,7 @@
     "/projects/{projectId}/warnings/{id}/dismiss": {
       "post": {
         "operationId": "dismissWarning",
-        "tags": [
-          "Warnings"
-        ],
+        "tags": ["Warnings"],
         "summary": "Dismiss an event warning (state warnings cannot be dismissed)",
         "parameters": [
           {
@@ -6449,9 +5855,7 @@
     "/projects/{projectId}/suggestion/current": {
       "get": {
         "operationId": "getCurrentSuggestion",
-        "tags": [
-          "Suggestion"
-        ],
+        "tags": ["Suggestion"],
         "summary": "Get the current/active suggested fragment for suggestion mode",
         "parameters": [
           {
@@ -6489,9 +5893,7 @@
       },
       "put": {
         "operationId": "setCurrentSuggestion",
-        "tags": [
-          "Suggestion"
-        ],
+        "tags": ["Suggestion"],
         "summary": "Set the current-suggestion pointer to a specific fragment (e.g. after browser back-navigation).",
         "parameters": [
           {
@@ -6534,9 +5936,7 @@
     "/projects/{projectId}/suggestion/next": {
       "get": {
         "operationId": "getNextSuggestion",
-        "tags": [
-          "Suggestion"
-        ],
+        "tags": ["Suggestion"],
         "summary": "Get the next suggested fragment for suggestion mode",
         "parameters": [
           {
@@ -6588,9 +5988,7 @@
     "/projects/{projectId}/suggestion/visit/{fragmentId}": {
       "post": {
         "operationId": "recordFragmentVisit",
-        "tags": [
-          "Suggestion"
-        ],
+        "tags": ["Suggestion"],
         "summary": "Record a voluntary fragment open outside suggestion mode",
         "parameters": [
           {
@@ -6633,9 +6031,7 @@
     "/projects/{projectId}/suggestion/pick/{fragmentId}": {
       "post": {
         "operationId": "recordFragmentPick",
-        "tags": [
-          "Suggestion"
-        ],
+        "tags": ["Suggestion"],
         "summary": "Record an explicit user pick (e.g. quick-switcher): bumps voluntary_open_count, adds to cooldown, marks user-picked so the next getNext skips avoidance accounting for the picked fragment.",
         "parameters": [
           {
@@ -6678,9 +6074,7 @@
     "/projects/{projectId}/stats": {
       "get": {
         "operationId": "getProjectStats",
-        "tags": [
-          "Stats"
-        ],
+        "tags": ["Stats"],
         "summary": "Get aggregate stats for a project",
         "parameters": [
           {
@@ -6720,9 +6114,7 @@
     "/projects/{projectId}/action-log": {
       "get": {
         "operationId": "listActionLog",
-        "tags": [
-          "ActionLog"
-        ],
+        "tags": ["ActionLog"],
         "summary": "List recent action log entries for a project",
         "parameters": [
           {
@@ -6763,10 +6155,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -6793,31 +6182,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:extracted"
-                            ]
+                            "enum": ["fragment:extracted"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -6827,11 +6206,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -6867,10 +6242,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -6897,31 +6269,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:extracted"
-                            ]
+                            "enum": ["note:extracted"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -6931,11 +6293,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -6971,10 +6329,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7001,31 +6356,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:extracted"
-                            ]
+                            "enum": ["reference:extracted"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7035,11 +6380,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7075,10 +6416,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7105,31 +6443,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:extracted"
-                            ]
+                            "enum": ["aspect:extracted"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7139,11 +6467,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7179,10 +6503,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7209,31 +6530,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:appended"
-                            ]
+                            "enum": ["fragment:appended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7243,11 +6554,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7283,10 +6590,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7313,31 +6617,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:appended"
-                            ]
+                            "enum": ["note:appended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7347,11 +6641,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7387,10 +6677,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7417,31 +6704,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:appended"
-                            ]
+                            "enum": ["reference:appended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7451,11 +6728,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7491,10 +6764,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7521,31 +6791,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:appended"
-                            ]
+                            "enum": ["aspect:appended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7555,11 +6815,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7595,10 +6851,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7625,31 +6878,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:prepended"
-                            ]
+                            "enum": ["fragment:prepended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7659,11 +6902,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7699,10 +6938,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7729,31 +6965,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:prepended"
-                            ]
+                            "enum": ["note:prepended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7763,11 +6989,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7803,10 +7025,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7833,31 +7052,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:prepended"
-                            ]
+                            "enum": ["reference:prepended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7867,11 +7076,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -7907,10 +7112,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -7937,31 +7139,21 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:prepended"
-                            ]
+                            "enum": ["aspect:prepended"]
                           },
                           "payload": {
                             "type": "object",
                             "properties": {
                               "sourceType": {
                                 "type": "string",
-                                "enum": [
-                                  "fragment",
-                                  "note",
-                                  "reference",
-                                  "aspect"
-                                ]
+                                "enum": ["fragment", "note", "reference", "aspect"]
                               },
                               "sourceKey": {
                                 "type": "string"
@@ -7971,11 +7163,7 @@
                               },
                               "sourceMode": {
                                 "type": "string",
-                                "enum": [
-                                  "keep",
-                                  "cut",
-                                  "link"
-                                ]
+                                "enum": ["keep", "cut", "link"]
                               },
                               "navigated": {
                                 "type": "boolean"
@@ -8011,10 +7199,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8041,19 +7226,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:created"
-                            ]
+                            "enum": ["fragment:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -8081,10 +7261,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8111,19 +7288,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:edited"
-                            ]
+                            "enum": ["fragment:edited"]
                           },
                           "payload": {
                             "type": "object",
@@ -8151,10 +7323,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8181,19 +7350,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:updated"
-                            ]
+                            "enum": ["fragment:updated"]
                           },
                           "payload": {
                             "type": "object",
@@ -8202,19 +7366,11 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "enum": [
-                                    "content",
-                                    "readiness",
-                                    "aspects",
-                                    "notes",
-                                    "references"
-                                  ]
+                                  "enum": ["content", "readiness", "aspects", "notes", "references"]
                                 }
                               }
                             },
-                            "required": [
-                              "changedFields"
-                            ]
+                            "required": ["changedFields"]
                           }
                         },
                         "required": [
@@ -8238,10 +7394,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8268,19 +7421,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:renamed"
-                            ]
+                            "enum": ["fragment:renamed"]
                           },
                           "payload": {
                             "type": "object",
@@ -8292,10 +7440,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "oldKey",
-                              "newKey"
-                            ]
+                            "required": ["oldKey", "newKey"]
                           }
                         },
                         "required": [
@@ -8319,10 +7464,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8349,19 +7491,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:discarded"
-                            ]
+                            "enum": ["fragment:discarded"]
                           },
                           "payload": {
                             "type": "object",
@@ -8389,10 +7526,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8419,19 +7553,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:restored"
-                            ]
+                            "enum": ["fragment:restored"]
                           },
                           "payload": {
                             "type": "object",
@@ -8459,10 +7588,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8489,19 +7615,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:deleted"
-                            ]
+                            "enum": ["fragment:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -8529,10 +7650,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8559,19 +7677,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:readiness-changed"
-                            ]
+                            "enum": ["fragment:readiness-changed"]
                           },
                           "payload": {
                             "type": "object",
@@ -8583,10 +7696,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "from",
-                              "to"
-                            ]
+                            "required": ["from", "to"]
                           }
                         },
                         "required": [
@@ -8610,10 +7720,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8640,19 +7747,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:note-attached"
-                            ]
+                            "enum": ["fragment:note-attached"]
                           },
                           "payload": {
                             "type": "object",
@@ -8661,9 +7763,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "noteKey"
-                            ]
+                            "required": ["noteKey"]
                           }
                         },
                         "required": [
@@ -8687,10 +7787,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8717,19 +7814,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:note-detached"
-                            ]
+                            "enum": ["fragment:note-detached"]
                           },
                           "payload": {
                             "type": "object",
@@ -8738,9 +7830,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "noteKey"
-                            ]
+                            "required": ["noteKey"]
                           }
                         },
                         "required": [
@@ -8764,10 +7854,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8794,19 +7881,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:reference-attached"
-                            ]
+                            "enum": ["fragment:reference-attached"]
                           },
                           "payload": {
                             "type": "object",
@@ -8815,9 +7897,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "referenceKey"
-                            ]
+                            "required": ["referenceKey"]
                           }
                         },
                         "required": [
@@ -8841,10 +7921,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8871,19 +7948,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:reference-detached"
-                            ]
+                            "enum": ["fragment:reference-detached"]
                           },
                           "payload": {
                             "type": "object",
@@ -8892,9 +7964,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "referenceKey"
-                            ]
+                            "required": ["referenceKey"]
                           }
                         },
                         "required": [
@@ -8918,10 +7988,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -8948,19 +8015,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:aspect-attached"
-                            ]
+                            "enum": ["fragment:aspect-attached"]
                           },
                           "payload": {
                             "type": "object",
@@ -8972,10 +8034,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "aspectKey",
-                              "weight"
-                            ]
+                            "required": ["aspectKey", "weight"]
                           }
                         },
                         "required": [
@@ -8999,10 +8058,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9029,19 +8085,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:aspect-detached"
-                            ]
+                            "enum": ["fragment:aspect-detached"]
                           },
                           "payload": {
                             "type": "object",
@@ -9050,9 +8101,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "aspectKey"
-                            ]
+                            "required": ["aspectKey"]
                           }
                         },
                         "required": [
@@ -9076,10 +8125,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9106,19 +8152,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:aspect-weight-changed"
-                            ]
+                            "enum": ["fragment:aspect-weight-changed"]
                           },
                           "payload": {
                             "type": "object",
@@ -9133,11 +8174,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "aspectKey",
-                              "from",
-                              "to"
-                            ]
+                            "required": ["aspectKey", "from", "to"]
                           }
                         },
                         "required": [
@@ -9161,10 +8198,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9191,19 +8225,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:created"
-                            ]
+                            "enum": ["aspect:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -9231,10 +8260,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9261,19 +8287,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:description-edited"
-                            ]
+                            "enum": ["aspect:description-edited"]
                           },
                           "payload": {
                             "type": "object",
@@ -9301,10 +8322,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9331,19 +8349,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:updated"
-                            ]
+                            "enum": ["aspect:updated"]
                           },
                           "payload": {
                             "type": "object",
@@ -9352,18 +8365,11 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "enum": [
-                                    "description",
-                                    "category",
-                                    "color",
-                                    "notes"
-                                  ]
+                                  "enum": ["description", "category", "color", "notes"]
                                 }
                               }
                             },
-                            "required": [
-                              "changedFields"
-                            ]
+                            "required": ["changedFields"]
                           }
                         },
                         "required": [
@@ -9387,10 +8393,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9417,19 +8420,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:renamed"
-                            ]
+                            "enum": ["aspect:renamed"]
                           },
                           "payload": {
                             "type": "object",
@@ -9441,10 +8439,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "oldKey",
-                              "newKey"
-                            ]
+                            "required": ["oldKey", "newKey"]
                           }
                         },
                         "required": [
@@ -9468,10 +8463,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9498,19 +8490,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:deleted"
-                            ]
+                            "enum": ["aspect:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -9519,9 +8506,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "cascadeFragmentCount"
-                            ]
+                            "required": ["cascadeFragmentCount"]
                           }
                         },
                         "required": [
@@ -9545,10 +8530,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9575,19 +8557,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:category-changed"
-                            ]
+                            "enum": ["aspect:category-changed"]
                           },
                           "payload": {
                             "type": "object",
@@ -9622,10 +8599,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9652,19 +8626,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:note-attached"
-                            ]
+                            "enum": ["aspect:note-attached"]
                           },
                           "payload": {
                             "type": "object",
@@ -9673,9 +8642,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "noteKey"
-                            ]
+                            "required": ["noteKey"]
                           }
                         },
                         "required": [
@@ -9699,10 +8666,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9729,19 +8693,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "aspect:note-detached"
-                            ]
+                            "enum": ["aspect:note-detached"]
                           },
                           "payload": {
                             "type": "object",
@@ -9750,9 +8709,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "noteKey"
-                            ]
+                            "required": ["noteKey"]
                           }
                         },
                         "required": [
@@ -9776,10 +8733,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9806,19 +8760,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:created"
-                            ]
+                            "enum": ["note:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -9846,10 +8795,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9876,19 +8822,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:edited"
-                            ]
+                            "enum": ["note:edited"]
                           },
                           "payload": {
                             "type": "object",
@@ -9916,10 +8857,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -9946,19 +8884,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:updated"
-                            ]
+                            "enum": ["note:updated"]
                           },
                           "payload": {
                             "type": "object",
@@ -9967,15 +8900,11 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "enum": [
-                                    "content"
-                                  ]
+                                  "enum": ["content"]
                                 }
                               }
                             },
-                            "required": [
-                              "changedFields"
-                            ]
+                            "required": ["changedFields"]
                           }
                         },
                         "required": [
@@ -9999,10 +8928,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10029,19 +8955,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:renamed"
-                            ]
+                            "enum": ["note:renamed"]
                           },
                           "payload": {
                             "type": "object",
@@ -10053,10 +8974,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "oldKey",
-                              "newKey"
-                            ]
+                            "required": ["oldKey", "newKey"]
                           }
                         },
                         "required": [
@@ -10080,10 +8998,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10110,19 +9025,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:deleted"
-                            ]
+                            "enum": ["note:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -10150,10 +9060,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10180,19 +9087,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "note:category-changed"
-                            ]
+                            "enum": ["note:category-changed"]
                           },
                           "payload": {
                             "type": "object",
@@ -10227,10 +9129,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10257,19 +9156,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:created"
-                            ]
+                            "enum": ["reference:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -10297,10 +9191,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10327,19 +9218,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:edited"
-                            ]
+                            "enum": ["reference:edited"]
                           },
                           "payload": {
                             "type": "object",
@@ -10367,10 +9253,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10397,19 +9280,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:updated"
-                            ]
+                            "enum": ["reference:updated"]
                           },
                           "payload": {
                             "type": "object",
@@ -10418,15 +9296,11 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "enum": [
-                                    "content"
-                                  ]
+                                  "enum": ["content"]
                                 }
                               }
                             },
-                            "required": [
-                              "changedFields"
-                            ]
+                            "required": ["changedFields"]
                           }
                         },
                         "required": [
@@ -10450,10 +9324,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10480,19 +9351,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:renamed"
-                            ]
+                            "enum": ["reference:renamed"]
                           },
                           "payload": {
                             "type": "object",
@@ -10504,10 +9370,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "oldKey",
-                              "newKey"
-                            ]
+                            "required": ["oldKey", "newKey"]
                           }
                         },
                         "required": [
@@ -10531,10 +9394,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10561,19 +9421,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:deleted"
-                            ]
+                            "enum": ["reference:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -10601,10 +9456,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10631,19 +9483,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "reference:category-changed"
-                            ]
+                            "enum": ["reference:category-changed"]
                           },
                           "payload": {
                             "type": "object",
@@ -10678,10 +9525,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10708,19 +9552,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:fragment-placed"
-                            ]
+                            "enum": ["sequence:fragment-placed"]
                           },
                           "payload": {
                             "type": "object",
@@ -10729,9 +9568,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "fragmentKey"
-                            ]
+                            "required": ["fragmentKey"]
                           }
                         },
                         "required": [
@@ -10755,10 +9592,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10785,19 +9619,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:fragment-moved"
-                            ]
+                            "enum": ["sequence:fragment-moved"]
                           },
                           "payload": {
                             "type": "object",
@@ -10806,9 +9635,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "fragmentKey"
-                            ]
+                            "required": ["fragmentKey"]
                           }
                         },
                         "required": [
@@ -10832,10 +9659,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10862,19 +9686,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:fragment-unplaced"
-                            ]
+                            "enum": ["sequence:fragment-unplaced"]
                           },
                           "payload": {
                             "type": "object",
@@ -10883,9 +9702,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "fragmentKey"
-                            ]
+                            "required": ["fragmentKey"]
                           }
                         },
                         "required": [
@@ -10909,10 +9726,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -10939,19 +9753,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:created"
-                            ]
+                            "enum": ["sequence:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -10979,10 +9788,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11009,19 +9815,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:renamed"
-                            ]
+                            "enum": ["sequence:renamed"]
                           },
                           "payload": {
                             "type": "object",
@@ -11033,10 +9834,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "oldKey",
-                              "newKey"
-                            ]
+                            "required": ["oldKey", "newKey"]
                           }
                         },
                         "required": [
@@ -11060,10 +9858,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11090,19 +9885,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:deleted"
-                            ]
+                            "enum": ["sequence:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -11130,10 +9920,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11160,19 +9947,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:set-main"
-                            ]
+                            "enum": ["sequence:set-main"]
                           },
                           "payload": {
                             "type": "object",
@@ -11200,10 +9982,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11230,19 +10009,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:activated"
-                            ]
+                            "enum": ["sequence:activated"]
                           },
                           "payload": {
                             "type": "object",
@@ -11270,10 +10044,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11300,19 +10071,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:deactivated"
-                            ]
+                            "enum": ["sequence:deactivated"]
                           },
                           "payload": {
                             "type": "object",
@@ -11340,10 +10106,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11370,19 +10133,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:section-reordered"
-                            ]
+                            "enum": ["sequence:section-reordered"]
                           },
                           "payload": {
                             "type": "object",
@@ -11391,9 +10149,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "sectionName"
-                            ]
+                            "required": ["sectionName"]
                           }
                         },
                         "required": [
@@ -11417,10 +10173,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11447,19 +10200,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:fragments-grouped"
-                            ]
+                            "enum": ["sequence:fragments-grouped"]
                           },
                           "payload": {
                             "type": "object",
@@ -11471,10 +10219,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "sectionName",
-                              "fragmentCount"
-                            ]
+                            "required": ["sectionName", "fragmentCount"]
                           }
                         },
                         "required": [
@@ -11498,10 +10243,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11528,19 +10270,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:fragments-moved"
-                            ]
+                            "enum": ["sequence:fragments-moved"]
                           },
                           "payload": {
                             "type": "object",
@@ -11552,10 +10289,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "sectionName",
-                              "fragmentCount"
-                            ]
+                            "required": ["sectionName", "fragmentCount"]
                           }
                         },
                         "required": [
@@ -11579,10 +10313,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11609,19 +10340,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:section-split"
-                            ]
+                            "enum": ["sequence:section-split"]
                           },
                           "payload": {
                             "type": "object",
@@ -11630,9 +10356,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "sectionName"
-                            ]
+                            "required": ["sectionName"]
                           }
                         },
                         "required": [
@@ -11656,10 +10380,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11686,19 +10407,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:sections-merged"
-                            ]
+                            "enum": ["sequence:sections-merged"]
                           },
                           "payload": {
                             "type": "object",
@@ -11707,9 +10423,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "sectionName"
-                            ]
+                            "required": ["sectionName"]
                           }
                         },
                         "required": [
@@ -11733,10 +10447,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11763,19 +10474,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:cloned"
-                            ]
+                            "enum": ["sequence:cloned"]
                           },
                           "payload": {
                             "type": "object",
@@ -11784,9 +10490,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "sourceName"
-                            ]
+                            "required": ["sourceName"]
                           }
                         },
                         "required": [
@@ -11810,10 +10514,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11840,19 +10541,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "sequence:inserted"
-                            ]
+                            "enum": ["sequence:inserted"]
                           },
                           "payload": {
                             "type": "object",
@@ -11864,10 +10560,7 @@
                                 "type": "number"
                               }
                             },
-                            "required": [
-                              "sourceName",
-                              "sectionCount"
-                            ]
+                            "required": ["sourceName", "sectionCount"]
                           }
                         },
                         "required": [
@@ -11891,10 +10584,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -11921,19 +10611,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "draft:created"
-                            ]
+                            "enum": ["draft:created"]
                           },
                           "payload": {
                             "type": "object",
@@ -11945,9 +10630,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "name"
-                            ]
+                            "required": ["name"]
                           }
                         },
                         "required": [
@@ -11971,10 +10654,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -12001,19 +10681,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "draft:deleted"
-                            ]
+                            "enum": ["draft:deleted"]
                           },
                           "payload": {
                             "type": "object",
@@ -12022,9 +10697,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "name"
-                            ]
+                            "required": ["name"]
                           }
                         },
                         "required": [
@@ -12048,10 +10721,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -12078,19 +10748,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "draft:restored"
-                            ]
+                            "enum": ["draft:restored"]
                           },
                           "payload": {
                             "type": "object",
@@ -12102,9 +10767,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "name"
-                            ]
+                            "required": ["name"]
                           }
                         },
                         "required": [
@@ -12128,10 +10791,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -12158,19 +10818,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "fragment:imported"
-                            ]
+                            "enum": ["fragment:imported"]
                           },
                           "payload": {
                             "type": "object",
@@ -12194,11 +10849,7 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "sourceFileName",
-                              "fragmentCount",
-                              "format"
-                            ]
+                            "required": ["sourceFileName", "fragmentCount", "format"]
                           }
                         },
                         "required": [
@@ -12222,10 +10873,7 @@
                           },
                           "actor": {
                             "type": "string",
-                            "enum": [
-                              "user",
-                              "system"
-                            ]
+                            "enum": ["user", "system"]
                           },
                           "target": {
                             "type": "object",
@@ -12252,19 +10900,14 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "type",
-                              "uuid"
-                            ]
+                            "required": ["type", "uuid"]
                           },
                           "undoable": {
                             "type": "boolean"
                           },
                           "type": {
                             "type": "string",
-                            "enum": [
-                              "margin:updated"
-                            ]
+                            "enum": ["margin:updated"]
                           },
                           "payload": {
                             "type": "object",
@@ -12301,10 +10944,7 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "error",
-                    "message"
-                  ]
+                  "required": ["error", "message"]
                 }
               }
             }
@@ -12315,9 +10955,7 @@
     "/projects/{projectId}/sequences": {
       "get": {
         "operationId": "listSequences",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "List all sequences for a project with current violations and cycles",
         "parameters": [
           {
@@ -12355,9 +10993,7 @@
       },
       "post": {
         "operationId": "createSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Create a named sequence",
         "parameters": [
           {
@@ -12417,9 +11053,7 @@
     "/projects/{projectId}/sequences/main": {
       "get": {
         "operationId": "getMainSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Get the main sequence (auto-creates if none exists)",
         "parameters": [
           {
@@ -12459,9 +11093,7 @@
     "/projects/{projectId}/sequences/{sequenceId}": {
       "get": {
         "operationId": "getSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Get a sequence by UUID (full)",
         "parameters": [
           {
@@ -12518,9 +11150,7 @@
       },
       "patch": {
         "operationId": "updateSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Rename or set a sequence as main",
         "parameters": [
           {
@@ -12597,9 +11227,7 @@
       },
       "delete": {
         "operationId": "deleteSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Delete a sequence (refuses if it is main)",
         "parameters": [
           {
@@ -12668,9 +11296,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/contents": {
       "get": {
         "operationId": "getSequenceContents",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Get per-fragment markdown content for a sequence (placed, ordered) plus the pool",
         "parameters": [
           {
@@ -12729,9 +11355,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/designate-main": {
       "post": {
         "operationId": "designateSequenceMain",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Make a secondary sequence the main sequence",
         "parameters": [
           {
@@ -12790,9 +11414,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/positions": {
       "post": {
         "operationId": "placeFragment",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Place a fragment into a position in the sequence",
         "parameters": [
           {
@@ -12871,9 +11493,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/positions/{fragmentUuid}": {
       "patch": {
         "operationId": "moveFragment",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Move an already-placed fragment to a new position",
         "parameters": [
           {
@@ -12949,9 +11569,7 @@
       },
       "delete": {
         "operationId": "unplaceFragment",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Remove a fragment from the sequence (return it to the pool)",
         "parameters": [
           {
@@ -13019,9 +11637,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/sections": {
       "post": {
         "operationId": "createSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Append a new section to a sequence",
         "parameters": [
           {
@@ -13090,9 +11706,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/sections/{sectionId}": {
       "patch": {
         "operationId": "renameSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Rename a section within a sequence",
         "parameters": [
           {
@@ -13168,9 +11782,7 @@
       },
       "delete": {
         "operationId": "deleteSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Delete a section; its fragments return to the sequence pool",
         "parameters": [
           {
@@ -13248,9 +11860,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/sections/{sectionId}/position": {
       "patch": {
         "operationId": "reorderSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Move a section to a new position within its sequence",
         "parameters": [
           {
@@ -13328,9 +11938,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/group-fragments": {
       "post": {
         "operationId": "groupFragments",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Group a set of placed fragments into a new section",
         "parameters": [
           {
@@ -13399,9 +12007,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/move-fragments": {
       "post": {
         "operationId": "moveFragments",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Move a set of placed fragments into an existing section as a block",
         "parameters": [
           {
@@ -13470,9 +12076,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/split-section": {
       "post": {
         "operationId": "splitSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Split a section at a marked fragment, inserting a new section boundary",
         "parameters": [
           {
@@ -13541,9 +12145,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/sections/{sectionId}/merge-next": {
       "post": {
         "operationId": "mergeSection",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Merge a section into the one immediately below it (drops the boundary)",
         "parameters": [
           {
@@ -13621,9 +12223,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/clone": {
       "post": {
         "operationId": "cloneSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Clone a sequence into a fresh independent copy",
         "parameters": [
           {
@@ -13692,9 +12292,7 @@
     "/projects/{projectId}/sequences/{sequenceId}/insert-sequence": {
       "post": {
         "operationId": "insertSequence",
-        "tags": [
-          "Sequences"
-        ],
+        "tags": ["Sequences"],
         "summary": "Insert another sequence's sections into this one at a section index",
         "parameters": [
           {
@@ -13763,9 +12361,7 @@
     "/projects/{projectId}/import": {
       "post": {
         "operationId": "importFragments",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Import a .md, .txt, or .docx file as fragments",
         "parameters": [
           {
@@ -13796,9 +12392,7 @@
                     "description": "JSON string: {\"format\":\"markdown\",\"headingLevel\":2} | {\"format\":\"docx\",\"headingLevel\":1} | {\"format\":\"plaintext\",\"delimiter\":\"---\"}"
                   }
                 },
-                "required": [
-                  "options"
-                ]
+                "required": ["options"]
               }
             }
           }
@@ -13840,9 +12434,7 @@
     "/projects/{projectId}/import/preview": {
       "post": {
         "operationId": "previewImportFragments",
-        "tags": [
-          "Fragments"
-        ],
+        "tags": ["Fragments"],
         "summary": "Preview how a .md, .txt, or .docx file would be split into fragments",
         "description": "Returns the proposed pieces assembled into a single markdown string (with per-piece anchors) plus a lean nav payload — the same { markdown, sections } shape as sequence preview.",
         "parameters": [
@@ -13874,9 +12466,7 @@
                     "description": "JSON string: {\"format\":\"markdown\",\"headingLevel\":2} | {\"format\":\"docx\",\"headingLevel\":1} | {\"format\":\"plaintext\",\"delimiter\":\"---\"}"
                   }
                 },
-                "required": [
-                  "options"
-                ]
+                "required": ["options"]
               }
             }
           }
@@ -13918,9 +12508,7 @@
     "/projects/{projectId}/preview/{sequenceId}": {
       "get": {
         "operationId": "getAssembledSequence",
-        "tags": [
-          "Preview"
-        ],
+        "tags": ["Preview"],
         "summary": "Assemble a sequence into a markdown string plus lean nav payload",
         "parameters": [
           {
@@ -13944,10 +12532,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "true",
-                "false"
-              ],
+              "enum": ["true", "false"],
               "default": "false"
             },
             "required": false,
@@ -13957,10 +12542,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "true",
-                "false"
-              ],
+              "enum": ["true", "false"],
               "default": "true"
             },
             "required": false,
@@ -13970,11 +12552,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "none",
-                "blank-line",
-                "horizontal-rule"
-              ],
+              "enum": ["none", "blank-line", "horizontal-rule"],
               "default": "blank-line"
             },
             "required": false,
@@ -14019,9 +12597,7 @@
     "/projects/{projectId}/drafts": {
       "get": {
         "operationId": "listDrafts",
-        "tags": [
-          "Drafts"
-        ],
+        "tags": ["Drafts"],
         "summary": "List all drafts for a project",
         "parameters": [
           {
@@ -14062,9 +12638,7 @@
       },
       "post": {
         "operationId": "createDraft",
-        "tags": [
-          "Drafts"
-        ],
+        "tags": ["Drafts"],
         "summary": "Create a new draft (snapshot) of the project",
         "parameters": [
           {
@@ -14144,9 +12718,7 @@
     "/projects/{projectId}/drafts/{draftId}": {
       "delete": {
         "operationId": "deleteDraft",
-        "tags": [
-          "Drafts"
-        ],
+        "tags": ["Drafts"],
         "summary": "Delete a draft",
         "parameters": [
           {
@@ -14197,9 +12769,7 @@
     "/projects/{projectId}/drafts/{draftId}/restore": {
       "post": {
         "operationId": "restoreDraft",
-        "tags": [
-          "Drafts"
-        ],
+        "tags": ["Drafts"],
         "summary": "Restore the project to a draft (with optional pre-restore safety snapshot)",
         "parameters": [
           {
@@ -14287,9 +12857,7 @@
     "/projects/{projectId}/swap/{entityType}/{entityUUID}": {
       "put": {
         "operationId": "putSwap",
-        "tags": [
-          "Swap"
-        ],
+        "tags": ["Swap"],
         "summary": "Write a swap file for unsaved entity content",
         "parameters": [
           {
@@ -14304,13 +12872,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "fragment",
-                "aspect",
-                "note",
-                "reference",
-                "margin"
-              ],
+              "enum": ["fragment", "aspect", "note", "reference", "margin"],
               "example": "fragment"
             },
             "required": true,
@@ -14373,9 +12935,7 @@
       },
       "get": {
         "operationId": "getSwap",
-        "tags": [
-          "Swap"
-        ],
+        "tags": ["Swap"],
         "summary": "Read the swap file for unsaved entity content",
         "parameters": [
           {
@@ -14390,13 +12950,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "fragment",
-                "aspect",
-                "note",
-                "reference",
-                "margin"
-              ],
+              "enum": ["fragment", "aspect", "note", "reference", "margin"],
               "example": "fragment"
             },
             "required": true,
@@ -14439,9 +12993,7 @@
       },
       "delete": {
         "operationId": "deleteSwap",
-        "tags": [
-          "Swap"
-        ],
+        "tags": ["Swap"],
         "summary": "Delete the swap file for an entity (idempotent)",
         "parameters": [
           {
@@ -14456,13 +13008,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "fragment",
-                "aspect",
-                "note",
-                "reference",
-                "margin"
-              ],
+              "enum": ["fragment", "aspect", "note", "reference", "margin"],
               "example": "fragment"
             },
             "required": true,
