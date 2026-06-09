@@ -46,7 +46,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] add commands for attaching and detaching references and notes to fragment
 
-- [ ] in-line editing of fragments in preview mode
+- [x] in-line editing of fragments in preview mode
   - make it possible to click a fragment and edit it directly in the preview
 
 - [ ] investigate/design graph view: dynamic frontend view where all pages/components/concepts can be viewed, side by side, connected
@@ -63,7 +63,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] Refactor command system, introduce strong types and reduce boilerplate
 
-- [ ] notification/banner component for communicating result of actions
+- [x] notification/banner component for communicating result of actions
 
 - [x] Ctrl+k etc triggers BOTH quick-switcher AND the editor, triggering a vim cut action. This could result in accidentally deleting text without noticing. Make sure command system triggers first and prevents the events from reaching the editor.
 
