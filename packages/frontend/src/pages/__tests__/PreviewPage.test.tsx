@@ -502,6 +502,13 @@ describe("PreviewPage — inline editing", () => {
     const textNode = document.createElement("p");
     main.appendChild(textNode);
 
+    // Ensure getElementById returns the real anchor element regardless of earlier
+    // test-local mocks that may have replaced document.getElementById.
+    document.getElementById = vi.fn().mockImplementation((id: string) => {
+      if (id === "fragment-frag-1") return anchor;
+      return null;
+    });
+
     fireEvent.doubleClick(textNode);
 
     await act(async () => {

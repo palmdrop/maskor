@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePersistedScroll } from "@hooks/usePersistedScroll";
+import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -56,6 +58,15 @@ export const PreviewPage = () => {
   const mainSequence = sequences.find((sequence) => sequence.isMain) ?? null;
   const activeSequenceUuid = sequenceParam ?? mainSequence?.uuid ?? null;
 
+  // Persist sequence whenever it resolves.
+  useEffect(() => {
+    if (activeSequenceUuid) writePreviewSequence(projectId, activeSequenceUuid);
+  }, [projectId, activeSequenceUuid]);
+
+  // Scroll persistence hook — key is stable; restore effect runs after assembled is defined below.
+  const persistedScroll = usePersistedScroll(previewScrollKey(projectId));
+  const hasRestoredScrollRef = useRef(false);
+
   const serverPreview: PreviewConfig = project?.preview ?? {
     showTitles: false,
     showSectionHeadings: true,
@@ -98,6 +109,17 @@ export const PreviewPage = () => {
   );
 
   const assembled = assembledEnvelope?.status === 200 ? assembledEnvelope.data : null;
+
+  // Restore scroll after the first time assembled content renders.
+  useEffect(() => {
+    if (!assembled || hasRestoredScrollRef.current) return;
+    hasRestoredScrollRef.current = true;
+    const offset = persistedScroll.read();
+    if (offset === null) return;
+    requestAnimationFrame(() => {
+      if (mainRef.current) mainRef.current.scrollTop = offset;
+    });
+  }, [assembled, persistedScroll]);
 
   const hasSections = assembled
     ? assembled.sections.some((section) => section.name.trim().length > 0)
@@ -293,6 +315,9 @@ export const PreviewPage = () => {
           className="flex-1 overflow-y-auto"
           ref={mainRef}
           onDoubleClick={handleMainDoubleClick}
+          onScroll={() => {
+            if (mainRef.current) persistedScroll.save(mainRef.current.scrollTop);
+          }}
         >
           {allFragments.length === 0 ? (
             <div className="flex items-center justify-center h-full">

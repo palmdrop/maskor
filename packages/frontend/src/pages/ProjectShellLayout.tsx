@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Link, Outlet, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -7,11 +7,17 @@ import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
 import { QuickSwitcher } from "@components/quick-switcher/QuickSwitcher";
+import {
+  resolveLastFragmentView,
+  resolveLastOverviewView,
+  resolveLastPreviewView,
+} from "@lib/nav-state";
 
 export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
+  const navigate = useNavigate();
 
   useVaultEvents(projectId);
 
@@ -25,6 +31,10 @@ export const ProjectShellLayout = () => {
 
   const linkClassName =
     "rounded px-3 py-1.5 text-sm hover:bg-muted [&.active]:bg-accent [&.active]:text-accent-foreground";
+
+  const lastFragment = resolveLastFragmentView(projectId);
+  const lastOverview = resolveLastOverviewView(projectId);
+  const lastPreview = resolveLastPreviewView(projectId);
 
   return (
     <div className="flex flex-col h-screen">
@@ -42,10 +52,31 @@ export const ProjectShellLayout = () => {
         >
           {projectName}
         </Link>
-        <Link to="/projects/$projectId/fragments" params={{ projectId }} className={linkClassName}>
+        {/* The link points to the list route (parent) so TanStack Router marks it
+            active regardless of whether a fragment is open. On click, intercept to
+            restore the last-opened fragment if one is stored. */}
+        <Link
+          to="/projects/$projectId/fragments"
+          params={{ projectId }}
+          className={linkClassName}
+          onClick={(event) => {
+            if (lastFragment.kind === "fragment") {
+              event.preventDefault();
+              void navigate({
+                to: "/projects/$projectId/fragments/$fragmentId",
+                params: { projectId, fragmentId: lastFragment.fragmentId },
+              });
+            }
+          }}
+        >
           Fragments
         </Link>
-        <Link to="/projects/$projectId/overview" params={{ projectId }} className={linkClassName}>
+        <Link
+          to="/projects/$projectId/overview"
+          params={{ projectId }}
+          className={linkClassName}
+          search={lastOverview.sequence ? { sequence: lastOverview.sequence } : {}}
+        >
           Overview
         </Link>
         <Link to="/projects/$projectId/suggestion" params={{ projectId }} className={linkClassName}>
@@ -57,7 +88,12 @@ export const ProjectShellLayout = () => {
         <Link to="/projects/$projectId/history" params={{ projectId }} className={linkClassName}>
           History
         </Link>
-        <Link to="/projects/$projectId/preview" params={{ projectId }} className={linkClassName}>
+        <Link
+          to="/projects/$projectId/preview"
+          params={{ projectId }}
+          className={linkClassName}
+          search={lastPreview.sequence ? { sequence: lastPreview.sequence } : {}}
+        >
           Preview
         </Link>
         <Link to="/projects/$projectId/drafts" params={{ projectId }} className={linkClassName}>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import type { OverviewDetailLevel } from "../../router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,6 +34,13 @@ import { VerticalArcStrip } from "./components/VerticalArcStrip";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
+import { usePersistedScroll } from "@hooks/usePersistedScroll";
+import {
+  writeOverviewSequence,
+  writeOverviewSelection,
+  overviewScrollKey,
+  readOverviewSelection,
+} from "@lib/nav-state";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
@@ -356,6 +363,48 @@ export const OverviewPage = () => {
     placedFragmentUuids: allSequenceFragmentUuids,
   });
 
+  // --- view-state persistence ---
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const persistedScroll = usePersistedScroll(overviewScrollKey(projectId));
+
+  // Persist sequence when it changes.
+  useEffect(() => {
+    if (activeSequenceId) writeOverviewSequence(projectId, activeSequenceId);
+  }, [projectId, activeSequenceId]);
+
+  // Persist selection when it changes.
+  useEffect(() => {
+    writeOverviewSelection(projectId, selection);
+  }, [projectId, selection]);
+
+  // Restore scroll after content is ready (both queries resolved and not rebuilding).
+  const contentReady = !bundleLoading && !summariesLoading;
+  const hasRestoredScrollRef = useRef(false);
+  useEffect(() => {
+    if (!contentReady || hasRestoredScrollRef.current) return;
+    hasRestoredScrollRef.current = true;
+    const offset = persistedScroll.read();
+    if (offset === null) return;
+    requestAnimationFrame(() => {
+      if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = offset;
+    });
+  }, [contentReady, persistedScroll]);
+
+  // Restore selection after fragments are loaded, filtered to still-existing UUIDs.
+  const hasRestoredSelectionRef = useRef(false);
+  useEffect(() => {
+    if (summariesLoading || hasRestoredSelectionRef.current) return;
+    hasRestoredSelectionRef.current = true;
+    const stored = readOverviewSelection(projectId);
+    if (stored.length === 0) return;
+    const valid = stored.filter((uuid) => fragmentByUuid.has(uuid));
+    if (valid.length > 0) {
+      setSelection(valid);
+      setSelectionAnchor(valid.at(-1) ?? null);
+    }
+  }, [summariesLoading, projectId, fragmentByUuid]);
+
   const commands = useCommands();
 
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
@@ -619,10 +668,15 @@ export const OverviewPage = () => {
 
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
+        ref={scrollContainerRef}
         className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
         data-testid="overview-main-content"
         onClick={clearSelection}
         onKeyDown={handleMainKeyDown}
+        onScroll={() => {
+          if (scrollContainerRef.current)
+            persistedScroll.save(scrollContainerRef.current.scrollTop);
+        }}
       >
         {(bundleLoading || summariesLoading) && isRebuilding ? (
           <p className="text-sm text-muted-foreground">Rebuilding project index…</p>

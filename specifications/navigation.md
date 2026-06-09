@@ -1,7 +1,7 @@
 # Spec: Navigation
 
 **Status**: Stable
-**Last updated**: 2026-05-20
+**Last updated**: 2026-06-09
 
 **Shipped**:
 
@@ -11,6 +11,7 @@
 - 2026-04-27 — Navigating away from the Fragment editor with unsaved changes triggers a save/discard prompt. (plan: references/plans/frontend-navigation.md)
 - 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-05-20 — Chord-based keyboard shortcuts (`g+f`, `g+o`, `g+c`) removed; replaced by command-palette navigation commands accessible via `Cmd/Ctrl+K`. (plan: references/plans/command-palette.md)
+- 2026-06-09 — View-state restoration: re-entering Fragments via navbar or command restores the last-opened fragment; Overview restores selected sequence, scroll position, and fragment selection; Preview restores selected sequence and scroll position. State persists across reloads via per-project localStorage. Stale references (deleted fragments/sequences/selections) are cleared or filtered on restore. (plan: references/plans/view-state-restoration.md)
 
 ---
 
