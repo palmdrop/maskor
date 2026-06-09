@@ -504,7 +504,7 @@ describe("PreviewPage — inline editing", () => {
     // Anchor in the DOM so double-click resolution can find the preceding fragment.
     // (React reconciliation removes this node on the post-save re-render, so the
     // scroll target is resolved through a mocked getElementById below instead.)
-    injectFragmentAnchor(main, "frag-1");
+    const anchor = injectFragmentAnchor(main, "frag-1");
     const textNode = document.createElement("p");
     main.appendChild(textNode);
 
