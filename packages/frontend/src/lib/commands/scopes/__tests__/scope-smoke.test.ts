@@ -290,7 +290,8 @@ describe("scopes/project-management", () => {
 describe("scopes/project-shell", () => {
   it("each create:* command calls openCreate with the matching kind", () => {
     const openCreate = vi.fn();
-    const ctx: ProjectShellContext = { openCreate };
+    const openExport = vi.fn();
+    const ctx: ProjectShellContext = { projectId: "test-project", openCreate, openExport };
 
     find(projectShellCommands, "create:fragment").run(ctx);
     expect(openCreate).toHaveBeenLastCalledWith("fragment");

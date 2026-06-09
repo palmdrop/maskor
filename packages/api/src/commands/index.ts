@@ -83,3 +83,6 @@ export type { DismissWarningInput } from "./warnings/dismiss-warning";
 
 export { rebuildIndexCommand } from "./vault-index/rebuild-index";
 export { resetDatabaseCommand } from "./vault-index/reset-database";
+
+export { exportSequenceCommand } from "./exports/export-sequence";
+export type { ExportSequenceInput, ExportSequenceResult } from "./exports/export-sequence";

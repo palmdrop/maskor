@@ -69,6 +69,7 @@ export const ActionTypeSchema = z.enum([
   "draft:restored",
   "fragment:imported",
   "margin:updated",
+  "sequence:exported",
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeSchema>;
@@ -212,6 +213,16 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
     }),
   ),
   entry("margin:updated", empty),
+  entry(
+    "sequence:exported",
+    z.object({
+      sequenceName: z.string(),
+      format: z.enum(["md", "txt", "docx"]),
+      fileName: z.string(),
+      archivePath: z.string(),
+      fragmentCount: z.number().int(),
+    }),
+  ),
 ]);
 
 export type LogEntry = z.infer<typeof LogEntrySchema>;

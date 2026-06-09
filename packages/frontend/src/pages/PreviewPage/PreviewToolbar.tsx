@@ -4,6 +4,7 @@ import {
   type ProjectUpdatePreviewSeparator as SeparatorType,
 } from "@api/generated/maskorAPI.schemas";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
+import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import {
@@ -27,6 +28,7 @@ type Props = {
     showSectionHeadings?: boolean;
     separator?: SeparatorType;
   }) => void;
+  onExport: () => void;
   children?: React.ReactNode;
 };
 
@@ -40,6 +42,7 @@ export const PreviewToolbar = ({
   hasSections,
   children,
   onPatch,
+  onExport,
 }: Props) => {
   const navigate = useNavigate();
 
@@ -111,6 +114,11 @@ export const PreviewToolbar = ({
         </Select>
       </div>
       {children ?? <div className="flex items-center gap-1.5">{children}</div>}
+      <div className="ml-auto">
+        <Button variant="outline" size="sm" onClick={onExport}>
+          Export
+        </Button>
+      </div>
     </header>
   );
 };

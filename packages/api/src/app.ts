@@ -26,6 +26,7 @@ import { draftsRouter } from "./routes/drafts";
 import { swapRouter } from "./routes/swap";
 import { fsRouter } from "./routes/fs";
 import { createSettingsRouter } from "./routes/settings";
+import { exportRouter } from "./routes/export";
 import type { Logger } from "@maskor/shared/logger";
 
 export type AppVariables = {
@@ -102,6 +103,7 @@ export const createApp = (
   projectScopedApp.route("/import", importRouter);
   projectScopedApp.route("/import/preview", importPreviewRouter);
   projectScopedApp.route("/preview", previewRouter);
+  projectScopedApp.route("/export", exportRouter);
   projectScopedApp.route("/drafts", draftsRouter);
   projectScopedApp.route("/swap", swapRouter);
 

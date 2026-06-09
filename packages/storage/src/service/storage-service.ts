@@ -1650,6 +1650,25 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       },
     },
 
+    // Export archive: the assembled output kept byte-for-byte under
+    // .maskor/exports/ as a durable record of each export. The watcher
+    // ignores .maskor/, so archived files are never adopted as fragments.
+
+    exports: {
+      async archive(
+        context: ProjectContext,
+        archiveFileName: string,
+        bytes: Uint8Array,
+      ): Promise<string> {
+        return withVaultWriteLock(context.vaultPath, async () => {
+          const exportsDirectory = join(context.vaultPath, ".maskor", "exports");
+          await mkdir(exportsDirectory, { recursive: true });
+          await Bun.write(join(exportsDirectory, archiveFileName), bytes);
+          return join(".maskor", "exports", archiveFileName);
+        });
+      },
+    },
+
     // Suggestion operations
 
     suggestion: {
