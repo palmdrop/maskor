@@ -9,7 +9,7 @@
 
 ## Overall
 
-The storage/resolver layer (`nav-state.ts`, `usePersistedScroll.ts`) and the entry-point wiring (navbar Links, `navigation:*` commands) are sound. The defects all live in the per-view **writer/restore effects**, and they are the reason the feature feels unreliable. Two of them are outright data-loss bugs: Fragments persists only the *first* fragment opened per page-mount, and Overview erases its stored selection on every mount before it can be read. Scroll restore is timing-fragile in both Overview and Preview because it fires before the content that determines scroll height has loaded. The plan is marked Done and the spec already has a Shipped entry, but the behavior does not match the stated goal.
+The storage/resolver layer (`nav-state.ts`, `usePersistedScroll.ts`) and the entry-point wiring (navbar Links, `navigation:*` commands) are sound. The defects all live in the per-view **writer/restore effects**, and they are the reason the feature feels unreliable. Two of them are outright data-loss bugs: Fragments persists only the _first_ fragment opened per page-mount, and Overview erases its stored selection on every mount before it can be read. Scroll restore is timing-fragile in both Overview and Preview because it fires before the content that determines scroll height has loaded. The plan is marked Done and the spec already has a Shipped entry, but the behavior does not match the stated goal.
 
 ---
 
@@ -42,7 +42,7 @@ Fix: gate the persist effect on `hasRestoredSelectionRef` (declared above it) so
 
 ### 3. Scroll restore fires before scroll height is final (Overview)
 
-`OverviewPage/index.tsx:382-392` — restore is gated on `contentReady = !bundleLoading && !summariesLoading`, but the scrollable height is produced by `ProseSpine`, which renders from a *separate* query (`useGetSequenceContents`, `:117`) that may still be loading. A single `requestAnimationFrame` then assigns `scrollTop` while the container is shorter than the saved offset, and the browser clamps it.
+`OverviewPage/index.tsx:382-392` — restore is gated on `contentReady = !bundleLoading && !summariesLoading`, but the scrollable height is produced by `ProseSpine`, which renders from a _separate_ query (`useGetSequenceContents`, `:117`) that may still be loading. A single `requestAnimationFrame` then assigns `scrollTop` while the container is shorter than the saved offset, and the browser clamps it.
 
 ```
 contentReady true (bundle+summaries) → rAF → scrollTop = offset
@@ -63,7 +63,7 @@ Fix: out of scope for the "gate on real content query" decision, but the Preview
 
 ### 5. Restore/persist effect ordering is an implicit contract
 
-`OverviewPage/index.tsx` — the correctness of selection persistence depends entirely on the relative *declaration order* of the persist and restore effects and on a `hasRestored…` ref guard. This is fragile: a future reorder or extraction silently reintroduces bug 2. Consider colocating the persist+restore pair behind a single hook (e.g. `usePersistedSelection`) that encapsulates the "don't persist until restored" invariant, mirroring how `usePersistedScroll` already encapsulates debounced writes.
+`OverviewPage/index.tsx` — the correctness of selection persistence depends entirely on the relative _declaration order_ of the persist and restore effects and on a `hasRestored…` ref guard. This is fragile: a future reorder or extraction silently reintroduces bug 2. Consider colocating the persist+restore pair behind a single hook (e.g. `usePersistedSelection`) that encapsulates the "don't persist until restored" invariant, mirroring how `usePersistedScroll` already encapsulates debounced writes.
 
 ---
 
