@@ -6,6 +6,7 @@ import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project-shell";
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
+import { ExportDialog } from "@components/ExportDialog";
 import { QuickSwitcher } from "@components/quick-switcher/QuickSwitcher";
 import {
   resolveLastFragmentView,
@@ -17,6 +18,8 @@ export const ProjectShellLayout = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const { data: envelope } = useGetProject(projectId);
   const [activeCreate, setActiveCreate] = useState<ActiveCreate>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportInitialSequenceId, setExportInitialSequenceId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useVaultEvents(projectId);
@@ -25,7 +28,12 @@ export const ProjectShellLayout = () => {
     setActiveCreate(kind);
   }, []);
 
-  useCommandScope(projectShellScope, { openCreate });
+  const openExport = useCallback((sequenceId?: string | null) => {
+    setExportInitialSequenceId(sequenceId ?? null);
+    setExportOpen(true);
+  }, []);
+
+  useCommandScope(projectShellScope, { projectId, openCreate, openExport });
 
   const projectName = envelope?.status === 200 ? envelope.data.name : null;
 
@@ -109,6 +117,15 @@ export const ProjectShellLayout = () => {
         projectId={projectId}
         activeCreate={activeCreate}
         onClose={() => setActiveCreate(null)}
+      />
+      <ExportDialog
+        projectId={projectId}
+        open={exportOpen}
+        onOpenChange={(nextOpen) => {
+          setExportOpen(nextOpen);
+          if (!nextOpen) setExportInitialSequenceId(null);
+        }}
+        initialSequenceId={exportInitialSequenceId}
       />
       <QuickSwitcher projectId={projectId} />
     </div>

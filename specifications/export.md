@@ -1,12 +1,13 @@
 # Spec: Export
 
 **Status**: Draft
-**Last updated**: 2026-04-27
+**Last updated**: 2026-06-09
 **Shipped**:
 
 - 18-05-2026: Basic sequence assembly used for the `specifications/preview.md` feature: consumes a sequence and a set of fragments and returns a sequential list of sections and fragments.
 - 30-05-2026: `@maskor/exporter` markdown assembler core landed — a neutral block model + `assembleMarkdown(blocks, options)` lowering a sequence (or import pieces) to a single markdown string, with the full export-superset separator set, title/section-heading toggles, and optional collision-safe anchor sentinels (`includeAnchors`, off for file export). Drives preview and import preview today; no user-facing file-export UI yet. (plan: `references/plans/preview-import-shared-renderer.md`)
 - 2026-06-01: `assembleMarkdown` strips Margin anchor markers (`<!--c:ID-->`) from every fragment body before output, so assembled markdown/preview (and any markdown-derived plain-text/Word/PDF export) never carries them. Otherwise byte-identical to pre-marker assembly. (plan: `references/plans/margins.md`, Phase 2b)
+- 2026-06-09: First-iteration file export. Sequences can be exported to `.md`, `.txt`, or `.docx` via an Export modal reachable from the preview-page toolbar (Export button) or the command palette ("Export…" command with sequence picker). Assembly uses the project's existing preview options (titles/section-headings/separator). Exported bytes are returned as a browser download and archived byte-for-byte to `.maskor/exports/`. A `sequence:exported` action-log entry is recorded per export. `.docx` uses a pure-JS mdast→docx mapper (raw structural conversion; no styling). (plan: `references/plans/export-feature.md`)
 
 ---
 

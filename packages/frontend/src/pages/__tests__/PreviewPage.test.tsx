@@ -23,6 +23,10 @@ vi.mock("@tanstack/react-router", () => ({
   useLocation: () => mockLocation,
 }));
 
+vi.mock("@lib/commands/useCommands", () => ({
+  useCommands: () => ({ run: vi.fn(), isAvailable: vi.fn(), list: vi.fn() }),
+}));
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();

@@ -1,9 +1,13 @@
+import { ListSequences } from "@api/generated/sequences/sequences";
+import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { defineScope, defineScopeCommand } from "../define";
 
 export type CreateKind = "fragment" | "note" | "reference" | "aspect";
 
 export interface ProjectShellContext {
+  projectId: string;
   openCreate: (kind: CreateKind) => void;
+  openExport: (sequenceId?: string | null) => void;
 }
 
 // Active whenever a project is open (ProjectShellLayout is mounted). Hosts the
@@ -42,9 +46,29 @@ const createAspect = defineScopeCommand(projectShellScope, {
   run: (ctx) => ctx.openCreate("aspect"),
 });
 
+// Parameterized: the palette shows a sequence picker; calling
+// `commands.run("project:export", sequenceId)` bypasses the picker and
+// opens the dialog with the given sequence pre-selected.
+const exportSequence = defineScopeCommand(projectShellScope, {
+  id: "project:export",
+  label: "Export…",
+  category: "project",
+  arg: {
+    items: async (ctx): Promise<readonly Sequence[]> => {
+      const response = await ListSequences(ctx.projectId);
+      return response.status === 200 ? response.data.sequences : [];
+    },
+    getKey: (sequence) => sequence.uuid,
+    getLabel: (sequence) => sequence.name,
+    placeholder: "Select sequence to export…",
+  },
+  run: (ctx, sequence) => ctx.openExport(sequence.uuid),
+});
+
 export const projectShellCommands = [
   createFragment,
   createNote,
   createReference,
   createAspect,
+  exportSequence,
 ] as const;

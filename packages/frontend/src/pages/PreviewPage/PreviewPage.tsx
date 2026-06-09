@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCommands } from "@lib/commands/useCommands";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
 import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
 import { useParams, useSearch } from "@tanstack/react-router";
@@ -47,6 +48,7 @@ export const PreviewPage = () => {
   const mainRef = useRef<HTMLElement>(null);
 
   const queryClient = useQueryClient();
+  const commands = useCommands();
 
   const { data: projectEnvelope } = useGetProject(projectId);
   const project = projectEnvelope?.status === 200 ? projectEnvelope.data : null;
@@ -296,6 +298,12 @@ export const PreviewPage = () => {
         separator={preview.separator}
         hasSections={hasSections}
         onPatch={handlePreviewPatch}
+        onExport={() => {
+          const activeSequence = sequences.find((sequence) => sequence.uuid === activeSequenceUuid);
+          if (activeSequence) {
+            commands.run("project:export", activeSequence);
+          }
+        }}
       >
         {activeFragmentId && fragmentsMap.get(activeFragmentId ?? activeAnchorId)?.key}
       </PreviewToolbar>
@@ -310,7 +318,7 @@ export const PreviewPage = () => {
             </div>
           }
         />
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        {}
         <main
           className="flex-1 overflow-y-auto"
           ref={mainRef}
