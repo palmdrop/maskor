@@ -20,6 +20,7 @@ describe("global/navigation", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     matchesRef.value = [];
+    localStorage.clear();
   });
 
   it("registers go-to-project-management as always-available", () => {
@@ -42,18 +43,6 @@ describe("global/navigation", () => {
     expect(command.disabled?.()).toBe("No active project");
   });
 
-  it("navigates to overview without forcing a detail level (persisted preference resolves)", () => {
-    matchesRef.value = [{ params: { projectId: "p-1" } }];
-    const command = byId("navigation:go-to-overview");
-    expect(command.disabled?.()).toBeUndefined();
-    void command.run();
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/projects/$projectId/overview",
-      params: { projectId: "p-1" },
-      search: {},
-    });
-  });
-
   it("navigates to config with tab=general", () => {
     matchesRef.value = [{ params: { projectId: "p-1" } }];
     void byId("navigation:go-to-config").run();
@@ -65,8 +54,6 @@ describe("global/navigation", () => {
   });
 
   it.each([
-    ["navigation:go-to-fragment-list", "/projects/$projectId/fragments"],
-    ["navigation:go-to-preview", "/projects/$projectId/preview"],
     ["navigation:go-to-drafts", "/projects/$projectId/drafts"],
     ["navigation:go-to-stats", "/projects/$projectId/stats"],
     ["navigation:go-to-history", "/projects/$projectId/history"],
@@ -74,5 +61,72 @@ describe("global/navigation", () => {
     matchesRef.value = [{ params: { projectId: "p-1" } }];
     void byId(id).run();
     expect(mockNavigate).toHaveBeenCalledWith({ to, params: { projectId: "p-1" } });
+  });
+
+  // --- overview ---
+
+  it("navigates to overview with empty search when no sequence stored (persisted detail level resolves)", () => {
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-overview").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/overview",
+      params: { projectId: "p-1" },
+      search: {},
+    });
+  });
+
+  it("navigates to overview with stored sequence in search", () => {
+    localStorage.setItem("maskor:nav:p-1:overview:sequence", "seq-abc");
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-overview").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/overview",
+      params: { projectId: "p-1" },
+      search: { sequence: "seq-abc" },
+    });
+  });
+
+  // --- fragment list ---
+
+  it("navigates to fragment list root when no fragment stored", () => {
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-fragment-list").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/fragments",
+      params: { projectId: "p-1" },
+    });
+  });
+
+  it("navigates directly to stored fragment when one is stored", () => {
+    localStorage.setItem("maskor:nav:p-1:fragments:fragmentId", "frag-xyz");
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-fragment-list").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/fragments/$fragmentId",
+      params: { projectId: "p-1", fragmentId: "frag-xyz" },
+    });
+  });
+
+  // --- preview ---
+
+  it("navigates to preview with empty search when no sequence stored", () => {
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-preview").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/preview",
+      params: { projectId: "p-1" },
+      search: {},
+    });
+  });
+
+  it("navigates to preview with stored sequence in search", () => {
+    localStorage.setItem("maskor:nav:p-1:preview:sequence", "seq-preview-1");
+    matchesRef.value = [{ params: { projectId: "p-1" } }];
+    void byId("navigation:go-to-preview").run();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId/preview",
+      params: { projectId: "p-1" },
+      search: { sequence: "seq-preview-1" },
+    });
   });
 });

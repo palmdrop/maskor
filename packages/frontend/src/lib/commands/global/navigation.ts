@@ -1,6 +1,11 @@
 import { router } from "@/router";
 import { defineGlobalCommand } from "../define";
 import { getActiveProjectId } from "../router-helpers";
+import {
+  resolveLastFragmentView,
+  resolveLastOverviewView,
+  resolveLastPreviewView,
+} from "@lib/nav-state";
 
 const NO_PROJECT = "No active project";
 
@@ -22,12 +27,13 @@ const goToOverview = defineGlobalCommand({
   run: () => {
     const projectId = getActiveProjectId();
     if (!projectId) return;
+    const { sequence } = resolveLastOverviewView(projectId);
     void router.navigate({
       to: "/projects/$projectId/overview",
       params: { projectId },
       // Omit `detail` so the persisted per-project detail level resolves; forcing
       // a value here would override the saved preference on every navigation.
-      search: {},
+      search: sequence ? { sequence } : {},
     });
   },
 });
@@ -40,7 +46,15 @@ const goToFragmentList = defineGlobalCommand({
   run: () => {
     const projectId = getActiveProjectId();
     if (!projectId) return;
-    void router.navigate({ to: "/projects/$projectId/fragments", params: { projectId } });
+    const resolved = resolveLastFragmentView(projectId);
+    if (resolved.kind === "fragment") {
+      void router.navigate({
+        to: "/projects/$projectId/fragments/$fragmentId",
+        params: { projectId, fragmentId: resolved.fragmentId },
+      });
+    } else {
+      void router.navigate({ to: "/projects/$projectId/fragments", params: { projectId } });
+    }
   },
 });
 
@@ -52,7 +66,12 @@ const goToPreview = defineGlobalCommand({
   run: () => {
     const projectId = getActiveProjectId();
     if (!projectId) return;
-    void router.navigate({ to: "/projects/$projectId/preview", params: { projectId } });
+    const { sequence } = resolveLastPreviewView(projectId);
+    void router.navigate({
+      to: "/projects/$projectId/preview",
+      params: { projectId },
+      search: sequence ? { sequence } : {},
+    });
   },
 });
 
