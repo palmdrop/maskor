@@ -10,6 +10,14 @@ export const customFetch = async <T>(url: string, options: RequestInit): Promise
     const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
     throw new ApiRequestError(response.status, body, correlationId);
   }
-  const data = response.status === 204 ? undefined : await response.json();
+  const data = response.status === 204 ? undefined : await parseBody(response);
   return { data, status: response.status, headers: response.headers } as T;
+};
+
+const parseBody = async (response: Response): Promise<unknown> => {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+  return response.blob();
 };

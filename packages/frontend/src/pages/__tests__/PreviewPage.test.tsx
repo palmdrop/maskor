@@ -501,8 +501,10 @@ describe("PreviewPage — inline editing", () => {
 
     const { container } = render(<PreviewPage />, { wrapper: wrap() });
     const main = container.querySelector("main")!;
-    const anchor = injectFragmentAnchor(main, "frag-1");
-    anchor.scrollIntoView = vi.fn();
+    // Anchor in the DOM so double-click resolution can find the preceding fragment.
+    // (React reconciliation removes this node on the post-save re-render, so the
+    // scroll target is resolved through a mocked getElementById below instead.)
+    injectFragmentAnchor(main, "frag-1");
     const textNode = document.createElement("p");
     main.appendChild(textNode);
 
@@ -515,12 +517,23 @@ describe("PreviewPage — inline editing", () => {
 
     fireEvent.doubleClick(textNode);
 
+    // The post-save scroll resolves its target via document.getElementById; stub it
+    // so the assertion is robust to how ReadonlyProse renders the live anchor.
+    const scrollIntoView = vi.fn();
+    const originalGetElementById = document.getElementById.bind(document);
+    document.getElementById = vi
+      .fn()
+      .mockImplementation((id: string) =>
+        id === "fragment-frag-1" ? { scrollIntoView } : originalGetElementById(id),
+      );
+
     await act(async () => {
       capturedEditorOnSave?.("new content");
     });
 
-    expect(anchor.scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
 
+    document.getElementById = originalGetElementById;
     window.requestAnimationFrame = originalRaf;
   });
 });
