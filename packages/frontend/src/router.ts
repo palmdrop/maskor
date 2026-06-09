@@ -21,6 +21,8 @@ import { FragmentImportPage } from "./pages/FragmentImportPage";
 import { PreviewPage } from "./pages/PreviewPage";
 import { DraftsPage } from "./pages/DraftsPage";
 import { queryClient } from "./queryClient";
+import { RouteErrorComponent } from "./components/data/RouteErrorComponent";
+import { ViewPending } from "./components/data/ViewPending";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -184,7 +186,20 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree, context: { queryClient } });
+export const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  // Per-route catch boundary fallback: ViewError + Retry wired to the query
+  // reset. Falls back to the framework default for errors it can't describe.
+  defaultErrorComponent: RouteErrorComponent,
+  // Layout-stable blank shell shown while a route's loader is in flight.
+  defaultPendingComponent: ViewPending,
+  // Tuned for a fast local app: only reveal the placeholder once a load is
+  // slow enough to perceive (skip it on fast loads), and keep it on screen long
+  // enough to avoid a flash when it does show.
+  defaultPendingMs: 200,
+  defaultPendingMinMs: 300,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

@@ -5,6 +5,7 @@ import { useVaultEvents } from "@hooks/useVaultEvents";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project-shell";
 import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
+import { AppErrorBoundary } from "@components/data/AppErrorBoundary";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
 import { ExportDialog } from "@components/ExportDialog";
 import { QuickSwitcher } from "@components/quick-switcher/QuickSwitcher";
@@ -110,7 +111,9 @@ export const ProjectShellLayout = () => {
       </nav>
       <div className="flex-1 min-h-0 overflow-hidden">
         <RebuildStatusProvider projectId={projectId}>
-          <Outlet />
+          <AppErrorBoundary>
+            <Outlet />
+          </AppErrorBoundary>
         </RebuildStatusProvider>
       </div>
       <GlobalCreateDialogs

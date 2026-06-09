@@ -1,7 +1,7 @@
 # Frontend data robustness: loader-prefetch, Suspense, and error boundaries
 
 **Date**: 09-06-2026
-**Status**: Todo
+**Status**: In Progress
 **Specs**: `specifications/navigation.md`
 
 ---
@@ -42,26 +42,26 @@ Chosen architecture (agreed): **route loader prefetch (parallel `ensureQueryData
 
 ### Phase 0 — Branch
 
-- [ ] Commit this plan to the current branch.
+- [x] Commit this plan to the current branch.
 
 ### Phase 1 — Infrastructure (no per-view behavior change)
 
-- [ ] Add an app-content Error Boundary (react-error-boundary) at `ProjectShellLayout`, wrapping the routed content so the navbar persists and only the content area swaps to a fallback on error.
-- [ ] Wrap it in `QueryErrorResetBoundary` and wire the boundary's `onReset` to the query reset so Retry refetches failed queries.
-- [ ] Add a shared `ViewError` fallback: friendly message, Retry button, and a Details disclosure exposing `correlationId` + technical message — visually consistent with `CommandFailureRow` on the History page.
-- [ ] Add a shared pending placeholder convention (layout-stable shell) and, if needed, a minimal `ui/skeleton` primitive.
-- [ ] Configure router defaults in `router.ts`: `defaultErrorComponent` (delegates to `ViewError`, falling back to the framework default for truly uncaught cases), `defaultPendingComponent`, and tuned `defaultPendingMs`/`defaultPendingMinMs`.
-- [ ] Set global query policy in `queryClient.ts`: `throwOnError` function (5xx/transport → boundary, 4xx → local), a sane `retry` (skip 4xx), `refetchOnWindowFocus` for self-heal, and a non-zero `staleTime` so revisits don't always re-pend.
-- [ ] Document the data-loading conventions in `packages/frontend/CLAUDE.md` (loader + `useSuspenseQuery` + boundary; when to keep classic `useQuery`; the open-decision choices once settled).
-- [ ] Tests: boundary catches a thrown child and renders `ViewError`; Retry resets and refetches; `throwOnError` routes 5xx to the boundary and leaves 4xx inline.
-- [ ] `git commit`.
+- [x] Add an app-content Error Boundary (react-error-boundary) at `ProjectShellLayout`, wrapping the routed content so the navbar persists and only the content area swaps to a fallback on error.
+- [x] Wrap it in `QueryErrorResetBoundary` and wire the boundary's `onReset` to the query reset so Retry refetches failed queries.
+- [x] Add a shared `ViewError` fallback: friendly message, Retry button, and a Details disclosure exposing `correlationId` + technical message — visually consistent with `CommandFailureRow` on the History page.
+- [x] Add a shared pending placeholder convention (layout-stable shell) and, if needed, a minimal `ui/skeleton` primitive.
+- [x] Configure router defaults in `router.ts`: `defaultErrorComponent` (delegates to `ViewError`, falling back to the framework default for truly uncaught cases), `defaultPendingComponent`, and tuned `defaultPendingMs`/`defaultPendingMinMs`.
+- [x] Set global query policy in `queryClient.ts`: `throwOnError` function (5xx/transport → boundary, 4xx → local), a sane `retry` (skip 4xx), `refetchOnWindowFocus` for self-heal, and a non-zero `staleTime` so revisits don't always re-pend.
+- [x] Document the data-loading conventions in `packages/frontend/CLAUDE.md` (loader + `useSuspenseQuery` + boundary; when to keep classic `useQuery`; the open-decision choices once settled).
+- [x] Tests: boundary catches a thrown child and renders `ViewError`; Retry resets and refetches; `throwOnError` routes 5xx to the boundary and leaves 4xx inline.
+- [x] `git commit`.
 
 ### Phase 2 — Restoration views (Overview, Preview, Fragment list, Fragment page)
 
 - [ ] Add route `loader`s that prefetch each view's queries in parallel via `Promise.allSettled` of `ensureQueryData(getXxxQueryOptions(...))`.
 - [ ] Convert non-conditional reads in these views to `useSuspenseQuery`; remove the now-redundant `?.`/empty-fallback handling and the `isLoading`/`isError` branches superseded by the boundary.
 - [ ] Resolve dependent/conditional queries per the Phase 1 decision (loader-resolved dependency, or classic `useQuery` within the ready tree).
-- [ ] **Integrate with the existing view-state-restoration system — do not replace or fork it.** The restoration primitives shipped in `references/plans/view-state-restoration.md` stay the source of truth: the `usePersistedScroll` hook, the `nav-state` localStorage module, the `resolveLastFragmentView` / `resolveLastOverviewView` / `resolveLastPreviewView` readers, the debounced scroll writers, and the Overview selection persistence. This phase changes only *when* restoration runs (gated on the new ready state) and *that it no longer silently no-ops on a failed/never-ready load* — it must not change the persisted key scheme, the writers, the navbar/command entry points, or the stale-reference guards. Read that plan before touching restoration.
+- [ ] **Integrate with the existing view-state-restoration system — do not replace or fork it.** The restoration primitives shipped in `references/plans/view-state-restoration.md` stay the source of truth: the `usePersistedScroll` hook, the `nav-state` localStorage module, the `resolveLastFragmentView` / `resolveLastOverviewView` / `resolveLastPreviewView` readers, the debounced scroll writers, and the Overview selection persistence. This phase changes only _when_ restoration runs (gated on the new ready state) and _that it no longer silently no-ops on a failed/never-ready load_ — it must not change the persisted key scheme, the writers, the navbar/command entry points, or the stale-reference guards. Read that plan before touching restoration.
 - [ ] Collapse restoration timing onto the ready state: run the existing scroll/selection restoration on first render-with-data, replacing the per-view rAF "wait for content" workarounds with the loader-guaranteed ready signal. On a load error the view shows `ViewError` (restoration correctly skipped); after a successful Retry the view reaches ready and restoration runs then. Preserve the existing stale-reference behavior (selection filtered against loaded fragments; cleared fragment slot on 404).
 - [ ] Ensure each view's pending placeholder is layout-stable — same scroll-container element and dimensions as the ready state — so `usePersistedScroll`'s target exists and scroll position is not clobbered by a layout shift between placeholder and content.
 - [ ] Tests per view: ready render with data; a failed query surfaces `ViewError` + Retry; restoration runs after ready, is skipped on error, and **resumes correctly after a successful Retry**; persisted scroll/selection round-trips unchanged through the new ready gating; loader fires queries in parallel (no waterfall).

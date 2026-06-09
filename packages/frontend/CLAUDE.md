@@ -144,3 +144,22 @@ Returning `true` suppresses the default handling entirely; returning `false`/`un
 ## Typechecking
 
 `bun run typecheck` runs `tsc -b --pretty false`. **Don't change it to `tsc --noEmit`** — the frontend's root `tsconfig.json` has `"files": []` and only `references`, so `tsc --noEmit` checks zero files and silently reports success while VSCode catches real errors per-file via `tsconfig.app.json`. Run `bun run typecheck` before claiming a refactor compiles.
+
+## Data loading (views)
+
+Views load their main content through one consistent path so that pending shows a layout-stable placeholder, a failed fetch shows an in-place `ViewError` + Retry (with a correlation id), and a render throw is recovered rather than white-screening the app. Infrastructure lives in `src/components/data/`.
+
+**The path for a full-view content load:**
+
+1. **Route loader prefetch.** Add a `loader` to the route that prefetches every query the view needs, in parallel, via `Promise.allSettled` of `queryClient.ensureQueryData(getXxxQueryOptions(...))`. `allSettled` (not `all`) means a failing query does not reject the loader, so navigation still completes and the failure surfaces in-render (next step) inside the shell — navbar persists, only the content area swaps.
+2. **`useSuspenseQuery` in the component.** Read each prefetched query with `useSuspenseQuery(getXxxQueryOptions(...))`. By the time the component renders, the loader has the data cached, so it doesn't suspend; the envelope is guaranteed defined, so drop the `?.` / empty-fallback defensiveness and the `isLoading`/`isError` branches the boundary now owns. A failed query throws here and is caught by the route's error boundary.
+3. **Pending + error are handled by the framework**, not per-component:
+   - `defaultPendingComponent` (`ViewPending`, a layout-stable blank shell) shows while the loader is in flight, gated by `defaultPendingMs` (200ms — skip on fast loads) / `defaultPendingMinMs` (300ms — no flash when it does show).
+   - `defaultErrorComponent` (`RouteErrorComponent`) catches a view throw at the route level and renders `ViewError` + Retry. Retry resets the query error boundary and re-runs the loader, so failed queries refetch. This is the workhorse boundary.
+   - `AppErrorBoundary` (at `ProjectShellLayout`, `QueryErrorResetBoundary` + react-error-boundary + a `Suspense` host) is the outer net for anything thrown outside a route's component subtree.
+
+**Global query policy** (`queryClient.ts`): `throwOnError` routes 5xx + transport/unknown failures to the boundary and leaves 4xx inline (won't self-heal). `retry` skips 4xx and retries server/transport once. `staleTime` is 30s (revisits don't re-pend) and `refetchOnWindowFocus` is on (self-heal). Note: `useSuspenseQuery` always throws regardless of `throwOnError`, so that policy mainly governs classic `useQuery`.
+
+**When to keep classic `useQuery` + inline handling:** only where a query is genuinely conditional/dependent (enabled gated on another query's result) or a small inline section — not as a way to opt a whole view out of the path. A full-view content wait is the trigger to migrate. Resolve a dependent query in the loader when you can; otherwise keep it as classic `useQuery` inside the ready tree.
+
+**Restoration coupling:** view-state restoration (scroll/selection) runs on first render-with-data — gated on the loader-guaranteed ready state, not per-view rAF "wait for content" timing. On a load error the view shows `ViewError` (restoration correctly skipped); after a successful Retry the view reaches ready and restoration runs then. Keep each view's pending placeholder layout-stable (same scroll-container element + dimensions) so `usePersistedScroll`'s target exists and scroll isn't clobbered by a layout shift.
