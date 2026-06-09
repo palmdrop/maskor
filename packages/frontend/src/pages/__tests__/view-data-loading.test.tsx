@@ -70,7 +70,11 @@ const TestView = () => {
 const makeClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { retry: false, throwOnError: shouldThrowToBoundary },
+      queries: {
+        retry: false,
+        throwOnError: (error, query) =>
+          shouldThrowToBoundary(error, query.state.data !== undefined),
+      },
     },
   });
 

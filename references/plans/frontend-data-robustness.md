@@ -77,11 +77,11 @@ Chosen architecture (agreed): **route loader prefetch (parallel `ensureQueryData
 
 ### Phase 4 — Background refetch + hardening
 
-- [ ] Surface background-refetch failures (a failed revalidation of already-rendered data) as a subtle inline indicator and/or toast, without tearing down the view.
-- [ ] Optional: `useDeferredValue` on param-driven re-suspends (Overview sequence switch, large lists) to keep the prior view visible instead of flashing the placeholder.
-- [ ] Manual smoke per view: kill the API and navigate every view → `ViewError` + Retry; restart the API + Retry → full recovery including scroll/selection. Record results.
-- [ ] Audit: no view reads guaranteed-defined data defensively; no remaining white-screen path.
-- [ ] `git commit`.
+- [x] Surface background-refetch failures (a failed revalidation of already-rendered data) as a subtle toast, without tearing down the view. `throwOnError` now only routes to the boundary when the query has no data yet; a populated query whose background refetch fails keeps its data on screen and a `QueryCache.onError` toast notes the stale data. Unit-tested via `shouldThrowToBoundary(error, hasData)` / `isBackgroundRefetchFailure`.
+- [ ] Optional: `useDeferredValue` on param-driven re-suspends — **deferred** (not needed yet: Preview uses `keepPreviousData`; Overview sequence switch re-runs the loader → router pending). Revisit if a flash is observed.
+- [ ] Manual smoke per view: kill the API and navigate every view → `ViewError` + Retry; restart + Retry → full recovery including scroll/selection. **Not run** — requires the live app + API (interactive); must be done manually.
+- [x] Audit: the migrated views read guaranteed-defined data (no `?.`/empty-fallback on suspense reads); routed content is covered by the route error boundary + the AppErrorBoundary net — no remaining white-screen path.
+- [x] `git commit`.
 
 ### Phase 5 — Docs + close-out
 
