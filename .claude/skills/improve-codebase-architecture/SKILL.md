@@ -48,6 +48,8 @@ The snapshot is enough to *find* candidates, but not to *judge depth* — depth 
 
 Apply the **deletion test** to anything you suspect is shallow: would deleting it concentrate complexity, or just move it? A "yes, concentrates" is the signal you want.
 
+**Frontend / React (the `frontend` package):** the deep-module lens applies to the *logic* substrate, not the view tree. Treat **custom hooks, stores, reducers, context, and the orchestration around the orval-generated queries/mutations** as the unit of depth — a hook is the React-idiomatic deep module, and the seam is the hook boundary or a context provider. Do **not** flag presentational components as "shallow": a thin wrapper over markup is shallow *by design*, and the deletion test on view code almost always answers "complexity just moves to the JSX," which is correct and not a finding. The real frontend friction is usually god components (a locality failure), domain logic leaked into `useEffect` chains, and scattered state ownership — surface those. Note also what this lens *misses*: where state should live, deriving state instead of effects, and render boundaries are React-specific concerns the deep-module framing doesn't fully capture; call them out as friction but don't force them into module-depth language.
+
 ### 2. Present candidates as an HTML report
 
 Write a self-contained HTML file to the OS temp directory so nothing lands in the repo. Resolve the temp dir from `$TMPDIR`, falling back to `/tmp` (or `%TEMP%` on Windows), and write to `<tmpdir>/architecture-review-<timestamp>.html` so each run gets a fresh file. Open it for the user — `xdg-open <path>` on Linux, `open <path>` on macOS, `start <path>` on Windows — and tell them the absolute path.
