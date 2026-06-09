@@ -23,6 +23,16 @@ import { DraftsPage } from "./pages/DraftsPage";
 import { queryClient } from "./queryClient";
 import { RouteErrorComponent } from "./components/data/RouteErrorComponent";
 import { ViewPending } from "./components/data/ViewPending";
+import {
+  getListFragmentsQueryOptions,
+  getGetFragmentQueryOptions,
+  getListFragmentSummariesQueryOptions,
+} from "./api/generated/fragments/fragments";
+import { getGetProjectQueryOptions } from "./api/generated/projects/projects";
+import { getListSequencesQueryOptions } from "./api/generated/sequences/sequences";
+import { getListAspectsQueryOptions } from "./api/generated/aspects/aspects";
+import { getGetAssembledSequenceQueryOptions } from "./api/generated/preview/preview";
+import { DEFAULT_PREVIEW_CONFIG, buildPreviewParams } from "./lib/preview/preview-params";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -57,12 +67,25 @@ const fragmentListRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/fragments",
   component: FragmentListPage,
+  // Prefetch the fragment list so the sidebar renders without a loading flash;
+  // allSettled means a failed load surfaces in-render via useSuspenseQuery
+  // (caught by the route error boundary) rather than failing the navigation.
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([client.ensureQueryData(getListFragmentsQueryOptions(params.projectId))]),
 });
 
 const fragmentRoute = createRoute({
   getParentRoute: () => fragmentListRoute,
   path: "/$fragmentId",
   component: FragmentPage,
+  // Prefetch the fragment plus the project/sequences the editor reads, in
+  // parallel, so opening a fragment doesn't flash a loading state.
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetFragmentQueryOptions(params.projectId, params.fragmentId)),
+      client.ensureQueryData(getGetProjectQueryOptions(params.projectId)),
+      client.ensureQueryData(getListSequencesQueryOptions(params.projectId)),
+    ]),
 });
 
 const validDetailLevels = ["prose", "excerpt", "title"] as const;
@@ -77,6 +100,16 @@ const overviewRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/overview",
   component: OverviewPage,
+  // Prefetch the four non-conditional reads in parallel. The sequence-contents
+  // query is dependent on the resolved sequence and stays a classic useQuery in
+  // the ready tree (see OverviewPage).
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetProjectQueryOptions(params.projectId)),
+      client.ensureQueryData(getListSequencesQueryOptions(params.projectId)),
+      client.ensureQueryData(getListFragmentSummariesQueryOptions(params.projectId)),
+      client.ensureQueryData(getListAspectsQueryOptions(params.projectId)),
+    ]),
   validateSearch: (
     search: Record<string, unknown>,
   ): { sequence?: string; detail?: OverviewDetailLevel } => ({
@@ -159,6 +192,38 @@ const previewRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): { sequence?: string } => ({
     sequence: typeof search.sequence === "string" ? search.sequence : undefined,
   }),
+  loaderDeps: ({ search }) => ({ sequence: search.sequence }),
+  // Resolve the active sequence (URL param, else the main sequence) and the
+  // server-side preview config, then prefetch the assembled markdown for the
+  // exact query key the component reads — so the initial preview is ready with
+  // no blank wait. Toggling an option later refetches in the background.
+  loader: async ({ context: { queryClient: client }, params, deps }) => {
+    const [projectResult, sequencesResult] = await Promise.allSettled([
+      client.ensureQueryData(getGetProjectQueryOptions(params.projectId)),
+      client.ensureQueryData(getListSequencesQueryOptions(params.projectId)),
+    ]);
+    const sequences =
+      sequencesResult.status === "fulfilled" && sequencesResult.value.status === 200
+        ? sequencesResult.value.data.sequences
+        : [];
+    const mainSequence = sequences.find((sequence) => sequence.isMain) ?? null;
+    const activeSequenceUuid = deps.sequence ?? mainSequence?.uuid ?? null;
+    if (!activeSequenceUuid) return;
+    const project =
+      projectResult.status === "fulfilled" && projectResult.value.status === 200
+        ? projectResult.value.data
+        : null;
+    const previewConfig = project?.preview ?? DEFAULT_PREVIEW_CONFIG;
+    await Promise.allSettled([
+      client.ensureQueryData(
+        getGetAssembledSequenceQueryOptions(
+          params.projectId,
+          activeSequenceUuid,
+          buildPreviewParams(previewConfig),
+        ),
+      ),
+    ]);
+  },
 });
 
 const draftsRoute = createRoute({

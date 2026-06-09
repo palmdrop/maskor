@@ -23,6 +23,11 @@ export default defineConfig({
         },
         query: {
           signal: true,
+          // Also generate useXxxSuspense hooks + getXxxSuspenseQueryOptions.
+          // The data-robustness work reads view content via useSuspenseQuery; the
+          // suspense option type (no `enabled`/`skipToken`) is what useSuspenseQuery
+          // accepts, unlike the classic getXxxQueryOptions.
+          useSuspenseQuery: true,
         },
       },
     },

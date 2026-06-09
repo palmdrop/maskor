@@ -1,7 +1,18 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+
+// The four non-conditional reads are now read via useSuspenseQuery. Rather than
+// mock each read hook, the mocked getXxxSuspenseQueryOptions return initialData
+// from this hoisted holder, so useSuspenseQuery resolves synchronously without
+// suspending. mockSequence/mockFragments set the bundle/summaries entries.
+const queryData = vi.hoisted(() => ({
+  bundle: undefined as unknown,
+  summaries: undefined as unknown,
+  project: undefined as unknown,
+  aspects: undefined as unknown,
+}));
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type * as DndKitCore from "@dnd-kit/core";
@@ -98,7 +109,7 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useGetSequenceContents: vi.fn(() => ({ data: { status: 200, data: { placed: [], pool: [] } } })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
-  useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
+  useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate, mutateAsync: unplaceMutate })),
   useReorderSection: vi.fn(() => ({ mutate: moveSectionMutate })),
   useGroupFragments: vi.fn(() => ({ mutate: groupMutate, mutateAsync: groupMutate })),
   useMoveFragments: vi.fn(() => ({ mutate: moveManyMutate, mutateAsync: moveManyMutate })),
@@ -126,27 +137,48 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useCloneSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   useInsertSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
+  getListSequencesSuspenseQueryOptions: (projectId: string) => ({
+    queryKey: [`/projects/${projectId}/sequences`],
+    queryFn: vi.fn(),
+    initialData: queryData.bundle,
+    staleTime: Infinity,
+  }),
   getGetSequenceContentsQueryKey: (projectId: string, sequenceId: string) => [
     `/projects/${projectId}/sequences/${sequenceId}/contents`,
   ],
 }));
 
 vi.mock("../../api/generated/fragments/fragments", () => ({
-  useListFragmentSummaries: vi.fn(),
   useUpdateFragment: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   getListFragmentSummariesQueryKey: (projectId: string) => [
     `/projects/${projectId}/fragments/summaries`,
   ],
+  getListFragmentSummariesSuspenseQueryOptions: (projectId: string) => ({
+    queryKey: [`/projects/${projectId}/fragments/summaries`],
+    queryFn: vi.fn(),
+    initialData: queryData.summaries,
+    staleTime: Infinity,
+  }),
 }));
 
 vi.mock("../../api/generated/aspects/aspects", () => ({
-  useListAspects: vi.fn(() => ({ data: { status: 200, data: [] }, isLoading: false })),
+  getListAspectsSuspenseQueryOptions: (projectId: string) => ({
+    queryKey: [`/projects/${projectId}/aspects`],
+    queryFn: vi.fn(),
+    initialData: queryData.aspects,
+    staleTime: Infinity,
+  }),
 }));
 
 vi.mock("../../api/generated/projects/projects", () => ({
-  useGetProject: vi.fn(() => ({ data: undefined })),
   useUpdateProject: vi.fn(() => ({ mutate: updateProjectMutate })),
   getGetProjectQueryKey: (projectId: string) => [`/projects/${projectId}`],
+  getGetProjectSuspenseQueryOptions: (projectId: string) => ({
+    queryKey: [`/projects/${projectId}`],
+    queryFn: vi.fn(),
+    initialData: queryData.project,
+    staleTime: Infinity,
+  }),
 }));
 
 // --- test data ---
@@ -203,29 +235,18 @@ const makeFragmentsResponse = (fragments: ReturnType<typeof makeFragment>[]) => 
 
 // --- helpers ---
 
-const { useListSequences, useGetSequenceContents } =
-  await import("../../api/generated/sequences/sequences");
-const { useListFragmentSummaries } = await import("../../api/generated/fragments/fragments");
+const { useGetSequenceContents } = await import("../../api/generated/sequences/sequences");
 
 const mockSequence = (fragmentUuids: string[] = []) => {
-  (useListSequences as Mock).mockReturnValue({
-    data: makeBundleResponse(fragmentUuids),
-    isLoading: false,
-  });
+  queryData.bundle = makeBundleResponse(fragmentUuids);
 };
 
 const mockMultiSectionSequence = (sections: { uuid: string; fragmentUuids: string[] }[]) => {
-  (useListSequences as Mock).mockReturnValue({
-    data: makeMultiSectionBundleResponse(sections),
-    isLoading: false,
-  });
+  queryData.bundle = makeMultiSectionBundleResponse(sections);
 };
 
 const mockFragments = (fragments: ReturnType<typeof makeFragment>[]) => {
-  (useListFragmentSummaries as Mock).mockReturnValue({
-    data: makeFragmentsResponse(fragments),
-    isLoading: false,
-  });
+  queryData.summaries = makeFragmentsResponse(fragments);
 };
 
 const mockContents = (
@@ -241,7 +262,9 @@ const wrap = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <CommandsProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <Suspense fallback={<div>Loading…</div>}>{children}</Suspense>
+      </QueryClientProvider>
     </CommandsProvider>
   );
   return Wrapper;
@@ -272,6 +295,19 @@ const { OverviewPage } = await import("../OverviewPage");
 
 // ---
 
+// Default the suspense-read data so any test that doesn't set bundle/summaries
+// still renders (rather than suspending forever). Runs before each describe's
+// own beforeEach.
+beforeEach(() => {
+  queryData.project = {
+    status: 200,
+    data: { projectUUID: PROJECT_ID, overview: { detailLevel: "prose" } },
+  };
+  queryData.aspects = { status: 200, data: [] };
+  queryData.bundle = makeBundleResponse([]);
+  queryData.summaries = makeFragmentsResponse([]);
+});
+
 describe("OverviewPage — rendering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -281,9 +317,12 @@ describe("OverviewPage — rendering", () => {
     });
   });
 
-  it("shows loading state while data is fetching", () => {
-    (useListSequences as Mock).mockReturnValue({ data: undefined, isLoading: true });
-    (useListFragmentSummaries as Mock).mockReturnValue({ data: undefined, isLoading: true });
+  it("suspends (shows the pending fallback) until the loader data is present", () => {
+    // No prefetched data → useSuspenseQuery suspends and the Suspense fallback
+    // shows. In the app this is the router's defaultPendingComponent; the
+    // in-component loading branch is gone.
+    queryData.bundle = undefined;
+    queryData.summaries = undefined;
     render(<OverviewPage />, { wrapper: wrap() });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
@@ -294,6 +333,25 @@ describe("OverviewPage — rendering", () => {
     render(<OverviewPage />, { wrapper: wrap() });
     expect(screen.getByTestId("reorder-list")).toBeInTheDocument();
     expect(screen.getByText(/Pool/)).toBeInTheDocument();
+  });
+
+  it("restores persisted selection on first render, filtered to existing fragments", () => {
+    // FRAG_A exists and is placed; the stale FRAG_C is dropped on restore.
+    localStorage.setItem(
+      `maskor:nav:${PROJECT_ID}:overview:selection`,
+      JSON.stringify([FRAG_A, FRAG_C]),
+    );
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Selection restored to the one surviving placed fragment → the action bar
+    // reports a single selection (the stale UUID did not count).
+    const bar = screen.getByTestId("selection-action-bar");
+    expect(within(bar).getByText(/1 selected/)).toBeInTheDocument();
+
+    localStorage.clear();
   });
 
   it("renders the prose spine with placed fragments at title level", () => {

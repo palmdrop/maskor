@@ -3,13 +3,13 @@ import { useCommands } from "@lib/commands/useCommands";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
 import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
 import { useParams, useSearch } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery, keepPreviousData } from "@tanstack/react-query";
 import {
-  useGetProject,
   useUpdateProject,
   getGetProjectQueryKey,
+  getGetProjectSuspenseQueryOptions,
 } from "@api/generated/projects/projects";
-import { useListSequences } from "@api/generated/sequences/sequences";
+import { getListSequencesSuspenseQueryOptions } from "@api/generated/sequences/sequences";
 import {
   useGetAssembledSequence,
   getGetAssembledSequenceQueryKey,
@@ -27,18 +27,12 @@ import { InlineFragmentEditor } from "@components/inline-fragment-editor";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { PreviewProse } from "./PreviewProse";
 import { splitAroundFragment } from "@lib/preview/split-around-fragment";
+import type { PreviewNavFragment } from "@api/generated/maskorAPI.schemas";
 import {
-  ProjectPreviewSeparator,
-  type GetAssembledSequenceParams,
-  type PreviewNavFragment,
-  type ProjectUpdatePreviewSeparator as SeparatorType,
-} from "@api/generated/maskorAPI.schemas";
-
-type PreviewConfig = {
-  showTitles: boolean;
-  showSectionHeadings: boolean;
-  separator: SeparatorType;
-};
+  type PreviewConfig,
+  DEFAULT_PREVIEW_CONFIG,
+  buildPreviewParams,
+} from "@lib/preview/preview-params";
 
 export const PreviewPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/preview" });
@@ -50,12 +44,16 @@ export const PreviewPage = () => {
   const queryClient = useQueryClient();
   const commands = useCommands();
 
-  const { data: projectEnvelope } = useGetProject(projectId);
-  const project = projectEnvelope?.status === 200 ? projectEnvelope.data : null;
+  // Prefetched by the route loader; failures surface via the route error
+  // boundary. The envelopes are guaranteed defined under suspense.
+  const { data: projectEnvelope } = useSuspenseQuery(getGetProjectSuspenseQueryOptions(projectId));
+  const project = projectEnvelope.status === 200 ? projectEnvelope.data : null;
 
-  const { data: sequencesBundleEnvelope } = useListSequences(projectId);
+  const { data: sequencesBundleEnvelope } = useSuspenseQuery(
+    getListSequencesSuspenseQueryOptions(projectId),
+  );
   const sequences =
-    sequencesBundleEnvelope?.status === 200 ? sequencesBundleEnvelope.data.sequences : [];
+    sequencesBundleEnvelope.status === 200 ? sequencesBundleEnvelope.data.sequences : [];
 
   const mainSequence = sequences.find((sequence) => sequence.isMain) ?? null;
   const activeSequenceUuid = sequenceParam ?? mainSequence?.uuid ?? null;
@@ -69,11 +67,7 @@ export const PreviewPage = () => {
   const persistedScroll = usePersistedScroll(previewScrollKey(projectId));
   const hasRestoredScrollRef = useRef(false);
 
-  const serverPreview: PreviewConfig = project?.preview ?? {
-    showTitles: false,
-    showSectionHeadings: true,
-    separator: ProjectPreviewSeparator["blank-line"],
-  };
+  const serverPreview: PreviewConfig = project?.preview ?? DEFAULT_PREVIEW_CONFIG;
 
   const [localOverride, setLocalOverride] = useState<Partial<PreviewConfig>>({});
   const preview: PreviewConfig = { ...serverPreview, ...localOverride };
@@ -96,18 +90,18 @@ export const PreviewPage = () => {
   };
 
   // Toggles drive the request: options are applied server-side, so flipping one
-  // changes the query key and refetches the re-assembled markdown.
-  const previewParams: GetAssembledSequenceParams = {
-    showTitles: preview.showTitles ? "true" : "false",
-    showSectionHeadings: preview.showSectionHeadings ? "true" : "false",
-    separator: preview.separator,
-  };
+  // changes the query key and refetches the re-assembled markdown. Kept a
+  // classic dependent query (gated on the resolved sequence + config-driven
+  // params); the loader prefetches the initial key so the first render is ready,
+  // and keepPreviousData holds the prior content during a toggle/switch refetch
+  // instead of flashing the placeholder.
+  const previewParams = buildPreviewParams(preview);
 
   const { data: assembledEnvelope } = useGetAssembledSequence(
     projectId,
     activeSequenceUuid ?? "",
     previewParams,
-    { query: { enabled: !!activeSequenceUuid } },
+    { query: { enabled: !!activeSequenceUuid, placeholderData: keepPreviousData } },
   );
 
   const assembled = assembledEnvelope?.status === 200 ? assembledEnvelope.data : null;

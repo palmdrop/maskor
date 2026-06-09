@@ -1,13 +1,13 @@
 import { useRef, useState, useCallback } from "react";
 import { Link, Outlet, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useListFragments,
   useDiscardFragment,
   useRestoreFragment,
   useCreateFragment,
   useDeleteFragment,
   getListFragmentsQueryKey,
+  getListFragmentsSuspenseQueryOptions,
 } from "@api/generated/fragments/fragments";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
@@ -15,7 +15,6 @@ import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
-import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { UploadIcon } from "lucide-react";
 
 export const FragmentListPage = () => {
@@ -25,8 +24,10 @@ export const FragmentListPage = () => {
   const navigate = useNavigate();
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: envelope, isLoading, isError } = useListFragments(projectId);
-  const { isRebuilding } = useRebuildStatus();
+  // Prefetched by the route loader, so this never suspends on a fast load; the
+  // envelope is guaranteed defined. A failed load surfaces via the route error
+  // boundary (ViewError + Retry) rather than an inline branch here.
+  const { data: envelope } = useSuspenseQuery(getListFragmentsSuspenseQueryOptions(projectId));
   const { mutate: discardFragment } = useDiscardFragment();
   const { mutate: restoreFragment } = useRestoreFragment();
   const { mutate: deleteFragment } = useDeleteFragment();
@@ -75,12 +76,6 @@ export const FragmentListPage = () => {
       });
     }
   };
-
-  if (isLoading && isRebuilding)
-    return <p className="p-4 text-sm text-muted-foreground">Rebuilding project index…</p>;
-  if (isLoading) return <p className="p-4 text-sm text-muted-foreground">Loading fragments…</p>;
-  if (isError || !envelope)
-    return <p className="p-4 text-sm text-muted-foreground">Failed to load fragments.</p>;
 
   const fragments = envelope.status === 200 ? envelope.data : [];
   const discardedCount = fragments.reduce((count, f) => count + (f.isDiscarded ? 1 : 0), 0);

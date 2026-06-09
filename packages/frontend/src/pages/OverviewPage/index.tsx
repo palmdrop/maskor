@@ -1,26 +1,26 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import type { OverviewDetailLevel } from "../../router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 
 import {
-  useListSequences,
   useDesignateSequenceMain,
   useGetSequenceContents,
   getListSequencesQueryKey,
+  getListSequencesSuspenseQueryOptions,
   getGetSequenceContentsQueryKey,
 } from "@api/generated/sequences/sequences";
 import {
-  useListFragmentSummaries,
   useUpdateFragment,
   getListFragmentSummariesQueryKey,
+  getListFragmentSummariesSuspenseQueryOptions,
 } from "@api/generated/fragments/fragments";
-import { useListAspects } from "@api/generated/aspects/aspects";
+import { getListAspectsSuspenseQueryOptions } from "@api/generated/aspects/aspects";
 import {
-  useGetProject,
   useUpdateProject,
   getGetProjectQueryKey,
+  getGetProjectSuspenseQueryOptions,
 } from "@api/generated/projects/projects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
@@ -41,7 +41,6 @@ import {
   overviewScrollKey,
   readOverviewSelection,
 } from "@lib/nav-state";
-import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
 import { useSequenceDnD } from "./hooks/useSequenceDnD";
@@ -54,8 +53,12 @@ export const OverviewPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: projectEnvelope } = useGetProject(projectId);
-  const project = projectEnvelope?.status === 200 ? projectEnvelope.data : undefined;
+  // The four non-conditional reads are prefetched by the route loader and read
+  // under suspense, so they are guaranteed defined here; sequence-contents below
+  // stays a classic dependent query. Load failures surface via the route error
+  // boundary (ViewError + Retry).
+  const { data: projectEnvelope } = useSuspenseQuery(getGetProjectSuspenseQueryOptions(projectId));
+  const project = projectEnvelope.status === 200 ? projectEnvelope.data : undefined;
   const persistedDetailLevel = project?.overview?.detailLevel as OverviewDetailLevel | undefined;
 
   const detailLevel: OverviewDetailLevel = urlDetailLevel ?? persistedDetailLevel ?? "prose";
@@ -92,10 +95,10 @@ export const OverviewPage = () => {
   const [arcExpanded, setArcExpanded] = useState(false);
   const [verticalStripOpen, setVerticalStripOpen] = useState(false);
 
-  const { isRebuilding } = useRebuildStatus();
-
-  const { data: bundleEnvelope, isLoading: bundleLoading } = useListSequences(projectId);
-  const bundle = bundleEnvelope?.status === 200 ? bundleEnvelope.data : undefined;
+  const { data: bundleEnvelope } = useSuspenseQuery(
+    getListSequencesSuspenseQueryOptions(projectId),
+  );
+  const bundle = bundleEnvelope.status === 200 ? bundleEnvelope.data : undefined;
 
   const sequenceParamIsKnown = useMemo(
     () => bundle?.sequences.some((s) => s.uuid === sequenceParam) ?? false,
@@ -103,16 +106,17 @@ export const OverviewPage = () => {
   );
   const activeSequenceId = sequenceParamIsKnown ? sequenceParam! : undefined;
 
-  const { data: summariesEnvelope, isLoading: summariesLoading } =
-    useListFragmentSummaries(projectId);
+  const { data: summariesEnvelope } = useSuspenseQuery(
+    getListFragmentSummariesSuspenseQueryOptions(projectId),
+  );
 
-  const { data: aspectsEnvelope } = useListAspects(projectId);
+  const { data: aspectsEnvelope } = useSuspenseQuery(getListAspectsSuspenseQueryOptions(projectId));
 
   const sequence =
     bundle?.sequences.find((s) => s.uuid === activeSequenceId) ??
     bundle?.sequences.find((s) => s.isMain);
-  const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
-  const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
+  const allFragments = summariesEnvelope.status === 200 ? summariesEnvelope.data : [];
+  const aspectList = aspectsEnvelope.status === 200 ? aspectsEnvelope.data : [];
 
   const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence?.uuid ?? "", {
     query: { enabled: !!sequence },
@@ -385,12 +389,11 @@ export const OverviewPage = () => {
   }, [projectId, selection]);
 
   // Restore scroll only once the content that determines scroll height is ready.
-  // The spine height comes from the sequence-contents query, not from the bundle
-  // or summaries; restoring on the latter would clamp scrollTop against a
-  // not-yet-grown container. When there is no sequence, fall back to the bundle/
-  // summaries readiness so an empty project still restores (a no-op scroll).
-  const spineContentReady =
-    !bundleLoading && !summariesLoading && (!sequence || !!contentsEnvelope);
+  // The bundle and summaries are loader-guaranteed (suspense), so readiness now
+  // hinges only on the dependent sequence-contents query: the spine height comes
+  // from it, and restoring before it lands would clamp scrollTop against a
+  // not-yet-grown container. With no sequence there is nothing to wait for.
+  const spineContentReady = !sequence || !!contentsEnvelope;
   const hasRestoredScrollRef = useRef(false);
   useEffect(() => {
     if (!spineContentReady || hasRestoredScrollRef.current) return;
@@ -402,9 +405,10 @@ export const OverviewPage = () => {
     });
   }, [spineContentReady, persistedScroll]);
 
-  // Restore selection after fragments are loaded, filtered to still-existing UUIDs.
+  // Restore selection on first render — summaries are loader-guaranteed, so the
+  // fragment set is already populated — filtered to still-existing UUIDs.
   useEffect(() => {
-    if (summariesLoading || hasRestoredSelectionRef.current) return;
+    if (hasRestoredSelectionRef.current) return;
     hasRestoredSelectionRef.current = true;
     const stored = readOverviewSelection(projectId);
     if (stored.length === 0) return;
@@ -413,7 +417,7 @@ export const OverviewPage = () => {
       setSelection(valid);
       setSelectionAnchor(valid.at(-1) ?? null);
     }
-  }, [summariesLoading, projectId, fragmentByUuid]);
+  }, [projectId, fragmentByUuid]);
 
   const commands = useCommands();
 
@@ -537,9 +541,12 @@ export const OverviewPage = () => {
   // pool. Shares the optimistic mutation used by drag-to-pool; surfaced as a
   // direct button on each placed fragment (spine, left column, right panel).
   const unplaceFragment = useCallback(
-    (fragmentUuid: string) => {
+    async (fragmentUuid: string) => {
       if (!sequence) return;
-      sequenceMutations.unplaceFragment.mutate({
+      // Return the mutation promise so the command's onFailure can fire — the
+      // scope types this primitive () => Promise<void>; a fire-and-forget
+      // .mutate() would drop the failure silently.
+      await sequenceMutations.unplaceFragment.mutateAsync({
         projectId,
         sequenceId: sequence.uuid,
         fragmentUuid,
@@ -632,49 +639,47 @@ export const OverviewPage = () => {
           and the prose spine both use raw fragment uuids as draggable ids;
           dnd-kit ids must be unique within a context, so the surfaces are kept
           in separate contexts rather than colliding in one. */}
-      {!bundleLoading && !summariesLoading && (
-        <DndContext
-          sensors={dnd.sensors}
-          collisionDetection={dnd.collisionDetection}
-          onDragStart={dnd.handleDragStart}
-          onDragEnd={dnd.handleDragEnd}
-        >
-          <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
-            <ReorderList
-              sectionsData={sectionsData}
-              poolFragmentUuids={poolFragmentUuids}
-              colorByAspectKey={arcData.colorByAspectKey}
-              fragmentByUuid={fragmentByUuid}
-              selectedFragmentUuids={selectionSet}
-              onSelectFragment={handleSelectFragment}
-              onRemoveFragment={handleRemoveFragment}
-              getViolationTooltips={getViolationTooltips}
-              getCycleTooltips={getCycleTooltips}
-              editingSectionId={sectionManager.editingSectionId}
-              setEditingSectionId={sectionManager.setEditingSectionId}
-              editingSectionValue={sectionManager.editingSectionValue}
-              setEditingSectionValue={sectionManager.setEditingSectionValue}
-              confirmingDeleteSectionId={sectionManager.confirmingDeleteSectionId}
-              setConfirmingDeleteSectionId={sectionManager.setConfirmingDeleteSectionId}
-              handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
-              handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
-              onDeleteSection={() => commands.run("overview:delete-section")}
-              onMergeUp={(section) => commands.run("overview:merge-section-up", section)}
-              onMergeDown={(section) => commands.run("overview:merge-section-down", section)}
-              hasSequence={!!sequence}
-              createSectionPending={sectionManager.createSection.isPending}
-              onAddSection={() => commands.run("overview:add-section")}
-            />
-          </aside>
-          <DragOverlay dropAnimation={null}>
-            {activeDragFragment ? (
-              <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
-                {activeDragFragment.key}
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+      <DndContext
+        sensors={dnd.sensors}
+        collisionDetection={dnd.collisionDetection}
+        onDragStart={dnd.handleDragStart}
+        onDragEnd={dnd.handleDragEnd}
+      >
+        <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
+          <ReorderList
+            sectionsData={sectionsData}
+            poolFragmentUuids={poolFragmentUuids}
+            colorByAspectKey={arcData.colorByAspectKey}
+            fragmentByUuid={fragmentByUuid}
+            selectedFragmentUuids={selectionSet}
+            onSelectFragment={handleSelectFragment}
+            onRemoveFragment={handleRemoveFragment}
+            getViolationTooltips={getViolationTooltips}
+            getCycleTooltips={getCycleTooltips}
+            editingSectionId={sectionManager.editingSectionId}
+            setEditingSectionId={sectionManager.setEditingSectionId}
+            editingSectionValue={sectionManager.editingSectionValue}
+            setEditingSectionValue={sectionManager.setEditingSectionValue}
+            confirmingDeleteSectionId={sectionManager.confirmingDeleteSectionId}
+            setConfirmingDeleteSectionId={sectionManager.setConfirmingDeleteSectionId}
+            handleSectionRenameCommit={sectionManager.handleSectionRenameCommit}
+            handleSectionRenameKeyDown={sectionManager.handleSectionRenameKeyDown}
+            onDeleteSection={() => commands.run("overview:delete-section")}
+            onMergeUp={(section) => commands.run("overview:merge-section-up", section)}
+            onMergeDown={(section) => commands.run("overview:merge-section-down", section)}
+            hasSequence={!!sequence}
+            createSectionPending={sectionManager.createSection.isPending}
+            onAddSection={() => commands.run("overview:add-section")}
+          />
+        </aside>
+        <DragOverlay dropAnimation={null}>
+          {activeDragFragment ? (
+            <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+              {activeDragFragment.key}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
@@ -688,117 +693,111 @@ export const OverviewPage = () => {
             persistedScroll.save(scrollContainerRef.current.scrollTop);
         }}
       >
-        {(bundleLoading || summariesLoading) && isRebuilding ? (
-          <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
-        ) : bundleLoading || summariesLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : (
-          <>
-            <SequenceHeader
-              sequence={sequence}
-              detailLevel={detailLevel}
-              designateMainPending={designateMain.isPending}
-              onDesignateMain={() => commands.run("overview:designate-main")}
-              onSetDetailLevel={handleSetDetailLevel}
-              arcOverlayOpen={arcOverlayOpen}
-              onToggleArcOverlay={toggleArcOverlay}
-              verticalStripOpen={verticalStripOpen}
-              onToggleVerticalStrip={toggleVerticalArcStrip}
-            />
+        <>
+          <SequenceHeader
+            sequence={sequence}
+            detailLevel={detailLevel}
+            designateMainPending={designateMain.isPending}
+            onDesignateMain={() => commands.run("overview:designate-main")}
+            onSetDetailLevel={handleSetDetailLevel}
+            arcOverlayOpen={arcOverlayOpen}
+            onToggleArcOverlay={toggleArcOverlay}
+            verticalStripOpen={verticalStripOpen}
+            onToggleVerticalStrip={toggleVerticalArcStrip}
+          />
 
-            {placedSelection.length > 0 && (
-              <div
-                className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
-                data-testid="selection-action-bar"
-              >
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {placedSelection.length} selected
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:group-selection")}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    Group into section
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:split-before-selection")}
-                    disabled={!canSplitBefore}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    Split before
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:split-after-selection")}
-                    disabled={!canSplitAfter}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    Split after
-                  </button>
-                  {/* "Move to section…" is a parameterized command (opens a section
-                      picker); run it from the command palette. */}
-                </div>
-              </div>
-            )}
-
-            {arcOverlayOpen && (
-              <ArcOverlay
-                sectionsData={sectionsData}
-                fragmentByUuid={fragmentByUuid}
-                colorByAspectKey={arcData.colorByAspectKey}
-                arcAspectKeys={arcData.arcAspectKeys}
-                hiddenAspectKeys={arcData.hiddenAspectKeys}
-                onToggleAspectVisibility={arcData.toggleAspectVisibility}
-                isExpanded={arcExpanded}
-                onToggleExpanded={toggleArcExpanded}
-                onClose={toggleArcOverlay}
-              />
-            )}
-
-            <DndContext
-              sensors={dnd.sensors}
-              collisionDetection={dnd.collisionDetection}
-              onDragStart={dnd.handleDragStart}
-              onDragEnd={dnd.handleDragEnd}
+          {placedSelection.length > 0 && (
+            <div
+              className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
+              data-testid="selection-action-bar"
             >
-              <div className="flex gap-4">
-                {verticalStripOpen && (
-                  <div className="sticky top-0 self-start">
-                    <VerticalArcStrip
-                      orderedFragmentUuids={allSequenceFragmentUuids}
-                      fragmentByUuid={fragmentByUuid}
-                      colorByAspectKey={arcData.colorByAspectKey}
-                      hiddenAspectKeys={arcData.hiddenAspectKeys}
-                    />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <ProseSpine
-                    projectId={projectId}
-                    sectionsData={sectionsData}
-                    detailLevel={detailLevel}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {placedSelection.length} selected
+              </span>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => commands.run("overview:group-selection")}
+                  className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  Group into section
+                </button>
+                <button
+                  type="button"
+                  onClick={() => commands.run("overview:split-before-selection")}
+                  disabled={!canSplitBefore}
+                  className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  Split before
+                </button>
+                <button
+                  type="button"
+                  onClick={() => commands.run("overview:split-after-selection")}
+                  disabled={!canSplitAfter}
+                  className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  Split after
+                </button>
+                {/* "Move to section…" is a parameterized command (opens a section
+                      picker); run it from the command palette. */}
+              </div>
+            </div>
+          )}
+
+          {arcOverlayOpen && (
+            <ArcOverlay
+              sectionsData={sectionsData}
+              fragmentByUuid={fragmentByUuid}
+              colorByAspectKey={arcData.colorByAspectKey}
+              arcAspectKeys={arcData.arcAspectKeys}
+              hiddenAspectKeys={arcData.hiddenAspectKeys}
+              onToggleAspectVisibility={arcData.toggleAspectVisibility}
+              isExpanded={arcExpanded}
+              onToggleExpanded={toggleArcExpanded}
+              onClose={toggleArcOverlay}
+            />
+          )}
+
+          <DndContext
+            sensors={dnd.sensors}
+            collisionDetection={dnd.collisionDetection}
+            onDragStart={dnd.handleDragStart}
+            onDragEnd={dnd.handleDragEnd}
+          >
+            <div className="flex gap-4">
+              {verticalStripOpen && (
+                <div className="sticky top-0 self-start">
+                  <VerticalArcStrip
+                    orderedFragmentUuids={allSequenceFragmentUuids}
                     fragmentByUuid={fragmentByUuid}
-                    contentByFragmentUuid={contentByFragmentUuid}
-                    selectedFragmentUuids={selectionSet}
-                    onSelectFragment={handleSelectFragment}
-                    onRemoveFragment={handleRemoveFragment}
-                    onSaveContent={handleSaveFragmentContent}
+                    colorByAspectKey={arcData.colorByAspectKey}
+                    hiddenAspectKeys={arcData.hiddenAspectKeys}
                   />
                 </div>
+              )}
+              <div className="flex-1">
+                <ProseSpine
+                  projectId={projectId}
+                  sectionsData={sectionsData}
+                  detailLevel={detailLevel}
+                  fragmentByUuid={fragmentByUuid}
+                  contentByFragmentUuid={contentByFragmentUuid}
+                  selectedFragmentUuids={selectionSet}
+                  onSelectFragment={handleSelectFragment}
+                  onRemoveFragment={handleRemoveFragment}
+                  onSaveContent={handleSaveFragmentContent}
+                />
               </div>
-              <DragOverlay dropAnimation={null}>
-                {activeDragFragment ? (
-                  <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
-                    {activeDragFragment.key}
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </>
-        )}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeDragFragment ? (
+                <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+                  {activeDragFragment.key}
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </>
       </div>
 
       <RightSidebar

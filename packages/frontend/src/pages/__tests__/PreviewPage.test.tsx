@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { makeSuspenseQueryClient, seedQueries } from "@/test/suspense-query";
 import type { ReactNode } from "react";
 import type {
   PreviewResult,
@@ -27,12 +28,6 @@ vi.mock("@lib/commands/useCommands", () => ({
   useCommands: () => ({ run: vi.fn(), isAvailable: vi.fn(), list: vi.fn() }),
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
-});
-
 vi.mock("@hooks/useProjectEditorConfig", () => ({
   useProjectEditorConfig: () => ({
     vimMode: false,
@@ -50,15 +45,14 @@ vi.mock("@components/readonly-prose", () => ({
   ReadonlyProse: ({ content }: { content: string }) => <div data-testid="prose">{content}</div>,
 }));
 
-vi.mock("@api/generated/projects/projects", () => ({
-  useGetProject: vi.fn(),
-  useUpdateProject: vi.fn(),
-  getGetProjectQueryKey: vi.fn(() => ["projects", PROJECT_ID]),
-}));
-
-vi.mock("@api/generated/sequences/sequences", () => ({
-  useListSequences: vi.fn(),
-}));
+// project + sequences are read via useSuspenseQuery; keep the real module
+// (query keys + suspense options) and seed the cache in wrap(). Only the
+// mutation is mocked. sequences is left fully real (read from the seeded cache).
+vi.mock("@api/generated/projects/projects", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importOriginal<typeof import("@api/generated/projects/projects")>();
+  return { ...actual, useUpdateProject: vi.fn() };
+});
 
 vi.mock("@api/generated/preview/preview", () => ({
   useGetAssembledSequence: vi.fn(),
@@ -150,17 +144,9 @@ const makeSequenceBundle = (
   cycles: [],
 });
 
-const wrap = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-
-  return wrapper;
-};
-
-const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
-const { useListSequences } = await import("@api/generated/sequences/sequences");
+const { useUpdateProject, getGetProjectQueryKey } =
+  await import("@api/generated/projects/projects");
+const { getListSequencesQueryKey } = await import("@api/generated/sequences/sequences");
 const { useGetAssembledSequence } = await import("@api/generated/preview/preview");
 const { useGetFragment, useUpdateFragment } = await import("@api/generated/fragments/fragments");
 const { PreviewPage } = await import("../PreviewPage");
@@ -168,17 +154,30 @@ const { PreviewPage } = await import("../PreviewPage");
 const mockMutate = vi.fn();
 const mockUpdateFragment = vi.fn().mockResolvedValue({ status: 200, data: {} });
 
+// The project/sequences envelopes seeded into the suspense cache by wrap(); set
+// by setupMocks so the test body can `render(<PreviewPage/>, { wrapper: wrap() })`.
+let currentProjectEnvelope: unknown;
+let currentSequencesEnvelope: unknown;
+
+const wrap = () => {
+  const queryClient = makeSuspenseQueryClient();
+  seedQueries(queryClient, [
+    [getGetProjectQueryKey(PROJECT_ID), currentProjectEnvelope],
+    [getListSequencesQueryKey(PROJECT_ID), currentSequencesEnvelope],
+  ]);
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return Wrapper;
+};
+
 const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?: 200 | 404 }) => {
   const assembled = overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
   const statusCode = overrides?.statusCode ?? 200;
 
-  (useGetProject as Mock).mockReturnValue({
-    data: { status: 200 as const, data: makeProject() },
-  });
+  currentProjectEnvelope = { status: 200 as const, data: makeProject() };
+  currentSequencesEnvelope = { status: 200 as const, data: makeSequenceBundle() };
   (useUpdateProject as Mock).mockReturnValue({ mutate: mockMutate });
-  (useListSequences as Mock).mockReturnValue({
-    data: { status: 200 as const, data: makeSequenceBundle() },
-  });
 
   if (statusCode === 404 || assembled === null) {
     (useGetAssembledSequence as Mock).mockReturnValue({
@@ -268,6 +267,24 @@ describe("PreviewPage", () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
   });
 
+  it("restores persisted scroll once the assembled content is ready", () => {
+    const originalRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = (callback) => {
+      callback(0);
+      return 0;
+    };
+    localStorage.setItem(`maskor:nav:${PROJECT_ID}:preview:scroll`, "150");
+    setupMocks();
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+
+    expect(main.scrollTop).toBe(150);
+
+    localStorage.clear();
+    window.requestAnimationFrame = originalRaf;
+  });
+
   it("persists a toggle change via useUpdateProject", () => {
     setupMocks();
     render(<PreviewPage />, { wrapper: wrap() });
@@ -292,19 +309,11 @@ describe("PreviewPage", () => {
   });
 
   it("reverts the requested option when the persist mutation fails", () => {
+    setupMocks();
     let capturedOnError: (() => void) | undefined;
-    (useGetProject as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeProject() },
-    });
     (useUpdateProject as Mock).mockImplementation((options) => {
       capturedOnError = options?.mutation?.onError;
       return { mutate: mockMutate };
-    });
-    (useListSequences as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeSequenceBundle() },
-    });
-    (useGetAssembledSequence as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makePreviewResult() },
     });
 
     render(<PreviewPage />, { wrapper: wrap() });
