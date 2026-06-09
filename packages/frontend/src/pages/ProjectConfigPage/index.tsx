@@ -1,6 +1,6 @@
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
-import { useGetProject } from "@api/generated/projects/projects";
-import { useRebuildStatus } from "@contexts/RebuildStatusContext";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { getGetProjectSuspenseQueryOptions } from "@api/generated/projects/projects";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
@@ -13,18 +13,13 @@ export const ProjectConfigPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/config" });
   const { tab } = useSearch({ from: "/projects/$projectId/config" });
   const navigate = useNavigate({ from: "/projects/$projectId/config" });
-  const { data: envelope, isLoading, isError } = useGetProject(projectId);
-  const { isRebuilding } = useRebuildStatus();
+  // Prefetched by the route loader (and already warmed by ProjectShellLayout);
+  // a failed load surfaces via the route error boundary (ViewError + Retry).
+  const { data: envelope } = useSuspenseQuery(getGetProjectSuspenseQueryOptions(projectId));
   const { warnings } = useWarnings(projectId);
 
-  if (isLoading && isRebuilding)
-    return <p className="p-6 text-sm text-muted-foreground">Rebuilding project index…</p>;
-  if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !envelope)
-    return <p className="p-6 text-sm text-muted-foreground">Failed to load project.</p>;
-
   const project = envelope.status === 200 ? envelope.data : null;
-  if (!project) return <p className="p-6 text-sm text-muted-foreground">Project not found.</p>;
+  if (!project) return null;
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-auto p-2">

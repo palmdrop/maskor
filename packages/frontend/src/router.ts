@@ -28,10 +28,25 @@ import {
   getGetFragmentQueryOptions,
   getListFragmentSummariesQueryOptions,
 } from "./api/generated/fragments/fragments";
-import { getGetProjectQueryOptions } from "./api/generated/projects/projects";
+import {
+  getGetProjectQueryOptions,
+  getListProjectsQueryOptions,
+} from "./api/generated/projects/projects";
 import { getListSequencesQueryOptions } from "./api/generated/sequences/sequences";
-import { getListAspectsQueryOptions } from "./api/generated/aspects/aspects";
+import {
+  getListAspectsQueryOptions,
+  getGetAspectQueryOptions,
+} from "./api/generated/aspects/aspects";
+import { getListNotesQueryOptions, getGetNoteQueryOptions } from "./api/generated/notes/notes";
+import {
+  getListReferencesQueryOptions,
+  getGetReferenceQueryOptions,
+} from "./api/generated/references/references";
+import { getListDraftsQueryOptions } from "./api/generated/drafts/drafts";
+import { getGetProjectStatsQueryOptions } from "./api/generated/stats/stats";
+import { getGetCurrentSuggestionQueryOptions } from "./api/generated/suggestion/suggestion";
 import { getGetAssembledSequenceQueryOptions } from "./api/generated/preview/preview";
+import { getActionLogQueryOptions } from "./api/action-log";
 import { DEFAULT_PREVIEW_CONFIG, buildPreviewParams } from "./lib/preview/preview-params";
 
 interface RouterContext {
@@ -44,6 +59,8 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: ProjectManagementPage,
+  loader: ({ context: { queryClient: client } }) =>
+    Promise.allSettled([client.ensureQueryData(getListProjectsQueryOptions())]),
 });
 
 const projectShellLayoutRoute = createRoute({
@@ -129,6 +146,8 @@ const projectConfigRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/config",
   component: ProjectConfigPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([client.ensureQueryData(getGetProjectQueryOptions(params.projectId))]),
   validateSearch: (search: Record<string, unknown>): { tab: ConfigTab } => ({
     tab: validTabs.includes(search.tab as ConfigTab) ? (search.tab as ConfigTab) : "general",
   }),
@@ -138,6 +157,11 @@ const noteEditorRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/notes/$noteId",
   component: NoteEditorPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetNoteQueryOptions(params.projectId, params.noteId)),
+      client.ensureQueryData(getListNotesQueryOptions(params.projectId)),
+    ]),
   validateSearch: (search: Record<string, unknown>): { from?: string } => ({
     from: typeof search.from === "string" ? search.from : undefined,
   }),
@@ -147,6 +171,11 @@ const referenceEditorRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/references/$referenceId",
   component: ReferenceEditorPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetReferenceQueryOptions(params.projectId, params.referenceId)),
+      client.ensureQueryData(getListReferencesQueryOptions(params.projectId)),
+    ]),
   validateSearch: (search: Record<string, unknown>): { from?: string } => ({
     from: typeof search.from === "string" ? search.from : undefined,
   }),
@@ -156,12 +185,24 @@ const aspectEditorRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/aspects/$aspectId",
   component: AspectEditorPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetAspectQueryOptions(params.projectId, params.aspectId)),
+      client.ensureQueryData(getListAspectsQueryOptions(params.projectId)),
+      client.ensureQueryData(getListNotesQueryOptions(params.projectId)),
+    ]),
 });
 
 const suggestionModeRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/suggestion",
   component: SuggestionModePage,
+  // Prefetch the current suggestion so the initial load doesn't flash; the
+  // view keeps its own in-place handling for the loadNext/save flow.
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getGetCurrentSuggestionQueryOptions(params.projectId)),
+    ]),
   validateSearch: (search: Record<string, unknown>): { fragment?: string } => ({
     fragment: typeof search.fragment === "string" ? search.fragment : undefined,
   }),
@@ -171,12 +212,22 @@ const projectStatsRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/stats",
   component: ProjectStatsPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([client.ensureQueryData(getGetProjectStatsQueryOptions(params.projectId))]),
 });
 
 const historyRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/history",
   component: ProjectHistoryPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([
+      client.ensureQueryData(getActionLogQueryOptions(params.projectId, 100)),
+      client.ensureQueryData(getListFragmentsQueryOptions(params.projectId)),
+      client.ensureQueryData(getListAspectsQueryOptions(params.projectId)),
+      client.ensureQueryData(getListNotesQueryOptions(params.projectId)),
+      client.ensureQueryData(getListReferencesQueryOptions(params.projectId)),
+    ]),
 });
 
 const fragmentImportRoute = createRoute({
@@ -230,6 +281,8 @@ const draftsRoute = createRoute({
   getParentRoute: () => projectShellLayoutRoute,
   path: "/drafts",
   component: DraftsPage,
+  loader: ({ context: { queryClient: client }, params }) =>
+    Promise.allSettled([client.ensureQueryData(getListDraftsQueryOptions(params.projectId))]),
 });
 
 const routeTree = rootRoute.addChildren([

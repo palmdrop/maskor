@@ -14,7 +14,17 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("../../api/generated/stats/stats", () => ({ useGetProjectStats: vi.fn() }));
+// Stats is read via useSuspenseQuery; the mocked suspense options return
+// initialData from this holder so the hook resolves synchronously.
+const statsHolder = vi.hoisted(() => ({ data: undefined as unknown }));
+vi.mock("../../api/generated/stats/stats", () => ({
+  getGetProjectStatsSuspenseQueryOptions: () => ({
+    queryKey: ["stats", PROJECT_ID],
+    queryFn: vi.fn(),
+    initialData: statsHolder.data,
+    staleTime: Infinity,
+  }),
+}));
 
 const makeFragment = (overrides: Partial<FragmentStatsSummary> = {}): FragmentStatsSummary => ({
   fragmentUuid: crypto.randomUUID(),
@@ -50,7 +60,6 @@ const wrap = () => {
   return Wrapper;
 };
 
-const { useGetProjectStats } = await import("../../api/generated/stats/stats");
 const { ProjectStatsPage } = await import("../ProjectStatsPage");
 
 describe("ProjectStatsPage", () => {
@@ -59,10 +68,7 @@ describe("ProjectStatsPage", () => {
       makeFragment({ key: "active-fragment", isDiscarded: false }),
       makeFragment({ key: "discarded-fragment", isDiscarded: true }),
     ];
-    (useGetProjectStats as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: makeStatsResponse(fragments),
-      isLoading: false,
-    });
+    statsHolder.data = makeStatsResponse(fragments);
 
     render(<ProjectStatsPage />, { wrapper: wrap() });
 
@@ -75,10 +81,7 @@ describe("ProjectStatsPage", () => {
       makeFragment({ key: "active-fragment", isDiscarded: false }),
       makeFragment({ key: "discarded-fragment", isDiscarded: true }),
     ];
-    (useGetProjectStats as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: makeStatsResponse(fragments),
-      isLoading: false,
-    });
+    statsHolder.data = makeStatsResponse(fragments);
 
     render(<ProjectStatsPage />, { wrapper: wrap() });
 
@@ -91,10 +94,7 @@ describe("ProjectStatsPage", () => {
 
   it("renders discarded fragment with strikethrough styling", () => {
     const fragments = [makeFragment({ key: "discarded-fragment", isDiscarded: true })];
-    (useGetProjectStats as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: makeStatsResponse(fragments),
-      isLoading: false,
-    });
+    statsHolder.data = makeStatsResponse(fragments);
 
     render(<ProjectStatsPage />, { wrapper: wrap() });
 
@@ -111,10 +111,7 @@ describe("ProjectStatsPage", () => {
       makeFragment({ key: "discarded-fragment", wordCount: 50, isDiscarded: true }),
     ];
     const response = makeStatsResponse(fragments);
-    (useGetProjectStats as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: response,
-      isLoading: false,
-    });
+    statsHolder.data = response;
 
     render(<ProjectStatsPage />, { wrapper: wrap() });
 

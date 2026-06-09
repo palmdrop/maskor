@@ -13,7 +13,17 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <span data-testid="entry-link">{children}</span>,
 }));
 
-vi.mock("../../api/action-log", () => ({ useActionLog: vi.fn() }));
+// Action log is read via useSuspenseQuery(getActionLogQueryOptions); the mocked
+// options carry initialData from this holder so it resolves synchronously.
+const actionLogHolder = vi.hoisted(() => ({ data: undefined as unknown }));
+vi.mock("../../api/action-log", () => ({
+  getActionLogQueryOptions: () => ({
+    queryKey: ["action-log", PROJECT_ID],
+    queryFn: vi.fn(),
+    initialData: actionLogHolder.data,
+    staleTime: Infinity,
+  }),
+}));
 vi.mock("../../api/generated/fragments/fragments", () => ({ useListFragments: vi.fn() }));
 vi.mock("../../api/generated/aspects/aspects", () => ({ useListAspects: vi.fn() }));
 vi.mock("../../api/generated/notes/notes", () => ({ useListNotes: vi.fn() }));
@@ -51,7 +61,6 @@ const wrap = () => {
   return Wrapper;
 };
 
-const { useActionLog } = await import("../../api/action-log");
 const { useListFragments } = await import("../../api/generated/fragments/fragments");
 const { useListAspects } = await import("../../api/generated/aspects/aspects");
 const { useListNotes } = await import("../../api/generated/notes/notes");
@@ -73,34 +82,18 @@ describe("ProjectHistoryPage — page states", () => {
     mockEntityLists();
   });
 
-  it("shows loading state while action log is fetching", () => {
-    (useActionLog as Mock).mockReturnValue({ data: undefined, isLoading: true, isError: false });
-    render(<ProjectHistoryPage />, { wrapper: wrap() });
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
-  });
-
-  it("shows error state when action log fetch fails", () => {
-    (useActionLog as Mock).mockReturnValue({ data: undefined, isLoading: false, isError: true });
-    render(<ProjectHistoryPage />, { wrapper: wrap() });
-    expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
-  });
+  // Pending + error are now handled by the router (defaultPendingComponent) and
+  // the route error boundary (ViewError), exercised in view-data-loading.test.tsx
+  // — no in-component loading/error branch remains here.
 
   it("shows empty state when there are no entries", () => {
-    (useActionLog as Mock).mockReturnValue({
-      data: { status: 200, data: [] },
-      isLoading: false,
-      isError: false,
-    });
+    actionLogHolder.data = { status: 200, data: [] };
     render(<ProjectHistoryPage />, { wrapper: wrap() });
     expect(screen.getByText(/no actions recorded/i)).toBeInTheDocument();
   });
 
   it("renders the page heading and subtitle", () => {
-    (useActionLog as Mock).mockReturnValue({
-      data: { status: 200, data: [] },
-      isLoading: false,
-      isError: false,
-    });
+    actionLogHolder.data = { status: 200, data: [] };
     render(<ProjectHistoryPage />, { wrapper: wrap() });
     expect(screen.getByText(/recent actions/i)).toBeInTheDocument();
     expect(screen.getByText(/external vault edits are not tracked/i)).toBeInTheDocument();

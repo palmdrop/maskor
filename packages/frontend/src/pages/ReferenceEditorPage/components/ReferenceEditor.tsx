@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useGetReference,
   useUpdateReference,
   useListReferences,
   getGetReferenceQueryKey,
+  getGetReferenceSuspenseQueryOptions,
   getListReferencesQueryKey,
 } from "@api/generated/references/references";
 import { useInvalidateActionLog } from "@api/action-log";
@@ -24,14 +24,16 @@ type Props = {
 
 export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetReference(projectId, referenceId);
+  const { data: envelope } = useSuspenseQuery(
+    getGetReferenceSuspenseQueryOptions(projectId, referenceId),
+  );
   const { mutateAsync: updateReference, isPending } = useUpdateReference();
   const { mutateAsync: updateReferenceMetadata } = useUpdateReference();
   const { data: referencesListEnvelope } = useListReferences(projectId);
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
-  const reference = envelope?.status === 200 ? envelope.data : null;
+  const reference = envelope.status === 200 ? envelope.data : null;
 
   const referenceQueryKey = useMemo(
     () => getGetReferenceQueryKey(projectId, referenceId),
@@ -129,9 +131,8 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
     [updateReference, projectId, referenceId, invalidate, invalidateActionLog],
   );
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !reference)
-    return <p className="text-sm text-muted-foreground">Failed to load reference.</p>;
+  // Non-200 throws under suspense (caught by the boundary); this narrows reference.
+  if (!reference) return null;
 
   const backNode = fragmentId ? (
     <Link to="/projects/$projectId/fragments/$fragmentId" params={{ projectId, fragmentId }}>

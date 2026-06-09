@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useActionLog } from "@api/action-log";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { getActionLogQueryOptions } from "@api/action-log";
 import { useListFragments } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
@@ -19,7 +20,10 @@ const buildExistenceSet = <T extends { status: number; data: unknown } | undefin
 
 export const ProjectHistoryPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/history" });
-  const { data: envelope, isLoading, isError } = useActionLog(projectId, 100);
+  // Action log prefetched by the route loader; a failed load surfaces via the
+  // route error boundary (ViewError + Retry). The entity lists below stay classic
+  // (secondary existence maps) and are also prefetched by the loader.
+  const { data: envelope } = useSuspenseQuery(getActionLogQueryOptions(projectId, 100));
   const { data: fragments } = useListFragments(projectId);
   const { data: aspects } = useListAspects(projectId);
   const { data: notes } = useListNotes(projectId);
@@ -36,21 +40,8 @@ export const ProjectHistoryPage = () => {
     [fragments, aspects, notes, references],
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Loading history…
-      </div>
-    );
-  }
-
-  if (isError || envelope?.status !== 200) {
-    return (
-      <div className="flex items-center justify-center h-full text-destructive text-sm">
-        Failed to load history.
-      </div>
-    );
-  }
+  // Non-200 throws under suspense (caught by the boundary); this narrows the union.
+  if (envelope.status !== 200) return null;
 
   const entries = showErrors
     ? envelope.data

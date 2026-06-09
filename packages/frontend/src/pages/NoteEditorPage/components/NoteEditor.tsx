@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useGetNote,
   useUpdateNote,
   useListNotes,
   getGetNoteQueryKey,
+  getGetNoteSuspenseQueryOptions,
   getListNotesQueryKey,
 } from "@api/generated/notes/notes";
 import { useInvalidateActionLog } from "@api/action-log";
@@ -24,14 +24,14 @@ type Props = {
 
 export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
   const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
+  const { data: envelope } = useSuspenseQuery(getGetNoteSuspenseQueryOptions(projectId, noteId));
   const { mutateAsync: updateNote, isPending } = useUpdateNote();
   const { mutateAsync: updateNoteMetadata } = useUpdateNote();
   const { data: notesListEnvelope } = useListNotes(projectId);
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
-  const note = envelope?.status === 200 ? envelope.data : null;
+  const note = envelope.status === 200 ? envelope.data : null;
 
   const noteQueryKey = useMemo(() => getGetNoteQueryKey(projectId, noteId), [projectId, noteId]);
 
@@ -126,9 +126,8 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
     [updateNote, projectId, noteId, invalidate, invalidateActionLog],
   );
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !note)
-    return <p className="text-sm text-muted-foreground">Failed to load note.</p>;
+  // Non-200 throws under suspense (caught by the boundary); this narrows note.
+  if (!note) return null;
 
   const backNode = fragmentId ? (
     <Link to="/projects/$projectId/fragments/$fragmentId" params={{ projectId, fragmentId }}>

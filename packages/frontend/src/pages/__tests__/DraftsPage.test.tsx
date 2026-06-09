@@ -9,27 +9,26 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ projectId: PROJECT_ID }),
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
-});
+// Drafts is read via useSuspenseQuery; the mocked suspense options return
+// initialData from this holder so the hook resolves synchronously. (useQueryClient
+// is left real so useSuspenseQuery resolves against the provider's client.)
+const draftsHolder = vi.hoisted(() => ({ data: undefined as unknown }));
 
 vi.mock("@api/generated/drafts/drafts", () => ({
-  useListDrafts: vi.fn(),
   useCreateDraft: vi.fn(),
   useDeleteDraft: vi.fn(),
   useRestoreDraft: vi.fn(),
   getListDraftsQueryKey: vi.fn(() => ["drafts"]),
+  getListDraftsSuspenseQueryOptions: () => ({
+    queryKey: ["drafts"],
+    queryFn: vi.fn(),
+    initialData: draftsHolder.data,
+    staleTime: Infinity,
+  }),
 }));
 
 import { DraftsPage } from "../DraftsPage/DraftsPage";
-import {
-  useListDrafts,
-  useCreateDraft,
-  useDeleteDraft,
-  useRestoreDraft,
-} from "@api/generated/drafts/drafts";
+import { useCreateDraft, useDeleteDraft, useRestoreDraft } from "@api/generated/drafts/drafts";
 
 const wrap = (ui: ReactNode) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -61,21 +60,13 @@ beforeEach(() => {
 
 describe("DraftsPage", () => {
   it("renders an empty state when no drafts exist", () => {
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [] };
     wrap(<DraftsPage />);
     expect(screen.getByText(/No drafts yet/)).toBeTruthy();
   });
 
   it("renders a draft list with name, note, and counts", () => {
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [sampleDraft] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [sampleDraft] };
     wrap(<DraftsPage />);
     expect(screen.getByText("Draft 1")).toBeTruthy();
     expect(screen.getByText("Before the rewrite")).toBeTruthy();
@@ -88,11 +79,7 @@ describe("DraftsPage", () => {
       ...emptyMutation,
       mutate,
     });
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [] };
     wrap(<DraftsPage />);
 
     act(() => {
@@ -121,11 +108,7 @@ describe("DraftsPage", () => {
       ...emptyMutation,
       mutate,
     });
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [sampleDraft] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [sampleDraft] };
     wrap(<DraftsPage />);
 
     act(() => {
@@ -148,11 +131,7 @@ describe("DraftsPage", () => {
       ...emptyMutation,
       mutate,
     });
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [sampleDraft] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [sampleDraft] };
     wrap(<DraftsPage />);
 
     act(() => {
@@ -176,11 +155,7 @@ describe("DraftsPage", () => {
       ...emptyMutation,
       mutate,
     });
-    (useListDrafts as unknown as Mock).mockReturnValue({
-      data: { status: 200, data: [sampleDraft] },
-      isLoading: false,
-      isError: false,
-    });
+    draftsHolder.data = { status: 200, data: [sampleDraft] };
     wrap(<DraftsPage />);
 
     act(() => {

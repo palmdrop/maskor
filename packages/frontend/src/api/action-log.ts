@@ -11,11 +11,17 @@ const getActionLog = (projectId: string, limit: number): Promise<ActionLogEnvelo
 
 export const getActionLogQueryKey = (projectId: string) => ["action-log", projectId];
 
+// Hand-rolled query options (no orval entry for this endpoint) so the route
+// loader can prefetch it and the History view can read it via useSuspenseQuery —
+// the queryKey matches getActionLogQueryKey, so prefetch + read share a cache
+// entry, and useInvalidateActionLog still targets it.
+export const getActionLogQueryOptions = (projectId: string, limit = 50) => ({
+  queryKey: getActionLogQueryKey(projectId),
+  queryFn: () => getActionLog(projectId, limit),
+});
+
 export const useActionLog = (projectId: string, limit = 50) =>
-  useQuery({
-    queryKey: getActionLogQueryKey(projectId),
-    queryFn: () => getActionLog(projectId, limit),
-  });
+  useQuery(getActionLogQueryOptions(projectId, limit));
 
 export const useInvalidateActionLog = (projectId: string) => {
   const queryClient = useQueryClient();

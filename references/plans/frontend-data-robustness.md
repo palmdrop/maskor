@@ -69,11 +69,11 @@ Chosen architecture (agreed): **route loader prefetch (parallel `ensureQueryData
 
 ### Phase 3 — Sweep remaining views
 
-- [ ] Apply the same pattern to **every** remaining view with a perceptible content wait (editors: Note/Reference/Aspect; Drafts; Stats; History; Config; Import; ProjectManagement). Per the Coverage principle, a full-view content wait is the trigger to migrate — do not leave one unmigrated because it already has an `isLoading` check or because the conversion is involved. Use classic `useQuery` + inline handling only where a query is genuinely conditional/dependent or a small inline section, not as a way to opt a whole view out.
-- [ ] Keep `SuggestionModePage`'s existing in-place handling (its `loadNext`/`setSaveError` flow) intact; only add the boundary/placeholder around its initial data load.
-- [ ] Replace ad-hoc "Failed to load" inline blocks with the shared `ViewError` where appropriate; remove dead loading branches.
-- [ ] Tests: each view shows a placeholder while pending, surfaces `ViewError` on failure, and recovers on Retry.
-- [ ] `git commit`.
+- [x] Apply the same pattern to **every** remaining view with a perceptible content wait (editors: Note/Reference/Aspect; Drafts; Stats; History; Config; Import; ProjectManagement). Per the Coverage principle, a full-view content wait is the trigger to migrate — do not leave one unmigrated because it already has an `isLoading` check or because the conversion is involved. Use classic `useQuery` + inline handling only where a query is genuinely conditional/dependent or a small inline section, not as a way to opt a whole view out.
+- [x] Keep `SuggestionModePage`'s existing in-place handling (its `loadNext`/`setSaveError` flow) intact; only add the boundary/placeholder around its initial data load.
+- [x] Replace ad-hoc "Failed to load" inline blocks with the shared `ViewError` where appropriate; remove dead loading branches.
+- [x] Tests: each view shows a placeholder while pending, surfaces `ViewError` on failure, and recovers on Retry.
+- [x] `git commit`.
 
 ### Phase 4 — Background refetch + hardening
 

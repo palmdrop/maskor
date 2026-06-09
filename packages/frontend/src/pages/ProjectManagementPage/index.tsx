@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useListProjects } from "@api/generated/projects/projects";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { getListProjectsSuspenseQueryOptions } from "@api/generated/projects/projects";
 import { RegisterProjectDialog } from "./components/RegisterProjectDialog";
 import { ProjectRow } from "./components/ProjectRow";
 import { SettingsSection } from "./components/SettingsSection";
@@ -7,15 +8,9 @@ import { Button } from "@components/ui/button";
 
 export const ProjectManagementPage = () => {
   const [registerOpen, setRegisterOpen] = useState(false);
-  const { data: envelope, isLoading, isError } = useListProjects();
-
-  if (isLoading) {
-    return <p className="p-8 text-sm text-muted-foreground">Loading projects...</p>;
-  }
-
-  if (isError || !envelope) {
-    return <p className="p-8 text-sm text-destructive">Failed to load projects.</p>;
-  }
+  // Prefetched by the route loader; failures surface via the route error
+  // boundary (ViewError + Retry).
+  const { data: envelope } = useSuspenseQuery(getListProjectsSuspenseQueryOptions());
 
   const projects = envelope.status === 200 ? envelope.data : [];
 

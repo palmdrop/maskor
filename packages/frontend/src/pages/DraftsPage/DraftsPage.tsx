@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useListDrafts } from "@api/generated/drafts/drafts";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { getListDraftsSuspenseQueryOptions } from "@api/generated/drafts/drafts";
 import { Button } from "@components/ui/button";
 import { CreateDraftDialog } from "./CreateDraftDialog";
 import { DeleteDraftDialog } from "./DeleteDraftDialog";
@@ -43,10 +44,12 @@ const formatDate = (iso: string): string => {
 
 export const DraftsPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/drafts" });
-  const { data: envelope, isLoading, isError } = useListDrafts(projectId);
+  // Prefetched by the route loader; failures surface via the route error
+  // boundary (ViewError + Retry).
+  const { data: envelope } = useSuspenseQuery(getListDraftsSuspenseQueryOptions(projectId));
 
   const drafts: Draft[] = useMemo(() => {
-    if (envelope?.status !== 200) return [];
+    if (envelope.status !== 200) return [];
     return envelope.data as Draft[];
   }, [envelope]);
 
@@ -55,22 +58,6 @@ export const DraftsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<Draft | null>(null);
 
   const defaultName = `Draft ${drafts.length + 1}`;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Loading drafts…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full text-destructive text-sm">
-        Failed to load drafts.
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 flex flex-col gap-4 overflow-y-auto h-full">

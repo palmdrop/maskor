@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import type { LogEntry } from "@maskor/shared";
 
 const commandError: LogEntry = {
@@ -28,11 +30,14 @@ const created: LogEntry = {
 };
 
 vi.mock("@tanstack/react-router", () => ({ useParams: () => ({ projectId: "p1" }) }));
+// Read via useSuspenseQuery(getActionLogQueryOptions); initialData makes it
+// resolve synchronously against the provider's client.
 vi.mock("@api/action-log", () => ({
-  useActionLog: () => ({
-    data: { status: 200, data: [commandError, created] },
-    isLoading: false,
-    isError: false,
+  getActionLogQueryOptions: () => ({
+    queryKey: ["action-log", "p1"],
+    queryFn: vi.fn(),
+    initialData: { status: 200, data: [commandError, created] },
+    staleTime: Infinity,
   }),
 }));
 const emptyList = () => ({ data: { status: 200, data: [] } });
@@ -43,9 +48,17 @@ vi.mock("@api/generated/references/references", () => ({ useListReferences: empt
 
 const { ProjectHistoryPage } = await import("./index");
 
+const wrap = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return Wrapper;
+};
+
 describe("ProjectHistoryPage", () => {
   it("renders a command:error entry as a failure row with friendly message and details", () => {
-    render(<ProjectHistoryPage />);
+    render(<ProjectHistoryPage />, { wrapper: wrap() });
     expect(screen.getByText("Save failed.")).toBeInTheDocument();
     // Details disclosure carries commandId, correlationId, technicalMessage.
     expect(screen.getByText("editor:save")).toBeInTheDocument();
@@ -54,7 +67,7 @@ describe("ProjectHistoryPage", () => {
   });
 
   it("hides command:error rows when 'Show errors' is toggled off, leaving other entries", () => {
-    render(<ProjectHistoryPage />);
+    render(<ProjectHistoryPage />, { wrapper: wrap() });
     expect(screen.getByText("Save failed.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("switch"));

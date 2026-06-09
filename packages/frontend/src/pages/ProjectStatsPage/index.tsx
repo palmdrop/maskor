@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useGetProjectStats } from "@api/generated/stats/stats";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { getGetProjectStatsSuspenseQueryOptions } from "@api/generated/stats/stats";
 import type { FragmentStatsSummary } from "@api/generated/maskorAPI.schemas";
 
 const HISTOGRAM_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"] as const;
@@ -62,24 +63,13 @@ const FragmentRow = ({
 
 export const ProjectStatsPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId/stats" });
-  const { data: envelope, isLoading } = useGetProjectStats(projectId);
+  // Prefetched by the route loader; a failed load surfaces via the route error
+  // boundary (ViewError + Retry).
+  const { data: envelope } = useSuspenseQuery(getGetProjectStatsSuspenseQueryOptions(projectId));
   const [includeDiscarded, setIncludeDiscarded] = useState(false);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Loading stats…
-      </div>
-    );
-  }
-
-  if (envelope?.status !== 200) {
-    return (
-      <div className="flex items-center justify-center h-full text-destructive text-sm">
-        Failed to load stats.
-      </div>
-    );
-  }
+  // Non-200 throws under suspense (caught by the boundary); this narrows the union.
+  if (envelope.status !== 200) return null;
 
   const { global: globalStats, fragments } = envelope.data;
 

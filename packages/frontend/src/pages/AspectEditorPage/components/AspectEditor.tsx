@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useGetAspect,
   useUpdateAspect,
   useListAspects,
   getGetAspectQueryKey,
+  getGetAspectSuspenseQueryOptions,
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
@@ -34,7 +34,9 @@ type Props = {
 
 export const AspectEditor = ({ projectId, aspectId }: Props) => {
   const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
+  const { data: envelope } = useSuspenseQuery(
+    getGetAspectSuspenseQueryOptions(projectId, aspectId),
+  );
   // Separate mutation instances so live metadata saves don't toggle the
   // content Save button's isPending state (and silently block Cmd+S).
   const { mutateAsync: updateAspect, isPending } = useUpdateAspect();
@@ -44,7 +46,7 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
-  const aspect = envelope?.status === 200 ? envelope.data : null;
+  const aspect = envelope.status === 200 ? envelope.data : null;
 
   const aspectQueryKey = useMemo(
     () => getGetAspectQueryKey(projectId, aspectId),
@@ -168,9 +170,8 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     [aspect?.key, colorField.value],
   );
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !aspect)
-    return <p className="text-sm text-muted-foreground">Failed to load aspect.</p>;
+  // Non-200 throws under suspense (caught by the boundary); this narrows aspect.
+  if (!aspect) return null;
 
   const backNode = (
     <Link to="/projects/$projectId/config" params={{ projectId }} search={{ tab: "aspects" }}>
