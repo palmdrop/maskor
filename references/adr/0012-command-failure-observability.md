@@ -39,3 +39,16 @@ Frontend deduplication rule: if the caught error is an `ApiRequestError` carryin
 **Known limitation:** when the backend is unreachable, the frontend's fallback POST to the action-log errors endpoint also fails, so a network-down failure produces a toast but no log entry. Inherent — the log lives behind the same API — and accepted.
 
 **Alternative considered:** a separate `POST /projects/:projectId/action-log/errors` endpoint only, with the frontend always posting. Rejected — the backend is in a better position to log failures for its own commands (it has the full error context, the domain label, and the correlation ID it generated); having the frontend re-post what the backend already knows introduces a round-trip and a deduplication problem.
+
+## 4. Frontend failure presentation: `onFailure` and the `onCommandError` filter
+
+A command declares `onFailure` (a friendly message, or a function deriving message + detail from the error) to opt into the default handling in `CommandsProvider.run`: resolve the message, write a `command:error` entry if the backend didn't (the dedup rule in decision 3), and toast. A scope may instead claim a failure for **in-place** display by passing an `onCommandError` filter to `useCommandScope`; returning `true` suppresses the default path entirely — no toast, and no fallback POST.
+
+**Why suppression also skips the POST (and why that loses almost nothing):** the suppressed POST only ever fires for failures with **no** `correlationId` — i.e. failures that never reached the backend (decision 3's dedup rule). Every failure that *did* reach the backend is already logged server-side by `executeCommand`, independently of anything the frontend does, and its `correlationId` is present, so the frontend would skip the POST regardless of the filter. Therefore `onCommandError` returning `true`:
+
+- for a **backend-reached** failure — suppresses only the toast; the log entry already exists.
+- for a **frontend-only** failure — suppresses the toast *and* the entry. That slice is either network-down (un-loggable anyway — the known limitation in decision 3) or a pre-flight/pure-frontend throw, which for an in-place-handled command is typically transient, user-correctable state (e.g. "fix validation errors before continuing") that does not belong in the user-facing History page.
+
+So coupling toast-suppression to log-suppression is acceptable today: the action log stays a complete record of failures that actually hit the backend, and the only thing the filter keeps out of it is frontend-local presentation noise.
+
+**Alternative considered:** decouple the two — let `onCommandError` suppress the toast while the fallback POST always fires (or a richer return like `{ toast?: boolean; log?: boolean }` letting the component choose each axis). Rejected for now (YAGNI): the only in-place handlers today are backend mutations (`config:rebuild-index`/`reset-database`, `suggestion:next`, `editor:save`), whose real failures are already logged server-side. Revisit if a **pure-frontend** command with in-place handling that genuinely warrants a log entry appears — that is the case the current coupling would silently drop.
