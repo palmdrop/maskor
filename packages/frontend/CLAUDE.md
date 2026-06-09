@@ -158,7 +158,9 @@ Views load their main content through one consistent path so that pending shows 
    - `defaultErrorComponent` (`RouteErrorComponent`) catches a view throw at the route level and renders `ViewError` + Retry. Retry resets the query error boundary and re-runs the loader, so failed queries refetch. This is the workhorse boundary.
    - `AppErrorBoundary` (at `ProjectShellLayout`, `QueryErrorResetBoundary` + react-error-boundary + a `Suspense` host) is the outer net for anything thrown outside a route's component subtree.
 
-**Global query policy** (`queryClient.ts`): `throwOnError` routes 5xx + transport/unknown failures to the boundary and leaves 4xx inline (won't self-heal). `retry` skips 4xx and retries server/transport once. `staleTime` is 30s (revisits don't re-pend) and `refetchOnWindowFocus` is on (self-heal). Note: `useSuspenseQuery` always throws regardless of `throwOnError`, so that policy mainly governs classic `useQuery`.
+**Global query policy** (`queryClient.ts`): `throwOnError` routes 5xx + transport/unknown failures to the boundary **only when the query has no data yet** (initial load) and leaves 4xx inline (won't self-heal). `retry` skips 4xx and retries server/transport once. `staleTime` is 30s (revisits don't re-pend) and `refetchOnWindowFocus` is on (self-heal). Note: `useSuspenseQuery` always throws on an empty cache regardless of `throwOnError`, so that policy mainly governs classic `useQuery`.
+
+**Background-refetch failures** are non-destructive: a populated query whose revalidation fails keeps its data on screen (it is not routed to the boundary), and a `QueryCache.onError` toast ("Couldn't refresh — showing the last loaded data") notes the staleness. Don't add per-view handling for this; it's global.
 
 **When to keep classic `useQuery` + inline handling:** only where a query is genuinely conditional/dependent (enabled gated on another query's result) or a small inline section — not as a way to opt a whole view out of the path. A full-view content wait is the trigger to migrate. Resolve a dependent query in the loader when you can; otherwise keep it as classic `useQuery` inside the ready tree.
 

@@ -1,7 +1,8 @@
 # Frontend data robustness: loader-prefetch, Suspense, and error boundaries
 
 **Date**: 09-06-2026
-**Status**: In Progress
+**Status**: Done
+**Closed**: 09-06-2026
 **Specs**: `specifications/navigation.md`
 
 ---
@@ -85,11 +86,11 @@ Chosen architecture (agreed): **route loader prefetch (parallel `ensureQueryData
 
 ### Phase 5 — Docs + close-out
 
-- [ ] Finalize the `packages/frontend/CLAUDE.md` data-loading section with the settled decisions.
-- [ ] Update `specifications/navigation.md` `Shipped` (restoration is now robust to load failures) and any other relevant spec.
-- [ ] Set this plan's `Status`; add `Closed` date.
-- [ ] `bun run format && bun run verify` — clean.
-- [ ] `git commit`.
+- [x] Finalize the `packages/frontend/CLAUDE.md` data-loading section with the settled decisions.
+- [x] Update `specifications/navigation.md` `Shipped` (restoration is now robust to load failures) and any other relevant spec.
+- [x] Set this plan's `Status`; add `Closed` date.
+- [~] `bun run format && bun run verify` — `format` clean; the frontend is fully clean (`tsc -b` green, 661 tests pass, lint clean). `verify` as a whole is **blocked by a pre-existing backend type error** unrelated to this plan: `packages/api` export command/route (`export-sequence.ts`, `routes/export.ts`) don't supply the `correlationId` the command pipeline now requires (ADR 0012), so the root `tsc --noEmit` fails before tests run. `packages/api` is untouched by this plan (verified via `git log`); the branch's `verify` was already red before this work. Flagged in `references/suggestions.md`.
+- [x] `git commit`.
 
 ---
 

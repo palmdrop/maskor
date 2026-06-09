@@ -5,6 +5,8 @@
 
 **Shipped**:
 
+- 2026-06-09 — Frontend data-robustness: every view loads its content through a consistent path (route-loader prefetch + `useSuspenseQuery`) with a layout-stable pending placeholder, an in-place error panel with Retry (and a correlation id) on failure, and an app error boundary that recovers render-time throws instead of white-screening. View-state restoration (scroll/selection) is now robust to load failures — it runs once data is ready, is skipped on error, and resumes after a successful Retry. Background-refetch failures keep the rendered data on screen rather than tearing the view down. (plan: references/plans/frontend-data-robustness.md)
+
 - 2026-04-20 — Project selection screen at `/`; the project shell requires an active project — no view is accessible without one. (plan: references/plans/project-switching-view.md)
 - 2026-04-27 — Application shell renders a persistent navigation bar scoped to the active project, with links to Fragment list, Overview, and Project config. (plan: references/plans/frontend-navigation.md)
 - 2026-04-27 — Fragment list view is available: users can browse, search, and open any fragment into the editor from a dedicated route. (plan: references/plans/frontend-navigation.md)
