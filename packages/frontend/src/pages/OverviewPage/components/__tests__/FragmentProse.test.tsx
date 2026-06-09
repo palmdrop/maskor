@@ -100,6 +100,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
+        isDiscarded={false}
         detailLevel="prose"
         onSaveContent={onSaveContent}
       />,
@@ -119,6 +120,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
+        isDiscarded={false}
         detailLevel="prose"
         onSelect={onSelect}
         onSaveContent={onSaveContent}
@@ -141,6 +143,7 @@ describe("FragmentProse — in-context editing", () => {
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Original body"
+        isDiscarded={false}
         detailLevel="prose"
         onSaveContent={onSaveContent}
       />,
@@ -205,6 +208,7 @@ describe("FragmentProse — remove from sequence", () => {
   it("renders no remove affordance when onRemove is absent", () => {
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Hello world"
@@ -221,6 +225,7 @@ describe("FragmentProse — remove from sequence", () => {
     const onRemove = vi.fn();
     render(
       <FragmentProse
+        projectId={PROJECT_ID}
         fragmentUuid={FRAGMENT_UUID}
         title="frag-one"
         content="Hello world"
