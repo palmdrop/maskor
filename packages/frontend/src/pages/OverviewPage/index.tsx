@@ -388,27 +388,27 @@ export const OverviewPage = () => {
   const canSplitBefore = !!splitContext && !splitContext.isFirst;
   const canSplitAfter = !!splitContext && !splitContext.isLast;
 
-  const groupSelection = useCallback(() => {
+  const groupSelection = useCallback(async () => {
     if (!sequence || placedSelection.length < 1) return;
-    sequenceMutations.groupFragments.mutate({
+    await sequenceMutations.groupFragments.mutateAsync({
       projectId,
       sequenceId: sequence.uuid,
       data: { fragmentUuids: placedSelection, name: "" },
     });
   }, [sequence, placedSelection, projectId, sequenceMutations]);
 
-  const splitBefore = useCallback(() => {
+  const splitBefore = useCallback(async () => {
     if (!sequence || !splitContext || splitContext.isFirst) return;
-    sequenceMutations.splitSection.mutate({
+    await sequenceMutations.splitSection.mutateAsync({
       projectId,
       sequenceId: sequence.uuid,
       data: { fragmentUuid: splitContext.fragmentUuid, name: "" },
     });
   }, [sequence, splitContext, projectId, sequenceMutations]);
 
-  const splitAfter = useCallback(() => {
+  const splitAfter = useCallback(async () => {
     if (!sequence || !splitContext || splitContext.isLast || !splitContext.nextFragmentUuid) return;
-    sequenceMutations.splitSection.mutate({
+    await sequenceMutations.splitSection.mutateAsync({
       projectId,
       sequenceId: sequence.uuid,
       data: { fragmentUuid: splitContext.nextFragmentUuid, name: "" },
@@ -416,11 +416,11 @@ export const OverviewPage = () => {
   }, [sequence, splitContext, projectId, sequenceMutations]);
 
   const moveSelectionToSection = useCallback(
-    (sectionUuid: string) => {
+    async (sectionUuid: string) => {
       if (!sequence || placedSelection.length < 1) return;
       const targetSection = sectionsData.find((s) => s.uuid === sectionUuid);
       const position = targetSection?.fragmentUuids.length ?? 0;
-      sequenceMutations.moveFragments.mutate({
+      await sequenceMutations.moveFragments.mutateAsync({
         projectId,
         sequenceId: sequence.uuid,
         data: { fragmentUuids: placedSelection, sectionUuid, position },
@@ -447,11 +447,11 @@ export const OverviewPage = () => {
   );
 
   const mergeSectionUp = useCallback(
-    (sectionUuid: string) => {
+    async (sectionUuid: string) => {
       if (!sequence) return;
       const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
       if (index <= 0) return;
-      sequenceMutations.mergeSection.mutate({
+      await sequenceMutations.mergeSection.mutateAsync({
         projectId,
         sequenceId: sequence.uuid,
         sectionId: sectionsData[index - 1]!.uuid,
@@ -461,11 +461,11 @@ export const OverviewPage = () => {
   );
 
   const mergeSectionDown = useCallback(
-    (sectionUuid: string) => {
+    async (sectionUuid: string) => {
       if (!sequence) return;
       const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
       if (index === -1 || index >= sectionsData.length - 1) return;
-      sequenceMutations.mergeSection.mutate({
+      await sequenceMutations.mergeSection.mutateAsync({
         projectId,
         sequenceId: sequence.uuid,
         sectionId: sectionUuid,
@@ -476,28 +476,28 @@ export const OverviewPage = () => {
 
   useCommandScope(overviewScope, {
     canDesignateMain: !!sequence && !sequence.isMain,
-    designateMain: () => {
-      if (sequence) designateMain.mutate({ projectId, sequenceId: sequence.uuid });
-    },
+    designateMain: () =>
+      sequence
+        ? designateMain.mutateAsync({ projectId, sequenceId: sequence.uuid }).then(() => {})
+        : Promise.resolve(),
     createSectionPending: sectionManager.createSection.isPending,
-    createSection: () => {
-      if (sequence)
-        sectionManager.createSection.mutate({
-          projectId,
-          sequenceId: sequence.uuid,
-          data: { name: "" },
-        });
-    },
+    createSection: () =>
+      sequence
+        ? sectionManager.createSection
+            .mutateAsync({ projectId, sequenceId: sequence.uuid, data: { name: "" } })
+            .then(() => {})
+        : Promise.resolve(),
     confirmingDeleteSectionId: sectionManager.confirmingDeleteSectionId,
-    deleteSection: () => {
-      if (sequence && sectionManager.confirmingDeleteSectionId) {
-        sectionManager.deleteSection.mutate({
-          projectId,
-          sequenceId: sequence.uuid,
-          sectionId: sectionManager.confirmingDeleteSectionId,
-        });
-      }
-    },
+    deleteSection: () =>
+      sequence && sectionManager.confirmingDeleteSectionId
+        ? sectionManager.deleteSection
+            .mutateAsync({
+              projectId,
+              sequenceId: sequence.uuid,
+              sectionId: sectionManager.confirmingDeleteSectionId,
+            })
+            .then(() => {})
+        : Promise.resolve(),
     detailLevel,
     setDetailLevel: handleSetDetailLevel,
     arcOverlayOpen,

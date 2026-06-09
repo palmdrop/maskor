@@ -17,7 +17,6 @@ export const fragmentMetadataScope = defineScope<FragmentMetadataContext>("fragm
 
 const attachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:attach-aspect",
-  onFailure: "Failed to attach aspect.",
   label: "Attach aspect",
   category: "attach",
   disabled: (ctx) =>
@@ -36,7 +35,6 @@ const attachAspect = defineScopeCommand(fragmentMetadataScope, {
 
 const detachAspect = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:detach-aspect",
-  onFailure: "Failed to detach aspect.",
   label: "Detach aspect",
   category: "attach",
   disabled: (ctx) =>
@@ -55,7 +53,6 @@ const detachAspect = defineScopeCommand(fragmentMetadataScope, {
 
 const attachReference = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:attach-reference",
-  onFailure: "Failed to attach reference.",
   label: "Attach reference",
   category: "attach",
   disabled: (ctx) =>
@@ -74,7 +71,6 @@ const attachReference = defineScopeCommand(fragmentMetadataScope, {
 
 const detachReference = defineScopeCommand(fragmentMetadataScope, {
   id: "fragment-metadata:detach-reference",
-  onFailure: "Failed to detach reference.",
   label: "Detach reference",
   category: "attach",
   disabled: (ctx) =>

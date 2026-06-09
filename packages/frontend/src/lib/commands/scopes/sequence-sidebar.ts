@@ -3,20 +3,20 @@ import { defineScope, defineScopeCommand } from "../define";
 
 export interface SequenceSidebarContext {
   createSequencePending: boolean;
-  createSequence: () => void;
+  createSequence: () => Promise<void>;
   confirmingDeleteSequenceId: string | null;
-  deleteSequence: () => void;
+  deleteSequence: () => Promise<void>;
   // Non-main sequences eligible for active/inactive toggling.
   toggleableSequences: readonly Sequence[];
-  setSequenceActive: (sequenceId: string, active: boolean) => void;
+  setSequenceActive: (sequenceId: string, active: boolean) => Promise<void>;
   // Every sequence can be cloned into a fresh independent copy.
   cloneableSequences: readonly Sequence[];
-  cloneSequence: (sequenceId: string) => void;
+  cloneSequence: (sequenceId: string) => Promise<void>;
   // Sequences eligible as an insert *source* (anything but the open target).
   insertSourceSequences: readonly Sequence[];
   // The name of the sequence currently open in the overview (the insert target).
   insertTargetName: string | undefined;
-  insertSequence: (sourceSequenceId: string) => void;
+  insertSequence: (sourceSequenceId: string) => Promise<void>;
 }
 
 export const sequenceSidebarScope = defineScope<SequenceSidebarContext>("sequence-sidebar", {

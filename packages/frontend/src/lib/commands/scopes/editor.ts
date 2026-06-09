@@ -18,7 +18,7 @@ export interface EditorContext {
     target: InsertCommandTarget,
   ) => void;
   canSave: boolean;
-  save: () => void;
+  save: () => Promise<void>;
   fontSize: number;
   maxParagraphWidth: number;
   increaseFontSize: () => void;
@@ -52,7 +52,6 @@ const save = defineScopeCommand(editorScope, {
 
 const extractToFragment = defineScopeCommand(editorScope, {
   id: "editor.extract-to-fragment",
-  onFailure: "Extraction failed.",
   label: "Extract to fragment",
   category: "other",
   disabled: (ctx) => (ctx.getSelection().isEmpty ? "Select text first" : undefined),
@@ -65,7 +64,6 @@ const extractToFragment = defineScopeCommand(editorScope, {
 
 const extractToNote = defineScopeCommand(editorScope, {
   id: "editor.extract-to-note",
-  onFailure: "Extraction failed.",
   label: "Extract to note",
   category: "other",
   disabled: (ctx) => (ctx.getSelection().isEmpty ? "Select text first" : undefined),
@@ -78,7 +76,6 @@ const extractToNote = defineScopeCommand(editorScope, {
 
 const extractToReference = defineScopeCommand(editorScope, {
   id: "editor.extract-to-reference",
-  onFailure: "Extraction failed.",
   label: "Extract to reference",
   category: "other",
   disabled: (ctx) => (ctx.getSelection().isEmpty ? "Select text first" : undefined),
@@ -91,7 +88,6 @@ const extractToReference = defineScopeCommand(editorScope, {
 
 const extractToAspect = defineScopeCommand(editorScope, {
   id: "editor.extract-to-aspect",
-  onFailure: "Extraction failed.",
   label: "Extract to aspect",
   category: "other",
   disabled: (ctx) => (ctx.getSelection().isEmpty ? "Select text first" : undefined),
@@ -120,7 +116,6 @@ const insertDisabled = ({ ctx, kind, directionNoun }: InsertDisabledArgs): strin
 
 const appendToFragment = defineScopeCommand(editorScope, {
   id: "editor.append-to-fragment",
-  onFailure: "Insert failed.",
   label: "Append to fragment",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "fragment", directionNoun: "append" }),
@@ -139,7 +134,6 @@ const appendToFragment = defineScopeCommand(editorScope, {
 
 const appendToNote = defineScopeCommand(editorScope, {
   id: "editor.append-to-note",
-  onFailure: "Insert failed.",
   label: "Append to note",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "note", directionNoun: "append" }),
@@ -158,7 +152,6 @@ const appendToNote = defineScopeCommand(editorScope, {
 
 const appendToReference = defineScopeCommand(editorScope, {
   id: "editor.append-to-reference",
-  onFailure: "Insert failed.",
   label: "Append to reference",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "reference", directionNoun: "append" }),
@@ -177,7 +170,6 @@ const appendToReference = defineScopeCommand(editorScope, {
 
 const appendToAspect = defineScopeCommand(editorScope, {
   id: "editor.append-to-aspect",
-  onFailure: "Insert failed.",
   label: "Append to aspect",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "aspect", directionNoun: "append" }),
@@ -196,7 +188,6 @@ const appendToAspect = defineScopeCommand(editorScope, {
 
 const prependToFragment = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-fragment",
-  onFailure: "Insert failed.",
   label: "Prepend to fragment",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "fragment", directionNoun: "prepend" }),
@@ -215,7 +206,6 @@ const prependToFragment = defineScopeCommand(editorScope, {
 
 const prependToNote = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-note",
-  onFailure: "Insert failed.",
   label: "Prepend to note",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "note", directionNoun: "prepend" }),
@@ -234,7 +224,6 @@ const prependToNote = defineScopeCommand(editorScope, {
 
 const prependToReference = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-reference",
-  onFailure: "Insert failed.",
   label: "Prepend to reference",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "reference", directionNoun: "prepend" }),
@@ -253,7 +242,6 @@ const prependToReference = defineScopeCommand(editorScope, {
 
 const prependToAspect = defineScopeCommand(editorScope, {
   id: "editor.prepend-to-aspect",
-  onFailure: "Insert failed.",
   label: "Prepend to aspect",
   category: "other",
   disabled: (ctx) => insertDisabled({ ctx, kind: "aspect", directionNoun: "prepend" }),

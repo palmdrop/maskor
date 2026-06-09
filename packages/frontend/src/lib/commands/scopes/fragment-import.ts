@@ -11,7 +11,6 @@ export const fragmentImportScope = defineScope<FragmentImportContext>("fragment-
 
 const importFragments = defineScopeCommand(fragmentImportScope, {
   id: "fragment-import:import",
-  onFailure: "Import failed.",
   label: "Import fragments",
   category: "create",
   disabled: (ctx) => (ctx.canImport ? undefined : "No fragments to import"),

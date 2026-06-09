@@ -18,20 +18,30 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
 });
 
-const updateMutate = vi.fn();
-const cloneMutate = vi.fn();
-const insertMutate = vi.fn();
+// Commands now dispatch via mutateAsync (so failures reject into onFailure); these
+// spies stand in for both entry points and resolve so the chained .then runs.
+const updateMutate = vi.fn().mockResolvedValue(undefined);
+const cloneMutate = vi.fn().mockResolvedValue(undefined);
+const insertMutate = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@api/generated/sequences/sequences", () => ({
-  useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useCreateSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   useUpdateSequence: vi.fn(() => ({
     mutate: updateMutate,
-    mutateAsync: vi.fn(),
+    mutateAsync: updateMutate,
     isPending: false,
   })),
-  useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useCloneSequence: vi.fn(() => ({ mutate: cloneMutate, isPending: false })),
-  useInsertSequence: vi.fn(() => ({ mutate: insertMutate, isPending: false })),
+  useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
+  useCloneSequence: vi.fn(() => ({
+    mutate: cloneMutate,
+    mutateAsync: cloneMutate,
+    isPending: false,
+  })),
+  useInsertSequence: vi.fn(() => ({
+    mutate: insertMutate,
+    mutateAsync: insertMutate,
+    isPending: false,
+  })),
   getListSequencesQueryKey: () => [`/projects/${PROJECT_ID}/sequences`],
   getGetSequenceContentsQueryKey: () => [`/projects/${PROJECT_ID}/sequences/contents`],
 }));

@@ -1,9 +1,26 @@
 # Command failure observability: toast errors, correlation IDs, and action log error entries
 
 **Date**: 2026-06-08
-**Status**: Done
+**Status**: Done (with follow-up correction — see note below)
 **Specs**: `specifications/command-palette.md`
 **ADR**: `references/adr/0012-command-failure-observability.md`
+
+---
+
+> **Correction (2026-06-09).** Phase 5 as written assumed declaring `onFailure` on a
+> command was sufficient. It is not: `CommandsProvider.run` only fires `onFailure` when
+> the command's `run` _rejects_, but the mutation-backed commands delegate to scope-context
+> primitives that returned `void` (fire-and-forget `.mutate`, dialog opens, or form-state
+> updates), so the failures never reached the command layer. The follow-up made the
+> genuinely-silent commands' primitives return their promise (`mutateAsync`) so `onFailure`
+> fires (overview designate/section/reorder ops, sequence CRUD, fragment discard/restore,
+> `editor:save`), and removed the unreachable `onFailure` from dialog-/in-place-handled
+> commands (extract/insert, import, metadata attach/detach, margin, config, suggestion,
+> save-settings — these surface errors in-place or via their dialog). In particular
+> `suggestion:next`'s `loadNext` is **not** "currently unhandled" as Phase 5 claimed — it
+> catches internally and shows the error via `ctx.setSaveError`. Full analysis:
+> `references/reviews/command-failure-observability-2026-06-08.md`; the in-place suppression
+> rationale is ADR 0012 §4.
 
 ---
 

@@ -4,8 +4,8 @@ import { defineScope, defineScopeCommand } from "../define";
 export interface FragmentEditorContext {
   hasFragment: boolean;
   isDiscarded: boolean;
-  discard: () => void;
-  restore: () => void;
+  discard: () => Promise<void>;
+  restore: () => Promise<void>;
   sequences: Sequence[];
   openPlaceInSequence: (sequenceId: string) => void;
 }

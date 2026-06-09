@@ -82,8 +82,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     setIsPlaceInSequenceOpen(true);
   }, []);
   const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
-  const { mutate: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
-  const { mutate: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
+  const { mutateAsync: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
+  const { mutateAsync: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
   const showFragmentStats =
     projectEnvelope?.status === 200 ? projectEnvelope.data.advanced.showFragmentStats : false;
@@ -220,30 +220,34 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     ],
   );
 
-  const handleDiscard = useCallback(() => {
-    discardFragment(
-      { projectId, fragmentId },
-      {
-        onSuccess: () => {
-          invalidateFragment();
-          invalidateActionLog();
-          onDiscarded?.();
+  const handleDiscard = useCallback(
+    () =>
+      discardFragment(
+        { projectId, fragmentId },
+        {
+          onSuccess: () => {
+            invalidateFragment();
+            invalidateActionLog();
+            onDiscarded?.();
+          },
         },
-      },
-    );
-  }, [projectId, fragmentId, discardFragment, invalidateFragment, invalidateActionLog]);
+      ).then(() => {}),
+    [projectId, fragmentId, discardFragment, invalidateFragment, invalidateActionLog, onDiscarded],
+  );
 
-  const handleRestore = useCallback(() => {
-    restoreFragment(
-      { projectId, fragmentId },
-      {
-        onSuccess: () => {
-          invalidateFragment();
-          invalidateActionLog();
+  const handleRestore = useCallback(
+    () =>
+      restoreFragment(
+        { projectId, fragmentId },
+        {
+          onSuccess: () => {
+            invalidateFragment();
+            invalidateActionLog();
+          },
         },
-      },
-    );
-  }, [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog]);
+      ).then(() => {}),
+    [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog],
+  );
 
   const commands = useCommands();
   useCommandScope(fragmentEditorScope, {

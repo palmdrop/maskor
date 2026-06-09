@@ -189,12 +189,12 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     });
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const existingNames = new Set(sequences.map((s) => s.name));
     const defaultName = generateDefaultName(existingNames);
     setEditingDefaultName(defaultName);
 
-    createSequence.mutate(
+    await createSequence.mutateAsync(
       {
         projectId,
         data: { name: defaultName, isMain: false, projectUuid: projectId },
@@ -210,8 +210,8 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     );
   };
 
-  const handleConfirmDelete = (sequenceId: string) => {
-    deleteSequence.mutate(
+  const handleConfirmDelete = async (sequenceId: string) => {
+    await deleteSequence.mutateAsync(
       { projectId, sequenceId },
       {
         onSuccess: () => {
@@ -230,16 +230,15 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   const commands = useCommands();
 
-  const handleSetActive = (sequenceId: string, active: boolean) => {
-    updateSequence.mutate({ projectId, sequenceId, data: { active } });
-  };
+  const handleSetActive = (sequenceId: string, active: boolean) =>
+    updateSequence.mutateAsync({ projectId, sequenceId, data: { active } }).then(() => {});
 
-  const handleClone = (sequenceId: string) => {
+  const handleClone = async (sequenceId: string) => {
     const source = sequences.find((s) => s.uuid === sequenceId);
     if (!source) return;
     const existingNames = new Set(sequences.map((s) => s.name));
     const name = generateCloneName(source.name, existingNames);
-    cloneSequence.mutate(
+    await cloneSequence.mutateAsync(
       { projectId, sequenceId, data: { name } },
       {
         onSuccess: (response) => {
@@ -256,10 +255,10 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     );
   };
 
-  const handleInsert = (sourceSequenceId: string) => {
+  const handleInsert = async (sourceSequenceId: string) => {
     if (!insertTarget) return;
     const targetId = insertTarget.uuid;
-    insertSequence.mutate(
+    await insertSequence.mutateAsync(
       {
         projectId,
         sequenceId: targetId,
@@ -280,9 +279,8 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     createSequencePending: createSequence.isPending,
     createSequence: handleCreate,
     confirmingDeleteSequenceId: confirmingDeleteId,
-    deleteSequence: () => {
-      if (confirmingDeleteId) handleConfirmDelete(confirmingDeleteId);
-    },
+    deleteSequence: () =>
+      confirmingDeleteId ? handleConfirmDelete(confirmingDeleteId) : Promise.resolve(),
     toggleableSequences: sequences.filter((s) => !s.isMain),
     setSequenceActive: handleSetActive,
     cloneableSequences: sequences,

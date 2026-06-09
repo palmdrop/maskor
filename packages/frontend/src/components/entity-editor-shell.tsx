@@ -317,13 +317,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       return metadataUpdate;
     }, [isDirty, isPending, content, onContentSave, onSaved, clearSwap]);
 
-    // Button-triggered save — swallows errors so the parent keeps isDirty=true on failure.
+    // Command-dispatched save (editor:save). Rejects on failure so the command
+    // system surfaces the toast and the backend-recorded command:error entry.
+    // isDirty stays true on failure because onSaved (which clears it) only runs
+    // after a successful save inside saveContent.
     const handleContentSave = useCallback(async () => {
-      try {
-        await saveContent();
-      } catch {
-        // save failed — parent keeps isDirty true
-      }
+      await saveContent();
     }, [saveContent]);
 
     useImperativeHandle(

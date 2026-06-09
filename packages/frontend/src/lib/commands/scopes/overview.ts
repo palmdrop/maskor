@@ -9,11 +9,11 @@ const DETAIL_LEVEL_OPTIONS: ReadonlyArray<{ level: OverviewDetailLevel; label: s
 
 export interface OverviewContext {
   canDesignateMain: boolean;
-  designateMain: () => void;
+  designateMain: () => Promise<void>;
   createSectionPending: boolean;
-  createSection: () => void;
+  createSection: () => Promise<void>;
   confirmingDeleteSectionId: string | null;
-  deleteSection: () => void;
+  deleteSection: () => Promise<void>;
   detailLevel: OverviewDetailLevel;
   setDetailLevel: (detailLevel: OverviewDetailLevel) => void;
   arcOverlayOpen: boolean;
@@ -21,17 +21,17 @@ export interface OverviewContext {
   toggleArcExpanded: () => void;
   toggleVerticalArcStrip: () => void;
   placedSelectionCount: number;
-  groupSelection: () => void;
+  groupSelection: () => Promise<void>;
   canSplitBefore: boolean;
-  splitBefore: () => void;
+  splitBefore: () => Promise<void>;
   canSplitAfter: boolean;
-  splitAfter: () => void;
+  splitAfter: () => Promise<void>;
   sectionsForMove: ReadonlyArray<{ uuid: string; name: string }>;
-  moveSelectionToSection: (sectionUuid: string) => void;
+  moveSelectionToSection: (sectionUuid: string) => Promise<void>;
   mergeableUpSections: ReadonlyArray<{ uuid: string; name: string }>;
   mergeableDownSections: ReadonlyArray<{ uuid: string; name: string }>;
-  mergeSectionUp: (sectionUuid: string) => void;
-  mergeSectionDown: (sectionUuid: string) => void;
+  mergeSectionUp: (sectionUuid: string) => Promise<void>;
+  mergeSectionDown: (sectionUuid: string) => Promise<void>;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {

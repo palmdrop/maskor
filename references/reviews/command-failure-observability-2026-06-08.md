@@ -11,7 +11,7 @@
 
 The backend half of this feature (correlation IDs, `executeCommand` failure capture, `command:error` schema + endpoint, history-page rendering) is correct and well-tested — see the first-pass review notes; nothing below disputes it.
 
-**The frontend half does not work as intended.** The feature's stated goal is *"every failure of a command-system dispatch is surfaced via a toast and recorded as a `command:error` entry."* The mechanism for that is the `onFailure` field, which `CommandsProvider.run` only invokes when a command's `run` **rejects** (returns a rejecting promise) or **throws synchronously**. But the command system's contract is *"components publish synchronous, `void`-returning primitives"* — and every mutation-backed command delegates to such a primitive. The primitives open dialogs, mutate form state, or fire `.mutate()` fire-and-forget; the rejection never reaches the command layer. **Result: not one mutation-backed `onFailure` declared in Phase 5 can fire.** For commands whose underlying mutation also has no `onError`, the failure is now *silently dropped* — the opposite of the feature's goal.
+**The frontend half does not work as intended.** The feature's stated goal is _"every failure of a command-system dispatch is surfaced via a toast and recorded as a `command:error` entry."_ The mechanism for that is the `onFailure` field, which `CommandsProvider.run` only invokes when a command's `run` **rejects** (returns a rejecting promise) or **throws synchronously**. But the command system's contract is _"components publish synchronous, `void`-returning primitives"_ — and every mutation-backed command delegates to such a primitive. The primitives open dialogs, mutate form state, or fire `.mutate()` fire-and-forget; the rejection never reaches the command layer. **Result: not one mutation-backed `onFailure` declared in Phase 5 can fire.** For commands whose underlying mutation also has no `onError`, the failure is now _silently dropped_ — the opposite of the feature's goal.
 
 This is a wiring/contract gap, not a typo. Adding `onCommandError` (the requested sweep) cannot fix it either: that filter also only runs inside `CommandsProvider.run`'s catch path, which never executes for the same reason. **Both axes of the sweep require a prior structural change: mutation-backed primitives must return their promise so the command `run` can reject.**
 
@@ -25,9 +25,15 @@ This is a wiring/contract gap, not a typo. Adding `onCommandError` (the requeste
 
 ```ts
 let outcome: void | Promise<void>;
-try { outcome = def.run(arg); }
-catch (error) { onError(error); return; }
-if (outcome instanceof Promise) { void outcome.catch(onError); }
+try {
+  outcome = def.run(arg);
+} catch (error) {
+  onError(error);
+  return;
+}
+if (outcome instanceof Promise) {
+  void outcome.catch(onError);
+}
 ```
 
 Every mutation-backed `run` delegates to a context primitive typed `() => void`, and the implementations return `void` at runtime:
@@ -39,7 +45,7 @@ Every mutation-backed `run` delegates to a context primitive typed `() => void`,
 - `project-management:save-settings` → `SettingsSection.tsx:39` `.mutate`.
 - `fragment-metadata:attach-*` / `detach-*` → `fragment-metadata-form.tsx:253` only call `field.onChange(...)` (no mutation at all; persistence is the exempt live-save path).
 - `fragment-import:import` → `import: () => void handleImport()` (`FragmentImportPage.tsx:190`). The `void` operator explicitly discards the promise.
-- `editor:save` → `save: handleContentSave`, which is `async` but **swallows** its own error (`entity-editor-shell.tsx:320`, *"swallows errors so the parent keeps isDirty=true"*). The returned promise resolves → `.catch` never runs.
+- `editor:save` → `save: handleContentSave`, which is `async` but **swallows** its own error (`entity-editor-shell.tsx:320`, _"swallows errors so the parent keeps isDirty=true"_). The returned promise resolves → `.catch` never runs.
 - `editor.extract-to-*` / `append-*` / `prepend-*` → `extractTo`/`insertTo` only set dialog state (`entity-editor-shell.tsx:389,420`). The mutation lives in the dialog/confirm handler, which also try/catches internally.
 - `suggestion:next` → `await ctx.loadNext()`, but `loadNext` catches everything and calls `setSaveError` (`SuggestionModePage/index.tsx:37`). The promise resolves → `.catch` never runs.
 
@@ -60,7 +66,7 @@ A subset of item 1's commands back onto mutations that have **only** `onSuccess`
 - `project-management:save-settings` (`SettingsSection.tsx:18,39` — `onSuccess` only)
 - `fragment:discard`, `fragment:restore` (`fragment-editor.tsx:223,237` — `onSuccess` only)
 
-Before this branch these were equally silent, so it is not a *regression* — but the branch's whole purpose was to fix exactly this, and it doesn't. The `onFailure` declarations give the *appearance* of coverage while delivering none.
+Before this branch these were equally silent, so it is not a _regression_ — but the branch's whole purpose was to fix exactly this, and it doesn't. The `onFailure` declarations give the _appearance_ of coverage while delivering none.
 
 ### 3. Tests assert the mechanism, never the wiring
 
@@ -99,8 +105,9 @@ useCommandScope(projectConfigScope, ctx, {
 ```
 
 Candidates and their existing in-place UI:
+
 - `config:rebuild-index`, `config:reset-database` → in-place status line (`GeneralTab.tsx:49–80` `onError`). Today this bypasses the command system entirely; `onFailure` is dead weight. Either adopt `onCommandError` or drop `onFailure`.
-- `suggestion:next` (save half) → `setSaveError` (`SuggestionModePage` / `suggestion-mode.ts:33`). Note the plan's premise that *"loadNext is currently unhandled"* is wrong — `loadNext` catches internally too, so the `onFailure` on `suggestion:next` is fully dead.
+- `suggestion:next` (save half) → `setSaveError` (`SuggestionModePage` / `suggestion-mode.ts:33`). Note the plan's premise that _"loadNext is currently unhandled"_ is wrong — `loadNext` catches internally too, so the `onFailure` on `suggestion:next` is fully dead.
 - `editor:save` → swallowed to keep `isDirty` (`entity-editor-shell.tsx:320`). Decide: surface via `onCommandError`, or keep swallowing and drop the `onFailure`.
 
 **Axis C — leave as dialog-owned, remove the `onFailure` (commands that only open a modal).** `editor.extract-to-*`, `editor.append-/prepend-to-*`, and `fragment-import:import` dispatch into a dialog/confirm flow that owns its own errors (same exemption the plan already grants `create:*`). Their `onFailure` strings are unreachable and should be deleted to stop implying coverage. The `fragment-metadata:*` commands likewise only mutate form state (live-save path is exempt and already shows in-place rollback) — drop their `onFailure`.
@@ -119,7 +126,7 @@ As noted in the first-pass review, no component passes `onCommandError` today. D
 
 ### 7. `crypto.randomUUID()` in the error path has no fallback
 
-`CommandsProvider.handleFailure` calls `crypto.randomUUID()` for the fallback POST. In a non-secure context it throws *inside* the failure handler, masking the original error. The backend guards with `?? randomUUID()`; the frontend doesn't. Low risk given localhost dev, but wrap the POST block defensively.
+`CommandsProvider.handleFailure` calls `crypto.randomUUID()` for the fallback POST. In a non-secure context it throws _inside_ the failure handler, masking the original error. The backend guards with `?? randomUUID()`; the frontend doesn't. Low risk given localhost dev, but wrap the POST block defensively.
 
 ---
 
@@ -128,27 +135,27 @@ As noted in the first-pass review, no component passes `onCommandError` today. D
 - **Backend `onError` clone of the `HTTPException` response** (`app.ts`) — correct; the `new Response(body, response)` pattern preserves status + headers and the body stream is passed, not consumed. Verified by the HTTPException-path test.
 - **`customFetch` reading the correlation id from the header, not the body** — correct and intentional; `throwStorageError` builds its own response with no body-level id.
 - **`command:error` payload `commandId` typed `z.string()` rather than the `CommandLabel` union** — intentional; it also holds frontend command ids, a different namespace (ADR 0012).
-- **Synchronous-then-`.catch` dispatch in `run`** — correct; preserves synchronous-invocation timing for palette/hotkey/tests while still catching rejections. (Its limitation is bug 1, which is about the *callees*, not this code.)
+- **Synchronous-then-`.catch` dispatch in `run`** — correct; preserves synchronous-invocation timing for palette/hotkey/tests while still catching rejections. (Its limitation is bug 1, which is about the _callees_, not this code.)
 
 ---
 
 ## Suggested edit summary (per command)
 
-| Command(s) | Today | Recommended axis |
-|---|---|---|
-| `overview:designate-main`, `add-section`, `delete-section` | silent | **A** — return `mutateAsync` |
-| `overview:create/delete/toggle/clone/insert-sequence` | silent | **A** |
-| `project-management:save-settings` | silent | **A** |
-| `fragment:discard`, `fragment:restore` | silent | **A** |
-| `overview:group/split/move/merge` | rollback, no message | **A** (re-throw after rollback) |
-| `config:rebuild-index`, `config:reset-database` | in-place `onError` | **B** or drop `onFailure` |
-| `suggestion:next` | in-place `setSaveError` | **B** (and correct the plan note) |
-| `editor:save` | swallowed → dirty | **B** or drop `onFailure` |
-| `editor.extract/append/prepend-*` | dialog-owned | **C** — drop `onFailure` |
-| `fragment-import:import` | dialog/`void`-discarded | **C** — drop `onFailure` |
-| `fragment-metadata:attach/detach-*` | form-state only (live-save exempt) | **C** — drop `onFailure` |
+| Command(s)                                                 | Today                              | Recommended axis                  |
+| ---------------------------------------------------------- | ---------------------------------- | --------------------------------- |
+| `overview:designate-main`, `add-section`, `delete-section` | silent                             | **A** — return `mutateAsync`      |
+| `overview:create/delete/toggle/clone/insert-sequence`      | silent                             | **A**                             |
+| `project-management:save-settings`                         | silent                             | **A**                             |
+| `fragment:discard`, `fragment:restore`                     | silent                             | **A**                             |
+| `overview:group/split/move/merge`                          | rollback, no message               | **A** (re-throw after rollback)   |
+| `config:rebuild-index`, `config:reset-database`            | in-place `onError`                 | **B** or drop `onFailure`         |
+| `suggestion:next`                                          | in-place `setSaveError`            | **B** (and correct the plan note) |
+| `editor:save`                                              | swallowed → dirty                  | **B** or drop `onFailure`         |
+| `editor.extract/append/prepend-*`                          | dialog-owned                       | **C** — drop `onFailure`          |
+| `fragment-import:import`                                   | dialog/`void`-discarded            | **C** — drop `onFailure`          |
+| `fragment-metadata:attach/detach-*`                        | form-state only (live-save exempt) | **C** — drop `onFailure`          |
 
-Not implemented — documented per request. Recommend tackling the **A** (silent) rows first; they are the only ones where users currently get *no* feedback at all.
+Not implemented — documented per request. Recommend tackling the **A** (silent) rows first; they are the only ones where users currently get _no_ feedback at all.
 
 ---
 
@@ -202,13 +209,21 @@ Each handler is a `useCallback` ending in `sequenceMutations.<op>.mutate({...})`
 // before
 const groupSelection = useCallback(() => {
   if (!sequence || placedSelection.length < 1) return;
-  sequenceMutations.groupFragments.mutate({ projectId, sequenceId: sequence.uuid, data: { fragmentUuids: placedSelection, name: "" } });
+  sequenceMutations.groupFragments.mutate({
+    projectId,
+    sequenceId: sequence.uuid,
+    data: { fragmentUuids: placedSelection, name: "" },
+  });
 }, [sequence, placedSelection, projectId, sequenceMutations]);
 
 // after
 const groupSelection = useCallback(async () => {
   if (!sequence || placedSelection.length < 1) return;
-  await sequenceMutations.groupFragments.mutateAsync({ projectId, sequenceId: sequence.uuid, data: { fragmentUuids: placedSelection, name: "" } });
+  await sequenceMutations.groupFragments.mutateAsync({
+    projectId,
+    sequenceId: sequence.uuid,
+    data: { fragmentUuids: placedSelection, name: "" },
+  });
 }, [sequence, placedSelection, projectId, sequenceMutations]);
 ```
 
@@ -220,9 +235,28 @@ Each handler calls `<op>.mutate(input, { onSuccess })`. Switch to `return <op>.m
 
 ```ts
 // before
-const handleCreate = () => { createSequence.mutate({ projectId, data: { name } }, { onSuccess: (r) => {/* … */} }); };
+const handleCreate = () => {
+  createSequence.mutate(
+    { projectId, data: { name } },
+    {
+      onSuccess: (r) => {
+        /* … */
+      },
+    },
+  );
+};
 // after
-const handleCreate = () => createSequence.mutateAsync({ projectId, data: { name } }, { onSuccess: (r) => {/* … */} }).then(() => {});
+const handleCreate = () =>
+  createSequence
+    .mutateAsync(
+      { projectId, data: { name } },
+      {
+        onSuccess: (r) => {
+          /* … */
+        },
+      },
+    )
+    .then(() => {});
 ```
 
 Note `handleSetActive` (`SequenceSidebar.tsx:234`) currently `updateSequence.mutate(...)` with no options — `return updateSequence.mutateAsync(...).then(() => {})`.
@@ -265,25 +299,30 @@ The command `run` bodies (`run: (ctx) => ctx.designateMain()` etc.) need no chan
 These already render their own error one layer below the command system. Two valid choices per command — **pick one and make it explicit**:
 
 - **B-keep**: leave the in-place handling where it is and **delete the dead `onFailure`** (it can never fire). Simplest. Downside: the failure is never written as a `command:error` action-log entry.
-- **B-route**: make the primitive reject (Axis A shape), remove the lower-level error handler, and claim the failure with an `onCommandError` filter so the component renders it in-place. A claimed failure suppresses *both* the toast and the fallback log POST — but for these three commands (all backend mutations) the real failures are already logged server-side by `executeCommand`, so the only thing suppression keeps out of the log is frontend-only presentation noise. This coupling is an accepted, documented decision — see ADR 0012 §4 ("Frontend failure presentation").
+- **B-route**: make the primitive reject (Axis A shape), remove the lower-level error handler, and claim the failure with an `onCommandError` filter so the component renders it in-place. A claimed failure suppresses _both_ the toast and the fallback log POST — but for these three commands (all backend mutations) the real failures are already logged server-side by `executeCommand`, so the only thing suppression keeps out of the log is frontend-only presentation noise. This coupling is an accepted, documented decision — see ADR 0012 §4 ("Frontend failure presentation").
 
 `onCommandError` wiring (B-route), e.g. config:
 
 ```ts
 // GeneralTab.tsx — primitive rejects, drop the per-call onError
-rebuildIndex: () => rebuildIndex.mutateAsync(input, { onSuccess: () => setIndexStatus({ message: "Index rebuilt.", isError: false }) }).then(() => {}),
-
-useCommandScope(projectConfigScope, ctx, {
-  onCommandError: (commandId, error) => {
-    const message = error instanceof Error ? error.message : "Failed.";
-    if (commandId === "config:rebuild-index") setIndexStatus({ message, isError: true });
-    else if (commandId === "config:reset-database") setResetStatus({ message, isError: true });
-    return true; // claim it: suppress default toast + log POST
-  },
-});
+rebuildIndex: (() =>
+  rebuildIndex
+    .mutateAsync(input, {
+      onSuccess: () => setIndexStatus({ message: "Index rebuilt.", isError: false }),
+    })
+    .then(() => {}),
+  useCommandScope(projectConfigScope, ctx, {
+    onCommandError: (commandId, error) => {
+      const message = error instanceof Error ? error.message : "Failed.";
+      if (commandId === "config:rebuild-index") setIndexStatus({ message, isError: true });
+      else if (commandId === "config:reset-database") setResetStatus({ message, isError: true });
+      return true; // claim it: suppress default toast + log POST
+    },
+  }));
 ```
 
 Targets:
+
 - `config:rebuild-index`, `config:reset-database` (`GeneralTab.tsx:49–87`) — in-place status line.
 - `suggestion:next` (`SuggestionModePage/index.tsx:37`, `scopes/suggestion-mode.ts`) — `loadNext` currently catches internally and calls `setSaveError`. To B-route: drop the `try/catch` in `loadNext`, let it reject, add `onCommandError` that calls `setSaveError`. **Also correct the plan/spec note** claiming `loadNext` is "currently unhandled" — it is handled.
 - `editor:save` (`entity-editor-shell.tsx:320`) — `handleContentSave` swallows to preserve `isDirty`. To B-route: stop swallowing, add `onCommandError` that keeps the dirty indicator and shows the message. To B-keep: delete its `onFailure`.
@@ -318,4 +357,3 @@ Per `.claude/CLAUDE.md` ("write tests when changing behavior"):
 7. `bun run format && bun run verify`.
 
 No `bun run codegen` needed — no route/schema change.
-

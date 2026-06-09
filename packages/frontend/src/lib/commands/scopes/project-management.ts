@@ -11,7 +11,6 @@ export const projectManagementScope = defineScope<ProjectManagementContext>("pro
 
 const saveSettings = defineScopeCommand(projectManagementScope, {
   id: "project-management:save-settings",
-  onFailure: "Failed to save settings.",
   label: "Save settings",
   category: "project",
   disabled: (ctx) => (ctx.canSaveSettings ? undefined : "No changes to save"),

@@ -20,7 +20,6 @@ export const suggestionModeScope = defineScope<SuggestionModeContext>("suggestio
 // component publishes only primitives — composition lives here.
 const next = defineScopeCommand(suggestionModeScope, {
   id: "suggestion:next",
-  onFailure: "Failed to load next fragment.",
   label: "Next fragment",
   category: "navigation",
   hotkey: "mod+enter",

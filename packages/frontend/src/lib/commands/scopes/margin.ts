@@ -13,7 +13,6 @@ export const marginScope = defineScope<MarginContext>("margin", { label: "Margin
 
 const commentBlock = defineScopeCommand(marginScope, {
   id: "margin:comment-block",
-  onFailure: "Failed to add comment.",
   label: "Comment this block",
   category: "other",
   // A modifier hotkey so the command fires before the editor and, in vim, is intercepted before any

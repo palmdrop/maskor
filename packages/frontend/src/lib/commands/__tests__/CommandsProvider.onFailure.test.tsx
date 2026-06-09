@@ -29,6 +29,16 @@ const failingGlobal = defineGlobalCommand({
   },
 });
 
+// Mirrors a real command: the published primitive returns a rejecting promise
+// (mutateAsync), so the failure arrives as a rejection rather than a sync throw.
+const failingAsyncGlobal = defineGlobalCommand({
+  id: "test:failing-async",
+  label: "Failing async",
+  category: "other",
+  onFailure: "Async failed.",
+  run: () => Promise.reject(control.error),
+});
+
 const silentGlobal = defineGlobalCommand({
   id: "test:silent",
   label: "Silent",
@@ -50,7 +60,7 @@ const scopeFailing = defineScopeCommand(scopeX, {
 });
 
 vi.mock("../catalog", () => ({
-  allCommands: [failingGlobal, silentGlobal, scopeFailing] as const,
+  allCommands: [failingGlobal, failingAsyncGlobal, silentGlobal, scopeFailing] as const,
 }));
 
 const { CommandsProvider, useCommandsContext } = await import("../CommandsProvider");
@@ -92,6 +102,24 @@ describe("CommandsProvider — command failure handling", () => {
       expect.objectContaining({
         commandId: "test:failing",
         friendlyMessage: "It failed.",
+        technicalMessage: "boom",
+        correlationId: expect.any(String),
+      }),
+    );
+  });
+
+  it("toasts and posts when an onFailure command's run rejects asynchronously", async () => {
+    render(<Runner />, { wrapper });
+    act(() => runHandle("test:failing-async"));
+    await flush();
+
+    expect(toastError).toHaveBeenCalledWith("Async failed.", undefined);
+    expect(recordCommandError).toHaveBeenCalledTimes(1);
+    expect(recordCommandError).toHaveBeenCalledWith(
+      "project-1",
+      expect.objectContaining({
+        commandId: "test:failing-async",
+        friendlyMessage: "Async failed.",
         technicalMessage: "boom",
         correlationId: expect.any(String),
       }),

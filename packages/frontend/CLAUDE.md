@@ -120,6 +120,8 @@ onFailure: (error) => ({ message: "Import failed.", detail: String(error) }), //
 
 When a command with `onFailure` throws (sync or rejected promise), `CommandsProvider.run` resolves the message/detail and shows `toast.error`. If the thrown error is an `ApiRequestError` carrying a `correlationId`, the backend already recorded the failure as a `command:error` action-log entry — the frontend only toasts. Otherwise (network/pre-flight failure, or a pure-frontend command) the frontend posts its own intent-level `command:error` entry to `POST /projects/:projectId/action-log/errors` (best-effort) before toasting. See `references/adr/0012-command-failure-observability.md`.
 
+**Contract — the primitive must reject for `onFailure` to fire.** `CommandsProvider.run` only invokes `onFailure` when `def.run()` returns a **rejecting promise** or throws synchronously. A command whose `run` delegates to a scope-context primitive (`run: (ctx) => ctx.save()`) therefore only surfaces failures if that primitive **returns its promise** — use `mutateAsync` and return it, not fire-and-forget `.mutate()`. Type the context field `() => Promise<void>` (not `() => void`): that makes a forgotten `return` a compile error rather than a silently-dropped failure. A primitive that opens a dialog, updates local/form state, or fires `.mutate()` returns `void`, so its command's `onFailure` can never fire — don't declare one (the dialog / live-save path owns those errors).
+
 **Convention — declare `onFailure` vs. handle internally:**
 
 - A command with **no dedicated in-place error UI** must declare `onFailure` if it can throw. Without it, a throw only `console.error`s in dev (no toast) — treated as a developer error.
