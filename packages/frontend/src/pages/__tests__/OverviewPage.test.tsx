@@ -808,6 +808,53 @@ describe("OverviewPage — remove fragment from sequence", () => {
   });
 });
 
+describe("OverviewPage — selection restoration", () => {
+  const selectionKey = `maskor:nav:${PROJECT_ID}:overview:selection`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    currentSearch = { sequence: SEQUENCE_UUID, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("restores a stored selection on mount", () => {
+    localStorage.setItem(selectionKey, JSON.stringify([FRAG_A, FRAG_B]));
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B, FRAG_C] }]);
+    mockFragments([
+      makeFragment(FRAG_A, "alpha"),
+      makeFragment(FRAG_B, "beta"),
+      makeFragment(FRAG_C, "gamma"),
+    ]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByTestId("selection-action-bar")).toHaveTextContent("2 selected");
+  });
+
+  it("does not erase the stored selection before restoring it", () => {
+    localStorage.setItem(selectionKey, JSON.stringify([FRAG_A]));
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B] }]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(JSON.parse(localStorage.getItem(selectionKey)!)).toEqual([FRAG_A]);
+  });
+
+  it("drops stored UUIDs that no longer exist", () => {
+    localStorage.setItem(selectionKey, JSON.stringify([FRAG_A, "frag-deleted"]));
+    mockMultiSectionSequence([{ uuid: "sec-1", fragmentUuids: [FRAG_A, FRAG_B] }]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.getByTestId("selection-action-bar")).toHaveTextContent("1 selected");
+  });
+});
+
 describe("parseOverviewDetailLevel", () => {
   it("defaults to prose for undefined", async () => {
     const { parseOverviewDetailLevel } = await import("../../router");

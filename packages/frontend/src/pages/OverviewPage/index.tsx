@@ -373,26 +373,36 @@ export const OverviewPage = () => {
     if (activeSequenceId) writeOverviewSequence(projectId, activeSequenceId);
   }, [projectId, activeSequenceId]);
 
-  // Persist selection when it changes.
+  // Restore selection on mount runs after this persist effect in source order, so
+  // guard persistence until restore has completed — otherwise the initial empty
+  // selection would overwrite the stored value before it can be read back.
+  const hasRestoredSelectionRef = useRef(false);
+
+  // Persist selection when it changes (only after restore, see above).
   useEffect(() => {
+    if (!hasRestoredSelectionRef.current) return;
     writeOverviewSelection(projectId, selection);
   }, [projectId, selection]);
 
-  // Restore scroll after content is ready (both queries resolved and not rebuilding).
-  const contentReady = !bundleLoading && !summariesLoading;
+  // Restore scroll only once the content that determines scroll height is ready.
+  // The spine height comes from the sequence-contents query, not from the bundle
+  // or summaries; restoring on the latter would clamp scrollTop against a
+  // not-yet-grown container. When there is no sequence, fall back to the bundle/
+  // summaries readiness so an empty project still restores (a no-op scroll).
+  const spineContentReady =
+    !bundleLoading && !summariesLoading && (!sequence || !!contentsEnvelope);
   const hasRestoredScrollRef = useRef(false);
   useEffect(() => {
-    if (!contentReady || hasRestoredScrollRef.current) return;
+    if (!spineContentReady || hasRestoredScrollRef.current) return;
     hasRestoredScrollRef.current = true;
     const offset = persistedScroll.read();
     if (offset === null) return;
     requestAnimationFrame(() => {
       if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = offset;
     });
-  }, [contentReady, persistedScroll]);
+  }, [spineContentReady, persistedScroll]);
 
   // Restore selection after fragments are loaded, filtered to still-existing UUIDs.
-  const hasRestoredSelectionRef = useRef(false);
   useEffect(() => {
     if (summariesLoading || hasRestoredSelectionRef.current) return;
     hasRestoredSelectionRef.current = true;

@@ -21,11 +21,14 @@ export const FragmentPage = () => {
     if (fragmentNotFound) clearLastFragment(projectId);
   }, [projectId, fragmentNotFound]);
 
-  // StrictMode double-invokes effects; guard so the visit is recorded exactly once per mount.
-  const hasRecordedVisitRef = useRef(false);
+  // The route reuses this component instance across fragment changes (no `key` on
+  // the route), so guard on the fragmentId itself rather than a once-per-mount
+  // flag — otherwise only the first fragment opened would be persisted/recorded.
+  // Tracking the id also dedupes StrictMode's double-invoke (same id, no-op).
+  const recordedFragmentIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (hasRecordedVisitRef.current) return;
-    hasRecordedVisitRef.current = true;
+    if (recordedFragmentIdRef.current === fragmentId) return;
+    recordedFragmentIdRef.current = fragmentId;
     writeLastFragment(projectId, fragmentId);
     void recordFragmentVisit(projectId, fragmentId).catch(() => {
       // Non-critical; ignore failures.
