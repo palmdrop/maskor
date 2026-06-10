@@ -537,9 +537,9 @@ export const OverviewPage = () => {
   // pool. Shares the optimistic mutation used by drag-to-pool; surfaced as a
   // direct button on each placed fragment (spine, left column, right panel).
   const unplaceFragment = useCallback(
-    (fragmentUuid: string) => {
+    async (fragmentUuid: string) => {
       if (!sequence) return;
-      sequenceMutations.unplaceFragment.mutate({
+      await sequenceMutations.unplaceFragment.mutateAsync({
         projectId,
         sequenceId: sequence.uuid,
         fragmentUuid,
