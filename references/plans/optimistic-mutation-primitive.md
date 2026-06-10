@@ -1,7 +1,7 @@
 # Optimistic Mutation Primitive
 
 **Date**: 09-06-2026
-**Status**: In progress
+**Status**: Done
 **Specs**: none (frontend infrastructure; no domain spec applies)
 
 ---
@@ -123,13 +123,13 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 - [x] Confirm extract-to-entity and append/prepend flows still work (full suite green, 657 tests)
 - [x] `git commit`
 
-### Phase 8 — Verify and close
+### Phase 8 — Verify and close — DONE
 
-- [ ] `bun run format`
-- [ ] `bun run verify` — fix any lint / type / test failures
-- [ ] Remove any `references/suggestions.md` entries made obsolete by this work
-- [ ] Set this plan's status to `Done` (or `In progress` if partial)
-- [ ] `git commit`
+- [x] `bun run format` (no code changes — every phase was formatted as it landed; reverted the incidental whole-repo markdown reflow it produced)
+- [x] Frontend verified: `bun run --cwd packages/frontend typecheck` (tsc -b) green; full frontend suite green (657 tests); lint clean repo-wide. **Repo-wide `bun run verify` is blocked by a pre-existing `packages/api` export typecheck failure (ADR-0012 follow-through) — out of this plan's scope, untouched by it, documented in `references/suggestions.md`.**
+- [x] Removed obsolete `suggestions.md` entry — none fully obsolete; marked the OverviewPage `unplaceFragment` entry `[FIXED]` (resolved in `8cae7c9`)
+- [x] Set this plan's status to `Done`
+- [x] `git commit`
 
 ---
 
