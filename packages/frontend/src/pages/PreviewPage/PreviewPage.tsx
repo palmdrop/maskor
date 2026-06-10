@@ -75,6 +75,11 @@ export const PreviewPage = () => {
     separator: ProjectPreviewSeparator["blank-line"],
   };
 
+  // Not a server mirror but an optimistic overlay: a flipped preview toggle applies instantly
+  // here (so the control and the assembled-markdown query key update without waiting for the
+  // round-trip), then clears on settle so the authoritative server value takes back over. This
+  // is why it is not folded into useProjectSetting (which is invalidate-only) — the instant
+  // overlay coupled to the query is the point. See onSuccess/onError below.
   const [localOverride, setLocalOverride] = useState<Partial<PreviewConfig>>({});
   const preview: PreviewConfig = { ...serverPreview, ...localOverride };
 
