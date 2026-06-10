@@ -4,13 +4,10 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
   useUpdateProject,
   getGetProjectQueryKey,
@@ -34,12 +31,11 @@ import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedCursor } from "@hooks/usePersistedCursor";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
 import { useCommandScope } from "@lib/commands/useCommandScope";
-import { editorScope, type InsertCommandTarget } from "@lib/commands/scopes/editor";
+import { editorScope } from "@lib/commands/scopes/editor";
 import { ExtractToEntityDialog } from "./extract-to-entity-dialog";
-import { AppendOrPrependDialog, type InsertDirection } from "./append-or-prepend-dialog";
-import { useInsertToggles } from "@lib/insert-toggles/InsertTogglesProvider";
-import { ENTITY_KINDS, type EntityKind } from "@lib/entity-kinds/registry";
-import { useEntityKindRegistry } from "@lib/entity-kinds/useEntityKindRegistry";
+import { AppendOrPrependDialog } from "./append-or-prepend-dialog";
+import { type EntityKind } from "@lib/entity-kinds/registry";
+import { useEntityInsertExtract } from "@lib/entity-kinds/useEntityInsertExtract";
 import { useCommands } from "../lib/commands/useCommands";
 
 export type EntityEditorShellHandle = {
@@ -92,17 +88,6 @@ type Props = {
   suppressRecoveryBanner?: boolean;
   // Reports the fragment swap recovery up to a coordinating parent (linked swap pair).
   onRecoveryChange?: (recovery: { at: Date } | null) => void;
-};
-
-type InsertionTarget = {
-  direction: InsertDirection;
-  targetKind: EntityKind;
-  targetEntity: InsertCommandTarget;
-};
-
-type InsertMutationResult = {
-  status: number;
-  data: { sourceCutFailed: boolean };
 };
 
 export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
@@ -220,28 +205,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const cursor = usePersistedCursor(
       `maskor:cursor:${projectId}:${entityKind}:${entityUUID}:${editorMode}`,
     );
-    const navigate = useNavigate();
     const proseEditorRef = useRef<ProseEditorHandle>(null);
     const showSaving = useDelayedPending(isPending);
 
-    const registry = useEntityKindRegistry(projectId);
     const sourceKind = entityKind as EntityKind;
-
-    const isInsertionPending = ENTITY_KINDS.some(
-      (kind) => registry[kind].append.isPending || registry[kind].prepend.isPending,
-    );
-
-    const [extractTarget, setExtractTarget] = useState<EntityKind | null>(null);
-    const [extractSelectionText, setExtractSelectionText] = useState("");
-
-    const [insertionTarget, setInsertionTarget] = useState<InsertionTarget | null>(null);
-    const [insertionSelectionText, setInsertionSelectionText] = useState("");
-    const {
-      sourceMode: insertSourceMode,
-      nextMode: insertNextMode,
-      setSourceMode: setInsertSourceMode,
-      setNextMode: setInsertNextMode,
-    } = useInsertToggles();
+    const insertExtract = useEntityInsertExtract(projectId, sourceKind, entityUUID);
 
     // Track the live editor content so useEntityContentSwap can debounce-write it.
     // Re-reads from the editor on every onProseChange so the swap matches what's
@@ -350,146 +318,13 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       [],
     );
 
-    const navigateToEntity = useCallback(
-      (kind: EntityKind, uuid: string) => {
-        // TanStack Router needs the route literal at the call site for params inference,
-        // so the four routes stay unrolled — but only in this one helper.
-
-        switch (kind) {
-          case "fragment":
-            void navigate({
-              to: "/projects/$projectId/fragments/$fragmentId",
-              params: { projectId, fragmentId: uuid },
-            });
-            return;
-          case "note":
-            void navigate({
-              to: "/projects/$projectId/notes/$noteId",
-              params: { projectId, noteId: uuid },
-            });
-            return;
-          case "reference":
-            void navigate({
-              to: "/projects/$projectId/references/$referenceId",
-              params: { projectId, referenceId: uuid },
-            });
-            return;
-          case "aspect":
-            void navigate({
-              to: "/projects/$projectId/aspects/$aspectId",
-              params: { projectId, aspectId: uuid },
-            });
-            return;
-        }
-      },
-      [navigate, projectId],
-    );
-
-    const handleExtractOpen = useCallback((kind: EntityKind, text: string) => {
-      setExtractSelectionText(text);
-      setExtractTarget(kind);
-    }, []);
-
-    const handleExtractClose = useCallback(() => setExtractTarget(null), []);
-
-    const handleExtractSuccess = useCallback(
-      (kind: EntityKind, uuid: string) => {
-        setExtractTarget(null);
-        navigateToEntity(kind, uuid);
-      },
-      [navigateToEntity],
-    );
-
-    const eligibleByKind = useMemo<Record<EntityKind, InsertCommandTarget[]>>(() => {
-      const buildList = (kind: EntityKind): InsertCommandTarget[] =>
-        registry[kind].list
-          .filter(
-            (item) =>
-              item.uuid !== entityUUID && !(kind === "fragment" && item.isDiscarded === true),
-          )
-          .map((item) => ({ uuid: item.uuid, key: item.key }));
-      return {
-        fragment: buildList("fragment"),
-        note: buildList("note"),
-        reference: buildList("reference"),
-        aspect: buildList("aspect"),
-      };
-    }, [registry, entityUUID]);
-
-    const handleInsertOpen = useCallback(
-      (
-        direction: InsertDirection,
-        targetKind: EntityKind,
-        selectionText: string,
-        targetEntity: InsertCommandTarget,
-      ) => {
-        setInsertionSelectionText(selectionText);
-        setInsertionTarget({ direction, targetKind, targetEntity });
-      },
-      [],
-    );
-
-    const handleInsertClose = useCallback(() => setInsertionTarget(null), []);
-
-    const handleInsertConfirm = useCallback(async () => {
-      if (!insertionTarget) return;
-      const { direction, targetKind, targetEntity } = insertionTarget;
-      const bundle = registry[targetKind];
-
-      const mutation = direction === "append" ? bundle.append : bundle.prepend;
-      const input = {
-        projectId,
-        [bundle.meta.insertIdParamKey]: targetEntity.uuid,
-        data: {
-          insertedBody: insertionSelectionText,
-          sourceUuid: entityUUID,
-          sourceType: sourceKind,
-          sourceMode: insertSourceMode,
-          navigated: insertNextMode === "switch",
-        },
-      };
-
-      // NOTE: The assignment is not useless, ts is wrong?
-      // eslint-disable-next-line no-useless-assignment
-      let result: InsertMutationResult | null = null;
-      try {
-        result = (await mutation.mutateAsync(input as never)) as InsertMutationResult;
-      } catch {
-        return;
-      }
-
-      if (result?.status !== 200) return;
-
-      setInsertionTarget(null);
-
-      if (result.data.sourceCutFailed) {
-        toast.warning(
-          `Added to ${targetKind}/${targetEntity.key}. Couldn't update the source body — the selection is still there.`,
-        );
-      }
-
-      if (insertNextMode === "switch") {
-        navigateToEntity(targetKind, targetEntity.uuid);
-      }
-    }, [
-      insertionTarget,
-      insertionSelectionText,
-      entityUUID,
-      sourceKind,
-      insertSourceMode,
-      insertNextMode,
-      projectId,
-      registry,
-      navigateToEntity,
-    ]);
-
     const commands = useCommands();
 
     useCommandScope(editorScope, {
       getSelection: getEditorSelection,
-      eligibleByKind,
-      extractTo: handleExtractOpen,
-      insertTo: handleInsertOpen,
+      eligibleByKind: insertExtract.eligibleByKind,
+      extractTo: insertExtract.extractTo,
+      insertTo: insertExtract.insertTo,
       canSave: isDirty && !isPending,
       save: handleContentSave,
       fontSize: localFontSize,
@@ -634,32 +469,32 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             </div>
           )}
         </div>
-        {extractTarget && (
+        {insertExtract.extract.target && insertExtract.extract.bundle && (
           <ExtractToEntityDialog
             open={true}
-            bundle={registry[extractTarget]}
+            bundle={insertExtract.extract.bundle}
             projectId={projectId}
             sourceUuid={entityUUID}
             sourceKind={sourceKind}
-            selectionText={extractSelectionText}
-            onClose={handleExtractClose}
-            onSuccess={(uuid) => handleExtractSuccess(extractTarget, uuid)}
+            selectionText={insertExtract.extract.selectionText}
+            onClose={insertExtract.extract.close}
+            onSuccess={insertExtract.extract.onSuccess}
           />
         )}
-        {insertionTarget && (
+        {insertExtract.insert.target && (
           <AppendOrPrependDialog
             open={true}
-            direction={insertionTarget.direction}
-            targetType={insertionTarget.targetKind}
-            targetKey={insertionTarget.targetEntity.key}
-            selectionText={insertionSelectionText}
-            sourceMode={insertSourceMode}
-            nextMode={insertNextMode}
-            isPending={isInsertionPending}
-            onSourceModeChange={setInsertSourceMode}
-            onNextModeChange={setInsertNextMode}
-            onClose={handleInsertClose}
-            onConfirm={() => void handleInsertConfirm()}
+            direction={insertExtract.insert.target.direction}
+            targetType={insertExtract.insert.target.targetKind}
+            targetKey={insertExtract.insert.target.targetEntity.key}
+            selectionText={insertExtract.insert.selectionText}
+            sourceMode={insertExtract.insert.sourceMode}
+            nextMode={insertExtract.insert.nextMode}
+            isPending={insertExtract.insert.isPending}
+            onSourceModeChange={insertExtract.insert.setSourceMode}
+            onNextModeChange={insertExtract.insert.setNextMode}
+            onClose={insertExtract.insert.close}
+            onConfirm={insertExtract.insert.confirm}
           />
         )}
       </div>

@@ -113,15 +113,15 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 - [x] Confirm fragment editor + metadata-form tests pass; added `getActionLogQueryKey` to the fragment test action-log mocks
 - [x] `git commit`
 
-### Phase 7 — Extract insert/extract orchestration from `EntityEditorShell`
+### Phase 7 — Extract insert/extract orchestration from `EntityEditorShell` — DONE
 
 **Goal**: Move the entity-mutation cluster out of the shell into a registry-driven hook, leaving the shell as layout. Depends on the registry being in place (Phase 4).
 
-- [ ] Create `useEntityInsertExtract(projectId, kind, uuid)` near the entity-kinds registry
-- [ ] Move `eligibleByKind`, `handleExtractOpen/Close/Success`, `handleInsertOpen/Close/Confirm`, and `navigateToEntity` into it; source mutation inputs from the registry rows (existing `useEntityKindRegistry`, harmonized with the Phase 4 additions)
-- [ ] `EntityEditorShell` consumes the hook and renders the extract / append-prepend dialogs from its returned state — no mutation logic left in the shell
-- [ ] Confirm extract-to-entity and append/prepend flows still work (existing tests + manual check)
-- [ ] `git commit`
+- [x] Create `useEntityInsertExtract(projectId, sourceKind, sourceUuid)` in `src/lib/entity-kinds/` (beside `useEntityKindRegistry`)
+- [x] Moved `eligibleByKind`, `extractTo`/`close`/`onSuccess`, `insertTo`/`close`/`confirm`, `navigateToEntity`, and `isInsertionPending` into it; sources targets + append/prepend/extract mutation handles from `useEntityKindRegistry`
+- [x] `EntityEditorShell` consumes the hook and renders the extract / append-prepend dialogs from `insertExtract.extract` / `insertExtract.insert` — no insert/extract mutation logic, navigation, or `useNavigate`/`toast` left in the shell
+- [x] Confirm extract-to-entity and append/prepend flows still work (full suite green, 657 tests)
+- [x] `git commit`
 
 ### Phase 8 — Verify and close
 
