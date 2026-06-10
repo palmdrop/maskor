@@ -1,7 +1,7 @@
 # Frontend Architecture Refactor — Rollout
 
 **Date**: 10-06-2026
-**Status**: In progress — Plans 1 (`optimistic-mutation-primitive`), 2 (`project-settings-consolidation`), and 3 (`overview-surface-hooks`) **Done**; Plan 4 (`prose-editor-backend-adapters`) next (the orthogonal one). Pre-existing `packages/api` export typecheck red (ADR-0012 follow-through) was fixed mid-rollout to restore the repo-wide `verify` gate; `verify` green after each plan.
+**Status**: Done — all four plans landed on `agent/frontend-refactor` (per-phase commits): 1 `optimistic-mutation-primitive`, 2 `project-settings-consolidation`, 3 `overview-surface-hooks`, 4 `prose-editor-backend-adapters`. Repo-wide `bun run verify` green (946 backend + 694 frontend). A pre-existing `packages/api` export typecheck red (ADR-0012 follow-through) and a pre-existing OverviewPage `unplaceFragment` red were fixed mid-rollout to restore the `verify` gate.
 
 > Meta-plan. Coordinates the four refactor plans from the frontend architecture review. Not a task list of its own — it sequences the others and records the cross-plan notes. Each linked plan owns its phases, tests, and commits.
 

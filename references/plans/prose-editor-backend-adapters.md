@@ -1,7 +1,7 @@
 # Prose Editor Backend Adapters
 
 **Date**: 10-06-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: none (frontend infrastructure; relates to `references/adr/0009-buffer-clean-anchoring-and-editor-driven-flow-alignment.md`)
 
 ---
@@ -40,42 +40,42 @@ The interface exists and two real implementations sit behind it: by the skill's 
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `prose-editor-backend-adapters` from the current branch
+- [x] ~~Create branch~~ — N/A: implemented on the shared worktree branch `agent/frontend-refactor` (per-phase commits)
 
 ### Phase 1 — Extract the CodeMirror adapter
 
 **Goal**: The vim/raw branch of every handle method moves into one factory; the handle delegates to it for that mode.
 
-- [ ] Create `createCodeMirrorProseAdapter(deps): ProseEditorHandle` (co-located with `prose-editor`)
-- [ ] Move the `vimMode || rawMarkdownMode` implementation of all twelve methods into it
-- [ ] Inject `deps` (view accessor, content fallback, `setCmValue`, change notifier)
-- [ ] In `ProseEditor`, the vim/raw branch of `useImperativeHandle` calls the adapter; the rich branch stays inline for now
-- [ ] `git commit`
+- [x] Create `createCodeMirrorProseAdapter(deps): ProseEditorHandle` (co-located with `prose-editor`)
+- [x] Move the `vimMode || rawMarkdownMode` implementation of all twelve methods into it
+- [x] Inject `deps` (view accessor, content fallback, `setCmValue`, change notifier)
+- [x] In `ProseEditor`, the vim/raw branch of `useImperativeHandle` calls the adapter; the rich branch stays inline for now
+- [x] `git commit`
 
 ### Phase 2 — Extract the TipTap adapter
 
 **Goal**: The rich branch moves into its own factory; the handle becomes a single adapter selection.
 
-- [ ] Create `createTiptapProseAdapter(deps): ProseEditorHandle`
-- [ ] Move the rich (non-vim/raw) implementation of all twelve methods into it
-- [ ] Reduce `useImperativeHandle` to selecting the active adapter (`vimMode || rawMarkdownMode ? cm : tiptap`), removing the per-method branching
-- [ ] `git commit`
+- [x] Create `createTiptapProseAdapter(deps): ProseEditorHandle`
+- [x] Move the rich (non-vim/raw) implementation of all twelve methods into it
+- [x] Reduce `useImperativeHandle` to selecting the active adapter (`vimMode || rawMarkdownMode ? cm : tiptap`), removing the per-method branching
+- [x] `git commit`
 
 ### Phase 3 — Tests
 
 **Goal**: Each adapter exercised against its backend through the `ProseEditorHandle` interface.
 
-- [ ] Adapter tests constructing a real CodeMirror view / TipTap editor and asserting the handle methods (content round-trip with markers, selection capture, anchor add/remove/reveal, block enumeration)
-- [ ] Confirm existing `inline-fragment-editor` and prose-editor coverage still passes
-- [ ] `git commit`
+- [x] Adapter tests constructing a real CodeMirror view / TipTap editor and asserting the handle methods (content round-trip with markers, selection capture, anchor add/remove/reveal, block enumeration)
+- [x] Confirm existing `inline-fragment-editor` and prose-editor coverage still passes
+- [x] `git commit`
 
 ### Phase 4 — Verify and close
 
-- [ ] `bun run format`
-- [ ] `bun run verify` — fix any lint / type / test failures
-- [ ] Remove any `references/suggestions.md` entries made obsolete by this work
-- [ ] Set this plan's status to `Done` (or `In progress` if partial)
-- [ ] `git commit`
+- [x] `bun run format`
+- [x] `bun run verify` — fix any lint / type / test failures
+- [x] Remove any `references/suggestions.md` entries made obsolete by this work
+- [x] Set this plan's status to `Done` (or `In progress` if partial)
+- [x] `git commit`
 
 ---
 
