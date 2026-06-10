@@ -2,6 +2,7 @@ import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import { Badge } from "@components/ui/badge";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ReferencesTab } from "./tabs/ReferencesTab";
@@ -41,9 +42,9 @@ export const ProjectConfigPage = () => {
           <TabsTrigger value="diagnostics">
             Diagnostics
             {!!warnings.length && (
-              <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 text-xs text-amber-600">
+              <Badge className="ml-1.5 rounded-full bg-amber-500/15 text-amber-600">
                 {warnings.length}
-              </span>
+              </Badge>
             )}
           </TabsTrigger>
         </TabsList>

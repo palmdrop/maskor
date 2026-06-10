@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useGetProjectStats } from "@api/generated/stats/stats";
 import type { FragmentStatsSummary } from "@api/generated/maskorAPI.schemas";
+import { Checkbox } from "@components/ui/checkbox";
 
 const HISTOGRAM_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"] as const;
 
@@ -130,15 +131,16 @@ export const ProjectStatsPage = () => {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Fragments
           </h2>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2 text-sm text-muted-foreground select-none">
+            <Checkbox
+              id="include-discarded"
               checked={includeDiscarded}
-              onChange={(event) => setIncludeDiscarded(event.target.checked)}
-              className="rounded"
+              onCheckedChange={(checked) => setIncludeDiscarded(checked === true)}
             />
-            Include discarded
-          </label>
+            <label htmlFor="include-discarded" className="cursor-pointer font-normal">
+              Include discarded
+            </label>
+          </div>
         </div>
         {visibleFragments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No fragments yet.</p>

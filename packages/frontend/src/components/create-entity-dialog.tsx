@@ -3,6 +3,8 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { FieldError } from "./ui/field-error";
 import {
   Dialog,
   DialogContent,
@@ -95,15 +97,14 @@ export const CreateEntityDialog = ({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={contentId}>{contentRequired ? "Content" : "Content (optional)"}</Label>
-            <textarea
+            <Textarea
               id={contentId}
               rows={contentRequired ? 6 : 4}
               value={contentValue}
               onChange={(e) => setContentValue(e.target.value)}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
             />
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          <FieldError>{error}</FieldError>
         </div>
         <DialogFooter>
           <Button onClick={handleCreate} disabled={isPending}>

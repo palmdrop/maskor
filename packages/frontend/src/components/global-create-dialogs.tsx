@@ -11,6 +11,8 @@ import { useCreateAspect, getListAspectsQueryKey } from "@api/generated/aspects/
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import { Textarea } from "@components/ui/textarea";
+import { FieldError } from "@components/ui/field-error";
 import {
   Dialog,
   DialogContent,
@@ -206,7 +208,7 @@ export const GlobalCreateDialogs = ({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="global-create-fragment-content">Content</Label>
-              <textarea
+              <Textarea
                 id="global-create-fragment-content"
                 rows={6}
                 value={simpleForm.content}
@@ -214,10 +216,9 @@ export const GlobalCreateDialogs = ({
                   setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
                 }
                 disabled={isPending}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
             </div>
-            {simpleForm.error && <p className="text-xs text-destructive">{simpleForm.error}</p>}
+            <FieldError>{simpleForm.error}</FieldError>
           </div>
           <DialogFooter>
             <Button onClick={() => void handleCreateFragment()} disabled={isPending}>
@@ -255,7 +256,7 @@ export const GlobalCreateDialogs = ({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="global-create-note-content">Content (optional)</Label>
-              <textarea
+              <Textarea
                 id="global-create-note-content"
                 rows={4}
                 value={simpleForm.content}
@@ -263,10 +264,9 @@ export const GlobalCreateDialogs = ({
                   setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
                 }
                 disabled={isPending}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
             </div>
-            {simpleForm.error && <p className="text-xs text-destructive">{simpleForm.error}</p>}
+            <FieldError>{simpleForm.error}</FieldError>
           </div>
           <DialogFooter>
             <Button onClick={() => void handleCreateNote()} disabled={isPending}>
@@ -304,7 +304,7 @@ export const GlobalCreateDialogs = ({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="global-create-reference-content">Content (optional)</Label>
-              <textarea
+              <Textarea
                 id="global-create-reference-content"
                 rows={4}
                 value={simpleForm.content}
@@ -312,10 +312,9 @@ export const GlobalCreateDialogs = ({
                   setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
                 }
                 disabled={isPending}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
               />
             </div>
-            {simpleForm.error && <p className="text-xs text-destructive">{simpleForm.error}</p>}
+            <FieldError>{simpleForm.error}</FieldError>
           </div>
           <DialogFooter>
             <Button onClick={() => void handleCreateReference()} disabled={isPending}>
@@ -359,7 +358,7 @@ export const GlobalCreateDialogs = ({
                 disabled={isPending}
               />
             </div>
-            {aspectError && <p className="text-xs text-destructive">{aspectError}</p>}
+            <FieldError>{aspectError}</FieldError>
           </div>
           <DialogFooter>
             <Button onClick={() => void handleCreateAspect()} disabled={isPending}>

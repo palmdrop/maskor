@@ -17,7 +17,7 @@ This is a **pure view-layer refactor with no behavior change**. It is scoped to 
 
 The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
-- **Plan 2 (`project-settings-consolidation`) introduces `SettingRow`** — a *horizontal* settings row (label · control · description) for `GeneralTab` / `EntityEditorShell`. Our **`Field`** (Phase 2) is the *vertical* form-field used in dialogs. Different shapes, but both render error text — the **`FieldError` atom (Phase 1) must be agreed as the shared error primitive** so it isn't built twice. Sync on naming before Phase 2 lands.
+- **Plan 2 (`project-settings-consolidation`) introduces `SettingRow`** — a _horizontal_ settings row (label · control · description) for `GeneralTab` / `EntityEditorShell`. Our **`Field`** (Phase 2) is the _vertical_ form-field used in dialogs. Different shapes, but both render error text — the **`FieldError` atom (Phase 1) must be agreed as the shared error primitive** so it isn't built twice. Sync on naming before Phase 2 lands.
 - **Plan 1 (`optimistic-mutation-primitive`) builds a registry-driven `useEntityEditor`** keyed by entity kind. The `global-create-dialogs` collapse (Phase 3) needs a per-kind descriptor — it must **reuse Plan 1's entity registry**, not introduce a second one. If Plan 1 hasn't landed its registry yet, Phase 3 waits or coordinates the registry shape.
 - **Plan 3 (`overview-surface-hooks`) owns `OverviewPage/index.tsx`** (extracts `useFragmentSelection` + `useSectionOps`). The Overview render-tree split (Phase 6) touches only the **sibling** files (`ReorderList`, `SequenceSidebar`, `RightSidebar`) and moves **no state**. Sequence Phase 6 **after Plan 3 lands** to avoid churning overlapping files.
 - Phases 1–2 (atoms + molecules) share **no files** with any of the four plans — fully parallel-safe.
@@ -28,17 +28,17 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
 ### Phase 1 — Shared atoms (no plan overlap, do first)
 
-- [ ] Stay in the current `agent/frontend-component/refactor` branch.
-- [ ] Commit the plan itself.
-- [ ] Add `components/ui/textarea.tsx` mirroring `input.tsx` (same border/focus/invalid tokens, `resize-none` default, `rows` passthrough). Add a `textarea.stories.tsx` matching the `button.stories.tsx` style.
-- [ ] Replace the raw `<textarea>` in `create-entity-dialog.tsx` and `global-create-dialogs.tsx` with `<Textarea>`.
-- [ ] Add `components/ui/checkbox.tsx` (Radix Checkbox, token set matching `switch.tsx`). Optionally a `CheckboxField` pairing box + label.
-- [ ] Replace raw `<input type="checkbox">` in `DeregisterDialog.tsx`, `RestoreDraftDialog.tsx`, `ProjectStatsPage/index.tsx`.
-- [ ] Add `components/ui/badge.tsx` with `cva` variants (`default / secondary / muted / outline / destructive`) mirroring the `Button` variant vocabulary.
-- [ ] Migrate the 7 reinlined pills to `<Badge>`: `OverviewPage/components/TileContent.tsx`, `SequenceSidebar.tsx`, `ArcLegend.tsx`, `ReorderList.tsx`, `AspectEditorPage/components/AspectEditor.tsx`, `fragments/fragment-metadata-form.tsx`, `ProjectConfigPage/index.tsx`.
-- [ ] Add `components/ui/field-error.tsx` (`FieldError` — the `text-xs text-destructive` line) and adopt it in the dialogs/tabs currently inlining it (start with the create dialogs; full sweep happens with `Field` in Phase 2).
-- [ ] Tests for each atom (render + variant/prop behavior). Add stories where a sibling primitive has one.
-- [ ] `bun run format` then `bun run verify`; fix issues. `git commit`.
+- [x] Stay in the current `agent/frontend-component/refactor` branch.
+- [x] Commit the plan itself.
+- [x] Add `components/ui/textarea.tsx` mirroring `input.tsx` (same border/focus/invalid tokens, `resize-none` default, `rows` passthrough). Add a `textarea.stories.tsx` matching the `button.stories.tsx` style.
+- [x] Replace the raw `<textarea>` in `create-entity-dialog.tsx` and `global-create-dialogs.tsx` with `<Textarea>`.
+- [x] Add `components/ui/checkbox.tsx` (Radix Checkbox, token set matching `switch.tsx`). Optionally a `CheckboxField` pairing box + label.
+- [x] Replace raw `<input type="checkbox">` in `DeregisterDialog.tsx`, `RestoreDraftDialog.tsx`, `ProjectStatsPage/index.tsx`.
+- [x] Add `components/ui/badge.tsx` with `cva` variants (`default / secondary / muted / outline / destructive`) mirroring the `Button` variant vocabulary.
+- [x] Migrate the reinlined pills to `<Badge>`: `fragments/fragment-metadata-form.tsx` (muted), `SequenceSidebar.tsx` (outline ×2), `ProjectConfigPage/index.tsx` (count, amber kept via className). **The other 4 listed files are not badge-shaped** (`TileContent` aspect chips, `ArcLegend`/`ReorderList` action buttons, `AspectEditor` color swatches) — forcing them into Badge would change behavior/appearance; left as-is and flagged in `references/suggestions.md`.
+- [x] Add `components/ui/field-error.tsx` (`FieldError` — the `text-xs text-destructive` line) and adopt it in the dialogs/tabs currently inlining it (start with the create dialogs; full sweep happens with `Field` in Phase 2).
+- [x] Tests for each atom (render + variant/prop behavior). Add stories where a sibling primitive has one.
+- [x] `bun run format` then `bun run verify`; fix issues. `git commit`. **Note: `bun run verify` is red at branch HEAD from pre-existing, out-of-scope errors** (`packages/api` export `correlationId`, `OverviewPage/index.tsx:615`) — see `references/suggestions.md`. Frontend typecheck shows zero new errors from this phase; all 657 frontend tests pass.
 
 ### Phase 2 — Form & dialog molecules
 

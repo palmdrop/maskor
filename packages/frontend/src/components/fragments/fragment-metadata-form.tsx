@@ -11,6 +11,7 @@ import { useEntityFieldSave } from "@lib/entity-kinds/useEntityFieldSave";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
+import { Badge } from "@components/ui/badge";
 import { TagCombobox, type OptionGroup } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
 import { groupByCategory } from "@/utils/group-by-category";
@@ -299,9 +300,9 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
                   aria-hidden="true"
                 />
                 {aspectKey} — {Math.round(weight * 100)}%
-                <span className="text-xs bg-muted px-1 rounded" aria-label="orphaned aspect">
+                <Badge variant="muted" aria-label="orphaned aspect">
                   orphaned
-                </span>
+                </Badge>
               </span>
               <button
                 type="button"

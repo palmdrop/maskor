@@ -11,6 +11,7 @@ import {
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import { Checkbox } from "@components/ui/checkbox";
 
 type Step = "confirm" | "result";
 
@@ -82,15 +83,13 @@ export const DeregisterDialog = ({
             </p>
 
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="delete-files-checkbox"
                 checked={deleteFiles}
-                onChange={(e) => {
-                  setDeleteFiles(e.target.checked);
+                onCheckedChange={(checked) => {
+                  setDeleteFiles(checked === true);
                   setNameConfirmation("");
                 }}
-                className="h-4 w-4 cursor-pointer rounded border border-input"
               />
               <label htmlFor="delete-files-checkbox" className="cursor-pointer text-sm">
                 Also delete the vault folder from disk

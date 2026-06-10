@@ -11,6 +11,7 @@ import {
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import { Checkbox } from "@components/ui/checkbox";
 
 type RestoreDraftDialogProps = {
   open: boolean;
@@ -90,12 +91,10 @@ export const RestoreDraftDialog = ({
           </p>
 
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="save-current-first"
               checked={saveCurrentFirst}
-              onChange={(event) => setSaveCurrentFirst(event.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border border-input"
+              onCheckedChange={(checked) => setSaveCurrentFirst(checked === true)}
             />
             <label htmlFor="save-current-first" className="cursor-pointer text-sm">
               Save current state as a draft first

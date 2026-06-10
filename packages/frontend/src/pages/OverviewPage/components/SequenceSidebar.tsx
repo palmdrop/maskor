@@ -15,6 +15,7 @@ import {
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { sequenceSidebarScope } from "@lib/commands/scopes/sequence-sidebar";
+import { Badge } from "@components/ui/badge";
 
 type Props = {
   sequences: Sequence[];
@@ -374,19 +375,20 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                     <StatusDot status={status} />
                     <span className="flex-1 truncate">{seq.name}</span>
                     {seq.origin && (
-                      <span
-                        className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0"
+                      <Badge
+                        variant="outline"
+                        className="shrink-0"
                         title={`Imported from ${seq.origin.fileName} on ${new Date(
                           seq.origin.importedAt,
                         ).toLocaleDateString()}`}
                       >
                         imported
-                      </span>
+                      </Badge>
                     )}
                     {seq.isMain && (
-                      <span className="text-xs px-1 rounded border border-border text-muted-foreground shrink-0">
+                      <Badge variant="outline" className="shrink-0">
                         Main
-                      </span>
+                      </Badge>
                     )}
                     <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                       {count}
