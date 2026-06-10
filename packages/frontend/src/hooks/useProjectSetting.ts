@@ -36,8 +36,12 @@ export type UseProjectSetting<V> = {
   /** Local draft, for sliders: edit freely, then `commit` on release. Resyncs from the server. */
   draft: V;
   setDraft: (value: V) => void;
-  /** Commit the current draft — for sliders' `onValueCommit`. */
-  commit: () => Promise<void>;
+  /**
+   * Commit the draft — for sliders' `onValueCommit`. Pass the released value explicitly
+   * (`commit(value)`) to avoid committing a stale draft before its render flushes; defaults
+   * to the current draft.
+   */
+  commit: (next?: V) => Promise<void>;
   /** True while this setting's own save is in flight. */
   isPending: boolean;
   /** Per-setting error string, surfaced for the row to render; cleared on the next save. */
@@ -98,7 +102,7 @@ export const useProjectSetting = <P extends SettingPath>(
   );
 
   const set = useCallback((next: V) => commitValue(next), [commitValue]);
-  const commit = useCallback(() => commitValue(draft), [commitValue, draft]);
+  const commit = useCallback((next?: V) => commitValue(next ?? draft), [commitValue, draft]);
 
   return { value, set, draft, setDraft, commit, isPending: updateProject.isPending, error };
 };

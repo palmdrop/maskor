@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
 const rebuildMutate = vi.fn();
 const resetMutate = vi.fn();
+const { getProjectMock } = vi.hoisted(() => ({ getProjectMock: vi.fn() }));
 
 vi.mock("@api/generated/index", () => ({
   useRebuildIndex: vi.fn(() => ({ mutate: rebuildMutate, isPending: false })),
@@ -21,6 +22,7 @@ vi.mock("@api/generated/index", () => ({
 }));
 
 vi.mock("@api/generated/projects/projects", () => ({
+  useGetProject: getProjectMock,
   useUpdateProject: vi.fn(() => ({
     mutate: vi.fn(),
     mutateAsync: vi.fn(),
@@ -33,7 +35,7 @@ vi.mock("@api/generated/projects/projects", () => ({
 
 import { GeneralTab } from "../GeneralTab";
 
-const makeProject = () => ({
+const makeProject = (editorOverrides: Record<string, unknown> = {}) => ({
   projectUUID: PROJECT_ID,
   name: "Test Project",
   suggestion: { readinessThreshold: 0.8 },
@@ -43,9 +45,14 @@ const makeProject = () => ({
     vimMode: false,
     rawMarkdownMode: false,
     vimClipboardSync: true,
+    ...editorOverrides,
   },
   advanced: { showFragmentStats: false },
 });
+
+// useProjectSetting reads settings via useGetProject; the prop drives only name/vault.
+const seedProject = (editorOverrides: Record<string, unknown> = {}) =>
+  getProjectMock.mockReturnValue({ data: { status: 200, data: makeProject(editorOverrides) } });
 
 const wrap = (ui: ReactNode) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -59,6 +66,7 @@ const wrap = (ui: ReactNode) => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  seedProject();
 });
 
 describe("GeneralTab", () => {
@@ -117,5 +125,23 @@ describe("GeneralTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /reset database/i }));
 
     expect(screen.getByText(/Reset failed: could not delete vault.db/i)).toBeInTheDocument();
+  });
+
+  it("forces raw markdown on and disables it while vim mode is enabled", () => {
+    seedProject({ vimMode: true, rawMarkdownMode: false });
+    wrap(<GeneralTab project={makeProject({ vimMode: true }) as never} />);
+
+    const rawSwitch = screen.getByRole("switch", { name: /raw markdown mode/i });
+    expect(rawSwitch).toBeChecked();
+    expect(rawSwitch).toBeDisabled();
+  });
+
+  it("leaves raw markdown toggleable when vim mode is off", () => {
+    seedProject({ vimMode: false, rawMarkdownMode: false });
+    wrap(<GeneralTab project={makeProject() as never} />);
+
+    const rawSwitch = screen.getByRole("switch", { name: /raw markdown mode/i });
+    expect(rawSwitch).not.toBeChecked();
+    expect(rawSwitch).not.toBeDisabled();
   });
 });

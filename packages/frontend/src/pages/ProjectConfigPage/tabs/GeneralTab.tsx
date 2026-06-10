@@ -15,6 +15,8 @@ import { useRebuildIndex, useResetDatabase } from "@api/generated/index";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectConfigScope } from "@lib/commands/scopes/project-config";
+import { useProjectSetting } from "@hooks/useProjectSetting";
+import { SettingRow } from "../components/SettingRow";
 
 // Pull the server-provided message out of a failed mutation (ApiRequestError carries the API's
 // error body message; fall back gracefully for anything else) so the user sees the actual cause
@@ -96,25 +98,14 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [localReadyStatusThreshold, setLocalReadyStatusThreshold] = useState(
-    Math.round(project.suggestion.readinessThreshold * 100),
-  );
-  const [localFontSize, setLocalFontSize] = useState(project.editor.fontSize);
-  const [localMaxParagraphWidth, setLocalMaxParagraphWidth] = useState(
-    project.editor.maxParagraphWidth,
-  );
-
-  useEffect(() => {
-    setLocalReadyStatusThreshold(Math.round(project.suggestion.readinessThreshold * 100));
-  }, [project.suggestion.readinessThreshold]);
-
-  useEffect(() => {
-    setLocalFontSize(project.editor.fontSize);
-  }, [project.editor.fontSize]);
-
-  useEffect(() => {
-    setLocalMaxParagraphWidth(project.editor.maxParagraphWidth);
-  }, [project.editor.maxParagraphWidth]);
+  const projectId = project.projectUUID;
+  const vimMode = useProjectSetting(projectId, "editor.vimMode", false);
+  const rawMarkdownMode = useProjectSetting(projectId, "editor.rawMarkdownMode", false);
+  const fontSize = useProjectSetting(projectId, "editor.fontSize", 16);
+  const maxParagraphWidth = useProjectSetting(projectId, "editor.maxParagraphWidth", 72);
+  const readinessThreshold = useProjectSetting(projectId, "suggestion.readinessThreshold", 0.8);
+  const showFragmentStats = useProjectSetting(projectId, "advanced.showFragmentStats", false);
+  const vimClipboardSync = useProjectSetting(projectId, "editor.vimClipboardSync", true);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -156,86 +147,6 @@ export const GeneralTab = ({ project }: { project: Project }) => {
       setNameValue(project.name);
       setEditing(false);
     }
-  };
-
-  const handleToggleVimMode = async (checked: boolean) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { editor: { vimMode: checked } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleToggleRawMarkdownMode = async (checked: boolean) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { editor: { rawMarkdownMode: checked } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleFontSizeChange = async (value: number) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { editor: { fontSize: value } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleMaxParagraphWidthChange = async (value: number) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { editor: { maxParagraphWidth: value } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleReadyStatusThresholdChange = async (value: number) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { suggestion: { readinessThreshold: value / 100 } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleToggleShowFragmentStats = async (checked: boolean) => {
-    try {
-      await updateProject.mutateAsync({
-        projectId: project.projectUUID,
-        data: { advanced: { showFragmentStats: checked } },
-      });
-      invalidateProject();
-    } catch {
-      setError("Update failed.");
-    }
-  };
-
-  const handleToggleVimClipboardSync = async (checked: boolean) => {
-    await updateProject.mutateAsync({
-      projectId: project.projectUUID,
-      data: { editor: { vimClipboardSync: checked } },
-    });
-    invalidateProject();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -311,128 +222,129 @@ export const GeneralTab = ({ project }: { project: Project }) => {
       </div>
       <div className="flex flex-col gap-4">
         <Label className="text-base">Editor</Label>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-0.5">
-            <Label htmlFor="vim-mode">Vim mode</Label>
-            <p className="text-xs text-muted-foreground">
-              Enables vim keybindings and raw markdown editing.
-            </p>
-          </div>
-          <Switch
-            id="vim-mode"
-            checked={project.editor.vimMode}
-            onCheckedChange={handleToggleVimMode}
-            disabled={updateProject.isPending}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-0.5">
-            <Label htmlFor="raw-markdown-mode">Raw markdown mode</Label>
-            <p className="text-xs text-muted-foreground">
-              Use a plain text editor instead of rich editing. Enabled automatically by vim mode.
-            </p>
-          </div>
-          <Switch
-            id="raw-markdown-mode"
-            checked={project.editor.rawMarkdownMode || project.editor.vimMode}
-            onCheckedChange={handleToggleRawMarkdownMode}
-            disabled={updateProject.isPending || project.editor.vimMode}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="font-size">Font size</Label>
-            <span className="text-sm text-muted-foreground tabular-nums">{localFontSize}px</span>
-          </div>
-          <Slider
-            id="font-size"
-            min={12}
-            max={24}
-            step={1}
-            value={[localFontSize]}
-            onValueChange={([value]) => setLocalFontSize(value!)}
-            onValueCommit={([value]) => void handleFontSizeChange(value!)}
-            disabled={updateProject.isPending}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="max-paragraph-width">Paragraph width</Label>
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {localMaxParagraphWidth}ch
-            </span>
-          </div>
-          <Slider
-            id="max-paragraph-width"
-            min={40}
-            max={120}
-            step={4}
-            value={[localMaxParagraphWidth]}
-            onValueChange={([value]) => setLocalMaxParagraphWidth(value!)}
-            onValueCommit={([value]) => void handleMaxParagraphWidthChange(value!)}
-            disabled={updateProject.isPending}
-          />
-          <p className="text-xs text-muted-foreground">
-            Maximum line length in character units. 60–80ch is optimal for reading.
-          </p>
-        </div>
+        <SettingRow
+          id="vim-mode"
+          label="Vim mode"
+          description="Enables vim keybindings and raw markdown editing."
+          error={vimMode.error}
+          control={
+            <Switch
+              id="vim-mode"
+              checked={vimMode.value}
+              onCheckedChange={(checked) => void vimMode.set(checked)}
+              disabled={vimMode.isPending}
+            />
+          }
+        />
+        <SettingRow
+          id="raw-markdown-mode"
+          label="Raw markdown mode"
+          description="Use a plain text editor instead of rich editing. Enabled automatically by vim mode."
+          error={rawMarkdownMode.error}
+          control={
+            <Switch
+              id="raw-markdown-mode"
+              checked={rawMarkdownMode.value || vimMode.value}
+              onCheckedChange={(checked) => void rawMarkdownMode.set(checked)}
+              disabled={rawMarkdownMode.isPending || vimMode.value}
+            />
+          }
+        />
+        <SettingRow
+          id="font-size"
+          label="Font size"
+          valueLabel={`${fontSize.draft}px`}
+          error={fontSize.error}
+          control={
+            <Slider
+              id="font-size"
+              min={12}
+              max={24}
+              step={1}
+              value={[fontSize.draft]}
+              onValueChange={([value]) => fontSize.setDraft(value!)}
+              onValueCommit={([value]) => void fontSize.commit(value!)}
+              disabled={fontSize.isPending}
+            />
+          }
+        />
+        <SettingRow
+          id="max-paragraph-width"
+          label="Paragraph width"
+          valueLabel={`${maxParagraphWidth.draft}ch`}
+          description="Maximum line length in character units. 60–80ch is optimal for reading."
+          error={maxParagraphWidth.error}
+          control={
+            <Slider
+              id="max-paragraph-width"
+              min={40}
+              max={120}
+              step={4}
+              value={[maxParagraphWidth.draft]}
+              onValueChange={([value]) => maxParagraphWidth.setDraft(value!)}
+              onValueCommit={([value]) => void maxParagraphWidth.commit(value!)}
+              disabled={maxParagraphWidth.isPending}
+            />
+          }
+        />
       </div>
       <div className="flex flex-col gap-4">
         <Label className="text-base">Suggestion</Label>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="ready-status-threshold">Ready status threshold</Label>
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {localReadyStatusThreshold}%
-            </span>
-          </div>
-          <Slider
-            id="ready-status-threshold"
-            min={0}
-            max={100}
-            step={1}
-            value={[localReadyStatusThreshold]}
-            onValueChange={([value]) => setLocalReadyStatusThreshold(value!)}
-            onValueCommit={([value]) => void handleReadyStatusThresholdChange(value!)}
-            disabled={updateProject.isPending}
-          />
-          <p className="text-xs text-muted-foreground">
-            Fragments with a ready status at or above this threshold are excluded from suggestion
-            mode.
-          </p>
-        </div>
+        <SettingRow
+          id="ready-status-threshold"
+          label="Ready status threshold"
+          valueLabel={`${Math.round(readinessThreshold.draft * 100)}%`}
+          description="Fragments with a ready status at or above this threshold are excluded from suggestion mode."
+          error={readinessThreshold.error}
+          control={
+            <Slider
+              id="ready-status-threshold"
+              min={0}
+              max={100}
+              step={1}
+              value={[Math.round(readinessThreshold.draft * 100)]}
+              onValueChange={([value]) => readinessThreshold.setDraft(value! / 100)}
+              onValueCommit={([value]) => void readinessThreshold.commit(value! / 100)}
+              disabled={readinessThreshold.isPending}
+            />
+          }
+        />
       </div>
       <div className="flex flex-col gap-4">
         <Label className="text-base">Advanced</Label>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-0.5">
-            <Label htmlFor="show-fragment-stats">Show fragment stats panel in editor</Label>
-            <p className="text-xs text-muted-foreground">
-              Displays a read-only stats inspector in the fragment editor sidebar.
-            </p>
-          </div>
-          <Switch
-            id="show-fragment-stats"
-            checked={project.advanced.showFragmentStats}
-            onCheckedChange={handleToggleShowFragmentStats}
-            disabled={updateProject.isPending}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-0.5">
-            <Label htmlFor="show-fragment-stats">Copy to system clipboard in vim mode</Label>
-            <p className="text-xs text-muted-foreground">
+        <SettingRow
+          id="show-fragment-stats"
+          label="Show fragment stats panel in editor"
+          description="Displays a read-only stats inspector in the fragment editor sidebar."
+          error={showFragmentStats.error}
+          control={
+            <Switch
+              id="show-fragment-stats"
+              checked={showFragmentStats.value}
+              onCheckedChange={(checked) => void showFragmentStats.set(checked)}
+              disabled={showFragmentStats.isPending}
+            />
+          }
+        />
+        <SettingRow
+          id="yank-to-clipboard"
+          label="Copy to system clipboard in vim mode"
+          description={
+            <>
               When using the &quot;yank&quot; vim action, copy the selected text to the system
               clipboard.
-            </p>
-          </div>
-          <Switch
-            id="yank-to-clipboard"
-            checked={project.editor.vimClipboardSync}
-            onCheckedChange={handleToggleVimClipboardSync}
-            disabled={updateProject.isPending}
-          />
-        </div>
+            </>
+          }
+          error={vimClipboardSync.error}
+          control={
+            <Switch
+              id="yank-to-clipboard"
+              checked={vimClipboardSync.value}
+              onCheckedChange={(checked) => void vimClipboardSync.set(checked)}
+              disabled={vimClipboardSync.isPending}
+            />
+          }
+        />
       </div>
     </div>
   );
