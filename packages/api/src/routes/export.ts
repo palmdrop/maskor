@@ -76,9 +76,10 @@ exportRouter.post("/:sequenceId", async (context) => {
       projectContext,
       actor: "user",
       logger: context.get("logger"),
+      correlationId: context.get("correlationId"),
     };
 
-    const result = await executeCommand(exportSequenceCommand, commandContext, {
+    const result = await executeCommand(exportSequenceCommand, "sequence:export", commandContext, {
       sequenceId: paramResult.data.sequenceId,
       format: bodyResult.data.format,
     });

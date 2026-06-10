@@ -88,7 +88,7 @@ export const exportSequenceCommand: Command<ExportSequenceInput, ExportSequenceR
       rendered.bytes,
     );
 
-    const logEntries: Omit<LogEntry, "id" | "timestamp">[] = [
+    const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [
       {
         type: "sequence:exported",
         actor: "user",

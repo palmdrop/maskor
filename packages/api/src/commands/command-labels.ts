@@ -54,6 +54,7 @@ export const COMMAND_LABELS = [
   "sequence:delete-section",
   "sequence:split-section",
   "sequence:merge-section",
+  "sequence:export",
   // margins
   "margin:write",
   // drafts
