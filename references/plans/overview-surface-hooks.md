@@ -1,7 +1,7 @@
 # Overview Surface Hooks
 
 **Date**: 10-06-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/overview.md`
 
 ---
@@ -43,48 +43,48 @@ The `overviewScope` command context (30 fields) is fine as a publish surface; th
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `overview-surface-hooks` from the current branch
+- [x] ~~Create branch~~ — N/A: implemented on the shared worktree branch `agent/frontend-refactor` (per-phase commits)
 
 ### Phase 1 — `useFragmentSelection`
 
 **Goal**: The selection state machine behind one interface, with the persistence guards intact.
 
-- [ ] Create `src/pages/OverviewPage/hooks/useFragmentSelection.ts`
-- [ ] Own `selection` / `selectionAnchor`; derive `selectionSet`, `primarySelectedUuid`
-- [ ] Implement `handleSelectFragment(uuid, { toggle, range })` over the passed-in `visibleOrder`
-- [ ] Implement `clearSelection`
-- [ ] Move the persist effect and the restore-on-mount effect (filtered via `fragmentByUuid`), preserving the `hasRestored*` ordering guard
-- [ ] Unit tests: single-select, toggle, shift-range both directions, restore-filters-to-existing, persist-after-restore-only
-- [ ] `git commit`
+- [x] Create `src/pages/OverviewPage/hooks/useFragmentSelection.ts`
+- [x] Own `selection` / `selectionAnchor`; derive `selectionSet`, `primarySelectedUuid`
+- [x] Implement `handleSelectFragment(uuid, { toggle, range })` over the passed-in `visibleOrder`
+- [x] Implement `clearSelection`
+- [x] Move the persist effect and the restore-on-mount effect (filtered via `fragmentByUuid`), preserving the `hasRestored*` ordering guard
+- [x] Unit tests: single-select, toggle, shift-range both directions, restore-filters-to-existing, persist-after-restore-only
+- [x] `git commit`
 
 ### Phase 2 — `useSectionOps`
 
 **Goal**: The section-operations cluster behind one interface.
 
-- [ ] Create `src/pages/OverviewPage/hooks/useSectionOps.ts`
-- [ ] Take `projectId`, `sequence`, `sectionsData`, `placedSelection`, and the `useSequenceMutations` handle as inputs
-- [ ] Expose `splitContext` + `canSplitBefore` / `canSplitAfter`, `groupSelection`, `splitBefore` / `splitAfter`, `moveSelectionToSection` + `sectionsForMove`, `mergeSectionUp` / `mergeSectionDown` + `mergeableUpSections` / `mergeableDownSections`, `unplaceFragment` + `placedFragmentsForUnplace`
-- [ ] Preserve the exact split-before/after fragment-targeting semantics
-- [ ] Unit tests: split guards at section boundaries, mergeable-list derivation, move-target position
-- [ ] `git commit`
+- [x] Create `src/pages/OverviewPage/hooks/useSectionOps.ts`
+- [x] Take `projectId`, `sequence`, `sectionsData`, `placedSelection`, and the `useSequenceMutations` handle as inputs
+- [x] Expose `splitContext` + `canSplitBefore` / `canSplitAfter`, `groupSelection`, `splitBefore` / `splitAfter`, `moveSelectionToSection` + `sectionsForMove`, `mergeSectionUp` / `mergeSectionDown` + `mergeableUpSections` / `mergeableDownSections`, `unplaceFragment` + `placedFragmentsForUnplace`
+- [x] Preserve the exact split-before/after fragment-targeting semantics
+- [x] Unit tests: split guards at section boundaries, mergeable-list derivation, move-target position
+- [x] `git commit`
 
 ### Phase 3 — Recompose `OverviewPage`
 
 **Goal**: The page consumes both hooks and assembles the command context from them.
 
-- [ ] Replace the inline selection block with `useFragmentSelection`
-- [ ] Replace the inline section-ops block (~`index.tsx:424-616`) with `useSectionOps`
-- [ ] Assemble `useCommandScope(overviewScope, …)` from the hooks' outputs
-- [ ] Confirm `OverviewPage.test.tsx` passes unchanged; migrate any coverage that now belongs to the hook tests
-- [ ] `git commit`
+- [x] Replace the inline selection block with `useFragmentSelection`
+- [x] Replace the inline section-ops block (~`index.tsx:424-616`) with `useSectionOps`
+- [x] Assemble `useCommandScope(overviewScope, …)` from the hooks' outputs
+- [x] Confirm `OverviewPage.test.tsx` passes unchanged; migrate any coverage that now belongs to the hook tests
+- [x] `git commit`
 
 ### Phase 4 — Verify and close
 
-- [ ] `bun run format`
-- [ ] `bun run verify` — fix any lint / type / test failures
-- [ ] Remove any `references/suggestions.md` entries made obsolete by this work
-- [ ] Set this plan's status to `Done` (or `In progress` if partial)
-- [ ] `git commit`
+- [x] `bun run format`
+- [x] `bun run verify` — fix any lint / type / test failures
+- [x] Remove any `references/suggestions.md` entries made obsolete by this work
+- [x] Set this plan's status to `Done` (or `In progress` if partial)
+- [x] `git commit`
 
 ---
 
