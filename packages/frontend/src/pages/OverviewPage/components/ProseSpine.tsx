@@ -4,6 +4,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import type { OverviewDetailLevel } from "../../../router";
 import { FragmentProse } from "./FragmentProse";
+import { Heading } from "@components/heading";
 
 interface SectionData {
   uuid: string;
@@ -124,10 +125,10 @@ const SpineSection = ({
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+      <Heading level={3}>
         {section.name || <span className="italic">Untitled section</span>}{" "}
         <span className="tabular-nums">({section.fragmentUuids.length})</span>
-      </h2>
+      </Heading>
       <div
         ref={setNodeRef}
         className={`flex flex-col gap-3 rounded-md border border-dashed p-3 min-h-28 transition-colors ${

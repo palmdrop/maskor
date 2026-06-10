@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import type { Cycle, FragmentSummary, Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import { FragmentProse } from "./FragmentProse";
+import { Heading } from "@components/heading";
 
 type MembershipEntry = {
   sequenceName: string;
@@ -181,9 +182,7 @@ const FragmentDetail = ({
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Placements
-        </p>
+        <Heading level={4}>Placements</Heading>
         {membership.length === 0 ? (
           <p className="text-xs text-muted-foreground">Not placed in any sequence.</p>
         ) : (
@@ -206,9 +205,7 @@ const FragmentDetail = ({
 
       {fragmentViolations.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Violations
-          </p>
+          <Heading level={4}>Violations</Heading>
           <ul className="flex flex-col gap-0.5">
             {fragmentViolations.map((violation, index) => {
               const predecessor = fragmentByUuid.get(violation.predecessorUuid);
@@ -259,9 +256,7 @@ const ProjectWarningsPanel = ({
 
   return (
     <div className="flex flex-col gap-4 p-3">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Project warnings
-      </p>
+      <Heading level={4}>Project warnings</Heading>
 
       {!hasConflicts && <p className="text-xs text-muted-foreground">No constraint conflicts.</p>}
 

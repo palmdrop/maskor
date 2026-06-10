@@ -3,6 +3,7 @@ import { PencilIcon, Trash2Icon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
 import { InlineFragmentEditor } from "@components/inline-fragment-editor";
 import type { OverviewDetailLevel } from "../../../router";
+import { Heading } from "@components/heading";
 
 // Fixed reading style for the working surface. Per ADR 0011 the spine is NOT
 // promised to match Preview/export — it concatenates per-fragment chunks with a
@@ -132,10 +133,10 @@ export const FragmentProse = ({
       className={`group/prose relative scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Heading level={4}>
           {title}
           {isDiscarded && " (discarded)"}
-        </p>
+        </Heading>
         {!isEditing && (editable || onRemove) && (
           <div className="flex shrink-0 items-center gap-1">
             {editable && (

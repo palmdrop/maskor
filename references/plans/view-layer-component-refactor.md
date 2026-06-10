@@ -60,9 +60,9 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
 ### Phase 4 — `Heading` adoption sweep (mechanical)
 
-- [ ] Replace the ~16 reinlined small-caps headers with `<Heading level={3}>`: `metadata-property.tsx`, `sequences/PlaceInSequenceModal.tsx`, `margins/margin-notes-section.tsx`, `margins/margin-orphan-group.tsx`, `DraftsPage/DraftsPage.tsx`, `OverviewPage/components/{ArcOverlay,FragmentProse,ReorderList,RightSidebar,SequenceSidebar,ProseSpine}.tsx`, `PreviewPage/PreviewPage.tsx`, `ProjectHistoryPage/{ActionLogList,index}.tsx`, `ProjectManagementPage/index.tsx`, `ProjectStatsPage/index.tsx`.
-- [ ] Consider renaming `Heading` → `SectionHeading` (or adding that alias) for grep-ability — decide during implementation.
-- [ ] Visual spot-check (no behavior change); `bun run format` then `bun run verify`. `git commit`.
+- [x] Added a compact small-caps tier to `Heading` (`level={4}` = `text-xs uppercase tracking-widest`, no bottom padding) so the `text-xs` panel labels keep their size — `text-sm` section headings map to `level={3}`, `text-xs` panel labels to `level={4}` (decided with the developer; preserves sizes = true no-visual-change). Replaced the reinlined small-caps headers: `PlaceInSequenceModal`, `margin-orphan-group`, `DraftsPage`, `OverviewPage/components/{ArcOverlay,FragmentProse,ReorderList,RightSidebar,SequenceSidebar,ProseSpine}`, `PreviewPage`, `ProjectHistoryPage/{ActionLogList,index}`, `ProjectManagementPage`, `ProjectStatsPage`. **Left out (not section headings, flagged in `references/suggestions.md`):** `metadata-property.tsx` (`<dt>` in a `<dl>`, `font-serif`), `ProjectStatsPage` `<th>`s + `StatTile` caption, `margin-orphan-group`/`ActionLogList` `text-[10px]` pills, `ReorderList` rename input/button, `margin-notes-section` collapse toggle (interactive).
+- [x] **Renaming `Heading` → `SectionHeading`: decided against.** `Heading` is already imported in ~6 files and reads fine; a rename/alias is churn for no real grep-ability win (the component file is `heading.tsx`). Skipped.
+- [x] Visual spot-check (sizes preserved via the level-3/level-4 split; weight/tracking unified onto the Heading tokens by design); `bun run format` then `bun run verify`. Updated `ProjectHistoryPage.test.tsx` (day headers are now `level={4}`). Frontend typecheck adds no new errors; 675 frontend tests pass. (`verify` red at HEAD from pre-existing out-of-scope errors — see Phase 1 note.) `git commit`.
 
 ### Phase 5 — `SegmentedControl` (watch-item, optional)
 

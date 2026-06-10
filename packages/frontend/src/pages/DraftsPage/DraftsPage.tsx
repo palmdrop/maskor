@@ -5,6 +5,7 @@ import { Button } from "@components/ui/button";
 import { CreateDraftDialog } from "./CreateDraftDialog";
 import { DeleteDraftDialog } from "./DeleteDraftDialog";
 import { RestoreDraftDialog } from "./RestoreDraftDialog";
+import { Heading } from "@components/heading";
 
 type DraftEntityCounts = {
   fragments: number;
@@ -76,9 +77,7 @@ export const DraftsPage = () => {
     <div className="p-6 flex flex-col gap-4 overflow-y-auto h-full">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Drafts
-          </h2>
+          <Heading level={3}>Drafts</Heading>
           <p className="text-xs text-muted-foreground">
             Snapshots of the project at a moment in time. Restore any draft to roll the project
             back.

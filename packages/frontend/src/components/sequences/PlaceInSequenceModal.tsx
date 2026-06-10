@@ -8,6 +8,7 @@ import {
 } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { Heading } from "@components/heading";
 import { computeStepMoveTarget, type SectionFragments } from "@lib/sequences/stepMove";
 import { TileContent } from "@pages/OverviewPage/components/TileContent";
 import { Button } from "@components/ui/button";
@@ -210,10 +211,10 @@ export const PlaceInSequenceModal = ({
               {sectionsData.map((section) => (
                 <section key={section.uuid} className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <Heading level={4}>
                       {sectionNameByUuid.get(section.uuid) || "Untitled"}{" "}
                       <span className="tabular-nums">({section.fragmentUuids.length})</span>
-                    </h3>
+                    </Heading>
                     <Button
                       size="sm"
                       variant="ghost"

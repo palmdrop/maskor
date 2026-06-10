@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useGetProjectStats } from "@api/generated/stats/stats";
 import type { FragmentStatsSummary } from "@api/generated/maskorAPI.schemas";
 import { Checkbox } from "@components/ui/checkbox";
+import { Heading } from "@components/heading";
 
 const HISTOGRAM_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"] as const;
 
@@ -93,9 +94,7 @@ export const ProjectStatsPage = () => {
   return (
     <div className="p-6 flex flex-col gap-8 overflow-y-auto h-full">
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Overview
-        </h2>
+        <Heading level={3}>Overview</Heading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatTile label="Fragments" value={globalStats.totalCount} />
           <StatTile label="Discarded" value={globalStats.discardedCount} />
@@ -113,9 +112,7 @@ export const ProjectStatsPage = () => {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Ready status distribution
-        </h2>
+        <Heading level={3}>Ready status distribution</Heading>
         <div className="flex gap-2 items-end">
           {globalStats.readinessHistogram.map((count, index) => (
             <div key={HISTOGRAM_LABELS[index]} className="flex flex-col items-center gap-1 flex-1">
@@ -128,9 +125,7 @@ export const ProjectStatsPage = () => {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Fragments
-          </h2>
+          <Heading level={3}>Fragments</Heading>
           <div className="flex items-center gap-2 text-sm text-muted-foreground select-none">
             <Checkbox
               id="include-discarded"

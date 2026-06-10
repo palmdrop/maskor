@@ -7,6 +7,9 @@ const headingVariants = cva("font-sans font-medium", {
       1: "text-2xl pb-2",
       2: "text-lg pb-1",
       3: "text-sm uppercase tracking-widest text-muted-foreground pb-0.5",
+      // Compact small-caps label for dense panels / sidebars (same treatment as
+      // level 3, one step smaller and without bottom padding).
+      4: "text-xs uppercase tracking-widest text-muted-foreground",
     },
   },
   defaultVariants: { level: 1 },
@@ -14,7 +17,7 @@ const headingVariants = cva("font-sans font-medium", {
 
 type Props = React.ComponentProps<"h1"> & VariantProps<typeof headingVariants>;
 
-const TAG = { 1: "h1", 2: "h2", 3: "h3" } as const;
+const TAG = { 1: "h1", 2: "h2", 3: "h3", 4: "h4" } as const;
 
 export const Heading = ({ level = 1, className, ...props }: Props) => {
   const Tag = TAG[level!];

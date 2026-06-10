@@ -6,6 +6,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 // import { AspectColorBar } from "./AspectColorBar";
 import { POOL_ZONE_ID, toSectionDragId } from "../utils/dndIds";
+import { Heading } from "@components/heading";
 
 interface SectionData {
   uuid: string;
@@ -525,9 +526,9 @@ export const ReorderList = ({
     )}
 
     <div className="flex flex-col gap-1">
-      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <Heading level={4}>
         Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
-      </h2>
+      </Heading>
       <ListDropZone
         zoneId={POOL_ZONE_ID}
         fragmentUuids={poolFragmentUuids}

@@ -2,6 +2,7 @@ import type { ActionLogEntry, LogEntry } from "@maskor/shared";
 import { DOMAIN_LABELS, isLinkable, renderEntryText } from "./renderers/registry";
 import { EntryLink } from "./EntryLink";
 import { CommandFailureRow } from "./CommandFailureRow";
+import { Heading } from "@components/heading";
 
 export type ExistenceMaps = {
   fragment: ReadonlySet<string>;
@@ -72,9 +73,9 @@ export const ActionLogList = ({ projectId, entries, existence }: Props) => {
     <div className="flex flex-col gap-6">
       {groups.map(([day, dayEntries]) => (
         <section key={day} className="flex flex-col gap-1">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground pb-1 border-b border-border">
+          <Heading level={4} className="pb-1 border-b border-border">
             {formatDay(dayEntries[0]!.timestamp)}
-          </h3>
+          </Heading>
           <ul className="flex flex-col">
             {dayEntries.map((entry) => {
               if (entry.type === "command:error") {

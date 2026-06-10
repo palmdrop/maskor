@@ -8,6 +8,7 @@ import { useListReferences } from "@api/generated/references/references";
 import { Switch } from "@components/ui/switch";
 import { Label } from "@components/ui/label";
 import { ActionLogList, type ExistenceMaps } from "./ActionLogList";
+import { Heading } from "@components/heading";
 
 const buildExistenceSet = <T extends { status: number; data: unknown } | undefined>(
   envelope: T,
@@ -60,9 +61,7 @@ export const ProjectHistoryPage = () => {
     <div className="p-6 flex flex-col gap-4 overflow-y-auto h-full">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Recent Actions
-          </h2>
+          <Heading level={3}>Recent Actions</Heading>
           <p className="text-xs text-muted-foreground">
             Actions taken through Maskor. External vault edits are not tracked.
           </p>

@@ -1,6 +1,7 @@
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 import { SlotEditor, type EditorMode, MARGIN_FONT_SIZE } from "./slot-editor";
 import { serifText } from "./margin-styles";
+import { Heading } from "@components/heading";
 
 type Props = {
   orphans: Comment[];
@@ -31,9 +32,7 @@ export function MarginOrphanGroup({
   if (orphans.length === 0) return null;
   return (
     <div className="mt-4 flex flex-col gap-2">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Orphaned ({orphans.length})
-      </p>
+      <Heading level={4}>Orphaned ({orphans.length})</Heading>
       {orphans.map((comment) => {
         const isActive = activeMarkerId === comment.markerId;
         const excerpt = liveExcerpts[comment.markerId] ?? comment.excerpt;

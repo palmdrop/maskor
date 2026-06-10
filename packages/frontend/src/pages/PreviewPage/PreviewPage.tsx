@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCommands } from "@lib/commands/useCommands";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
+import { Heading } from "@components/heading";
 import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -318,9 +319,9 @@ export const PreviewPage = () => {
           activeAnchorId={activeFragmentId}
           onSelect={navigateToAnchor}
           header={
-            <div className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <Heading level={4} className="px-4 pt-4 pb-2">
               {allFragments.length} fragment{allFragments.length !== 1 ? "s" : ""}
-            </div>
+            </Heading>
           }
         />
         {}

@@ -4,6 +4,7 @@ import { RegisterProjectDialog } from "./components/RegisterProjectDialog";
 import { ProjectRow } from "./components/ProjectRow";
 import { SettingsSection } from "./components/SettingsSection";
 import { Button } from "@components/ui/button";
+import { Heading } from "@components/heading";
 
 export const ProjectManagementPage = () => {
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -43,9 +44,7 @@ export const ProjectManagementPage = () => {
         </section>
 
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Settings
-          </h2>
+          <Heading level={3}>Settings</Heading>
           <SettingsSection />
         </section>
       </div>

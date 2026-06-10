@@ -4,6 +4,7 @@ import { ArcPanel, ARC_PANEL_HEIGHT } from "./ArcPanel";
 import { ArcLegend } from "./ArcLegend";
 import { buildArcSeries } from "../utils/arcData";
 import { computeArcXLayout } from "../utils/arcLayout";
+import { Heading } from "@components/heading";
 
 interface SectionData {
   uuid: string;
@@ -130,9 +131,7 @@ export const ArcOverlay = ({
       data-testid="arc-overlay"
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Aspect arcs
-        </span>
+        <Heading level={4}>Aspect arcs</Heading>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"

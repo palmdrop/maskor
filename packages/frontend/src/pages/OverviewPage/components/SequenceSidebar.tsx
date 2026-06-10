@@ -16,6 +16,7 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { sequenceSidebarScope } from "@lib/commands/scopes/sequence-sidebar";
 import { Badge } from "@components/ui/badge";
+import { Heading } from "@components/heading";
 
 type Props = {
   sequences: Sequence[];
@@ -321,9 +322,9 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   return (
     <aside className="flex flex-col w-52 shrink-0 border-r border-border overflow-y-auto">
-      <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+      <Heading level={4} className="px-3 py-2 border-b border-border">
         Sequences
-      </div>
+      </Heading>
       <ul className="flex flex-col py-1">
         {sorted.map((seq) => {
           const status = sequenceStatus(seq, violations, cycles);

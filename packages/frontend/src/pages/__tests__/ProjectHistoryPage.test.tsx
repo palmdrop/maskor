@@ -131,7 +131,7 @@ describe("ActionLogList — rendering", () => {
       makeEntry({ id: "b", timestamp: "2026-01-02T10:00:00Z" }),
     ];
     render(<ActionLogList projectId={PROJECT_ID} entries={entries} existence={emptyExistence} />);
-    const dayHeaders = screen.getAllByRole("heading", { level: 3 });
+    const dayHeaders = screen.getAllByRole("heading", { level: 4 });
     expect(dayHeaders.length).toBe(2);
   });
 
@@ -141,7 +141,7 @@ describe("ActionLogList — rendering", () => {
       makeEntry({ id: "b", timestamp: "2026-01-01T14:30:00Z" }),
     ];
     render(<ActionLogList projectId={PROJECT_ID} entries={entries} existence={emptyExistence} />);
-    const dayHeaders = screen.getAllByRole("heading", { level: 3 });
+    const dayHeaders = screen.getAllByRole("heading", { level: 4 });
     expect(dayHeaders.length).toBe(1);
   });
 
