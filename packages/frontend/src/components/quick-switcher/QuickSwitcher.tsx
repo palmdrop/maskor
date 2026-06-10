@@ -36,6 +36,17 @@ const KIND_LABELS: Record<EntityKind, { plural: string; singular: string }> = {
 
 const entryId = (entry: QuickSwitcherEntry) => `${entry.kind}:${entry.uuid}`;
 
+// Map a list of entities to switcher entries of one kind, sorted by display key.
+// `getKey` selects the label (entity `key`, or sequence `name`).
+const buildSwitcherEntries = <T extends { uuid: string }>(
+  kind: EntityKind,
+  items: readonly T[],
+  getKey: (item: T) => string,
+): QuickSwitcherEntry[] =>
+  items
+    .map<QuickSwitcherEntry>((item) => ({ kind, uuid: item.uuid, key: getKey(item) }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+
 // --- Skeleton rows ---
 
 const SKELETON_WIDTHS = ["55%", "40%", "70%", "48%"];
@@ -84,19 +95,9 @@ export const QuickSwitcher = ({ projectId }: QuickSwitcherProps) => {
   const references = useListReferences(projectId);
   const sequences = useListSequences(projectId);
 
-  const isLoading =
-    fragments.isLoading ||
-    aspects.isLoading ||
-    notes.isLoading ||
-    references.isLoading ||
-    sequences.isLoading;
-
-  const hasError =
-    fragments.isError ||
-    aspects.isError ||
-    notes.isError ||
-    references.isError ||
-    sequences.isError;
+  const queries = [fragments, aspects, notes, references, sequences];
+  const isLoading = queries.some((query) => query.isLoading);
+  const hasError = queries.some((query) => query.isError);
 
   const commands = useCommands();
   useCommandScope(quickSwitcherScope, {
@@ -119,66 +120,25 @@ export const QuickSwitcher = ({ projectId }: QuickSwitcherProps) => {
   }, [open]);
 
   const entriesByKind = useMemo((): Map<EntityKind, QuickSwitcherEntry[]> => {
-    const map = new Map<EntityKind, QuickSwitcherEntry[]>();
-
-    const fragmentData =
+    const fragmentItems =
       fragments.data?.status === 200
-        ? fragments.data.data
-            .filter((fragment) => !fragment.isDiscarded)
-            .map<QuickSwitcherEntry>((fragment) => ({
-              kind: "fragment",
-              uuid: fragment.uuid,
-              key: fragment.key,
-            }))
-            .sort((a, b) => a.key.localeCompare(b.key))
+        ? fragments.data.data.filter((fragment) => !fragment.isDiscarded)
         : [];
-    map.set("fragment", fragmentData);
+    const aspectItems = aspects.data?.status === 200 ? aspects.data.data : [];
+    const noteItems = notes.data?.status === 200 ? notes.data.data : [];
+    const referenceItems = references.data?.status === 200 ? references.data.data : [];
+    const sequenceItems = sequences.data?.status === 200 ? sequences.data.data.sequences : [];
 
-    const aspectData =
-      aspects.data?.status === 200
-        ? aspects.data.data
-            .map<QuickSwitcherEntry>((aspect) => ({
-              kind: "aspect",
-              uuid: aspect.uuid,
-              key: aspect.key,
-            }))
-            .sort((a, b) => a.key.localeCompare(b.key))
-        : [];
-    map.set("aspect", aspectData);
-
-    const noteData =
-      notes.data?.status === 200
-        ? notes.data.data
-            .map<QuickSwitcherEntry>((note) => ({ kind: "note", uuid: note.uuid, key: note.key }))
-            .sort((a, b) => a.key.localeCompare(b.key))
-        : [];
-    map.set("note", noteData);
-
-    const referenceData =
-      references.data?.status === 200
-        ? references.data.data
-            .map<QuickSwitcherEntry>((reference) => ({
-              kind: "reference",
-              uuid: reference.uuid,
-              key: reference.key,
-            }))
-            .sort((a, b) => a.key.localeCompare(b.key))
-        : [];
-    map.set("reference", referenceData);
-
-    const sequenceData =
-      sequences.data?.status === 200
-        ? sequences.data.data.sequences
-            .map<QuickSwitcherEntry>((sequence) => ({
-              kind: "sequence",
-              uuid: sequence.uuid,
-              key: sequence.name,
-            }))
-            .sort((a, b) => a.key.localeCompare(b.key))
-        : [];
-    map.set("sequence", sequenceData);
-
-    return map;
+    return new Map<EntityKind, QuickSwitcherEntry[]>([
+      ["fragment", buildSwitcherEntries("fragment", fragmentItems, (fragment) => fragment.key)],
+      ["aspect", buildSwitcherEntries("aspect", aspectItems, (aspect) => aspect.key)],
+      ["note", buildSwitcherEntries("note", noteItems, (note) => note.key)],
+      [
+        "reference",
+        buildSwitcherEntries("reference", referenceItems, (reference) => reference.key),
+      ],
+      ["sequence", buildSwitcherEntries("sequence", sequenceItems, (sequence) => sequence.name)],
+    ]);
   }, [fragments.data, aspects.data, notes.data, references.data, sequences.data]);
 
   const allEntries = useMemo(

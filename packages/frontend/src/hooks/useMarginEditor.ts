@@ -157,14 +157,13 @@ export const useMarginEditor = (projectId: string, fragmentId: string): UseMargi
 
   const save = useCallback(async () => {
     const toSave = localRef.current;
-    const result = await writeMargin.mutateAsync({
+    // customFetch throws ApiRequestError on any non-2xx, so a resolved mutateAsync is a
+    // success — no in-band status check needed (the throw also kept the correlation id).
+    await writeMargin.mutateAsync({
       projectId,
       fragmentId,
       data: { notes: toSave.notes, comments: toSave.comments },
     });
-    if (result.status !== 200) {
-      throw new Error("Failed to save margin.");
-    }
     // Adopt the saved state as the new clean baseline so the editor settles even before the
     // invalidated query round-trips.
     setBaseline(toSave);

@@ -48,6 +48,14 @@ function formatContextLabel(format: Format, headingLevel: HeadingLevel, delimite
   return `Format: plaintext · split on \`${delimiter}\``;
 }
 
+// Serialize the import options exactly as the preview and commit endpoints expect:
+// plaintext splits on a delimiter, the heading formats split on a heading level.
+function buildImportOptions(format: Format, headingLevel: HeadingLevel, delimiter: string): string {
+  return format === "plaintext"
+    ? JSON.stringify({ format, delimiter })
+    : JSON.stringify({ format, headingLevel: Number(headingLevel) });
+}
+
 // The nav fragment uuid is the piece index (as a string); the assembled markdown
 // carries an anchor rendering id="fragment-<index>" for each piece.
 function pieceLabel(fragment: PreviewNavFragment) {
@@ -97,15 +105,7 @@ export const FragmentImportPage = () => {
       currentDelimiter: string,
     ) => {
       setPreviewError(null);
-      let options: string;
-      if (currentFormat === "plaintext") {
-        options = JSON.stringify({ format: currentFormat, delimiter: currentDelimiter });
-      } else {
-        options = JSON.stringify({
-          format: currentFormat,
-          headingLevel: Number(currentHeadingLevel),
-        });
-      }
+      const options = buildImportOptions(currentFormat, currentHeadingLevel, currentDelimiter);
       try {
         const response = await previewImport({
           projectId,
@@ -150,12 +150,7 @@ export const FragmentImportPage = () => {
     if (!file || !format) return;
     setCommitError(null);
 
-    let options: string;
-    if (format === "plaintext") {
-      options = JSON.stringify({ format, delimiter });
-    } else {
-      options = JSON.stringify({ format, headingLevel: Number(headingLevel) });
-    }
+    const options = buildImportOptions(format, headingLevel, delimiter);
 
     try {
       const response = await importFragments({ projectId, data: { file, options } });

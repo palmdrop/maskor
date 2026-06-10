@@ -1,7 +1,7 @@
 # Optimistic Mutation Primitive
 
 **Date**: 09-06-2026
-**Status**: Todo
+**Status**: In progress
 **Specs**: none (frontend infrastructure; no domain spec applies)
 
 ---
@@ -50,39 +50,39 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `optimistic-mutation-primitive` from the current branch
+- [x] ~~Create branch~~ — N/A: implemented on the shared worktree branch `agent/frontend-refactor` (one branch for the whole rollout, per-phase commits)
 
-### Phase 1 — `useOptimisticMutation` primitive
+### Phase 1 — `useOptimisticMutation` primitive — DONE
 
 **Goal**: One module producing the `{ onMutate, onError, onSuccess }` config for any orval mutation. No call sites changed yet.
 
-- [ ] Create `src/lib/api/useOptimisticMutation.ts`, generic over cache / variables / response
-- [ ] Config accepts: `queryKey` (optimistic target), `apply(previous, variables) → next`, optional `reconcile(previous, response) → next`, optional `invalidate: QueryKey[]`
-- [ ] `onMutate`: cancel queries, snapshot the target, apply the reducer, return the snapshot in context
-- [ ] `onError`: restore the snapshot
-- [ ] `onSuccess`: when `reconcile` is present, write its result into the target; otherwise invalidate the target — then invalidate every `invalidate[]` key
-- [ ] Unit tests: apply-on-mutate, rollback-on-reject, reconcile-vs-invalidate-on-success
-- [ ] `git commit`
+- [x] Create `src/lib/api/useOptimisticMutation.ts`, generic over cache / variables / response
+- [x] Config accepts: `queryKey` (optimistic target), `apply(previous, variables) → next`, optional `reconcile(previous, response) → next`, optional `invalidate: QueryKey[]`
+- [x] `onMutate`: cancel queries, snapshot the target, apply the reducer, return the snapshot in context
+- [x] `onError`: restore the snapshot
+- [x] `onSuccess`: when `reconcile` is present, write its result into the target; otherwise invalidate the target — then invalidate every `invalidate[]` key
+- [x] Unit tests: apply-on-mutate, rollback-on-reject, reconcile-vs-invalidate-on-success
+- [x] `git commit` (`1002f0d`)
 
-### Phase 2 — Consolidate `useSequenceMutations` (candidate 3b)
+### Phase 2 — Consolidate `useSequenceMutations` (candidate 3b) — DONE
 
 **Goal**: Replace the 8 hand-rolled blocks with the primitive. No Overview behavior change.
 
-- [ ] Add a `updateSequenceInBundle(bundle, sequenceId, fn)` lens in `src/lib/sequences/` to absorb the repeated bundle traversal
-- [ ] Rewrite each of the 8 mutations as a `useOptimisticMutation({ queryKey: listQueryKey, apply, invalidate })` call delegating to the existing pure reducer in `optimisticUpdates.ts`
-- [ ] Confirm the existing Overview / sequence tests still pass unchanged
-- [ ] `git commit`
+- [x] Add a `updateSequenceInBundle(bundle, sequenceId, fn)` lens in `src/lib/sequences/sequenceBundle.ts` to absorb the repeated bundle traversal
+- [x] Rewrite each of the 8 mutations as a `useOptimisticMutation({ queryKey: listQueryKey, apply })` call delegating to the existing pure reducer in `optimisticUpdates.ts`
+- [x] Confirm the existing Overview / sequence tests still pass unchanged
+- [x] `git commit` (`6097b2d`, −214/+125)
 
-### Phase 3 — `unwrap` helper and dead-throw deletion (candidate 1 cleanup)
+### Phase 3 — `unwrap` helper and incidental cleanups (candidate 1 cleanup) — DONE
 
-**Goal**: Remove the unreachable `status !== 200 → throw` blocks, centralize envelope-to-data narrowing, and fold in the small duplication cleanups the review surfaced nearby.
+**Goal**: Introduce the envelope-to-data narrowing helper and fold in the small duplication cleanups the review surfaced nearby. **Adaptation:** the per-editor dead-throw deletions move into Phases 5–6 rather than landing here — those throws live inside `makeSave` / `onKeySave` / `onContentSave`, which the editor migration deletes wholesale, so removing them now would be churn on lines about to disappear. The migrated editors route through `useEntityEditor`, which uses `unwrap` instead of the throw. Only the dead throw in a file that *survives* the migration (`useMarginEditor`) is removed here.
 
-- [ ] Add an `unwrap` helper (narrows a 2xx envelope to its `data`; trusts `customFetch` to have thrown otherwise)
-- [ ] Delete the `if (result.status !== 200) throw new Error(...)` blocks in the editors and metadata form (13 sites)
-- [ ] Spot-replace the highest-traffic inline `status === 200 ? data : ...` unwraps with the helper where it reads cleaner (not a blanket sweep of all 65)
-- [ ] Collapse `QuickSwitcher`'s `entriesByKind` — five near-identical `status === 200 ? data.map({ kind, uuid, key }).sort(…) : []` blocks — using `unwrap` plus a small local `buildSwitcherEntries(kind, items, getKey)` helper (covers all five kinds, including `sequence`, which is not in the entity-kinds registry, via the `getKey` argument); fold the 5-way `isLoading` / `isError` ORs into the same pass
-- [ ] Extract a local `buildImportOptions(format, headingLevel, delimiter)` helper in `FragmentImportPage` for the `options` JSON string built identically in `runPreview` and `handleImport` (incidental dedup, not envelope-related — bundled here to keep the small cleanups in one commit)
-- [ ] `git commit`
+- [x] Add an `unwrap` helper in `src/api/unwrap.ts` (narrows a 2xx envelope to its `data`; trusts `customFetch` to have thrown otherwise). First consumer is `useEntityEditor` (Phase 4); applies only to resolved mutation results, **not** React Query `data` (which can be `undefined` while loading).
+- [x] Delete the surviving dead throw in `useMarginEditor.save` (does not read `result.data`, so no `unwrap` needed)
+- [~] Editor / metadata-form dead throws (Reference/Note/Aspect/FragmentEditor/FragmentMetadataForm) — **deferred to Phases 5–6** (removed as part of the `useEntityEditor` migration; `entity-editor-shell.tsx:461` insert/extract guard is Phase 7)
+- [x] Collapse `QuickSwitcher`'s `entriesByKind` — five near-identical `status === 200 ? data.map(…).sort(…) : []` blocks — using a local `buildSwitcherEntries(kind, items, getKey)` helper (covers all five kinds incl. `sequence` via `getKey`); folded the 5-way `isLoading` / `isError` ORs into a `queries.some(…)` pass. (`unwrap` not used here — these read React Query `data`, guarded for `undefined`.)
+- [x] Extract a local `buildImportOptions(format, headingLevel, delimiter)` helper in `FragmentImportPage` for the `options` JSON string built identically in `runPreview` and `handleImport`
+- [x] `git commit`
 
 ### Phase 4 — Registry rows + `useEntityEditor` (candidate 2 foundation)
 
