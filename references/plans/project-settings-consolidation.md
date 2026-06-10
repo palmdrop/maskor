@@ -1,7 +1,7 @@
 # Project Settings Consolidation
 
 **Date**: 10-06-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/project-config.md`
 
 ---
@@ -43,64 +43,64 @@ From the architecture review (candidate 4, absorbing candidate 5). Three problem
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `project-settings-consolidation` from the current branch
+- [x] ~~Create branch~~ — N/A: implemented on the shared worktree branch `agent/frontend-refactor` (per-phase commits)
 
 ### Phase 1 — `useProjectSetting` hook
 
 **Goal**: One write hook covering boolean (commit-on-change) and numeric (draft + commit-on-release) project settings. No call sites changed yet.
 
-- [ ] Create `src/hooks/useProjectSetting.ts`, keyed by a typed setting path (e.g. `editor.fontSize`, `suggestion.readinessThreshold`, `advanced.showFragmentStats`)
-- [ ] Read the current value via `useGetProject` (mirror how `useProjectEditorConfig` projects it)
-- [ ] Expose an immediate shape (`value`, `set`, `isPending`, `error`) for switches
-- [ ] Expose a draftable shape (`draft`, `setDraft`, `commit`) for sliders — draft resyncs from server when not mid-edit
-- [ ] Commit performs `updateProject.mutateAsync` for the targeted section, invalidates project + project-list queries, and surfaces an error string on failure
-- [ ] Unit tests: commit success/failure, draft resync-when-idle, error surfaced
-- [ ] `git commit`
+- [x] Create `src/hooks/useProjectSetting.ts`, keyed by a typed setting path (e.g. `editor.fontSize`, `suggestion.readinessThreshold`, `advanced.showFragmentStats`)
+- [x] Read the current value via `useGetProject` (mirror how `useProjectEditorConfig` projects it)
+- [x] Expose an immediate shape (`value`, `set`, `isPending`, `error`) for switches
+- [x] Expose a draftable shape (`draft`, `setDraft`, `commit`) for sliders — draft resyncs from server when not mid-edit
+- [x] Commit performs `updateProject.mutateAsync` for the targeted section, invalidates project + project-list queries, and surfaces an error string on failure
+- [x] Unit tests: commit success/failure, draft resync-when-idle, error surfaced
+- [x] `git commit`
 
 ### Phase 2 — `SettingRow` component
 
 **Goal**: A presentational module for the label / description / control / error layout repeated throughout `GeneralTab`.
 
-- [ ] Create `src/pages/ProjectConfigPage/components/SettingRow.tsx` (or a shared location if it reads more broadly)
-- [ ] Render label, optional description, a control slot (switch or slider), and an optional error line
-- [ ] Keep it presentational — state comes from `useProjectSetting` at the call site
-- [ ] `git commit`
+- [x] Create `src/pages/ProjectConfigPage/components/SettingRow.tsx` (or a shared location if it reads more broadly)
+- [x] Render label, optional description, a control slot (switch or slider), and an optional error line
+- [x] Keep it presentational — state comes from `useProjectSetting` at the call site
+- [x] `git commit`
 
 ### Phase 3 — Migrate `GeneralTab`
 
 **Goal**: Replace the seven handlers and three slider mirrors with the hook + rows.
 
-- [ ] Replace each editor / suggestion / advanced handler with a `useProjectSetting` call rendered through `SettingRow`
-- [ ] Delete the three `localX` + `useEffect`-resync slider mirrors
-- [ ] Preserve the index buttons, name edit, and vault-path display untouched
-- [ ] Preserve the vim ↔ raw-markdown coupling
-- [ ] Confirm existing `GeneralTab` tests pass; add coverage for the coupling if not already present
-- [ ] `git commit`
+- [x] Replace each editor / suggestion / advanced handler with a `useProjectSetting` call rendered through `SettingRow`
+- [x] Delete the three `localX` + `useEffect`-resync slider mirrors
+- [x] Preserve the index buttons, name edit, and vault-path display untouched
+- [x] Preserve the vim ↔ raw-markdown coupling
+- [x] Confirm existing `GeneralTab` tests pass; add coverage for the coupling if not already present
+- [x] `git commit`
 
 ### Phase 4 — Migrate `EntityEditorShell` display settings
 
 **Goal**: Remove the duplicate editor-settings write logic from the shell.
 
-- [ ] Replace `localFontSize` / `localMaxParagraphWidth` mirrors, `persistFontSize` / `persistMaxParagraphWidth`, and `handleIncrease/Decrease*` with `useProjectSetting`
-- [ ] `EditorDisplaySettings` keeps its props but sources value/commit from the hook
-- [ ] Confirm editor tests pass (font/margin adjust still persists)
-- [ ] `git commit`
+- [x] Replace `localFontSize` / `localMaxParagraphWidth` mirrors, `persistFontSize` / `persistMaxParagraphWidth`, and `handleIncrease/Decrease*` with `useProjectSetting`
+- [x] `EditorDisplaySettings` keeps its props but sources value/commit from the hook
+- [x] Confirm editor tests pass (font/margin adjust still persists)
+- [x] `git commit`
 
 ### Phase 5 — Candidate 5 leftover audit
 
 **Goal**: Resolve the remaining non-settings mirrors case-by-case (no generic hook).
 
-- [ ] Audit `FragmentEditor.fragmentContent` mirror — keep only if it is genuinely tracking live editor content for the Margin (document why); otherwise derive/remove
-- [ ] Audit the `PreviewPage` mirror — delete if derivable from server state or an uncontrolled input
-- [ ] `git commit`
+- [x] Audit `FragmentEditor.fragmentContent` mirror — keep only if it is genuinely tracking live editor content for the Margin (document why); otherwise derive/remove
+- [x] Audit the `PreviewPage` mirror — delete if derivable from server state or an uncontrolled input
+- [x] `git commit`
 
 ### Phase 6 — Verify and close
 
-- [ ] `bun run format`
-- [ ] `bun run verify` — fix any lint / type / test failures
-- [ ] Remove any `references/suggestions.md` entries made obsolete by this work
-- [ ] Set this plan's status to `Done` (or `In progress` if partial)
-- [ ] `git commit`
+- [x] `bun run format`
+- [x] `bun run verify` — fix any lint / type / test failures
+- [x] Remove any `references/suggestions.md` entries made obsolete by this work
+- [x] Set this plan's status to `Done` (or `In progress` if partial)
+- [x] `git commit`
 
 ---
 
