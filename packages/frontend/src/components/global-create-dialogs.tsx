@@ -8,11 +8,11 @@ import {
   getListReferencesQueryKey,
 } from "@api/generated/references/references";
 import { useCreateAspect, getListAspectsQueryKey } from "@api/generated/aspects/aspects";
-import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
+import { Field } from "@components/ui/field";
 import { FieldError } from "@components/ui/field-error";
+import { BusyButton } from "@components/ui/busy-button";
 import {
   Dialog,
   DialogContent,
@@ -23,19 +23,31 @@ import {
 
 export type ActiveCreate = "fragment" | "note" | "reference" | "aspect" | null;
 
+type CreateKind = Exclude<ActiveCreate, null>;
+
 type GlobalCreateDialogsProps = {
   projectId: string;
   activeCreate: ActiveCreate;
   onClose: () => void;
 };
 
-type SimpleCreateFormState = {
-  key: string;
-  content: string;
-  error: string | null;
+// Per-kind descriptor driving the single create dialog below. This is a local
+// table; once Plan 1 (`optimistic-mutation-primitive`) lands its registry-driven
+// `useEntityEditor`, fold these create + navigate descriptors into that registry
+// instead of maintaining a second one. See references/suggestions.md.
+type CreateDescriptor = {
+  title: string;
+  keyPlaceholder?: string;
+  secondaryLabel: string;
+  secondaryMultiline: boolean;
+  secondaryRows?: number;
+  secondaryRequired: boolean;
+  isPending: boolean;
+  // Create the entity + invalidate its list query. Returns the new uuid on a
+  // 201, null on any other status, and throws on transport/validation failure.
+  create: (key: string, secondary: string) => Promise<string | null>;
+  navigate: (uuid: string) => void;
 };
-
-const initialSimpleForm: SimpleCreateFormState = { key: "", content: "", error: null };
 
 export const GlobalCreateDialogs = ({
   projectId,
@@ -50,325 +62,180 @@ export const GlobalCreateDialogs = ({
   const createReference = useCreateReference();
   const createAspect = useCreateAspect();
 
-  const [simpleForm, setSimpleForm] = useState<SimpleCreateFormState>(initialSimpleForm);
-  const [aspectKey, setAspectKey] = useState("");
-  const [aspectDescription, setAspectDescription] = useState("");
-  const [aspectError, setAspectError] = useState<string | null>(null);
+  const [key, setKey] = useState("");
+  const [secondary, setSecondary] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const resetSimpleForm = () => setSimpleForm(initialSimpleForm);
-  const resetAspectForm = () => {
-    setAspectKey("");
-    setAspectDescription("");
-    setAspectError(null);
+  const resetForm = () => {
+    setKey("");
+    setSecondary("");
+    setError(null);
   };
 
   const handleClose = () => {
-    resetSimpleForm();
-    resetAspectForm();
+    resetForm();
     onClose();
   };
 
-  const handleCreateFragment = async () => {
-    const key = simpleForm.key.trim();
-    const content = simpleForm.content.trim();
-    if (!key) {
-      setSimpleForm((previous) => ({ ...previous, error: "Key is required." }));
-      return;
-    }
-    if (!content) {
-      setSimpleForm((previous) => ({ ...previous, error: "Content is required." }));
-      return;
-    }
-    setSimpleForm((previous) => ({ ...previous, error: null }));
-    try {
-      const response = await createFragment.mutateAsync({ projectId, data: { key, content } });
-      await queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
-      handleClose();
-      if (response.status === 201) {
+  const descriptors: Record<CreateKind, CreateDescriptor> = {
+    fragment: {
+      title: "New fragment",
+      secondaryLabel: "Content",
+      secondaryMultiline: true,
+      secondaryRows: 6,
+      secondaryRequired: true,
+      isPending: createFragment.isPending,
+      create: async (entityKey, content) => {
+        const response = await createFragment.mutateAsync({
+          projectId,
+          data: { key: entityKey, content: content.trim() },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
+        return response.status === 201 ? response.data.uuid : null;
+      },
+      navigate: (uuid) =>
         void navigate({
           to: "/projects/$projectId/fragments/$fragmentId",
-          params: { projectId, fragmentId: response.data.uuid },
+          params: { projectId, fragmentId: uuid },
+        }),
+    },
+    note: {
+      title: "New note",
+      secondaryLabel: "Content (optional)",
+      secondaryMultiline: true,
+      secondaryRows: 4,
+      secondaryRequired: false,
+      isPending: createNote.isPending,
+      create: async (entityKey, content) => {
+        const response = await createNote.mutateAsync({
+          projectId,
+          data: { key: entityKey, content },
         });
-      }
-    } catch (caught) {
-      setSimpleForm((previous) => ({
-        ...previous,
-        error: (caught as { message?: string })?.message ?? "Failed to create fragment.",
-      }));
-    }
-  };
-
-  const handleCreateNote = async () => {
-    const key = simpleForm.key.trim();
-    if (!key) {
-      setSimpleForm((previous) => ({ ...previous, error: "Key is required." }));
-      return;
-    }
-    setSimpleForm((previous) => ({ ...previous, error: null }));
-    try {
-      const response = await createNote.mutateAsync({
-        projectId,
-        data: { key, content: simpleForm.content },
-      });
-      await queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
-      handleClose();
-      if (response.status === 201) {
+        await queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
+        return response.status === 201 ? response.data.uuid : null;
+      },
+      navigate: (uuid) =>
         void navigate({
           to: "/projects/$projectId/notes/$noteId",
-          params: { projectId, noteId: response.data.uuid },
+          params: { projectId, noteId: uuid },
+        }),
+    },
+    reference: {
+      title: "New reference",
+      secondaryLabel: "Content (optional)",
+      secondaryMultiline: true,
+      secondaryRows: 4,
+      secondaryRequired: false,
+      isPending: createReference.isPending,
+      create: async (entityKey, content) => {
+        const response = await createReference.mutateAsync({
+          projectId,
+          data: { key: entityKey, content },
         });
-      }
-    } catch (caught) {
-      setSimpleForm((previous) => ({
-        ...previous,
-        error: (caught as { message?: string })?.message ?? "Failed to create note.",
-      }));
-    }
-  };
-
-  const handleCreateReference = async () => {
-    const key = simpleForm.key.trim();
-    if (!key) {
-      setSimpleForm((previous) => ({ ...previous, error: "Key is required." }));
-      return;
-    }
-    setSimpleForm((previous) => ({ ...previous, error: null }));
-    try {
-      const response = await createReference.mutateAsync({
-        projectId,
-        data: { key, content: simpleForm.content },
-      });
-      await queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
-      handleClose();
-      if (response.status === 201) {
+        await queryClient.invalidateQueries({ queryKey: getListReferencesQueryKey(projectId) });
+        return response.status === 201 ? response.data.uuid : null;
+      },
+      navigate: (uuid) =>
         void navigate({
           to: "/projects/$projectId/references/$referenceId",
-          params: { projectId, referenceId: response.data.uuid },
+          params: { projectId, referenceId: uuid },
+        }),
+    },
+    aspect: {
+      title: "New aspect",
+      keyPlaceholder: "e.g. tone",
+      secondaryLabel: "Description (optional)",
+      secondaryMultiline: false,
+      secondaryRequired: false,
+      isPending: createAspect.isPending,
+      create: async (entityKey, description) => {
+        const response = await createAspect.mutateAsync({
+          projectId,
+          data: { key: entityKey, description: description.trim() || undefined },
         });
-      }
-    } catch (caught) {
-      setSimpleForm((previous) => ({
-        ...previous,
-        error: (caught as { message?: string })?.message ?? "Failed to create reference.",
-      }));
-    }
-  };
-
-  const handleCreateAspect = async () => {
-    const key = aspectKey.trim();
-    if (!key) {
-      setAspectError("Key is required.");
-      return;
-    }
-    setAspectError(null);
-    try {
-      const response = await createAspect.mutateAsync({
-        projectId,
-        data: {
-          key,
-          description: aspectDescription.trim() || undefined,
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
-      handleClose();
-      if (response.status === 201) {
+        await queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
+        return response.status === 201 ? response.data.uuid : null;
+      },
+      navigate: (uuid) =>
         void navigate({
           to: "/projects/$projectId/aspects/$aspectId",
-          params: { projectId, aspectId: response.data.uuid },
-        });
-      }
+          params: { projectId, aspectId: uuid },
+        }),
+    },
+  };
+
+  if (activeCreate === null) return null;
+  const descriptor = descriptors[activeCreate];
+
+  const handleCreate = async () => {
+    const trimmedKey = key.trim();
+    if (!trimmedKey) {
+      setError("Key is required.");
+      return;
+    }
+    if (descriptor.secondaryRequired && !secondary.trim()) {
+      setError("Content is required.");
+      return;
+    }
+    setError(null);
+    try {
+      const uuid = await descriptor.create(trimmedKey, secondary);
+      handleClose();
+      if (uuid) descriptor.navigate(uuid);
     } catch (caught) {
-      setAspectError((caught as { message?: string })?.message ?? "Failed to create aspect.");
+      setError((caught as { message?: string })?.message ?? `Failed to create ${activeCreate}.`);
     }
   };
 
-  // Fragment dialog
-  if (activeCreate === "fragment") {
-    const isPending = createFragment.isPending;
-    return (
-      <Dialog open onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New fragment</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-fragment-key">Key</Label>
+  return (
+    <Dialog open onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{descriptor.title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <Field label="Key">
+            {(control) => (
               <Input
-                id="global-create-fragment-key"
-                value={simpleForm.key}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
-                }
+                {...control}
+                value={key}
+                onChange={(event) => setKey(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void handleCreateFragment();
+                  if (event.key === "Enter") void handleCreate();
                 }}
-                disabled={isPending}
+                disabled={descriptor.isPending}
+                placeholder={descriptor.keyPlaceholder}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-fragment-content">Content</Label>
-              <Textarea
-                id="global-create-fragment-content"
-                rows={6}
-                value={simpleForm.content}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
-                }
-                disabled={isPending}
-              />
-            </div>
-            <FieldError>{simpleForm.error}</FieldError>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => void handleCreateFragment()} disabled={isPending}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Note dialog
-  if (activeCreate === "note") {
-    const isPending = createNote.isPending;
-    return (
-      <Dialog open onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New note</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-note-key">Key</Label>
-              <Input
-                id="global-create-note-key"
-                value={simpleForm.key}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void handleCreateNote();
-                }}
-                disabled={isPending}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-note-content">Content (optional)</Label>
-              <Textarea
-                id="global-create-note-content"
-                rows={4}
-                value={simpleForm.content}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
-                }
-                disabled={isPending}
-              />
-            </div>
-            <FieldError>{simpleForm.error}</FieldError>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => void handleCreateNote()} disabled={isPending}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Reference dialog
-  if (activeCreate === "reference") {
-    const isPending = createReference.isPending;
-    return (
-      <Dialog open onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New reference</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-reference-key">Key</Label>
-              <Input
-                id="global-create-reference-key"
-                value={simpleForm.key}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, key: event.target.value }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void handleCreateReference();
-                }}
-                disabled={isPending}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-reference-content">Content (optional)</Label>
-              <Textarea
-                id="global-create-reference-content"
-                rows={4}
-                value={simpleForm.content}
-                onChange={(event) =>
-                  setSimpleForm((previous) => ({ ...previous, content: event.target.value }))
-                }
-                disabled={isPending}
-              />
-            </div>
-            <FieldError>{simpleForm.error}</FieldError>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => void handleCreateReference()} disabled={isPending}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Aspect dialog
-  if (activeCreate === "aspect") {
-    const isPending = createAspect.isPending;
-    return (
-      <Dialog open onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New aspect</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-aspect-key">Key</Label>
-              <Input
-                id="global-create-aspect-key"
-                value={aspectKey}
-                onChange={(event) => setAspectKey(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void handleCreateAspect();
-                }}
-                disabled={isPending}
-                placeholder="e.g. tone"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="global-create-aspect-description">Description (optional)</Label>
-              <Input
-                id="global-create-aspect-description"
-                value={aspectDescription}
-                onChange={(event) => setAspectDescription(event.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <FieldError>{aspectError}</FieldError>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => void handleCreateAspect()} disabled={isPending}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  return null;
+            )}
+          </Field>
+          <Field label={descriptor.secondaryLabel}>
+            {(control) =>
+              descriptor.secondaryMultiline ? (
+                <Textarea
+                  {...control}
+                  rows={descriptor.secondaryRows}
+                  value={secondary}
+                  onChange={(event) => setSecondary(event.target.value)}
+                  disabled={descriptor.isPending}
+                />
+              ) : (
+                <Input
+                  {...control}
+                  value={secondary}
+                  onChange={(event) => setSecondary(event.target.value)}
+                  disabled={descriptor.isPending}
+                />
+              )
+            }
+          </Field>
+          <FieldError>{error}</FieldError>
+        </div>
+        <DialogFooter>
+          <BusyButton onClick={() => void handleCreate()} isPending={descriptor.isPending}>
+            Create
+          </BusyButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };

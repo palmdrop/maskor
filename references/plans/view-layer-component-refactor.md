@@ -53,10 +53,10 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
 ### Phase 3 — Collapse `global-create-dialogs.tsx` (god component, 375 LOC)
 
-- [ ] **Confirm the entity registry shape with the Plan 1 owner.** Reuse Plan 1's per-kind registry if available; otherwise define a local per-kind descriptor table and flag it for later merge.
-- [ ] Replace the four inline create flows with one descriptor table (per kind: label, create mutation, fields, post-create navigation) rendered through a single dialog body — ideally `CreateEntityDialog`, now built on `Field` + `Textarea` + `FieldError` + `ConfirmDialog` footer.
-- [ ] Verify each entity kind's create + navigate behavior is unchanged (existing tests + new test asserting the descriptor drives all four kinds).
-- [ ] `bun run format` then `bun run verify`; fix issues. `git commit`.
+- [x] **Confirm the entity registry shape with the Plan 1 owner.** Plan 1's registry has not landed in this branch, so defined a local per-kind descriptor table and flagged it for later merge (inline comment + `references/suggestions.md`).
+- [x] Replace the four inline create flows with one descriptor table (per kind: title, create mutation, secondary-field config, post-create navigation) rendered through a single dialog body built on `Field` + `Textarea`/`Input` + `FieldError` + `BusyButton`. (Did **not** route the footer through `ConfirmDialog`: the original global-create dialogs have no Cancel button — only Create + the X — so a `ConfirmDialog` footer would add a Cancel button = visual change. Kept the bespoke `DialogFooter` + `BusyButton`. Did not reuse `CreateEntityDialog` either: that component is trigger-driven and textarea-only, while this is externally controlled and aspect uses an `Input` for its description.) File shrank from 375 → ~270 LOC.
+- [x] Verify each entity kind's create + navigate behavior is unchanged (new `global-create-dialogs.test.tsx` asserts the descriptor drives all four kinds: titles, secondary control type, fragment content-trim + required check, aspect description shape, and per-kind navigation).
+- [x] `bun run format` then `bun run verify`; fix issues. `git commit`. (`verify` red at HEAD from pre-existing out-of-scope errors — see Phase 1 note. Frontend typecheck adds no new errors; 675 frontend tests pass.)
 
 ### Phase 4 — `Heading` adoption sweep (mechanical)
 
