@@ -94,15 +94,15 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 - [x] Unit tests for the `ENTITY_HOOKS` selectors (+ primitive `settleInvalidate` tests)
 - [x] `git commit`
 
-### Phase 5 — Migrate Aspect, Reference, Note editors (candidate 2)
+### Phase 5 — Migrate Aspect, Reference, Note editors (candidate 2) — DONE
 
 **Goal**: Each editor body collapses to a sidebar plus `useEntityEditor`.
 
-- [ ] Migrate `ReferenceEditor` (smallest) to `useEntityEditor`; delete its bespoke `makeSave`, `invalidate`, `onKeySave`, `onContentSave`
-- [ ] Migrate `NoteEditor`
-- [ ] Migrate `AspectEditor` (carries color/notes live fields via `makeFieldSave`)
-- [ ] Confirm each editor's existing tests pass; adjust to the new hook seam where they reached into the deleted internals
-- [ ] `git commit`
+- [x] Migrate `ReferenceEditor` (smallest) to `useEntityEditor`; deleted its bespoke `makeSave`, `invalidate`, `onKeySave`, `onContentSave` (and the dead `status !== 200` throws — the Phase 3 deferral)
+- [x] Migrate `NoteEditor`
+- [x] Migrate `AspectEditor` (color/category/notes live fields via `makeFieldSave`; the dual-instance `isPending` split now lives inside the hook)
+- [x] Confirm tests pass; adjusted the seams: AspectEditor test mocks add `getActionLogQueryKey`; `OverviewPage.test` gains `mutateAsync` on the unplace mock and switches its partial `aspects`/`fragments` mocks to `importOriginal` (entityHooks now references all four entity modules transitively)
+- [x] `git commit`
 
 ### Phase 6 — Migrate FragmentEditor and FragmentMetadataForm (candidate 2)
 

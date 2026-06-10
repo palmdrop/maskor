@@ -1,17 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetNote,
-  useUpdateNote,
-  useListNotes,
-  getGetNoteQueryKey,
-  getListNotesQueryKey,
-} from "@api/generated/notes/notes";
-import { useInvalidateActionLog } from "@api/action-log";
+import { useListNotes } from "@api/generated/notes/notes";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
-import type { Note, NoteUpdate } from "@api/generated/maskorAPI.schemas";
+import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { Button } from "@components/ui/button";
 import { CategoryField } from "@components/category-field";
 import { EntityEditorShell } from "@components/entity-editor-shell";
@@ -23,111 +15,28 @@ type Props = {
 };
 
 export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
-  const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetNote(projectId, noteId);
-  const { mutateAsync: updateNote, isPending } = useUpdateNote();
-  const { mutateAsync: updateNoteMetadata } = useUpdateNote();
+  const editor = useEntityEditor("note", projectId, noteId);
   const { data: notesListEnvelope } = useListNotes(projectId);
-  const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
-  const note = envelope?.status === 200 ? envelope.data : null;
-
-  const noteQueryKey = useMemo(() => getGetNoteQueryKey(projectId, noteId), [projectId, noteId]);
-
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: noteQueryKey });
-    queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
-  }, [queryClient, noteQueryKey, projectId]);
-
-  const invalidateActionLog = useInvalidateActionLog(projectId);
-
-  const makeSave = useCallback(
-    <T,>(toPatch: (value: T) => NoteUpdate) =>
-      async (value: T) => {
-        type CacheEntry = { data: Note; status: number };
-        const snapshot = queryClient.getQueryData<CacheEntry>(noteQueryKey);
-        if (snapshot?.status === 200) {
-          queryClient.setQueryData(noteQueryKey, {
-            ...snapshot,
-            data: { ...snapshot.data, ...toPatch(value) },
-          });
-        }
-        try {
-          const result = await updateNoteMetadata({
-            projectId,
-            noteId,
-            data: toPatch(value),
-          });
-          if (result.status !== 200) {
-            throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-          }
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(noteQueryKey, {
-              ...snapshot,
-              data: result.data.note,
-            });
-          }
-          queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
-        } catch (error) {
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(noteQueryKey, snapshot);
-          }
-          invalidate();
-          throw error;
-        } finally {
-          invalidateActionLog();
-        }
-      },
-    [
-      queryClient,
-      noteQueryKey,
-      updateNoteMetadata,
-      projectId,
-      noteId,
-      invalidate,
-      invalidateActionLog,
-    ],
-  );
+  const note = editor.entity;
 
   const categoryField = useLiveFieldSave({
     serverValue: note?.category ?? null,
-    save: makeSave<string | null>((value) => ({ category: value })),
+    save: editor.makeFieldSave<string | null>((value) => ({ category: value })),
   });
 
   const existingNoteCategories = useMemo(() => {
     const notes = notesListEnvelope?.status === 200 ? notesListEnvelope.data : [];
-    return [...new Set(notes.map((n) => n.category).filter((c): c is string => !!c))];
+    return [
+      ...new Set(
+        notes.map((note) => note.category).filter((category): category is string => !!category),
+      ),
+    ];
   }, [notesListEnvelope]);
 
-  const onKeySave = useCallback(
-    async (key: string) => {
-      const result = await updateNote({ projectId, noteId, data: { key } });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
-      }
-      const { warnings } = result.data;
-      setCascadeWarnings([...warnings.fragments, ...warnings.aspects]);
-      invalidate();
-      invalidateActionLog();
-    },
-    [updateNote, projectId, noteId, invalidate, invalidateActionLog],
-  );
-
-  const onContentSave = useCallback(
-    async (content: string) => {
-      const result = await updateNote({ projectId, noteId, data: { content } });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-      }
-      invalidate();
-      invalidateActionLog();
-    },
-    [updateNote, projectId, noteId, invalidate, invalidateActionLog],
-  );
-
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !note)
+  if (editor.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (editor.isError || !note)
     return <p className="text-sm text-muted-foreground">Failed to load note.</p>;
 
   const backNode = fragmentId ? (
@@ -164,15 +73,15 @@ export const NoteEditor = ({ projectId, noteId, fragmentId }: Props) => {
       backNode={backNode}
       entityKey={note.key}
       content={note.content}
-      isPending={isPending}
+      isPending={editor.isPending}
       isDirty={isDirty}
-      cascadeWarnings={cascadeWarnings}
-      onDismissWarnings={() => setCascadeWarnings([])}
+      cascadeWarnings={editor.cascadeWarnings}
+      onDismissWarnings={editor.dismissWarnings}
       onProseChange={() => setIsDirty(true)}
       onSaved={() => setIsDirty(false)}
       onContentRevert={() => setIsDirty(false)}
-      onKeySave={onKeySave}
-      onContentSave={onContentSave}
+      onKeySave={editor.onKeySave}
+      onContentSave={editor.onContentSave}
       sidebar={sidebar}
     />
   );

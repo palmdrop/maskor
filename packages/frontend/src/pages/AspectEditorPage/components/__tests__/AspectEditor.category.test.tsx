@@ -23,6 +23,7 @@ vi.mock("@components/entity-editor-shell", () => ({
 
 vi.mock("@api/action-log", () => ({
   useInvalidateActionLog: () => vi.fn(),
+  getActionLogQueryKey: (projectId: string) => ["action-log", projectId],
 }));
 
 import { AspectEditor } from "../AspectEditor";

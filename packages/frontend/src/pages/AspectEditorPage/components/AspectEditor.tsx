@@ -1,18 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetAspect,
-  useUpdateAspect,
-  useListAspects,
-  getGetAspectQueryKey,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListNotes } from "@api/generated/notes/notes";
-import { useInvalidateActionLog } from "@api/action-log";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
-import type { Aspect, AspectUpdate } from "@api/generated/maskorAPI.schemas";
+import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { EntityTag } from "@components/entity-tag";
@@ -33,118 +25,27 @@ type Props = {
 };
 
 export const AspectEditor = ({ projectId, aspectId }: Props) => {
-  const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetAspect(projectId, aspectId);
-  // Separate mutation instances so live metadata saves don't toggle the
-  // content Save button's isPending state (and silently block Cmd+S).
-  const { mutateAsync: updateAspect, isPending } = useUpdateAspect();
-  const { mutateAsync: updateAspectMetadata } = useUpdateAspect();
+  const editor = useEntityEditor("aspect", projectId, aspectId);
   const { data: notesEnvelope } = useListNotes(projectId);
   const { data: aspectsListEnvelope } = useListAspects(projectId);
-  const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
-  const aspect = envelope?.status === 200 ? envelope.data : null;
-
-  const aspectQueryKey = useMemo(
-    () => getGetAspectQueryKey(projectId, aspectId),
-    [projectId, aspectId],
-  );
-
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: aspectQueryKey });
-    queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
-  }, [queryClient, aspectQueryKey, projectId]);
-
-  const invalidateActionLog = useInvalidateActionLog(projectId);
-
-  const makeSave = useCallback(
-    <T,>(toPatch: (value: T) => AspectUpdate) =>
-      async (value: T) => {
-        type CacheEntry = { data: Aspect; status: number };
-        const snapshot = queryClient.getQueryData<CacheEntry>(aspectQueryKey);
-        if (snapshot?.status === 200) {
-          queryClient.setQueryData(aspectQueryKey, {
-            ...snapshot,
-            data: { ...snapshot.data, ...toPatch(value) },
-          });
-        }
-        try {
-          const result = await updateAspectMetadata({
-            projectId,
-            aspectId,
-            data: toPatch(value),
-          });
-          if (result.status !== 200) {
-            throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-          }
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(aspectQueryKey, {
-              ...snapshot,
-              data: result.data.aspect,
-            });
-          }
-          queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
-        } catch (err) {
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(aspectQueryKey, snapshot);
-          }
-          invalidate();
-          throw err;
-        } finally {
-          invalidateActionLog();
-        }
-      },
-    [
-      queryClient,
-      aspectQueryKey,
-      updateAspectMetadata,
-      projectId,
-      aspectId,
-      invalidate,
-      invalidateActionLog,
-    ],
-  );
-
-  const onKeySave = useCallback(
-    async (key: string) => {
-      const result = await updateAspect({ projectId, aspectId, data: { key } });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
-      }
-      setCascadeWarnings(result.data.warnings);
-      invalidate();
-      invalidateActionLog();
-    },
-    [updateAspect, projectId, aspectId, invalidate, invalidateActionLog],
-  );
-
-  const onContentSave = useCallback(
-    async (content: string) => {
-      const result = await updateAspect({ projectId, aspectId, data: { description: content } });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-      }
-      invalidate();
-      invalidateActionLog();
-    },
-    [updateAspect, projectId, aspectId, invalidate, invalidateActionLog],
-  );
+  const aspect = editor.entity;
 
   const colorField = useLiveFieldSave({
     serverValue: aspect?.color ?? null,
-    save: makeSave<string | null>((value) => ({ color: value })),
+    save: editor.makeFieldSave<string | null>((value) => ({ color: value })),
   });
 
   const categoryField = useLiveFieldSave({
     serverValue: aspect?.category ?? null,
-    save: makeSave<string | null>((value) => ({ category: value })),
+    save: editor.makeFieldSave<string | null>((value) => ({ category: value })),
   });
 
   const notesField = useLiveFieldSave({
     serverValue: aspect?.notes ?? [],
     isEqual: stringSetEqual,
-    save: makeSave<string[]>((value) => ({ notes: value })),
+    save: editor.makeFieldSave<string[]>((value) => ({ notes: value })),
   });
 
   const projectNotes = useMemo(
@@ -160,7 +61,13 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
 
   const existingAspectCategories = useMemo(() => {
     const aspects = aspectsListEnvelope?.status === 200 ? aspectsListEnvelope.data : [];
-    return [...new Set(aspects.map((a) => a.category).filter((c): c is string => !!c))];
+    return [
+      ...new Set(
+        aspects
+          .map((aspect) => aspect.category)
+          .filter((category): category is string => !!category),
+      ),
+    ];
   }, [aspectsListEnvelope]);
 
   const resolvedColor = useMemo(
@@ -168,8 +75,8 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
     [aspect?.key, colorField.value],
   );
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError || !aspect)
+  if (editor.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (editor.isError || !aspect)
     return <p className="text-sm text-muted-foreground">Failed to load aspect.</p>;
 
   const backNode = (
@@ -246,15 +153,15 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
       backNode={backNode}
       entityKey={aspect.key}
       content={aspect.description ?? ""}
-      isPending={isPending}
+      isPending={editor.isPending}
       isDirty={isDirty}
-      cascadeWarnings={cascadeWarnings}
-      onDismissWarnings={() => setCascadeWarnings([])}
+      cascadeWarnings={editor.cascadeWarnings}
+      onDismissWarnings={editor.dismissWarnings}
       onProseChange={() => setIsDirty(true)}
       onSaved={() => setIsDirty(false)}
       onContentRevert={() => setIsDirty(false)}
-      onKeySave={onKeySave}
-      onContentSave={onContentSave}
+      onKeySave={editor.onKeySave}
+      onContentSave={editor.onContentSave}
       sidebar={sidebar}
     />
   );

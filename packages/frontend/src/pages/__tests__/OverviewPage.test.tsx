@@ -98,7 +98,7 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useGetSequenceContents: vi.fn(() => ({ data: { status: 200, data: { placed: [], pool: [] } } })),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate })),
-  useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate })),
+  useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate, mutateAsync: unplaceMutate })),
   useReorderSection: vi.fn(() => ({ mutate: moveSectionMutate })),
   useGroupFragments: vi.fn(() => ({ mutate: groupMutate, mutateAsync: groupMutate })),
   useMoveFragments: vi.fn(() => ({ mutate: moveManyMutate, mutateAsync: moveManyMutate })),
@@ -131,17 +131,32 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   ],
 }));
 
-vi.mock("../../api/generated/fragments/fragments", () => ({
-  useListFragmentSummaries: vi.fn(),
-  useUpdateFragment: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
-  getListFragmentSummariesQueryKey: (projectId: string) => [
-    `/projects/${projectId}/fragments/summaries`,
-  ],
-}));
+// Override the hooks the overview drives; keep the rest real (entityHooks references
+// useGetFragment, which loads transitively even though no fragment editor renders here).
+vi.mock("../../api/generated/fragments/fragments", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importOriginal<typeof import("../../api/generated/fragments/fragments")>();
+  return {
+    ...actual,
+    useListFragmentSummaries: vi.fn(),
+    useUpdateFragment: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+    getListFragmentSummariesQueryKey: (projectId: string) => [
+      `/projects/${projectId}/fragments/summaries`,
+    ],
+  };
+});
 
-vi.mock("../../api/generated/aspects/aspects", () => ({
-  useListAspects: vi.fn(() => ({ data: { status: 200, data: [] }, isLoading: false })),
-}));
+// Override only useListAspects (the overview's aspect data). Keep the rest of the module
+// real: the entity-editor data layer (entityHooks) references useGetAspect/useUpdateAspect,
+// which load transitively here even though no aspect editor renders.
+vi.mock("../../api/generated/aspects/aspects", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importOriginal<typeof import("../../api/generated/aspects/aspects")>();
+  return {
+    ...actual,
+    useListAspects: vi.fn(() => ({ data: { status: 200, data: [] }, isLoading: false })),
+  };
+});
 
 vi.mock("../../api/generated/projects/projects", () => ({
   useGetProject: vi.fn(() => ({ data: undefined })),
