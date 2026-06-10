@@ -1,9 +1,10 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { Field } from "./ui/field";
 import { Textarea } from "./ui/textarea";
+import { BusyButton } from "./ui/busy-button";
 import { FieldError } from "./ui/field-error";
 import {
   Dialog,
@@ -37,9 +38,6 @@ export const CreateEntityDialog = ({
   const [labelValue, setLabelValue] = useState("");
   const [contentValue, setContentValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const labelId = useId();
-  const contentId = useId();
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -84,32 +82,34 @@ export const CreateEntityDialog = ({
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={labelId}>{labelField}</Label>
-            <Input
-              id={labelId}
-              value={labelValue}
-              onChange={(e) => setLabelValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={contentId}>{contentRequired ? "Content" : "Content (optional)"}</Label>
-            <Textarea
-              id={contentId}
-              rows={contentRequired ? 6 : 4}
-              value={contentValue}
-              onChange={(e) => setContentValue(e.target.value)}
-            />
-          </div>
+          <Field label={labelField}>
+            {(control) => (
+              <Input
+                {...control}
+                value={labelValue}
+                onChange={(e) => setLabelValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreate();
+                }}
+              />
+            )}
+          </Field>
+          <Field label={contentRequired ? "Content" : "Content (optional)"}>
+            {(control) => (
+              <Textarea
+                {...control}
+                rows={contentRequired ? 6 : 4}
+                value={contentValue}
+                onChange={(e) => setContentValue(e.target.value)}
+              />
+            )}
+          </Field>
           <FieldError>{error}</FieldError>
         </div>
         <DialogFooter>
-          <Button onClick={handleCreate} disabled={isPending}>
+          <BusyButton onClick={handleCreate} isPending={isPending}>
             Create
-          </Button>
+          </BusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

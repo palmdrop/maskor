@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRestoreDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 import { Checkbox } from "@components/ui/checkbox";
 
 type RestoreDraftDialogProps = {
@@ -78,12 +71,11 @@ export const RestoreDraftDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Restore draft</DialogTitle>
-        </DialogHeader>
-
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Restore draft"
+      body={
         <div className="flex flex-col gap-4">
           <p className="text-sm">
             Replace the project with <strong>{draftName}</strong>? All current vault content
@@ -102,32 +94,24 @@ export const RestoreDraftDialog = ({
           </div>
 
           {saveCurrentFirst && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pre-restore-name">Name for the pre-restore draft</Label>
-              <Input
-                id="pre-restore-name"
-                value={preRestoreName}
-                onChange={(event) => setPreRestoreName(event.target.value)}
-              />
-            </div>
+            <Field label="Name for the pre-restore draft">
+              {(control) => (
+                <Input
+                  {...control}
+                  value={preRestoreName}
+                  onChange={(event) => setPreRestoreName(event.target.value)}
+                />
+              )}
+            </Field>
           )}
-
-          {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={mutation.isPending}>
-            {mutation.isPending ? "Restoring…" : "Restore draft"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      }
+      error={mutation.error?.message}
+      confirmLabel="Restore draft"
+      pendingLabel="Restoring…"
+      variant="destructive"
+      onConfirm={handleConfirm}
+      isPending={mutation.isPending}
+    />
   );
 };

@@ -2,15 +2,8 @@ import { useState } from "react";
 import { useExportSequence } from "@api/generated/export/export";
 import type { ExportSequenceBody } from "@api/generated/maskorAPI.schemas";
 import { useListSequences } from "@api/generated/sequences/sequences";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
-import { Label } from "@components/ui/label";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
+import { Field } from "@components/ui/field";
 import {
   Select,
   SelectContent,
@@ -93,67 +86,59 @@ export const ExportDialog = ({
   })();
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Export sequence</DialogTitle>
-        </DialogHeader>
-
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Export sequence"
+      body={
         <div className="flex flex-col gap-4">
           {sequences.length > 1 && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="export-sequence-select">Sequence</Label>
-              <Select
-                value={activeSequenceId ?? ""}
-                onValueChange={(value) => setSelectedSequenceId(value)}
-              >
-                <SelectTrigger id="export-sequence-select" className="w-full">
-                  <SelectValue placeholder="Select sequence…" />
+            <Field label="Sequence">
+              {(control) => (
+                <Select
+                  value={activeSequenceId ?? ""}
+                  onValueChange={(value) => setSelectedSequenceId(value)}
+                >
+                  <SelectTrigger {...control} className="w-full">
+                    <SelectValue placeholder="Select sequence…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sequences.map((sequence) => (
+                      <SelectItem key={sequence.uuid} value={sequence.uuid}>
+                        {sequence.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </Field>
+          )}
+
+          <Field label="Format">
+            {(control) => (
+              <Select value={format} onValueChange={(value) => setFormat(value as Format)}>
+                <SelectTrigger {...control} className="w-full">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {sequences.map((sequence) => (
-                    <SelectItem key={sequence.uuid} value={sequence.uuid}>
-                      {sequence.name}
+                  {(Object.keys(FORMAT_LABELS) as Format[]).map((formatKey) => (
+                    <SelectItem key={formatKey} value={formatKey}>
+                      {FORMAT_LABELS[formatKey]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="export-format-select">Format</Label>
-            <Select value={format} onValueChange={(value) => setFormat(value as Format)}>
-              <SelectTrigger id="export-format-select" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(FORMAT_LABELS) as Format[]).map((formatKey) => (
-                  <SelectItem key={formatKey} value={formatKey}>
-                    {FORMAT_LABELS[formatKey]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {errorMessage && <p className="text-xs text-destructive">{errorMessage}</p>}
+            )}
+          </Field>
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleExport} disabled={!activeSequenceId || mutation.isPending}>
-            {mutation.isPending ? "Exporting…" : "Export"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      }
+      error={errorMessage}
+      confirmLabel="Export"
+      pendingLabel="Exporting…"
+      onConfirm={handleExport}
+      isPending={mutation.isPending}
+      disabled={!activeSequenceId}
+    />
   );
 };
 

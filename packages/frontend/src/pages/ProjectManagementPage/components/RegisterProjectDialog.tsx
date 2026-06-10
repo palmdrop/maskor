@@ -13,8 +13,11 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
+import { Badge } from "@components/ui/badge";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 import { detectFolderKind, countNonMarkdownFiles, FOLDER_KIND_LABELS } from "../utils/folder-kind";
 import { deriveSlug } from "@/utils/slug";
 
@@ -132,23 +135,24 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
           </DialogHeader>
 
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="register-project-name">Project name</Label>
-              <Input
-                id="register-project-name"
-                value={nameInput}
-                onChange={(e) => {
-                  setNameInput(e.target.value);
-                  setNameManuallyEdited(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSubmit();
-                }}
-                placeholder="My novel"
-                // eslint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
-              />
-            </div>
+            <Field label="Project name">
+              {(control) => (
+                <Input
+                  {...control}
+                  value={nameInput}
+                  onChange={(e) => {
+                    setNameInput(e.target.value);
+                    setNameManuallyEdited(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSubmit();
+                  }}
+                  placeholder="My novel"
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                />
+              )}
+            </Field>
 
             <div className="flex flex-col gap-1.5">
               <Label>
@@ -197,9 +201,7 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
             {showFolderInfo && (
               <div className="flex items-center gap-2">
                 <p className="text-xs font-medium text-muted-foreground">Detected kind</p>
-                <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">
-                  {FOLDER_KIND_LABELS[folderKind]}
-                </span>
+                <Badge variant="muted">{FOLDER_KIND_LABELS[folderKind]}</Badge>
               </div>
             )}
 
@@ -214,9 +216,14 @@ export const RegisterProjectDialog = ({ open, onOpenChange }: RegisterProjectDia
           </div>
 
           <DialogFooter>
-            <Button onClick={handleSubmit} disabled={!canSubmit}>
-              {mutation.isPending ? "Registering…" : "Register project"}
-            </Button>
+            <BusyButton
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              isPending={mutation.isPending}
+              pendingLabel="Registering…"
+            >
+              Register project
+            </BusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

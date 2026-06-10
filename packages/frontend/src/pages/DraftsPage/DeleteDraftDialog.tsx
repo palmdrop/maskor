@@ -1,13 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useDeleteDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
 
 type DeleteDraftDialogProps = {
   open: boolean;
@@ -47,31 +40,21 @@ export const DeleteDraftDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Delete draft</DialogTitle>
-        </DialogHeader>
-
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Delete draft"
+      body={
         <p className="text-sm">
           Delete <strong>{draftName}</strong>? This permanently removes the snapshot from disk.
         </p>
-
-        {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={mutation.isPending}>
-            {mutation.isPending ? "Deleting…" : "Delete draft"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      }
+      error={mutation.error?.message}
+      confirmLabel="Delete draft"
+      pendingLabel="Deleting…"
+      variant="destructive"
+      onConfirm={handleConfirm}
+      isPending={mutation.isPending}
+    />
   );
 };

@@ -42,14 +42,14 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
 ### Phase 2 — Form & dialog molecules
 
-- [ ] **Sync `FieldError` naming with Plan 2 owner before starting.**
-- [ ] Add `components/ui/field.tsx` (`Field`): label + control slot + optional description + `FieldError`, auto-wiring `htmlFor`/`id` via `useId`. Vertical layout (`flex flex-col gap-1.5`).
-- [ ] Migrate the labeled-field rows to `<Field>`: `create-entity-dialog.tsx`, `global-create-dialogs.tsx` (8×), `RegisterProjectDialog.tsx`, `AspectsTab.tsx`, `ExportDialog.tsx`, `CreateDraftDialog.tsx`, `RestoreDraftDialog.tsx`, `RenameProjectDialog.tsx`, `DeregisterDialog.tsx`, `fragment-stats-inspector.tsx`, `extract-to-entity-dialog-core.tsx`. (Leave `GeneralTab.tsx` settings rows to Plan 2's `SettingRow`.)
-- [ ] Add `BusyButton` (or a `pendingLabel` prop on a thin wrapper) absorbing the `{isPending ? "…ing" : "Action"}` ternary (~14 sites).
-- [ ] Add `ConfirmDialog` molecule: `title, body, confirmLabel, pendingLabel, variant, onConfirm, isPending, disabled`. Built on `Dialog` + `DialogFooter` + `BusyButton`.
-- [ ] Collapse the confirm-family dialogs onto `ConfirmDialog`: `DeleteDraftDialog.tsx`, `RestoreDraftDialog.tsx`, `DeregisterDialog.tsx` (keep its typed-name guard as a `body` slot), and any other Cancel+confirm dialogs that fit without behavior change. Bespoke dialogs keep `DialogFooter` but adopt `BusyButton`.
-- [ ] Tests: `Field` (id wiring, error render), `ConfirmDialog` (pending/disabled/destructive, confirm/cancel callbacks).
-- [ ] `bun run format` then `bun run verify`; fix issues. `git commit`.
+- [x] **Sync `FieldError` naming with Plan 2 owner before starting.** Plan 2 has not landed in this branch; proceeded with `FieldError` as the shared name (the obvious choice) — flag for confirmation when Plan 2 lands.
+- [x] Add `components/ui/field.tsx` (`Field`): label + control slot + optional description + `FieldError`, auto-wiring `htmlFor`/`id` via `useId`. Vertical layout (`flex flex-col gap-1.5`). Uses an explicit render-prop `{(control) => …}` to wire id/aria onto the control (no `cloneElement` magic).
+- [x] Migrate the labeled-field rows to `<Field>`: `create-entity-dialog.tsx`, `RegisterProjectDialog.tsx`, `AspectsTab.tsx`, `ExportDialog.tsx`, `CreateDraftDialog.tsx`, `RestoreDraftDialog.tsx`, `RenameProjectDialog.tsx`, `DeregisterDialog.tsx`, `extract-to-entity-dialog-core.tsx`. (`global-create-dialogs.tsx` 8× deferred to Phase 3's rewrite — it is rebuilt on `Field` there, no point migrating twice. `fragment-stats-inspector.tsx` has no labeled control — its `<Label>Stats</Label>` is a standalone section label, nothing for `Field` to wrap. `GeneralTab.tsx` left to Plan 2's `SettingRow`.)
+- [x] Add `BusyButton` absorbing the `{isPending ? "…ing" : "Action"}` ternary: `DeregisterDialog`, `RegisterProjectDialog`, `AspectsTab` (create), `extract-to-entity-dialog-core`, `append-or-prepend-dialog`, `LocateVaultDialog`, `SettingsSection`, `create-entity-dialog`. Confirm-family dialogs absorb it via `ConfirmDialog` internally.
+- [x] Add `ConfirmDialog` molecule: `title, body, error, confirmLabel, pendingLabel, cancelLabel, variant, onConfirm, isPending, disabled`. Built on `Dialog` + `DialogFooter` + `BusyButton`.
+- [x] Collapse the confirm-family dialogs onto `ConfirmDialog`: `DeleteDraftDialog`, `RestoreDraftDialog`, `RenameProjectDialog`, `CreateDraftDialog`, `ExportDialog`, `AspectsTab`'s delete dialog. `DeregisterDialog` stays bespoke (two-step confirm/result flow + result message) but adopts `Field` + `BusyButton`. `extract-to-entity-dialog-core` stays bespoke (`showCloseButton={false}` + ref focus/select) but adopts `Field` + `BusyButton`.
+- [x] Tests: `Field` (id wiring, error render, description), `ConfirmDialog` (pending/disabled/destructive, confirm/cancel callbacks).
+- [x] `bun run format` then `bun run verify`; fix issues. `git commit`. (`verify` red at HEAD from pre-existing out-of-scope errors — see Phase 1 note. Frontend typecheck adds no new errors; 666 frontend tests pass.)
 
 ### Phase 3 — Collapse `global-create-dialogs.tsx` (god component, 375 LOC)
 

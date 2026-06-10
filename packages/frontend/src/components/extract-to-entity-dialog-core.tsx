@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -39,8 +40,6 @@ export const ExtractToEntityDialogCore = ({
   onClose,
   onConfirm,
 }: Props) => {
-  const keyId = useId();
-
   const [keyValue, setKeyValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
@@ -104,34 +103,34 @@ export const ExtractToEntityDialogCore = ({
               </p>
             </div>
           )}
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={keyId}>Key</Label>
-            <Input
-              id={keyId}
-              ref={keyInputRef}
-              value={keyValue}
-              onChange={(e) => setKeyValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isConfirmDisabled) void handleConfirm();
-                if (e.key === "Escape") onClose();
-              }}
-              disabled={isPending}
-              aria-describedby={error ? `${keyId}-error` : undefined}
-            />
-            {error && (
-              <p id={`${keyId}-error`} className="text-xs text-destructive">
-                {error}
-              </p>
+          <Field label="Key" error={error}>
+            {(control) => (
+              <Input
+                {...control}
+                ref={keyInputRef}
+                value={keyValue}
+                onChange={(e) => setKeyValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isConfirmDisabled) void handleConfirm();
+                  if (e.key === "Escape") onClose();
+                }}
+                disabled={isPending}
+              />
             )}
-          </div>
+          </Field>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={() => void handleConfirm()} disabled={isConfirmDisabled}>
-            {isPending ? "Creating…" : "Confirm"}
-          </Button>
+          <BusyButton
+            onClick={() => void handleConfirm()}
+            disabled={isConfirmDisabled}
+            isPending={isPending}
+            pendingLabel="Creating…"
+          >
+            Confirm
+          </BusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

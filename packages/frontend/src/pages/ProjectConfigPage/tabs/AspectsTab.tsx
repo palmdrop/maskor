@@ -8,8 +8,11 @@ import {
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
+import { FieldError } from "@components/ui/field-error";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -104,7 +107,7 @@ const AspectKeyInput = ({
           {currentKey}
         </button>
       )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      <FieldError>{error}</FieldError>
     </div>
   );
 };
@@ -200,32 +203,34 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
               <DialogTitle>New aspect</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="aspect-key">Key</Label>
-                <Input
-                  id="aspect-key"
-                  value={keyValue}
-                  onChange={(e) => setKeyValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreate();
-                  }}
-                  placeholder="e.g. tone"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="aspect-description">Description (optional)</Label>
-                <Input
-                  id="aspect-description"
-                  value={descriptionValue}
-                  onChange={(e) => setDescriptionValue(e.target.value)}
-                />
-              </div>
-              {createError && <p className="text-xs text-destructive">{createError}</p>}
+              <Field label="Key">
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={keyValue}
+                    onChange={(e) => setKeyValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreate();
+                    }}
+                    placeholder="e.g. tone"
+                  />
+                )}
+              </Field>
+              <Field label="Description (optional)">
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={descriptionValue}
+                    onChange={(e) => setDescriptionValue(e.target.value)}
+                  />
+                )}
+              </Field>
+              <FieldError>{createError}</FieldError>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createAspect.isPending}>
+              <BusyButton onClick={handleCreate} isPending={createAspect.isPending}>
                 Create
-              </Button>
+              </BusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -286,7 +291,7 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
         </div>
       )}
 
-      <Dialog
+      <ConfirmDialog
         open={confirmDeleteId !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -294,35 +299,18 @@ export const AspectsTab = ({ projectId }: { projectId: string }) => {
             setConfirmDeleteKey("");
           }
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete aspect</DialogTitle>
-          </DialogHeader>
+        title="Delete aspect"
+        body={
           <p className="text-sm text-muted-foreground">
             Delete <span className="font-mono text-foreground">{confirmDeleteKey}</span>? Fragments
             that reference this key will show warnings on the next rebuild.
           </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirmDeleteId(null);
-                setConfirmDeleteKey("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={deleteAspect.isPending}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteAspect.isPending}
+      />
     </div>
   );
 };

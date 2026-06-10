@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 import {
   Dialog,
   DialogContent,
@@ -132,9 +133,14 @@ export const AppendOrPrependDialog = ({
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={isPending || !selectionText.trim()}>
-            {isPending ? "Inserting…" : "Confirm"}
-          </Button>
+          <BusyButton
+            onClick={onConfirm}
+            disabled={!selectionText.trim()}
+            isPending={isPending}
+            pendingLabel="Inserting…"
+          >
+            Confirm
+          </BusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

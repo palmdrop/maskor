@@ -9,8 +9,9 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 import { Checkbox } from "@components/ui/checkbox";
 
 type Step = "confirm" | "result";
@@ -97,22 +98,27 @@ export const DeregisterDialog = ({
             </div>
 
             {deleteFiles && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="confirm-project-name">
-                  Type <strong>{projectName}</strong> to confirm permanent deletion
-                </Label>
-                <Input
-                  id="confirm-project-name"
-                  value={nameConfirmation}
-                  onChange={(e) => setNameConfirmation(e.target.value)}
-                  placeholder={projectName}
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleConfirm();
-                  }}
-                />
-              </div>
+              <Field
+                label={
+                  <>
+                    Type <strong>{projectName}</strong> to confirm permanent deletion
+                  </>
+                }
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={nameConfirmation}
+                    onChange={(e) => setNameConfirmation(e.target.value)}
+                    placeholder={projectName}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleConfirm();
+                    }}
+                  />
+                )}
+              </Field>
             )}
 
             {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
@@ -137,13 +143,15 @@ export const DeregisterDialog = ({
               >
                 Cancel
               </Button>
-              <Button
+              <BusyButton
                 variant="destructive"
                 onClick={handleConfirm}
-                disabled={!canConfirm || mutation.isPending}
+                disabled={!canConfirm}
+                isPending={mutation.isPending}
+                pendingLabel="Deregistering…"
               >
-                {mutation.isPending ? "Deregistering…" : "Deregister"}
-              </Button>
+                Deregister
+              </BusyButton>
             </>
           ) : (
             <Button onClick={() => handleOpenChange(false)}>Done</Button>

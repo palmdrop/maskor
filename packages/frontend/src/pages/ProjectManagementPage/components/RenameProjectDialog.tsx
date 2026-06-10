@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateProject, getListProjectsQueryKey } from "@api/generated/projects/projects";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 
 type RenameProjectDialogProps = {
   open: boolean;
@@ -52,17 +45,15 @@ export const RenameProjectDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Rename project</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="rename-project-name">Project name</Label>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Rename project"
+      body={
+        <Field label="Project name">
+          {(control) => (
             <Input
-              id="rename-project-name"
+              {...control}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="Project name"
@@ -72,24 +63,15 @@ export const RenameProjectDialog = ({
                 if (e.key === "Enter") handleSubmit();
               }}
             />
-          </div>
-
-          {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!nameInput.trim() || mutation.isPending}>
-            {mutation.isPending ? "Renaming…" : "Rename"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          )}
+        </Field>
+      }
+      error={mutation.error?.message}
+      confirmLabel="Rename"
+      pendingLabel="Renaming…"
+      onConfirm={handleSubmit}
+      isPending={mutation.isPending}
+      disabled={!nameInput.trim()}
+    />
   );
 };

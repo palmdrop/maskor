@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 
 type Step = "picker" | "uuid-conflict";
 
@@ -114,13 +115,14 @@ export const LocateVaultDialog = ({ open, onOpenChange, projectId }: LocateVault
             <Button variant="outline" onClick={handleBack} disabled={mutation.isPending}>
               Cancel
             </Button>
-            <Button
+            <BusyButton
               variant="destructive"
               onClick={handleForceOverride}
-              disabled={mutation.isPending}
+              isPending={mutation.isPending}
+              pendingLabel="Re-pointing…"
             >
-              {mutation.isPending ? "Re-pointing…" : "Re-point anyway"}
-            </Button>
+              Re-point anyway
+            </BusyButton>
           </DialogFooter>
         )}
       </DialogContent>

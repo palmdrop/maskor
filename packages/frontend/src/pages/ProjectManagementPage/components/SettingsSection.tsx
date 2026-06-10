@@ -4,6 +4,7 @@ import { useSettings, usePatchSettings, SETTINGS_QUERY_KEY_FN } from "@api/setti
 import { FolderPicker } from "@components/FolderPicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
+import { BusyButton } from "@components/ui/busy-button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useCommands } from "@lib/commands/useCommands";
@@ -107,13 +108,15 @@ export const SettingsSection = () => {
         )}
 
         <div className="flex items-center gap-3">
-          <Button
+          <BusyButton
             type="button"
             onClick={() => commands.run("project-management:save-settings")}
-            disabled={!managedRootInput.trim() || patchMutation.isPending}
+            disabled={!managedRootInput.trim()}
+            isPending={patchMutation.isPending}
+            pendingLabel="Saving…"
           >
-            {patchMutation.isPending ? "Saving…" : "Save"}
-          </Button>
+            Save
+          </BusyButton>
           {saved && <p className="text-xs text-muted-foreground">Saved.</p>}
         </div>
       </div>

@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateDraft, getListDraftsQueryKey } from "@api/generated/drafts/drafts";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
+import { ConfirmDialog } from "@components/ui/confirm-dialog";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Field } from "@components/ui/field";
 
 type CreateDraftDialogProps = {
   open: boolean;
@@ -73,52 +66,44 @@ export const CreateDraftDialog = ({
   })();
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Create draft</DialogTitle>
-        </DialogHeader>
-
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Create draft"
+      body={
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="create-draft-name">Name</Label>
-            <Input
-              id="create-draft-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              onKeyDown={(event) => {
-                if (event.key === "Enter") handleSubmit();
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="create-draft-note">Note (optional)</Label>
-            <Input
-              id="create-draft-note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Why are you saving this draft?"
-            />
-          </div>
-
-          {errorMessage && <p className="text-xs text-destructive">{errorMessage}</p>}
+          <Field label="Name">
+            {(control) => (
+              <Input
+                {...control}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleSubmit();
+                }}
+              />
+            )}
+          </Field>
+          <Field label="Note (optional)">
+            {(control) => (
+              <Input
+                {...control}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Why are you saving this draft?"
+              />
+            )}
+          </Field>
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || mutation.isPending}>
-            {mutation.isPending ? "Creating…" : "Create"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      }
+      error={errorMessage}
+      confirmLabel="Create"
+      pendingLabel="Creating…"
+      onConfirm={handleSubmit}
+      isPending={mutation.isPending}
+      disabled={!name.trim()}
+    />
   );
 };
