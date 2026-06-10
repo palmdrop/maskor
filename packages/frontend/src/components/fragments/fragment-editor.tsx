@@ -10,8 +10,6 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useGetFragment,
-  useUpdateFragment,
   useDiscardFragment,
   useRestoreFragment,
   getGetFragmentQueryKey,
@@ -19,8 +17,8 @@ import {
 } from "@api/generated/fragments/fragments";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
-import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import { useInvalidateActionLog } from "@api/action-log";
+import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import type { EditorMode } from "@components/margins/slot-editor";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
@@ -67,7 +65,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   ref,
 ) {
   const queryClient = useQueryClient();
-  const { data: envelope, isLoading, isError } = useGetFragment(projectId, fragmentId);
+  const editor = useEntityEditor("fragment", projectId, fragmentId);
   const { data: projectEnvelope } = useGetProject(projectId);
   const { data: sequenceBundleEnvelope } = useListSequences(projectId);
   const sequences =
@@ -81,7 +79,6 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     setPlaceInSequenceId(sequenceId);
     setIsPlaceInSequenceOpen(true);
   }, []);
-  const { mutateAsync: updateFragment, isPending: isUpdatePending } = useUpdateFragment();
   const { mutateAsync: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutateAsync: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
@@ -134,7 +131,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   // Live fragment body, tracked so the Margin column can enumerate the fragment's blocks and bind
   // comments live. Seeded from the server fragment; updated on each edit.
   const [fragmentContent, setFragmentContent] = useState("");
-  const fragment = envelope?.status === 200 ? envelope.data : null;
+  const fragment = editor.entity;
   useEffect(() => {
     if (fragment && !isProseDirty) setFragmentContent(fragment.content);
   }, [fragment?.content, isProseDirty]);
@@ -157,7 +154,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     [],
   );
 
-  const isActionPending = isUpdatePending || isDiscardPending || isRestorePending;
+  const isActionPending = editor.isPending || isDiscardPending || isRestorePending;
 
   const invalidateFragment = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: getGetFragmentQueryKey(projectId, fragmentId) });
@@ -166,58 +163,22 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   const invalidateActionLog = useInvalidateActionLog(projectId);
 
-  const invalidateFragmentStats = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: getGetFragmentStatsQueryKey(projectId, fragmentId),
-    });
-  }, [queryClient, projectId, fragmentId]);
-
-  const onKeySave = useCallback(
-    async (key: string) => {
-      const result = await updateFragment({ projectId, fragmentId, data: { key } });
-      if (result.status !== 200) {
-        throw new Error((result.data as { message?: string }).message ?? "Rename failed.");
-      }
-      invalidateFragment();
-      invalidateActionLog();
-    },
-    [updateFragment, projectId, fragmentId, invalidateFragment, invalidateActionLog],
-  );
-
   const onContentSave = useCallback(
     async (content: string) => {
       // Coupled save (margins-4 #10, #13): the editor's save persists the fragment and its Margin
-      // together. Save the fragment only when its prose changed; always flush a dirty Margin (and
-      // drop its swap mirror). Each side still persists on its own next save if the other is clean.
+      // together. Save the fragment only when its prose changed (the editor core reconciles the
+      // server fragment, invalidates the list, and refreshes stats + action log); always flush a
+      // dirty Margin and drop its swap mirror. Each side still persists on its own next save if
+      // the other is clean.
       if (isProseDirty) {
-        const result = await updateFragment({
-          projectId,
-          fragmentId,
-          data: { content },
-        });
-        if (result.status !== 200) {
-          throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-        }
-        invalidateFragment();
-        invalidateFragmentStats();
-        invalidateActionLog();
+        await editor.onContentSave(content);
       }
       if (marginEditor.isDirty) {
         await marginEditor.save();
         await marginSwap.clear();
       }
     },
-    [
-      updateFragment,
-      projectId,
-      fragmentId,
-      invalidateFragment,
-      invalidateFragmentStats,
-      invalidateActionLog,
-      isProseDirty,
-      marginEditor,
-      marginSwap,
-    ],
+    [editor, isProseDirty, marginEditor, marginSwap],
   );
 
   const handleDiscard = useCallback(
@@ -324,20 +285,19 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
     return customizeExtraActions ? customizeExtraActions(discardButton) : discardButton;
   }, [
-    isUpdatePending,
+    isActionPending,
     isDiscardPending,
     isRestorePending,
     fragment?.isDiscarded,
-    handleRestore,
-    handleDiscard,
+    commands,
     customizeExtraActions,
   ]);
 
-  if (isLoading) {
+  if (editor.isLoading) {
     return <p>Loading fragment…</p>;
   }
 
-  if (isError || !fragment) {
+  if (editor.isError || !fragment) {
     return <p>Failed to load fragment.</p>;
   }
 
@@ -403,7 +363,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           onSaved?.();
         }}
         onContentRevert={() => setIsProseDirty(false)}
-        onKeySave={onKeySave}
+        onKeySave={editor.onKeySave}
         onContentSave={onContentSave}
         sidebar={
           <div className="flex flex-col gap-4">

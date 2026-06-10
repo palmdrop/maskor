@@ -126,6 +126,7 @@ vi.mock("@api/generated/stats/stats", () => ({
 
 vi.mock("@api/action-log", () => ({
   useInvalidateActionLog: () => vi.fn(),
+  getActionLogQueryKey: (projectId: string) => ["action-log", projectId],
 }));
 
 import { FragmentEditor } from "./fragment-editor";

@@ -104,14 +104,14 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 - [x] Confirm tests pass; adjusted the seams: AspectEditor test mocks add `getActionLogQueryKey`; `OverviewPage.test` gains `mutateAsync` on the unplace mock and switches its partial `aspects`/`fragments` mocks to `importOriginal` (entityHooks now references all four entity modules transitively)
 - [x] `git commit`
 
-### Phase 6 — Migrate FragmentEditor and FragmentMetadataForm (candidate 2)
+### Phase 6 — Migrate FragmentEditor and FragmentMetadataForm (candidate 2) — DONE
 
 **Goal**: The fragment surfaces share the same core while keeping the Margin pair.
 
-- [ ] Route `FragmentEditor`'s entity load + key/content save through `useEntityEditor`, leaving the Margin-pair wiring intact
-- [ ] Replace `FragmentMetadataForm`'s bespoke `makeSave` with the primitive (or `makeFieldSave`) for readiness / references / aspects fields
-- [ ] Confirm fragment editor + metadata-form tests pass
-- [ ] `git commit`
+- [x] Route `FragmentEditor`'s entity load + key save through `useEntityEditor`; the coupled content save now wraps `editor.onContentSave` (fragment + stats + list + action log) with the Margin flush + swap-clear, gated on `isProseDirty`. Discard/restore keep their own `invalidateFragment` / `invalidateActionLog`.
+- [x] Replace `FragmentMetadataForm`'s bespoke `makeSave` with `useEntityEditor(...).makeFieldSave` for readiness / references / aspects (the redundant `applyToFragment` collapsed — the primitive merges the patch carried in the mutation variables)
+- [x] Confirm fragment editor + metadata-form tests pass; added `getActionLogQueryKey` to the fragment test action-log mocks
+- [x] `git commit`
 
 ### Phase 7 — Extract insert/extract orchestration from `EntityEditorShell`
 

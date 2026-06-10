@@ -1,18 +1,13 @@
 import { useMemo, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Fragment, FragmentUpdate } from "@api/generated/maskorAPI.schemas";
-import {
-  useUpdateFragment,
-  getGetFragmentQueryKey,
-  getListFragmentsQueryKey,
-} from "@api/generated/fragments/fragments";
+import type { Fragment } from "@api/generated/maskorAPI.schemas";
 import {
   useListAspects,
   useCreateAspect,
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
 import { useListReferences } from "@api/generated/references/references";
-import { useInvalidateActionLog } from "@api/action-log";
+import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
@@ -51,8 +46,8 @@ type Props = {
 
 export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   const queryClient = useQueryClient();
-  const { mutateAsync: updateFragment } = useUpdateFragment();
   const { mutateAsync: createAspect } = useCreateAspect();
+  const { makeFieldSave } = useEntityEditor("fragment", projectId, fragment.uuid);
   const [createAspectError, setCreateAspectError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);
@@ -67,87 +62,15 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     return new Map(references.map((reference) => [reference.key, reference.uuid]));
   }, [referencesEnvelope]);
 
-  const fragmentQueryKey = useMemo(
-    () => getGetFragmentQueryKey(projectId, fragment.uuid),
-    [projectId, fragment.uuid],
-  );
-
-  const invalidateFragment = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: fragmentQueryKey });
-    queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
-  }, [queryClient, fragmentQueryKey, projectId]);
-
-  const invalidateActionLog = useInvalidateActionLog(projectId);
-
-  const makeSave = useCallback(
-    <T,>(
-      applyToFragment: (current: Fragment, value: T) => Partial<Fragment>,
-      toPatch: (value: T) => FragmentUpdate,
-    ) =>
-      async (value: T) => {
-        type CacheEntry = { data: Fragment; status: number };
-        const snapshot = queryClient.getQueryData<CacheEntry>(fragmentQueryKey);
-        if (snapshot?.status === 200) {
-          queryClient.setQueryData(fragmentQueryKey, {
-            ...snapshot,
-            data: { ...snapshot.data, ...applyToFragment(snapshot.data as Fragment, value) },
-          });
-        }
-        try {
-          const result = await updateFragment({
-            projectId,
-            fragmentId: fragment.uuid,
-            data: toPatch(value),
-          });
-          if (result.status !== 200) {
-            throw new Error((result.data as { message?: string }).message ?? "Save failed.");
-          }
-          // Replace the optimistic value with the authoritative server response.
-          // Avoids invalidating the single-fragment query, which would refetch
-          // and overwrite the optimistic write before the user sees it settle.
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(fragmentQueryKey, {
-              ...snapshot,
-              data: result.data.fragment,
-            });
-          }
-          queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) });
-        } catch (err) {
-          if (snapshot !== undefined) {
-            queryClient.setQueryData(fragmentQueryKey, snapshot);
-          }
-          invalidateFragment();
-          throw err;
-        } finally {
-          invalidateActionLog();
-        }
-      },
-    [
-      queryClient,
-      fragmentQueryKey,
-      updateFragment,
-      projectId,
-      fragment.uuid,
-      invalidateFragment,
-      invalidateActionLog,
-    ],
-  );
-
   const readinessField = useLiveFieldSave({
     serverValue: fragment.readiness,
-    save: makeSave(
-      (_, value) => ({ readiness: value }),
-      (value) => ({ readiness: value }),
-    ),
+    save: makeFieldSave<number>((value) => ({ readiness: value })),
   });
 
   const referencesField = useLiveFieldSave({
     serverValue: fragment.references,
     isEqual: stringSetEqual,
-    save: makeSave(
-      (_, value) => ({ references: value }),
-      (value) => ({ references: value }),
-    ),
+    save: makeFieldSave<string[]>((value) => ({ references: value })),
   });
 
   const knownAspectKeys = useMemo(
@@ -177,10 +100,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   const aspectsField = useLiveFieldSave({
     serverValue: normalizedAspects,
     isEqual: aspectsEqual,
-    save: makeSave(
-      (_, value) => ({ aspects: value }),
-      (value) => ({ aspects: value }),
-    ),
+    save: makeFieldSave<Record<string, { weight: number }>>((value) => ({ aspects: value })),
   });
 
   const liveAspects = useMemo(
