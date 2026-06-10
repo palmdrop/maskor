@@ -25,6 +25,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("@api/generated/projects/projects", () => ({
+  useGetProject: () => ({ data: undefined }),
   useUpdateProject: () => ({ mutateAsync: vi.fn().mockResolvedValue({ status: 200 }) }),
   getGetProjectQueryKey: () => ["project"],
   getListProjectsQueryKey: () => ["projects"],

@@ -7,12 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useUpdateProject,
-  getGetProjectQueryKey,
-  getListProjectsQueryKey,
-} from "@api/generated/projects/projects";
 import {
   ProseEditor,
   type ProseEditorHandle,
@@ -27,6 +21,7 @@ import { EditorDisplaySettings } from "./editor-display-settings";
 import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { useProjectSetting } from "@hooks/useProjectSetting";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedCursor } from "@hooks/usePersistedCursor";
 import { useEntityContentSwap, type SwapEntityKind } from "@hooks/useEntityContentSwap";
@@ -121,86 +116,41 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     },
     ref,
   ) {
-    const queryClient = useQueryClient();
-    const updateProject = useUpdateProject();
-
     const editorConfig = useProjectEditorConfig(projectId);
     // Cursor position is persisted per editing mode — switching mode reads that
     // mode's own slot (or starts from the top), and offsets aren't comparable
     // across the CodeMirror/ProseMirror backends anyway.
     const editorMode = editorConfig.vimMode ? "vim" : editorConfig.rawMarkdownMode ? "raw" : "rich";
 
-    const [localFontSize, setLocalFontSize] = useState(editorConfig.fontSize);
-    const [localMaxParagraphWidth, setLocalMaxParagraphWidth] = useState(
-      editorConfig.maxParagraphWidth,
-    );
+    // Display settings own their save lifecycle (draft during drag, commit on release, resync
+    // from server) — the same hook GeneralTab uses, so the write path lives in one place.
+    const fontSize = useProjectSetting(projectId, "editor.fontSize", 16);
+    const maxParagraphWidth = useProjectSetting(projectId, "editor.maxParagraphWidth", 72);
+    const vimClipboardSync = useProjectSetting(projectId, "editor.vimClipboardSync", true);
 
-    useEffect(() => {
-      setLocalFontSize(editorConfig.fontSize);
-    }, [editorConfig.fontSize]);
-
-    useEffect(() => {
-      setLocalMaxParagraphWidth(editorConfig.maxParagraphWidth);
-    }, [editorConfig.maxParagraphWidth]);
-
-    const invalidateProject = useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    }, [queryClient, projectId]);
-
-    const persistFontSize = useCallback(
-      async (value: number) => {
-        await updateProject.mutateAsync({ projectId, data: { editor: { fontSize: value } } });
-        invalidateProject();
+    // The +/- commands set the draft for instant feedback, then commit the stepped value.
+    const stepFontSize = useCallback(
+      (delta: number) => {
+        const next = Math.min(Math.max(fontSize.value + delta, 12), 24);
+        fontSize.setDraft(next);
+        void fontSize.commit(next);
       },
-      [updateProject, projectId, invalidateProject],
+      [fontSize],
     );
 
-    const persistMaxParagraphWidth = useCallback(
-      async (value: number) => {
-        await updateProject.mutateAsync({
-          projectId,
-          data: { editor: { maxParagraphWidth: value } },
-        });
-        invalidateProject();
+    const stepMargin = useCallback(
+      (delta: number) => {
+        const next = Math.min(Math.max(maxParagraphWidth.value + delta, 40), 120);
+        maxParagraphWidth.setDraft(next);
+        void maxParagraphWidth.commit(next);
       },
-      [updateProject, projectId, invalidateProject],
+      [maxParagraphWidth],
     );
 
-    const handleIncreaseFontSize = useCallback(() => {
-      const next = Math.min(editorConfig.fontSize + 1, 24);
-      setLocalFontSize(next);
-      void persistFontSize(next);
-    }, [editorConfig.fontSize, persistFontSize]);
-
-    const handleDecreaseFontSize = useCallback(() => {
-      const next = Math.max(editorConfig.fontSize - 1, 12);
-      setLocalFontSize(next);
-      void persistFontSize(next);
-    }, [editorConfig.fontSize, persistFontSize]);
-
-    const handleIncreaseMargin = useCallback(() => {
-      const next = Math.min(editorConfig.maxParagraphWidth + 4, 120);
-      setLocalMaxParagraphWidth(next);
-      void persistMaxParagraphWidth(next);
-    }, [editorConfig.maxParagraphWidth, persistMaxParagraphWidth]);
-
-    const handleDecreaseMargin = useCallback(() => {
-      const next = Math.max(editorConfig.maxParagraphWidth - 4, 40);
-      setLocalMaxParagraphWidth(next);
-      void persistMaxParagraphWidth(next);
-    }, [editorConfig.maxParagraphWidth, persistMaxParagraphWidth]);
-
-    const handleToggleVimClipboardSync = useCallback(
-      async (checked: boolean) => {
-        await updateProject.mutateAsync({
-          projectId,
-          data: { editor: { vimClipboardSync: checked } },
-        });
-        invalidateProject();
-      },
-      [updateProject, projectId, invalidateProject],
-    );
+    const handleIncreaseFontSize = useCallback(() => stepFontSize(1), [stepFontSize]);
+    const handleDecreaseFontSize = useCallback(() => stepFontSize(-1), [stepFontSize]);
+    const handleIncreaseMargin = useCallback(() => stepMargin(4), [stepMargin]);
+    const handleDecreaseMargin = useCallback(() => stepMargin(-4), [stepMargin]);
 
     const cursor = usePersistedCursor(
       `maskor:cursor:${projectId}:${entityKind}:${entityUUID}:${editorMode}`,
@@ -327,8 +277,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       insertTo: insertExtract.insertTo,
       canSave: isDirty && !isPending,
       save: handleContentSave,
-      fontSize: localFontSize,
-      maxParagraphWidth: localMaxParagraphWidth,
+      fontSize: fontSize.draft,
+      maxParagraphWidth: maxParagraphWidth.draft,
       increaseFontSize: handleIncreaseFontSize,
       decreaseFontSize: handleDecreaseFontSize,
       increaseMargin: handleIncreaseMargin,
@@ -389,15 +339,15 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           <div className="flex items-center gap-2">
             {extraActions}
             <EditorDisplaySettings
-              fontSize={localFontSize}
-              maxParagraphWidth={localMaxParagraphWidth}
-              onFontSizeChange={setLocalFontSize}
-              onFontSizeCommit={(value) => void persistFontSize(value)}
-              onMaxParagraphWidthChange={setLocalMaxParagraphWidth}
-              onMaxParagraphWidthCommit={(value) => void persistMaxParagraphWidth(value)}
+              fontSize={fontSize.draft}
+              maxParagraphWidth={maxParagraphWidth.draft}
+              onFontSizeChange={fontSize.setDraft}
+              onFontSizeCommit={(value) => void fontSize.commit(value)}
+              onMaxParagraphWidthChange={maxParagraphWidth.setDraft}
+              onMaxParagraphWidthCommit={(value) => void maxParagraphWidth.commit(value)}
               vimMode={editorConfig.vimMode}
-              vimClipboardSync={editorConfig.vimClipboardSync}
-              onToggleVimClipboardSync={(checked) => void handleToggleVimClipboardSync(checked)}
+              vimClipboardSync={vimClipboardSync.value}
+              onToggleVimClipboardSync={(checked) => void vimClipboardSync.set(checked)}
             />
             <Button
               size="sm"
@@ -452,9 +402,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               content={content}
               vimMode={editorConfig.vimMode}
               rawMarkdownMode={editorConfig.rawMarkdownMode}
-              fontSize={localFontSize}
-              maxParagraphWidth={localMaxParagraphWidth}
-              vimClipboardSync={editorConfig.vimClipboardSync}
+              fontSize={fontSize.draft}
+              maxParagraphWidth={maxParagraphWidth.draft}
+              vimClipboardSync={vimClipboardSync.value}
               onSave={() => commands.run("editor:save")}
               onChange={handleProseChange}
               onActiveBlockChange={onActiveBlockChange}
