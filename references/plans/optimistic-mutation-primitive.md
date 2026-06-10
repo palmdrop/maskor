@@ -84,15 +84,15 @@ Relationship to existing work: `references/plans/entity-editor-unification.md` a
 - [x] Extract a local `buildImportOptions(format, headingLevel, delimiter)` helper in `FragmentImportPage` for the `options` JSON string built identically in `runPreview` and `handleImport`
 - [x] `git commit`
 
-### Phase 4 — Registry rows + `useEntityEditor` (candidate 2 foundation)
+### Phase 4 — Registry rows + `useEntityEditor` (candidate 2 foundation) — DONE
 
 **Goal**: A registry-driven hook returning the full editor core. No editor migrated yet.
 
-- [ ] Extend `src/lib/entity-kinds/` with an `ENTITY_HOOKS` record: per kind, uncalled `useGet` / `useUpdate` refs, `getQueryKey`, `listQueryKey`, `selectEntity`, `selectWarnings`, body field
-- [ ] Create `src/lib/entity-kinds/useEntityEditor.ts` returning `entity`, `isLoading`, `isError`, `isPending` (content-save only), `cascadeWarnings`, `dismissWarnings`, `onKeySave`, `onContentSave`, and a `makeFieldSave` for sidebar live fields
-- [ ] Build the two `useUpdate` instances internally (content vs metadata) via the Phase 1 primitive; reconcile through `selectEntity`
-- [ ] Unit tests for the `ENTITY_HOOKS` selectors
-- [ ] `git commit`
+- [x] Extend `src/lib/entity-kinds/` with an `ENTITY_HOOKS` record (`entityHooks.ts`): per kind, uncalled `useGet` / `useUpdate` refs, `getEntityQueryKey`, `getListQueryKey`, `idParamKey`, `bodyField`, `selectEntity`, `selectWarnings`, optional `getExtraInvalidateKeys` (fragment → stats). Per-kind type maps (`EntityFor` / `EntityUpdateFor` / `EntityUpdateResponseFor`) re-attach strong types at the hook boundary.
+- [x] Create `src/lib/entity-kinds/useEntityEditor.ts` returning `entity`, `isLoading`, `isError`, `isPending` (content-save only), `cascadeWarnings`, `dismissWarnings`, `onKeySave`, `onContentSave`, `makeFieldSave`
+- [x] Build the two `useUpdate` instances internally (content vs field) via the Phase 1 primitive; one shared optimistic config — `apply` merges the patch carried in `variables.data`, `reconcile` writes `selectEntity(unwrap(response))`. Extended the primitive with `settleInvalidate[]` (action-log refresh on settle, replacing the editors' `finally`).
+- [x] Unit tests for the `ENTITY_HOOKS` selectors (+ primitive `settleInvalidate` tests)
+- [x] `git commit`
 
 ### Phase 5 — Migrate Aspect, Reference, Note editors (candidate 2)
 

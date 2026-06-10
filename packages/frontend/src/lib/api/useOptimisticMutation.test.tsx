@@ -130,4 +130,32 @@ describe("useOptimisticMutation", () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: [...otherKey] });
   });
+
+  it("invalidates settleInvalidate[] keys on success", async () => {
+    seed(queryClient, 1);
+    const mutationFn = vi.fn(() => Promise.resolve<Response>({ value: 42 }));
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderMutation(mutationFn, { settleInvalidate: [["action-log"]] });
+
+    await act(async () => {
+      await result.current.mutateAsync({ delta: 5 });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["action-log"] });
+  });
+
+  it("invalidates settleInvalidate[] keys on error too", async () => {
+    seed(queryClient, 10);
+    const mutationFn = vi.fn(() => Promise.reject(new Error("boom")));
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderMutation(mutationFn, { settleInvalidate: [["action-log"]] });
+
+    await act(async () => {
+      await result.current.mutateAsync({ delta: 5 }).catch(() => {});
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["action-log"] });
+  });
 });

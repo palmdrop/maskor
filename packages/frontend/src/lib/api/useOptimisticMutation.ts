@@ -21,12 +21,18 @@ export type OptimisticMutationConfig<TCache, TVariables, TResponse> = {
   reconcile?: (previous: TCache | undefined, response: TResponse) => TCache | undefined;
   /** Extra query keys to invalidate on success, regardless of reconcile vs. invalidate. */
   invalidate?: QueryKey[];
+  /**
+   * Query keys to invalidate on settle — after success *or* error. Mirrors the editors'
+   * `finally { invalidateActionLog() }`: the action log must refresh whether the save
+   * landed or failed (a failed command records its own `command:error` entry).
+   */
+  settleInvalidate?: QueryKey[];
 };
 
 /** The slice of orval's `mutation` option this primitive owns. */
 export type OptimisticMutationOptions<TCache, TVariables, TResponse, TError> = Pick<
   UseMutationOptions<TResponse, TError, TVariables, OptimisticMutationContext<TCache>>,
-  "onMutate" | "onError" | "onSuccess"
+  "onMutate" | "onError" | "onSuccess" | "onSettled"
 >;
 
 /**
@@ -39,6 +45,7 @@ export type OptimisticMutationOptions<TCache, TVariables, TResponse, TError> = P
  * - `onError`: restore the snapshot.
  * - `onSuccess`: reconcile the authoritative response into the target (if `reconcile` is
  *   given) or invalidate it, then invalidate every `invalidate[]` key.
+ * - `onSettled`: invalidate every `settleInvalidate[]` key (success or error).
  *
  * `customFetch` throws `ApiRequestError` on any non-2xx, so `onError` fires precisely when
  * the request fails — the rollback is correct without any in-band status checking here.
@@ -47,7 +54,7 @@ export const useOptimisticMutation = <TCache, TVariables, TResponse = unknown, T
   config: OptimisticMutationConfig<TCache, TVariables, TResponse>,
 ): OptimisticMutationOptions<TCache, TVariables, TResponse, TError> => {
   const queryClient = useQueryClient();
-  const { queryKey, apply, reconcile, invalidate } = config;
+  const { queryKey, apply, reconcile, invalidate, settleInvalidate } = config;
 
   return {
     onMutate: async (variables) => {
@@ -68,6 +75,11 @@ export const useOptimisticMutation = <TCache, TVariables, TResponse = unknown, T
         void queryClient.invalidateQueries({ queryKey });
       }
       for (const key of invalidate ?? []) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
+    },
+    onSettled: () => {
+      for (const key of settleInvalidate ?? []) {
         void queryClient.invalidateQueries({ queryKey: key });
       }
     },
