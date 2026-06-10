@@ -11,22 +11,17 @@ import CodeMirror, { EditorView, keymap, Prec } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { stripCommentMarkers, splitCommentMarkers } from "@maskor/shared";
+import { splitCommentMarkers } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { cmAnchorExtension, setCmAnchorsEffect, cmAnchorBlockIndex } from "./anchor-cm";
 import { cmAnchorHighlightExtension } from "./anchor-highlight-cm";
-import {
-  tiptapAnchorExtension,
-  tiptapAnchorKey,
-  tiptapAnchorBlockIndex,
-  extractTiptapAnchors,
-  serializeTiptapWithMarkers,
-} from "./anchor-tiptap";
+import { tiptapAnchorExtension, extractTiptapAnchors } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
-import { richEditorBlocks, markerForBlock, type EditorBlock } from "./editor-geometry";
+import { markerForBlock, type EditorBlock } from "./editor-geometry";
 import { isTrailingWhitespaceEquivalent } from "./buffer-sync";
 import { ProseToolbar } from "./prose-toolbar";
 import { createCodeMirrorProseAdapter } from "./prose-editor-cm-adapter";
+import { createTiptapProseAdapter } from "./prose-editor-tiptap-adapter";
 
 // Re-exported so existing consumers keep importing the block shape from the editor entry point.
 export type { EditorBlock };
@@ -77,14 +72,6 @@ export type ProseEditorHandle = {
   // Highlight the block a Margin comment is anchored to (the reciprocal connection cue), or null to
   // clear. Presentation only (a line decoration). vim/raw only; rich is a no-op in this iteration.
   setHighlightedAnchor: (markerId: string | null) => void;
-};
-
-// Append an anchor at a ProseMirror position (block end). Coordinated-edit semantics: held as an
-// anchor, not buffer text; the caller fires onChange so the fragment dirties and the marker
-// re-emits on the next save.
-const addTiptapAnchor = (editor: Editor, pos: number, markerId: string): void => {
-  const current = tiptapAnchorKey.getState(editor.state) ?? [];
-  editor.view.dispatch(editor.state.tr.setMeta(tiptapAnchorKey, [...current, { markerId, pos }]));
 };
 
 type Props = {
@@ -302,6 +289,10 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     },
   });
 
+  // Latest editor instance, read by the TipTap adapter's `getEditor` accessor.
+  const editorRef = useRef<Editor | null>(editor);
+  editorRef.current = editor;
+
   // Sync server content into the rich editor, then restore the persisted caret.
   // Restoring here — rather than in a separate effect — guarantees the document
   // already holds the loaded content, so the saved offset lands correctly
@@ -353,6 +344,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
 
   // The CodeMirror (vim + raw) backend behind the handle. Stable: it reads the live view, the
   // latest content, and the change notifier through injected accessors.
+  // The two backends behind the handle, each a pure adapter reading its live backend, the latest
+  // content, and the change notifier through injected accessors. Both are stable.
   const cmAdapter = useMemo(
     () =>
       createCodeMirrorProseAdapter({
@@ -364,84 +357,24 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [],
   );
 
-  useImperativeHandle(ref, (): ProseEditorHandle => {
-    if (vimMode || rawMarkdownMode) return cmAdapter;
-    // Rich (TipTap) backend — extracted into its own adapter in the next phase.
-    return {
-      getContent: () => {
-        if (!editor) return content;
-        return serializeTiptapWithMarkers(editor);
-      },
-      setContent: (value: string) => {
-        if (!editor) return;
-        isLoadingRef.current = true;
-        editor.commands.setContent(value, { emitUpdate: false });
-        extractTiptapAnchors(editor);
-        isLoadingRef.current = false;
-      },
-      getSelection: (): SelectionCapture => {
-        if (!editor) return { text: "", isEmpty: true };
-        const { from, to } = editor.state.selection;
-        if (from === to) return { text: "", isEmpty: true };
-        const slice = editor.state.doc.slice(from, to);
-        const storage = editor.storage as unknown as MarkdownStorage;
-        const raw = storage.markdown.serializer.serialize(slice.content);
-        const text = raw.trim();
-        return { text, isEmpty: text.length === 0 };
-      },
-      focus: () => {
-        editor?.commands.focus();
-      },
-      getCurrentBlock: () => {
-        if (!editor) return null;
-        const { $from } = editor.state.selection;
-        const pos = $from.pos;
-        let index = 0;
-        editor.state.doc.forEach((node, offset, childIndex) => {
-          if (pos >= offset && pos <= offset + node.nodeSize) index = childIndex;
-        });
-        const markerId = markerForBlock(tiptapAnchorBlockIndex(editor.state), index);
-        return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId, index };
-      },
-      addAnchorAtBlock: (blockIndex: number, markerId: string) => {
-        if (!editor) return;
-        let blockEnd: number | null = null;
-        editor.state.doc.forEach((node, offset, index) => {
-          if (index === blockIndex) blockEnd = offset + 1 + node.content.size;
-        });
-        if (blockEnd === null) return;
-        addTiptapAnchor(editor, blockEnd, markerId);
-        onChangeRef.current?.();
-      },
-      removeAnchor: (markerId: string) => {
-        if (!editor) return;
-        const current = tiptapAnchorKey.getState(editor.state) ?? [];
-        const next = current.filter((anchor) => anchor.markerId !== markerId);
-        editor.view.dispatch(editor.state.tr.setMeta(tiptapAnchorKey, next));
-        onChangeRef.current?.();
-      },
-      revealAnchor: (markerId: string) => {
-        if (!editor) return;
-        const anchor = (tiptapAnchorKey.getState(editor.state) ?? []).find(
-          (entry) => entry.markerId === markerId,
-        );
-        if (anchor) editor.chain().setTextSelection(anchor.pos).scrollIntoView().run();
-      },
-      focusAnchorBlock: (markerId: string) => {
-        if (!editor) return;
-        const anchor = (tiptapAnchorKey.getState(editor.state) ?? []).find(
-          (entry) => entry.markerId === markerId,
-        );
-        if (anchor) editor.chain().focus().setTextSelection(anchor.pos).scrollIntoView().run();
-      },
-      getScrollElement: (): HTMLElement | null => richScrollerRef.current,
-      getBlocks: (): EditorBlock[] =>
-        editor ? richEditorBlocks(editor, richScrollerRef.current) : [],
-      setHighlightedAnchor: () => {
-        // vim/raw only (the bug-fix + cue scope). Rich mode is a no-op for now.
-      },
-    };
-  }, [vimMode, rawMarkdownMode, editor, content, cmAdapter]);
+  const tiptapAdapter = useMemo(
+    () =>
+      createTiptapProseAdapter({
+        getEditor: () => editorRef.current,
+        getFallbackContent: () => contentRef.current,
+        getScroller: () => richScrollerRef.current,
+        setLoading: (loading) => {
+          isLoadingRef.current = loading;
+        },
+        notifyChange: () => onChangeRef.current?.(),
+      }),
+    [],
+  );
+
+  // The handle is a single adapter selection — `kind` is fixed per mount, but the mode props can
+  // flip, so the active adapter is chosen here rather than baked into the handle.
+  const activeAdapter = vimMode || rawMarkdownMode ? cmAdapter : tiptapAdapter;
+  useImperativeHandle(ref, () => activeAdapter, [activeAdapter]);
 
   // fontSize is set on the same element as maxWidth so `ch` resolves against the
   // rendered text size — otherwise `ch` falls back to the browser default (16px)
