@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Button } from "@components/ui/button";
 import { BusyButton } from "@components/ui/busy-button";
+import { SegmentedControl, type SegmentedControlOption } from "@components/ui/segmented-control";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,16 @@ const truncatePreview = (text: string) =>
 export type InsertDirection = "append" | "prepend";
 export type InsertSourceMode = "keep" | "cut";
 export type InsertNextMode = "switch" | "stay";
+
+const SOURCE_OPTIONS: readonly SegmentedControlOption<InsertSourceMode>[] = [
+  { value: "keep", label: "Keep" },
+  { value: "cut", label: "Cut" },
+];
+
+const NEXT_OPTIONS: readonly SegmentedControlOption<InsertNextMode>[] = [
+  { value: "switch", label: "Switch" },
+  { value: "stay", label: "Stay" },
+];
 
 type TargetEntityType = "fragment" | "note" | "reference" | "aspect";
 
@@ -85,22 +96,13 @@ export const AppendOrPrependDialog = ({
             <div className="flex flex-col gap-1">
               <p className="text-xs text-muted-foreground">Source</p>
               <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant={sourceMode === "keep" ? "default" : "outline"}
-                  onClick={() => onSourceModeChange("keep")}
+                <SegmentedControl
+                  aria-label="Source mode"
+                  options={SOURCE_OPTIONS}
+                  value={sourceMode}
+                  onChange={onSourceModeChange}
                   disabled={isPending}
-                >
-                  Keep
-                </Button>
-                <Button
-                  size="sm"
-                  variant={sourceMode === "cut" ? "default" : "outline"}
-                  onClick={() => onSourceModeChange("cut")}
-                  disabled={isPending}
-                >
-                  Cut
-                </Button>
+                />
                 <Button size="sm" variant="outline" disabled title="Link mode is not yet available">
                   Link
                 </Button>
@@ -108,24 +110,13 @@ export const AppendOrPrependDialog = ({
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-xs text-muted-foreground">After confirm</p>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant={nextMode === "switch" ? "default" : "outline"}
-                  onClick={() => onNextModeChange("switch")}
-                  disabled={isPending}
-                >
-                  Switch
-                </Button>
-                <Button
-                  size="sm"
-                  variant={nextMode === "stay" ? "default" : "outline"}
-                  onClick={() => onNextModeChange("stay")}
-                  disabled={isPending}
-                >
-                  Stay
-                </Button>
-              </div>
+              <SegmentedControl
+                aria-label="After confirm"
+                options={NEXT_OPTIONS}
+                value={nextMode}
+                onChange={onNextModeChange}
+                disabled={isPending}
+              />
             </div>
           </div>
         </div>

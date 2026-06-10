@@ -1,7 +1,7 @@
 # View-layer component refactor
 
 **Date**: 10-06-2026
-**Status**: Todo
+**Status**: In progress (Phases 1–5 done; Phase 6 deferred until Plan 3 lands)
 
 ---
 
@@ -66,9 +66,9 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 
 ### Phase 5 — `SegmentedControl` (watch-item, optional)
 
-- [ ] Add `SegmentedControl<T>` (`options, value, onChange`, per-option `disabled`) rendering the Button row internally; or adopt Radix ToggleGroup.
-- [ ] Adopt in `append-or-prepend-dialog.tsx` (Keep/Cut/Link, Switch/Stay). Skip if no second consumer materializes — re-evaluate against import/extract flows first.
-- [ ] Test selection behavior; `bun run format` then `bun run verify`. `git commit`.
+- [x] Added `SegmentedControl<T>` (`options, value, onChange`, per-option `disabled`, whole-control `disabled`, `size`) rendering the `Button` row internally with `aria-pressed`. Chose the Button-row implementation over Radix ToggleGroup — it reuses the existing `Button` variants (selected = `default`, rest = `outline`) so it matches the prior markup exactly.
+- [x] Adopted in `append-or-prepend-dialog.tsx`: the Source row (Keep/Cut via `SegmentedControl`, with the disabled "Link" placeholder kept as a sibling `Button` since "link" is not a selectable `InsertSourceMode`) and the After-confirm row (Switch/Stay). Two consumers in one file; no other file used the toggle pattern (`grep '? "default" : "outline"'`).
+- [x] Test selection behavior (`segmented-control.test.tsx`: pressed state, onChange value, per-option disabled, whole-control disabled); `bun run format` then `bun run verify`. Frontend typecheck adds no new errors; 679 frontend tests pass. (`verify` red at HEAD from pre-existing out-of-scope errors — see Phase 1 note.) `git commit`.
 
 ### Phase 6 — Overview render-tree decomposition (DEFERRED until Plan 3 lands)
 
