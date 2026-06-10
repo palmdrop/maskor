@@ -35,17 +35,14 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
-import {
-  writeOverviewSequence,
-  writeOverviewSelection,
-  overviewScrollKey,
-  readOverviewSelection,
-} from "@lib/nav-state";
+import { writeOverviewSequence, overviewScrollKey } from "@lib/nav-state";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
 import { useSequenceDnD } from "./hooks/useSequenceDnD";
 import { useArcData } from "./hooks/useArcData";
+import { useFragmentSelection } from "./hooks/useFragmentSelection";
+import { useSectionOps } from "./hooks/useSectionOps";
 
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
@@ -80,14 +77,6 @@ export const OverviewPage = () => {
     [updateProject, navigate, projectId],
   );
 
-  // Multi-selection on the reorder list. `selection` holds every selected
-  // fragment (for group/move/split); the primary (last-selected) drives the
-  // right detail panel and keyboard movement. `selectionAnchor` is the pivot for
-  // shift-range selection.
-  const [selection, setSelection] = useState<string[]>([]);
-  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
-  const selectionSet = useMemo(() => new Set(selection), [selection]);
-  const primarySelectedUuid = selection.at(-1) ?? null;
   const [arcOverlayOpen, setArcOverlayOpen] = useState(false);
   const [arcExpanded, setArcExpanded] = useState(false);
   const [verticalStripOpen, setVerticalStripOpen] = useState(false);
@@ -171,37 +160,8 @@ export const OverviewPage = () => {
     [allSequenceFragmentUuids, poolFragmentUuids],
   );
 
-  const clearSelection = useCallback(() => {
-    setSelection([]);
-    setSelectionAnchor(null);
-  }, []);
-
-  const handleSelectFragment = useCallback(
-    (fragmentUuid: string, modifiers?: { toggle?: boolean; range?: boolean }) => {
-      if (modifiers?.range && selectionAnchor) {
-        const anchorIndex = visibleOrder.indexOf(selectionAnchor);
-        const targetIndex = visibleOrder.indexOf(fragmentUuid);
-        if (anchorIndex !== -1 && targetIndex !== -1) {
-          const [start, end] =
-            anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
-          setSelection(visibleOrder.slice(start, end + 1));
-          return;
-        }
-      }
-      if (modifiers?.toggle) {
-        setSelection((previous) =>
-          previous.includes(fragmentUuid)
-            ? previous.filter((uuid) => uuid !== fragmentUuid)
-            : [...previous, fragmentUuid],
-        );
-        setSelectionAnchor(fragmentUuid);
-        return;
-      }
-      setSelection([fragmentUuid]);
-      setSelectionAnchor(fragmentUuid);
-    },
-    [selectionAnchor, visibleOrder],
-  );
+  const { selection, selectionSet, primarySelectedUuid, handleSelectFragment, clearSelection } =
+    useFragmentSelection({ projectId, visibleOrder, fragmentByUuid, summariesLoading });
 
   const sequenceByUuid = useMemo(
     () => new Map((bundle?.sequences ?? []).map((s) => [s.uuid, s])),
@@ -373,17 +333,6 @@ export const OverviewPage = () => {
     if (activeSequenceId) writeOverviewSequence(projectId, activeSequenceId);
   }, [projectId, activeSequenceId]);
 
-  // Restore selection on mount runs after this persist effect in source order, so
-  // guard persistence until restore has completed — otherwise the initial empty
-  // selection would overwrite the stored value before it can be read back.
-  const hasRestoredSelectionRef = useRef(false);
-
-  // Persist selection when it changes (only after restore, see above).
-  useEffect(() => {
-    if (!hasRestoredSelectionRef.current) return;
-    writeOverviewSelection(projectId, selection);
-  }, [projectId, selection]);
-
   // Restore scroll only once the content that determines scroll height is ready.
   // The spine height comes from the sequence-contents query, not from the bundle
   // or summaries; restoring on the latter would clamp scrollTop against a
@@ -402,19 +351,6 @@ export const OverviewPage = () => {
     });
   }, [spineContentReady, persistedScroll]);
 
-  // Restore selection after fragments are loaded, filtered to still-existing UUIDs.
-  useEffect(() => {
-    if (summariesLoading || hasRestoredSelectionRef.current) return;
-    hasRestoredSelectionRef.current = true;
-    const stored = readOverviewSelection(projectId);
-    if (stored.length === 0) return;
-    const valid = stored.filter((uuid) => fragmentByUuid.has(uuid));
-    if (valid.length > 0) {
-      setSelection(valid);
-      setSelectionAnchor(valid.at(-1) ?? null);
-    }
-  }, [summariesLoading, projectId, fragmentByUuid]);
-
   const commands = useCommands();
 
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
@@ -427,135 +363,29 @@ export const OverviewPage = () => {
     [selection, fragmentSectionMap],
   );
 
-  // Split operates on a single placed fragment. The backend op splits *before*
-  // the given fragment; "split after X" is the same op applied to the next
-  // fragment in X's section.
-  const splitContext = useMemo(() => {
-    if (placedSelection.length !== 1) return undefined;
-    const fragmentUuid = placedSelection[0]!;
-    const section = sectionsData.find((s) => s.fragmentUuids.includes(fragmentUuid));
-    if (!section) return undefined;
-    const index = section.fragmentUuids.indexOf(fragmentUuid);
-    return {
-      fragmentUuid,
-      nextFragmentUuid: section.fragmentUuids[index + 1],
-      isFirst: index === 0,
-      isLast: index === section.fragmentUuids.length - 1,
-    };
-  }, [placedSelection, sectionsData]);
-
-  const canSplitBefore = !!splitContext && !splitContext.isFirst;
-  const canSplitAfter = !!splitContext && !splitContext.isLast;
-
-  const groupSelection = useCallback(async () => {
-    if (!sequence || placedSelection.length < 1) return;
-    await sequenceMutations.groupFragments.mutateAsync({
-      projectId,
-      sequenceId: sequence.uuid,
-      data: { fragmentUuids: placedSelection, name: "" },
-    });
-  }, [sequence, placedSelection, projectId, sequenceMutations]);
-
-  const splitBefore = useCallback(async () => {
-    if (!sequence || !splitContext || splitContext.isFirst) return;
-    await sequenceMutations.splitSection.mutateAsync({
-      projectId,
-      sequenceId: sequence.uuid,
-      data: { fragmentUuid: splitContext.fragmentUuid, name: "" },
-    });
-  }, [sequence, splitContext, projectId, sequenceMutations]);
-
-  const splitAfter = useCallback(async () => {
-    if (!sequence || !splitContext || splitContext.isLast || !splitContext.nextFragmentUuid) return;
-    await sequenceMutations.splitSection.mutateAsync({
-      projectId,
-      sequenceId: sequence.uuid,
-      data: { fragmentUuid: splitContext.nextFragmentUuid, name: "" },
-    });
-  }, [sequence, splitContext, projectId, sequenceMutations]);
-
-  const moveSelectionToSection = useCallback(
-    async (sectionUuid: string) => {
-      if (!sequence || placedSelection.length < 1) return;
-      const targetSection = sectionsData.find((s) => s.uuid === sectionUuid);
-      const position = targetSection?.fragmentUuids.length ?? 0;
-      await sequenceMutations.moveFragments.mutateAsync({
-        projectId,
-        sequenceId: sequence.uuid,
-        data: { fragmentUuids: placedSelection, sectionUuid, position },
-      });
-    },
-    [sequence, placedSelection, sectionsData, projectId, sequenceMutations],
-  );
-
-  const sectionsForMove = useMemo(
-    () => sectionsData.map((section) => ({ uuid: section.uuid, name: section.name })),
-    [sectionsData],
-  );
-
-  // Merge dissolves a section boundary by fusing a section with the one below it
-  // (the backend op). "Merge up" applies it to the previous section; "down" to
-  // this one. A section can merge up if it has a predecessor, down if a successor.
-  const mergeableUpSections = useMemo(
-    () => sectionsData.slice(1).map((section) => ({ uuid: section.uuid, name: section.name })),
-    [sectionsData],
-  );
-  const mergeableDownSections = useMemo(
-    () => sectionsData.slice(0, -1).map((section) => ({ uuid: section.uuid, name: section.name })),
-    [sectionsData],
-  );
-
-  const mergeSectionUp = useCallback(
-    async (sectionUuid: string) => {
-      if (!sequence) return;
-      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
-      if (index <= 0) return;
-      await sequenceMutations.mergeSection.mutateAsync({
-        projectId,
-        sequenceId: sequence.uuid,
-        sectionId: sectionsData[index - 1]!.uuid,
-      });
-    },
-    [sequence, sectionsData, projectId, sequenceMutations],
-  );
-
-  const mergeSectionDown = useCallback(
-    async (sectionUuid: string) => {
-      if (!sequence) return;
-      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
-      if (index === -1 || index >= sectionsData.length - 1) return;
-      await sequenceMutations.mergeSection.mutateAsync({
-        projectId,
-        sequenceId: sequence.uuid,
-        sectionId: sectionUuid,
-      });
-    },
-    [sequence, sectionsData, projectId, sequenceMutations],
-  );
-
-  // Unplace a single fragment from the active sequence, returning it to the
-  // pool. Shares the optimistic mutation used by drag-to-pool; surfaced as a
-  // direct button on each placed fragment (spine, left column, right panel).
-  const unplaceFragment = useCallback(
-    async (fragmentUuid: string) => {
-      if (!sequence) return;
-      await sequenceMutations.unplaceFragment.mutateAsync({
-        projectId,
-        sequenceId: sequence.uuid,
-        fragmentUuid,
-      });
-    },
-    [sequence, projectId, sequenceMutations],
-  );
-
-  const placedFragmentsForUnplace = useMemo(
-    () =>
-      allSequenceFragmentUuids.map((uuid) => ({
-        uuid,
-        key: fragmentByUuid.get(uuid)?.key ?? uuid,
-      })),
-    [allSequenceFragmentUuids, fragmentByUuid],
-  );
+  const {
+    canSplitBefore,
+    canSplitAfter,
+    groupSelection,
+    splitBefore,
+    splitAfter,
+    moveSelectionToSection,
+    sectionsForMove,
+    mergeableUpSections,
+    mergeableDownSections,
+    mergeSectionUp,
+    mergeSectionDown,
+    unplaceFragment,
+    placedFragmentsForUnplace,
+  } = useSectionOps({
+    projectId,
+    sequence,
+    sectionsData,
+    placedSelection,
+    allSequenceFragmentUuids,
+    fragmentByUuid,
+    mutations: sequenceMutations,
+  });
 
   // Per-fragment "remove from sequence" trigger shared by the spine, the left
   // column, and the right panel. Dispatches the parameterized unplace command
