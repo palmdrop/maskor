@@ -11,15 +11,10 @@ import CodeMirror, { EditorView, keymap, Prec } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { stripCommentMarkers, splitCommentMarkers, insertCommentMarkers } from "@maskor/shared";
+import { stripCommentMarkers, splitCommentMarkers } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
-import {
-  cmAnchorExtension,
-  setCmAnchorsEffect,
-  getCmAnchors,
-  cmAnchorBlockIndex,
-} from "./anchor-cm";
-import { cmAnchorHighlightExtension, setHighlightedAnchorEffect } from "./anchor-highlight-cm";
+import { cmAnchorExtension, setCmAnchorsEffect, cmAnchorBlockIndex } from "./anchor-cm";
+import { cmAnchorHighlightExtension } from "./anchor-highlight-cm";
 import {
   tiptapAnchorExtension,
   tiptapAnchorKey,
@@ -28,14 +23,10 @@ import {
   serializeTiptapWithMarkers,
 } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
-import {
-  cmEditorBlocks,
-  richEditorBlocks,
-  markerForBlock,
-  type EditorBlock,
-} from "./editor-geometry";
+import { richEditorBlocks, markerForBlock, type EditorBlock } from "./editor-geometry";
 import { isTrailingWhitespaceEquivalent } from "./buffer-sync";
 import { ProseToolbar } from "./prose-toolbar";
+import { createCodeMirrorProseAdapter } from "./prose-editor-cm-adapter";
 
 // Re-exported so existing consumers keep importing the block shape from the editor entry point.
 export type { EditorBlock };
@@ -88,16 +79,9 @@ export type ProseEditorHandle = {
   setHighlightedAnchor: (markerId: string | null) => void;
 };
 
-// Append an anchor at a CM6 offset (block end) — a coordinated edit held as an anchor, not buffer
-// text. The caller fires onChange so the fragment dirties and the marker re-emits on the next save.
-const addCmAnchor = (view: EditorView, offset: number, markerId: string): void => {
-  view.dispatch({
-    effects: setCmAnchorsEffect.of([...getCmAnchors(view.state), { markerId, offset }]),
-  });
-};
-
-// Append an anchor at a ProseMirror position (block end). Same coordinated-edit semantics as the CM6
-// variant above.
+// Append an anchor at a ProseMirror position (block end). Coordinated-edit semantics: held as an
+// anchor, not buffer text; the caller fires onChange so the fragment dirties and the marker
+// re-emits on the next save.
 const addTiptapAnchor = (editor: Editor, pos: number, markerId: string): void => {
   const current = tiptapAnchorKey.getState(editor.state) ?? [];
   editor.view.dispatch(editor.state.tr.setMeta(tiptapAnchorKey, [...current, { markerId, pos }]));
@@ -148,6 +132,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   );
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  // Latest content, read by the adapters' `getFallbackContent` (before their backend mounts).
+  const contentRef = useRef(content);
+  contentRef.current = content;
   const onActiveBlockChangeRef = useRef(onActiveBlockChange);
   onActiveBlockChangeRef.current = onActiveBlockChange;
   const cursorRef = useRef(cursor);
@@ -364,37 +351,28 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     view.dispatch({ effects: setCmAnchorsEffect.of(loadedAnchors) });
   }, [cleanContent, loadedAnchors, vimMode, rawMarkdownMode]);
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      // Re-emit markers (ADR 0009): the buffer is clean markdown; on the way out the anchors are
-      // written back as `<!--c:ID-->` at their mapped positions, producing the on-disk form.
+  // The CodeMirror (vim + raw) backend behind the handle. Stable: it reads the live view, the
+  // latest content, and the change notifier through injected accessors.
+  const cmAdapter = useMemo(
+    () =>
+      createCodeMirrorProseAdapter({
+        getView: () => viewRef.current,
+        getFallbackContent: () => contentRef.current,
+        setCmValue,
+        notifyChange: () => onChangeRef.current?.(),
+      }),
+    [],
+  );
+
+  useImperativeHandle(ref, (): ProseEditorHandle => {
+    if (vimMode || rawMarkdownMode) return cmAdapter;
+    // Rich (TipTap) backend — extracted into its own adapter in the next phase.
+    return {
       getContent: () => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return content;
-          // Trailing-trim to match the vault's normalization (it stores `body.trim() + "\n"`), so the
-          // saved form is idempotent. Anchors sit at block ends, before any trailing whitespace, so
-          // their offsets are unaffected.
-          const clean = view.state.doc.toString().trimEnd();
-          return insertCommentMarkers(clean, getCmAnchors(view.state));
-        }
         if (!editor) return content;
         return serializeTiptapWithMarkers(editor);
       },
       setContent: (value: string) => {
-        const { clean, anchors } = splitCommentMarkers(value);
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: clean },
-            effects: setCmAnchorsEffect.of(anchors),
-          });
-          // Track the new doc so the guarded `value` prop stays equal to it (no @uiw replace-back).
-          setCmValue(clean);
-          return;
-        }
         if (!editor) return;
         isLoadingRef.current = true;
         editor.commands.setContent(value, { emitUpdate: false });
@@ -402,14 +380,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         isLoadingRef.current = false;
       },
       getSelection: (): SelectionCapture => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return { text: "", isEmpty: true };
-          const { from, to } = view.state.selection.main;
-          const raw = view.state.doc.sliceString(from, to);
-          const text = raw.trim();
-          return { text, isEmpty: text.length === 0 };
-        }
         if (!editor) return { text: "", isEmpty: true };
         const { from, to } = editor.state.selection;
         if (from === to) return { text: "", isEmpty: true };
@@ -420,29 +390,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         return { text, isEmpty: text.length === 0 };
       },
       focus: () => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          view.focus();
-        } else {
-          editor.commands.focus();
-        }
+        editor?.commands.focus();
       },
-      getCurrentBlock: (): { text: string; markerId: string | null; index: number } | null => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return null;
-          const head = view.state.selection.main.head;
-          const ranges = blockRanges(view.state.doc.toString());
-          const found = ranges.findIndex((range) => head >= range.from && head <= range.to);
-          const index = found === -1 ? Math.max(ranges.length - 1, 0) : found;
-          const range = ranges[index];
-          const text = range
-            ? stripCommentMarkers(view.state.doc.sliceString(range.from, range.to)).trim()
-            : "";
-          const markerId = markerForBlock(cmAnchorBlockIndex(view.state), index);
-          return { text, markerId, index };
-        }
+      getCurrentBlock: () => {
         if (!editor) return null;
         const { $from } = editor.state.selection;
         const pos = $from.pos;
@@ -453,18 +403,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         const markerId = markerForBlock(tiptapAnchorBlockIndex(editor.state), index);
         return { text: stripCommentMarkers($from.parent.textContent).trim(), markerId, index };
       },
-      // Type-to-create on an arbitrary block: add the anchor at that block's end. No buffer mutation —
-      // the marker materialises on the next save; the change still dirties the fragment (onChange).
       addAnchorAtBlock: (blockIndex: number, markerId: string) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          const range = blockRanges(view.state.doc.toString())[blockIndex];
-          if (!range) return;
-          addCmAnchor(view, range.to, markerId);
-          onChangeRef.current?.();
-          return;
-        }
         if (!editor) return;
         let blockEnd: number | null = null;
         editor.state.doc.forEach((node, offset, index) => {
@@ -474,17 +413,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         addTiptapAnchor(editor, blockEnd, markerId);
         onChangeRef.current?.();
       },
-      // Delete the comment's anchor (the delete-comment coordinated edit). No buffer mutation; the
-      // marker simply stops being re-emitted on the next save. No-op when the anchor is absent.
       removeAnchor: (markerId: string) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          const next = getCmAnchors(view.state).filter((anchor) => anchor.markerId !== markerId);
-          view.dispatch({ effects: setCmAnchorsEffect.of(next) });
-          onChangeRef.current?.();
-          return;
-        }
         if (!editor) return;
         const current = tiptapAnchorKey.getState(editor.state) ?? [];
         const next = current.filter((anchor) => anchor.markerId !== markerId);
@@ -492,15 +421,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         onChangeRef.current?.();
       },
       revealAnchor: (markerId: string) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          const anchor = getCmAnchors(view.state).find((entry) => entry.markerId === markerId);
-          if (anchor) {
-            view.dispatch({ effects: EditorView.scrollIntoView(anchor.offset, { y: "center" }) });
-          }
-          return;
-        }
         if (!editor) return;
         const anchor = (tiptapAnchorKey.getState(editor.state) ?? []).find(
           (entry) => entry.markerId === markerId,
@@ -508,45 +428,20 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
         if (anchor) editor.chain().setTextSelection(anchor.pos).scrollIntoView().run();
       },
       focusAnchorBlock: (markerId: string) => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          if (!view) return;
-          const anchor = getCmAnchors(view.state).find((entry) => entry.markerId === markerId);
-          if (anchor) {
-            view.focus();
-            view.dispatch({
-              selection: { anchor: anchor.offset },
-              effects: EditorView.scrollIntoView(anchor.offset, { y: "center" }),
-            });
-          }
-          return;
-        }
         if (!editor) return;
         const anchor = (tiptapAnchorKey.getState(editor.state) ?? []).find(
           (entry) => entry.markerId === markerId,
         );
         if (anchor) editor.chain().focus().setTextSelection(anchor.pos).scrollIntoView().run();
       },
-      getScrollElement: (): HTMLElement | null => {
-        if (vimMode || rawMarkdownMode) return viewRef.current?.scrollDOM ?? null;
-        return richScrollerRef.current;
-      },
-      getBlocks: (): EditorBlock[] => {
-        if (vimMode || rawMarkdownMode) {
-          const view = viewRef.current;
-          return view ? cmEditorBlocks(view) : [];
-        }
-        return editor ? richEditorBlocks(editor, richScrollerRef.current) : [];
-      },
-      setHighlightedAnchor: (markerId: string | null) => {
+      getScrollElement: (): HTMLElement | null => richScrollerRef.current,
+      getBlocks: (): EditorBlock[] =>
+        editor ? richEditorBlocks(editor, richScrollerRef.current) : [],
+      setHighlightedAnchor: () => {
         // vim/raw only (the bug-fix + cue scope). Rich mode is a no-op for now.
-        if (vimMode || rawMarkdownMode) {
-          viewRef.current?.dispatch({ effects: setHighlightedAnchorEffect.of(markerId) });
-        }
       },
-    }),
-    [vimMode, rawMarkdownMode, editor, content],
-  );
+    };
+  }, [vimMode, rawMarkdownMode, editor, content, cmAdapter]);
 
   // fontSize is set on the same element as maxWidth so `ch` resolves against the
   // rendered text size — otherwise `ch` falls back to the browser default (16px)
