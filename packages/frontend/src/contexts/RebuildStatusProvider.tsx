@@ -1,20 +1,17 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetProjectRebuildStatus } from "@api/generated/projects/projects";
-
-type RebuildStatusContextValue = {
-  isRebuilding: boolean;
-};
-
-const RebuildStatusContext = createContext<RebuildStatusContextValue>({ isRebuilding: false });
-
-export const useRebuildStatus = () => useContext(RebuildStatusContext);
 
 type Props = {
   projectId: string;
   children: ReactNode;
 };
 
+// Polls the project's rebuild status and, when a rebuild completes, invalidates
+// the project's queries so every view reflects the rebuilt data. It renders no
+// UI and exposes no status to consumers — the data-robustness migration removed
+// the per-view "Rebuilding index…" affordance, so the status is now only used
+// internally to drive the invalidation.
 export const RebuildStatusProvider = ({ projectId, children }: Props) => {
   const queryClient = useQueryClient();
   const wasRebuilding = useRef(false);
@@ -44,9 +41,5 @@ export const RebuildStatusProvider = ({ projectId, children }: Props) => {
     wasRebuilding.current = isRebuilding;
   }, [isRebuilding, projectId, queryClient]);
 
-  return (
-    <RebuildStatusContext.Provider value={{ isRebuilding }}>
-      {children}
-    </RebuildStatusContext.Provider>
-  );
+  return <>{children}</>;
 };

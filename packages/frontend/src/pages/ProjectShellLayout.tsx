@@ -4,7 +4,7 @@ import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { projectShellScope, type CreateKind } from "@lib/commands/scopes/project-shell";
-import { RebuildStatusProvider } from "@contexts/RebuildStatusContext";
+import { RebuildStatusProvider } from "@contexts/RebuildStatusProvider";
 import { AppErrorBoundary } from "@components/data/AppErrorBoundary";
 import { GlobalCreateDialogs, type ActiveCreate } from "@components/global-create-dialogs";
 import { ExportDialog } from "@components/ExportDialog";

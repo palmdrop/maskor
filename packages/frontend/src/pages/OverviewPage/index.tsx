@@ -119,7 +119,15 @@ export const OverviewPage = () => {
   const aspectList = aspectsEnvelope.status === 200 ? aspectsEnvelope.data : [];
 
   const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence?.uuid ?? "", {
-    query: { enabled: !!sequence },
+    query: {
+      enabled: !!sequence,
+      // This dependent query drives the spine; it has no inline error UI. The
+      // global policy leaves 4xx inline, which would strand the view (spine
+      // empty, spineContentReady never true, restoration never runs). So route
+      // any no-data failure to the route boundary; a background refetch that
+      // fails with data present still keeps its data (handled by the toast).
+      throwOnError: (_error, query) => query.state.data === undefined,
+    },
   });
   const contentByFragmentUuid = useMemo(() => {
     const map = new Map<string, string>();
