@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import {
   usePlaceFragment,
   useMoveFragment,
@@ -10,6 +9,16 @@ import {
   useMergeSection,
   type ListSequencesResponse,
 } from "@api/generated/sequences/sequences";
+import type {
+  FragmentPositionCreate,
+  FragmentPositionMove,
+  FragmentsGroup,
+  FragmentsMove,
+  SectionReorder,
+  SectionSplit,
+} from "@api/generated/maskorAPI.schemas";
+import { useOptimisticMutation } from "@lib/api/useOptimisticMutation";
+import { updateSequenceInBundle } from "./sequenceBundle";
 import {
   optimisticPlace,
   optimisticMove,
@@ -21,239 +30,114 @@ import {
   optimisticMergeWithNext,
 } from "./optimisticUpdates";
 
+// Every sequence mutation runs the same optimistic lifecycle against the list-sequences
+// cache: snapshot, apply a pure reducer to the target sequence, roll back on failure,
+// invalidate on success. `useOptimisticMutation` owns that dance; each call here only
+// supplies the reducer (via `updateSequenceInBundle`, which narrows the envelope and
+// locates the sequence). No `reconcile` — sequence ops invalidate to refetch.
 export const useSequenceMutations = (listQueryKey: readonly unknown[]) => {
-  const queryClient = useQueryClient();
-
   const placeFragment = usePlaceFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, data: { fragmentUuid, sectionUuid, position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticPlace(currentSequence, fragmentUuid, sectionUuid, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; data: FragmentPositionCreate }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticPlace(sequence, data.fragmentUuid, data.sectionUuid, data.position),
+        ),
+    }),
   });
 
   const moveFragment = useMoveFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, fragmentUuid, data: { sectionUuid, position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticMove(currentSequence, fragmentUuid, sectionUuid, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; fragmentUuid: string; data: FragmentPositionMove }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, fragmentUuid, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticMove(sequence, fragmentUuid, data.sectionUuid, data.position),
+        ),
+    }),
   });
 
   const unplaceFragment = useUnplaceFragment({
-    mutation: {
-      onMutate: async ({ sequenceId, fragmentUuid }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticUnplace(currentSequence, fragmentUuid);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; fragmentUuid: string }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, fragmentUuid }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticUnplace(sequence, fragmentUuid),
+        ),
+    }),
   });
 
   const moveSection = useReorderSection({
-    mutation: {
-      onMutate: async ({ sequenceId, sectionId, data: { position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticMoveSection(currentSequence, sectionId, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; sectionId: string; data: SectionReorder }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, sectionId, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticMoveSection(sequence, sectionId, data.position),
+        ),
+    }),
   });
 
   const groupFragments = useGroupFragments({
-    mutation: {
-      onMutate: async ({ sequenceId, data: { fragmentUuids, name } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticGroup(currentSequence, fragmentUuids, name);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; data: FragmentsGroup }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticGroup(sequence, data.fragmentUuids, data.name),
+        ),
+    }),
   });
 
   const moveFragments = useMoveFragments({
-    mutation: {
-      onMutate: async ({ sequenceId, data: { fragmentUuids, sectionUuid, position } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticMoveMany(currentSequence, fragmentUuids, sectionUuid, position);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; data: FragmentsMove }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticMoveMany(sequence, data.fragmentUuids, data.sectionUuid, data.position),
+        ),
+    }),
   });
 
   const splitSection = useSplitSection({
-    mutation: {
-      onMutate: async ({ sequenceId, data: { fragmentUuid, name } }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticSplit(currentSequence, fragmentUuid, name);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; data: SectionSplit }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, data }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticSplit(sequence, data.fragmentUuid, data.name),
+        ),
+    }),
   });
 
   const mergeSection = useMergeSection({
-    mutation: {
-      onMutate: async ({ sequenceId, sectionId }) => {
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        const snapshot = queryClient.getQueryData<ListSequencesResponse>(listQueryKey);
-        queryClient.setQueryData<ListSequencesResponse>(listQueryKey, (previous) => {
-          if (!previous || previous.status !== 200) return previous;
-          const currentSequence = previous.data.sequences.find((s) => s.uuid === sequenceId);
-          if (!currentSequence) return previous;
-          const updated = optimisticMergeWithNext(currentSequence, sectionId);
-          return {
-            ...previous,
-            data: {
-              ...previous.data,
-              sequences: previous.data.sequences.map((s) => (s.uuid === sequenceId ? updated : s)),
-            },
-          };
-        });
-        return { snapshot };
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: listQueryKey });
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.snapshot) queryClient.setQueryData(listQueryKey, context.snapshot);
-      },
-    },
+    mutation: useOptimisticMutation<
+      ListSequencesResponse,
+      { sequenceId: string; sectionId: string }
+    >({
+      queryKey: listQueryKey,
+      apply: (previous, { sequenceId, sectionId }) =>
+        updateSequenceInBundle(previous, sequenceId, (sequence) =>
+          optimisticMergeWithNext(sequence, sectionId),
+        ),
+    }),
   });
 
   return {

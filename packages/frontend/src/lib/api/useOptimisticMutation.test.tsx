@@ -14,8 +14,7 @@ const seed = (queryClient: QueryClient, value: number) => {
   queryClient.setQueryData<Cache>(queryKey, { status: 200, data: { value } });
 };
 
-const read = (queryClient: QueryClient) =>
-  queryClient.getQueryData<Cache>(queryKey)?.data.value;
+const read = (queryClient: QueryClient) => queryClient.getQueryData<Cache>(queryKey)?.data.value;
 
 // apply owns the envelope guard, mirroring how real reducers narrow the cache shape.
 const apply = (previous: Cache | undefined, variables: Variables): Cache | undefined => {

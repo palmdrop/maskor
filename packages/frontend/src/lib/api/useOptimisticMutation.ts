@@ -43,7 +43,7 @@ export type OptimisticMutationOptions<TCache, TVariables, TResponse, TError> = P
  * `customFetch` throws `ApiRequestError` on any non-2xx, so `onError` fires precisely when
  * the request fails — the rollback is correct without any in-band status checking here.
  */
-export const useOptimisticMutation = <TCache, TVariables, TResponse, TError = unknown>(
+export const useOptimisticMutation = <TCache, TVariables, TResponse = unknown, TError = unknown>(
   config: OptimisticMutationConfig<TCache, TVariables, TResponse>,
 ): OptimisticMutationOptions<TCache, TVariables, TResponse, TError> => {
   const queryClient = useQueryClient();
