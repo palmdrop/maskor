@@ -1,8 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { EditorState } from "@uiw/react-codemirror";
-import { cmAnchorField, setCmAnchorsEffect, getCmAnchors, cmAnchorBlockIndex } from "./anchor-cm";
+import { EditorState, type Transaction } from "@uiw/react-codemirror";
+import { history, undo, redo } from "@codemirror/commands";
+import {
+  cmAnchorExtension,
+  cmAnchorField,
+  setCmAnchorsEffect,
+  getCmAnchors,
+  cmAnchorBlockIndex,
+} from "./anchor-cm";
 
 const make = (doc: string) => EditorState.create({ doc, extensions: [cmAnchorField] });
+
+// A history-enabled state for the undo/redo tests, plus tiny helpers that run the `undo`/`redo`
+// StateCommands against a stand-in dispatch target (no EditorView needed).
+const makeWithHistory = (doc: string) =>
+  EditorState.create({ doc, extensions: [history(), cmAnchorExtension] });
+const runUndo = (state: EditorState): EditorState => {
+  let next = state;
+  undo({ state, dispatch: (transaction: Transaction) => (next = transaction.state) });
+  return next;
+};
+const runRedo = (state: EditorState): EditorState => {
+  let next = state;
+  redo({ state, dispatch: (transaction: Transaction) => (next = transaction.state) });
+  return next;
+};
 
 describe("cm anchors (ADR 0009)", () => {
   it("holds anchors set via the effect and resolves them to blocks", () => {
@@ -69,6 +91,42 @@ describe("cm anchors (ADR 0009)", () => {
     // Delete 3 chars at the very start (does not contain offset 15); the anchor remaps and stays bound.
     state = state.update({ changes: { from: 0, to: 3 } }).state;
     expect(getCmAnchors(state)[0]!.offset).toBe(12);
+    expect(cmAnchorBlockIndex(state).get("b")).toBe(1);
+  });
+
+  // The "comment disappears on delete-then-undo" fix: a dropped anchor is restored by undo because the
+  // pre-edit set is stored as an inverted history effect (the StateField alone is not undo-aware).
+  it("restores a dropped anchor on undo and drops it again on redo", () => {
+    let state = makeWithHistory("First.\n\nSecond.");
+    state = state.update({ effects: setCmAnchorsEffect.of([{ markerId: "a", offset: 6 }]) }).state;
+    expect(cmAnchorBlockIndex(state).get("a")).toBe(0);
+
+    // Delete the first paragraph + its blank line → the anchor's block collapses → dropped.
+    state = state.update({ changes: { from: 0, to: 8 } }).state;
+    expect(getCmAnchors(state)).toEqual([]);
+
+    // Undo restores the prose AND the anchor at its original offset.
+    state = runUndo(state);
+    expect(getCmAnchors(state)).toEqual([{ markerId: "a", offset: 6 }]);
+    expect(cmAnchorBlockIndex(state).get("a")).toBe(0);
+
+    // Redo re-applies the deletion and drops the anchor again.
+    state = runRedo(state);
+    expect(getCmAnchors(state)).toEqual([]);
+  });
+
+  it("restores the original offset after an unrelated edit then undo of a drop", () => {
+    let state = makeWithHistory("First.\n\nSecond.");
+    state = state.update({ effects: setCmAnchorsEffect.of([{ markerId: "b", offset: 15 }]) }).state;
+    expect(cmAnchorBlockIndex(state).get("b")).toBe(1);
+
+    // Delete the second paragraph (carrying the anchor) → dropped.
+    state = state.update({ changes: { from: 6, to: 15 } }).state;
+    expect(getCmAnchors(state)).toEqual([]);
+
+    // Undo restores it bound to block 1 at its original offset.
+    state = runUndo(state);
+    expect(getCmAnchors(state)[0]).toEqual({ markerId: "b", offset: 15 });
     expect(cmAnchorBlockIndex(state).get("b")).toBe(1);
   });
 });

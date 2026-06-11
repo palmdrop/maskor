@@ -1,4 +1,5 @@
 import { StateEffect, StateField, type EditorState } from "@uiw/react-codemirror";
+import { invertedEffects } from "@codemirror/commands";
 import type { ParsedAnchor } from "@maskor/shared";
 import { blockRanges } from "@lib/margins/block-ranges";
 
@@ -8,8 +9,16 @@ import { blockRanges } from "@lib/margins/block-ranges";
 // offsets are re-emitted as markers on save. The Margin column surfaces the binding.
 
 // Replace the whole anchor set (load, gesture add/remove). The caller passes offsets in the *current*
-// document's coordinates; on a plain edit the field maps the existing offsets itself.
-export const setCmAnchorsEffect = StateEffect.define<ParsedAnchor[]>();
+// document's coordinates; on a plain edit the field maps the existing offsets itself. The `map`
+// repositions a stored (undo-history) effect through any intervening changes before it is re-applied,
+// so a snapshot captured for undo lands at the right offsets even across multiple edits.
+export const setCmAnchorsEffect = StateEffect.define<ParsedAnchor[]>({
+  map: (anchors, change) =>
+    anchors.map((anchor) => ({
+      markerId: anchor.markerId,
+      offset: change.mapPos(anchor.offset, -1),
+    })),
+});
 
 export const cmAnchorField = StateField.define<ParsedAnchor[]>({
   create: () => [],
@@ -63,4 +72,19 @@ export const cmAnchorBlockIndex = (state: EditorState): Map<string, number> => {
   return map;
 };
 
-export const cmAnchorExtension = [cmAnchorField];
+// Make anchor membership undoable. The field maps anchors forward and *drops* one when its block
+// fully collapses (a deleted paragraph), but the StateField is not part of CM6's undo history, so
+// undo would revert the prose while leaving the comment orphaned (the "comment disappears on
+// delete-then-undo" report). For every edit that touches a non-empty anchor set, store the pre-edit
+// set as an inverted effect: on undo CM re-applies it (restoring the exact dropped anchor at its
+// original offset), and the symmetric capture on the undo transaction restores the post-edit set on
+// redo. Edits never *add* anchors (only the gesture/load effect does), so an empty pre-edit set needs
+// no snapshot.
+const cmAnchorHistory = invertedEffects.of((transaction) => {
+  if (!transaction.docChanged) return [];
+  const before = getCmAnchors(transaction.startState);
+  if (before.length === 0) return [];
+  return [setCmAnchorsEffect.of(before)];
+});
+
+export const cmAnchorExtension = [cmAnchorField, cmAnchorHistory];
