@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useEffect,
@@ -432,7 +433,25 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               </div>
             </div>
           )}
-          <main className="flex-1 min-h-0 overflow-y-auto">
+          {/* On `lg` the editor is capped to its own prose width (`maxParagraphWidth`ch at the prose
+              font size) and may shrink, but never grows past it — so the slack the writer creates by
+              narrowing the prose is handed to the Margin instead of pooling as centred gutters. The
+              `ch` unit resolves against this element's font size, so it is set here too. */}
+          <main
+            className={
+              rightPanel
+                ? "w-full min-w-0 min-h-0 overflow-y-auto lg:flex-initial lg:w-(--prose-width) lg:min-w-80"
+                : "flex-1 min-h-0 overflow-y-auto"
+            }
+            style={
+              rightPanel
+                ? ({
+                    "--prose-width": `${maxParagraphWidth.draft}ch`,
+                    fontSize: `${fontSize.draft}px`,
+                  } as CSSProperties)
+                : undefined
+            }
+          >
             <ProseEditor
               ref={proseEditorRef}
               content={content}
@@ -448,9 +467,10 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             />
           </main>
           {rightPanel && (
-            // A faint vertical separator with padding so the fragment editor and the Margin read as two
-            // seamless pieces of text (margins-4 #12).
-            <div className="flex w-full shrink-0 flex-col lg:w-96 min-h-0 border-t border-border/50 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            // The Margin grows into the slack the narrowed editor frees, floored so it stays usable and
+            // capped so it never sprawls on an ultrawide display. A faint vertical separator with
+            // padding keeps the editor and Margin reading as two seamless pieces of text (margins-4 #12).
+            <div className="flex w-full flex-col min-h-0 border-t border-border/50 pt-4 lg:flex-1 lg:min-w-80 lg:max-w-[40rem] lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
               {rightPanel}
             </div>
           )}
