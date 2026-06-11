@@ -12,6 +12,7 @@
 - 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-05-20 — Chord-based keyboard shortcuts (`g+f`, `g+o`, `g+c`) removed; replaced by command-palette navigation commands accessible via `Cmd/Ctrl+K`. (plan: references/plans/command-palette.md)
 - 2026-06-09 — View-state restoration: re-entering Fragments via navbar or command restores the last-opened fragment; Overview restores selected sequence, scroll position, and fragment selection; Preview restores selected sequence and scroll position. State persists across reloads via per-project localStorage. Stale references (deleted fragments/sequences/selections) are cleared or filtered on restore. (plan: references/plans/view-state-restoration.md)
+- 2026-06-11 — In-editor Previous/Next navigation exists and its ordering is view-supplied: list order in the fragment list, sequence order in Overview, assembled order in Preview, and the prompting selection in suggestion mode. The editor renders the controls; the mounting view owns the ordering and the save-then-advance. Resolves the 2026-04-27 open question. (plan: references/plans/fragment-editor-focus-mode.md)
 
 ---
 
@@ -104,7 +105,7 @@ Keyboard-driven navigation is owned by the command system. See `command-palette.
 - [ ] 2026-04-27 — What is the Fragment list view? A simple list with search/filter? A grid? Does it exist as a separate route or is it a panel within the Overview? This needs its own spec before the navigation layer can be fully implemented.
 - [x] 2026-04-27 — What keyboard shortcuts are assigned to each global navigation action? **Resolved 2026-05-19**: ownership moved to `command-palette.md`. Nav actions are commands; their hotkeys are declared on the command definitions. The exact post-chord scheme remains an open question there.
 - [ ] 2026-04-27 — Prompting mechanism open questions are tracked in `prompting.md`.
-- [ ] 2026-04-27 — Does fragment prev/next navigation within the editor follow sequence order, list order, or recency? Should it exist at all?
+- [x] 2026-04-27 — Does fragment prev/next navigation within the editor follow sequence order, list order, or recency? Should it exist at all? **Resolved 2026-06-11**: it exists and is view-supplied — list order, sequence order, assembled order, or the prompting selection, per the mounting view. The editor renders the controls; the view owns the ordering. See `fragment-editor.md`.
 - [x] 2026-04-27 — Where does the user switch between open projects? **Resolved**: The project name in the sidebar links to `/` (the project management screen). No separate picker needed.
 
 ---

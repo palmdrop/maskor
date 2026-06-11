@@ -51,7 +51,7 @@ import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
 import { useSequenceDnD } from "./hooks/useSequenceDnD";
 import { useArcData } from "./hooks/useArcData";
-import { useFragmentSelection } from "./hooks/useFragmentSelection";
+import { useFragmentSelection, type SelectionModifiers } from "./hooks/useFragmentSelection";
 import { useSectionOps } from "./hooks/useSectionOps";
 
 export const OverviewPage = () => {
@@ -293,6 +293,34 @@ export const OverviewPage = () => {
   const openEditor = useCallback((fragmentUuid: string) => {
     setEditingFragmentUuid(fragmentUuid);
   }, []);
+
+  // Edit gesture (double-click / pencil / retarget). When an overlay is already
+  // open on a different fragment, save it first, then switch — the same dirty
+  // guard as Next/Previous. Opening fresh just sets the target.
+  const handleEdit = useCallback((fragmentUuid: string) => {
+    const current = editingUuidRef.current;
+    if (current && current !== fragmentUuid && editorRef.current) {
+      void editorRef.current
+        .save()
+        .then(() => setEditingFragmentUuid(fragmentUuid))
+        .catch(() => {});
+      return;
+    }
+    setEditingFragmentUuid(fragmentUuid);
+  }, []);
+
+  // While the overlay is open, selecting a fragment in the reorder list retargets
+  // the editor to it; otherwise it selects and scrolls the spine as usual.
+  const handleReorderSelect = useCallback(
+    (fragmentUuid: string, modifiers?: SelectionModifiers) => {
+      if (editingUuidRef.current) {
+        handleEdit(fragmentUuid);
+        return;
+      }
+      handleSidebarSelectFragment(fragmentUuid, modifiers);
+    },
+    [handleEdit, handleSidebarSelectFragment],
+  );
 
   const closeEditor = useCallback(() => {
     setPendingScrollUuid(editingUuidRef.current);
@@ -577,7 +605,7 @@ export const OverviewPage = () => {
               colorByAspectKey={arcData.colorByAspectKey}
               fragmentByUuid={fragmentByUuid}
               selectedFragmentUuids={selectionSet}
-              onSelectFragment={handleSidebarSelectFragment}
+              onSelectFragment={handleReorderSelect}
               onRemoveFragment={handleRemoveFragment}
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}
@@ -747,7 +775,7 @@ export const OverviewPage = () => {
                         selectedFragmentUuids={selectionSet}
                         onSelectFragment={handleSelectFragment}
                         onRemoveFragment={handleRemoveFragment}
-                        onEdit={openEditor}
+                        onEdit={handleEdit}
                       />
                     </div>
                   </div>

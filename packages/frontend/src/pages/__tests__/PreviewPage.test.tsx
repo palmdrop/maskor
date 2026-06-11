@@ -368,4 +368,21 @@ describe("PreviewPage — inline editing overlay", () => {
 
     expect(screen.queryByTestId("fragment-editor")).not.toBeInTheDocument();
   });
+
+  it("picking another fragment in the sidebar while editing retargets the overlay", () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    main.appendChild(textNode);
+
+    fireEvent.doubleClick(textNode);
+    expect(screen.getByTestId("fragment-editor")).toHaveAttribute("data-fragment-id", "frag-1");
+
+    // The nav sidebar still shows; clicking the other fragment retargets.
+    fireEvent.click(screen.getByText("crossing"));
+    expect(screen.getByTestId("fragment-editor")).toHaveAttribute("data-fragment-id", "frag-2");
+  });
 });

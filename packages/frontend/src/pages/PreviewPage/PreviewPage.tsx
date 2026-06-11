@@ -219,6 +219,19 @@ export const PreviewPage = () => {
     editIndex >= 0 && editIndex < previewOrder.length - 1 ? previewOrder[editIndex + 1]! : null;
 
   const openEditor = useCallback((uuid: string) => setEditingFragmentUuid(uuid), []);
+  // Retarget while editing saves the current fragment first (the same dirty guard
+  // as Next/Previous); opening fresh just sets the target.
+  const handleEdit = useCallback((uuid: string) => {
+    const current = editingUuidRef.current;
+    if (current && current !== uuid && editorRef.current) {
+      void editorRef.current
+        .save()
+        .then(() => setEditingFragmentUuid(uuid))
+        .catch(() => {});
+      return;
+    }
+    setEditingFragmentUuid(uuid);
+  }, []);
   const closeEditor = useCallback(() => {
     setPendingScrollUuid(editingUuidRef.current);
     setEditingFragmentUuid(null);
@@ -280,7 +293,9 @@ export const PreviewPage = () => {
         <FragmentNavSidebar
           sections={assembled.sections}
           activeAnchorId={activeFragmentId}
-          onSelect={navigateToAnchor}
+          // While the overlay is open, a sidebar pick retargets the editor;
+          // otherwise it scrolls the document to that fragment.
+          onSelect={editingFragmentUuid ? handleEdit : navigateToAnchor}
           header={
             <Heading level={4} className="px-4 pt-4 pb-2">
               {allFragments.length} fragment{allFragments.length !== 1 ? "s" : ""}

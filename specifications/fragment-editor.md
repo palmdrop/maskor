@@ -5,6 +5,9 @@
 
 **Shipped**:
 
+- 2026-06-11 — **Focus mode**: an explicit, per-project-persisted toggle (default off, honored on mount, never auto-forced) lifts the editor into a fixed full-viewport overlay below the navbar, hiding all host chrome. Available wherever the fragment editor mounts (dedicated editor, list, Overview/Preview inline overlay, suggestion). Toggling never remounts the editor, so the unsaved buffer + cursor survive. Independent of the metadata-sidebar collapse. (`editor:toggle-focus`; plan: references/plans/fragment-editor-focus-mode.md)
+- 2026-06-11 — **Editor navigation**: the editor renders consistent Previous/Next controls (and owns the `⌘↵`→next hotkey) when a view supplies them. The editor is a slot-provider only — each view composes its own save-then-advance command and ordering (list order, sequence/assembled order, or suggestion's random selection). (plan: references/plans/fragment-editor-focus-mode.md)
+- 2026-06-11 — **Inline editing rework**: in Overview and Preview the editor now opens as a center-replacing overlay (`showMargin` suppressed), replacing the old in-place markdown-split editor; on close the host returns to the top of the last-shown fragment (ADR 0013). (plan: references/plans/fragment-editor-focus-mode.md)
 - 2026-06-04 — Anchor deletion drops the anchor when its whole block collapses (margins-4): the orphan trigger is the anchor's block being deleted, not merely the content around its block-end offset. Rich uses ProseMirror `mapResult(...).deletedAcross` (both sides deleted); vim/raw maps the anchor's blank-line block and drops only when that block's content fully collapses. So deleting a paragraph orphans its comment (re-attaching by excerpt on paste-back), while deleting one line of a multi-line soft-wrapped paragraph keeps the anchor bound to the surviving block. (plan: references/plans/margins-4.md, Phase 7 + follow-up)
 - 2026-06-04 — Coupled fragment+Margin save (margins-4): the fragment editor's save (`editor:save` / `:w` / `mod+s` / the editor Save button) persists the fragment **and** its Margin together; the Margin has no separate Save button, and a margin-only edit dirties the editor so it gates/enables the editor Save. The fragment is re-written only when its prose changed; a dirty Margin is always flushed. The linked swap pair and single recovery banner are unchanged. (plan: references/plans/margins-4.md, Phase 4)
 - 2026-06-03 — Buffer-clean comment anchoring (ADR 0009): the editor buffer holds pure markdown — `<!--c:ID-->` anchor markers are stripped on load and re-emitted on save (fixing end-of-paragraph caret breakage), with the live comment↔block binding maintained by mapping anchor positions through editor transactions (rich: a ProseMirror plugin; vim/raw: a CM6 `StateField`). The dot cue on annotated lines is driven by the anchor store; the "show source" toggle (`editor:toggle-show-source`) is removed (no buffer markers to reveal). Document-side spacers (a TipTap widget / CM6 block widget) keep the Margin column's rows flow-aligned to the editor. (plan: references/plans/margins-3.md; ADR 0009)
@@ -47,13 +50,18 @@ The fragment editor is a focused, single-fragment view. It lets the user read an
 - Reflecting vault-side changes via SSE events (live reload on external edit)
 - Vim mode as an opt-in prose editor variant
 
+### In scope (continued)
+
+- **Focus mode** — an explicit, per-project-persisted presentation that hides all chrome but the navbar (see `_glossary.md`). Rendered wherever the editor mounts.
+- **Navigation controls** — the editor renders view-supplied Previous/Next. It owns the controls and the `⌘↵`→next hotkey; the _ordering and any side effects_ are owned by the mounting view (see Navigation below).
+
 ### Out of scope
 
 - Sequencing, arc fitting, fitting scores — not shown or edited here
 - Creating new notes or references from within the editor — only existing vault entries can be linked
 - Creating new aspects from within the editor (desired future feature; currently out of scope)
 - Auto-save — explicitly deferred until `version`-based optimistic locking is in the API
-- Fragment navigation / selection (which fragment to show next is decided by the caller, not the editor)
+- **Which** fragment is next and the act of advancing — decided by the caller, not the editor. The editor renders the Previous/Next controls but never computes ordering or performs the save-then-advance.
 - Project configuration, aspect/arc management
 
 ---
@@ -63,6 +71,21 @@ The fragment editor is a focused, single-fragment view. It lets the user read an
 ### Layout
 
 Two-panel layout: metadata sidebar (left/top) + prose editor (right/bottom). Sidebar is fixed-width on wide screens, stacked on narrow.
+
+### Navigation (Previous / Next)
+
+The editor renders a Previous/Next control pair when the mounting view supplies a navigation slot, and owns the `⌘↵`→next hotkey. The editor is a dumb slot-provider: each view composes its own save-then-advance behaviour (and any side effects) and supplies the ordering. Traversal is exactly what the view renders:
+
+- **Fragment list** — the currently filtered list order (search + show-discarded respected).
+- **Overview** — placed fragments in spine order (unassigned pool and discarded excluded).
+- **Preview** — the assembled sequence order.
+- **Suggestion** — the non-deterministic prompting selection (see `prompting.md`); never disables Next.
+
+Boundaries disable Previous/Next at the first/last item (no wrap); suggestion is unbounded. In the Overview/Preview overlay, `⌘Esc` closes the editor and returns to the host (bare `Esc` is left to vim).
+
+### Focus mode
+
+An explicit, per-project-persisted toggle (default off, honored on mount, never auto-forced) that hides all surrounding chrome except the navbar, presenting the editor as a centered full-viewport overlay. Orthogonal to the metadata-sidebar collapse, and to inline editing (opening the Overview/Preview overlay does not imply focus). See `_glossary.md`.
 
 ### Prose editor
 
