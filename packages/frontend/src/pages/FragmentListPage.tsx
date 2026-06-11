@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useMemo } from "react";
 import { Link, Outlet, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,12 +9,30 @@ import {
   useDeleteFragment,
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
+import { useListSequences } from "@api/generated/sequences/sequences";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
+import { usePersistedString } from "@hooks/usePersistedString";
+import {
+  buildSequenceOrder,
+  encodeSortMode,
+  parseSortMode,
+  sortFragments,
+} from "@lib/fragments/sort";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { UploadIcon } from "lucide-react";
 
@@ -26,6 +44,7 @@ export const FragmentListPage = () => {
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
+  const { data: sequencesEnvelope } = useListSequences(projectId);
   const { isRebuilding } = useRebuildStatus();
   const { mutate: discardFragment } = useDiscardFragment();
   const { mutate: restoreFragment } = useRestoreFragment();
@@ -37,6 +56,28 @@ export const FragmentListPage = () => {
     "fragmentListPage_showDiscarded",
     false,
   );
+  const [sortValue, setSortValue] = usePersistedString("fragmentListPage_sort", "name");
+
+  const sequences = useMemo(
+    () => (sequencesEnvelope?.status === 200 ? sequencesEnvelope.data.sequences : []),
+    [sequencesEnvelope],
+  );
+
+  // Resolve the persisted sort against the sequences that actually exist; a
+  // stored "sequence:<uuid>" for a deleted sequence falls back to name order.
+  const sortMode = useMemo(() => {
+    const parsed = parseSortMode(sortValue);
+    if (parsed.kind === "sequence" && !sequences.some((s) => s.uuid === parsed.sequenceUuid)) {
+      return { kind: "name" as const };
+    }
+    return parsed;
+  }, [sortValue, sequences]);
+
+  const sequenceOrder = useMemo(() => {
+    if (sortMode.kind !== "sequence") return undefined;
+    const sequence = sequences.find((s) => s.uuid === sortMode.sequenceUuid);
+    return sequence ? buildSequenceOrder(sequence) : undefined;
+  }, [sortMode, sequences]);
 
   const location = useRouterState({ select: (s) => s.location.pathname });
   const fragmentIdMatch = location.match(/\/projects\/[^/]+\/fragments\/([^/]+)/);
@@ -88,6 +129,7 @@ export const FragmentListPage = () => {
   const filtered = filter
     ? visible.filter((f) => f.key.toLowerCase().includes(filter.toLowerCase()))
     : visible;
+  const sorted = sortFragments(filtered, sortMode, sequenceOrder);
 
   return (
     <div className="flex h-full min-h-0">
@@ -124,6 +166,41 @@ export const FragmentListPage = () => {
           onChange={(e) => setFilter(e.target.value)}
         />
         <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="fragment-sort" className="text-xs text-muted-foreground">
+            Sort
+          </Label>
+          <Select value={encodeSortMode(sortMode)} onValueChange={setSortValue}>
+            <SelectTrigger id="fragment-sort" size="sm" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="updatedAt">Updated at</SelectItem>
+              </SelectGroup>
+              {sequences.length > 0 && (
+                <>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>By sequence</SelectLabel>
+                    {sequences.map((sequence) => (
+                      <SelectItem
+                        key={sequence.uuid}
+                        value={encodeSortMode({
+                          kind: "sequence",
+                          sequenceUuid: sequence.uuid,
+                        })}
+                      >
+                        {sequence.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between gap-2">
           <Label htmlFor="show-discarded" className="text-xs text-muted-foreground">
             Show discarded
             {discardedCount > 0 && (
@@ -136,11 +213,11 @@ export const FragmentListPage = () => {
             onCheckedChange={toggleShowDiscarded}
           />
         </div>
-        {filtered.length === 0 ? (
+        {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No fragments match.</p>
         ) : (
           <ul className="flex flex-col gap-1">
-            {filtered.map((fragment) => (
+            {sorted.map((fragment) => (
               <li
                 key={fragment.uuid}
                 className={[
