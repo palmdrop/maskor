@@ -111,15 +111,22 @@ describe("MarginColumn", () => {
     expect(screen.queryByText("the excerpt")).toBeNull();
   });
 
-  it("gathers orphaned comments at the foot with their excerpt shown", () => {
+  it("gathers orphaned comments in the footer panel with their excerpt shown when expanded", () => {
     renderColumn({
       fragmentContent: "First. <!--c:a-->",
       marginEditor: buildMarginEditor({
         comments: [comment("a", "on a"), comment("gone", "lost", "lost excerpt")],
       }),
     });
-    expect(screen.getByText(/Orphaned \(1\)/)).toBeTruthy();
+    // The orphan panel toggle is always visible (collapsed by default); the excerpt reveals on expand.
+    const toggle = screen.getByText(/Orphaned \(1\)/);
+    expect(toggle).toBeTruthy();
+    expect(screen.queryByText("lost excerpt")).toBeNull();
+    fireEvent.click(toggle);
     expect(screen.getByText("lost excerpt")).toBeTruthy();
+    // The orphan panel lives in the pinned footer, not the synced scroller.
+    const scroll = screen.getByTestId("margin-scroll");
+    expect(scroll.contains(screen.getByTestId("margin-orphans"))).toBe(false);
   });
 
   it("type-to-create: typing in an empty slot injects a marker and seeds a bound comment", () => {
@@ -215,18 +222,35 @@ describe("MarginColumn", () => {
     expect(row.style.maxHeight).toBe("");
   });
 
-  it("places notes at the bottom of the scroller, with no top toolbar", () => {
+  it("keeps notes + controls in a pinned footer, outside the synced scroller", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
     const notes = screen.getByTestId("margin-notes");
     const scroll = screen.getByTestId("margin-scroll");
+    const footer = screen.getByTestId("margin-footer");
     const column = screen.getByTestId("margin-column");
-    // Notes now scroll with the content, at the foot of the scroller (reached after the fragment text).
-    expect(scroll.contains(notes)).toBe(true);
-    // The column controls are a pinned footer below the scroller, not a top toolbar.
+    // Notes live in the pinned footer (so the comment scroller stays locked to the editor), not in the
+    // synced scroller.
+    expect(scroll.contains(notes)).toBe(false);
+    expect(footer.contains(notes)).toBe(true);
+    // The controls are in the footer too, below the scroller — not a top toolbar.
     const controls = screen.getByTestId("margin-controls");
     expect(scroll.contains(controls)).toBe(false);
+    expect(footer.contains(controls)).toBe(true);
     // The scroller is the column's first child — no chrome above it offsets the rows.
     expect(column.firstElementChild).toBe(scroll);
+    // The footer follows the scroller.
+    expect(scroll.nextElementSibling).toBe(footer);
+  });
+
+  it("collapses the notes body by default; the toggle reveals it in place", () => {
+    renderColumn({
+      fragmentContent: "First.",
+      marginEditor: buildMarginEditor({ notes: "a structural thought" }),
+    });
+    // Collapsed: the toggle shows, the body does not.
+    expect(screen.queryByText("a structural thought")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
+    expect(screen.getByText("a structural thought")).toBeTruthy();
   });
 
   it("renders an idle comment as flowing text (top rule only) and lifts the active one onto an overlay", () => {

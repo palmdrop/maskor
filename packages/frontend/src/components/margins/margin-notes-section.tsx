@@ -16,8 +16,10 @@ type Props = {
   onDeactivate: () => void;
 };
 
-// The Margin's free-prose notes — a collapsible section at the foot of the column, reached after
-// scrolling past the fragment text (margins-4: bottom-placed, scrolls with the content).
+// The Margin's free-prose notes — a collapsible panel pinned to the foot of the column (it lives
+// outside the comment scroller, so the expand toggle is always visible and the comment column stays
+// scroll-locked to the editor while notes are open). When open, the body takes a limited, own-scroll
+// share of the column so reading notes never crowds out the comments.
 export function MarginNotesSection({
   notes,
   open,
@@ -30,13 +32,10 @@ export function MarginNotesSection({
   onDeactivate,
 }: Props) {
   return (
-    <section
-      className="mt-8 flex flex-col gap-1 border-t border-border pt-3"
-      data-testid="margin-notes"
-    >
+    <section className="flex min-h-0 flex-col" data-testid="margin-notes">
       <button
         type="button"
-        className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+        className="flex w-full shrink-0 items-center gap-2 py-1 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
         onClick={onToggle}
         aria-expanded={open}
       >
@@ -45,7 +44,9 @@ export function MarginNotesSection({
       </button>
       {open && (
         <div
-          className={`rounded-md px-2 py-1 ${active ? "border border-border/60 bg-muted/20" : ""}`}
+          className={`max-h-48 overflow-y-auto rounded-md px-2 py-1 ${
+            active ? "border border-border/60 bg-muted/20" : ""
+          }`}
           data-slot-notes
         >
           {active ? (

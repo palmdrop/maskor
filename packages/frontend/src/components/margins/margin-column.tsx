@@ -95,7 +95,14 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
 ) {
   const { notes, comments, setNotes, updateCommentBody, addCommentStub } = marginEditor;
 
-  const [notesOpen, , toggleNotes] = usePersistedBoolean(`marginNotesOpen_${projectId}`, true);
+  // Notes + orphans are collapsible panels pinned in the column footer (outside the comment scroller).
+  // Default collapsed: the toggle is always visible, and opening a panel takes a limited, own-scroll
+  // share of the column without unlocking the comment scroller from the editor.
+  const [notesOpen, , toggleNotes] = usePersistedBoolean(`marginNotesOpen_${projectId}`, false);
+  const [orphansOpen, , toggleOrphans] = usePersistedBoolean(
+    `marginOrphansOpen_${projectId}`,
+    false,
+  );
   // Global default: collapsed (comments clipped to their block's height). Expand-all relaxes the
   // anchoring into a plain readable column; the focused slot always expands regardless.
   const [expandAll, , toggleExpandAll] = usePersistedBoolean(`marginExpandAll_${projectId}`, false);
@@ -245,7 +252,9 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   return (
     <div className="flex h-full flex-col overflow-hidden" data-testid="margin-column">
       {/* No top chrome: the scroller is flush to the editor's first line, and each comment is anchored
-          to its block's measured top. Notes + controls live at the bottom. */}
+          to its block's measured top. The scroller holds *only* the per-block rows, so its content
+          height matches the editor's and the two stay locked (orphans + notes + controls live in the
+          pinned footer below, never adding scrollable height that would let the column drift). */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto no-scrollbar pr-1"
@@ -304,12 +313,25 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           })}
         </div>
 
+        {measured && rows.length === 0 && orphans.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No paragraphs yet. Write in the fragment, then type beside a paragraph to annotate it.
+          </p>
+        )}
+      </div>
+
+      {/* Pinned footer — orphans, notes, and column controls. These sit *outside* the synced scroller
+          so the comment column stays locked to the editor: their toggles are always visible and a
+          panel expands in place (own capped scroll) without pushing the comments out of alignment. */}
+      <div className="flex shrink-0 flex-col border-t border-border" data-testid="margin-footer">
         {measured && (
           <MarginOrphanGroup
             orphans={orphans}
             activeMarkerId={activeCommentMarker}
             mode={mode}
             fontSize={marginFontSize}
+            open={orphansOpen}
+            onToggle={toggleOrphans}
             liveExcerpts={liveExcerpts}
             onActivate={(markerId) => setActiveSlot({ kind: "comment", markerId })}
             onChange={updateCommentBody}
@@ -325,12 +347,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           />
         )}
 
-        {measured && rows.length === 0 && orphans.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            No paragraphs yet. Write in the fragment, then type beside a paragraph to annotate it.
-          </p>
-        )}
-
         <MarginNotesSection
           notes={notes}
           open={notesOpen}
@@ -342,32 +358,32 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           onActivate={() => setActiveSlot({ kind: "notes" })}
           onDeactivate={() => setActiveSlot(null)}
         />
-      </div>
 
-      {/* Column controls: a pinned footer — the jump-to-slot gesture and the expand-all toggle. The
-          margin saves with the editor (no separate Save button). */}
-      <div
-        className="flex shrink-0 items-center justify-end gap-3 border-t border-border pt-2"
-        data-testid="margin-controls"
-      >
-        {onCommentBlock && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onCommentBlock}
-            title="Jump to the slot beside the block at the cursor (⌘⇧M)"
-          >
-            + Comment
-          </Button>
-        )}
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          onClick={toggleExpandAll}
-          title={expandAll ? "Collapse all comments" : "Expand all comments"}
+        {/* The jump-to-slot gesture and the expand-all toggle. The margin saves with the editor (no
+            separate Save button). */}
+        <div
+          className="flex shrink-0 items-center justify-end gap-3 border-t border-border/40 mt-1 pt-2"
+          data-testid="margin-controls"
         >
-          {expandAll ? "Collapse all" : "Expand all"}
-        </button>
+          {onCommentBlock && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onCommentBlock}
+              title="Jump to the slot beside the block at the cursor (⌘⇧M)"
+            >
+              + Comment
+            </Button>
+          )}
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={toggleExpandAll}
+            title={expandAll ? "Collapse all comments" : "Expand all comments"}
+          >
+            {expandAll ? "Collapse all" : "Expand all"}
+          </button>
+        </div>
       </div>
     </div>
   );
