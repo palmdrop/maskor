@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CopyIcon, ImportIcon, Link2Icon, Link2OffIcon, Trash2Icon } from "lucide-react";
 import type { Cycle, Sequence, Violation } from "@api/generated/maskorAPI.schemas";
 import {
   useCreateSequence,
@@ -15,8 +14,8 @@ import {
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { sequenceSidebarScope } from "@lib/commands/scopes/sequence-sidebar";
-import { Badge } from "@components/ui/badge";
 import { Heading } from "@components/heading";
+import { SequenceRow } from "./SequenceRow";
 
 type Props = {
   sequences: Sequence[];
@@ -56,67 +55,6 @@ const generateCloneName = (baseName: string, existingNames: Set<string>): string
     counter++;
   }
   return `${baseName} (copy ${counter})`;
-};
-
-const StatusDot = ({ status }: { status: "cycle" | "violation" | "ok" }) => {
-  if (status === "ok") return null;
-  return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-        status === "cycle" ? "bg-red-500" : "bg-amber-500"
-      }`}
-    />
-  );
-};
-
-type InlineRenameProps = {
-  defaultName: string;
-  onCommit: (name: string) => Promise<string | null>;
-  onDone: () => void;
-};
-
-const InlineRename = ({ defaultName, onCommit, onDone }: InlineRenameProps) => {
-  const [value, setValue] = useState(defaultName);
-  const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.select();
-  }, []);
-
-  const commit = async () => {
-    const trimmed = value.trim() || defaultName;
-    const errorMessage = await onCommit(trimmed);
-    if (errorMessage) {
-      setError(errorMessage);
-    } else {
-      onDone();
-    }
-  };
-
-  return (
-    <div className="px-2 py-1 flex flex-col gap-1">
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
-          setError(null);
-        }}
-        onKeyDown={async (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            await commit();
-          } else if (e.key === "Escape") {
-            onDone();
-          }
-        }}
-        onBlur={commit}
-        className="w-full text-sm px-2 py-0.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-      />
-      {error && <p className="text-xs text-red-500">{error}</p>}
-    </div>
-  );
 };
 
 export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceId }: Props) => {
@@ -336,136 +274,28 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
           return (
             <li key={seq.uuid}>
-              {isEditing ? (
-                <InlineRename
-                  defaultName={editingDefaultName}
-                  onCommit={(name) => handleCommitRename(seq.uuid, name)}
-                  onDone={() => setEditingRowId(null)}
-                />
-              ) : isConfirmingDelete ? (
-                <div className="px-3 py-1.5 flex flex-col gap-1">
-                  <p className="text-xs text-muted-foreground truncate">
-                    Delete &quot;{seq.name}&quot;?
-                  </p>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => commands.run("overview:delete-sequence")}
-                      className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingDeleteId(null)}
-                      className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="group relative">
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(seq.uuid)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors ${
-                      isActive ? "bg-accent text-accent-foreground" : ""
-                    } ${!seq.isMain && !seq.active ? "opacity-55" : ""}`}
-                  >
-                    <StatusDot status={status} />
-                    <span className="flex-1 truncate">{seq.name}</span>
-                    {seq.origin && (
-                      <Badge
-                        variant="outline"
-                        className="shrink-0"
-                        title={`Imported from ${seq.origin.fileName} on ${new Date(
-                          seq.origin.importedAt,
-                        ).toLocaleDateString()}`}
-                      >
-                        imported
-                      </Badge>
-                    )}
-                    {seq.isMain && (
-                      <Badge variant="outline" className="shrink-0">
-                        Main
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                      {count}
-                    </span>
-                  </button>
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        commands.run("overview:clone-sequence", seq);
-                      }}
-                      disabled={cloneSequence.isPending}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-50"
-                      aria-label={`Clone sequence "${seq.name}"`}
-                      title="Clone this sequence"
-                    >
-                      <CopyIcon size={12} />
-                    </button>
-                    {insertTarget && insertTarget.uuid !== seq.uuid && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          commands.run("overview:insert-sequence", seq);
-                        }}
-                        disabled={insertSequence.isPending}
-                        className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:opacity-50"
-                        aria-label={`Insert sequence "${seq.name}" into "${insertTarget.name}"`}
-                        title={`Insert into "${insertTarget.name}"`}
-                      >
-                        <ImportIcon size={12} />
-                      </button>
-                    )}
-                    {!seq.isMain && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            commands.run("overview:toggle-sequence-active", seq);
-                          }}
-                          className={`p-1 rounded hover:text-foreground hover:bg-background/80 transition-opacity ${
-                            seq.active
-                              ? "text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
-                              : "text-amber-600 dark:text-amber-500"
-                          }`}
-                          aria-label={
-                            seq.active
-                              ? `Deactivate sequence "${seq.name}" as a constraint`
-                              : `Activate sequence "${seq.name}" as a constraint`
-                          }
-                          title={
-                            seq.active
-                              ? "Active constraint — click to deactivate"
-                              : "Inactive — click to use as a constraint"
-                          }
-                        >
-                          {seq.active ? <Link2Icon size={12} /> : <Link2OffIcon size={12} />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmingDeleteId(seq.uuid);
-                          }}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                          aria-label={`Delete sequence "${seq.name}"`}
-                        >
-                          <Trash2Icon size={12} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
+              <SequenceRow
+                sequence={seq}
+                status={status}
+                count={count}
+                isActive={isActive}
+                isEditing={isEditing}
+                isConfirmingDelete={isConfirmingDelete}
+                editingDefaultName={editingDefaultName}
+                showInsert={!!insertTarget && insertTarget.uuid !== seq.uuid}
+                insertTargetName={insertTarget?.name}
+                clonePending={cloneSequence.isPending}
+                insertPending={insertSequence.isPending}
+                onSelect={() => handleSelect(seq.uuid)}
+                onCommitRename={(name) => handleCommitRename(seq.uuid, name)}
+                onRenameDone={() => setEditingRowId(null)}
+                onConfirmDelete={() => commands.run("overview:delete-sequence")}
+                onRequestDelete={() => setConfirmingDeleteId(seq.uuid)}
+                onCancelDelete={() => setConfirmingDeleteId(null)}
+                onClone={() => commands.run("overview:clone-sequence", seq)}
+                onInsert={() => commands.run("overview:insert-sequence", seq)}
+                onToggleActive={() => commands.run("overview:toggle-sequence-active", seq)}
+              />
             </li>
           );
         })}

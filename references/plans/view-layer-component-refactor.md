@@ -1,7 +1,7 @@
 # View-layer component refactor
 
 **Date**: 10-06-2026
-**Status**: In progress (Phases 1–5 done; Phase 6 deferred until Plan 3 lands)
+**Status**: Done (Phases 1–6 complete; frontend-architecture rollout merged, `bun run verify` green)
 
 ---
 
@@ -70,13 +70,13 @@ The `agent/frontend-refactor` worktree owns hooks/mutations/state. Boundaries:
 - [x] Adopted in `append-or-prepend-dialog.tsx`: the Source row (Keep/Cut via `SegmentedControl`, with the disabled "Link" placeholder kept as a sibling `Button` since "link" is not a selectable `InsertSourceMode`) and the After-confirm row (Switch/Stay). Two consumers in one file; no other file used the toggle pattern (`grep '? "default" : "outline"'`).
 - [x] Test selection behavior (`segmented-control.test.tsx`: pressed state, onChange value, per-option disabled, whole-control disabled); `bun run format` then `bun run verify`. Frontend typecheck adds no new errors; 679 frontend tests pass. (`verify` red at HEAD from pre-existing out-of-scope errors — see Phase 1 note.) `git commit`.
 
-### Phase 6 — Overview render-tree decomposition (DEFERRED until Plan 3 lands)
+### Phase 6 — Overview render-tree decomposition (done — Plan 3 merged first)
 
-- [ ] **Precondition: Plan 3 (`overview-surface-hooks`) is merged.** Do not start before; this avoids churning files Plan 3 may touch.
-- [ ] Extract leaf presentational components from `ReorderList.tsx` (555 LOC): `ReorderRow`, the drag handle — consuming `Button`/`Badge`/`Heading`. View-only; no state moves.
-- [ ] Extract `SequenceTile` and panel sub-parts from `SequenceSidebar.tsx` (482 LOC) and `RightSidebar.tsx` (333 LOC).
-- [ ] Replace the remaining raw `<button>` in these files with `Button` where the markup is a plain action (leave DnD/keyboard handlers that are intentionally raw).
-- [ ] Tests for extracted components where they carry conditional rendering; `bun run format` then `bun run verify`. `git commit`.
+- [x] **Precondition: Plan 3 (`overview-surface-hooks`) is merged.** The whole frontend-architecture rollout (Plans 1–4) merged into this branch first; `useFragmentSelection`/`useSectionOps` + the `useEntityEditor`/`useOptimisticMutation` registry are present, and `bun run verify` is green end-to-end (the earlier pre-existing blockers are resolved). Phase 6 ran after.
+- [x] Extracted leaf components from `ReorderList.tsx` (556 → 143 LOC): `ReorderRow` (+ `RowIndicators`), `ListDropZone`, `SectionGroup`, with shared `reorder-types.ts`. The section drag handle stays a raw DnD `<button>`; its verbose inline SVGs (grip/merge-up/merge-down/delete) were swapped for the equivalent lucide icons (`GripVertical`/`ArrowUp`/`ArrowDown`/`Trash2`, same glyph + size). View-only; no state moved.
+- [x] Extracted `SequenceRow` (the `SequenceTile`, + `StatusDot`/`InlineRename`) from `SequenceSidebar.tsx` (485 → 315 LOC) and `FragmentDetailPanel` + `ProjectWarningsPanel` from `RightSidebar.tsx` (328 → 75 LOC). `SequenceRow` is purely presentational (callbacks bound in the parent; command dispatch + all state stay in `SequenceSidebar`). Three files went 1369 → 533 LOC, rest in focused leaf files.
+- [x] Migrated the two standalone bordered action buttons in `FragmentDetailPanel` ("Open fragment" / "Remove from sequence") to `Button variant="outline" size="xs"` (parity holds) and the "main" pill to `Badge`. The dense hover-revealed icon clusters, solid confirm/cancel pills, full-width "+ Add/New" text links, semantic-colored inline links, rename input/trigger, and the DnD-adjacent `ReorderRow` trash stay raw — `Button`'s fixed sizing/variant colors would visibly change this dense surface. Flagged with reasoning in `references/suggestions.md`.
+- [x] Tests for the extracted components' conditional rendering: `SequenceRow` (edit/confirm/normal, insert visibility, main-vs-non-main affordances), `ReorderRow` (remove affordance present only with `onRemove`), `FragmentDetailPanel` (placed/unplaced, main badge, action callbacks), `ProjectWarningsPanel` (no-conflicts vs cycles/violations). `bun run format` then `bun run verify` — green (backend + frontend, 742 frontend tests). `git commit`.
 
 ---
 
