@@ -15,6 +15,7 @@ import type {
 import { AlertTriangleIcon } from "lucide-react";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
+import { useScrollSpy } from "@hooks/useScrollSpy";
 import { ReadonlyProse } from "@components/readonly-prose";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
 import { Button } from "@components/ui/button";
@@ -81,6 +82,7 @@ export const FragmentImportPage = () => {
   const [commitError, setCommitError] = useState<string | null>(null);
   const [partialFailureResult, setPartialFailureResult] = useState<ImportResult | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   const format: Format | null = file ? formatFromExtension(file.name) : null;
 
@@ -177,7 +179,15 @@ export const FragmentImportPage = () => {
   const isInFlight = isPreviewPending || isCommitPending;
   const pieceCount = pieces.length;
 
-  const { activeAnchorId, navigateToAnchor } = useFragmentAnchor({ ready: pieceCount > 0 });
+  const { navigateToAnchor } = useFragmentAnchor({ ready: pieceCount > 0 });
+
+  // Highlight the piece at the reading line as the preview scrolls (matching the
+  // preview page), recomputing when the split changes the rendered pieces.
+  const activeFragmentId = useScrollSpy({
+    rootRef: mainRef,
+    enabled: pieceCount > 0,
+    deps: [previewResult],
+  });
 
   const commands = useCommands();
   useCommandScope(fragmentImportScope, {
@@ -304,7 +314,7 @@ export const FragmentImportPage = () => {
           className="w-72"
           sections={previewResult?.sections ?? []}
           getFragmentLabel={pieceLabel}
-          activeAnchorId={activeAnchorId}
+          activeAnchorId={activeFragmentId}
           onSelect={navigateToAnchor}
           header={
             <div className="px-4 pt-4 pb-2 text-sm font-medium">
@@ -317,6 +327,7 @@ export const FragmentImportPage = () => {
 
         {/* Main content area */}
         <main
+          ref={mainRef}
           className={["flex-1 min-h-0 overflow-y-auto p-6", isPreviewPending ? "opacity-60" : ""]
             .join(" ")
             .trim()}

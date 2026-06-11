@@ -1,7 +1,7 @@
 # Spec: Preview
 
 **Status**: Partial
-**Last updated**: 2026-06-08
+**Last updated**: 2026-06-11
 **Shipped**:
 
 - Read-only preview page with sequence picker, fragment title / section heading / separator toggles, sidebar fragment navigator, and prose renderer — see `references/plans/preview-feature.md` (phases 1–5).
@@ -10,6 +10,7 @@
 - 2026-06-01 — The shared `assembleMarkdown` path strips Margin anchor markers (`<!--c:ID-->`) from fragment bodies, so the preview surface never shows them. (plan: `references/plans/margins.md`, Phase 2b)
 - 2026-06-09 — Export button in the preview toolbar. Clicking "Export" opens the Export modal pre-selected to the active preview sequence. The modal is also reachable via the command palette "Export…" command. (plan: `references/plans/export-feature.md`)
 - 2026-06-08 — Double-click inline editing: double-clicking a fragment in the Preview page opens an `InlineFragmentEditor` in place (vim/rich/raw per the global setting). The assembled markdown is split at the fragment's anchor sentinel; a `ReadonlyProse before` / `InlineFragmentEditor` / `ReadonlyProse after` triptych replaces the single renderer while editing. The editor is seeded from the raw fragment body (separate `useGetFragment` fetch — not from the assembled markdown). Save calls `useUpdateFragment`, invalidates the assembled sequence and fragment query keys, and re-scrolls to the anchor. Margin-comment anchors (`<!--c:ID-->`) are preserved verbatim through the round-trip. (plan: `references/plans/preview-inline-fragment-editing.md`)
+- 2026-06-11 — Active-fragment tracking is now a position-based scroll spy (`useScrollSpy`): the active fragment is the one whose anchor sits at a reading line ~35% down the viewport, computed from anchor positions rather than enter-only `IntersectionObserver` events. This tracks both scroll directions (a long fragment scrolled up into view becomes active) and resolves correctly after a reload's scroll restore (a programmatic scroll fires the same recompute). It drives the preview header title and the sidebar `aria-current` highlight, and the same hook now drives the import-preview sidebar highlight on scroll. (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
 
 ---
 

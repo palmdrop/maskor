@@ -22,6 +22,7 @@ import {
 } from "@api/generated/fragments/fragments";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
+import { useScrollSpy } from "@hooks/useScrollSpy";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
 import { ReadonlyProse } from "@components/readonly-prose";
 import { InlineFragmentEditor } from "@components/inline-fragment-editor";
@@ -135,9 +136,7 @@ export const PreviewPage = () => {
 
   const previewReady =
     !!assembled && assembled.sections.some((section) => section.fragments.length > 0);
-  const { navigateToAnchor, activeAnchorId } = useFragmentAnchor({ ready: previewReady });
-
-  const [activeFragmentId, setActiveFragmentId] = useState<string | null>(null);
+  const { navigateToAnchor } = useFragmentAnchor({ ready: previewReady });
 
   // --- Inline editing state ---
   const [editingFragmentUuid, setEditingFragmentUuid] = useState<string | null>(null);
@@ -238,31 +237,16 @@ export const PreviewPage = () => {
     [editingFragmentUuid, resolveFragmentFromDoubleClick],
   );
 
-  useEffect(() => {
-    if (!previewReady) return;
-    const main = mainRef.current;
-    // In editing mode the assembled markdown is split across two ReadonlyProse
-    // instances; observe the anchors in both.
-    const fragmentAnchors = [...main!.getElementsByClassName("fragment-anchor")];
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveFragmentId(entry.target.id.replace("fragment-", ""));
-          }
-        }
-      },
-      {
-        root: main,
-        rootMargin: "0px 0px -85% 0px",
-        threshold: 0,
-      },
-    );
-
-    fragmentAnchors.forEach((anchor) => observer.observe(anchor));
-    return () => observer.disconnect();
-  }, [previewReady, assembled, editingFragmentUuid]);
+  // Active fragment = the one at the reading line (~35% down the viewport),
+  // computed from anchor positions so it tracks both scroll directions and
+  // resolves correctly after a reload's scroll restore. Drives the header title
+  // and the sidebar highlight. Recomputes when the content or edit-mode changes
+  // (editing splits the markdown across two ReadonlyProse instances).
+  const activeFragmentId = useScrollSpy({
+    rootRef: mainRef,
+    enabled: previewReady,
+    deps: [assembled, editingFragmentUuid],
+  });
 
   const allFragments = useMemo(
     () => assembled?.sections.flatMap((section) => section.fragments) ?? [],
@@ -311,7 +295,7 @@ export const PreviewPage = () => {
           }
         }}
       >
-        {activeFragmentId && fragmentsMap.get(activeFragmentId ?? activeAnchorId)?.key}
+        {activeFragmentId && fragmentsMap.get(activeFragmentId)?.key}
       </PreviewToolbar>
       <div className="flex flex-1 min-h-0">
         <FragmentNavSidebar
@@ -324,7 +308,6 @@ export const PreviewPage = () => {
             </Heading>
           }
         />
-        {}
         <main
           className="flex-1 overflow-y-auto"
           ref={mainRef}
