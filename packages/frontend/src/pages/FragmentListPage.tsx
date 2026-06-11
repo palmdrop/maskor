@@ -34,6 +34,7 @@ import {
   sortFragments,
 } from "@lib/fragments/sort";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
+import { FragmentListOrderProvider } from "@contexts/FragmentListOrderContext";
 import { UploadIcon } from "lucide-react";
 
 export const FragmentListPage = () => {
@@ -299,7 +300,11 @@ export const FragmentListPage = () => {
       </aside>
       <main className="flex-1 min-h-0 overflow-auto p-4">
         {activeFragmentId ? (
-          <Outlet />
+          // Expose the filtered order so the editor's Previous/Next walks exactly
+          // what this list currently shows.
+          <FragmentListOrderProvider orderedFragmentUuids={filtered.map((f) => f.uuid)}>
+            <Outlet />
+          </FragmentListOrderProvider>
         ) : (
           <p className="text-sm text-muted-foreground">Select a fragment to edit.</p>
         )}

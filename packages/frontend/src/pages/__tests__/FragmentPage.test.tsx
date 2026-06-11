@@ -15,7 +15,15 @@ let currentParams: { projectId: string; fragmentId: string } = {
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => currentParams,
+  useNavigate: () => vi.fn(),
 }));
+
+// Navigation wiring is exercised by scopes/fragment-nav.test.ts; here we only care
+// about last-fragment persistence, so stub the command + order surfaces (this also
+// keeps the command catalog out of this suite's module graph).
+vi.mock("@lib/commands/useCommands", () => ({ useCommands: () => ({ run: vi.fn() }) }));
+vi.mock("@lib/commands/useCommandScope", () => ({ useCommandScope: () => {} }));
+vi.mock("@contexts/FragmentListOrderContext", () => ({ useFragmentListOrder: () => null }));
 
 const recordFragmentVisitMock = vi.fn((_projectId: string, _fragmentId: string) =>
   Promise.resolve(),
