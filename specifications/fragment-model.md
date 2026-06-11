@@ -1,10 +1,11 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-06-02
+**Last updated**: 2026-06-11
 
 **Shipped**:
 
+- 2026-06-11 — The fragment list can be sorted via a sidebar dropdown: by name, by last-updated, or by any sequence's order (placed fragments follow the sequence, unplaced fragments fall to the bottom alphabetically). The choice persists per project. Created-at sort is deferred — fragments carry no `createdAt`. (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
 - 2026-06-02 — The fragment `notes:` attachment list was removed; fragment-level notes live in the Margin (ADR 0007). A legacy `notes:` list is dropped on the next Maskor write, and all other unmanaged frontmatter keys (e.g. `tags`, `aliases`) are now preserved verbatim across writes. (plan: references/plans/margins.md, Phase 8)
 - 2026-05-05 — Fragments support inline renaming; the filename stem is the user-facing identity, consistent with all other vault entities. UUID and all attached metadata survive a rename. (plan: references/plans/drop-fragment-title.md)
 - 2026-05-06 — Users can assign per-aspect weights (0–1) to a fragment; weights are optional, default to 0, and are preserved for aspects that no longer exist in the project. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)

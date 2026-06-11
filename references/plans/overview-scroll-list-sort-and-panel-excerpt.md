@@ -53,7 +53,7 @@ Do **not** create a new branch. Stay on the current branch (`agent/fragments-and
 ### Phase 4 — Finalize
 
 - [x] `bun run format`, then `bun run verify` — passing (exit 0; backend 0 fail; 762 frontend tests pass). _(2026-06-11)_
-- [x] Updated `specifications/overview.md` `Shipped` for features 1 + 3. Feature 2 (fragment-list sorting) has no clear spec home — paused to ask the developer (CLAUDE.md rule) rather than guessing. _(2026-06-11)_
+- [x] Updated `specifications/overview.md` `Shipped` for features 1 + 3, and `specifications/fragment-model.md` for feature 2 (sort dropdown — spec home chosen by the developer). _(2026-06-11)_
 
 ---
 
