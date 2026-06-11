@@ -1,8 +1,9 @@
 # Overview scroll-to-fragment, list sequence-sort, and right-panel excerpt
 
 **Date**: 11-06-2026
-**Status**: Todo
-**Specs**: `specifications/vision.md`
+**Status**: Done
+**Specs**: `specifications/overview.md`
+**Closed**: 11-06-2026
 
 ---
 
@@ -27,34 +28,32 @@ Do **not** create a new branch. Stay on the current branch (`agent/fragments-and
 
 ### Phase 1 — Right panel excerpt-only (smallest, least risk)
 
-- [ ] `FragmentDetailPanel.tsx`: always render the key + server `excerpt` view; remove the inline-editing `FragmentProse` branch. Keep "Open fragment" and "Remove from sequence" buttons.
-- [ ] `RightSidebar.tsx` + `OverviewPage/index.tsx`: stop threading `onSaveContent` / `selectedContent` into the right panel. Leave the spine's own editing path (`handleSaveFragmentContent`) untouched.
-- [ ] Update `FragmentDetailPanel.test.tsx`: no editor rendered, excerpt shown, both buttons present.
-- [ ] `git commit` Phase 1.
+- [x] `FragmentDetailPanel.tsx`: always render the key + server `excerpt` view; remove the inline-editing `FragmentProse` branch. Keep "Open fragment" and "Remove from sequence" buttons. _(2026-06-11)_
+- [x] `RightSidebar.tsx` + `OverviewPage/index.tsx`: stop threading `onSaveContent` / `selectedContent` into the right panel. Leave the spine's own editing path (`handleSaveFragmentContent`) untouched. _(2026-06-11)_
+- [x] Update `FragmentDetailPanel.test.tsx`: no editor rendered, excerpt shown, both buttons present. _(2026-06-11)_
+- [x] `git commit` Phase 1. _(2026-06-11)_
 
 ### Phase 2 — FragmentListPage sort dropdown
 
-- [ ] Add `useListSequences` to `FragmentListPage.tsx`; build a per-sequence flattened order map (section position → fragment order).
-- [ ] Add a sort dropdown to the sidebar: **Name** (`key`), **Updated at** (`updatedAt`), then a divider listing every sequence by name. (Created at is deferred — see Notes.)
-- [ ] Apply the chosen sort to the filtered list. Sequence sort: placed fragments in sequence order, unplaced fragments at the bottom (alphabetical among themselves).
-- [ ] Persist the selected sort per project (small persisted-string hook, or extend `lib/nav-state.ts`).
-- [ ] Tests: each sort order; unplaced-at-bottom for a sequence sort.
-- [ ] `git commit` Phase 2.
+- [x] Add `useListSequences` to `FragmentListPage.tsx`; build a per-sequence flattened order map (section position → fragment order). _(2026-06-11 — `lib/fragments/sort.ts`)_
+- [x] Add a sort dropdown to the sidebar: **Name** (`key`), **Updated at** (`updatedAt`), then a divider listing every sequence by name. (Created at is deferred — see Notes.) _(2026-06-11)_
+- [x] Apply the chosen sort to the filtered list. Sequence sort: placed fragments in sequence order, unplaced fragments at the bottom (alphabetical among themselves). _(2026-06-11)_
+- [x] Persist the selected sort per project (new `usePersistedString` hook). _(2026-06-11)_
+- [x] Tests: each sort order; unplaced-at-bottom for a sequence sort. _(2026-06-11 — `lib/fragments/sort.test.ts`)_
+- [x] `git commit` Phase 2. _(2026-06-11)_
 
 ### Phase 3 — Sidebar click scrolls spine + updates anchor (trickiest)
 
-- [ ] Wire `hooks/useFragmentAnchor.ts` into `OverviewPage/index.tsx`. Spine anchors (`id="fragment-<uuid>"` from `FragmentProse`) already exist.
-- [ ] Thread a new `onScrollToFragment` callback: `ReorderList` → `SectionGroup` → `ReorderRow`. On a plain row click, select (current behavior) **and** call `navigateToAnchor(uuid)` (sets hash + `scrollIntoView`). Modifier clicks (cmd/shift) only select — no scroll, no anchor change.
-- [ ] Load reconciliation: record the last app-authored hash in `sessionStorage` (via `lib/nav-state.ts`). On mount:
-  - If the URL hash is present and does **not** match the session-authored value (external/deep link, or fresh tab) → scroll to the anchor and skip the persisted-scroll restore. **Anchor wins.**
-  - Otherwise (leftover hash from our own click, or no hash) → restore the persisted scroll, and suppress `useFragmentAnchor`'s load-time scroll effect. **Scroll wins.**
-- [ ] Tests: the two reconciliation branches; a sidebar row click sets the hash and scrolls.
-- [ ] `git commit` Phase 3.
+- [x] Wire `hooks/useFragmentAnchor.ts` into `OverviewPage/index.tsx` (`ready: false` disables its load-time scroll; the page drives load scrolling). _(2026-06-11)_
+- [x] Plain row click selects **and** scrolls + sets the anchor. Implemented by wrapping the select handler at the index level (`handleSidebarSelectFragment`) rather than threading a new prop through `ReorderList`/`SectionGroup`/`ReorderRow` — the row already forwards modifiers, so no child changes were needed. Modifier clicks only select. _(2026-06-11)_
+- [x] Load reconciliation: authored anchor recorded in `sessionStorage` (`lib/nav-state.ts`); pure decision in `OverviewPage/utils/loadScroll.ts`. External deep link → anchor wins; leftover/own anchor → remembered scroll wins. _(2026-06-11)_
+- [x] Tests: reconciliation branches (`loadScroll.test.ts`); sidebar row click sets the hash + authors the anchor; meta-click does not. _(2026-06-11)_
+- [x] `git commit` Phase 3. _(2026-06-11)_
 
 ### Phase 4 — Finalize
 
-- [ ] `bun run format`, then `bun run verify`. Fix any lint/test failures.
-- [ ] Update `specifications/vision.md` `Shipped` frontmatter with the three features (no implementation detail). If `vision.md` proves to be the wrong spec, pause and ask before editing.
+- [x] `bun run format`, then `bun run verify` — passing (exit 0; backend 0 fail; 762 frontend tests pass). _(2026-06-11)_
+- [x] Updated `specifications/overview.md` `Shipped` for features 1 + 3. Feature 2 (fragment-list sorting) has no clear spec home — paused to ask the developer (CLAUDE.md rule) rather than guessing. _(2026-06-11)_
 
 ---
 

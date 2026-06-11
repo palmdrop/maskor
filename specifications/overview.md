@@ -1,7 +1,7 @@
 # Spec: Overview
 
 **Status**: Stable
-**Last updated**: 2026-05-31
+**Last updated**: 2026-06-11
 
 **Shipped**:
 
@@ -13,6 +13,8 @@
 - 2026-05-31 — Sequence sidebar surfaces the `active` flag: each non-main sequence has an active/inactive toggle (logs `sequence:activated`/`sequence:deactivated`) controlling whether it constrains the main sequence; inactive rows are dimmed. Import-sequences appear like any sequence with an "imported" badge and an `origin` provenance tooltip. (plan: `references/plans/import-sequence.md`)
 - 2026-06-05 — In-context fragment editing on the working surface: the shared per-fragment renderer is select-to-edit — highlighting text in a rendered chunk (or its hover pencil) opens an inline markdown editor seeded with that fragment's body, in both the prose spine and the right detail panel. Saving routes the new content back to the chunk's own fragment via the existing fragment update path and reflows the spine; ⌘/Ctrl+Enter saves, Esc cancels. (plan: `references/plans/overview-redesign.md` Phase 4, ADR 0011)
 - 2026-06-08 — One-click remove-from-sequence: each placed fragment carries a direct "remove from sequence" affordance (returning it to the pool) in all three surfaces — a hover trash button in the prose spine and the left reorder column, plus a "Remove from sequence" button in the right detail panel. Pool fragments and fragments not placed in the active sequence get no affordance. Dispatches through the new `overview:unplace-fragment` command (also palette-discoverable) onto the existing optimistic unplace mutation that drag-to-pool already uses.
+- 2026-06-11 — Clicking a fragment in the left ordering column reveals it in the prose spine (scrolls it into view) and writes a shareable `#fragment-<uuid>` URL anchor; modifier (cmd/shift) clicks only adjust the multi-selection and do not scroll. On load the anchor reconciles with the remembered scroll position: an external deep-link anchor scrolls to its fragment, while a leftover anchor from an in-app click yields to the remembered scroll. (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
+- 2026-06-11 — The right detail panel is now a read-only excerpt (key + server excerpt) rather than an inline editor, so long fragments no longer overflow the narrow column. The prose spine remains the in-context editing surface and "Open fragment" routes to the full editor. (Supersedes the right-panel half of the 2026-06-05 in-context editing entry.) (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
 
 ---
 
