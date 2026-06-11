@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCommands } from "@lib/commands/useCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
 import { Heading } from "@components/heading";
 import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
@@ -15,20 +17,14 @@ import {
   useGetAssembledSequence,
   getGetAssembledSequenceQueryKey,
 } from "@api/generated/preview/preview";
-import {
-  useGetFragment,
-  useUpdateFragment,
-  getGetFragmentQueryKey,
-} from "@api/generated/fragments/fragments";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { useScrollSpy } from "@hooks/useScrollSpy";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
-import { ReadonlyProse } from "@components/readonly-prose";
-import { InlineFragmentEditor } from "@components/inline-fragment-editor";
+import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
+import { Button } from "@components/ui/button";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { PreviewProse } from "./PreviewProse";
-import { splitAroundFragment } from "@lib/preview/split-around-fragment";
 import {
   ProjectPreviewSeparator,
   type GetAssembledSequenceParams,
@@ -138,72 +134,27 @@ export const PreviewPage = () => {
     !!assembled && assembled.sections.some((section) => section.fragments.length > 0);
   const { navigateToAnchor } = useFragmentAnchor({ ready: previewReady });
 
-  // --- Inline editing state ---
+  // --- Inline editing overlay state (ADR 0013) ---
+  // Double-click opens the full fragment editor as a center-replacing overlay
+  // (the assembled document unmounts; the nav sidebar stays). No markdown split.
   const [editingFragmentUuid, setEditingFragmentUuid] = useState<string | null>(null);
-  const [isSavingFragment, setIsSavingFragment] = useState(false);
-  // After save, track which fragment to scroll to once the refetch renders.
+  const editingUuidRef = useRef<string | null>(null);
+  editingUuidRef.current = editingFragmentUuid;
+  // On close, scroll back to the top of the last-shown fragment once the document
+  // re-renders.
   const [pendingScrollUuid, setPendingScrollUuid] = useState<string | null>(null);
+  const editorRef = useRef<FragmentEditorHandle>(null);
 
-  // Fetch the raw body of the fragment being edited (the assembled markdown is NOT
-  // the raw body — titles/headings/separators are injected, anchors stripped).
-  const { data: editingFragmentEnvelope } = useGetFragment(projectId, editingFragmentUuid ?? "", {
-    query: { enabled: !!editingFragmentUuid },
-  });
-  const editingFragment =
-    editingFragmentEnvelope?.status === 200 ? editingFragmentEnvelope.data : null;
-
-  const { mutateAsync: updateFragment } = useUpdateFragment();
-
-  // Scroll to the saved fragment once the assembled markdown refetches and renders.
   useEffect(() => {
-    if (!pendingScrollUuid || !assembled) return;
+    if (editingFragmentUuid || !pendingScrollUuid || !assembled) return;
     const uuid = pendingScrollUuid;
     setPendingScrollUuid(null);
-    // Defer one tick so the ReadonlyProse has finished rendering the new content.
     requestAnimationFrame(() => {
       document
         .getElementById(`fragment-${uuid}`)
         ?.scrollIntoView({ behavior: "instant", block: "start" });
     });
-  }, [assembled, pendingScrollUuid]);
-
-  const handleSaveFragment = useCallback(
-    async (content: string) => {
-      if (!editingFragmentUuid || !activeSequenceUuid) return;
-      setIsSavingFragment(true);
-      try {
-        await updateFragment({
-          projectId,
-          fragmentId: editingFragmentUuid,
-          data: { content },
-        });
-        // Invalidate the assembled sequence so the preview reloads with updated content.
-        await queryClient.invalidateQueries({
-          queryKey: getGetAssembledSequenceQueryKey(projectId, activeSequenceUuid, previewParams),
-        });
-        // Invalidate the fragment cache so stale raw body is not served if re-opened.
-        await queryClient.invalidateQueries({
-          queryKey: getGetFragmentQueryKey(projectId, editingFragmentUuid),
-        });
-        setPendingScrollUuid(editingFragmentUuid);
-        setEditingFragmentUuid(null);
-      } finally {
-        setIsSavingFragment(false);
-      }
-    },
-    [
-      editingFragmentUuid,
-      activeSequenceUuid,
-      projectId,
-      updateFragment,
-      queryClient,
-      previewParams,
-    ],
-  );
-
-  const handleCancelEdit = useCallback(() => {
-    setEditingFragmentUuid(null);
-  }, []);
+  }, [editingFragmentUuid, assembled, pendingScrollUuid]);
 
   // Resolve the double-clicked fragment UUID from the nearest preceding
   // `.fragment-anchor` element (the invisible sentinel nodes rendered by
@@ -241,7 +192,7 @@ export const PreviewPage = () => {
   // computed from anchor positions so it tracks both scroll directions and
   // resolves correctly after a reload's scroll restore. Drives the header title
   // and the sidebar highlight. Recomputes when the content or edit-mode changes
-  // (editing splits the markdown across two ReadonlyProse instances).
+  // (no document to observe while the editor overlay is open).
   const activeFragmentId = useScrollSpy({
     rootRef: mainRef,
     enabled: previewReady,
@@ -260,10 +211,38 @@ export const PreviewPage = () => {
     }, new Map<string, PreviewNavFragment>());
   }, [allFragments]);
 
-  const editSplit = useMemo(() => {
-    if (!assembled || !editingFragmentUuid || !editingFragment) return null;
-    return splitAroundFragment(assembled.markdown, editingFragmentUuid);
-  }, [assembled, editingFragmentUuid, editingFragment]);
+  // Previous/Next/Close for the editor overlay, traversing the assembled order.
+  const previewOrder = useMemo(() => allFragments.map((fragment) => fragment.uuid), [allFragments]);
+  const editIndex = editingFragmentUuid ? previewOrder.indexOf(editingFragmentUuid) : -1;
+  const previousEditUuid = editIndex > 0 ? previewOrder[editIndex - 1]! : null;
+  const nextEditUuid =
+    editIndex >= 0 && editIndex < previewOrder.length - 1 ? previewOrder[editIndex + 1]! : null;
+
+  const openEditor = useCallback((uuid: string) => setEditingFragmentUuid(uuid), []);
+  const closeEditor = useCallback(() => {
+    setPendingScrollUuid(editingUuidRef.current);
+    setEditingFragmentUuid(null);
+  }, []);
+  const saveEditor = useCallback(async () => {
+    await editorRef.current?.save();
+  }, []);
+  const handleEditorSaved = useCallback(() => {
+    if (activeSequenceUuid) {
+      void queryClient.invalidateQueries({
+        queryKey: getGetAssembledSequenceQueryKey(projectId, activeSequenceUuid, previewParams),
+      });
+    }
+  }, [activeSequenceUuid, projectId, queryClient, previewParams]);
+
+  useCommandScope(fragmentNavScope, {
+    hasNext: nextEditUuid !== null,
+    hasPrevious: previousEditUuid !== null,
+    nextUuid: nextEditUuid,
+    previousUuid: previousEditUuid,
+    save: saveEditor,
+    goToFragment: openEditor,
+    closeEditor: editingFragmentUuid ? closeEditor : undefined,
+  });
 
   if (assembledEnvelope?.status === 404) {
     return (
@@ -308,54 +287,58 @@ export const PreviewPage = () => {
             </Heading>
           }
         />
-        <main
-          className="flex-1 overflow-y-auto"
-          ref={mainRef}
-          onDoubleClick={handleMainDoubleClick}
-          onScroll={() => {
-            if (mainRef.current) persistedScroll.save(mainRef.current.scrollTop);
-          }}
-        >
-          {allFragments.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Sequence empty.</p>
-            </div>
-          ) : editSplit ? (
-            // Inline editing: split the assembled markdown around the edited fragment.
-            // Two ReadonlyProse instances flank the InlineFragmentEditor in normal
-            // document flow so the editor expands/reflows naturally as text is added.
-            <div className="py-6 px-6">
-              <ReadonlyProse
-                content={editSplit.before}
-                fontSize={fontSize}
-                maxParagraphWidth={maxParagraphWidth}
-              />
-              <div
-                className="mx-auto w-full border rounded-md p-3 my-4"
-                style={{ maxWidth: `${maxParagraphWidth}ch`, fontSize: `${fontSize}px` }}
-              >
-                <InlineFragmentEditor
-                  projectId={projectId}
-                  content={editingFragment!.content}
-                  onSave={handleSaveFragment}
-                  onCancel={handleCancelEdit}
-                  isSaving={isSavingFragment}
-                />
-              </div>
-              <ReadonlyProse
-                content={editSplit.after}
-                fontSize={fontSize}
-                maxParagraphWidth={maxParagraphWidth}
-              />
-            </div>
-          ) : (
-            <PreviewProse
-              markdown={assembled.markdown}
-              fontSize={fontSize}
-              maxParagraphWidth={maxParagraphWidth}
+        {editingFragmentUuid ? (
+          // Center-replacing editor overlay (ADR 0013). The nav sidebar stays; the
+          // assembled document unmounts. Focus mode (if on) lifts the editor into a
+          // fixed full-viewport layer over everything but the navbar.
+          <div className="flex-1 min-h-0 overflow-hidden p-4">
+            <FragmentEditor
+              key={editingFragmentUuid}
+              ref={editorRef}
+              projectId={projectId}
+              fragmentId={editingFragmentUuid}
+              sidebarCollapsible
+              showMargin={false}
+              navigation={{
+                onPrevious: () => commands.run("fragments:previous"),
+                onNext: () => commands.run("fragments:next"),
+                hasPrevious: previousEditUuid !== null,
+                hasNext: nextEditUuid !== null,
+              }}
+              backNode={
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => commands.run("fragments:close-editor")}
+                >
+                  ← Close
+                </Button>
+              }
+              onSaved={handleEditorSaved}
             />
-          )}
-        </main>
+          </div>
+        ) : (
+          <main
+            className="flex-1 overflow-y-auto"
+            ref={mainRef}
+            onDoubleClick={handleMainDoubleClick}
+            onScroll={() => {
+              if (mainRef.current) persistedScroll.save(mainRef.current.scrollTop);
+            }}
+          >
+            {allFragments.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">Sequence empty.</p>
+              </div>
+            ) : (
+              <PreviewProse
+                markdown={assembled.markdown}
+                fontSize={fontSize}
+                maxParagraphWidth={maxParagraphWidth}
+              />
+            )}
+          </main>
+        )}
       </div>
     </div>
   );

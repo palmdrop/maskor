@@ -27,6 +27,8 @@ vi.mock("@lib/commands/useCommands", () => ({
   useCommands: () => ({ run: vi.fn(), isAvailable: vi.fn(), list: vi.fn() }),
 }));
 
+vi.mock("@lib/commands/useCommandScope", () => ({ useCommandScope: () => {} }));
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -65,45 +67,12 @@ vi.mock("@api/generated/preview/preview", () => ({
   getGetAssembledSequenceQueryKey: vi.fn(() => ["assembled", "preview"]),
 }));
 
-vi.mock("@api/generated/fragments/fragments", () => ({
-  useGetFragment: vi.fn(),
-  useUpdateFragment: vi.fn(),
-  getGetFragmentQueryKey: vi.fn((projectId: string, fragmentId: string) => [
-    "fragment",
-    projectId,
-    fragmentId,
-  ]),
-}));
-
-// Capture the last onSave/onCancel so tests can drive the editor.
-let capturedEditorOnSave: ((content: string) => void) | undefined;
-let capturedEditorOnCancel: (() => void) | undefined;
-
-vi.mock("@components/inline-fragment-editor", () => ({
-  InlineFragmentEditor: ({
-    content,
-    onSave,
-    onCancel,
-  }: {
-    projectId: string;
-    content: string;
-    onSave: (content: string) => void;
-    onCancel: () => void;
-    isSaving: boolean;
-  }) => {
-    capturedEditorOnSave = onSave;
-    capturedEditorOnCancel = onCancel;
-    return (
-      <div data-testid="inline-fragment-editor" data-content={content}>
-        <button type="button" onClick={() => onSave(content)}>
-          Save
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    );
-  },
+// The full editor is heavy and exercised elsewhere; stub it. The page test only
+// cares that double-click opens it for the resolved fragment (ADR 0013).
+vi.mock("@components/fragments/fragment-editor", () => ({
+  FragmentEditor: ({ fragmentId }: { fragmentId: string }) => (
+    <div data-testid="fragment-editor" data-fragment-id={fragmentId} />
+  ),
 }));
 
 const makeProject = (overrides?: Partial<Project>): Project => ({
@@ -162,11 +131,9 @@ const wrap = () => {
 const { useGetProject, useUpdateProject } = await import("@api/generated/projects/projects");
 const { useListSequences } = await import("@api/generated/sequences/sequences");
 const { useGetAssembledSequence } = await import("@api/generated/preview/preview");
-const { useGetFragment, useUpdateFragment } = await import("@api/generated/fragments/fragments");
 const { PreviewPage } = await import("../PreviewPage");
 
 const mockMutate = vi.fn();
-const mockUpdateFragment = vi.fn().mockResolvedValue({ status: 200, data: {} });
 
 const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?: 200 | 404 }) => {
   const assembled = overrides?.assembled !== undefined ? overrides.assembled : makePreviewResult();
@@ -189,10 +156,6 @@ const setupMocks = (overrides?: { assembled?: PreviewResult | null; statusCode?:
       data: { status: 200 as const, data: assembled },
     });
   }
-
-  // Fragment hooks default to no data; override per-test as needed.
-  (useGetFragment as Mock).mockReturnValue({ data: undefined });
-  (useUpdateFragment as Mock).mockReturnValue({ mutateAsync: mockUpdateFragment });
 };
 
 // The toggle params the page passed on its most recent render.
@@ -202,8 +165,6 @@ describe("PreviewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocation.hash = "";
-    capturedEditorOnSave = undefined;
-    capturedEditorOnCancel = undefined;
   });
 
   it("renders fragment keys in the sidebar", () => {
@@ -344,18 +305,6 @@ const makeAssembledWithSentinels = (): PreviewResult => ({
   ],
 });
 
-const makeFragmentData = (uuid: string, content: string) => ({
-  uuid,
-  key: "opening",
-  content,
-  readiness: 0,
-  contentHash: "",
-  references: [],
-  isDiscarded: false,
-  aspects: {},
-  updatedAt: "",
-});
-
 // Inject a `.fragment-anchor` element into the main element so double-click
 // resolution can find a preceding anchor (simulates what ReadonlyProse renders).
 const injectFragmentAnchor = (main: Element, uuid: string): HTMLDivElement => {
@@ -366,19 +315,14 @@ const injectFragmentAnchor = (main: Element, uuid: string): HTMLDivElement => {
   return anchor;
 };
 
-describe("PreviewPage — inline editing", () => {
+describe("PreviewPage — inline editing overlay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocation.hash = "";
-    capturedEditorOnSave = undefined;
-    capturedEditorOnCancel = undefined;
   });
 
-  it("double-click on content after a fragment anchor resolves the correct uuid and opens the editor", () => {
+  it("double-click after a fragment anchor opens the editor overlay for that uuid", () => {
     setupMocks({ assembled: makeAssembledWithSentinels() });
-    (useGetFragment as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeFragmentData("frag-1", "raw body of frag-1") },
-    });
 
     const { container } = render(<PreviewPage />, { wrapper: wrap() });
     const main = container.querySelector("main")!;
@@ -395,11 +339,23 @@ describe("PreviewPage — inline editing", () => {
 
     fireEvent.doubleClick(textNode);
 
-    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
-    expect(screen.getByTestId("inline-fragment-editor")).toHaveAttribute(
-      "data-content",
-      "raw body of frag-1",
-    );
+    expect(screen.getByTestId("fragment-editor")).toHaveAttribute("data-fragment-id", "frag-1");
+  });
+
+  it("opening the overlay replaces the assembled document (no <main>)", () => {
+    setupMocks({ assembled: makeAssembledWithSentinels() });
+
+    const { container } = render(<PreviewPage />, { wrapper: wrap() });
+    const main = container.querySelector("main")!;
+    injectFragmentAnchor(main, "frag-1");
+    const textNode = document.createElement("p");
+    main.appendChild(textNode);
+
+    fireEvent.doubleClick(textNode);
+
+    expect(screen.getByTestId("fragment-editor")).toBeInTheDocument();
+    // The scroll container / document is gone while editing.
+    expect(container.querySelector("main")).toBeNull();
   });
 
   it("double-click before any anchor resolves to nothing and does not open the editor", () => {
@@ -408,132 +364,8 @@ describe("PreviewPage — inline editing", () => {
     const { container } = render(<PreviewPage />, { wrapper: wrap() });
     const main = container.querySelector("main")!;
 
-    // No anchors injected — double-click before any anchor → no editor.
     fireEvent.doubleClick(main);
 
-    expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
-  });
-
-  it("cancel closes the editor", async () => {
-    setupMocks({ assembled: makeAssembledWithSentinels() });
-    (useGetFragment as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeFragmentData("frag-1", "raw body") },
-    });
-
-    const { container } = render(<PreviewPage />, { wrapper: wrap() });
-    const main = container.querySelector("main")!;
-    injectFragmentAnchor(main, "frag-1");
-    const textNode = document.createElement("p");
-    main.appendChild(textNode);
-
-    fireEvent.doubleClick(textNode);
-    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
-
-    await act(async () => {
-      capturedEditorOnCancel?.();
-    });
-
-    expect(screen.queryByTestId("inline-fragment-editor")).not.toBeInTheDocument();
-  });
-
-  it("save calls updateFragment with the correct fragment id and new content", async () => {
-    setupMocks({ assembled: makeAssembledWithSentinels() });
-    (useGetFragment as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeFragmentData("frag-1", "original") },
-    });
-    (useUpdateFragment as Mock).mockReturnValue({ mutateAsync: mockUpdateFragment });
-
-    const { container } = render(<PreviewPage />, { wrapper: wrap() });
-    const main = container.querySelector("main")!;
-    injectFragmentAnchor(main, "frag-1");
-    const textNode = document.createElement("p");
-    main.appendChild(textNode);
-
-    fireEvent.doubleClick(textNode);
-
-    await act(async () => {
-      capturedEditorOnSave?.("updated content");
-    });
-
-    expect(mockUpdateFragment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: PROJECT_ID,
-        fragmentId: "frag-1",
-        data: { content: "updated content" },
-      }),
-    );
-  });
-
-  it("a second double-click is blocked while an editor is open", () => {
-    setupMocks({ assembled: makeAssembledWithSentinels() });
-    (useGetFragment as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeFragmentData("frag-1", "body") },
-    });
-
-    const { container } = render(<PreviewPage />, { wrapper: wrap() });
-    const main = container.querySelector("main")!;
-    injectFragmentAnchor(main, "frag-1");
-    const target1 = document.createElement("p");
-    main.appendChild(target1);
-    injectFragmentAnchor(main, "frag-2");
-    const target2 = document.createElement("p");
-    main.appendChild(target2);
-
-    fireEvent.doubleClick(target1);
-    expect(screen.getByTestId("inline-fragment-editor")).toBeInTheDocument();
-
-    // Second double-click while editor is open — should not open a new one.
-    fireEvent.doubleClick(target2);
-    expect(screen.getAllByTestId("inline-fragment-editor")).toHaveLength(1);
-  });
-
-  it("save scrolls to the saved fragment's anchor once the editor closes", async () => {
-    const originalRaf = window.requestAnimationFrame;
-    window.requestAnimationFrame = (callback) => {
-      callback(0);
-      return 0;
-    };
-
-    setupMocks({ assembled: makeAssembledWithSentinels() });
-    (useGetFragment as Mock).mockReturnValue({
-      data: { status: 200 as const, data: makeFragmentData("frag-1", "original") },
-    });
-
-    const { container } = render(<PreviewPage />, { wrapper: wrap() });
-    const main = container.querySelector("main")!;
-    // Anchor in the DOM so double-click resolution can find the preceding fragment.
-    // (React reconciliation removes this node on the post-save re-render, so the
-    // scroll target is resolved through a mocked getElementById below instead.)
-    const anchor = injectFragmentAnchor(main, "frag-1");
-    const textNode = document.createElement("p");
-    main.appendChild(textNode);
-
-    // Ensure getElementById returns the real anchor element regardless of earlier
-    // test-local mocks that may have replaced document.getElementById.
-    document.getElementById = vi.fn().mockImplementation((id: string) => {
-      if (id === "fragment-frag-1") return anchor;
-      return null;
-    });
-
-    fireEvent.doubleClick(textNode);
-
-    // The post-save scroll resolves its target via document.getElementById; stub it
-    // so the assertion is robust to how ReadonlyProse renders the live anchor.
-    const scrollIntoView = vi.fn();
-    const originalGetElementById = document.getElementById.bind(document);
-    document.getElementById = vi
-      .fn()
-      .mockImplementation((id: string) =>
-        id === "fragment-frag-1" ? { scrollIntoView } : originalGetElementById(id),
-      );
-
-    await act(async () => {
-      capturedEditorOnSave?.("new content");
-    });
-
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
-
-    document.getElementById = originalGetElementById;
-    window.requestAnimationFrame = originalRaf;
+    expect(screen.queryByTestId("fragment-editor")).not.toBeInTheDocument();
   });
 });
