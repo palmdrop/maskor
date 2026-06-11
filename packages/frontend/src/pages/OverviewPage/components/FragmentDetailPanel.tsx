@@ -2,7 +2,6 @@ import type { FragmentSummary, Sequence, Violation } from "@api/generated/maskor
 import { Heading } from "@components/heading";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
-import { FragmentProse } from "./FragmentProse";
 
 type MembershipEntry = {
   sequenceName: string;
@@ -43,9 +42,6 @@ type FragmentDetailPanelProps = {
   sequences: Sequence[];
   violations: Violation[];
   fragmentByUuid: Map<string, FragmentSummary>;
-  projectId: string;
-  selectedContent?: string;
-  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
   onRemoveFragment?: (fragmentUuid: string) => void;
   onOpen: () => void;
 };
@@ -55,9 +51,6 @@ export const FragmentDetailPanel = ({
   sequences,
   violations,
   fragmentByUuid,
-  projectId,
-  selectedContent,
-  onSaveContent,
   onRemoveFragment,
   onOpen,
 }: FragmentDetailPanelProps) => {
@@ -67,30 +60,20 @@ export const FragmentDetailPanel = ({
     ? violations.filter((v) => v.fragmentUuid === fragment.uuid)
     : [];
 
-  const isDiscarded = fragment.isDiscarded;
-
   return (
     <div className="flex flex-col gap-4 p-3">
-      {onSaveContent && selectedContent !== undefined ? (
-        // In-context editing of the same fragment shown in the spine.
-        <FragmentProse
-          projectId={projectId}
-          fragmentUuid={fragment.uuid}
-          title={fragment.key}
-          content={selectedContent}
-          isDiscarded={isDiscarded}
-          detailLevel="prose"
-          excerpt={fragment.excerpt ?? undefined}
-          onSaveContent={onSaveContent}
-        />
-      ) : (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-foreground">{fragment.key}</span>
-          {fragment.excerpt && (
-            <span className="text-xs text-muted-foreground leading-snug">{fragment.excerpt}</span>
-          )}
-        </div>
-      )}
+      {/* Excerpt-only view. The spine is the editing surface; the right panel
+          stays a read-only summary so longer fragments don't blow out the
+          narrow column. "Open fragment" below routes to the full editor. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-semibold text-foreground">
+          {fragment.key}
+          {fragment.isDiscarded && " (discarded)"}
+        </span>
+        {fragment.excerpt && (
+          <span className="text-xs text-muted-foreground leading-snug">{fragment.excerpt}</span>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <Button

@@ -637,10 +637,6 @@ export const OverviewPage = () => {
         violations={bundle?.violations ?? []}
         cycles={bundle?.cycles ?? []}
         fragmentByUuid={fragmentByUuid}
-        selectedContent={
-          primarySelectedUuid ? contentByFragmentUuid.get(primarySelectedUuid) : undefined
-        }
-        onSaveContent={handleSaveFragmentContent}
         // Only offer "remove from sequence" when the selected fragment is placed
         // in the active sequence (the unplace target).
         onRemoveFragment={

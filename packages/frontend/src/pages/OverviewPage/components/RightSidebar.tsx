@@ -9,10 +9,6 @@ type Props = {
   violations: Violation[];
   cycles: Cycle[];
   fragmentByUuid: Map<string, FragmentSummary>;
-  // Full markdown body of the selected fragment (from the bulk-content endpoint),
-  // enabling in-context editing of the same fragment shown in the spine.
-  selectedContent?: string;
-  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
   // When set, the selected fragment is placed in the active sequence and can be
   // removed from it (returned to the pool).
   onRemoveFragment?: (fragmentUuid: string) => void;
@@ -24,8 +20,6 @@ export const RightSidebar = ({
   violations,
   cycles,
   fragmentByUuid,
-  selectedContent,
-  onSaveContent,
   onRemoveFragment,
 }: Props) => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
@@ -50,9 +44,6 @@ export const RightSidebar = ({
           sequences={sequences}
           violations={violations}
           fragmentByUuid={fragmentByUuid}
-          projectId={projectId}
-          selectedContent={selectedContent}
-          onSaveContent={onSaveContent}
           onRemoveFragment={onRemoveFragment}
           onOpen={() =>
             void navigate({
