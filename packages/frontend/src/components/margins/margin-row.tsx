@@ -1,10 +1,12 @@
 import type { SlotRow } from "@lib/margins/column";
-import { SlotEditor, type EditorMode, MARGIN_FONT_SIZE } from "./slot-editor";
-import { serifText } from "./margin-styles";
+import { SlotEditor, type EditorMode } from "./slot-editor";
+import { serifTextStyle } from "./margin-styles";
 
 type Props = {
   row: SlotRow;
   isActive: boolean;
+  // The configured Margin text size (`editor.marginFontSize`).
+  fontSize: number;
   // The caret is in this row's block — tint the comment back (the reciprocal cue).
   isCaretBlock: boolean;
   // Anchored mode positions the row at its block's measured top; expand-all relaxes to normal flow.
@@ -36,6 +38,7 @@ type Props = {
 export function MarginRow({
   row,
   isActive,
+  fontSize,
   isCaretBlock,
   positioned,
   top,
@@ -101,7 +104,7 @@ export function MarginRow({
         <SlotEditor
           value={comment ? comment.body : draft}
           mode={mode}
-          fontSize={MARGIN_FONT_SIZE}
+          fontSize={fontSize}
           focusOnMount
           placeholder={comment ? "Add a comment…" : "Type to comment this paragraph…"}
           onChange={(next) =>
@@ -118,7 +121,7 @@ export function MarginRow({
         <button
           type="button"
           className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
-          style={serifText}
+          style={serifTextStyle(fontSize)}
           onClick={() => {
             onRevealComment(comment.markerId);
             onActivateComment(comment.markerId);

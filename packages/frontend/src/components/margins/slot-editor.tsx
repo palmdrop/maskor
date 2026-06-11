@@ -13,11 +13,6 @@ export type EditorMode = "rich" | "vim" | "raw";
 // comment heights.
 export const MARGIN_LINE_HEIGHT = 1.6;
 
-// The Margin reads at the app's text size — decoupled from the (larger) prose font size now that
-// alignment no longer needs the comment height to track the block height. Smaller text fits more in
-// the column.
-export const MARGIN_FONT_SIZE = 14;
-
 // CodeMirror's base theme forces a monospace family and its own line padding on `.cm-content` /
 // `.cm-scroller`. Override them so the raw/vim comment editor reads in the same serif rhythm as the
 // static comment text beside it — no font/spacing jump between viewing and editing (margins-4 #2, #3).

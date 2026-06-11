@@ -58,6 +58,7 @@ describe("registry.registerProject", () => {
     expect(manifest.config.editor.vimMode).toBe(false);
     expect(manifest.config.editor.rawMarkdownMode).toBe(false);
     expect(manifest.config.editor.fontSize).toBe(16);
+    expect(manifest.config.editor.marginFontSize).toBe(15);
     expect(manifest.config.editor.maxParagraphWidth).toBe(72);
   });
 
@@ -68,6 +69,7 @@ describe("registry.registerProject", () => {
     expect(record.editor.vimMode).toBe(false);
     expect(record.editor.rawMarkdownMode).toBe(false);
     expect(record.editor.fontSize).toBe(16);
+    expect(record.editor.marginFontSize).toBe(15);
     expect(record.editor.maxParagraphWidth).toBe(72);
   });
 

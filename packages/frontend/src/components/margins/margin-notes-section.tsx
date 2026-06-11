@@ -1,5 +1,5 @@
-import { SlotEditor, type EditorMode, MARGIN_FONT_SIZE } from "./slot-editor";
-import { serifText } from "./margin-styles";
+import { SlotEditor, type EditorMode } from "./slot-editor";
+import { serifTextStyle } from "./margin-styles";
 
 const PLACEHOLDER = "Thoughts on structure, character, things to rewrite…";
 
@@ -9,6 +9,8 @@ type Props = {
   onToggle: () => void;
   active: boolean;
   mode: EditorMode;
+  // The configured Margin text size (`editor.marginFontSize`).
+  fontSize: number;
   onChange: (value: string) => void;
   onActivate: () => void;
   onDeactivate: () => void;
@@ -22,6 +24,7 @@ export function MarginNotesSection({
   onToggle,
   active,
   mode,
+  fontSize,
   onChange,
   onActivate,
   onDeactivate,
@@ -49,7 +52,7 @@ export function MarginNotesSection({
             <SlotEditor
               value={notes}
               mode={mode}
-              fontSize={MARGIN_FONT_SIZE}
+              fontSize={fontSize}
               focusOnMount
               placeholder={PLACEHOLDER}
               onChange={onChange}
@@ -60,7 +63,7 @@ export function MarginNotesSection({
             <button
               type="button"
               className="min-h-6 w-full whitespace-pre-wrap text-left text-foreground/90"
-              style={serifText}
+              style={serifTextStyle(fontSize)}
               onClick={onActivate}
             >
               {notes || <span className="text-muted-foreground">{PLACEHOLDER}</span>}

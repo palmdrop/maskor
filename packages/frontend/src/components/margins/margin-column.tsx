@@ -50,9 +50,11 @@ type Props = {
   fragmentDirty: boolean;
   // The fragment editor mode, so the active slot edits in the matching idiom (one active editor).
   mode: EditorMode;
-  // The fragment editor's font size — a re-measure trigger when it changes. The Margin text renders at
-  // the app size (see `margin-styles`).
+  // The fragment editor's font size — a re-measure trigger when it changes (the prose geometry shifts
+  // with it). The Margin text itself renders at `marginFontSize`.
   fontSize: number;
+  // The configured Margin text size (`editor.marginFontSize`) — all Margin text + slot editors.
+  marginFontSize: number;
   onCommentBlock?: () => void;
   // Editor bridge (coordinated buffer edits + geometry), wired from the fragment editor shell.
   addAnchorAtBlock: (blockIndex: number, markerId: string) => void;
@@ -78,6 +80,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     fragmentDirty,
     mode,
     fontSize,
+    marginFontSize,
     onCommentBlock,
     addAnchorAtBlock,
     removeAnchor,
@@ -266,6 +269,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 key={`row-${row.block.index}`}
                 row={row}
                 isActive={isActive}
+                fontSize={marginFontSize}
                 isCaretBlock={!!comment && comment.markerId === highlightedMarkerId && !isActive}
                 positioned={!expandAll}
                 top={geometry?.top ?? 0}
@@ -305,6 +309,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             orphans={orphans}
             activeMarkerId={activeCommentMarker}
             mode={mode}
+            fontSize={marginFontSize}
             liveExcerpts={liveExcerpts}
             onActivate={(markerId) => setActiveSlot({ kind: "comment", markerId })}
             onChange={updateCommentBody}
@@ -332,6 +337,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
           onToggle={toggleNotes}
           active={activeSlot?.kind === "notes"}
           mode={mode}
+          fontSize={marginFontSize}
           onChange={setNotes}
           onActivate={() => setActiveSlot({ kind: "notes" })}
           onDeactivate={() => setActiveSlot(null)}

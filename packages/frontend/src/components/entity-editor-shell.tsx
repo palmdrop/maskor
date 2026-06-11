@@ -131,6 +131,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     // Display settings own their save lifecycle (draft during drag, commit on release, resync
     // from server) — the same hook GeneralTab uses, so the write path lives in one place.
     const fontSize = useProjectSetting(projectId, "editor.fontSize", 16);
+    const marginFontSize = useProjectSetting(projectId, "editor.marginFontSize", 15);
     const maxParagraphWidth = useProjectSetting(projectId, "editor.maxParagraphWidth", 72);
     const vimClipboardSync = useProjectSetting(projectId, "editor.vimClipboardSync", true);
 
@@ -372,9 +373,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             )}
             <EditorDisplaySettings
               fontSize={fontSize.draft}
+              marginFontSize={marginFontSize.draft}
               maxParagraphWidth={maxParagraphWidth.draft}
               onFontSizeChange={fontSize.setDraft}
               onFontSizeCommit={(value) => void fontSize.commit(value)}
+              onMarginFontSizeChange={marginFontSize.setDraft}
+              onMarginFontSizeCommit={(value) => void marginFontSize.commit(value)}
               onMaxParagraphWidthChange={maxParagraphWidth.setDraft}
               onMaxParagraphWidthCommit={(value) => void maxParagraphWidth.commit(value)}
               vimMode={editorConfig.vimMode}

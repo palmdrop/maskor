@@ -21,7 +21,6 @@ const blocksFromContent = (content: string): EditorBlock[] =>
 // value + onChange so the column's create/edit wiring is testable.
 vi.mock("./slot-editor", () => ({
   MARGIN_LINE_HEIGHT: 1.6,
-  MARGIN_FONT_SIZE: 14,
   SlotEditor: ({
     value,
     onChange,
@@ -78,6 +77,7 @@ const renderColumn = (props: Partial<Parameters<typeof MarginColumn>[0]> = {}) =
       fragmentDirty={false}
       mode="rich"
       fontSize={16}
+      marginFontSize={15}
       addAnchorAtBlock={vi.fn()}
       removeAnchor={vi.fn()}
       revealAnchor={vi.fn()}

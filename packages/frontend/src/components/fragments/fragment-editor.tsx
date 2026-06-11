@@ -384,6 +384,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
               fragmentDirty={isProseDirty}
               mode={marginMode}
               fontSize={editorConfig.fontSize}
+              marginFontSize={editorConfig.marginFontSize}
               onCommentBlock={() => commands.run("margin:comment-block")}
               addAnchorAtBlock={bridge.addAnchorAtBlock}
               removeAnchor={bridge.removeAnchor}

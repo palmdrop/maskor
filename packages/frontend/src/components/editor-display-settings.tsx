@@ -6,10 +6,13 @@ import { Switch } from "./ui/switch";
 
 type Props = {
   fontSize: number;
+  marginFontSize: number;
   maxParagraphWidth: number;
   // Live (un-committed) updates drive the slider; commit persists to the project config.
   onFontSizeChange: (value: number) => void;
   onFontSizeCommit: (value: number) => void;
+  onMarginFontSizeChange: (value: number) => void;
+  onMarginFontSizeCommit: (value: number) => void;
   onMaxParagraphWidthChange: (value: number) => void;
   onMaxParagraphWidthCommit: (value: number) => void;
   // Vim clipboard toggle is shown only in vim mode.
@@ -18,13 +21,16 @@ type Props = {
   onToggleVimClipboardSync: (checked: boolean) => void;
 };
 
-// The "Aa" display-settings popover: font size, paragraph width, and (in vim mode) the yank/delete
-// clipboard toggle. Presentation only — the shell owns the persistence handlers.
+// The "Aa" display-settings popover: font size, margin text size, paragraph width, and (in vim mode)
+// the yank/delete clipboard toggle. Presentation only — the shell owns the persistence handlers.
 export function EditorDisplaySettings({
   fontSize,
+  marginFontSize,
   maxParagraphWidth,
   onFontSizeChange,
   onFontSizeCommit,
+  onMarginFontSizeChange,
+  onMarginFontSizeCommit,
   onMaxParagraphWidthChange,
   onMaxParagraphWidthCommit,
   vimMode,
@@ -51,6 +57,20 @@ export function EditorDisplaySettings({
             value={[fontSize]}
             onValueChange={([value]) => onFontSizeChange(value!)}
             onValueCommit={([value]) => onFontSizeCommit(value!)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Margin text size</Label>
+            <span className="text-xs text-muted-foreground tabular-nums">{marginFontSize}px</span>
+          </div>
+          <Slider
+            min={10}
+            max={22}
+            step={1}
+            value={[marginFontSize]}
+            onValueChange={([value]) => onMarginFontSizeChange(value!)}
+            onValueCommit={([value]) => onMarginFontSizeCommit(value!)}
           />
         </div>
         <div className="flex flex-col gap-2">

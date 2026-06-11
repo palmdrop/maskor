@@ -42,6 +42,11 @@
                 "minimum": 12,
                 "maximum": 24
               },
+              "marginFontSize": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 22
+              },
               "maxParagraphWidth": {
                 "type": "integer",
                 "minimum": 40,
@@ -55,6 +60,7 @@
               "vimMode",
               "rawMarkdownMode",
               "fontSize",
+              "marginFontSize",
               "maxParagraphWidth",
               "vimClipboardSync"
             ]
@@ -227,6 +233,11 @@
                 "type": "integer",
                 "minimum": 12,
                 "maximum": 24
+              },
+              "marginFontSize": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 22
               },
               "maxParagraphWidth": {
                 "type": "integer",

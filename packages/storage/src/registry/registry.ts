@@ -68,6 +68,7 @@ const PROJECT_CONFIG_DEFAULTS = {
     vimMode: false,
     rawMarkdownMode: false,
     fontSize: 16,
+    marginFontSize: 15,
     maxParagraphWidth: 72,
     vimClipboardSync: true,
   },

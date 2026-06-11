@@ -1,12 +1,14 @@
 import type { Comment } from "@api/generated/maskorAPI.schemas";
-import { SlotEditor, type EditorMode, MARGIN_FONT_SIZE } from "./slot-editor";
-import { serifText } from "./margin-styles";
+import { SlotEditor, type EditorMode } from "./slot-editor";
+import { serifTextStyle } from "./margin-styles";
 import { Heading } from "@components/heading";
 
 type Props = {
   orphans: Comment[];
   activeMarkerId: string | null;
   mode: EditorMode;
+  // The configured Margin text size (`editor.marginFontSize`).
+  fontSize: number;
   // Live-derived excerpts keyed by markerId (falls back to the comment's stored excerpt).
   liveExcerpts: Record<string, string>;
   onActivate: (markerId: string) => void;
@@ -23,6 +25,7 @@ export function MarginOrphanGroup({
   orphans,
   activeMarkerId,
   mode,
+  fontSize,
   liveExcerpts,
   onActivate,
   onChange,
@@ -69,7 +72,7 @@ export function MarginOrphanGroup({
               <SlotEditor
                 value={comment.body}
                 mode={mode}
-                fontSize={MARGIN_FONT_SIZE}
+                fontSize={fontSize}
                 focusOnMount
                 placeholder="Re-add the text or remove this comment…"
                 onChange={(next) => onChange(comment.markerId, next)}
@@ -80,7 +83,7 @@ export function MarginOrphanGroup({
               <button
                 type="button"
                 className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
-                style={serifText}
+                style={serifTextStyle(fontSize)}
                 onClick={() => onActivate(comment.markerId)}
               >
                 {comment.body || (

@@ -19,6 +19,7 @@ type BooleanSettingPath =
 
 type NumberSettingPath =
   | "editor.fontSize"
+  | "editor.marginFontSize"
   | "editor.maxParagraphWidth"
   | "suggestion.readinessThreshold";
 
