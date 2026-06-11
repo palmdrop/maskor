@@ -62,7 +62,7 @@ export const useSectionOps = ({
   const splitContext = useMemo<SplitContext | undefined>(() => {
     if (placedSelection.length !== 1) return undefined;
     const fragmentUuid = placedSelection[0]!;
-    const section = sectionsData.find((s) => s.fragmentUuids.includes(fragmentUuid));
+    const section = sectionsData.find((section) => section.fragmentUuids.includes(fragmentUuid));
     if (!section) return undefined;
     const index = section.fragmentUuids.indexOf(fragmentUuid);
     return {
@@ -106,7 +106,7 @@ export const useSectionOps = ({
   const moveSelectionToSection = useCallback(
     async (sectionUuid: string) => {
       if (!sequence || placedSelection.length < 1) return;
-      const targetSection = sectionsData.find((s) => s.uuid === sectionUuid);
+      const targetSection = sectionsData.find((section) => section.uuid === sectionUuid);
       const position = targetSection?.fragmentUuids.length ?? 0;
       await mutations.moveFragments.mutateAsync({
         projectId,
@@ -137,7 +137,7 @@ export const useSectionOps = ({
   const mergeSectionUp = useCallback(
     async (sectionUuid: string) => {
       if (!sequence) return;
-      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
+      const index = sectionsData.findIndex((section) => section.uuid === sectionUuid);
       if (index <= 0) return;
       await mutations.mergeSection.mutateAsync({
         projectId,
@@ -151,7 +151,7 @@ export const useSectionOps = ({
   const mergeSectionDown = useCallback(
     async (sectionUuid: string) => {
       if (!sequence) return;
-      const index = sectionsData.findIndex((s) => s.uuid === sectionUuid);
+      const index = sectionsData.findIndex((section) => section.uuid === sectionUuid);
       if (index === -1 || index >= sectionsData.length - 1) return;
       await mutations.mergeSection.mutateAsync({
         projectId,

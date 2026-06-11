@@ -7,7 +7,7 @@ import {
   getListAspectsQueryKey,
 } from "@api/generated/aspects/aspects";
 import { useListReferences } from "@api/generated/references/references";
-import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
+import { useEntityFieldSave } from "@lib/entity-kinds/useEntityFieldSave";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
@@ -47,7 +47,7 @@ type Props = {
 export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
   const queryClient = useQueryClient();
   const { mutateAsync: createAspect } = useCreateAspect();
-  const { makeFieldSave } = useEntityEditor("fragment", projectId, fragment.uuid);
+  const { makeFieldSave } = useEntityFieldSave("fragment", projectId, fragment.uuid);
   const [createAspectError, setCreateAspectError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);

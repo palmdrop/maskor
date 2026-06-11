@@ -342,8 +342,6 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     view.dispatch({ effects: setCmAnchorsEffect.of(loadedAnchors) });
   }, [cleanContent, loadedAnchors, vimMode, rawMarkdownMode]);
 
-  // The CodeMirror (vim + raw) backend behind the handle. Stable: it reads the live view, the
-  // latest content, and the change notifier through injected accessors.
   // The two backends behind the handle, each a pure adapter reading its live backend, the latest
   // content, and the change notifier through injected accessors. Both are stable.
   const cmAdapter = useMemo(

@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
-import { getActionLogQueryKey } from "@api/action-log";
+import { useCallback, useState } from "react";
 import { unwrap } from "@api/unwrap";
 import { useOptimisticMutation } from "@lib/api/useOptimisticMutation";
 import {
@@ -9,6 +8,11 @@ import {
   type EntityUpdateFor,
   type EntityUpdateResponseFor,
 } from "./entityHooks";
+import {
+  useEntityFieldSave,
+  buildEntityOptimisticConfig,
+  buildEntityInput,
+} from "./useEntityFieldSave";
 import type { EntityKind } from "./registry";
 
 export type UseEntityEditor<K extends EntityKind> = {
@@ -32,18 +36,18 @@ export type UseEntityEditor<K extends EntityKind> = {
 };
 
 /**
- * The data core shared by every entity editor. Loads the entity, and routes its key /
- * content / live-field saves through `useOptimisticMutation` against the single-entity
- * cache: each save optimistically merges its patch, reconciles the authoritative entity
- * from the response (no refetch flicker), invalidates the list (+ any extra key), and
- * refreshes the action log on settle.
+ * The data core shared by every entity editor. Loads the entity, and routes its key / content /
+ * live-field saves through `useOptimisticMutation` against the single-entity cache: each save
+ * optimistically merges its patch, reconciles the authoritative entity from the response (no
+ * refetch flicker), invalidates the list (+ any extra key), and refreshes the action log on settle.
  *
- * Two `useUpdate` instances are built deliberately — content/key saves drive `isPending`
- * (gating the Save button / Cmd+S), live-field saves use the second instance so they never
- * toggle it (mirrors `AspectEditor`'s historical dual `useUpdateAspect`).
+ * Two `useUpdate` instances are built deliberately — content/key saves drive `isPending` (gating
+ * the Save button / Cmd+S), while live-field saves come from `useEntityFieldSave` so they never
+ * toggle it (mirrors `AspectEditor`'s historical dual `useUpdateAspect`). A sidebar form that only
+ * needs `makeFieldSave` can call `useEntityFieldSave` directly — no entity load, no content mutation.
  *
- * `kind` is fixed per route mount, so selecting the kind's hooks from `ENTITY_HOOKS` and
- * calling them is rules-of-hooks-safe.
+ * `kind` is fixed per route mount, so selecting the kind's hooks from `ENTITY_HOOKS` and calling
+ * them is rules-of-hooks-safe.
  */
 export const useEntityEditor = <K extends EntityKind>(
   kind: K,
@@ -61,69 +65,37 @@ export const useEntityEditor = <K extends EntityKind>(
   const getQuery = hooks.useGetEntity(projectId, uuid);
   const entity = (getQuery.data?.status === 200 ? getQuery.data.data : null) as Entity | null;
 
-  const entityQueryKey = useMemo(
-    () => hooks.getEntityQueryKey(projectId, uuid),
-    [hooks, projectId, uuid],
-  );
-
-  // One optimistic config drives both update instances: apply merges the patch carried in the
-  // mutation variables; reconcile writes the authoritative entity from the response; the list
-  // (and any extra key, e.g. fragment stats) invalidates; the action log refreshes on settle.
-  const optimisticConfig = {
-    queryKey: entityQueryKey,
-    apply: (previous: Cache | undefined, variables: Variables): Cache | undefined =>
-      previous && previous.status === 200
-        ? { ...previous, data: { ...previous.data, ...variables.data } }
-        : previous,
-    reconcile: (previous: Cache | undefined, response: Response): Cache | undefined =>
-      previous && previous.status === 200
-        ? { ...previous, data: hooks.selectEntity(unwrap(response)) as Entity }
-        : previous,
-    invalidate: [
-      hooks.getListQueryKey(projectId),
-      ...(hooks.getExtraInvalidateKeys?.(projectId, uuid) ?? []),
-    ],
-    settleInvalidate: [getActionLogQueryKey(projectId)],
-  };
-
+  // The content/key mutation instance — its `isPending` gates Save / Cmd+S. Live-field saves use a
+  // separate instance (via useEntityFieldSave) so they never toggle it.
   const contentMutationOptions = useOptimisticMutation<Cache, Variables, Response>(
-    optimisticConfig,
+    buildEntityOptimisticConfig<K>(hooks, projectId, uuid),
   );
-  const fieldMutationOptions = useOptimisticMutation<Cache, Variables, Response>(optimisticConfig);
   const contentMutation = hooks.useUpdateEntity({ mutation: contentMutationOptions });
-  const fieldMutation = hooks.useUpdateEntity({ mutation: fieldMutationOptions });
+
+  const { makeFieldSave } = useEntityFieldSave(kind, projectId, uuid);
 
   const [cascadeWarnings, setCascadeWarnings] = useState<string[]>([]);
   const dismissWarnings = useCallback(() => setCascadeWarnings([]), []);
 
-  const buildInput = useCallback(
-    (data: Partial<Update>) => ({ projectId, [hooks.idParamKey]: uuid, data }) as never,
-    [hooks, projectId, uuid],
-  );
-
   const onKeySave = useCallback(
     async (key: string) => {
-      const result = await contentMutation.mutateAsync(buildInput({ key } as Partial<Update>));
+      const result = await contentMutation.mutateAsync(
+        buildEntityInput<K>(hooks, projectId, uuid, { key } as Partial<Update>),
+      );
       setCascadeWarnings(hooks.selectWarnings(unwrap(result as Response)));
     },
-    [contentMutation, buildInput, hooks],
+    [contentMutation, hooks, projectId, uuid],
   );
 
   const onContentSave = useCallback(
     async (content: string) => {
       await contentMutation.mutateAsync(
-        buildInput({ [hooks.bodyField]: content } as Partial<Update>),
+        buildEntityInput<K>(hooks, projectId, uuid, {
+          [hooks.bodyField]: content,
+        } as Partial<Update>),
       );
     },
-    [contentMutation, buildInput, hooks],
-  );
-
-  const makeFieldSave = useCallback(
-    <T>(toPatch: (value: T) => Partial<Update>) =>
-      async (value: T) => {
-        await fieldMutation.mutateAsync(buildInput(toPatch(value)));
-      },
-    [fieldMutation, buildInput],
+    [contentMutation, hooks, projectId, uuid],
   );
 
   return {
