@@ -290,24 +290,34 @@ export const OverviewPage = () => {
   const nextEditUuid =
     editIndex >= 0 && editIndex < overviewOrder.length - 1 ? overviewOrder[editIndex + 1]! : null;
 
-  const openEditor = useCallback((fragmentUuid: string) => {
-    setEditingFragmentUuid(fragmentUuid);
-  }, []);
+  // Opening (or advancing to) a fragment in the overlay also moves the single
+  // selection to it, so the left ordering column highlights the current fragment
+  // and the spine lands on it when the overlay closes.
+  const openEditor = useCallback(
+    (fragmentUuid: string) => {
+      setEditingFragmentUuid(fragmentUuid);
+      handleSelectFragment(fragmentUuid);
+    },
+    [handleSelectFragment],
+  );
 
   // Edit gesture (double-click / pencil / retarget). When an overlay is already
   // open on a different fragment, save it first, then switch — the same dirty
   // guard as Next/Previous. Opening fresh just sets the target.
-  const handleEdit = useCallback((fragmentUuid: string) => {
-    const current = editingUuidRef.current;
-    if (current && current !== fragmentUuid && editorRef.current) {
-      void editorRef.current
-        .save()
-        .then(() => setEditingFragmentUuid(fragmentUuid))
-        .catch(() => {});
-      return;
-    }
-    setEditingFragmentUuid(fragmentUuid);
-  }, []);
+  const handleEdit = useCallback(
+    (fragmentUuid: string) => {
+      const current = editingUuidRef.current;
+      if (current && current !== fragmentUuid && editorRef.current) {
+        void editorRef.current
+          .save()
+          .then(() => openEditor(fragmentUuid))
+          .catch(() => {});
+        return;
+      }
+      openEditor(fragmentUuid);
+    },
+    [openEditor],
+  );
 
   // While the overlay is open, selecting a fragment in the reorder list retargets
   // the editor to it; otherwise it selects and scrolls the spine as usual.

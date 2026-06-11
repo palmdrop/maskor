@@ -300,9 +300,9 @@ export const FragmentListPage = () => {
       </aside>
       <main className="flex-1 min-h-0 overflow-auto p-4">
         {activeFragmentId ? (
-          // Expose the filtered order so the editor's Previous/Next walks exactly
-          // what this list currently shows.
-          <FragmentListOrderProvider orderedFragmentUuids={filtered.map((f) => f.uuid)}>
+          // Expose the displayed order (filtered + sorted) so the editor's
+          // Previous/Next walks exactly what this list currently shows.
+          <FragmentListOrderProvider orderedFragmentUuids={sorted.map((f) => f.uuid)}>
             <Outlet />
           </FragmentListOrderProvider>
         ) : (
