@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
-import { Button } from "@components/ui/button";
 import { getNextSuggestion } from "@api/suggestion";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -136,34 +135,20 @@ export const SuggestionModePage = () => {
 
   const showNudge = avoidanceCount >= AVOIDANCE_NUDGE_THRESHOLD && !dismissedNudges.has(fragmentId);
 
-  const extraActions = (
-    <>
-      {saveError && (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm">
-          <span className="text-destructive">{saveError}</span>
-          <button
-            className="shrink-0 text-destructive/70 hover:text-destructive transition-colors"
-            onClick={() => setSaveError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      <div className="flex shrink-0 items-center justify-end gap-2 border-border">
-        <Button
-          size="sm"
-          disabled={isLoadingNext}
-          onClick={() => commands.run("suggestion:previous")}
-          variant="secondary"
-        >
-          Previous
-        </Button>
-        <Button size="sm" disabled={isLoadingNext} onClick={() => commands.run("suggestion:next")}>
-          {isLoadingNext ? "Loading…" : "Next"}
-        </Button>
-      </div>
-    </>
-  );
+  // Navigation (Previous/Next) is now an editor capability — see the `navigation`
+  // prop below. customizeExtraActions keeps only suggestion-specific chrome (the
+  // save-error banner).
+  const saveErrorBanner = saveError ? (
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm">
+      <span className="text-destructive">{saveError}</span>
+      <button
+        className="shrink-0 text-destructive/70 hover:text-destructive transition-colors"
+        onClick={() => setSaveError(null)}
+      >
+        Dismiss
+      </button>
+    </div>
+  ) : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -189,9 +174,17 @@ export const SuggestionModePage = () => {
           fragmentId={fragmentId}
           onDiscarded={loadNext}
           sidebarCollapsible
+          navigation={{
+            onPrevious: () => commands.run("suggestion:previous"),
+            onNext: () => commands.run("suggestion:next"),
+            hasPrevious: router.history.canGoBack(),
+            // Suggestion's pool is non-deterministic — there is always a next.
+            hasNext: true,
+            isNavigating: isLoadingNext,
+          }}
           customizeExtraActions={(defaultExtraActions) => (
             <>
-              {extraActions}
+              {saveErrorBanner}
               {defaultExtraActions}
             </>
           )}

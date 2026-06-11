@@ -21,6 +21,7 @@ import { useInvalidateActionLog } from "@api/action-log";
 import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import type { EditorMode } from "@components/margins/slot-editor";
+import { EditorNavigationControls } from "./editor-navigation-controls";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
@@ -42,10 +43,24 @@ export type FragmentEditorHandle = {
   save: () => Promise<void>;
 };
 
+// View-supplied navigation slot. The editor renders consistent Previous/Next
+// buttons and owns nothing about ordering — each mounting view composes its own
+// save-then-advance logic (and any side effects) behind onNext / onPrevious,
+// typically by dispatching a `<view>:next` / `<view>:previous` command. Undefined
+// hasNext / hasPrevious means "enabled"; pass `false` to disable at a boundary.
+export type EditorNavigation = {
+  onNext?: () => void;
+  onPrevious?: () => void;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
+  isNavigating?: boolean;
+};
+
 type Props = {
   projectId: string;
   fragmentId: string;
   sidebarCollapsible?: boolean;
+  navigation?: EditorNavigation;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: () => void;
   onDiscarded?: () => void;
@@ -57,6 +72,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     projectId,
     fragmentId,
     sidebarCollapsible,
+    navigation,
     onDirtyChange,
     onSaved,
     onDiscarded,
@@ -283,7 +299,16 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       </Button>
     );
 
-    return customizeExtraActions ? customizeExtraActions(discardButton) : discardButton;
+    // The editor's navigation slot: consistent Previous/Next, rendered only when a
+    // view supplies it. The buttons dispatch the view's own composed commands.
+    const defaultExtraActions = (
+      <>
+        {navigation && <EditorNavigationControls {...navigation} />}
+        {discardButton}
+      </>
+    );
+
+    return customizeExtraActions ? customizeExtraActions(defaultExtraActions) : defaultExtraActions;
   }, [
     isActionPending,
     isDiscardPending,
@@ -291,6 +316,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     fragment?.isDiscarded,
     commands,
     customizeExtraActions,
+    navigation,
   ]);
 
   if (editor.isLoading) {
