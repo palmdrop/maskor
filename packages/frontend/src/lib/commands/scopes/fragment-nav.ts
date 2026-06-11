@@ -14,6 +14,10 @@ export interface FragmentNavContext {
   // command's onFailure toast fires. A no-op when the editor is clean.
   save: () => Promise<void>;
   goToFragment: (uuid: string) => void;
+  // Present only when the editor is an overlay over a host surface (Overview /
+  // Preview). Closes the overlay and returns to the host. Absent on the dedicated
+  // list-page editor, where there is nothing to close.
+  closeEditor?: () => void;
 }
 
 export const fragmentNavScope = defineScope<FragmentNavContext>("fragment-nav", {
@@ -45,4 +49,15 @@ const previous = defineScopeCommand(fragmentNavScope, {
   },
 });
 
-export const fragmentNavCommands = [next, previous] as const;
+// Overlay dismiss (Overview / Preview). Cmd+Escape so vim's bare Escape stays
+// free for mode changes. Saving does not auto-close; this is the explicit exit.
+const closeEditor = defineScopeCommand(fragmentNavScope, {
+  id: "fragments:close-editor",
+  label: "Close editor",
+  category: "navigation",
+  hotkey: "mod+escape",
+  disabled: (ctx) => (ctx.closeEditor ? undefined : "No editor to close"),
+  run: (ctx) => ctx.closeEditor?.(),
+});
+
+export const fragmentNavCommands = [next, previous, closeEditor] as const;

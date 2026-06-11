@@ -61,4 +61,21 @@ describe("scopes/fragment-nav", () => {
       expect(previous.disabled?.(makeContext({ hasPrevious: true }))).toBeUndefined();
     });
   });
+
+  describe("fragments:close-editor", () => {
+    const close = byId("fragments:close-editor");
+
+    it("is disabled when there is no overlay to close (no closeEditor)", () => {
+      expect(close.disabled?.(makeContext())).toBe("No editor to close");
+    });
+
+    it("closes when an overlay is open, and binds mod+escape", () => {
+      const closeEditor = vi.fn();
+      const ctx = makeContext({ closeEditor });
+      expect(close.disabled?.(ctx)).toBeUndefined();
+      close.run(ctx);
+      expect(closeEditor).toHaveBeenCalledOnce();
+      expect(close.hotkey).toBe("mod+escape");
+    });
+  });
 });

@@ -40,24 +40,22 @@ const DragHandle = ({ attributes, listeners, label }: SortableHandleProps & { la
 );
 
 interface SortableSpineFragmentProps {
-  projectId: string;
   fragment: FragmentSummary;
   content: string;
   detailLevel: OverviewDetailLevel;
   isSelected: boolean;
   onSelect: (fragmentUuid: string) => void;
-  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
 const SortableSpineFragment = ({
-  projectId,
   fragment,
   content,
   detailLevel,
   isSelected,
   onSelect,
-  onSaveContent,
+  onEdit,
   onRemoveFragment,
 }: SortableSpineFragmentProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -81,7 +79,6 @@ const SortableSpineFragment = ({
       />
       <div className="flex-1 min-w-0">
         <FragmentProse
-          projectId={projectId}
           fragmentUuid={fragment.uuid}
           title={fragment.key}
           isDiscarded={fragment.isDiscarded}
@@ -90,7 +87,7 @@ const SortableSpineFragment = ({
           detailLevel={detailLevel}
           isSelected={isSelected}
           onSelect={onSelect}
-          onSaveContent={onSaveContent}
+          onEdit={onEdit}
           onRemove={onRemoveFragment ? () => onRemoveFragment(fragment.uuid) : undefined}
         />
       </div>
@@ -99,26 +96,24 @@ const SortableSpineFragment = ({
 };
 
 interface SpineSectionProps {
-  projectId: string;
   section: SectionData;
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
-  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
 const SpineSection = ({
-  projectId,
   section,
   detailLevel,
   fragmentByUuid,
   contentByFragmentUuid,
   selectedFragmentUuids,
   onSelectFragment,
-  onSaveContent,
+  onEdit,
   onRemoveFragment,
 }: SpineSectionProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: section.uuid });
@@ -147,13 +142,12 @@ const SpineSection = ({
             return (
               <SortableSpineFragment
                 key={fragmentUuid}
-                projectId={projectId}
                 fragment={fragment}
                 content={contentByFragmentUuid.get(fragmentUuid) ?? ""}
                 detailLevel={detailLevel}
                 isSelected={selectedFragmentUuids.has(fragmentUuid)}
                 onSelect={onSelectFragment}
-                onSaveContent={onSaveContent}
+                onEdit={onEdit}
                 onRemoveFragment={onRemoveFragment}
               />
             );
@@ -165,14 +159,13 @@ const SpineSection = ({
 };
 
 interface ProseSpineProps {
-  projectId: string;
   sectionsData: SectionData[];
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
-  onSaveContent?: (fragmentUuid: string, content: string) => Promise<void> | void;
+  onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
 }
 
@@ -184,14 +177,13 @@ interface ProseSpineProps {
 // DndContext). Content comes from the per-fragment bulk endpoint, held
 // client-side so reorders reflow optimistically.
 export const ProseSpine = ({
-  projectId,
   sectionsData,
   detailLevel,
   fragmentByUuid,
   contentByFragmentUuid,
   selectedFragmentUuids,
   onSelectFragment,
-  onSaveContent,
+  onEdit,
   onRemoveFragment,
 }: ProseSpineProps) => {
   // Only bail out entirely when the sequence has no sections at all. Empty
@@ -210,14 +202,13 @@ export const ProseSpine = ({
       {sectionsData.map((section) => (
         <SpineSection
           key={section.uuid}
-          projectId={projectId}
           section={section}
           detailLevel={detailLevel}
           fragmentByUuid={fragmentByUuid}
           contentByFragmentUuid={contentByFragmentUuid}
           selectedFragmentUuids={selectedFragmentUuids}
           onSelectFragment={onSelectFragment}
-          onSaveContent={onSaveContent}
+          onEdit={onEdit}
           onRemoveFragment={onRemoveFragment}
         />
       ))}

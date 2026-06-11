@@ -61,6 +61,13 @@ type Props = {
   fragmentId: string;
   sidebarCollapsible?: boolean;
   navigation?: EditorNavigation;
+  // When false, the Margin (comments) column is suppressed — used by the inline
+  // Overview/Preview overlay, where a side-by-side annotation column would fight
+  // the host's own sidebars for width. Defaults to true.
+  showMargin?: boolean;
+  // Optional leading node in the editor header (e.g. a Close control for the
+  // inline overlay).
+  backNode?: ReactNode;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: () => void;
   onDiscarded?: () => void;
@@ -73,6 +80,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     fragmentId,
     sidebarCollapsible,
     navigation,
+    showMargin = true,
+    backNode,
     onDirtyChange,
     onSaved,
     onDiscarded,
@@ -356,6 +365,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         content={fragment.content}
         isPending={isActionPending}
         isDirty={isDirty}
+        backNode={backNode}
         banner={pairBanner}
         suppressRecoveryBanner
         onRecoveryChange={setFragmentRecovery}
@@ -365,24 +375,26 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         onLiveContentChange={setFragmentContent}
         onActiveBlockChange={setActiveBlockMarker}
         rightPanel={
-          <MarginColumn
-            ref={marginColumnRef}
-            projectId={projectId}
-            marginEditor={marginEditor}
-            fragmentContent={fragmentContent}
-            fragmentDirty={isProseDirty}
-            mode={marginMode}
-            fontSize={editorConfig.fontSize}
-            onCommentBlock={() => commands.run("margin:comment-block")}
-            addAnchorAtBlock={bridge.addAnchorAtBlock}
-            removeAnchor={bridge.removeAnchor}
-            revealAnchor={bridge.revealAnchor}
-            focusAnchorBlock={bridge.focusAnchorBlock}
-            highlightAnchor={bridge.highlightAnchor}
-            highlightedMarkerId={activeBlockMarker}
-            getScrollElement={bridge.getScrollElement}
-            getBlocks={bridge.getBlocks}
-          />
+          showMargin ? (
+            <MarginColumn
+              ref={marginColumnRef}
+              projectId={projectId}
+              marginEditor={marginEditor}
+              fragmentContent={fragmentContent}
+              fragmentDirty={isProseDirty}
+              mode={marginMode}
+              fontSize={editorConfig.fontSize}
+              onCommentBlock={() => commands.run("margin:comment-block")}
+              addAnchorAtBlock={bridge.addAnchorAtBlock}
+              removeAnchor={bridge.removeAnchor}
+              revealAnchor={bridge.revealAnchor}
+              focusAnchorBlock={bridge.focusAnchorBlock}
+              highlightAnchor={bridge.highlightAnchor}
+              highlightedMarkerId={activeBlockMarker}
+              getScrollElement={bridge.getScrollElement}
+              getBlocks={bridge.getBlocks}
+            />
+          ) : undefined
         }
         onProseChange={() => setIsProseDirty(true)}
         onSaved={() => {

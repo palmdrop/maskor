@@ -13,7 +13,6 @@ import {
 } from "@api/generated/sequences/sequences";
 import {
   useListFragmentSummaries,
-  useUpdateFragment,
   getListFragmentSummariesQueryKey,
 } from "@api/generated/fragments/fragments";
 import { useListAspects } from "@api/generated/aspects/aspects";
@@ -29,6 +28,10 @@ import { RightSidebar } from "./components/RightSidebar";
 import { SequenceHeader } from "./components/SequenceHeader";
 import { ReorderList } from "./components/ReorderList";
 import { ProseSpine } from "./components/ProseSpine";
+import { fragmentAnchorId } from "./components/FragmentProse";
+import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
+import { Button } from "@components/ui/button";
+import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
 import { ArcOverlay } from "./components/ArcOverlay";
 import { VerticalArcStrip } from "./components/VerticalArcStrip";
 import { useCommands } from "@lib/commands/useCommands";
@@ -266,26 +269,52 @@ export const OverviewPage = () => {
     },
   });
 
-  // In-context editing: save a fragment's edited markdown body via the shared
-  // fragment update path, then refresh the spine content and summaries so the
-  // edited chunk (and its excerpt) reflow. The selection→fragment mapping is the
-  // fragmentUuid the editor was opened for (each chunk owns its own editor).
-  const { mutateAsync: updateFragmentContent } = useUpdateFragment();
+  // In-context editing (ADR 0013): double-click / pencil opens the full fragment
+  // editor as a center-replacing overlay (the spine unmounts; the host sidebars
+  // stay). Editing/saving happen inside the editor; on close the spine scrolls
+  // back to the last-shown fragment. No in-place split, no per-chunk editor.
+  const [editingFragmentUuid, setEditingFragmentUuid] = useState<string | null>(null);
+  const editingUuidRef = useRef<string | null>(null);
+  editingUuidRef.current = editingFragmentUuid;
+  const [pendingScrollUuid, setPendingScrollUuid] = useState<string | null>(null);
+  const editorRef = useRef<FragmentEditorHandle>(null);
 
-  const handleSaveFragmentContent = useCallback(
-    async (fragmentUuid: string, content: string) => {
-      await updateFragmentContent({ projectId, fragmentId: fragmentUuid, data: { content } });
-      if (sequence) {
-        void queryClient.invalidateQueries({
-          queryKey: getGetSequenceContentsQueryKey(projectId, sequence.uuid),
-        });
-      }
-      void queryClient.invalidateQueries({
-        queryKey: getListFragmentSummariesQueryKey(projectId),
-      });
-    },
-    [updateFragmentContent, projectId, sequence, queryClient],
+  // Previous/Next traverses the placed fragments in spine order, excluding the
+  // unassigned pool and discarded fragments.
+  const overviewOrder = useMemo(
+    () => allSequenceFragmentUuids.filter((uuid) => !fragmentByUuid.get(uuid)?.isDiscarded),
+    [allSequenceFragmentUuids, fragmentByUuid],
   );
+  const editIndex = editingFragmentUuid ? overviewOrder.indexOf(editingFragmentUuid) : -1;
+  const previousEditUuid = editIndex > 0 ? overviewOrder[editIndex - 1]! : null;
+  const nextEditUuid =
+    editIndex >= 0 && editIndex < overviewOrder.length - 1 ? overviewOrder[editIndex + 1]! : null;
+
+  const openEditor = useCallback((fragmentUuid: string) => {
+    setEditingFragmentUuid(fragmentUuid);
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setPendingScrollUuid(editingUuidRef.current);
+    setEditingFragmentUuid(null);
+  }, []);
+
+  const saveEditor = useCallback(async () => {
+    await editorRef.current?.save();
+  }, []);
+
+  // After an editor save, refresh the spine content + summaries so the edited
+  // body (and its excerpt) reflow once the overlay is closed.
+  const handleEditorSaved = useCallback(() => {
+    if (sequence) {
+      void queryClient.invalidateQueries({
+        queryKey: getGetSequenceContentsQueryKey(projectId, sequence.uuid),
+      });
+    }
+    void queryClient.invalidateQueries({
+      queryKey: getListFragmentSummariesQueryKey(projectId),
+    });
+  }, [sequence, projectId, queryClient]);
 
   const sectionManager = useSectionManager({ projectId, sequence, listQueryKey });
 
@@ -397,6 +426,19 @@ export const OverviewPage = () => {
     }
   }, [spineContentReady, persistedScroll, projectId, activeAnchorId, navigateToAnchor]);
 
+  // After the editor overlay closes, scroll the spine back to the top of the
+  // last-shown fragment (ADR 0013) once the spine has re-rendered.
+  useEffect(() => {
+    if (editingFragmentUuid || !pendingScrollUuid || !spineContentReady) return;
+    const uuid = pendingScrollUuid;
+    setPendingScrollUuid(null);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(fragmentAnchorId(uuid))
+        ?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+  }, [editingFragmentUuid, pendingScrollUuid, spineContentReady]);
+
   const commands = useCommands();
 
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
@@ -491,6 +533,19 @@ export const OverviewPage = () => {
     unplaceFragment,
   });
 
+  // The overlay editor's Previous / Next / Close. goToFragment retargets the
+  // overlay; closeEditor is supplied only while editing so the close command and
+  // its mod+escape hotkey stay disabled otherwise.
+  useCommandScope(fragmentNavScope, {
+    hasNext: nextEditUuid !== null,
+    hasPrevious: previousEditUuid !== null,
+    nextUuid: nextEditUuid,
+    previousUuid: previousEditUuid,
+    save: saveEditor,
+    goToFragment: openEditor,
+    closeEditor: editingFragmentUuid ? closeEditor : undefined,
+  });
+
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
 
   return (
@@ -552,130 +607,163 @@ export const OverviewPage = () => {
         </DndContext>
       )}
 
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
-        data-testid="overview-main-content"
-        onClick={clearSelection}
-        onKeyDown={handleMainKeyDown}
-        onScroll={() => {
-          if (scrollContainerRef.current)
-            persistedScroll.save(scrollContainerRef.current.scrollTop);
-        }}
-      >
-        {(bundleLoading || summariesLoading) && isRebuilding ? (
-          <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
-        ) : bundleLoading || summariesLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : (
-          <>
-            <SequenceHeader
-              sequence={sequence}
-              detailLevel={detailLevel}
-              designateMainPending={designateMain.isPending}
-              onDesignateMain={() => commands.run("overview:designate-main")}
-              onSetDetailLevel={handleSetDetailLevel}
-              arcOverlayOpen={arcOverlayOpen}
-              onToggleArcOverlay={toggleArcOverlay}
-              verticalStripOpen={verticalStripOpen}
-              onToggleVerticalStrip={toggleVerticalArcStrip}
-            />
-
-            {placedSelection.length > 0 && (
-              <div
-                className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
-                data-testid="selection-action-bar"
+      {editingFragmentUuid ? (
+        // Center-replacing editor overlay (ADR 0013). The host sidebars stay; the
+        // spine unmounts. Focus mode (if on) lifts this into a fixed full-viewport
+        // layer over everything but the navbar.
+        <div className="flex-1 min-h-0 overflow-hidden p-4">
+          <FragmentEditor
+            key={editingFragmentUuid}
+            ref={editorRef}
+            projectId={projectId}
+            fragmentId={editingFragmentUuid}
+            sidebarCollapsible
+            showMargin={false}
+            navigation={{
+              onPrevious: () => commands.run("fragments:previous"),
+              onNext: () => commands.run("fragments:next"),
+              hasPrevious: previousEditUuid !== null,
+              hasNext: nextEditUuid !== null,
+            }}
+            backNode={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => commands.run("fragments:close-editor")}
               >
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {placedSelection.length} selected
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:group-selection")}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                ← Close
+              </Button>
+            }
+            onSaved={handleEditorSaved}
+          />
+        </div>
+      ) : (
+        <>
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto"
+            data-testid="overview-main-content"
+            onClick={clearSelection}
+            onKeyDown={handleMainKeyDown}
+            onScroll={() => {
+              if (scrollContainerRef.current)
+                persistedScroll.save(scrollContainerRef.current.scrollTop);
+            }}
+          >
+            {(bundleLoading || summariesLoading) && isRebuilding ? (
+              <p className="text-sm text-muted-foreground">Rebuilding project index…</p>
+            ) : bundleLoading || summariesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <>
+                <SequenceHeader
+                  sequence={sequence}
+                  detailLevel={detailLevel}
+                  designateMainPending={designateMain.isPending}
+                  onDesignateMain={() => commands.run("overview:designate-main")}
+                  onSetDetailLevel={handleSetDetailLevel}
+                  arcOverlayOpen={arcOverlayOpen}
+                  onToggleArcOverlay={toggleArcOverlay}
+                  verticalStripOpen={verticalStripOpen}
+                  onToggleVerticalStrip={toggleVerticalArcStrip}
+                />
+
+                {placedSelection.length > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
+                    data-testid="selection-action-bar"
                   >
-                    Group into section
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:split-before-selection")}
-                    disabled={!canSplitBefore}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    Split before
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => commands.run("overview:split-after-selection")}
-                    disabled={!canSplitAfter}
-                    className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    Split after
-                  </button>
-                  {/* "Move to section…" is a parameterized command (opens a section
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {placedSelection.length} selected
+                    </span>
+                    <div className="ml-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => commands.run("overview:group-selection")}
+                        className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        Group into section
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => commands.run("overview:split-before-selection")}
+                        disabled={!canSplitBefore}
+                        className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                      >
+                        Split before
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => commands.run("overview:split-after-selection")}
+                        disabled={!canSplitAfter}
+                        className="text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                      >
+                        Split after
+                      </button>
+                      {/* "Move to section…" is a parameterized command (opens a section
                       picker); run it from the command palette. */}
-                </div>
-              </div>
-            )}
-
-            {arcOverlayOpen && (
-              <ArcOverlay
-                sectionsData={sectionsData}
-                fragmentByUuid={fragmentByUuid}
-                colorByAspectKey={arcData.colorByAspectKey}
-                arcAspectKeys={arcData.arcAspectKeys}
-                hiddenAspectKeys={arcData.hiddenAspectKeys}
-                onToggleAspectVisibility={arcData.toggleAspectVisibility}
-                isExpanded={arcExpanded}
-                onToggleExpanded={toggleArcExpanded}
-                onClose={toggleArcOverlay}
-              />
-            )}
-
-            <DndContext
-              sensors={dnd.sensors}
-              collisionDetection={dnd.collisionDetection}
-              onDragStart={dnd.handleDragStart}
-              onDragEnd={dnd.handleDragEnd}
-            >
-              <div className="flex gap-4">
-                {verticalStripOpen && (
-                  <div className="sticky top-0 self-start">
-                    <VerticalArcStrip
-                      orderedFragmentUuids={allSequenceFragmentUuids}
-                      fragmentByUuid={fragmentByUuid}
-                      colorByAspectKey={arcData.colorByAspectKey}
-                      hiddenAspectKeys={arcData.hiddenAspectKeys}
-                    />
+                    </div>
                   </div>
                 )}
-                <div className="flex-1">
-                  <ProseSpine
-                    projectId={projectId}
+
+                {arcOverlayOpen && (
+                  <ArcOverlay
                     sectionsData={sectionsData}
-                    detailLevel={detailLevel}
                     fragmentByUuid={fragmentByUuid}
-                    contentByFragmentUuid={contentByFragmentUuid}
-                    selectedFragmentUuids={selectionSet}
-                    onSelectFragment={handleSelectFragment}
-                    onRemoveFragment={handleRemoveFragment}
-                    onSaveContent={handleSaveFragmentContent}
+                    colorByAspectKey={arcData.colorByAspectKey}
+                    arcAspectKeys={arcData.arcAspectKeys}
+                    hiddenAspectKeys={arcData.hiddenAspectKeys}
+                    onToggleAspectVisibility={arcData.toggleAspectVisibility}
+                    isExpanded={arcExpanded}
+                    onToggleExpanded={toggleArcExpanded}
+                    onClose={toggleArcOverlay}
                   />
-                </div>
-              </div>
-              <DragOverlay dropAnimation={null}>
-                {activeDragFragment ? (
-                  <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
-                    {activeDragFragment.key}
+                )}
+
+                <DndContext
+                  sensors={dnd.sensors}
+                  collisionDetection={dnd.collisionDetection}
+                  onDragStart={dnd.handleDragStart}
+                  onDragEnd={dnd.handleDragEnd}
+                >
+                  <div className="flex gap-4">
+                    {verticalStripOpen && (
+                      <div className="sticky top-0 self-start">
+                        <VerticalArcStrip
+                          orderedFragmentUuids={allSequenceFragmentUuids}
+                          fragmentByUuid={fragmentByUuid}
+                          colorByAspectKey={arcData.colorByAspectKey}
+                          hiddenAspectKeys={arcData.hiddenAspectKeys}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <ProseSpine
+                        sectionsData={sectionsData}
+                        detailLevel={detailLevel}
+                        fragmentByUuid={fragmentByUuid}
+                        contentByFragmentUuid={contentByFragmentUuid}
+                        selectedFragmentUuids={selectionSet}
+                        onSelectFragment={handleSelectFragment}
+                        onRemoveFragment={handleRemoveFragment}
+                        onEdit={openEditor}
+                      />
+                    </div>
                   </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </>
-        )}
-      </div>
+                  <DragOverlay dropAnimation={null}>
+                    {activeDragFragment ? (
+                      <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+                        {activeDragFragment.key}
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       <RightSidebar
         fragment={primarySelectedUuid ? fragmentByUuid.get(primarySelectedUuid) : undefined}
