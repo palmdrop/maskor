@@ -35,7 +35,14 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { overviewScope } from "@lib/commands/scopes/overview";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
-import { writeOverviewSequence, overviewScrollKey } from "@lib/nav-state";
+import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
+import {
+  writeOverviewSequence,
+  overviewScrollKey,
+  readOverviewAuthoredAnchor,
+  writeOverviewAuthoredAnchor,
+} from "@lib/nav-state";
+import { resolveOverviewLoadScroll } from "./utils/loadScroll";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
@@ -162,6 +169,36 @@ export const OverviewPage = () => {
 
   const { selection, selectionSet, primarySelectedUuid, handleSelectFragment, clearSelection } =
     useFragmentSelection({ projectId, visibleOrder, fragmentByUuid, summariesLoading });
+
+  // Anchor navigation for the spine. `ready: false` disables the hook's own
+  // deep-link scroll — the Overview drives load scrolling itself so the
+  // remembered scroll position can win over a leftover anchor (see the restore
+  // effect below). We only use the hook's click-time `navigateToAnchor` (sets
+  // `#fragment-<uuid>` + scrolls) and the parsed `activeAnchorId`.
+  const { activeAnchorId, navigateToAnchor } = useFragmentAnchor({ ready: false });
+
+  // Reveal a fragment in the spine and record the anchor as authored-in-this-tab,
+  // so a later reload tells it apart from an external deep link (scroll wins for
+  // our own clicks; the deep link wins).
+  const scrollToFragment = useCallback(
+    (fragmentUuid: string) => {
+      writeOverviewAuthoredAnchor(projectId, fragmentUuid);
+      navigateToAnchor(fragmentUuid);
+    },
+    [projectId, navigateToAnchor],
+  );
+
+  // Wraps selection for the left ordering column: a plain click selects AND
+  // scrolls the spine to that fragment. Modifier clicks (cmd/shift multi-select)
+  // only adjust the selection — no scroll, no anchor change. The spine itself
+  // keeps using `handleSelectFragment` directly so clicking prose never scrolls.
+  const handleSidebarSelectFragment = useCallback(
+    (fragmentUuid: string, modifiers?: { toggle?: boolean; range?: boolean }) => {
+      handleSelectFragment(fragmentUuid, modifiers);
+      if (!modifiers?.toggle && !modifiers?.range) scrollToFragment(fragmentUuid);
+    },
+    [handleSelectFragment, scrollToFragment],
+  );
 
   const sequenceByUuid = useMemo(
     () => new Map((bundle?.sequences ?? []).map((s) => [s.uuid, s])),
@@ -344,12 +381,21 @@ export const OverviewPage = () => {
   useEffect(() => {
     if (!spineContentReady || hasRestoredScrollRef.current) return;
     hasRestoredScrollRef.current = true;
-    const offset = persistedScroll.read();
-    if (offset === null) return;
-    requestAnimationFrame(() => {
-      if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = offset;
+    // Reconcile the remembered scroll with the URL anchor: an external deep link
+    // scrolls to its fragment; otherwise the remembered scroll position wins.
+    const decision = resolveOverviewLoadScroll({
+      activeAnchorId,
+      authoredAnchor: readOverviewAuthoredAnchor(projectId),
+      persistedOffset: persistedScroll.read(),
     });
-  }, [spineContentReady, persistedScroll]);
+    if (decision.kind === "anchor") {
+      requestAnimationFrame(() => navigateToAnchor(decision.anchorId));
+    } else if (decision.kind === "scroll") {
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = decision.offset;
+      });
+    }
+  }, [spineContentReady, persistedScroll, projectId, activeAnchorId, navigateToAnchor]);
 
   const commands = useCommands();
 
@@ -476,7 +522,7 @@ export const OverviewPage = () => {
               colorByAspectKey={arcData.colorByAspectKey}
               fragmentByUuid={fragmentByUuid}
               selectedFragmentUuids={selectionSet}
-              onSelectFragment={handleSelectFragment}
+              onSelectFragment={handleSidebarSelectFragment}
               onRemoveFragment={handleRemoveFragment}
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}

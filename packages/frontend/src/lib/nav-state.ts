@@ -83,6 +83,27 @@ export const writeOverviewSelection = (projectId: string, selection: string[]) =
 // stable, project-scoped storage key.
 export const overviewScrollKey = (projectId: string) => key(projectId, "overview", "scroll");
 
+// The anchor (`#fragment-<uuid>`) the Overview last wrote in *this tab*, kept in
+// sessionStorage so a leftover hash from an in-app click can be told apart from
+// an externally-supplied deep link on load. A deep link (hash present but not
+// authored here) wins over the remembered scroll; a leftover hash yields to it.
+// See `resolveOverviewLoadScroll`.
+export const readOverviewAuthoredAnchor = (projectId: string): string | null => {
+  try {
+    return sessionStorage.getItem(key(projectId, "overview", "authoredAnchor"));
+  } catch {
+    return null;
+  }
+};
+
+export const writeOverviewAuthoredAnchor = (projectId: string, anchorId: string) => {
+  try {
+    sessionStorage.setItem(key(projectId, "overview", "authoredAnchor"), anchorId);
+  } catch {
+    // sessionStorage unavailable — deep-link reconciliation degrades to scroll-wins
+  }
+};
+
 // --- preview ---
 
 export const readPreviewSequence = (projectId: string): string | null =>

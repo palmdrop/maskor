@@ -8,6 +8,8 @@ import {
   readOverviewSelection,
   writeOverviewSelection,
   overviewScrollKey,
+  readOverviewAuthoredAnchor,
+  writeOverviewAuthoredAnchor,
   readPreviewSequence,
   writePreviewSequence,
   previewScrollKey,
@@ -21,6 +23,7 @@ const PROJECT = "proj-123";
 describe("nav-state", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   // --- fragments ---
@@ -92,6 +95,23 @@ describe("nav-state", () => {
   describe("overview scroll key", () => {
     it("returns a stable per-project key", () => {
       expect(overviewScrollKey(PROJECT)).toBe("maskor:nav:proj-123:overview:scroll");
+    });
+  });
+
+  describe("overview authored anchor", () => {
+    it("returns null when nothing stored", () => {
+      expect(readOverviewAuthoredAnchor(PROJECT)).toBeNull();
+    });
+
+    it("round-trips an authored anchor through sessionStorage", () => {
+      writeOverviewAuthoredAnchor(PROJECT, "frag-7");
+      expect(readOverviewAuthoredAnchor(PROJECT)).toBe("frag-7");
+    });
+
+    it("is stored in sessionStorage, not localStorage", () => {
+      writeOverviewAuthoredAnchor(PROJECT, "frag-7");
+      expect(localStorage.getItem("maskor:nav:proj-123:overview:authoredAnchor")).toBeNull();
+      expect(sessionStorage.getItem("maskor:nav:proj-123:overview:authoredAnchor")).toBe("frag-7");
     });
   });
 

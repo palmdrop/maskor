@@ -23,6 +23,8 @@ let currentSearch: { sequence?: string; detail?: OverviewDetailLevel } = {
 };
 const navigateMock = vi.fn();
 
+let currentHash = "";
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
@@ -31,6 +33,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     useParams: () => ({ projectId: PROJECT_ID }),
     useSearch: () => currentSearch,
     useNavigate: () => navigateMock,
+    useLocation: () => ({ hash: currentHash }),
   };
 });
 
@@ -531,6 +534,47 @@ describe("OverviewPage — keyboard fragment movement (vertical)", () => {
       sectionId: "sec-1",
       data: { position: 1 },
     });
+  });
+});
+
+describe("OverviewPage — sidebar scroll-to-fragment", () => {
+  const authoredAnchorKey = `maskor:nav:${PROJECT_ID}:overview:authoredAnchor`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    currentSearch = { sequence: undefined, detail: "title" };
+    currentHash = "";
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+  });
+
+  it("sets the anchor and records it as authored on a plain reorder-row click", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(list.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!);
+
+    const anchorCall = navigateMock.mock.calls.find((c) => c[0]?.hash === `fragment-${FRAG_A}`);
+    expect(anchorCall?.[0]).toMatchObject({ hash: `fragment-${FRAG_A}`, replace: true });
+    expect(sessionStorage.getItem(authoredAnchorKey)).toBe(FRAG_A);
+  });
+
+  it("does not set the anchor on a meta-click (multi-select)", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const list = screen.getByTestId("reorder-list");
+    fireEvent.click(list.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!, { metaKey: true });
+
+    expect(
+      navigateMock.mock.calls.find((c) => c[0]?.hash === `fragment-${FRAG_A}`),
+    ).toBeUndefined();
+    expect(sessionStorage.getItem(authoredAnchorKey)).toBeNull();
   });
 });
 
