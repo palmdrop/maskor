@@ -102,6 +102,8 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Preview**: The read-only surface that renders any sequence as continuously assembled prose for reading and pre-export inspection, sharing assembly logic with export. _Avoid_: read view, draft view, export preview.
 
+**Focus mode**: An explicit, per-project-persisted editor presentation that hides all surrounding chrome except the top navbar, rendering the fragment editor as a centered full-viewport overlay; available wherever the fragment editor mounts and orthogonal to whether the editor's own metadata sidebar is collapsed. _Avoid_: zen mode, distraction-free mode, fullscreen. (Distinct from **inline editing** — opening the editor over the Overview spine or Preview document does not imply focus mode.)
+
 ---
 
 ## Flagged ambiguities
