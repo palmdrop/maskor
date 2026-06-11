@@ -1,8 +1,9 @@
 # Margins fixes — font size, growth, undo-restore, scroll lock + notes relocation
 
 **Date**: 11-06-2026
-**Status**: Todo
+**Status**: Done <!-- code complete; manual vim-mode browser smoke owed (see Testing) -->
 **Specs**: `specifications/margins.md`, `specifications/project-config.md`
+**Closed**: 11-06-2026
 
 ---
 
@@ -57,73 +58,66 @@ to the pinned footer area too.
 
 ### Phase 0 — Branch + plan
 
-- [ ] Create a branch from the plan title.
-- [ ] `git commit` the plan.
+- [x] Create a branch from the plan title. _(2026-06-11 — work continued on the existing `agent/margins-fixes` worktree branch, which already matches the plan title; no new branch.)_
+- [x] `git commit` the plan. _(2026-06-11)_
 
 ### Phase 1 — Configurable Margin font size (#1)
 
-- [ ] Add `marginFontSize` to the `editor` schema (full + partial-update) in
-      `packages/shared/src/schemas/domain/project.ts`, with the same int/min/max idiom as `fontSize`
-      (default applied in the frontend, ~15).
-- [ ] Add `"editor.marginFontSize"` to the `useProjectSetting` key union and the `useProjectEditorConfig`
-      defaults.
-- [ ] Surface a slider in the editor "Aa" popover (`EditorDisplaySettings`, extracted from
-      `entity-editor-shell.tsx`) beside the existing font-size / paragraph-width controls; wire commit
-      through the same path.
-- [ ] Replace the `MARGIN_FONT_SIZE` constant usages so the Margin renders all text (rows, notes,
-      orphans, slot editors) at the configured size; pass it from `fragment-editor.tsx` →
-      `MarginColumn`. Keep the prose `fontSize` as the geometry re-measure trigger.
-- [ ] `bun run codegen` (schema changed → refresh OpenAPI snapshot + orval client).
-- [ ] Tests: setting round-trips (schema default + override); Margin renders at the configured size.
-- [ ] Update `specifications/project-config.md` Shipped (new `editor.marginFontSize` setting).
-- [ ] `git commit`.
+- [x] Add `marginFontSize` to the `editor` schema (full + partial-update) with the same int/min/max
+      idiom as `fontSize` (range 10–22; default `15` in the frontend + storage `PROJECT_CONFIG_DEFAULTS`). _(2026-06-11)_
+- [x] Add `"editor.marginFontSize"` to the `useProjectSetting` key union and the `useProjectEditorConfig`
+      defaults. _(2026-06-11)_
+- [x] Surface a slider in the editor "Aa" popover (`EditorDisplaySettings`); wire commit through the
+      same draft/commit path as the other settings. _(2026-06-11)_
+- [x] Replace the `MARGIN_FONT_SIZE` constant: `margin-styles` `serifText` → `serifTextStyle(fontSize)`;
+      the Margin renders all text (rows, notes, orphans, slot editors) at the configured size, threaded
+      `fragment-editor.tsx` → `MarginColumn` → children. Prose `fontSize` stays the geometry trigger. _(2026-06-11)_
+- [x] `bun run codegen` (refreshed OpenAPI snapshot + orval client). _(2026-06-11)_
+- [x] Tests: registry default round-trip (`15`); margin-column harness passes the configured size. _(2026-06-11)_
+- [x] Update `specifications/project-config.md` Shipped. _(2026-06-11)_
+- [x] `git commit`. _(2026-06-11)_
 
 ### Phase 2 — Margin grows into available space (#2)
 
-- [ ] In `entity-editor-shell.tsx`, cap `<main>` toward its prose content width (no longer pure
-      `flex-1`) with a minimum width floor, and give the Margin `rightPanel` `flex-1` with a maximum
-      width ceiling, so narrowing the prose hands the slack to the Margin. Preserve the stacked layout
-      on small (`lg:` breakpoint) screens.
-- [ ] Verify behaviour across the `maxParagraphWidth` range (narrow → Margin wide up to its ceiling;
-      wide → Margin floors at a sensible minimum) and with the sidebar collapsed/expanded.
-- [ ] Tests where meaningful (layout class wiring; geometry can't be measured in jsdom — covered by the
-      manual smoke).
-- [ ] `git commit`.
+- [x] In `entity-editor-shell.tsx`, cap `<main>` on `lg` to `--prose-width` (`maxParagraphWidth`ch at
+      the prose font size) via `lg:flex-initial lg:w-(--prose-width) lg:min-w-80` (a min floor, can
+      shrink, never grows past prose width), and give the Margin `rightPanel` `lg:flex-1 lg:min-w-80
+      lg:max-w-[40rem]`. Non-margin editors keep `flex-1` full-width main. Stacked layout below `lg`
+      preserved. _(2026-06-11)_
+- [-] Verify behaviour across the `maxParagraphWidth` range / sidebar states — owed to the manual
+      browser smoke (jsdom can't measure layout). _(2026-06-11)_
+- [x] Tests: existing shell + fragment-editor render tests pass against the new class wiring. _(2026-06-11)_
+- [x] `git commit`. _(2026-06-11)_
 
 ### Phase 3 — Undo restores dropped anchors (#3)
 
-- [ ] Integrate the `cmAnchorField` with CodeMirror history via `invertedEffects` so an anchor dropped
-      (or otherwise changed) by an edit is restored to its exact pre-edit offset on undo, and dropped
-      again on redo. The fuzzy excerpt rebind remains the recovery path for genuine external edits, not
-      the undo path.
-- [ ] Tests (`anchor-cm.test.ts`): delete-paragraph drops the anchor; undo restores it at the original
-      offset; redo drops it again; a non-collapsing edit (deleting one soft-wrapped line) is unaffected.
-      Geometry/caret stay on the manual vim smoke.
-- [ ] `git commit`.
+- [x] Integrate `cmAnchorField` with CM history via `invertedEffects` (added `@codemirror/commands` as
+      a direct dep): the pre-edit anchor set is stored on every edit that touches a non-empty set, so
+      undo restores a dropped anchor at its exact offset and redo drops it again. `setCmAnchorsEffect`
+      gained a `map` so a stored snapshot repositions through intervening changes. Fuzzy rebind stays
+      the external-edit recovery path only. _(2026-06-11)_
+- [x] Tests (`anchor-cm.test.ts`): delete-paragraph → undo restores the anchor → redo drops it; plus an
+      unrelated-edit-then-undo-of-a-drop case. Geometry/caret stay on the manual vim smoke. _(2026-06-11)_
+- [x] `git commit`. _(2026-06-11)_
 
 ### Phase 4 — Lock the scroller; relocate notes + orphans (#4)
 
-- [ ] Restructure `margin-column.tsx` so the synced scroller (`margin-scroll`) contains **only** the
-      per-block rows box (height = editor content height), keeping it the same height as the editor so
-      `useScrollSync` stays locked end-to-end.
-- [ ] Move the notes section out of the synced scroller into a **pinned, always-visible collapsible
-      footer** (sibling of the scroller): the expand toggle shows regardless of scroll position;
-      expanding reveals notes in a capped-height, own-scroll area that takes a limited share of the
-      column; the comment column above keeps scrolling in lockstep with the editor while notes are open.
-- [ ] Move the orphan group into the pinned footer area (out of the synced scroller) — e.g. a
-      collapsible "orphaned" affordance alongside notes — so orphans are reachable without desyncing.
-- [ ] Reconcile the existing footer controls (`+ Comment`, expand-all) with the new pinned footer
-      layout.
-- [ ] Tests (`margin-column.test.tsx`): the synced scroller no longer contains notes/orphans; the notes
-      toggle is present without scrolling; orphans render in the footer affordance. Update existing
-      assertions that expect notes/orphans inside the scroller.
-- [ ] Update `specifications/margins.md`: Shipped entry for all four fixes; revise the Behavior bullets
-      that state "notes are a collapsible section at the bottom of the column, scrolling with the
-      content" and the scroll-sync description to match the locked-scroller + pinned-footer model;
-      reconcile the absolute-anchoring / scroll-sync Prior-decision text.
-- [ ] `bun run format` then `bun run verify`; fix lint/test failures.
-- [ ] Regenerate `references/CODEBASE_SNAPSHOT.md` (`bun run snapshot`).
-- [ ] `git commit`.
+- [x] Restructure `margin-column.tsx` so the synced scroller (`margin-scroll`) contains **only** the
+      per-block rows box (height = editor content height), keeping it locked to the editor. _(2026-06-11)_
+- [x] Notes moved out of the scroller into a **pinned, always-visible collapsible footer** panel
+      (`MarginNotesSection`): toggle always visible, body capped at `max-h-48` with its own scroll; the
+      comment column stays locked while notes are open. Default collapsed. _(2026-06-11)_
+- [x] Orphan group moved into the pinned footer as a matching collapsible panel (`MarginOrphanGroup`
+      gained `open`/`onToggle`; the static `Heading` became a toggle header). Default collapsed. _(2026-06-11)_
+- [x] Footer wraps the orphan + notes panels and the controls (`+ Comment`, expand-all) below the
+      scroller (`data-testid="margin-footer"`). _(2026-06-11)_
+- [x] Tests (`margin-column.test.tsx`): scroller excludes notes/orphans; footer contains them; notes +
+      orphan bodies collapse by default and reveal on toggle. _(2026-06-11)_
+- [x] Update `specifications/margins.md`: Shipped entry + revised the notes/scroll-sync Behavior bullet
+      for the locked-scroller + pinned-footer model. _(2026-06-11)_
+- [x] `bun run format` then `bun run verify` — green (typecheck, openapi, backend, frontend 771). _(2026-06-11)_
+- [x] Regenerate `references/CODEBASE_SNAPSHOT.md` (`bun run snapshot`; gitignored). _(2026-06-11)_
+- [x] `git commit`. _(2026-06-11)_
 
 ---
 
