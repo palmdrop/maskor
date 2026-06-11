@@ -8,6 +8,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] still a flicker on refresh in overview on scroll
+
+- [ ] investigate focus view, i.e editing a single fragment without rest of the view visible. COuld be used as a replacement for the in-place edits that occur in overview and preview
+
 - [x] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
 - [x] sometimes on save after an edit, extra whitespace is removed and cursor position is updated, sometimes to bottom and sometimes to top. Probably a roundtrip issue, or a use-effect issue? After a save, if content is unchanged, is it necessary to update the content state of the editor?
