@@ -325,6 +325,22 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       : "flex flex-col h-full gap-2";
     const rootStyle = isFocusMode ? { top: "var(--app-navbar-height, 0px)" } : undefined;
 
+    const proseEditor = (
+      <ProseEditor
+        ref={proseEditorRef}
+        content={content}
+        vimMode={editorConfig.vimMode}
+        rawMarkdownMode={editorConfig.rawMarkdownMode}
+        fontSize={fontSize.draft}
+        maxParagraphWidth={maxParagraphWidth.draft}
+        vimClipboardSync={vimClipboardSync.value}
+        onSave={() => commands.run("editor:save")}
+        onChange={handleProseChange}
+        onActiveBlockChange={onActiveBlockChange}
+        cursor={cursor}
+      />
+    );
+
     return (
       <div className={rootClassName} style={rootStyle}>
         {recovery && !suppressRecoveryBanner && (
@@ -433,46 +449,33 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               </div>
             </div>
           )}
-          {/* On `lg` the editor is capped to its own prose width (`maxParagraphWidth`ch at the prose
-              font size) and may shrink, but never grows past it — so the slack the writer creates by
-              narrowing the prose is handed to the Margin instead of pooling as centred gutters. The
-              `ch` unit resolves against this element's font size, so it is set here too. */}
-          <main
-            className={
-              rightPanel
-                ? "w-full min-w-0 min-h-0 overflow-y-auto lg:flex-initial lg:w-(--prose-width) lg:min-w-80"
-                : "flex-1 min-h-0 overflow-y-auto"
-            }
-            style={
-              rightPanel
-                ? ({
+          {rightPanel ? (
+            // Editor + Margin laid out as a 3-column grid (`1fr | prose | 1fr`) on `lg`: the prose
+            // column is sized to its own width (`maxParagraphWidth`ch at the prose font size) and the
+            // equal `1fr` gutters keep the editor body centred regardless of the Margin. The Margin
+            // sits in the right gutter at a fixed, sensible width (it no longer flex-grows to claim —
+            // and leave mostly empty — the whole right side). The `ch` unit resolves against the prose
+            // column's own font size, so it is set there. Stacks vertically below `lg`.
+            <div className="flex flex-1 min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-0">
+              <main
+                className="w-full min-w-0 min-h-0 overflow-y-auto lg:col-start-2 lg:w-(--prose-width) lg:max-w-full"
+                style={
+                  {
                     "--prose-width": `${maxParagraphWidth.draft}ch`,
                     fontSize: `${fontSize.draft}px`,
-                  } as CSSProperties)
-                : undefined
-            }
-          >
-            <ProseEditor
-              ref={proseEditorRef}
-              content={content}
-              vimMode={editorConfig.vimMode}
-              rawMarkdownMode={editorConfig.rawMarkdownMode}
-              fontSize={fontSize.draft}
-              maxParagraphWidth={maxParagraphWidth.draft}
-              vimClipboardSync={vimClipboardSync.value}
-              onSave={() => commands.run("editor:save")}
-              onChange={handleProseChange}
-              onActiveBlockChange={onActiveBlockChange}
-              cursor={cursor}
-            />
-          </main>
-          {rightPanel && (
-            // The Margin grows into the slack the narrowed editor frees, floored so it stays usable and
-            // capped so it never sprawls on an ultrawide display. A faint vertical separator with
-            // padding keeps the editor and Margin reading as two seamless pieces of text (margins-4 #12).
-            <div className="flex w-full flex-col min-h-0 border-t border-border/50 pt-4 lg:flex-1 lg:min-w-80 lg:max-w-[40rem] lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-              {rightPanel}
+                  } as CSSProperties
+                }
+              >
+                {proseEditor}
+              </main>
+              {/* A faint vertical separator with padding keeps the editor and Margin reading as two
+                  seamless pieces of text (margins-4 #12). */}
+              <div className="flex w-full min-w-0 flex-col min-h-0 border-t border-border/50 pt-4 lg:col-start-3 lg:w-132 lg:max-w-full lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                {rightPanel}
+              </div>
             </div>
+          ) : (
+            <main className="flex-1 min-h-0 overflow-y-auto">{proseEditor}</main>
           )}
         </div>
         {insertExtract.extract.target && insertExtract.extract.bundle && (
