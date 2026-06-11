@@ -17,6 +17,10 @@ export interface SequenceSidebarContext {
   // The name of the sequence currently open in the overview (the insert target).
   insertTargetName: string | undefined;
   insertSequence: (sourceSequenceId: string) => Promise<void>;
+  // Every sequence can be renamed; this opens the row's inline editor (local UI
+  // state, not a mutation — the commit goes through the rename API on blur/Enter).
+  renameableSequences: readonly Sequence[];
+  beginRenameSequence: (sequenceId: string) => void;
 }
 
 export const sequenceSidebarScope = defineScope<SequenceSidebarContext>("sequence-sidebar", {
@@ -90,8 +94,24 @@ const insertSequence = defineScopeCommand(sequenceSidebarScope, {
   run: (ctx, source) => ctx.insertSequence(source.uuid),
 });
 
+// Opening the inline editor cannot fail (it only sets local state), so no
+// onFailure — the rename API call itself surfaces conflicts inline in the row.
+const renameSequence = defineScopeCommand(sequenceSidebarScope, {
+  id: "overview:rename-sequence",
+  label: "Rename sequence…",
+  category: "other",
+  arg: {
+    items: (ctx) => ctx.renameableSequences,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => `Rename “${item.name}”`,
+    placeholder: "Rename sequence…",
+  },
+  run: (ctx, target) => ctx.beginRenameSequence(target.uuid),
+});
+
 export const sequenceSidebarCommands = [
   createSequence,
+  renameSequence,
   deleteSequence,
   toggleSequenceActive,
   cloneSequence,

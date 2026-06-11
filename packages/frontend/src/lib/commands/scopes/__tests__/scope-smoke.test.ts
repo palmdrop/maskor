@@ -169,6 +169,8 @@ describe("scopes/sequence-sidebar", () => {
     insertSourceSequences: [],
     insertTargetName: undefined,
     insertSequence: vi.fn(),
+    renameableSequences: [],
+    beginRenameSequence: vi.fn(),
   };
 
   it("create-sequence runs and reports Creating… while pending", () => {
@@ -189,6 +191,13 @@ describe("scopes/sequence-sidebar", () => {
     const target = sequence("seq-1", "Main");
     cmd.run({ ...ctx, cloneableSequences: [target] }, target);
     expect(ctx.cloneSequence).toHaveBeenCalledWith("seq-1");
+  });
+
+  it("rename-sequence opens the inline editor for the chosen sequence", () => {
+    const cmd = find(sequenceSidebarCommands, "overview:rename-sequence");
+    const target = sequence("seq-1", "Main");
+    cmd.run({ ...ctx, renameableSequences: [target] }, target);
+    expect(ctx.beginRenameSequence).toHaveBeenCalledWith("seq-1");
   });
 
   it("insert-sequence disables without an open target or source, runs otherwise", () => {

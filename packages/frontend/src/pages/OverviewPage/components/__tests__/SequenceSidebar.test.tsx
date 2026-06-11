@@ -64,6 +64,10 @@ const wrap = ({ children }: { children: ReactNode }) => (
   <CommandsProvider>{children}</CommandsProvider>
 );
 
+// Row actions live behind a per-row "⋯" menu; open the row's menu first.
+const openRowMenu = (name: string) =>
+  fireEvent.click(screen.getByRole("button", { name: `Actions for "${name}"` }));
+
 describe("SequenceSidebar — active toggle", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -92,7 +96,8 @@ describe("SequenceSidebar — active toggle", () => {
 
     // Inactive sequence shows an "imported" badge and an Activate control.
     expect(screen.getByText("imported")).toBeInTheDocument();
-    const toggle = screen.getByRole("button", {
+    openRowMenu("Import: doc.md");
+    const toggle = screen.getByRole("menuitem", {
       name: /Activate sequence "Import: doc.md" as a constraint/i,
     });
     fireEvent.click(toggle);
@@ -117,7 +122,8 @@ describe("SequenceSidebar — active toggle", () => {
       { wrapper: wrap },
     );
 
-    const toggle = screen.getByRole("button", {
+    openRowMenu("Side order");
+    const toggle = screen.getByRole("menuitem", {
       name: /Deactivate sequence "Side order" as a constraint/i,
     });
     fireEvent.click(toggle);
@@ -127,6 +133,28 @@ describe("SequenceSidebar — active toggle", () => {
       sequenceId: "sec",
       data: { active: false },
     });
+  });
+});
+
+describe("SequenceSidebar — rename", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("opens an inline editor seeded with the current name from the menu", () => {
+    render(
+      <SequenceSidebar
+        sequences={[makeSequence({ uuid: "sec", name: "Side order" })]}
+        violations={[]}
+        cycles={[]}
+        activeSequenceId={undefined}
+      />,
+      { wrapper: wrap },
+    );
+
+    openRowMenu("Side order");
+    fireEvent.click(screen.getByRole("menuitem", { name: /Rename sequence "Side order"/i }));
+
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue("Side order");
   });
 });
 
@@ -144,7 +172,8 @@ describe("SequenceSidebar — clone / insert", () => {
       { wrapper: wrap },
     );
 
-    const clone = screen.getByRole("button", { name: /Clone sequence "Main"/i });
+    openRowMenu("Main");
+    const clone = screen.getByRole("menuitem", { name: /Clone sequence "Main"/i });
     fireEvent.click(clone);
 
     expect(cloneMutate).toHaveBeenCalledWith(
@@ -176,7 +205,8 @@ describe("SequenceSidebar — clone / insert", () => {
     );
 
     // The non-target row (the secondary) offers an insert-into-target control.
-    const insert = screen.getByRole("button", {
+    openRowMenu("Side order");
+    const insert = screen.getByRole("menuitem", {
       name: /Insert sequence "Side order" into "Main"/i,
     });
     fireEvent.click(insert);

@@ -170,6 +170,16 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
 
   const commands = useCommands();
 
+  // Renaming an existing sequence reuses the same inline editor as the
+  // post-create flow: seed the default with the current name, then mark the row
+  // as editing. The commit goes through handleCommitRename on blur/Enter.
+  const beginRename = (sequenceId: string) => {
+    const target = sequences.find((sequence) => sequence.uuid === sequenceId);
+    if (!target) return;
+    setEditingDefaultName(target.name);
+    setEditingRowId(sequenceId);
+  };
+
   const handleSetActive = (sequenceId: string, active: boolean) =>
     updateSequence.mutateAsync({ projectId, sequenceId, data: { active } }).then(() => {});
 
@@ -228,6 +238,8 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     insertSourceSequences: sequences.filter((s) => s.uuid !== insertTarget?.uuid),
     insertTargetName: insertTarget?.name,
     insertSequence: handleInsert,
+    renameableSequences: sequences,
+    beginRenameSequence: beginRename,
   });
 
   const handleCommitRename = async (
@@ -289,6 +301,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                 onSelect={() => handleSelect(seq.uuid)}
                 onCommitRename={(name) => handleCommitRename(seq.uuid, name)}
                 onRenameDone={() => setEditingRowId(null)}
+                onRequestRename={() => commands.run("overview:rename-sequence", seq)}
                 onConfirmDelete={() => commands.run("overview:delete-sequence")}
                 onRequestDelete={() => setConfirmingDeleteId(seq.uuid)}
                 onCancelDelete={() => setConfirmingDeleteId(null)}

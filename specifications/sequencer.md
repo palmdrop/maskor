@@ -1,7 +1,7 @@
 # Spec: Sequencer
 
 **Status**: In Progress
-**Last updated**: 2026-05-31
+**Last updated**: 2026-06-11
 
 **Shipped**:
 
@@ -15,6 +15,7 @@
 - 2026-06-05 - Multi-fragment section operations (sequencer-side, optimistic): group a multi-selection of placed fragments into a new section (positioned before/after its home section by the selection's centre of mass), move a multi-selection into an existing section as a block, split a section before or after a marked fragment, and merge a section into the adjacent one (the inverse of split/group — fragments stay placed rather than returning to the pool). Backed by `@maskor/sequencer` pure ops + sequence-scoped API routes; driven from a multi-select reorder list (click / cmd-click / shift-range) with `overviewScope` commands and per-section merge/split affordances. (plan: `references/plans/overview-redesign.md` Phase 2)
 - 2026-06-05 - Clone and merge sequences (sequencer-side): clone a sequence into a fresh independent copy (regenerated sequence/section/position UUIDs, placements preserved, never main), and insert one sequence into another at a section index (the source's sections are spliced in with fresh UUIDs; fragments already placed in the target are skipped to keep the one-placement invariant). Backed by `@maskor/sequencer` pure ops + sequence-scoped API routes (`/{id}/clone`, `/{id}/insert-sequence`) and `sequence:cloned`/`sequence:inserted` action-log entries; driven from the sequence sidebar (per-row clone + insert-into-current affordances) and `overviewScope` commands. (plan: `references/plans/overview-redesign.md` Phase 3)
 - 2026-06-08 - Overview spine double-click + shared `InlineFragmentEditor`: the plain `<textarea>` editing path in the spine is replaced by the shared `InlineFragmentEditor` (vim/rich/raw per project config). Double-clicking a fragment in the spine enters inline edit mode; the pencil icon affordance is retained. (plan: `references/plans/preview-inline-fragment-editing.md` Phase 2)
+- 2026-06-11 - Sequence rename is now reachable for existing sequences (closing the "rename" gap in sequence CRUD): the sequence-sidebar row exposes it via a per-row "⋯" actions menu, a double-click on the row, and the palette command `overview:rename-sequence`, all opening the inline editor over the existing `updateSequence` name path. That same "⋯" menu consolidates the row's clone / insert / activate-deactivate / delete affordances, which were previously separate hover icons.
 
 ---
 
