@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CopyIcon, ImportIcon, Link2Icon, Link2OffIcon, Trash2Icon } from "lucide-react";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { Badge } from "@components/ui/badge";
+import { InlineConfirmActions } from "./InlineConfirmActions";
 
 type SequenceStatus = "cycle" | "violation" | "ok";
 
@@ -133,22 +134,11 @@ export const SequenceRow = ({
         <p className="text-xs text-muted-foreground truncate">
           Delete &quot;{sequence.name}&quot;?
         </p>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onConfirmDelete}
-            className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            onClick={onCancelDelete}
-            className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+        <InlineConfirmActions
+          confirmLabel="Delete"
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+        />
       </div>
     );
   }

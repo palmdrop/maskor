@@ -31,10 +31,11 @@ type GlobalCreateDialogsProps = {
   onClose: () => void;
 };
 
-// Per-kind descriptor driving the single create dialog below. This is a local
-// table; once Plan 1 (`optimistic-mutation-primitive`) lands its registry-driven
-// `useEntityEditor`, fold these create + navigate descriptors into that registry
-// instead of maintaining a second one. See references/suggestions.md.
+// Per-kind descriptor driving the single create dialog below. Kept local on
+// purpose: the merged `lib/entity-kinds` registry covers edit/extract/insert
+// (GET + UPDATE hooks, extract/insert metadata) but has no create hook or
+// navigation route, so there is no create slot to fold this into without
+// extending the registry. See references/suggestions.md for the trade-off.
 type CreateDescriptor = {
   title: string;
   keyPlaceholder?: string;

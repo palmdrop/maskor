@@ -5,6 +5,7 @@ import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import { toSectionDragId } from "../utils/dndIds";
 import { ReorderRow } from "./ReorderRow";
 import { ListDropZone } from "./ListDropZone";
+import { InlineConfirmActions } from "./InlineConfirmActions";
 import type { SectionData, SectionRef, SelectModifiers } from "./reorder-types";
 
 interface SectionGroupProps {
@@ -85,22 +86,12 @@ export const SectionGroup = ({
               </span>
             )}
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onDeleteSection}
-              className="text-xs px-2 py-0.5 rounded bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmingDeleteSectionId(null)}
-              className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          <InlineConfirmActions
+            confirmLabel="Delete"
+            onConfirm={onDeleteSection}
+            onCancel={() => setConfirmingDeleteSectionId(null)}
+            className="gap-2"
+          />
         </div>
       ) : (
         <div className="group flex items-center gap-1">
