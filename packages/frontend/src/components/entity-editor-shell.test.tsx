@@ -291,3 +291,55 @@ describe("EntityEditorShell — swap integration", () => {
     expect(onContentRevert).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("EntityEditorShell — focus mode", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    swapHookMock.mockReturnValue({ recovery: null, clear: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  const renderShell = (enableFocusMode: boolean) =>
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        enableFocusMode={enableFocusMode}
+        isDirty={false}
+        onProseChange={() => {}}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+  it("shows the focus toggle only when focus mode is enabled", () => {
+    const { unmount } = renderShell(false);
+    expect(screen.queryByRole("button", { name: /focus mode/i })).toBeNull();
+    unmount();
+
+    renderShell(true);
+    expect(screen.getByRole("button", { name: /enter focus mode/i })).toBeInTheDocument();
+  });
+
+  it("lifts the root into a fixed overlay on toggle without remounting the editor", () => {
+    const { container } = renderShell(true);
+
+    const rootBefore = container.firstElementChild;
+    const editorBefore = screen.getByTestId("prose-stub");
+    expect(rootBefore).not.toHaveClass("fixed");
+
+    fireEvent.click(screen.getByRole("button", { name: /enter focus mode/i }));
+
+    // Same root element, now fixed; the prose editor DOM node is the very same
+    // instance — proving the toggle did not remount the editor (buffer + cursor
+    // are preserved because the React subtree is untouched).
+    expect(container.firstElementChild).toBe(rootBefore);
+    expect(container.firstElementChild).toHaveClass("fixed");
+    expect(screen.getByTestId("prose-stub")).toBe(editorBefore);
+
+    // Toggling back drops the overlay, still the same editor node.
+    fireEvent.click(screen.getByRole("button", { name: /exit focus mode/i }));
+    expect(container.firstElementChild).not.toHaveClass("fixed");
+    expect(screen.getByTestId("prose-stub")).toBe(editorBefore);
+  });
+});

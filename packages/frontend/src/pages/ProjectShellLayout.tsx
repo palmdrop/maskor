@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useVaultEvents } from "@hooks/useVaultEvents";
@@ -21,6 +21,21 @@ export const ProjectShellLayout = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportInitialSequenceId, setExportInitialSequenceId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Publish the navbar height so the editor's focus-mode overlay (a fixed,
+  // viewport-anchored layer) can start exactly below the navbar instead of
+  // covering it. Tracked live since the navbar height is content-driven.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--app-navbar-height", `${nav.offsetHeight}px`);
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
 
   useVaultEvents(projectId);
 
@@ -46,7 +61,10 @@ export const ProjectShellLayout = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <nav className="flex flex-row w-screen gap-1 shrink-0 border-b border-border p-0">
+      <nav
+        ref={navRef}
+        className="relative z-50 flex flex-row w-screen gap-1 shrink-0 border-b border-border bg-background p-0"
+      >
         <Link to="/" className={linkClassName}>
           {`<`}
         </Link>

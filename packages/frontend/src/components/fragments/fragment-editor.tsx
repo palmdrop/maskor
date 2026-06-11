@@ -361,6 +361,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         onRecoveryChange={setFragmentRecovery}
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}
+        enableFocusMode
         onLiveContentChange={setFragmentContent}
         onActiveBlockChange={setActiveBlockMarker}
         rightPanel={

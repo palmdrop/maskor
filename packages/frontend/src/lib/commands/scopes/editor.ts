@@ -19,6 +19,9 @@ export interface EditorContext {
   ) => void;
   canSave: boolean;
   save: () => Promise<void>;
+  // Present only when the mounting surface enables focus mode (the fragment
+  // editor). Absent for plain entity editors, where the toggle command disables.
+  focusMode?: { isOn: boolean; toggle: () => void };
   fontSize: number;
   maxParagraphWidth: number;
   increaseFontSize: () => void;
@@ -43,6 +46,16 @@ const save = defineScopeCommand(editorScope, {
   hotkey: "mod+s",
   disabled: (ctx) => (ctx.canSave ? undefined : "Nothing to save"),
   run: (ctx) => ctx.save(),
+});
+
+// --- Focus mode ---
+
+const toggleFocus = defineScopeCommand(editorScope, {
+  id: "editor:toggle-focus",
+  label: "Toggle focus mode",
+  category: "navigation",
+  disabled: (ctx) => (ctx.focusMode ? undefined : "Focus mode is not available here"),
+  run: (ctx) => ctx.focusMode?.toggle(),
 });
 
 // --- Extract ---
@@ -301,6 +314,7 @@ const decreaseMargin = defineScopeCommand(editorScope, {
 
 export const editorCommands = [
   save,
+  toggleFocus,
   extractToFragment,
   extractToNote,
   extractToReference,

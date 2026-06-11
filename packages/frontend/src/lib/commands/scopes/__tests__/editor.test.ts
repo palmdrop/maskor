@@ -31,6 +31,22 @@ const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({
   ...overrides,
 });
 
+describe("scopes/editor — toggle focus", () => {
+  it("is disabled when focus mode is unavailable", () => {
+    expect(find("editor:toggle-focus").disabled?.(makeCtx())).toBe(
+      "Focus mode is not available here",
+    );
+  });
+
+  it("toggles when focus mode is available", () => {
+    const toggle = vi.fn();
+    const ctx = makeCtx({ focusMode: { isOn: false, toggle } });
+    expect(find("editor:toggle-focus").disabled?.(ctx)).toBeUndefined();
+    find("editor:toggle-focus").run(ctx);
+    expect(toggle).toHaveBeenCalledOnce();
+  });
+});
+
 describe("scopes/editor — save", () => {
   it("runs and reports Nothing to save when canSave=false", () => {
     const ctx = makeCtx();

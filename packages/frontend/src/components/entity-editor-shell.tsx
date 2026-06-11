@@ -13,6 +13,7 @@ import {
   type SelectionCapture,
   type EditorBlock,
 } from "./prose-editor";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -62,6 +63,10 @@ type Props = {
   banner?: ReactNode;
   sidebar?: ReactNode;
   sidebarCollapsible?: boolean;
+  // When true, the editor offers a focus toggle that lifts it into a fixed,
+  // chrome-hiding overlay below the navbar. Per-project persisted. Only the
+  // fragment editor enables it today.
+  enableFocusMode?: boolean;
   // An optional panel rendered beside the prose editor (the fragment's Margin surface).
   rightPanel?: ReactNode;
   extraActions?: ReactNode;
@@ -100,6 +105,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       banner,
       sidebar,
       sidebarCollapsible = false,
+      enableFocusMode = false,
       rightPanel,
       extraActions,
       cascadeWarnings,
@@ -212,6 +218,12 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       false,
     );
 
+    // Focus mode is per-project and shared across editor surfaces — an explicit
+    // setting, default off, honored on mount, never auto-forced. Toggling it only
+    // changes this root's presentation (a fixed overlay), so the editor never
+    // remounts and the unsaved buffer + cursor are preserved across the toggle.
+    const [isFocusMode, , toggleFocusMode] = usePersistedBoolean(`editorFocus_${projectId}`, false);
+
     const {
       keyEditing,
       keyValue,
@@ -277,6 +289,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       insertTo: insertExtract.insertTo,
       canSave: isDirty && !isPending,
       save: handleContentSave,
+      focusMode: enableFocusMode ? { isOn: isFocusMode, toggle: toggleFocusMode } : undefined,
       fontSize: fontSize.draft,
       maxParagraphWidth: maxParagraphWidth.draft,
       increaseFontSize: handleIncreaseFontSize,
@@ -302,8 +315,16 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onRecoveryChangeRef.current?.(recovery ? { at: recovery.at } : null);
     }, [recovery]);
 
+    // Focus mode lifts the same root into a fixed overlay that starts below the
+    // navbar (via --app-navbar-height, set by ProjectShellLayout) and covers the
+    // host's chrome. Only CSS changes — the React tree is untouched, so no remount.
+    const rootClassName = isFocusMode
+      ? "flex flex-col gap-2 fixed inset-x-0 bottom-0 z-40 overflow-hidden bg-background px-4 pb-4 pt-2"
+      : "flex flex-col h-full gap-2";
+    const rootStyle = isFocusMode ? { top: "var(--app-navbar-height, 0px)" } : undefined;
+
     return (
-      <div className="flex flex-col h-full gap-2">
+      <div className={rootClassName} style={rootStyle}>
         {recovery && !suppressRecoveryBanner && (
           <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
         )}
@@ -338,6 +359,17 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
           </div>
           <div className="flex items-center gap-2">
             {extraActions}
+            {enableFocusMode && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => commands.run("editor:toggle-focus")}
+                aria-label={isFocusMode ? "Exit focus mode" : "Enter focus mode"}
+                title={isFocusMode ? "Exit focus mode" : "Focus mode"}
+              >
+                {isFocusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </Button>
+            )}
             <EditorDisplaySettings
               fontSize={fontSize.draft}
               maxParagraphWidth={maxParagraphWidth.draft}
