@@ -1,0 +1,6 @@
+# Prettier ignore files do not cascade: a prettier run with this package as its
+# CWD (e.g. an editor's format-on-save, or `bunx prettier` from here) does NOT read
+# the repo-root .prettierignore. Mirror the OpenAPI snapshot entry so it is never
+# reformatted out of the generator's byte-for-byte shape, which would break the
+# `verify:openapi` guard. Root `bun run format` already ignores it via the root file.
+src/api/openapi.json

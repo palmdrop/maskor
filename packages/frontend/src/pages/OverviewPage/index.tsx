@@ -29,9 +29,10 @@ import { SequenceHeader } from "./components/SequenceHeader";
 import { ReorderList } from "./components/ReorderList";
 import { ProseSpine } from "./components/ProseSpine";
 import { fragmentAnchorId } from "./components/FragmentProse";
-import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
+import { FragmentEditor } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
+import { overviewEditOrder } from "@lib/fragments/order-neighbors";
 import { ArcOverlay } from "./components/ArcOverlay";
 import { VerticalArcStrip } from "./components/VerticalArcStrip";
 import { useCommands } from "@lib/commands/useCommands";
@@ -51,7 +52,8 @@ import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
 import { useSequenceDnD } from "./hooks/useSequenceDnD";
 import { useArcData } from "./hooks/useArcData";
-import { useFragmentSelection, type SelectionModifiers } from "./hooks/useFragmentSelection";
+import { useFragmentSelection } from "./hooks/useFragmentSelection";
+import { useOverviewInlineEditor } from "./hooks/useOverviewInlineEditor";
 import { useSectionOps } from "./hooks/useSectionOps";
 
 export const OverviewPage = () => {
@@ -270,76 +272,18 @@ export const OverviewPage = () => {
   });
 
   // In-context editing (ADR 0013): double-click / pencil opens the full fragment
-  // editor as a center-replacing overlay (the spine unmounts; the host sidebars
-  // stay). Editing/saving happen inside the editor; on close the spine scrolls
-  // back to the last-shown fragment. No in-place split, no per-chunk editor.
-  const [editingFragmentUuid, setEditingFragmentUuid] = useState<string | null>(null);
-  const editingUuidRef = useRef<string | null>(null);
-  editingUuidRef.current = editingFragmentUuid;
-  const [pendingScrollUuid, setPendingScrollUuid] = useState<string | null>(null);
-  const editorRef = useRef<FragmentEditorHandle>(null);
-
+  // editor as a center-replacing overlay (the spine is hidden, not unmounted — see
+  // the overlay JSX — so the host sidebars stay). The overlay's own state machine
+  // (open / retarget / dirty-guard / close / scroll-back) lives in
+  // useOverviewInlineEditor, wired up below once spineContentReady is known.
+  //
   // Previous/Next traverses the placed fragments in spine order, excluding the
-  // unassigned pool and discarded fragments.
+  // unassigned pool (already absent from allSequenceFragmentUuids) and discarded
+  // fragments.
   const overviewOrder = useMemo(
-    () => allSequenceFragmentUuids.filter((uuid) => !fragmentByUuid.get(uuid)?.isDiscarded),
+    () => overviewEditOrder(allSequenceFragmentUuids, fragmentByUuid),
     [allSequenceFragmentUuids, fragmentByUuid],
   );
-  const editIndex = editingFragmentUuid ? overviewOrder.indexOf(editingFragmentUuid) : -1;
-  const previousEditUuid = editIndex > 0 ? overviewOrder[editIndex - 1]! : null;
-  const nextEditUuid =
-    editIndex >= 0 && editIndex < overviewOrder.length - 1 ? overviewOrder[editIndex + 1]! : null;
-
-  // Opening (or advancing to) a fragment in the overlay also moves the single
-  // selection to it, so the left ordering column highlights the current fragment
-  // and the spine lands on it when the overlay closes.
-  const openEditor = useCallback(
-    (fragmentUuid: string) => {
-      setEditingFragmentUuid(fragmentUuid);
-      handleSelectFragment(fragmentUuid);
-    },
-    [handleSelectFragment],
-  );
-
-  // Edit gesture (double-click / pencil / retarget). When an overlay is already
-  // open on a different fragment, save it first, then switch — the same dirty
-  // guard as Next/Previous. Opening fresh just sets the target.
-  const handleEdit = useCallback(
-    (fragmentUuid: string) => {
-      const current = editingUuidRef.current;
-      if (current && current !== fragmentUuid && editorRef.current) {
-        void editorRef.current
-          .save()
-          .then(() => openEditor(fragmentUuid))
-          .catch(() => {});
-        return;
-      }
-      openEditor(fragmentUuid);
-    },
-    [openEditor],
-  );
-
-  // While the overlay is open, selecting a fragment in the reorder list retargets
-  // the editor to it; otherwise it selects and scrolls the spine as usual.
-  const handleReorderSelect = useCallback(
-    (fragmentUuid: string, modifiers?: SelectionModifiers) => {
-      if (editingUuidRef.current) {
-        handleEdit(fragmentUuid);
-        return;
-      }
-      handleSidebarSelectFragment(fragmentUuid, modifiers);
-    },
-    [handleEdit, handleSidebarSelectFragment],
-  );
-
-  const closeEditor = useCallback(() => {
-    setPendingScrollUuid(editingUuidRef.current);
-    setEditingFragmentUuid(null);
-  }, []);
-
-  const saveEditor = useCallback(async () => {
-    await editorRef.current?.save();
-  }, []);
 
   // After an editor save, refresh the spine content + summaries so the edited
   // body (and its excerpt) reflow once the overlay is closed.
@@ -464,18 +408,35 @@ export const OverviewPage = () => {
     }
   }, [spineContentReady, persistedScroll, projectId, activeAnchorId, navigateToAnchor]);
 
-  // After the editor overlay closes, scroll the spine back to the top of the
-  // last-shown fragment (ADR 0013) once the spine has re-rendered.
-  useEffect(() => {
-    if (editingFragmentUuid || !pendingScrollUuid || !spineContentReady) return;
-    const uuid = pendingScrollUuid;
-    setPendingScrollUuid(null);
+  // Scroll the spine to the top of a fragment's anchor (used on overlay close to
+  // return the reader to the last-shown fragment — ADR 0013). This is the direct
+  // anchor scroll, distinct from the authored-anchor `scrollToFragment` above used
+  // by left-column clicks.
+  const scrollSpineToFragmentTop = useCallback((fragmentUuid: string) => {
     requestAnimationFrame(() => {
       document
-        .getElementById(fragmentAnchorId(uuid))
+        .getElementById(fragmentAnchorId(fragmentUuid))
         ?.scrollIntoView({ behavior: "instant", block: "start" });
     });
-  }, [editingFragmentUuid, pendingScrollUuid, spineContentReady]);
+  }, []);
+
+  const {
+    editingFragmentUuid,
+    editorRef,
+    previousUuid: previousEditUuid,
+    nextUuid: nextEditUuid,
+    openEditor,
+    handleEdit,
+    handleReorderSelect,
+    closeEditor,
+    saveEditor,
+  } = useOverviewInlineEditor({
+    editableOrder: overviewOrder,
+    selectFragment: handleSelectFragment,
+    sidebarSelectFragment: handleSidebarSelectFragment,
+    spineContentReady,
+    scrollToFragment: scrollSpineToFragmentTop,
+  });
 
   const commands = useCommands();
 

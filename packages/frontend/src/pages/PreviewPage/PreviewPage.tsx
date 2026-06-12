@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
-import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
+import {
+  fragmentNavScope,
+  FRAGMENT_NAV_SAVE_FAILED_MESSAGE,
+} from "@lib/commands/scopes/fragment-nav";
+import { orderNeighbors } from "@lib/fragments/order-neighbors";
 import { usePersistedScroll } from "@hooks/usePersistedScroll";
 import { Heading } from "@components/heading";
 import { writePreviewSequence, previewScrollKey } from "@lib/nav-state";
@@ -213,21 +218,22 @@ export const PreviewPage = () => {
 
   // Previous/Next/Close for the editor overlay, traversing the assembled order.
   const previewOrder = useMemo(() => allFragments.map((fragment) => fragment.uuid), [allFragments]);
-  const editIndex = editingFragmentUuid ? previewOrder.indexOf(editingFragmentUuid) : -1;
-  const previousEditUuid = editIndex > 0 ? previewOrder[editIndex - 1]! : null;
-  const nextEditUuid =
-    editIndex >= 0 && editIndex < previewOrder.length - 1 ? previewOrder[editIndex + 1]! : null;
+  const { previousUuid: previousEditUuid, nextUuid: nextEditUuid } = orderNeighbors(
+    previewOrder,
+    editingFragmentUuid,
+  );
 
   const openEditor = useCallback((uuid: string) => setEditingFragmentUuid(uuid), []);
   // Retarget while editing saves the current fragment first (the same dirty guard
-  // as Next/Previous); opening fresh just sets the target.
+  // as Next/Previous); opening fresh just sets the target. A failed save aborts the
+  // switch and surfaces the same toast the nav commands' onFailure shows.
   const handleEdit = useCallback((uuid: string) => {
     const current = editingUuidRef.current;
     if (current && current !== uuid && editorRef.current) {
       void editorRef.current
         .save()
         .then(() => setEditingFragmentUuid(uuid))
-        .catch(() => {});
+        .catch(() => toast.error(FRAGMENT_NAV_SAVE_FAILED_MESSAGE));
       return;
     }
     setEditingFragmentUuid(uuid);

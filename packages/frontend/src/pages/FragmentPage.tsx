@@ -5,6 +5,7 @@ import { recordFragmentVisit } from "@api/suggestion";
 import { useGetFragment } from "@api/generated/fragments/fragments";
 import { writeLastFragment, clearLastFragment } from "@lib/nav-state";
 import { useFragmentListOrder } from "@contexts/FragmentListOrderContext";
+import { orderNeighbors } from "@lib/fragments/order-neighbors";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
@@ -24,10 +25,7 @@ export const FragmentPage = () => {
   // active fragment lives in the route param; if it has been filtered out of the
   // list, both directions clamp to disabled.
   const order = useFragmentListOrder();
-  const currentIndex = order ? order.indexOf(fragmentId) : -1;
-  const previousUuid = currentIndex > 0 ? order![currentIndex - 1] : null;
-  const nextUuid =
-    currentIndex >= 0 && order && currentIndex < order.length - 1 ? order[currentIndex + 1] : null;
+  const { previousUuid, nextUuid } = orderNeighbors(order ?? [], fragmentId);
 
   const goToFragment = useCallback(
     (uuid: string) => {
