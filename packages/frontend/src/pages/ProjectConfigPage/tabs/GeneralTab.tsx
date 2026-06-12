@@ -102,6 +102,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const vimMode = useProjectSetting(projectId, "editor.vimMode", false);
   const rawMarkdownMode = useProjectSetting(projectId, "editor.rawMarkdownMode", false);
   const fontSize = useProjectSetting(projectId, "editor.fontSize", 16);
+  const marginFontSize = useProjectSetting(projectId, "editor.marginFontSize", 15);
   const maxParagraphWidth = useProjectSetting(projectId, "editor.maxParagraphWidth", 72);
   const readinessThreshold = useProjectSetting(projectId, "suggestion.readinessThreshold", 0.8);
   const showFragmentStats = useProjectSetting(projectId, "advanced.showFragmentStats", false);
@@ -265,6 +266,25 @@ export const GeneralTab = ({ project }: { project: Project }) => {
               onValueChange={([value]) => fontSize.setDraft(value!)}
               onValueCommit={([value]) => void fontSize.commit(value!)}
               disabled={fontSize.isPending}
+            />
+          }
+        />
+        <SettingRow
+          id="margin-font-size"
+          label="Margin text size"
+          valueLabel={`${marginFontSize.draft}px`}
+          description="Text size of the margin comments and notes, independent of the prose font size."
+          error={marginFontSize.error}
+          control={
+            <Slider
+              id="margin-font-size"
+              min={10}
+              max={22}
+              step={1}
+              value={[marginFontSize.draft]}
+              onValueChange={([value]) => marginFontSize.setDraft(value!)}
+              onValueCommit={([value]) => void marginFontSize.commit(value!)}
+              disabled={marginFontSize.isPending}
             />
           }
         />
