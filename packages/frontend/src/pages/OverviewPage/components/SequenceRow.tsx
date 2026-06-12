@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CopyIcon,
   ImportIcon,
@@ -157,23 +158,50 @@ export const SequenceRow = ({
   onToggleActive,
 }: SequenceRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuContainerRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // The menu is portalled to the body and positioned with `fixed` so it can't be
+  // clipped by the sidebar's `overflow-y-auto` or painted under sibling rows.
+  // Anchor it to the trigger's right edge, just below it.
+  const MENU_WIDTH = 176; // w-44
+  const positionMenu = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPosition({ top: rect.bottom + 4, left: Math.max(8, rect.right - MENU_WIDTH) });
+  };
+
+  useLayoutEffect(() => {
+    if (menuOpen) positionMenu();
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
     const handlePointerDown = (event: MouseEvent) => {
-      if (!menuContainerRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setMenuOpen(false);
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMenuOpen(false);
     };
+    // A scroll or resize moves the anchor out from under the fixed menu; close
+    // rather than chase it. Capture so it catches scrolls on inner containers.
+    const handleReflow = () => setMenuOpen(false);
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleReflow, true);
+    window.addEventListener("resize", handleReflow);
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleReflow, true);
+      window.removeEventListener("resize", handleReflow);
     };
   }, [menuOpen]);
 
@@ -248,8 +276,9 @@ export const SequenceRow = ({
         )}
         <span className="text-xs text-muted-foreground tabular-nums shrink-0">{count}</span>
       </button>
-      <div ref={menuContainerRef} className="absolute right-1 top-1/2 -translate-y-1/2">
+      <div className="absolute right-1 top-1/2 -translate-y-1/2">
         <button
+          ref={triggerRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -264,10 +293,14 @@ export const SequenceRow = ({
         >
           <MoreHorizontalIcon size={14} />
         </button>
-        {menuOpen && (
+      </div>
+      {menuOpen &&
+        createPortal(
           <div
+            ref={menuRef}
             role="menu"
-            className="absolute right-0 top-full mt-1 z-20 w-44 flex flex-col gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+            className="fixed z-50 w-44 flex flex-col gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md"
           >
             <MenuItem
               icon={<PencilIcon size={12} />}
@@ -312,9 +345,9 @@ export const SequenceRow = ({
                 />
               </>
             )}
-          </div>
+          </div>,
+          document.body,
         )}
-      </div>
     </div>
   );
 };
