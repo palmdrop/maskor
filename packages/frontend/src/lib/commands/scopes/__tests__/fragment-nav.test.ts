@@ -69,13 +69,23 @@ describe("scopes/fragment-nav", () => {
       expect(close.disabled?.(makeContext())).toBe("No editor to close");
     });
 
-    it("closes when an overlay is open, and binds mod+escape", () => {
+    it("saves then closes when an overlay is open, and binds mod+escape", async () => {
+      const save = vi.fn().mockResolvedValue(undefined);
       const closeEditor = vi.fn();
-      const ctx = makeContext({ closeEditor });
+      const ctx = makeContext({ save, closeEditor });
       expect(close.disabled?.(ctx)).toBeUndefined();
-      close.run(ctx);
+      await close.run(ctx);
+      expect(save).toHaveBeenCalledOnce();
       expect(closeEditor).toHaveBeenCalledOnce();
       expect(close.hotkey).toBe("mod+escape");
+    });
+
+    it("does not close when the save rejects (overlay stays open) and toasts via onFailure", async () => {
+      const save = vi.fn().mockRejectedValue(new Error("bad"));
+      const closeEditor = vi.fn();
+      await expect(close.run(makeContext({ save, closeEditor }))).rejects.toThrow("bad");
+      expect(closeEditor).not.toHaveBeenCalled();
+      expect(close.onFailure).toBeDefined();
     });
   });
 });

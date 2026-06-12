@@ -81,7 +81,7 @@ The editor renders a Previous/Next control pair when the mounting view supplies 
 - **Preview** — the assembled sequence order.
 - **Suggestion** — the non-deterministic prompting selection (see `prompting.md`); never disables Next.
 
-Boundaries disable Previous/Next at the first/last item (no wrap); suggestion is unbounded. In the Overview/Preview overlay, `⌘Esc` closes the editor and returns to the host (bare `Esc` is left to vim).
+Boundaries disable Previous/Next at the first/last item (no wrap); suggestion is unbounded. In the Overview/Preview overlay, `⌘Esc` (or the Close control) is "Done": it saves first (a no-op when clean), then exits and returns to the host — so leaving never strands the edited buffer. A failed save aborts the close and keeps the overlay open (bare `Esc` is left to vim).
 
 ### Focus mode
 

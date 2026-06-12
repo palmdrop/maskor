@@ -8,7 +8,12 @@ The first inline-editing implementation (shipped 2026-06-08, `references/plans/p
 
 ## Decision
 
-Inline editing in Overview and Preview now mounts the full `FragmentEditor` as a **center-replacing overlay**: the spine / assembled document unmounts while editing and the editor takes the center column (the view's own sidebars stay). On exit the host scrolls to the **top of the last-shown fragment**, so the reader lands roughly where they began. The split-markdown path, `splitAroundFragment`, and the minimal `InlineFragmentEditor` are removed; the anchor sentinels survive solely as navigation/scroll targets.
+Inline editing in Overview and Preview now mounts the full `FragmentEditor` as a **center-replacing overlay**: while editing, the editor takes the center column and the rendered document gives way to it (the view's own sidebars stay). On exit the host scrolls to the **top of the last-shown fragment**, so the reader lands roughly where they began. The split-markdown path, `splitAroundFragment`, and the minimal `InlineFragmentEditor` are removed; the anchor sentinels survive solely as navigation/scroll targets.
+
+How the document "gives way" differs per surface, for performance, not behaviour:
+
+- **Preview** unmounts the assembled `PreviewProse` while the overlay is open (a single ProseMirror render, cheap to rebuild on close).
+- **Overview** keeps the prose spine **mounted but hidden** (CSS `hidden`) while the overlay is open. The spine is many per-fragment renderers inside a dnd-kit `SortableContext`; re-instantiating them on every close was the close-lag fix (commit 46c487c). The overlay is rendered as a sibling **outside** the spine's `DndContext`, so focus mode's `position: fixed` is not broken by dnd-kit's transformed ancestors.
 
 ## Consequences
 

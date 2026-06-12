@@ -24,6 +24,7 @@ let capturedOnContentSave: ((content: string) => Promise<unknown>) | undefined;
 // reports the fragment recovery up via onRecoveryChange, and exposes restoreFromServer on its ref.
 type ShellProps = {
   banner?: ReactNode;
+  rightPanel?: ReactNode;
   onRecoveryChange?: (recovery: { at: Date } | null) => void;
   isDirty?: boolean;
   onProseChange?: () => void;
@@ -39,7 +40,7 @@ type ShellHandle = {
 
 vi.mock("@components/entity-editor-shell", () => ({
   EntityEditorShell: forwardRef<ShellHandle, ShellProps>(function ShellStub(
-    { banner, onRecoveryChange, isDirty, onProseChange, onContentSave }: ShellProps,
+    { banner, rightPanel, onRecoveryChange, isDirty, onProseChange, onContentSave }: ShellProps,
     ref: Ref<ShellHandle>,
   ) {
     capturedOnRecoveryChange = onRecoveryChange;
@@ -56,7 +57,12 @@ vi.mock("@components/entity-editor-shell", () => ({
       revealAnchor: vi.fn(),
       restoreFromServer: restoreFromServerSpy,
     }));
-    return <div data-testid="shell-stub">{banner}</div>;
+    return (
+      <div data-testid="shell-stub">
+        {banner}
+        {rightPanel}
+      </div>
+    );
   }),
 }));
 
@@ -139,7 +145,8 @@ vi.mock("../../lib/commands/useCommandScope", () => ({
 
 import { FragmentEditor } from "./fragment-editor";
 
-const renderEditor = () => render(<FragmentEditor projectId="project-1" fragmentId="fragment-1" />);
+const renderEditor = (props?: { showMargin?: boolean }) =>
+  render(<FragmentEditor projectId="project-1" fragmentId="fragment-1" {...props} />);
 
 beforeEach(() => {
   restoreFromServerSpy.mockReset();
@@ -238,5 +245,17 @@ describe("FragmentEditor coupled save (margins-4 Phase 4)", () => {
     });
     expect(updateFragmentSpy).not.toHaveBeenCalled();
     expect(marginSaveSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("FragmentEditor showMargin (inline overlay suppression — ADR 0013)", () => {
+  it("renders the Margin column by default", () => {
+    renderEditor();
+    expect(screen.getByTestId("margin-column-stub")).toBeInTheDocument();
+  });
+
+  it("suppresses the Margin column when showMargin is false (the inline overlay)", () => {
+    renderEditor({ showMargin: false });
+    expect(screen.queryByTestId("margin-column-stub")).toBeNull();
   });
 });
