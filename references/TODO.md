@@ -10,7 +10,19 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] still a flicker on refresh in overview on scroll
 
-- [ ] investigate focus view, i.e editing a single fragment without rest of the view visible. COuld be used as a replacement for the in-place edits that occur in overview and preview
+- [ ] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence
+
+- [ ] sequence placement command should be more slimmed and have drag and drop, a mini version of the actual overview page
+  - IFF it is possible to do that without enabling drag/drop for all fragments in the sequence
+
+- [ ] import sequences should not be visible in the sequence placement modal
+
+- [ ] auto-link aspects when the word is written in the editor! also highlight and add preview!
+  - make it possible to disable auto-linking for specific aspects
+
+- [ ] full-text fuzzy search in all entities
+
+- [ ] investigate focus view, i.e editing a single fragment without rest of the view visible. COuld be used as a replacement for the in-place edits that occur in overview and previt ew
 
 - [x] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
