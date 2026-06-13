@@ -18,7 +18,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence
 
-- [ ] fragment splitter - make it possible to split an existing fragment into multiple by adding delimiters and then running a split command. Could be headlines, line breaks, or "---"
+- [x] fragment splitter - make it possible to split an existing fragment into multiple by adding delimiters and then running a split command. Could be headlines, line breaks, or "---"
 
 - [ ] sequence placement command should be more slimmed and have (basic) drag and drop, a mini version of the actual overview page
   - IFF it is possible to do that without enabling drag/drop for all fragments in the sequence

@@ -53,9 +53,7 @@ export const SplitBodySchema = z
 
 export const SplitResultSchema = z
   .object({
-    sourceFragmentUuid: z
-      .string()
-      .openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
+    sourceFragmentUuid: z.string().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     createdCount: z.number().int().openapi({ example: 2 }),
     createdUuids: z
       .array(z.string())

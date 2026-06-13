@@ -1,7 +1,7 @@
 # Fragment Split
 
 **Date**: 13-06-2026
-**Status**: In Progress
+**Status**: Done (Phases 1–5 + close-out shipped; Phase 6 — Margin-comment migration — deferred)
 **Specs**: `specifications/fragment-split.md`
 
 ---
@@ -82,10 +82,10 @@ Final, separately-shippable phase. Replaces the interim strip-and-orphan behavio
 
 ### Phase 7 — Close-out
 
-- [ ] `bun run format` then `bun run verify`; fix lint/test failures.
-- [ ] Update `specifications/fragment-split.md` `Shipped` frontmatter and flip plan `Status`.
-- [ ] Tick the fragment-splitter item in `references/TODO.md`.
-- [ ] Commit.
+- [x] `bun run format` then `bun run verify`; fix lint/test failures.
+- [x] Update `specifications/fragment-split.md` `Shipped` frontmatter and flip plan `Status`.
+- [x] Tick the fragment-splitter item in `references/TODO.md`.
+- [x] Commit.
 
 ---
 

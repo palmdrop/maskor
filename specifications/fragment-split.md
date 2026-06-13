@@ -1,8 +1,10 @@
 # Spec: Fragment Split
 
-**Status**: Draft
+**Status**: Stable
 **Last updated**: 2026-06-13
-**Shipped**: _(none yet)_
+**Shipped**:
+
+- 2026-06-13 — Identity-preserving fragment split. A fragment can be divided into multiple fragments along a chosen delimiter (heading level, thematic break, or blank-line). A dialog previews the resulting pieces (keys + excerpts + count) before committing; Confirm is disabled for a single-piece (no-op) split and a non-blocking warning appears past 10 pieces. The original keeps its identity as the first piece (UUID, key, aspects, readiness, references, sequence placements); the remaining pieces become new fragments inheriting the original's aspects + references (readiness 0), inserted immediately after it in every sequence it is placed in. Recorded as a single non-undoable `fragment:split` action-log entry. Surfaced from the fragment editor and as a parameterized "Split fragment…" command in Overview and the fragment list. The thematic-break and blank-line delimiter modes were added to the shared `@maskor/importer` engine and are available in the import preview too. _(Margin-comment migration into the new pieces remains deferred — see Open questions; interim behavior strips the moved blocks' anchor markers and orphans those comments on the original.)_
 
 ---
 

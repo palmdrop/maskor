@@ -43,7 +43,11 @@ const makeCommandContext = async (): Promise<CommandContext> => {
   };
 };
 
-const writeFragment = async (ctx: CommandContext, key: string, content: string): Promise<Fragment> => {
+const writeFragment = async (
+  ctx: CommandContext,
+  key: string,
+  content: string,
+): Promise<Fragment> => {
   const fragment: Fragment = {
     uuid: randomUUID(),
     key,

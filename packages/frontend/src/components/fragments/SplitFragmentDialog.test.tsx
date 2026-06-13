@@ -73,7 +73,9 @@ describe("SplitFragmentDialog", () => {
 
     renderDialog();
 
-    await waitFor(() => expect(screen.getByText("1 piece — nothing to split.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("1 piece — nothing to split.")).toBeInTheDocument(),
+    );
     expect(screen.getByRole("button", { name: "Split" })).toBeDisabled();
   });
 

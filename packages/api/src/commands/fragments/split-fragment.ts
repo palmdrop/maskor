@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Fragment, LogEntry } from "@maskor/shared";
+import type { Fragment, LogEntry, Sequence } from "@maskor/shared";
 import { stripCommentMarkers } from "@maskor/shared";
 import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey } from "@maskor/importer";
@@ -44,7 +44,9 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
 
     const summaries = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
     const existingKeys = new Set(
-      summaries.filter((summary) => !summary.isDiscarded).map((summary) => summary.key.toLowerCase()),
+      summaries
+        .filter((summary) => !summary.isDiscarded)
+        .map((summary) => summary.key.toLowerCase()),
     );
 
     // Piece 1 keeps the original's identity: truncate the original to the first
@@ -106,7 +108,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         continue;
       }
 
-      let updated = sequence;
+      let updated: Sequence = sequence;
       createdUuids.forEach((createdUuid, offset) => {
         updated = placeFragment(
           updated,

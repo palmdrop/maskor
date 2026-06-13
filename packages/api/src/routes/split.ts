@@ -10,7 +10,12 @@ import {
   SplitBodySchema,
   SplitResultSchema,
 } from "../schemas/split";
-import { executeCommand, previewSplitCommand, splitFragmentCommand, SplitNoOpError } from "../commands";
+import {
+  executeCommand,
+  previewSplitCommand,
+  splitFragmentCommand,
+  SplitNoOpError,
+} from "../commands";
 import type { CommandContext } from "../commands";
 
 const commandContextFrom = (ctx: {
@@ -105,10 +110,15 @@ splitRouter.openapi(splitRoute, async (ctx) => {
   const { fragmentId, delimiter } = ctx.req.valid("json");
 
   try {
-    const result = await executeCommand(splitFragmentCommand, "fragment:split", commandContextFrom(ctx), {
-      fragmentId,
-      delimiter,
-    });
+    const result = await executeCommand(
+      splitFragmentCommand,
+      "fragment:split",
+      commandContextFrom(ctx),
+      {
+        fragmentId,
+        delimiter,
+      },
+    );
     return ctx.json(result, 200);
   } catch (error) {
     if (error instanceof SplitNoOpError) {

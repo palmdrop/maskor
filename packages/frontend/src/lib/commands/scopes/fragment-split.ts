@@ -21,11 +21,7 @@ const confirmSplit = defineScopeCommand(fragmentSplitScope, {
   category: "create",
   onFailure: "Failed to split fragment.",
   disabled: (ctx) =>
-    ctx.isPending
-      ? "Splitting…"
-      : ctx.pieceCount <= 1
-        ? "1 piece — nothing to split"
-        : undefined,
+    ctx.isPending ? "Splitting…" : ctx.pieceCount <= 1 ? "1 piece — nothing to split" : undefined,
   run: (ctx) => ctx.confirm(),
 });
 

@@ -254,16 +254,15 @@ describe("splitFragmentCommand", () => {
     });
 
     const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequence.uuid);
-    const order = reread.sections[0]!.fragments
-      .slice()
+    const order = reread.sections[0]!.fragments.slice()
       .sort((a, b) => a.position - b.position)
       .map((placement) => placement.fragmentUuid);
 
     expect(order).toEqual([
       before.uuid,
       original.uuid,
-      result.createdUuids[0],
-      result.createdUuids[1],
+      result.createdUuids[0]!,
+      result.createdUuids[1]!,
       after.uuid,
     ]);
   });

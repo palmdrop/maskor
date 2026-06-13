@@ -29,7 +29,9 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
     const fragment = await ctx.storageService.fragments.read(ctx.projectContext, input.fragmentId);
     const summaries = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
     const existingKeys = new Set(
-      summaries.filter((summary) => !summary.isDiscarded).map((summary) => summary.key.toLowerCase()),
+      summaries
+        .filter((summary) => !summary.isDiscarded)
+        .map((summary) => summary.key.toLowerCase()),
     );
 
     const rawPieces = splitByDelimiter(fragment.content, input.delimiter);

@@ -68,7 +68,10 @@ export const SplitFragmentDialog = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const delimiter = useMemo<SplitDelimiter>(
-    () => (delimiterType === "heading" ? { type: "heading", level: headingLevel } : { type: delimiterType }),
+    () =>
+      delimiterType === "heading"
+        ? { type: "heading", level: headingLevel }
+        : { type: delimiterType },
     [delimiterType, headingLevel],
   );
 
@@ -149,7 +152,10 @@ export const SplitFragmentDialog = ({
 
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
-            <Select value={delimiterType} onValueChange={(value) => setDelimiterType(value as DelimiterType)}>
+            <Select
+              value={delimiterType}
+              onValueChange={(value) => setDelimiterType(value as DelimiterType)}
+            >
               <SelectTrigger size="sm" className="w-56">
                 <SelectValue placeholder="Delimiter" />
               </SelectTrigger>
