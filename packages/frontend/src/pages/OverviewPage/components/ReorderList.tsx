@@ -40,6 +40,11 @@ interface ReorderListProps {
   showSectionControls?: boolean;
   // Read-only sequence (an import-sequence): no drag, no edits, no pool.
   readOnly?: boolean;
+  // "stacked" (default) puts the pool beneath the sections — the Overview's
+  // single narrow column. "split" places the pool in a column beside the
+  // sections, each independently scrollable — the placement modal, where the
+  // pool can be long and dragging it up past the sections is awkward.
+  layout?: "stacked" | "split";
 }
 
 // Left working column: a compact vertical title list of placed fragments grouped
@@ -72,8 +77,9 @@ export const ReorderList = ({
   onAddSection,
   showSectionControls = true,
   readOnly = false,
-}: ReorderListProps) => (
-  <div className="flex flex-col gap-3" data-testid="reorder-list">
+  layout = "stacked",
+}: ReorderListProps) => {
+  const sectionsBlock = (
     <SortableContext
       items={sectionsData.map((section) => toSectionDragId(section.uuid))}
       strategy={verticalListSortingStrategy}
@@ -109,46 +115,68 @@ export const ReorderList = ({
         ))}
       </div>
     </SortableContext>
+  );
 
-    {hasSequence && showSectionControls && !readOnly && (
-      <button
-        type="button"
-        onClick={onAddSection}
-        disabled={createSectionPending}
-        className="text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50 self-start"
+  const addSectionButton = hasSequence && showSectionControls && !readOnly && (
+    <button
+      type="button"
+      onClick={onAddSection}
+      disabled={createSectionPending}
+      className="text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50 self-start"
+    >
+      + Add section
+    </button>
+  );
+
+  const poolBlock = !readOnly && (
+    <div className="flex flex-col gap-1">
+      <Heading level={4}>
+        Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
+      </Heading>
+      <ListDropZone
+        zoneId={POOL_ZONE_ID}
+        fragmentUuids={poolFragmentUuids}
+        isEmpty={poolFragmentUuids.length === 0}
+        emptyLabel="All fragments are placed."
       >
-        + Add section
-      </button>
-    )}
+        {poolFragmentUuids.map((fragmentUuid) => {
+          const fragment = fragmentByUuid.get(fragmentUuid);
+          if (!fragment) return null;
+          return (
+            <ReorderRow
+              key={fragmentUuid}
+              fragment={fragment}
+              colorByAspectKey={colorByAspectKey}
+              violationTooltips={[]}
+              cycleTooltips={getCycleTooltips(fragmentUuid)}
+              isSelected={selectedFragmentUuids.has(fragmentUuid)}
+              onSelect={onSelectFragment}
+            />
+          );
+        })}
+      </ListDropZone>
+    </div>
+  );
 
-    {!readOnly && (
-      <div className="flex flex-col gap-1">
-        <Heading level={4}>
-          Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
-        </Heading>
-        <ListDropZone
-          zoneId={POOL_ZONE_ID}
-          fragmentUuids={poolFragmentUuids}
-          isEmpty={poolFragmentUuids.length === 0}
-          emptyLabel="All fragments are placed."
-        >
-          {poolFragmentUuids.map((fragmentUuid) => {
-            const fragment = fragmentByUuid.get(fragmentUuid);
-            if (!fragment) return null;
-            return (
-              <ReorderRow
-                key={fragmentUuid}
-                fragment={fragment}
-                colorByAspectKey={colorByAspectKey}
-                violationTooltips={[]}
-                cycleTooltips={getCycleTooltips(fragmentUuid)}
-                isSelected={selectedFragmentUuids.has(fragmentUuid)}
-                onSelect={onSelectFragment}
-              />
-            );
-          })}
-        </ListDropZone>
+  if (layout === "split") {
+    return (
+      <div className="flex gap-4" data-testid="reorder-list">
+        <div className="flex flex-1 min-w-0 flex-col gap-3 max-h-[50vh] overflow-y-auto pr-1">
+          {sectionsBlock}
+          {addSectionButton}
+        </div>
+        {poolBlock && (
+          <div className="w-56 shrink-0 max-h-[50vh] overflow-y-auto pr-1">{poolBlock}</div>
+        )}
       </div>
-    )}
-  </div>
-);
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3" data-testid="reorder-list">
+      {sectionsBlock}
+      {addSectionButton}
+      {poolBlock}
+    </div>
+  );
+};

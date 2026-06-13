@@ -23,8 +23,13 @@ vi.mock("@api/generated/fragments/fragments", () => ({
   useListFragmentSummaries: vi.fn(),
 }));
 
+vi.mock("@api/generated/projects/projects", () => ({
+  useGetProject: vi.fn(),
+}));
+
 const { useListSequences } = await import("@api/generated/sequences/sequences");
 const { useListFragmentSummaries } = await import("@api/generated/fragments/fragments");
+const { useGetProject } = await import("@api/generated/projects/projects");
 const { PlaceInSequenceModal } = await import("../PlaceInSequenceModal");
 
 const PROJECT_ID = "proj-1";
@@ -77,6 +82,12 @@ const renderModal = () =>
     </QueryClientProvider>,
   );
 
+const setVimMode = (vimMode: boolean) => {
+  (useGetProject as Mock).mockReturnValue({
+    data: { status: 200, data: { editor: { vimMode } } },
+  });
+};
+
 const setData = (
   bundle: ReturnType<typeof makeBundle>,
   summaries: ReturnType<typeof makeSummaries>,
@@ -88,6 +99,7 @@ const setData = (
 describe("PlaceInSequenceModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setVimMode(false);
   });
 
   it("adds an unplaced fragment to the (only) section at the end", () => {
@@ -126,7 +138,7 @@ describe("PlaceInSequenceModal", () => {
     );
     renderModal();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move down" }));
 
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
@@ -140,7 +152,7 @@ describe("PlaceInSequenceModal", () => {
     setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG, "x"] }]), makeSummaries([FRAG, "x"]));
     renderModal();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move down" }));
 
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,
@@ -173,14 +185,40 @@ describe("PlaceInSequenceModal", () => {
     expect(screen.getByText(FRAG)).toBeInTheDocument();
   });
 
-  it("moves the placed fragment with the left arrow key", () => {
+  it("moves the placed fragment up with the up arrow key", () => {
     setData(makeBundle([{ uuid: "s1", fragmentUuids: ["x", FRAG] }]), makeSummaries([FRAG, "x"]));
     renderModal();
 
     // Keyboard handling lives on the arranger container; fire from a row inside it
     // so the event bubbles up to the handler (firing on the dialog would not).
     const activeRow = document.querySelector(`[data-fragment-uuid="${FRAG}"]`)!;
-    fireEvent.keyDown(activeRow, { key: "ArrowLeft" });
+    fireEvent.keyDown(activeRow, { key: "ArrowUp" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_ID,
+      fragmentUuid: FRAG,
+      data: { sectionUuid: "s1", position: 0 },
+    });
+  });
+
+  it("ignores the vim k key when vim mode is off", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: ["x", FRAG] }]), makeSummaries([FRAG, "x"]));
+    renderModal();
+
+    const activeRow = document.querySelector(`[data-fragment-uuid="${FRAG}"]`)!;
+    fireEvent.keyDown(activeRow, { key: "k" });
+
+    expect(moveMutate).not.toHaveBeenCalled();
+  });
+
+  it("moves the placed fragment up with the vim k key when vim mode is on", () => {
+    setVimMode(true);
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: ["x", FRAG] }]), makeSummaries([FRAG, "x"]));
+    renderModal();
+
+    const activeRow = document.querySelector(`[data-fragment-uuid="${FRAG}"]`)!;
+    fireEvent.keyDown(activeRow, { key: "k" });
 
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,

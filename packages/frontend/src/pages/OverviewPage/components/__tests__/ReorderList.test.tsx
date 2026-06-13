@@ -71,4 +71,12 @@ describe("ReorderList", () => {
     expect(screen.queryByRole("button", { name: "+ Add section" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Opening" })).not.toBeInTheDocument();
   });
+
+  it("renders both sections and pool side by side in split layout", () => {
+    wrap(<ReorderList {...baseProps} showSectionControls={false} layout="split" />);
+    expect(screen.getByText("Opening")).toBeInTheDocument();
+    expect(screen.getByText("Pool")).toBeInTheDocument();
+    expect(screen.getByText("frag-1")).toBeInTheDocument();
+    expect(screen.getByText("pool-1")).toBeInTheDocument();
+  });
 });

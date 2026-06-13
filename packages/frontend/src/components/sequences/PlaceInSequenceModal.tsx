@@ -51,7 +51,7 @@ export const PlaceInSequenceModal = ({
             {sequence?.name ?? "sequence"}
           </DialogTitle>
           <DialogDescription>
-            Drag to arrange, or use ←/→ to move and Backspace to remove the fragment.
+            Drag to arrange, or use ↑/↓ to move and Backspace to remove the fragment.
           </DialogDescription>
         </DialogHeader>
 

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import type { FragmentSummary, Sequence } from "@api/generated/maskorAPI.schemas";
 import { getListSequencesQueryKey } from "@api/generated/sequences/sequences";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
+import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { Button } from "@components/ui/button";
 import { ReorderList } from "./ReorderList";
 import type { SectionData } from "./reorder-types";
@@ -26,7 +28,7 @@ const NO_ASPECT_COLORS = new Map<string, string>();
 const NO_TOOLTIPS = (): string[] => [];
 const NOOP = () => {};
 
-// Suppress the ←/→/Backspace fragment shortcuts while focus rests on a text-entry
+// Suppress the move/remove fragment shortcuts while focus rests on a text-entry
 // surface, where those keys carry their own meaning.
 const isTextEntryTarget = (element: HTMLElement): boolean => {
   if (element.isContentEditable) return true;
@@ -39,8 +41,9 @@ const isTextEntryTarget = (element: HTMLElement): boolean => {
 // An active-fragment-centric drag-and-drop arranger scoped to a single sequence.
 // Reuses the Overview's left-column look (ReorderList + useSequenceDnD) but hides
 // section management — it only arranges the active fragment across existing
-// sections and the pool. Drag, keyboard (←/→/Backspace), and the footer buttons
-// all commit against the same place/move/unplace endpoints as the Overview.
+// sections and the pool, with the pool beside the sections. Drag, keyboard
+// (↑/↓, plus j/k in vim mode, and Backspace), and the footer buttons all commit
+// against the same place/move/unplace endpoints as the Overview.
 export const SequenceArranger = ({
   projectId,
   sequence,
@@ -49,7 +52,12 @@ export const SequenceArranger = ({
 }: SequenceArrangerProps) => {
   const listQueryKey = getListSequencesQueryKey(projectId);
   const mutations = useSequenceMutations(listQueryKey);
+  const { vimMode } = useProjectEditorConfig(projectId);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Set when a keyboard move/remove fires so the effect below restores focus to
+  // the active row after it re-renders (a cross-section move unmounts the old
+  // row, dropping DOM focus and breaking subsequent keystrokes).
+  const refocusActiveRowRef = useRef(false);
 
   const fragmentByUuid = useMemo(
     () => new Map(allFragments.map((fragment) => [fragment.uuid, fragment])),
@@ -107,6 +115,19 @@ export const SequenceArranger = ({
     // Only on open / when the active fragment changes — not on every reorder.
   }, [activeFragmentUuid]);
 
+  // After a keyboard move/remove re-renders the list, restore focus (and view) to
+  // the active row so the next keystroke still reaches the container handler.
+  useEffect(() => {
+    if (!refocusActiveRowRef.current) return;
+    refocusActiveRowRef.current = false;
+
+    const node = containerRef.current?.querySelector<HTMLElement>(
+      `[data-fragment-uuid="${activeFragmentUuid}"]`,
+    );
+    node?.focus();
+    node?.scrollIntoView({ block: "nearest" });
+  }, [sectionsData, activeFragmentUuid]);
+
   const currentSectionUuid = fragmentSectionMap.get(activeFragmentUuid) ?? null;
   const isPlaced = currentSectionUuid !== null;
 
@@ -151,14 +172,24 @@ export const SequenceArranger = ({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (isTextEntryTarget(event.target as HTMLElement)) return;
     if (!isPlaced) return;
-    if (event.key === "ArrowLeft") {
+
+    // The list is vertical, so up/down sort the fragment; j/k mirror them in vim
+    // mode. Each move/remove flags a refocus so keyboard control survives the
+    // cross-section re-render.
+    const movesUp = event.key === "ArrowUp" || (vimMode && event.key === "k");
+    const movesDown = event.key === "ArrowDown" || (vimMode && event.key === "j");
+
+    if (movesUp) {
       event.preventDefault();
+      refocusActiveRowRef.current = true;
       handleMove("prev");
-    } else if (event.key === "ArrowRight") {
+    } else if (movesDown) {
       event.preventDefault();
+      refocusActiveRowRef.current = true;
       handleMove("next");
     } else if (event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
+      refocusActiveRowRef.current = true;
       handleRemove(activeFragmentUuid);
     }
   };
@@ -166,8 +197,8 @@ export const SequenceArranger = ({
   const activeDragFragment = dnd.activeDragId ? fragmentByUuid.get(dnd.activeDragId) : undefined;
 
   return (
-    // The container catches the ←/→/Backspace shortcuts that bubble up from the
-    // focused row/button inside it; it is a keyboard listener, not itself a
+    // The container catches the ↑/↓ (j/k) / Backspace shortcuts that bubble up
+    // from the focused row inside it; it is a keyboard listener, not itself a
     // control, so the static-element a11y rule does not apply.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div ref={containerRef} onKeyDown={handleKeyDown} className="flex flex-col gap-4">
@@ -177,41 +208,50 @@ export const SequenceArranger = ({
         onDragStart={dnd.handleDragStart}
         onDragEnd={dnd.handleDragEnd}
       >
-        <div className="max-h-[50vh] overflow-y-auto pr-1">
-          <ReorderList
-            sectionsData={sectionsData}
-            poolFragmentUuids={poolFragmentUuids}
-            colorByAspectKey={NO_ASPECT_COLORS}
-            fragmentByUuid={fragmentByUuid}
-            selectedFragmentUuids={selectionSet}
-            onSelectFragment={NOOP}
-            onRemoveFragment={handleRemove}
-            getViolationTooltips={NO_TOOLTIPS}
-            getCycleTooltips={NO_TOOLTIPS}
-            editingSectionId={null}
-            setEditingSectionId={NOOP}
-            editingSectionValue=""
-            setEditingSectionValue={NOOP}
-            confirmingDeleteSectionId={null}
-            setConfirmingDeleteSectionId={NOOP}
-            handleSectionRenameCommit={NOOP}
-            handleSectionRenameKeyDown={NOOP}
-            onDeleteSection={NOOP}
-            onMergeUp={NOOP}
-            onMergeDown={NOOP}
-            hasSequence
-            createSectionPending={false}
-            onAddSection={NOOP}
-            showSectionControls={false}
-          />
-        </div>
-        <DragOverlay dropAnimation={null}>
-          {activeDragFragment ? (
-            <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
-              {activeDragFragment.key}
-            </div>
-          ) : null}
-        </DragOverlay>
+        <ReorderList
+          sectionsData={sectionsData}
+          poolFragmentUuids={poolFragmentUuids}
+          colorByAspectKey={NO_ASPECT_COLORS}
+          fragmentByUuid={fragmentByUuid}
+          selectedFragmentUuids={selectionSet}
+          onSelectFragment={NOOP}
+          onRemoveFragment={handleRemove}
+          getViolationTooltips={NO_TOOLTIPS}
+          getCycleTooltips={NO_TOOLTIPS}
+          editingSectionId={null}
+          setEditingSectionId={NOOP}
+          editingSectionValue=""
+          setEditingSectionValue={NOOP}
+          confirmingDeleteSectionId={null}
+          setConfirmingDeleteSectionId={NOOP}
+          handleSectionRenameCommit={NOOP}
+          handleSectionRenameKeyDown={NOOP}
+          onDeleteSection={NOOP}
+          onMergeUp={NOOP}
+          onMergeDown={NOOP}
+          hasSequence
+          createSectionPending={false}
+          onAddSection={NOOP}
+          showSectionControls={false}
+          layout="split"
+        />
+        {/*
+          Portal the drag overlay to the body: the modal centers its content with
+          a CSS transform, which makes `position: fixed` (the overlay) resolve
+          against the dialog instead of the viewport — the cursor and the dragged
+          tile drift apart without this. React context still flows through the
+          portal, so the overlay stays inside the DndContext.
+        */}
+        {createPortal(
+          <DragOverlay dropAnimation={null}>
+            {activeDragFragment ? (
+              <div className="rounded border border-primary bg-card px-2 py-1 text-xs font-medium shadow">
+                {activeDragFragment.key}
+              </div>
+            ) : null}
+          </DragOverlay>,
+          document.body,
+        )}
       </DndContext>
 
       <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
@@ -223,7 +263,7 @@ export const SequenceArranger = ({
               disabled={!moveTargets.prev}
               onClick={() => handleMove("prev")}
             >
-              Move left
+              Move up
             </Button>
             <Button
               size="sm"
@@ -231,7 +271,7 @@ export const SequenceArranger = ({
               disabled={!moveTargets.next}
               onClick={() => handleMove("next")}
             >
-              Move right
+              Move down
             </Button>
             <Button
               size="sm"
