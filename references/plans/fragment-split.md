@@ -1,7 +1,7 @@
 # Fragment Split
 
 **Date**: 13-06-2026
-**Status**: Todo
+**Status**: In Progress
 **Specs**: `specifications/fragment-split.md`
 
 ---
@@ -16,28 +16,28 @@ A user can divide one existing fragment into multiple fragments along a chosen s
 
 ### Phase 0 — Branch
 
-- [ ] Stay in the current branch, and commit the plan and other documentation changes.
+- [x] Stay in the current branch, and commit the plan and other documentation changes.
 
 ### Phase 1 — Shared split engine (`@maskor/importer`)
 
 Extend the shared engine so both import and split draw from one delimiter set. See `specifications/fragment-split.md` (Shared engine) and `specifications/import-pipeline.md` (Shared split engine).
 
-- [ ] Add a thematic-break delimiter mode: cut at each `thematicBreak` mdast node (extend the `splitMarkdown` traversal — do not route `---` through `splitPlainText`, to avoid misfiring inside code blocks / setext underlines).
-- [ ] Add a blank-line / paragraph delimiter mode: cut at each blank-line boundary between top-level blocks.
-- [ ] Settle the engine's delimiter shape so a single call site can express heading-level / thematic-break / blank-line (a discriminated delimiter config), keeping `deriveKey` title derivation working for each mode.
-- [ ] Unit-test each new mode in `packages/importer/src/__tests__/splitting.test.ts` (including: no occurrence → single piece; leading content before first delimiter; `---` inside a fenced code block is not a cut).
-- [ ] Commit.
+- [x] Add a thematic-break delimiter mode: cut at each `thematicBreak` mdast node (extend the `splitMarkdown` traversal — do not route `---` through `splitPlainText`, to avoid misfiring inside code blocks / setext underlines).
+- [x] Add a blank-line / paragraph delimiter mode: cut at each blank-line boundary between top-level blocks.
+- [x] Settle the engine's delimiter shape so a single call site can express heading-level / thematic-break / blank-line (a discriminated delimiter config), keeping `deriveKey` title derivation working for each mode.
+- [x] Unit-test each new mode in `packages/importer/src/__tests__/splitting.test.ts` (including: no occurrence → single piece; leading content before first delimiter; `---` inside a fenced code block is not a cut).
+- [x] Commit.
 
 ### Phase 2 — Split-preview command + route (`packages/api`)
 
 Mirror `preview-import` exactly: it is a `Command` run through `executeCommand` (label e.g. `split:preview`) returning empty `logEntries` (read-derivation, no action-log entry), called from a normal `OpenAPIHono` route — see `src/commands/fragments/preview-import.ts` + `src/routes/import-preview.ts`. Writes nothing.
 
-- [ ] Add a `createPreviewSplitCommand` under `src/commands/fragments/` that takes `fragmentId` + delimiter config, loads the fragment, runs the shared engine, and returns a **lean** payload: a piece list (`pieceIndex`, key, excerpt) + count. Piece 1 reports the original's existing key; pieces 2…N report `deriveKey`-derived keys computed against existing keys (which still include the original's — no false collision). Do **not** assemble a full `{ markdown, sections }` document (unlike `preview-import`); the dialog renders a list.
-- [ ] Add the `split:preview` command label to `command-labels.ts`.
-- [ ] Add the route + request/response schemas (JSON body with `fragmentId` + delimiter config — no multipart/file upload, unlike import).
-- [ ] `bun run codegen` (regenerate OpenAPI snapshot + orval client).
-- [ ] Tests for the preview command (piece derivation, piece-1-keeps-key, single-piece no-op case, count reporting).
-- [ ] Commit.
+- [x] Add a `createPreviewSplitCommand` under `src/commands/fragments/` that takes `fragmentId` + delimiter config, loads the fragment, runs the shared engine, and returns a **lean** payload: a piece list (`pieceIndex`, key, excerpt) + count. Piece 1 reports the original's existing key; pieces 2…N report `deriveKey`-derived keys computed against existing keys (which still include the original's — no false collision). Do **not** assemble a full `{ markdown, sections }` document (unlike `preview-import`); the dialog renders a list.
+- [x] Add the `split:preview` command label to `command-labels.ts`.
+- [x] Add the route + request/response schemas (JSON body with `fragmentId` + delimiter config — no multipart/file upload, unlike import).
+- [x] `bun run codegen` (regenerate OpenAPI snapshot + orval client).
+- [x] Tests for the preview command (piece derivation, piece-1-keeps-key, single-piece no-op case, count reporting).
+- [x] Commit.
 
 ### Phase 3 — Split command + orchestration (`packages/api`)
 

@@ -15,6 +15,8 @@ export const COMMAND_LABELS = [
   "fragment:delete",
   "fragment:restore",
   "fragment:import",
+  "split:preview",
+  "fragment:split",
   // shared extract/insert helper
   "source:cut-body",
   // aspects

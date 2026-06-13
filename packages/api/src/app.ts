@@ -22,6 +22,7 @@ import { actionLogRouter } from "./routes/action-log";
 import { sequencesRouter } from "./routes/sequences";
 import { importRouter } from "./routes/import";
 import { importPreviewRouter } from "./routes/import-preview";
+import { splitRouter } from "./routes/split";
 import { previewRouter } from "./routes/preview";
 import { draftsRouter } from "./routes/drafts";
 import { swapRouter } from "./routes/swap";
@@ -116,6 +117,7 @@ export const createApp = (
   projectScopedApp.route("/sequences", sequencesRouter);
   projectScopedApp.route("/import", importRouter);
   projectScopedApp.route("/import/preview", importPreviewRouter);
+  projectScopedApp.route("/split", splitRouter);
   projectScopedApp.route("/preview", previewRouter);
   projectScopedApp.route("/export", exportRouter);
   projectScopedApp.route("/drafts", draftsRouter);

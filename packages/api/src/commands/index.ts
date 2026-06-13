@@ -10,6 +10,12 @@ export { createImportCommand } from "./fragments/import";
 export type { ImportInput, ImportResult, ImportError } from "./fragments/import";
 export { createPreviewImportCommand } from "./fragments/preview-import";
 export type { PreviewImportResult, PreviewPiece } from "./fragments/preview-import";
+export { previewSplitCommand } from "./fragments/preview-split";
+export type {
+  PreviewSplitInput,
+  PreviewSplitResult,
+  SplitPiecePreview,
+} from "./fragments/preview-split";
 export { updateFragmentCommand } from "./fragments/update-fragment";
 export { discardFragmentCommand } from "./fragments/discard-fragment";
 export { restoreFragmentCommand } from "./fragments/restore-fragment";
