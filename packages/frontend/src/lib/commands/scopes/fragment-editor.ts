@@ -1,5 +1,6 @@
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { defineScope, defineScopeCommand } from "../define";
+import { buildPlacementOptions, placementOptionLabel } from "@lib/sequences/placementOptions";
 
 export interface FragmentEditorContext {
   hasFragment: boolean;
@@ -7,6 +8,9 @@ export interface FragmentEditorContext {
   discard: () => Promise<void>;
   restore: () => Promise<void>;
   sequences: Sequence[];
+  // The fragment being edited; used to surface its existing placements in the
+  // "Place in sequence…" picker.
+  activeFragmentUuid: string | undefined;
   openPlaceInSequence: (sequenceId: string) => void;
   openSplit: () => void;
 }
@@ -57,12 +61,12 @@ const placeInSequence = defineScopeCommand(fragmentEditorScope, {
           ? "No sequences"
           : undefined,
   arg: {
-    items: (ctx): Sequence[] => ctx.sequences,
-    getKey: (sequence) => sequence.uuid,
-    getLabel: (sequence) => sequence.name,
+    items: (ctx) => buildPlacementOptions(ctx.sequences, ctx.activeFragmentUuid),
+    getKey: (option) => option.uuid,
+    getLabel: (option) => placementOptionLabel(option),
     placeholder: "Choose sequence…",
   },
-  run: (ctx, sequence) => ctx.openPlaceInSequence(sequence.uuid),
+  run: (ctx, option) => ctx.openPlaceInSequence(option.uuid),
 });
 
 const split = defineScopeCommand(fragmentEditorScope, {

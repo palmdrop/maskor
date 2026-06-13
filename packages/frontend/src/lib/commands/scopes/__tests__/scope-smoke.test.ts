@@ -230,6 +230,7 @@ describe("scopes/fragment-editor", () => {
     discard: vi.fn(),
     restore: vi.fn(),
     sequences: [],
+    activeFragmentUuid: "frag-1",
     openPlaceInSequence: vi.fn(),
     openSplit: vi.fn(),
   };
@@ -253,7 +254,7 @@ describe("scopes/fragment-editor", () => {
     const sequence = { uuid: "seq-1", name: "Main" } as FragmentEditorContext["sequences"][number];
     const ctx = { ...baseCtx, sequences: [sequence] };
 
-    cmd.run(ctx, sequence);
+    cmd.run(ctx, { uuid: "seq-1", name: "Main", sectionName: null });
     expect(ctx.openPlaceInSequence).toHaveBeenCalledWith("seq-1");
 
     expect(cmd.disabled?.({ ...ctx, hasFragment: false })).toBe("No fragment to place");

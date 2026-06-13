@@ -249,6 +249,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     discard: handleDiscard,
     restore: handleRestore,
     sequences: placeableSequences,
+    activeFragmentUuid: fragmentId,
     openPlaceInSequence,
     openSplit,
   });
