@@ -24,6 +24,7 @@ import {
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { isSequenceReadOnly } from "@lib/sequences/readOnly";
+import { isTextEntryTarget } from "@lib/keyboard";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 import { SequenceHeader } from "./components/SequenceHeader";
@@ -352,23 +353,46 @@ export const OverviewPage = () => {
     [primarySelectedUuid, sequence, sectionsData, projectId, sequenceMutations, dnd.activeDragId],
   );
 
+  // The surface (sidebar or spine container) whose keyboard move is in flight, so
+  // the effect below can restore focus to the moved fragment within it. A
+  // cross-section move unmounts the old row, dropping focus and stalling repeated
+  // ↑/↓ — re-focusing keeps the keyboard sort going.
+  const keyboardMoveSurfaceRef = useRef<HTMLElement | null>(null);
+
+  // Shared by the sidebar and the spine: ↑/↓ sort the selected fragment, Shift+↑/↓
+  // its section. Bound to both surfaces (not the whole page) so the keys only act
+  // while focus is in one of them — elsewhere ↑/↓ still scroll. Skipped while
+  // editing so it never clashes with the editor or the placement modal.
   const handleMainKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-    if (event.shiftKey && event.key === "ArrowUp") {
-      event.preventDefault();
-      handleSectionKeyboardMove("prev");
-    } else if (event.shiftKey && event.key === "ArrowDown") {
-      event.preventDefault();
-      handleSectionKeyboardMove("next");
-    } else if (!event.shiftKey && event.key === "ArrowUp") {
-      event.preventDefault();
-      handleFragmentKeyboardMove("prev");
-    } else if (!event.shiftKey && event.key === "ArrowDown") {
-      event.preventDefault();
-      handleFragmentKeyboardMove("next");
+    if (editingFragmentUuid) return;
+    if (isTextEntryTarget(event.target as HTMLElement)) return;
+
+    const isArrowUp = event.key === "ArrowUp";
+    const isArrowDown = event.key === "ArrowDown";
+    if (!isArrowUp && !isArrowDown) return;
+
+    event.preventDefault();
+    keyboardMoveSurfaceRef.current = event.currentTarget;
+
+    if (event.shiftKey) {
+      handleSectionKeyboardMove(isArrowUp ? "prev" : "next");
+    } else {
+      handleFragmentKeyboardMove(isArrowUp ? "prev" : "next");
     }
   };
+
+  // Restore focus to the moved fragment after the list re-renders (see the ref).
+  useEffect(() => {
+    const surface = keyboardMoveSurfaceRef.current;
+    if (!surface || !primarySelectedUuid) return;
+    keyboardMoveSurfaceRef.current = null;
+
+    const node = surface.querySelector<HTMLElement>(
+      `[data-fragment-uuid="${primarySelectedUuid}"]`,
+    );
+    node?.focus();
+    node?.scrollIntoView({ block: "nearest" });
+  }, [sectionsData, primarySelectedUuid]);
 
   const arcData = useArcData({
     fragmentByUuid,
@@ -381,6 +405,17 @@ export const OverviewPage = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const persistedScroll = usePersistedScroll(overviewScrollKey(projectId));
+
+  // The spine selects via a click on a non-focusable prose block, so move DOM
+  // focus to the scroll container — that is what lets ↑/↓ sort the fragment after
+  // selecting it in the spine. preventScroll so selecting never jumps the view.
+  const handleSpineSelectFragment = useCallback(
+    (fragmentUuid: string) => {
+      handleSelectFragment(fragmentUuid);
+      scrollContainerRef.current?.focus({ preventScroll: true });
+    },
+    [handleSelectFragment],
+  );
 
   // Persist sequence when it changes.
   useEffect(() => {
@@ -584,7 +619,15 @@ export const OverviewPage = () => {
           onDragStart={sequenceReadOnly ? undefined : dnd.handleDragStart}
           onDragEnd={sequenceReadOnly ? undefined : dnd.handleDragEnd}
         >
-          <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
+          {/* The reorder column is itself a keyboard-sort surface: ↑/↓ sort the
+              selected fragment when focus rests on one of its rows. It is a key
+              listener, not a control, so the static-element a11y rule does not apply. */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+          <aside
+            data-testid="overview-sidebar"
+            onKeyDown={handleMainKeyDown}
+            className="w-64 shrink-0 border-r border-border overflow-y-auto p-3"
+          >
             {sequenceReadOnly && (
               <p className="mb-3 rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground">
                 Import-sequence — read-only. Clone it to rearrange.
@@ -666,6 +709,9 @@ export const OverviewPage = () => {
           editingFragmentUuid ? "hidden" : "flex"
         }`}
         data-testid="overview-main-content"
+        // Programmatically focusable (not in the tab order): selecting a fragment
+        // in the spine focuses this container so ↑/↓ route to the sort handler.
+        tabIndex={-1}
         onClick={clearSelection}
         onKeyDown={handleMainKeyDown}
         onScroll={() => {
@@ -767,7 +813,7 @@ export const OverviewPage = () => {
                     fragmentByUuid={fragmentByUuid}
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
-                    onSelectFragment={handleSelectFragment}
+                    onSelectFragment={handleSpineSelectFragment}
                     onRemoveFragment={sequenceReadOnly ? undefined : handleRemoveFragment}
                     onEdit={handleEdit}
                     readOnly={sequenceReadOnly}

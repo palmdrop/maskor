@@ -535,6 +535,47 @@ describe("OverviewPage — keyboard fragment movement (vertical)", () => {
       data: { position: 1 },
     });
   });
+
+  it("ArrowDown sorts the selected fragment when focus is in the sidebar", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Select via the sidebar row, then drive the key from the sidebar itself —
+    // the keydown must be handled there, not only in the spine container.
+    const sidebar = screen.getByTestId("overview-sidebar");
+    fireEvent.click(sidebar.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!);
+    fireEvent.keyDown(sidebar, { key: "ArrowDown" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+      data: { sectionUuid: SECTION_UUID, position: 1 },
+    });
+  });
+
+  it("ArrowDown sorts the selected fragment when it was selected through the spine", () => {
+    mockSequence([FRAG_A, FRAG_B]);
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Selecting via the spine moves focus to the scroll container, so a real
+    // keystroke (fired from the focused element) reaches the sort handler.
+    const spine = screen.getByTestId("prose-spine");
+    fireEvent.click(spine.querySelector(`[data-fragment-uuid="${FRAG_A}"]`)!);
+
+    const main = screen.getByTestId("overview-main-content");
+    expect(document.activeElement).toBe(main);
+    fireEvent.keyDown(main, { key: "ArrowDown" });
+
+    expect(moveMutate).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      sequenceId: SEQUENCE_UUID,
+      fragmentUuid: FRAG_A,
+      data: { sectionUuid: SECTION_UUID, position: 1 },
+    });
+  });
 });
 
 describe("OverviewPage — sidebar scroll-to-fragment", () => {

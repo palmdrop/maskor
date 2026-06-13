@@ -5,6 +5,7 @@ import type { FragmentSummary, Sequence } from "@api/generated/maskorAPI.schemas
 import { getListSequencesQueryKey } from "@api/generated/sequences/sequences";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
+import { isTextEntryTarget } from "@lib/keyboard";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { Button } from "@components/ui/button";
 import { ReorderList } from "./ReorderList";
@@ -27,16 +28,6 @@ interface SequenceArrangerProps {
 const NO_ASPECT_COLORS = new Map<string, string>();
 const NO_TOOLTIPS = (): string[] => [];
 const NOOP = () => {};
-
-// Suppress the move/remove fragment shortcuts while focus rests on a text-entry
-// surface, where those keys carry their own meaning.
-const isTextEntryTarget = (element: HTMLElement): boolean => {
-  if (element.isContentEditable) return true;
-  const tagName = element.tagName;
-  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") return true;
-  const role = element.getAttribute("role");
-  return role === "textbox" || role === "combobox" || role === "searchbox";
-};
 
 // An active-fragment-centric drag-and-drop arranger scoped to a single sequence.
 // Reuses the Overview's left-column look (ReorderList + useSequenceDnD) but hides
