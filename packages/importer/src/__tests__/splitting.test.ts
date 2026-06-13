@@ -1,5 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { splitMarkdown, splitPlainText } from "../index";
+import {
+  splitMarkdown,
+  splitPlainText,
+  splitThematicBreak,
+  splitBlankLine,
+  splitByDelimiter,
+} from "../index";
 
 describe("splitMarkdown", () => {
   it("splits on a single heading level", () => {
@@ -137,5 +143,132 @@ describe("splitPlainText", () => {
     expect(pieces).toHaveLength(2);
     expect(pieces[0]?.content).toContain("A");
     expect(pieces[1]?.content).toContain("B");
+  });
+});
+
+describe("splitThematicBreak", () => {
+  it("cuts at each thematic break", () => {
+    const content = "Part one\n\n---\n\nPart two\n\n---\n\nPart three";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(3);
+    expect(pieces[0]).toEqual({ content: "Part one" });
+    expect(pieces[1]).toEqual({ content: "Part two" });
+    expect(pieces[2]).toEqual({ content: "Part three" });
+  });
+
+  it("carries no title on any piece", () => {
+    const pieces = splitThematicBreak("A\n\n---\n\nB");
+    for (const piece of pieces) {
+      expect(piece.title).toBeUndefined();
+    }
+  });
+
+  it("returns a single piece when no break is present", () => {
+    const content = "Just some prose\n\nwith two paragraphs";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(1);
+    expect(pieces[0]).toEqual({ content });
+  });
+
+  it("does not cut on a `---` inside a fenced code block", () => {
+    const content = "Before\n\n```\n---\n```\n\nAfter";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(1);
+    expect(pieces[0]?.content).toContain("---");
+    expect(pieces[0]?.content).toContain("After");
+  });
+
+  it("does not cut on a setext underline", () => {
+    const content = "Heading text\n---\n\nBody";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(1);
+  });
+
+  it("keeps leading content before the first break as a piece", () => {
+    const content = "Lead in\n\n---\n\nRest";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(2);
+    expect(pieces[0]).toEqual({ content: "Lead in" });
+  });
+
+  it("does not emit empty pieces from back-to-back breaks", () => {
+    const content = "A\n\n---\n\n---\n\nB";
+    const pieces = splitThematicBreak(content);
+    expect(pieces).toHaveLength(2);
+    expect(pieces[0]).toEqual({ content: "A" });
+    expect(pieces[1]).toEqual({ content: "B" });
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(splitThematicBreak("")).toEqual([]);
+  });
+});
+
+describe("splitBlankLine", () => {
+  it("cuts at each blank-line boundary between top-level blocks", () => {
+    const content = "Para one\n\nPara two\n\nPara three";
+    const pieces = splitBlankLine(content);
+    expect(pieces).toHaveLength(3);
+    expect(pieces[0]).toEqual({ content: "Para one" });
+    expect(pieces[1]).toEqual({ content: "Para two" });
+    expect(pieces[2]).toEqual({ content: "Para three" });
+  });
+
+  it("carries no title on any piece", () => {
+    const pieces = splitBlankLine("A\n\nB");
+    for (const piece of pieces) {
+      expect(piece.title).toBeUndefined();
+    }
+  });
+
+  it("keeps blocks separated by a single newline together", () => {
+    const content = "# Heading\nImmediate body\n\nNext paragraph";
+    const pieces = splitBlankLine(content);
+    expect(pieces).toHaveLength(2);
+    expect(pieces[0]?.content).toBe("# Heading\nImmediate body");
+    expect(pieces[1]?.content).toBe("Next paragraph");
+  });
+
+  it("does not cut on a blank line inside a fenced code block", () => {
+    const content = "Before\n\n```\nline one\n\nline two\n```\n\nAfter";
+    const pieces = splitBlankLine(content);
+    expect(pieces).toHaveLength(3);
+    expect(pieces[1]?.content).toContain("line one");
+    expect(pieces[1]?.content).toContain("line two");
+  });
+
+  it("returns a single piece when there is no blank-line boundary", () => {
+    const content = "Only one paragraph here";
+    const pieces = splitBlankLine(content);
+    expect(pieces).toHaveLength(1);
+    expect(pieces[0]).toEqual({ content });
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(splitBlankLine("")).toEqual([]);
+  });
+});
+
+describe("splitByDelimiter", () => {
+  it("dispatches to heading mode", () => {
+    const content = "# First\nOne\n# Second\nTwo";
+    const pieces = splitByDelimiter(content, { type: "heading", level: 1 });
+    expect(pieces).toHaveLength(2);
+    expect(pieces[0]).toEqual({ title: "First", content: "One" });
+  });
+
+  it("dispatches to thematic-break mode", () => {
+    const pieces = splitByDelimiter("A\n\n---\n\nB", { type: "thematic-break" });
+    expect(pieces).toHaveLength(2);
+  });
+
+  it("dispatches to blank-line mode", () => {
+    const pieces = splitByDelimiter("A\n\nB", { type: "blank-line" });
+    expect(pieces).toHaveLength(2);
+  });
+
+  it("returns a single piece when the delimiter does not occur", () => {
+    const pieces = splitByDelimiter("No breaks here", { type: "thematic-break" });
+    expect(pieces).toHaveLength(1);
   });
 });

@@ -52,6 +52,29 @@ function extractText(node: PhrasingContent | RootContent): string {
   return "";
 }
 
+// A structural delimiter the splitter cuts on. Shared by the import pipeline and
+// the fragment splitter so both draw from one delimiter set. The user picks a
+// *type*; the splitter cuts at every existing occurrence of it in the content.
+export type SplitDelimiter =
+  | { type: "heading"; level: HeadingLevel }
+  | { type: "thematic-break" }
+  | { type: "blank-line" };
+
+// Single call site expressing every delimiter mode. `deriveKey` title derivation
+// keeps working for each: heading pieces carry the heading text as `title`;
+// thematic-break and blank-line pieces have no title and fall back to the first
+// non-empty line.
+export function splitByDelimiter(content: string, delimiter: SplitDelimiter): Piece[] {
+  switch (delimiter.type) {
+    case "heading":
+      return splitMarkdown(content, delimiter.level);
+    case "thematic-break":
+      return splitThematicBreak(content);
+    case "blank-line":
+      return splitBlankLine(content);
+  }
+}
+
 export function splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): Piece[] {
   const tree = fromMarkdown(content);
   const pieces: Piece[] = [];
@@ -82,6 +105,85 @@ export function splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): P
   const last = content.slice(prevEnd).trim();
   if (last) {
     pieces.push({ title: prevTitle, content: last });
+  }
+
+  return pieces;
+}
+
+// Cut at each markdown thematic break (`---`/`***`/`___`). We traverse the mdast
+// tree rather than splitting the raw string so a `---` inside a fenced code block
+// (a `code` node) or a setext underline (which makes the line above a `heading`)
+// is never mistaken for a break. The break node itself is dropped from both
+// pieces. Thematic-break pieces carry no title; `deriveKey` falls back to the
+// first non-empty line.
+export function splitThematicBreak(content: string): Piece[] {
+  const tree = fromMarkdown(content);
+  const breaks = tree.children.filter((node) => node.type === "thematicBreak");
+
+  if (breaks.length === 0) {
+    const trimmed = content.trim();
+    return trimmed ? [{ content: trimmed }] : [];
+  }
+
+  const pieces: Piece[] = [];
+  let prevEnd = 0;
+
+  for (const node of breaks) {
+    const startOffset = node.position?.start.offset ?? 0;
+    const endOffset = node.position?.end.offset ?? startOffset;
+    const before = content.slice(prevEnd, startOffset).trim();
+    if (before) {
+      pieces.push({ content: before });
+    }
+    prevEnd = endOffset;
+  }
+
+  const last = content.slice(prevEnd).trim();
+  if (last) {
+    pieces.push({ content: last });
+  }
+
+  return pieces;
+}
+
+// Cut at each blank-line boundary between top-level blocks. Adjacent top-level
+// nodes separated only by a single newline (e.g. a heading directly above its
+// paragraph) stay in one piece; a blank line between them is a cut. Traversing
+// the mdast tree means blank lines *inside* a fenced code block live within one
+// `code` node and never cut. Blank-line pieces carry no title; `deriveKey` falls
+// back to the first non-empty line.
+export function splitBlankLine(content: string): Piece[] {
+  const tree = fromMarkdown(content);
+  const blocks = tree.children;
+
+  if (blocks.length === 0) {
+    return [];
+  }
+
+  const pieces: Piece[] = [];
+  let segmentStart = blocks[0]!.position?.start.offset ?? 0;
+  let segmentEnd = blocks[0]!.position?.end.offset ?? segmentStart;
+
+  for (let index = 1; index < blocks.length; index++) {
+    const block = blocks[index]!;
+    const blockStart = block.position?.start.offset ?? 0;
+    const blockEnd = block.position?.end.offset ?? blockStart;
+
+    const gap = content.slice(segmentEnd, blockStart);
+    const newlineCount = (gap.match(/\n/g) ?? []).length;
+    if (newlineCount >= 2) {
+      const piece = content.slice(segmentStart, segmentEnd).trim();
+      if (piece) {
+        pieces.push({ content: piece });
+      }
+      segmentStart = blockStart;
+    }
+    segmentEnd = blockEnd;
+  }
+
+  const last = content.slice(segmentStart, segmentEnd).trim();
+  if (last) {
+    pieces.push({ content: last });
   }
 
   return pieces;

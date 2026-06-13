@@ -4,7 +4,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 ## Language
 
-**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: chunk, entry, node, piece (a fragment is never a "piece"; "piece" is valid only as the importer's transient in-memory split unit — never a vault entity, and the `pieces/` staging folder is gone. A raw markdown file dropped into `fragments/` is adopted directly as a fragment).
+**Fragment**: The atomic, UUID-identified unit of a writing project — a discrete piece of prose with its own content, key, readiness, and aspect weights. _Avoid_: chunk, entry, node, piece (a fragment is never a "piece"; "piece" is valid only as the importer's and fragment-splitter's transient in-memory split unit — never a vault entity, and the `pieces/` staging folder is gone. A raw markdown file dropped into `fragments/` is adopted directly as a fragment).
 
 **Key**: The filename stem of any vault entity (fragment, aspect, note, reference), serving as both its unique identifier and its display title; applies uniformly across all entity types. _Avoid_: title (old spec language for notes), name (old spec language for references), slug (an implementation concern, not a synonym).
 
@@ -99,6 +99,12 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 **Quick-switcher**: The unified fuzzy-search surface for jumping to any existing entity within the active project — fragments, aspects, notes, references, sequences. Sibling to the command palette: the palette runs actions, the quick-switcher selects entities. Project-scoped: cross-project switching stays in the palette as `Switch project…`. Trigger verb: "switch to". _Avoid_: quick-open (VS Code term, file-centric), quick-switcher hyphen variants ("quickswitcher", "quick switch"), entity picker (Picker is the underlying primitive, not the feature).
 
 **Extract**: The act of creating a new entity (fragment, note, reference, or aspect) from a contiguous text selection inside another entity's body; the source body may keep, drop, or be replaced with a link to the new entity. _Avoid_: promote, lift, split, refactor.
+
+**Fragment split**: The act of dividing one existing fragment into multiple fragments along every occurrence of a chosen structural delimiter (a heading level, a thematic break, or a blank-line boundary). The original fragment is truncated to the first piece — retaining its UUID, key, aspects, readiness, references, and all sequence placements — and the subsequent pieces become new fragments. The split engine is shared with the importer. _Avoid_: extract (single-output, selection-based, not delimiter-driven), section split (a sequence operation — see below), chunk, divide.
+
+**Section split**: The sequence operation that divides one section into two at a chosen fragment, leaving the fragments before it in the original section and moving the rest into a new section; distinct from a **fragment split**, which divides a fragment's prose into multiple fragments. _Avoid_: split (unqualified — ambiguous with fragment split).
+
+**Thematic break**: A markdown horizontal rule (`---`, `***`, or `___`) appearing in a fragment's body, usable as a fragment-split delimiter. Distinct from the YAML frontmatter fence, which is stripped before `content` and never appears in the body. _Avoid_: horizontal rule (informal), divider, frontmatter delimiter (a different `---`).
 
 **Preview**: The read-only surface that renders any sequence as continuously assembled prose for reading and pre-export inspection, sharing assembly logic with export. _Avoid_: read view, draft view, export preview.
 

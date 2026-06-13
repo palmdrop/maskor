@@ -84,6 +84,10 @@ A raw `.md` file dropped directly into `fragments/` is auto-adopted by the watch
 - The key is derived from the filename (stem, without `.md`)
 - This is the only external-edit adoption path; the `pieces/` staging folder no longer exists
 
+### Shared split engine
+
+The split functions (`splitMarkdown`, `splitPlainText`, `deriveKey`) in `@maskor/importer` are shared with the **fragment splitter** (`specifications/fragment-split.md`), which divides an existing vault fragment into multiple fragments along a delimiter. The fragment splitter extends this engine with **thematic-break (`---`) and blank-line** delimiter modes; those modes are consequently available in the import preview too. The engine is the single place split behavior is defined for both features.
+
 ### In-memory pieces (importer only)
 
 Within the import pipeline, the importer's internal `Piece`/`RawPiece` types represent transient in-memory split results:
