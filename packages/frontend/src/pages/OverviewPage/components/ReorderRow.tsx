@@ -40,6 +40,8 @@ interface ReorderRowProps {
   // When set, a hover trash affordance removes this fragment from the sequence.
   // Only passed for placed rows (pool rows are already unplaced).
   onRemove?: (fragmentUuid: string) => void;
+  // Read-only row (e.g. an import-sequence in the Overview): no drag, no remove.
+  disabled?: boolean;
 }
 
 // A single placed/pool fragment row: a compact, draggable, selectable title line.
@@ -51,9 +53,11 @@ export const ReorderRow = ({
   isSelected,
   onSelect,
   onRemove,
+  disabled = false,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
+    disabled,
   });
 
   // Focus fires before click. A pointer-driven focus would single-select the
@@ -90,8 +94,10 @@ export const ReorderRow = ({
         pointerFocusRef.current = false;
       }}
       {...attributes}
-      {...listeners}
-      className={`group flex items-center gap-2 rounded border px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none transition-colors ${
+      {...(disabled ? {} : listeners)}
+      className={`group flex items-center gap-2 rounded border px-2 py-1 text-xs select-none transition-colors ${
+        disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+      } ${
         isSelected
           ? "border-primary bg-primary/5 text-foreground"
           : "border-border bg-card text-foreground hover:bg-muted"
@@ -107,7 +113,7 @@ export const ReorderRow = ({
       */}
       <span className="truncate flex-1">{fragment.key}</span>
       <RowIndicators violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
-      {onRemove && (
+      {onRemove && !disabled && (
         <button
           type="button"
           // Stop the pointer event before it reaches the sortable listeners,

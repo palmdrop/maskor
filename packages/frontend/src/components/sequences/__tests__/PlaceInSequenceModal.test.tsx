@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const placeMutate = vi.fn();
 const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
-const createSectionMutate = vi.fn();
-const deleteSectionMutate = vi.fn();
 
 vi.mock("@api/generated/sequences/sequences", () => ({
   useListSequences: vi.fn(),
@@ -18,8 +16,6 @@ vi.mock("@api/generated/sequences/sequences", () => ({
   useMoveFragments: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useSplitSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useMergeSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useCreateSection: vi.fn(() => ({ mutate: createSectionMutate, isPending: false })),
-  useDeleteSection: vi.fn(() => ({ mutate: deleteSectionMutate, isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
 }));
 
@@ -154,7 +150,7 @@ describe("PlaceInSequenceModal", () => {
     });
   });
 
-  it("deletes a section when more than one remains", () => {
+  it("does not offer section management (drag-arrange only)", () => {
     setData(
       makeBundle([
         { uuid: "s1", fragmentUuids: ["x"] },
@@ -164,40 +160,27 @@ describe("PlaceInSequenceModal", () => {
     );
     renderModal();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Delete section" })[0]!);
-
-    expect(deleteSectionMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_ID,
-      sectionId: "s1",
-    });
+    expect(screen.queryByRole("button", { name: "Add section" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete section" })).toBeNull();
   });
 
-  it("adds a section", () => {
-    setData(makeBundle([{ uuid: "s1", fragmentUuids: [] }]), makeSummaries([FRAG]));
+  it("shows the unassigned pool so a fragment can be dragged in", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: ["x"] }]), makeSummaries([FRAG, "x"]));
     renderModal();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add section" }));
-
-    expect(createSectionMutate).toHaveBeenCalledWith({
-      projectId: PROJECT_ID,
-      sequenceId: SEQUENCE_ID,
-      data: { name: "" },
-    });
-  });
-
-  it("disables section deletion when only one section remains", () => {
-    setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG] }]), makeSummaries([FRAG]));
-    renderModal();
-
-    expect(screen.getByRole("button", { name: "Delete section" })).toBeDisabled();
+    // The active (unplaced) fragment appears in the pool region.
+    expect(screen.getByText("Pool")).toBeInTheDocument();
+    expect(screen.getByText(FRAG)).toBeInTheDocument();
   });
 
   it("moves the placed fragment with the left arrow key", () => {
     setData(makeBundle([{ uuid: "s1", fragmentUuids: ["x", FRAG] }]), makeSummaries([FRAG, "x"]));
     renderModal();
 
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowLeft" });
+    // Keyboard handling lives on the arranger container; fire from a row inside it
+    // so the event bubbles up to the handler (firing on the dialog would not).
+    const activeRow = document.querySelector(`[data-fragment-uuid="${FRAG}"]`)!;
+    fireEvent.keyDown(activeRow, { key: "ArrowLeft" });
 
     expect(moveMutate).toHaveBeenCalledWith({
       projectId: PROJECT_ID,

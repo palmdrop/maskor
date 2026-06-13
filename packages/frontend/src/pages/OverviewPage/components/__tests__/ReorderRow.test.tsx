@@ -50,4 +50,12 @@ describe("ReorderRow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Remove "scene-1" from sequence/ }));
     expect(onRemove).toHaveBeenCalledWith("frag-1");
   });
+
+  it("hides the remove affordance when disabled (read-only)", () => {
+    const onRemove = vi.fn();
+    wrap(<ReorderRow {...baseProps} fragment={fragment()} onRemove={onRemove} disabled />);
+    expect(
+      screen.queryByRole("button", { name: /Remove "scene-1" from sequence/ }),
+    ).not.toBeInTheDocument();
+  });
 });

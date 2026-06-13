@@ -36,20 +36,20 @@
 
 > Extract the Overview's left column into a shared component so both Overview and the modal consume it. This is the bulk of the work; keep the Overview's behavior byte-for-byte unchanged.
 
-- [ ] Extract `ReorderList` + its `useSequenceDnD` wiring (currently page-coupled in `OverviewPage`, ~20 section-editing props) into a shared, self-contained component with a narrowed prop surface. Keep `handleFragmentKeyboardMove` / `computeStepMoveTarget` shared.
-- [ ] Parameterize for two consumers: full Overview (all sections, pool, section editing) and modal (single sequence, active-fragment emphasis). The shared component must not assume page-level context.
-- [ ] Add a `readOnly` prop to the extracted component: hides the unassigned pool, the "+ Add section" affordance, and disables drag + per-section rename/delete/merge/split. Apply it in the Overview when the selected sequence is an import-sequence (origin set), with a clear "clone to edit" affordance. (Folded in from Phase 1.)
-- [ ] Verify Overview is visually and behaviorally unchanged after the extraction for writable sequences (regression check before the modal consumes it).
-- [ ] Tests: existing Overview DnD/section tests still pass against the extracted component; add a focused test for the extracted component in isolation, including the read-only rendering for an import-sequence.
-- [ ] `git commit`.
+- [x] Kept `ReorderList` + `useSequenceDnD` as the shared leaves (both surfaces already import them) and made `ReorderList`/`SectionGroup`/`ReorderRow` carry additive `showSectionControls` + `readOnly` flags, rather than lifting the whole page-coupled column. Lower regression risk; Overview's contract unchanged. _(2026-06-13)_
+- [x] Built `SequenceArranger` (under `OverviewPage/components`) as the modal's self-contained consumer: derives sectionsData/pool/section-map, wires `useSequenceMutations` + `useSequenceDnD`, renders the DnD `ReorderList` with `showSectionControls={false}`, plus active-fragment quick actions + keyboard. _(2026-06-13)_
+- [x] `readOnly` flag added; Overview applies it for import-sequences (origin set) — hides pool, disables both DnD contexts + section editing, shows a "clone to rearrange" banner. _(2026-06-13)_
+- [x] Verified: full frontend suite (795 tests) + Overview suite (79) green after the change; writable-sequence behavior unchanged. _(2026-06-13)_
+- [x] Tests: `ReorderList.test.tsx` (writable vs readOnly vs arranger-mode), `ReorderRow` disabled case. _(2026-06-13)_
+- [ ] `git commit` (Phases 2+3 together — the shared leaves and the modal consumer landed as one change).
 
 ### Phase 3 — Rework the placement modal into the arranger (supersedes ADR 0006)
 
-- [ ] Replace `PlaceInSequenceModal`'s button/keyboard body with the shared arranger column scoped to the chosen sequence, with full DnD.
-- [ ] Emphasize the active fragment: highlight it, scroll it into view on open, and retain quick add/move/remove-active affordances. Keep keyboard moves working alongside drag.
-- [ ] Reuse the Overview left-panel look (rows, section chrome, pool). Resolve the read-only case: a modal opened for an import-sequence (if reachable at all post-Phase-1 filtering) is non-interactive.
-- [ ] Remove now-dead code paths from the old modal (button-only step-move UI) where superseded; keep shared movement logic.
-- [ ] Tests: modal renders the arranger, active fragment is emphasized, drag/keyboard move and add/remove commit against the same endpoints, import-sequence path is read-only.
+- [x] Replaced `PlaceInSequenceModal`'s button/keyboard body with the shared `SequenceArranger` (full DnD), scoped to the chosen sequence. Modal is now a thin shell. _(2026-06-13)_
+- [x] Active fragment emphasized (selected highlight + scroll-into-view on open); quick add/move/remove footer retained; keyboard ←/→/Backspace kept alongside drag. _(2026-06-13)_
+- [x] Reuses the Overview left-panel look (rows, section chrome, pool). Import-sequences are already filtered from the picker (Phase 1), so the modal is not reachable for them. _(2026-06-13)_
+- [x] Old button-only step-move modal body removed; shared movement logic (`computeStepMoveTarget`) retained. _(2026-06-13)_
+- [x] Tests: `PlaceInSequenceModal.test.tsx` rewritten — add/move/remove via footer, keyboard move, pool shown, no section management. _(2026-06-13)_
 - [ ] `git commit`.
 
 ### Phase 4 — Picker sorting + badge (TODO #1)

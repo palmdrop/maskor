@@ -34,6 +34,12 @@ interface SectionGroupProps {
   onDeleteSection: () => void;
   onMergeUp: (section: SectionRef) => void;
   onMergeDown: (section: SectionRef) => void;
+  // Hide section-management affordances (rename, merge, delete, drag-reorder) —
+  // used by the placement-modal arranger, which only arranges the active
+  // fragment and does not manage sections.
+  showSectionControls?: boolean;
+  // Read-only section (an import-sequence in the Overview): no drag, no edits.
+  readOnly?: boolean;
 }
 
 // A draggable section: its header (drag handle, inline rename, merge/delete
@@ -60,9 +66,15 @@ export const SectionGroup = ({
   onDeleteSection,
   onMergeUp,
   onMergeDown,
+  showSectionControls = true,
+  readOnly = false,
 }: SectionGroupProps) => {
+  // Section-level editing (rename, merge, delete, drag-reorder) is available only
+  // when controls are shown and the sequence is writable.
+  const sectionEditable = showSectionControls && !readOnly;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: toSectionDragId(section.uuid),
+    disabled: !sectionEditable,
   });
 
   return (
@@ -75,7 +87,16 @@ export const SectionGroup = ({
       }}
       className="flex flex-col gap-1"
     >
-      {confirmingDeleteSectionId === section.uuid ? (
+      {!sectionEditable ? (
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {section.name || <span className="italic">Untitled section</span>}
+          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            ({section.fragmentUuids.length})
+          </span>
+        </div>
+      ) : confirmingDeleteSectionId === section.uuid ? (
         <div className="flex flex-col gap-1">
           <p className="text-xs text-muted-foreground">
             Delete section?{" "}
@@ -186,6 +207,7 @@ export const SectionGroup = ({
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
               onRemove={onRemoveFragment}
+              disabled={readOnly}
             />
           );
         })}

@@ -35,6 +35,11 @@ interface ReorderListProps {
   hasSequence: boolean;
   createSectionPending: boolean;
   onAddSection: () => void;
+  // Hide section-management affordances (rename/merge/delete/reorder + add-section).
+  // The placement-modal arranger sets this false; the Overview leaves it true.
+  showSectionControls?: boolean;
+  // Read-only sequence (an import-sequence): no drag, no edits, no pool.
+  readOnly?: boolean;
 }
 
 // Left working column: a compact vertical title list of placed fragments grouped
@@ -65,6 +70,8 @@ export const ReorderList = ({
   hasSequence,
   createSectionPending,
   onAddSection,
+  showSectionControls = true,
+  readOnly = false,
 }: ReorderListProps) => (
   <div className="flex flex-col gap-3" data-testid="reorder-list">
     <SortableContext
@@ -96,12 +103,14 @@ export const ReorderList = ({
             onDeleteSection={onDeleteSection}
             onMergeUp={onMergeUp}
             onMergeDown={onMergeDown}
+            showSectionControls={showSectionControls}
+            readOnly={readOnly}
           />
         ))}
       </div>
     </SortableContext>
 
-    {hasSequence && (
+    {hasSequence && showSectionControls && !readOnly && (
       <button
         type="button"
         onClick={onAddSection}
@@ -112,32 +121,34 @@ export const ReorderList = ({
       </button>
     )}
 
-    <div className="flex flex-col gap-1">
-      <Heading level={4}>
-        Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
-      </Heading>
-      <ListDropZone
-        zoneId={POOL_ZONE_ID}
-        fragmentUuids={poolFragmentUuids}
-        isEmpty={poolFragmentUuids.length === 0}
-        emptyLabel="All fragments are placed."
-      >
-        {poolFragmentUuids.map((fragmentUuid) => {
-          const fragment = fragmentByUuid.get(fragmentUuid);
-          if (!fragment) return null;
-          return (
-            <ReorderRow
-              key={fragmentUuid}
-              fragment={fragment}
-              colorByAspectKey={colorByAspectKey}
-              violationTooltips={[]}
-              cycleTooltips={getCycleTooltips(fragmentUuid)}
-              isSelected={selectedFragmentUuids.has(fragmentUuid)}
-              onSelect={onSelectFragment}
-            />
-          );
-        })}
-      </ListDropZone>
-    </div>
+    {!readOnly && (
+      <div className="flex flex-col gap-1">
+        <Heading level={4}>
+          Pool <span className="tabular-nums">({poolFragmentUuids.length})</span>
+        </Heading>
+        <ListDropZone
+          zoneId={POOL_ZONE_ID}
+          fragmentUuids={poolFragmentUuids}
+          isEmpty={poolFragmentUuids.length === 0}
+          emptyLabel="All fragments are placed."
+        >
+          {poolFragmentUuids.map((fragmentUuid) => {
+            const fragment = fragmentByUuid.get(fragmentUuid);
+            if (!fragment) return null;
+            return (
+              <ReorderRow
+                key={fragmentUuid}
+                fragment={fragment}
+                colorByAspectKey={colorByAspectKey}
+                violationTooltips={[]}
+                cycleTooltips={getCycleTooltips(fragmentUuid)}
+                isSelected={selectedFragmentUuids.has(fragmentUuid)}
+                onSelect={onSelectFragment}
+              />
+            );
+          })}
+        </ListDropZone>
+      </div>
+    )}
   </div>
 );

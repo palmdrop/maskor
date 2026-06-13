@@ -113,6 +113,10 @@ export const OverviewPage = () => {
   const sequence =
     bundle?.sequences.find((s) => s.uuid === activeSequenceId) ??
     bundle?.sequences.find((s) => s.isMain);
+  // An import-sequence (origin set) is a read-only snapshot: arranging and
+  // section editing are disabled, mirroring the backend guard. To build on it
+  // the user clones it.
+  const isSequenceReadOnly = sequence?.origin !== undefined;
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
 
@@ -576,10 +580,15 @@ export const OverviewPage = () => {
         <DndContext
           sensors={dnd.sensors}
           collisionDetection={dnd.collisionDetection}
-          onDragStart={dnd.handleDragStart}
-          onDragEnd={dnd.handleDragEnd}
+          onDragStart={isSequenceReadOnly ? undefined : dnd.handleDragStart}
+          onDragEnd={isSequenceReadOnly ? undefined : dnd.handleDragEnd}
         >
           <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
+            {isSequenceReadOnly && (
+              <p className="mb-3 rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground">
+                Import-sequence — read-only. Clone it to rearrange.
+              </p>
+            )}
             <ReorderList
               sectionsData={sectionsData}
               poolFragmentUuids={poolFragmentUuids}
@@ -604,6 +613,7 @@ export const OverviewPage = () => {
               hasSequence={!!sequence}
               createSectionPending={sectionManager.createSection.isPending}
               onAddSection={() => commands.run("overview:add-section")}
+              readOnly={isSequenceReadOnly}
             />
           </aside>
           <DragOverlay dropAnimation={null}>
@@ -735,8 +745,8 @@ export const OverviewPage = () => {
             <DndContext
               sensors={dnd.sensors}
               collisionDetection={dnd.collisionDetection}
-              onDragStart={dnd.handleDragStart}
-              onDragEnd={dnd.handleDragEnd}
+              onDragStart={isSequenceReadOnly ? undefined : dnd.handleDragStart}
+              onDragEnd={isSequenceReadOnly ? undefined : dnd.handleDragEnd}
             >
               <div className="flex gap-4">
                 {verticalStripOpen && (
