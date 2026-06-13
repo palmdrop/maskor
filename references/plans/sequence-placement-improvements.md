@@ -1,7 +1,8 @@
 # Sequence placement improvements
 
 **Date**: 13-06-2026
-**Status**: Todo
+**Status**: Done
+**Closed**: 13-06-2026
 **Specs**: `specifications/sequencer.md`, `specifications/overview.md`
 
 ---
@@ -54,16 +55,16 @@
 
 ### Phase 4 — Picker sorting + badge (TODO #1)
 
-- [ ] In the `fragment:place-in-sequence` picker, sort sequences the active fragment is already placed in to the top.
-- [ ] Append an "already in «section»" badge/suffix to those entries' labels (reuse the membership derivation already in `fragment-sequence-membership.tsx`).
-- [ ] Tests: picker ordering + badge for a fragment with/without existing memberships.
-- [ ] `git commit`.
+- [x] In the `fragment:place-in-sequence` picker, sort sequences the active fragment is already placed in to the top. _(2026-06-13)_
+- [x] Append an "already in «section»" badge/suffix to those entries' labels via reusable `buildPlacementOptions` / `placementOptionLabel` (`lib/sequences/placementOptions.ts`). _(2026-06-13)_
+- [x] Tests: `placementOptions.test.ts` (ordering + label, member/non-member/undefined cases). _(2026-06-13)_
+- [x] `git commit`.
 
 ### Phase 5 — Spec updates & close-out
 
-- [ ] `specifications/sequencer.md`: add a `Shipped:` entry for the read-only import-sequence guard and the modal redesign; document the frozen-mutation boundary in the body. Reference ADR 0014.
-- [ ] `specifications/overview.md`: update if the read-only import-sequence rendering or the shared-column extraction changes anything the spec asserts. Confirm before editing; if no behavioral claim changes, note that and skip.
-- [ ] Tick TODO.md items #1, #2, #3 (sequence placement) as done.
+- [x] `specifications/sequencer.md`: two `Shipped:` entries (read-only import-sequence guard; arranger modal + picker sorting), frozen-mutation boundary documented, ADR 0014 referenced. _(2026-06-13)_
+- [x] `specifications/overview.md`: `Shipped:` entry + "Sequence selection" note for read-only import-sequence rendering. _(2026-06-13)_
+- [x] Ticked TODO.md items #1, #2, #3 (sequence placement). _(2026-06-13)_
 - [ ] Run `bun run format` then `bun run verify`; fix lint/test/codegen-drift before stopping.
 - [ ] `git commit`.
 

@@ -16,14 +16,14 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] still a flicker on refresh in overview on scroll
 
-- [ ] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence
+- [x] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence (member sequences float to top, labelled with their section; move-ability now conveyed by the modal's drag UI — plan: `references/plans/sequence-placement-improvements.md`)
 
 - [x] fragment splitter - make it possible to split an existing fragment into multiple by adding delimiters and then running a split command. Could be headlines, line breaks, or "---"
 
-- [ ] sequence placement command should be more slimmed and have (basic) drag and drop, a mini version of the actual overview page
-  - IFF it is possible to do that without enabling drag/drop for all fragments in the sequence
+- [x] sequence placement command should be more slimmed and have drag and drop, a mini version of the actual overview page (now the `SequenceArranger`: reuses the Overview left-column look with full drag-and-drop; ADR 0014 supersedes ADR 0006. All rows are draggable — the original "active-only" caveat was relaxed deliberately. plan: `references/plans/sequence-placement-improvements.md`)
+  - ~~IFF it is possible to do that without enabling drag/drop for all fragments in the sequence~~
 
-- [ ] import sequences should not be visible in the sequence placement modal
+- [x] import sequences should not be visible in the sequence placement modal (filtered from the picker; import-sequences are also read-only everywhere — plan: `references/plans/sequence-placement-improvements.md`)
 
 - [ ] auto-link aspects when the word is written in the editor! also highlight and add preview!
   - make it possible to disable auto-linking for specific aspects

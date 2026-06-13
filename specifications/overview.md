@@ -1,7 +1,7 @@
 # Spec: Overview
 
 **Status**: Stable
-**Last updated**: 2026-06-11
+**Last updated**: 2026-06-13
 
 **Shipped**:
 
@@ -16,6 +16,7 @@
 - 2026-06-08 — One-click remove-from-sequence: each placed fragment carries a direct "remove from sequence" affordance (returning it to the pool) in all three surfaces — a hover trash button in the prose spine and the left reorder column, plus a "Remove from sequence" button in the right detail panel. Pool fragments and fragments not placed in the active sequence get no affordance. Dispatches through the new `overview:unplace-fragment` command (also palette-discoverable) onto the existing optimistic unplace mutation that drag-to-pool already uses.
 - 2026-06-11 — Clicking a fragment in the left ordering column reveals it in the prose spine (scrolls it into view) and writes a shareable `#fragment-<uuid>` URL anchor; modifier (cmd/shift) clicks only adjust the multi-selection and do not scroll. On load the anchor reconciles with the remembered scroll position: an external deep-link anchor scrolls to its fragment, while a leftover anchor from an in-app click yields to the remembered scroll. (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
 - 2026-06-11 — The right detail panel is now a read-only excerpt (key + server excerpt) rather than an inline editor, so long fragments no longer overflow the narrow column. The prose spine remains the in-context editing surface and "Open fragment" routes to the full editor. (Supersedes the right-panel half of the 2026-06-05 in-context editing entry.) (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)
+- 2026-06-13 — Selecting an import-sequence (a sequence carrying an `origin`) renders the overview read-only: the unassigned pool is hidden, both drag contexts are disabled, section editing is suppressed, and a "clone to rearrange" banner is shown. Mirrors the backend read-only guard in `sequencer.md`. (plan: `references/plans/sequence-placement-improvements.md`, ADR 0014)
 - 2026-06-11 — Sequence sidebar rows can be renamed, and their per-row actions are decluttered into a single hover-revealed "⋯" menu. Rename is triggerable three ways: the menu's "Rename" item, double-clicking a row, and the palette command `overview:rename-sequence` (a sequence picker) — all open the existing inline editor seeded with the current name. The previously separate clone / insert / activate-deactivate / delete hover icons collapse into that one menu. The inactive-constraint state keeps its row dimming and gains a small static unlink marker (the active/inactive toggle moved into the menu).
 
 ---
@@ -113,6 +114,7 @@ The arc graph shares the horizontal axis with the fragment tiles — a point on 
 - The main sequence is the default view on open.
 - The sidebar lists every sequence, including auto-created import-sequences (marked with an "imported" badge and an `origin` provenance tooltip).
 - Each non-main sequence has an active/inactive toggle. An active sequence is consumed by the sequencer as an ordering constraint on the main sequence; an inactive one is not (see `sequencer.md`). Import-sequences are created inactive, so the user opts in by toggling them active. Inactive rows are visually dimmed.
+- Selecting an **import-sequence** renders the overview read-only: no unassigned pool, no drag, and no section editing, with a "clone to rearrange" banner. Import-sequences are frozen snapshots of the original import order (see `sequencer.md`); to build on one the user clones it.
 
 ---
 

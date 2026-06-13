@@ -1,7 +1,7 @@
 # Spec: Sequencer
 
 **Status**: In Progress
-**Last updated**: 2026-06-11
+**Last updated**: 2026-06-13
 
 **Shipped**:
 
@@ -16,6 +16,8 @@
 - 2026-06-05 - Clone and merge sequences (sequencer-side): clone a sequence into a fresh independent copy (regenerated sequence/section/position UUIDs, placements preserved, never main), and insert one sequence into another at a section index (the source's sections are spliced in with fresh UUIDs; fragments already placed in the target are skipped to keep the one-placement invariant). Backed by `@maskor/sequencer` pure ops + sequence-scoped API routes (`/{id}/clone`, `/{id}/insert-sequence`) and `sequence:cloned`/`sequence:inserted` action-log entries; driven from the sequence sidebar (per-row clone + insert-into-current affordances) and `overviewScope` commands. (plan: `references/plans/overview-redesign.md` Phase 3)
 - 2026-06-08 - Overview spine double-click + shared `InlineFragmentEditor`: the plain `<textarea>` editing path in the spine is replaced by the shared `InlineFragmentEditor` (vim/rich/raw per project config). Double-clicking a fragment in the spine enters inline edit mode; the pencil icon affordance is retained. (plan: `references/plans/preview-inline-fragment-editing.md` Phase 2)
 - 2026-06-11 - Sequence rename is now reachable for existing sequences (closing the "rename" gap in sequence CRUD): the sequence-sidebar row exposes it via a per-row "⋯" actions menu, a double-click on the row, and the palette command `overview:rename-sequence`, all opening the inline editor over the existing `updateSequence` name path. That same "⋯" menu consolidates the row's clone / insert / activate-deactivate / delete affordances, which were previously separate hover icons.
+- 2026-06-13 - Import-sequences are read-only: a sequence carrying an `origin` cannot have fragments placed/moved/unplaced or sections created/deleted/renamed/reordered/merged/split. Cloning it, or inserting it as a _source_ into another sequence, stays allowed — cloning is the escape hatch to build on an import order. Enforced in `@maskor/sequencer` (`assertSequenceMutable`, called by the mutating pure ops and the section commands) so the rule holds for every caller, not just the UI; the API maps the rejection to `409 { reason: "sequence_read_only" }`. The Overview renders an import-sequence read-only (no pool, no drag, no section editing, with a "clone to rearrange" banner) and the "Place in sequence…" picker excludes import-sequences. (plan: `references/plans/sequence-placement-improvements.md`, ADR 0014)
+- 2026-06-13 - "Place in sequence…" reworked into an active-fragment-centric drag-and-drop arranger (`SequenceArranger`): it reuses the Overview's left-column look (sections + unassigned pool) with full drag-and-drop scoped to one sequence, emphasizes the active fragment (highlight + scroll-into-view), and keeps quick add/move/remove plus ←/→/Backspace keyboard moves. Section management stays Overview-only (the modal is drag-arrange only). The picker also floats sequences the fragment is already placed in to the top, each labelled with its current section. (plan: `references/plans/sequence-placement-improvements.md`, ADR 0014 supersedes ADR 0006)
 
 ---
 
