@@ -58,10 +58,10 @@ The commit path. One command, going through the commands pipeline (`packages/api
 
 A dialog with live preview, modelled on the extract-to-entity dialog + the import preview list.
 
-- [ ] Build the split dialog: delimiter selector, live piece list (key + excerpt + count) driven by the generated `previewSplit` hook, Confirm disabled when count ≤ 1 ("1 piece — nothing to split"), and a non-blocking warning when count > 10 ("This will create N fragments") — never blocking, just a heads-up for aggressive blank-line splits.
-- [ ] Wire Confirm to dispatch the split command via the command system (`onFailure` declared; uses `mutateAsync`).
-- [ ] Tests for the dialog (preview rendering, no-op disabled state, confirm dispatch).
-- [ ] Commit.
+- [x] Build the split dialog: delimiter selector, live piece list (key + excerpt + count) driven by the generated `previewSplit` hook, Confirm disabled when count ≤ 1 ("1 piece — nothing to split"), and a non-blocking warning when count > 10 ("This will create N fragments") — never blocking, just a heads-up for aggressive blank-line splits.
+- [x] Wire Confirm to dispatch the split command via the command system (`onFailure` declared; uses `mutateAsync`).
+- [x] Tests for the dialog (preview rendering, no-op disabled state, confirm dispatch).
+- [x] Commit.
 
 ### Phase 5 — Surfaces (`packages/frontend`)
 
