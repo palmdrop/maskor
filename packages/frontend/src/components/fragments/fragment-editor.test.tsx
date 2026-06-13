@@ -14,6 +14,9 @@ const updateFragmentSpy = vi.fn(() => Promise.resolve({ status: 200, data: {} })
 
 let fragmentRecovery: SwapRecovery | null = null;
 let marginRecovery: SwapRecovery | null = null;
+// Controllable sequence bundle so the placement-picker filter (import-sequences
+// excluded) is testable.
+let sequenceListData: Array<Record<string, unknown>> = [];
 let capturedOnRecoveryChange: ((recovery: { at: Date } | null) => void) | undefined;
 // Captured from the shell stub so the coupled-save path (margins-4 Phase 4) is testable.
 let capturedIsDirty: boolean | undefined;
@@ -123,7 +126,7 @@ vi.mock("@api/generated/projects/projects", () => ({
 }));
 
 vi.mock("@api/generated/sequences/sequences", () => ({
-  useListSequences: () => ({ data: { status: 200, data: { sequences: [] } } }),
+  useListSequences: () => ({ data: { status: 200, data: { sequences: sequenceListData } } }),
 }));
 
 vi.mock("@api/generated/stats/stats", () => ({
@@ -144,6 +147,7 @@ vi.mock("../../lib/commands/useCommandScope", () => ({
 }));
 
 import { FragmentEditor } from "./fragment-editor";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
 
 const renderEditor = (props?: { showMargin?: boolean }) =>
   render(<FragmentEditor projectId="project-1" fragmentId="fragment-1" {...props} />);
@@ -161,9 +165,46 @@ beforeEach(() => {
   capturedIsDirty = undefined;
   capturedOnProseChange = undefined;
   capturedOnContentSave = undefined;
+  sequenceListData = [];
 });
 
 const at = new Date("2026-06-02T10:00:00.000Z");
+
+const makeSequenceListEntry = (overrides: Record<string, unknown>) => ({
+  isMain: false,
+  active: true,
+  projectUuid: "project-1",
+  sections: [],
+  ...overrides,
+});
+
+describe("FragmentEditor placement picker", () => {
+  it("excludes import-sequences (origin set) from the place-in-sequence picker", () => {
+    sequenceListData = [
+      makeSequenceListEntry({ uuid: "seq-writable", name: "Working", isMain: true }),
+      makeSequenceListEntry({
+        uuid: "seq-import",
+        name: "Imported",
+        active: false,
+        origin: {
+          fileName: "draft.md",
+          archivePath: ".maskor/imports/draft.md",
+          format: "markdown",
+          importedAt: "2026-06-13T00:00:00.000Z",
+        },
+      }),
+    ];
+    renderEditor();
+
+    const publishedContext = vi
+      .mocked(useCommandScope)
+      .mock.calls.map((call) => call[1] as Record<string, unknown> | undefined)
+      .find((context) => context && "sequences" in context);
+    const sequences = (publishedContext as { sequences: Array<{ uuid: string }> }).sequences;
+
+    expect(sequences.map((sequence) => sequence.uuid)).toEqual(["seq-writable"]);
+  });
+});
 
 describe("FragmentEditor linked swap pair", () => {
   it("shows no recovery banner when neither side has unsaved edits", () => {

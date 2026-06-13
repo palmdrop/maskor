@@ -8,6 +8,7 @@ import {
   SwapEntityTypeError,
 } from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
+import { SequenceReadOnlyError } from "@maskor/sequencer";
 
 const errorResponse = (body: Record<string, unknown>, status: number): Response =>
   new Response(JSON.stringify(body), {
@@ -81,6 +82,15 @@ export const throwStorageError = (error: unknown): never => {
           res: errorResponse({ error: "INTERNAL_ERROR", message: error.message }, 500),
         });
     }
+  }
+
+  if (error instanceof SequenceReadOnlyError) {
+    throw new HTTPException(409, {
+      res: errorResponse(
+        { error: "CONFLICT", message: error.message, reason: "sequence_read_only" },
+        409,
+      ),
+    });
   }
 
   if (error instanceof VaultError) {

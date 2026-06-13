@@ -1,4 +1,5 @@
 import { VaultError } from "@maskor/storage";
+import { assertSequenceMutable } from "@maskor/sequencer";
 import type { Command } from "../types";
 
 type RenameSectionInput = {
@@ -10,6 +11,7 @@ type RenameSectionInput = {
 export const renameSectionCommand: Command<RenameSectionInput, void> = {
   async execute(ctx, { sequenceId, sectionId, name }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
+    assertSequenceMutable(indexed);
 
     const sectionIndex = indexed.sections.findIndex((s) => s.uuid === sectionId);
     if (sectionIndex === -1) {

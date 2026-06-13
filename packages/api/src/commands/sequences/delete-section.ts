@@ -1,4 +1,5 @@
 import { VaultError } from "@maskor/storage";
+import { assertSequenceMutable } from "@maskor/sequencer";
 import type { Command } from "../types";
 
 type DeleteSectionInput = {
@@ -9,6 +10,7 @@ type DeleteSectionInput = {
 export const deleteSectionCommand: Command<DeleteSectionInput, void> = {
   async execute(ctx, { sequenceId, sectionId }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
+    assertSequenceMutable(indexed);
 
     if (indexed.sections.length <= 1) {
       throw new VaultError(

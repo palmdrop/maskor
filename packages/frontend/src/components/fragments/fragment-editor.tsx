@@ -96,6 +96,10 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const { data: sequenceBundleEnvelope } = useListSequences(projectId);
   const sequences =
     sequenceBundleEnvelope?.status === 200 ? sequenceBundleEnvelope.data.sequences : [];
+  // Import-sequences (carrying an `origin`) are read-only snapshots and cannot be
+  // placed into — exclude them from the "Place in sequence…" picker. To build on
+  // one the user clones it first.
+  const placeableSequences = sequences.filter((sequence) => sequence.origin === undefined);
   const [placeInSequenceId, setPlaceInSequenceId] = useState<string | null>(null);
   const [isPlaceInSequenceOpen, setIsPlaceInSequenceOpen] = useState(false);
   // Keep `open` separate from the mounted/unmounted decision so Radix can run
@@ -244,7 +248,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     isDiscarded: !!fragment?.isDiscarded,
     discard: handleDiscard,
     restore: handleRestore,
-    sequences,
+    sequences: placeableSequences,
     openPlaceInSequence,
     openSplit,
   });

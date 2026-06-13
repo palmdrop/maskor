@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { assertSequenceMutable } from "@maskor/sequencer";
 import type { Command } from "../types";
 
 type CreateSectionInput = {
@@ -9,6 +10,7 @@ type CreateSectionInput = {
 export const createSectionCommand: Command<CreateSectionInput, void> = {
   async execute(ctx, { sequenceId, name }) {
     const indexed = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
+    assertSequenceMutable(indexed);
 
     const updated = {
       ...indexed,

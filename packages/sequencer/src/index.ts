@@ -5,6 +5,29 @@ const compactPositions = (fragments: FragmentPosition[]): FragmentPosition[] =>
     .sort((a, b) => a.position - b.position)
     .map((fragment, index) => ({ ...fragment, position: index }));
 
+// Thrown when a mutating operation targets a read-only sequence. Carried across
+// the API boundary and translated to a 409 by the route error mapper.
+export class SequenceReadOnlyError extends Error {
+  constructor(public readonly sequenceName: string) {
+    super(`Sequence "${sequenceName}" is read-only and cannot be modified.`);
+    this.name = "SequenceReadOnlyError";
+  }
+}
+
+// An import-sequence — a sequence carrying an `origin` — is a frozen snapshot of
+// its original import order. Its placements and section structure cannot change;
+// to build on it the user clones it first. The rule lives here in the sequencer
+// so it holds for every caller, not just the UI.
+export function isSequenceReadOnly(sequence: Sequence): boolean {
+  return sequence.origin !== undefined;
+}
+
+export function assertSequenceMutable(sequence: Sequence): void {
+  if (isSequenceReadOnly(sequence)) {
+    throw new SequenceReadOnlyError(sequence.name);
+  }
+}
+
 export function validateSequenceInvariants(sequence: Sequence): void {
   const seen = new Set<string>();
   for (const section of sequence.sections) {
@@ -51,6 +74,7 @@ export function placeFragment(
   sectionUuid: string,
   position: number,
 ): Sequence {
+  assertSequenceMutable(sequence);
   for (const section of sequence.sections) {
     if (section.fragments.some((f) => f.fragmentUuid === fragmentUuid)) {
       throw new Error(`Fragment ${fragmentUuid} is already placed in sequence "${sequence.name}".`);
@@ -85,6 +109,7 @@ export function moveFragment(
   targetSectionUuid: string,
   targetPosition: number,
 ): Sequence {
+  assertSequenceMutable(sequence);
   let sourceSectionUuid: string | undefined;
   let existingPosition: FragmentPosition | undefined;
 
@@ -141,6 +166,7 @@ export function moveFragment(
 }
 
 export function unplaceFragment(sequence: Sequence, fragmentUuid: string): Sequence {
+  assertSequenceMutable(sequence);
   let found = false;
 
   const updatedSections = sequence.sections.map((section) => {
@@ -338,6 +364,7 @@ export function computeViolations(main: Sequence, secondaries: Sequence[]): Viol
 }
 
 export function moveSection(sequence: Sequence, sectionUuid: string, newIndex: number): Sequence {
+  assertSequenceMutable(sequence);
   const currentIndex = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
   if (currentIndex === -1) {
     throw new Error(`Section ${sectionUuid} not found in sequence "${sequence.name}".`);
@@ -361,6 +388,7 @@ export function groupFragmentsIntoSection(
   fragmentUuids: string[],
   newSectionName: string,
 ): Sequence {
+  assertSequenceMutable(sequence);
   if (fragmentUuids.length === 0) {
     throw new Error("Cannot group an empty selection into a section.");
   }
@@ -432,6 +460,7 @@ export function moveFragmentsToSection(
   targetSectionUuid: string,
   targetPosition: number,
 ): Sequence {
+  assertSequenceMutable(sequence);
   if (fragmentUuids.length === 0) {
     throw new Error("Cannot move an empty selection.");
   }
@@ -501,6 +530,7 @@ export function splitSectionAtFragment(
   fragmentUuid: string,
   newSectionName: string,
 ): Sequence {
+  assertSequenceMutable(sequence);
   const sectionIndex = sequence.sections.findIndex((section) =>
     section.fragments.some((f) => f.fragmentUuid === fragmentUuid),
   );
@@ -540,6 +570,7 @@ export function splitSectionAtFragment(
 // "merge up" / "merge down" (merge up = merge the previous section with this
 // one). Throws if the section is the last one (nothing below to merge).
 export function mergeSectionWithNext(sequence: Sequence, sectionUuid: string): Sequence {
+  assertSequenceMutable(sequence);
   const index = sequence.sections.findIndex((s) => s.uuid === sectionUuid);
   if (index === -1) {
     throw new Error(`Section ${sectionUuid} not found in sequence "${sequence.name}".`);
@@ -612,6 +643,9 @@ export function insertSequenceIntoSequence(
   source: Sequence,
   sectionIndex: number,
 ): Sequence {
+  // Guard the target only: the source is read, never mutated, so inserting an
+  // import-sequence into a writable target is allowed.
+  assertSequenceMutable(target);
   const alreadyPlaced = new Set<string>();
   for (const section of target.sections) {
     for (const fragmentPosition of section.fragments) {

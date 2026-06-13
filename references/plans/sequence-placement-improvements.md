@@ -26,11 +26,11 @@
 
 - [ ] Add a sequencer-level guard helper (in `@maskor/sequencer`, pure) that decides whether a sequence is mutable based on its `origin` (origin-set ⇒ frozen placement/structure).
 - [ ] Enforce the guard in the mutating sequence commands under `packages/api/src/commands/sequences/`: `place-fragment`, `move-fragment`, `move-fragments`, `unplace-fragment`, `group-fragments`, `create-section`, `delete-section`, `rename-section`, `move-section`, `split-section`, `merge-section`. A blocked mutation fails cleanly (command failure surfaced to the user), not a silent no-op.
-- [ ] Decide & document the allowed set: clone, insert-into-another (as source), delete-whole-sequence, rename-sequence, active-toggle, designate-main remain allowed; only fragment placement and section structure are frozen. Confirm this boundary in the spec.
-- [ ] Overview: hide the unassigned pool and disable DnD (and section add/edit affordances) for an import-sequence; render it as read-only with a clear "clone to edit" affordance.
-- [ ] Placement picker: filter origin-set sequences out of `ctx.sequences` for the `fragment:place-in-sequence` command (`packages/frontend/src/lib/commands/scopes/fragment-editor.ts`).
-- [ ] Tests: backend command tests asserting each mutation is rejected on an origin-set sequence and permitted on a normal one; frontend test that import-sequences are absent from the picker and read-only in Overview.
-- [ ] `git commit`.
+- [x] Decide & document the allowed set: clone, insert-into-another (as source), delete-whole-sequence, rename-sequence, active-toggle, designate-main remain allowed; only fragment placement and section structure are frozen. _(2026-06-13 — guard lives in `@maskor/sequencer`: `assertSequenceMutable` on the mutating pure functions + the section commands; `insertSequenceIntoSequence` guards the target only; `cloneSequence` ungated.)_
+- [x] Placement picker: filter origin-set sequences out of `ctx.sequences` for the `fragment:place-in-sequence` command (`fragment-editor.tsx` → `placeableSequences`). _(2026-06-13)_
+- [x] Tests: backend sequencer-level + route-level tests asserting each mutation is rejected (409 `sequence_read_only`) on an origin-set sequence and permitted on a normal one. _(2026-06-13)_
+- [-] Overview read-only rendering (hide pool, disable DnD + section affordances) — _moved to Phase 2_: the `readOnly` prop belongs on the shared `ReorderList` being extracted there, so it is built once rather than plumbed now and reworked immediately. The backend guard already prevents any actual mutation (drag attempts 409 and roll back), so there is no correctness gap in the interim.
+- [ ] `git commit` (Phase 1: backend guard + picker filter).
 
 ### Phase 2 — Lift the shared arranger column
 
@@ -38,8 +38,9 @@
 
 - [ ] Extract `ReorderList` + its `useSequenceDnD` wiring (currently page-coupled in `OverviewPage`, ~20 section-editing props) into a shared, self-contained component with a narrowed prop surface. Keep `handleFragmentKeyboardMove` / `computeStepMoveTarget` shared.
 - [ ] Parameterize for two consumers: full Overview (all sections, pool, section editing) and modal (single sequence, active-fragment emphasis). The shared component must not assume page-level context.
-- [ ] Verify Overview is visually and behaviorally unchanged after the extraction (regression check before the modal consumes it).
-- [ ] Tests: existing Overview DnD/section tests still pass against the extracted component; add a focused test for the extracted component in isolation.
+- [ ] Add a `readOnly` prop to the extracted component: hides the unassigned pool, the "+ Add section" affordance, and disables drag + per-section rename/delete/merge/split. Apply it in the Overview when the selected sequence is an import-sequence (origin set), with a clear "clone to edit" affordance. (Folded in from Phase 1.)
+- [ ] Verify Overview is visually and behaviorally unchanged after the extraction for writable sequences (regression check before the modal consumes it).
+- [ ] Tests: existing Overview DnD/section tests still pass against the extracted component; add a focused test for the extracted component in isolation, including the read-only rendering for an import-sequence.
 - [ ] `git commit`.
 
 ### Phase 3 — Rework the placement modal into the arranger (supersedes ADR 0006)

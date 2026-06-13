@@ -1665,3 +1665,67 @@ describe("Phase 3 clone / insert operations", () => {
     expect(occurrences).toHaveLength(1);
   });
 });
+
+describe("import-sequence read-only enforcement", () => {
+  // A sequence carrying an `origin` is an import-sequence: frozen. The backend
+  // must reject placement and section mutations regardless of the UI.
+  const createImportSequence = async (name: string): Promise<SequenceFull> => {
+    const bundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          isMain: false,
+          projectUuid: project.projectUUID,
+          origin: {
+            fileName: "draft.md",
+            archivePath: ".maskor/imports/draft.md",
+            format: "markdown",
+            importedAt: "2026-06-13T00:00:00.000Z",
+          },
+        }),
+      })
+    ).json()) as SequenceBundle;
+    return bundle.sequences.find((s) => s.name === name)! as SequenceFull;
+  };
+
+  it("rejects placing a fragment into an import-sequence with 409", async () => {
+    const summaries = (await (
+      await testContext.app.request(`/projects/${project.projectUUID}/fragments/summaries`)
+    ).json()) as Array<{ uuid: string }>;
+    const fragment = summaries[0];
+    if (!fragment) throw new Error("expected at least one seeded fragment");
+
+    const importSequence = await createImportSequence("Imported — no place");
+    const response = await testContext.app.request(
+      `${baseUrl()}/${importSequence.uuid}/positions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fragmentUuid: fragment.uuid,
+          sectionUuid: importSequence.sections[0]!.uuid,
+          position: 0,
+        }),
+      },
+    );
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { reason?: string };
+    expect(body.reason).toBe("sequence_read_only");
+  });
+
+  it("rejects creating a section in an import-sequence with 409", async () => {
+    const importSequence = await createImportSequence("Imported — no section");
+    const response = await testContext.app.request(`${baseUrl()}/${importSequence.uuid}/sections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "New section" }),
+    });
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { reason?: string };
+    expect(body.reason).toBe("sequence_read_only");
+  });
+});

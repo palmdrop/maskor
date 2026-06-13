@@ -17,6 +17,9 @@ import {
   mergeSectionWithNext,
   cloneSequence,
   insertSequenceIntoSequence,
+  isSequenceReadOnly,
+  assertSequenceMutable,
+  SequenceReadOnlyError,
 } from "../index";
 
 const PROJECT_UUID = "00000000-0000-0000-0000-000000000001";
@@ -1028,5 +1031,77 @@ describe("insertSequenceIntoSequence", () => {
     const before = JSON.stringify(source);
     insertSequenceIntoSequence(makeTarget(), source, 1);
     expect(JSON.stringify(source)).toBe(before);
+  });
+});
+
+describe("read-only (import) sequence guard", () => {
+  const ORIGIN = {
+    fileName: "draft.md",
+    archivePath: ".maskor/imports/draft.md",
+    format: "markdown" as const,
+    importedAt: "2026-06-13T00:00:00.000Z",
+  };
+
+  // Build a populated, writable sequence (two sections, fragments placed) then
+  // freeze a copy by attaching an origin. We cannot place via the guarded
+  // functions once frozen, so the copy is constructed from the writable one.
+  function makeWritable(): Sequence {
+    let sequence = makeSequence();
+    const main = mainSectionUuid(sequence);
+    sequence = placeFragment(sequence, FA, main, 0);
+    sequence = placeFragment(sequence, FB, main, 1);
+    sequence = splitSectionAtFragment(sequence, FB, "Second");
+    return sequence;
+  }
+
+  function freeze(sequence: Sequence): Sequence {
+    return { ...sequence, origin: ORIGIN };
+  }
+
+  it("isSequenceReadOnly reflects the presence of an origin", () => {
+    expect(isSequenceReadOnly(makeWritable())).toBe(false);
+    expect(isSequenceReadOnly(freeze(makeWritable()))).toBe(true);
+  });
+
+  it("assertSequenceMutable throws SequenceReadOnlyError for an import-sequence", () => {
+    expect(() => assertSequenceMutable(freeze(makeWritable()))).toThrow(SequenceReadOnlyError);
+    expect(() => assertSequenceMutable(makeWritable())).not.toThrow();
+  });
+
+  it("rejects every mutating placement/structure operation on an import-sequence", () => {
+    const frozen = freeze(makeWritable());
+    const firstSection = frozen.sections[0]!.uuid;
+    const secondSection = frozen.sections[1]!.uuid;
+
+    expect(() => placeFragment(frozen, FC, firstSection, 0)).toThrow(SequenceReadOnlyError);
+    expect(() => moveFragment(frozen, FA, secondSection, 0)).toThrow(SequenceReadOnlyError);
+    expect(() => unplaceFragment(frozen, FA)).toThrow(SequenceReadOnlyError);
+    expect(() => moveSection(frozen, secondSection, 0)).toThrow(SequenceReadOnlyError);
+    expect(() => groupFragmentsIntoSection(frozen, [FA], "Grouped")).toThrow(SequenceReadOnlyError);
+    expect(() => moveFragmentsToSection(frozen, [FA], secondSection, 0)).toThrow(
+      SequenceReadOnlyError,
+    );
+    expect(() => splitSectionAtFragment(frozen, FB, "Split")).toThrow(SequenceReadOnlyError);
+    expect(() => mergeSectionWithNext(frozen, firstSection)).toThrow(SequenceReadOnlyError);
+  });
+
+  it("rejects inserting another sequence INTO an import-sequence target", () => {
+    const frozenTarget = freeze(makeWritable());
+    expect(() => insertSequenceIntoSequence(frozenTarget, makeWritable(), 0)).toThrow(
+      SequenceReadOnlyError,
+    );
+  });
+
+  it("allows cloning an import-sequence (the escape hatch)", () => {
+    const frozen = freeze(makeWritable());
+    const clone = cloneSequence(frozen, "Working copy");
+    expect(clone.origin).toBeUndefined();
+    expect(getFragmentOrder(clone)).toEqual(getFragmentOrder(frozen));
+  });
+
+  it("allows using an import-sequence as the SOURCE of an insert into a writable target", () => {
+    const writableTarget = makeSequence();
+    const frozenSource = freeze(makeWritable());
+    expect(() => insertSequenceIntoSequence(writableTarget, frozenSource, 0)).not.toThrow();
   });
 });
