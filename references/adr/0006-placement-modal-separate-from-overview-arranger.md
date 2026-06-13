@@ -1,5 +1,7 @@
 # Placement modal is a separate surface from the Overview arranger
 
+**Status**: superseded by ADR-0014 — the modal now reuses the Overview's `ReorderList` + `useSequenceDnD` with drag-and-drop, scoped to one sequence and pre-focused on the active fragment. The reasoning below is retained for context.
+
 The "Place in sequence…" command (command-palette → pick a sequence → modal) lets the user add, move, and remove the **active fragment** within one chosen sequence. The Overview is already a full sequence-arranging surface built on drag-and-drop (`useSequenceDnD`, `SortableTile`, keyboard moves). Rather than reuse that DnD core inside the modal, the placement modal is a **separate keyboard- and button-driven surface** that reuses only the _presentational_ pieces (`TileContent` at `compact` density, section chrome) and the existing `handleFragmentKeyboardMove` movement logic. It does not reuse `useSequenceDnD` or make every tile draggable.
 
 ## Considered Options

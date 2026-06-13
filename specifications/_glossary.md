@@ -34,7 +34,7 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Active**: The state of a non-main sequence being currently consumed by the sequencer as an ordering constraint; user-authored secondary sequences are active by default, import-sequences inactive. _Avoid_: enabled, on, included.
 
-**Import-sequence**: An editable secondary sequence auto-created by an import to record the fragments' original import order; carries an origin and is created inactive. _Avoid_: import order, import snapshot (the durable snapshot is the import archive, not this).
+**Import-sequence**: A read-only secondary sequence auto-created by an import to record the fragments' original import order; carries an origin and is created inactive. Its placement and ordering are frozen — fragments cannot be added, moved, or removed (guarded in the sequencer/backend, not just the UI); to build on it the user clones it. _Avoid_: import order, import snapshot (the durable snapshot is the import archive, not this).
 
 **Import archive**: The original, unmodified file an import was created from, stored byte-for-byte under `.maskor/imports/`; the durable record of imported content, referenced by a sequence's origin. _Avoid_: backup, source file, archived source.
 
