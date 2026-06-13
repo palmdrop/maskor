@@ -4,7 +4,7 @@
 **Last updated**: 2026-06-13
 **Shipped**:
 
-- 2026-06-13 — Identity-preserving fragment split. A fragment can be divided into multiple fragments along a chosen delimiter (heading level, thematic break, or blank-line). A dialog previews the resulting pieces (keys + excerpts + count) before committing; Confirm is disabled for a single-piece (no-op) split and a non-blocking warning appears past 10 pieces. The original keeps its identity as the first piece (UUID, key, aspects, readiness, references, sequence placements); the remaining pieces become new fragments inheriting the original's aspects + references (readiness 0), inserted immediately after it in every sequence it is placed in. Recorded as a single non-undoable `fragment:split` action-log entry. Surfaced from the fragment editor and as a parameterized "Split fragment…" command in Overview and the fragment list. The thematic-break and blank-line delimiter modes were added to the shared `@maskor/importer` engine and are available in the import preview too. _(Margin-comment migration into the new pieces remains deferred — see Open questions; interim behavior strips the moved blocks' anchor markers and orphans those comments on the original.)_
+- 2026-06-13 — Identity-preserving fragment split. A fragment can be divided into multiple fragments along a chosen delimiter (heading level, thematic break, or blank-line). A dialog previews the resulting pieces (keys + excerpts + count) before committing; Confirm is disabled for a single-piece (no-op) split and a non-blocking warning appears past 10 pieces. The original keeps its identity as the first piece (UUID, key, aspects, readiness, references, sequence placements); the remaining pieces become new fragments inheriting the original's aspects + references (readiness 0), inserted immediately after it in every sequence it is placed in. Margin comments follow their block: a comment whose block moves into a new piece migrates into that piece's Margin (re-anchored), while one whose block is dropped orphans on the original. Recorded as a single non-undoable `fragment:split` action-log entry. Surfaced from the fragment editor and as a parameterized "Split fragment…" command in Overview and the fragment list. The thematic-break and blank-line delimiter modes were added to the shared `@maskor/importer` engine and are available in the import preview too.
 
 ---
 
@@ -60,7 +60,7 @@ On confirm, the split runs as one command:
 - **Piece 1 is the original.** The original fragment is truncated to the first piece's content. Its UUID, key, aspects, readiness, references, unmanaged frontmatter, and all sequence placements are untouched.
 - **Pieces 2…N are new fragments.** Each is created with a `deriveKey`-derived key (heading text or first non-empty line, `_N` suffix on conflict against existing keys and keys minted earlier in the same split). Each **inherits the original's aspects and references**; `readiness` defaults to `0`; `isDiscarded` is `false`.
 - **Placement.** In every sequence/section where the original is placed, the new pieces are inserted immediately after it, in order, pushing later fragments down (composed from `placeFragment`). Where the original is unplaced, the new pieces are unplaced too.
-- **Margin comments.** Anchor markers (`<!--c:ID-->`) on blocks that move into pieces 2…N are stripped from the new pieces. Comments whose block left the original follow the existing orphaned-comment path on the original's Margin. _(Migration of those comments into the new piece's Margin is a deferred phase — see Open questions.)_
+- **Margin comments.** Each anchored comment follows its block. Comments whose block stays in piece 1 are untouched on the original's Margin. Comments whose block moves into a piece 2…N migrate into that piece's Margin and are re-anchored — the `<!--c:ID-->` marker rides along on the moved block (not stripped). Margin **notes** stay on the original (they annotate the whole fragment, not a block). A comment whose anchored block is dropped rather than moved (e.g. a marker on a heading line the heading split removes) cannot follow a block and orphans on the original's Margin, frozen — the existing orphaned-comment behavior.
 - **Action log.** A single `fragment:split` entry is recorded with `{ sourceFragmentUuid, delimiter, createdCount, createdUuids }`. Individual `fragment:created` entries are **not** emitted for the new pieces, mirroring `fragment:imported`. The entry is not undoable.
 
 ### Shared engine
@@ -81,7 +81,7 @@ The split functions live in `@maskor/importer` and are shared with the import pi
 
 ## Prior decisions
 
-- **Identity-preserving split**: the original becomes the first piece rather than being replaced by N equal new fragments. Preserves UUID, placements, and links at the cost of Margin-comment orphaning on moved blocks. See `references/adr/0014-identity-preserving-fragment-split.md`.
+- **Identity-preserving split**: the original becomes the first piece rather than being replaced by N equal new fragments. Preserves UUID, placements, and links. Margin comments anchored to moved blocks migrate into the new piece's Margin (re-anchored). See `references/adr/0014-identity-preserving-fragment-split.md`.
 - **One shared delimiter set**: thematic-break and blank-line modes are added to the shared `@maskor/importer` engine, so import inherits them too — rather than giving the splitter a private split module.
 - **Delimiter-type, not inserted markers**: the user picks a delimiter type and the splitter cuts at existing occurrences; the user does not insert cut markers into the prose first.
 - **New pieces inherit aspects + references**: treated as continuations of the original, not blank fragments; `readiness` still resets to `0` because splitting implies rework and readiness is user-controlled (`specifications/fragment-model.md`).
@@ -91,7 +91,7 @@ The split functions live in `@maskor/importer` and are shared with the import pi
 
 ## Open questions
 
-- [ ] 2026-06-13 — **Margin comment migration**: the target behavior is to move comments whose block lands in pieces 2…N into that piece's Margin and re-anchor them, rather than orphaning them on the original. Designed as a deferred final phase; interim behavior strips the markers and orphans the comments. When does it ship?
+- [x] 2026-06-13 — **Margin comment migration**: the target behavior is to move comments whose block lands in pieces 2…N into that piece's Margin and re-anchor them, rather than orphaning them on the original. **Resolved 2026-06-13:** shipped. A moved block keeps its `<!--c:ID-->` marker and its comment migrates into the new piece's Margin; a comment whose block is dropped (not moved) still orphans on the original.
 - [x] 2026-06-13 — **Blank-line split default**: blank-line/paragraph splitting is offered but aggressive. Should it be hidden behind a confirm, or carry a warning when it would produce more than some threshold of pieces? **Resolved 2026-06-13:** always allowed regardless of count; the dialog shows a non-blocking warning when the split would create more than 10 fragments.
 
 ---
@@ -105,5 +105,5 @@ The split functions live in `@maskor/importer` and are shared with the import pi
 - A delimiter that yields a single piece disables Confirm and writes nothing.
 - A split that would produce more than 10 fragments is still permitted, and the dialog surfaces a non-blocking warning of the resulting count before the user confirms.
 - A successful split records exactly one non-undoable `fragment:split` action-log entry with `sourceFragmentUuid`, `delimiter`, `createdCount`, and `createdUuids`; no `fragment:created` entries are emitted for the new pieces.
-- Anchor markers on blocks moved into new pieces are stripped from those pieces; the affected comments orphan on the original's Margin (until the migration phase ships).
+- A Margin comment whose block moves into a new piece is migrated into that piece's Margin and re-anchored (the marker rides along); a comment whose block stays in piece 1 is untouched; a comment whose block is dropped rather than moved orphans on the original's Margin.
 - Thematic-break and blank-line delimiters added to `@maskor/importer` are available in both the split preview and the import preview.

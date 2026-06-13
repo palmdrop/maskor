@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Fragment, LogEntry, Sequence } from "@maskor/shared";
-import { stripCommentMarkers } from "@maskor/shared";
+import type { Comment, Fragment, LogEntry, Sequence } from "@maskor/shared";
+import { markerIdSet } from "@maskor/shared";
 import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey } from "@maskor/importer";
 import { placeFragment } from "@maskor/sequencer";
@@ -49,12 +49,20 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         .map((summary) => summary.key.toLowerCase()),
     );
 
+    // Read the original's Margin before truncation so anchored comments can follow
+    // their blocks into the new pieces (Phase 6 migration, below). The marker set
+    // of each piece tells us which piece a given comment's block landed in.
+    const originalMargin = await ctx.storageService.margins.read(
+      ctx.projectContext,
+      input.fragmentId,
+    );
+    const pieceMarkerSets = pieces.map((piece) => markerIdSet(piece.content));
+
     // Piece 1 keeps the original's identity: truncate the original to the first
     // piece's content, preserving uuid, key, aspects, readiness, references and
-    // unmanaged frontmatter. Markers on blocks that stayed in piece 1 ride along;
-    // markers on blocks that moved to later pieces are simply absent from this
-    // slice, so the existing orphaned-comment path on the original's Margin
-    // handles their comments.
+    // unmanaged frontmatter. Anchor markers ride along with their blocks in every
+    // piece (no stripping) so each moved comment can be re-anchored in its new
+    // piece's Margin.
     const firstPiece = pieces[0]!;
     await ctx.storageService.fragments.write(ctx.projectContext, {
       ...original,
@@ -64,16 +72,16 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // Pieces 2…N become new fragments inheriting the original's aspects +
     // references, readiness reset to 0. deriveKey suffixes against existing keys
     // (which still include the original's) and keys minted earlier in this split.
-    // Anchor markers are stripped from the new pieces (interim behavior; comment
-    // migration is a deferred phase — see specifications/fragment-split.md).
     const createdUuids: string[] = [];
+    // Piece array index (1…N-1) → the new fragment's uuid, for Margin migration.
+    const createdUuidByPieceIndex = new Map<number, string>();
     for (let index = 1; index < pieces.length; index++) {
       const piece = pieces[index]!;
       const key = deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
       const newFragment: Fragment = {
         uuid: randomUUID(),
         key,
-        content: stripCommentMarkers(piece.content),
+        content: piece.content,
         readiness: 0,
         contentHash: "",
         updatedAt: new Date(),
@@ -83,6 +91,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       };
       const written = await ctx.storageService.fragments.write(ctx.projectContext, newFragment);
       createdUuids.push(written.uuid);
+      createdUuidByPieceIndex.set(index, written.uuid);
     }
 
     // Placement: in every sequence the original is placed in, insert the new
@@ -118,6 +127,50 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         );
       });
       await ctx.storageService.sequences.write(ctx.projectContext, updated);
+    }
+
+    // Margin comment migration. Each anchored comment follows its block: a comment
+    // whose block stayed in piece 1 remains on the original; a comment whose block
+    // moved into a piece 2…N migrates (re-anchored — the marker rode along on the
+    // moved block) into that piece's Margin. A comment whose marker landed in no
+    // piece (e.g. a marker on a heading line the heading split drops) orphans on
+    // the original, frozen — the existing orphaned-comment behavior. Notes stay on
+    // the original; they annotate the whole fragment, not a block.
+    if (originalMargin && originalMargin.comments.length > 0) {
+      const retainedComments: Comment[] = [];
+      const commentsByPieceIndex = new Map<number, Comment[]>();
+      for (const comment of originalMargin.comments) {
+        const pieceArrayIndex = pieceMarkerSets.findIndex((markers) =>
+          markers.has(comment.markerId),
+        );
+        if (pieceArrayIndex <= 0) {
+          retainedComments.push(comment);
+        } else {
+          const list = commentsByPieceIndex.get(pieceArrayIndex) ?? [];
+          list.push(comment);
+          commentsByPieceIndex.set(pieceArrayIndex, list);
+        }
+      }
+
+      // Rewrite the original's Margin only when something actually moved off it.
+      if (retainedComments.length !== originalMargin.comments.length) {
+        await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+          notes: originalMargin.notes,
+          comments: retainedComments,
+        });
+      }
+
+      // Seed each receiving piece's Margin with its migrated comments. persistMargin
+      // re-derives each anchored comment's excerpt from the new piece's body.
+      for (const [pieceArrayIndex, comments] of commentsByPieceIndex) {
+        const createdUuid = createdUuidByPieceIndex.get(pieceArrayIndex);
+        if (createdUuid) {
+          await ctx.storageService.margins.write(ctx.projectContext, createdUuid, {
+            notes: "",
+            comments,
+          });
+        }
+      }
     }
 
     const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [

@@ -19,6 +19,6 @@ A split **preserves the original fragment's identity**: the original is truncate
 
 - No data is lost: the source content lives on across piece 1 + the new pieces, so the split needs **no source archive** and is recorded as a single non-undoable `fragment:split` action-log entry.
 - The new pieces inherit the original's **aspects and references** (readiness resets to 0), treating them as continuations rather than blank fragments.
-- **Margin comments** anchored to blocks that move into pieces 2…N cannot stay on the original. Until comment migration ships (a deferred phase), those comments follow the existing orphaned-comment path on the original's Margin and the moved blocks' anchor markers are stripped from the new pieces. The migration phase later moves and re-anchors them into the new piece's Margin instead.
+- **Margin comments** anchored to blocks that move into pieces 2…N cannot stay on the original. They migrate: the moved block keeps its `<!--c:ID-->` marker and the comment is moved into the new piece's Margin and re-anchored there. Margin notes stay on the original. A comment whose block is dropped rather than moved (e.g. a marker on a heading line the heading split removes) still orphans on the original's Margin.
 
 See `specifications/fragment-split.md`.

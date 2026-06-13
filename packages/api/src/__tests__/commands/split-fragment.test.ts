@@ -193,28 +193,106 @@ describe("splitFragmentCommand", () => {
     });
   });
 
-  it("strips anchor markers from new pieces, leaving the original's intact", async () => {
+  it("migrates a moved block's anchor marker + comment into the new piece's Margin", async () => {
     const ctx = await makeCommandContext();
     const original = await writeFragment(
       ctx,
       `markers-${Date.now()}`,
       "First block <!--c:keepme-->\n\n---\n\nSecond block <!--c:moveme-->",
     );
+    await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+      notes: "fragment-wide notes",
+      comments: [
+        { markerId: "keepme", excerpt: "First block", body: "a comment that stays" },
+        { markerId: "moveme", excerpt: "Second block", body: "a comment that moves" },
+      ],
+    });
 
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "thematic-break" },
     });
 
+    // The marker rides along: it stays on the original for the block that stayed,
+    // and lands in the new piece for the block that moved.
     const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
     expect(reread.content).toContain("<!--c:keepme-->");
-
     const created = await ctx.storageService.fragments.read(
       ctx.projectContext,
       result.createdUuids[0]!,
     );
-    expect(created.content).not.toContain("<!--c:moveme-->");
+    expect(created.content).toContain("<!--c:moveme-->");
     expect(created.content).toContain("Second block");
+
+    // The original's Margin keeps only the comment whose block stayed (+ its notes).
+    const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
+    expect(originalMargin?.notes).toBe("fragment-wide notes");
+    expect(originalMargin?.comments.map((comment) => comment.markerId)).toEqual(["keepme"]);
+
+    // The moved comment migrated into the new piece's Margin, re-anchored.
+    const createdMargin = await ctx.storageService.margins.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(createdMargin?.comments.map((comment) => comment.markerId)).toEqual(["moveme"]);
+    expect(createdMargin?.comments[0]?.body).toBe("a comment that moves");
+    // Notes belong to the original; the new piece's Margin carries none.
+    expect(createdMargin?.notes).toBe("");
+  });
+
+  it("leaves a comment whose block stays in piece 1 untouched on the original", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `markers-stay-${Date.now()}`,
+      "Kept block <!--c:stay-->\n\n---\n\nMoved block",
+    );
+    await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+      notes: "",
+      comments: [{ markerId: "stay", excerpt: "Kept block", body: "stays put" }],
+    });
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "thematic-break" },
+    });
+
+    const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
+    expect(originalMargin?.comments.map((comment) => comment.markerId)).toEqual(["stay"]);
+    // The new piece (no anchored block) gets no Margin.
+    const createdMargin = await ctx.storageService.margins.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(createdMargin).toBeNull();
+  });
+
+  it("orphans a comment on the original when its block is dropped (heading line) rather than moved", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `markers-orphan-${Date.now()}`,
+      "# Heading <!--c:onheading-->\nBody one\n# Second\nBody two",
+    );
+    await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+      notes: "",
+      comments: [{ markerId: "onheading", excerpt: "Heading", body: "anchored to the heading" }],
+    });
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // The heading line (and its marker) is dropped by the split, so the comment
+    // cannot follow a block — it stays on the original, frozen.
+    const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
+    expect(originalMargin?.comments.map((comment) => comment.markerId)).toEqual(["onheading"]);
+    const createdMargin = await ctx.storageService.margins.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(createdMargin).toBeNull();
   });
 
   it("inserts new pieces immediately after the original in every sequence it is placed in", async () => {

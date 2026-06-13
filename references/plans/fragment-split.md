@@ -1,7 +1,7 @@
 # Fragment Split
 
 **Date**: 13-06-2026
-**Status**: Done (Phases 1–5 + close-out shipped; Phase 6 — Margin-comment migration — deferred)
+**Status**: Done
 **Specs**: `specifications/fragment-split.md`
 
 ---
@@ -71,14 +71,14 @@ A dialog with live preview, modelled on the extract-to-entity dialog + the impor
 - [x] Tests for command wiring + scope registration.
 - [x] Commit.
 
-### Phase 6 — Deferred: Margin comment migration
+### Phase 6 — Margin comment migration
 
-Final, separately-shippable phase. Replaces the interim strip-and-orphan behavior. See `specifications/fragment-split.md` Open questions.
+Replaces the earlier strip-and-orphan behavior. See `specifications/fragment-split.md` Open questions.
 
-- [ ] In the split orchestration, for each comment whose anchored block moves into a piece 2…N, move the comment into that piece's Margin and re-anchor it (keep the anchor marker on the moved block instead of stripping it; create the new piece's Margin as needed).
-- [ ] Update the spec: orphaning → migration; close the Open question.
-- [ ] Tests: comment follows its block into the correct new piece; comment whose block stays in piece 1 is untouched; orphaning still applies when a block is deleted rather than moved.
-- [ ] Commit.
+- [x] In the split orchestration, for each comment whose anchored block moves into a piece 2…N, move the comment into that piece's Margin and re-anchor it (keep the anchor marker on the moved block instead of stripping it; create the new piece's Margin as needed).
+- [x] Update the spec: orphaning → migration; close the Open question.
+- [x] Tests: comment follows its block into the correct new piece; comment whose block stays in piece 1 is untouched; orphaning still applies when a block is deleted rather than moved.
+- [x] Commit.
 
 ### Phase 7 — Close-out
 
