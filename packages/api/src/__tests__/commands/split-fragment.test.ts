@@ -1,0 +1,270 @@
+import { randomUUID } from "node:crypto";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { createTestApp } from "../helpers/create-test-app";
+import { seedVault } from "../helpers/seed-vault";
+import type { ProjectRecord } from "@maskor/storage";
+import type { Fragment, Sequence } from "@maskor/shared";
+import type { CommandContext } from "../../commands/types";
+import { executeCommand } from "../../commands/types";
+import { splitFragmentCommand, SplitNoOpError } from "../../commands/fragments/split-fragment";
+import type { Logger } from "@maskor/shared/logger";
+
+const makeLogger = (): Logger => {
+  const noOp = () => {};
+  return {
+    info: noOp,
+    warn: noOp,
+    debug: noOp,
+    error: noOp,
+    child: () => makeLogger(),
+  } as unknown as Logger;
+};
+
+let testContext: ReturnType<typeof createTestApp>;
+let project: ProjectRecord;
+
+beforeAll(async () => {
+  testContext = createTestApp();
+  const seeded = await seedVault(testContext.storageService, testContext.temporaryDirectory);
+  project = seeded.project;
+});
+
+afterAll(async () => {
+  await testContext.cleanup();
+});
+
+const makeCommandContext = async (): Promise<CommandContext> => {
+  const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+  return {
+    storageService: testContext.storageService,
+    projectContext,
+    actor: "user",
+    correlationId: "test-correlation",
+    logger: makeLogger(),
+  };
+};
+
+const writeFragment = async (
+  ctx: CommandContext,
+  key: string,
+  content: string,
+  overrides: Partial<Fragment> = {},
+): Promise<Fragment> => {
+  const fragment: Fragment = {
+    uuid: randomUUID(),
+    key,
+    content,
+    readiness: 0.75,
+    contentHash: "",
+    updatedAt: new Date(),
+    references: [],
+    isDiscarded: false,
+    aspects: {},
+    ...overrides,
+  };
+  return testContext.storageService.fragments.write(ctx.projectContext, fragment);
+};
+
+describe("splitFragmentCommand", () => {
+  it("preserves the original's identity and metadata as piece 1", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `identity-${Date.now()}`,
+      "# Intro\nIntro body\n# Middle\nMiddle body\n# End\nEnd body",
+      {
+        readiness: 0.6,
+        references: ["some-ref"],
+        aspects: { theme: { weight: 0.4 } },
+      },
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.sourceFragmentUuid).toBe(original.uuid);
+    expect(result.createdCount).toBe(2);
+
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.uuid).toBe(original.uuid);
+    expect(reread.key).toBe(original.key);
+    expect(reread.readiness).toBe(0.6);
+    expect(reread.references).toEqual(["some-ref"]);
+    expect(reread.aspects).toEqual({ theme: { weight: 0.4 } });
+    expect(reread.content.trim()).toBe("Intro body");
+  });
+
+  it("creates new pieces inheriting aspects + references with readiness 0", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `inherit-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+      {
+        readiness: 0.9,
+        references: ["ref-a", "ref-b"],
+        aspects: { mood: { weight: 0.5 } },
+      },
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.createdUuids).toHaveLength(1);
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.readiness).toBe(0);
+    expect(created.isDiscarded).toBe(false);
+    expect(created.references).toEqual(["ref-a", "ref-b"]);
+    expect(created.aspects).toEqual({ mood: { weight: 0.5 } });
+    expect(created.content.trim()).toBe("Body two");
+  });
+
+  it("suffixes derived keys that conflict with existing keys", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    // Pre-existing fragment whose key matches the second piece's heading text.
+    await writeFragment(ctx, `Beta ${stamp}`, "occupier");
+
+    const original = await writeFragment(
+      ctx,
+      `conflict-${stamp}`,
+      `# Alpha ${stamp}\nA body\n# Beta ${stamp}\nB body`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.key).toMatch(/_1$/);
+  });
+
+  it("rejects a single-piece (no-op) split and writes nothing", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `noop-${Date.now()}`,
+      "Just prose, no thematic break anywhere",
+    );
+
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "thematic-break" },
+      }),
+    ).rejects.toBeInstanceOf(SplitNoOpError);
+
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content.trim()).toBe("Just prose, no thematic break anywhere");
+  });
+
+  it("records exactly one non-undoable fragment:split entry (no per-piece fragment:created)", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `logentry-${Date.now()}`,
+      "# P1\nbody 1\n# P2\nbody 2\n# P3\nbody 3",
+    );
+
+    const { logEntries } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(logEntries).toHaveLength(1);
+    const entry = logEntries[0]!;
+    expect(entry.type).toBe("fragment:split");
+    expect(entry.undoable).toBe(false);
+    expect(entry.payload).toMatchObject({
+      sourceFragmentUuid: original.uuid,
+      delimiter: "heading:1",
+      createdCount: 2,
+    });
+  });
+
+  it("strips anchor markers from new pieces, leaving the original's intact", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `markers-${Date.now()}`,
+      "First block <!--c:keepme-->\n\n---\n\nSecond block <!--c:moveme-->",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "thematic-break" },
+    });
+
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content).toContain("<!--c:keepme-->");
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.content).not.toContain("<!--c:moveme-->");
+    expect(created.content).toContain("Second block");
+  });
+
+  it("inserts new pieces immediately after the original in every sequence it is placed in", async () => {
+    const ctx = await makeCommandContext();
+    const before = await writeFragment(ctx, `seq-before-${Date.now()}`, "before");
+    const original = await writeFragment(
+      ctx,
+      `seq-original-${Date.now()}`,
+      "# A\nbody A\n# B\nbody B\n# C\nbody C",
+    );
+    const after = await writeFragment(ctx, `seq-after-${Date.now()}`, "after");
+
+    const sectionUuid = randomUUID();
+    const sequence: Sequence = {
+      uuid: randomUUID(),
+      name: `Split Seq ${Date.now()}`,
+      isMain: false,
+      active: false,
+      projectUuid: project.projectUUID,
+      sections: [
+        {
+          uuid: sectionUuid,
+          name: "Section",
+          fragments: [
+            { uuid: randomUUID(), fragmentUuid: before.uuid, position: 0 },
+            { uuid: randomUUID(), fragmentUuid: original.uuid, position: 1 },
+            { uuid: randomUUID(), fragmentUuid: after.uuid, position: 2 },
+          ],
+        },
+      ],
+    };
+    await ctx.storageService.sequences.write(ctx.projectContext, sequence);
+
+    const result = await executeCommand(splitFragmentCommand, "fragment:split", ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequence.uuid);
+    const order = reread.sections[0]!.fragments
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((placement) => placement.fragmentUuid);
+
+    expect(order).toEqual([
+      before.uuid,
+      original.uuid,
+      result.createdUuids[0],
+      result.createdUuids[1],
+      after.uuid,
+    ]);
+  });
+});

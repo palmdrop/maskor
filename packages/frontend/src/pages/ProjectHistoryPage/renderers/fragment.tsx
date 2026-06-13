@@ -40,6 +40,10 @@ export const renderFragmentEntryText = (entry: ActionLogEntry): string => {
       const count = entry.payload.fragmentCount;
       return `Imported ${count} fragment${count !== 1 ? "s" : ""} from "${entry.payload.sourceFileName}"`;
     }
+    case "fragment:split": {
+      const count = entry.payload.createdCount;
+      return `Fragment "${key(entry)}" split into ${count + 1} pieces (${count} new fragment${count !== 1 ? "s" : ""})`;
+    }
     default:
       return `Fragment action on "${key(entry)}"`;
   }

@@ -3,8 +3,14 @@ import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { projectIdParamSchema } from "../schemas/shared";
 import { ErrorResponseSchema } from "../schemas/error";
-import { SplitPreviewBodySchema, SplitPreviewResultSchema } from "../schemas/split";
-import { executeCommand, previewSplitCommand } from "../commands";
+import { HTTPException } from "hono/http-exception";
+import {
+  SplitPreviewBodySchema,
+  SplitPreviewResultSchema,
+  SplitBodySchema,
+  SplitResultSchema,
+} from "../schemas/split";
+import { executeCommand, previewSplitCommand, splitFragmentCommand, SplitNoOpError } from "../commands";
 import type { CommandContext } from "../commands";
 
 const commandContextFrom = (ctx: {
@@ -45,6 +51,38 @@ const splitPreviewRoute = createRoute({
   },
 });
 
+const splitRoute = createRoute({
+  operationId: "splitFragment",
+  method: "post",
+  path: "/",
+  tags: ["Fragments"],
+  summary: "Split a fragment into multiple fragments along a delimiter",
+  description:
+    "Identity-preserving split: the original is truncated to piece 1 (keeping uuid, key, aspects, readiness, references) and pieces 2…N become new fragments inheriting its aspects + references, inserted immediately after it in every sequence it is placed in. Records a single non-undoable fragment:split action-log entry.",
+  request: {
+    params: projectIdParamSchema,
+    body: { content: { "application/json": { schema: SplitBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SplitResultSchema } },
+      description: "The split result: source uuid + the created pieces",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "The delimiter yields a single piece — nothing to split",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Fragment not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 export const splitRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 splitRouter.openapi(splitPreviewRoute, async (ctx) => {
@@ -59,6 +97,28 @@ splitRouter.openapi(splitPreviewRoute, async (ctx) => {
     );
     return ctx.json(result, 200);
   } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+splitRouter.openapi(splitRoute, async (ctx) => {
+  const { fragmentId, delimiter } = ctx.req.valid("json");
+
+  try {
+    const result = await executeCommand(splitFragmentCommand, "fragment:split", commandContextFrom(ctx), {
+      fragmentId,
+      delimiter,
+    });
+    return ctx.json(result, 200);
+  } catch (error) {
+    if (error instanceof SplitNoOpError) {
+      throw new HTTPException(400, {
+        res: new Response(JSON.stringify({ error: "SPLIT_NO_OP", message: error.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      });
+    }
     return throwStorageError(error);
   }
 });

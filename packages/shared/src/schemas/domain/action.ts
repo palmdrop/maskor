@@ -68,6 +68,7 @@ export const ActionTypeSchema = z.enum([
   "draft:deleted",
   "draft:restored",
   "fragment:imported",
+  "fragment:split",
   "margin:updated",
   "command:error",
   "sequence:exported",
@@ -214,6 +215,19 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       delimiter: z.string().optional(),
       headingLevel: z.number().int().optional(),
       importSequenceUuid: z.string().optional(),
+    }),
+  ),
+  // One entry per split, mirroring fragment:imported — the new pieces do NOT get
+  // their own fragment:created entries. `delimiter` is a label string
+  // ("heading:2", "thematic-break", "blank-line"). Non-undoable: content is fully
+  // preserved across the resulting fragments, so there is no archive to restore.
+  entry(
+    "fragment:split",
+    z.object({
+      sourceFragmentUuid: z.string(),
+      delimiter: z.string(),
+      createdCount: z.number().int(),
+      createdUuids: z.array(z.string()),
     }),
   ),
   entry("margin:updated", empty),

@@ -16,6 +16,8 @@ export type {
   PreviewSplitResult,
   SplitPiecePreview,
 } from "./fragments/preview-split";
+export { splitFragmentCommand, SplitNoOpError } from "./fragments/split-fragment";
+export type { SplitFragmentInput, SplitFragmentResult } from "./fragments/split-fragment";
 export { updateFragmentCommand } from "./fragments/update-fragment";
 export { discardFragmentCommand } from "./fragments/discard-fragment";
 export { restoreFragmentCommand } from "./fragments/restore-fragment";

@@ -2872,6 +2872,49 @@
           }
         ]
       },
+      "SplitResult": {
+        "type": "object",
+        "properties": {
+          "sourceFragmentUuid": {
+            "type": "string",
+            "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+          },
+          "createdCount": {
+            "type": "integer",
+            "example": 2
+          },
+          "createdUuids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            ]
+          }
+        },
+        "required": [
+          "sourceFragmentUuid",
+          "createdCount",
+          "createdUuids"
+        ]
+      },
+      "SplitBody": {
+        "type": "object",
+        "properties": {
+          "fragmentId": {
+            "type": "string",
+            "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+          },
+          "delimiter": {
+            "$ref": "#/components/schemas/SplitDelimiter"
+          }
+        },
+        "required": [
+          "fragmentId",
+          "delimiter"
+        ]
+      },
       "ExportSequenceBody": {
         "type": "object",
         "properties": {
@@ -12707,6 +12750,102 @@
                           "type": {
                             "type": "string",
                             "enum": [
+                              "fragment:split"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "sourceFragmentUuid": {
+                                "type": "string"
+                              },
+                              "delimiter": {
+                                "type": "string"
+                              },
+                              "createdCount": {
+                                "type": "integer"
+                              },
+                              "createdUuids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "sourceFragmentUuid",
+                              "delimiter",
+                              "createdCount",
+                              "createdUuids"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "correlationId",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
                               "margin:updated"
                             ]
                           },
@@ -14662,6 +14801,79 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SplitPreviewResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fragment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/split": {
+      "post": {
+        "operationId": "splitFragment",
+        "tags": [
+          "Fragments"
+        ],
+        "summary": "Split a fragment into multiple fragments along a delimiter",
+        "description": "Identity-preserving split: the original is truncated to piece 1 (keeping uuid, key, aspects, readiness, references) and pieces 2…N become new fragments inheriting its aspects + references, inserted immediately after it in every sequence it is placed in. Records a single non-undoable fragment:split action-log entry.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The split result: source uuid + the created pieces",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SplitResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The delimiter yields a single piece — nothing to split",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

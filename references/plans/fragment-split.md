@@ -43,16 +43,16 @@ Mirror `preview-import` exactly: it is a `Command` run through `executeCommand` 
 
 The commit path. One command, going through the commands pipeline (`packages/api/CLAUDE.md`). See ADR 0014.
 
-- [ ] Add a `splitFragment` command under `src/commands/fragments/`:
+- [x] Add a `splitFragment` command under `src/commands/fragments/`:
   - Truncate the original fragment to piece 1's content (preserve UUID, key, aspects, readiness, references, unmanaged frontmatter).
   - Create pieces 2…N as new fragments via the existing create path: `deriveKey`-derived key with `_N` suffixing against existing + just-minted keys; inherit the original's aspects + references; `readiness: 0`; `isDiscarded: false`.
   - Strip Margin anchor markers (`<!--c:ID-->`) from the new pieces' content; leave the original's Margin to the existing orphaned-comment path.
   - For every sequence the original is placed in, insert the new pieces in order immediately after it (compose `placeFragment`; add a small orchestration helper if needed — no parallel placement logic).
   - Record a single non-undoable `fragment:split` action-log entry `{ sourceFragmentUuid, delimiter, createdCount, createdUuids }`; do **not** emit per-piece `fragment:created` entries.
-- [ ] Add the `fragment:split` command label to `command-labels.ts` and the action-log entry type.
-- [ ] Add the route + schemas; `bun run codegen`.
-- [ ] Tests: identity preservation, metadata inheritance, multi-sequence insert-after ordering, key conflict suffixing, single-piece no-op rejection, single log entry shape.
-- [ ] Commit.
+- [x] Add the `fragment:split` command label to `command-labels.ts` and the action-log entry type.
+- [x] Add the route + schemas; `bun run codegen`.
+- [x] Tests: identity preservation, metadata inheritance, multi-sequence insert-after ordering, key conflict suffixing, single-piece no-op rejection, single log entry shape.
+- [x] Commit.
 
 ### Phase 4 — Split dialog UI (`packages/frontend`)
 
