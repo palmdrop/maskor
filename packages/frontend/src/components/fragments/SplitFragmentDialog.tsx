@@ -5,8 +5,10 @@ import {
   useSplitFragment,
   getListFragmentsQueryKey,
   getListFragmentSummariesQueryKey,
+  getGetFragmentQueryKey,
 } from "@api/generated/fragments/fragments";
 import { getListSequencesQueryKey } from "@api/generated/sequences/sequences";
+import { getGetMarginQueryKey } from "@api/generated/margins/margins";
 import { useInvalidateActionLog } from "@api/action-log";
 import type { SplitDelimiter, SplitPiecePreview } from "@api/generated/maskorAPI.schemas";
 import { Button } from "@components/ui/button";
@@ -120,6 +122,11 @@ export const SplitFragmentDialog = ({
         queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
         queryClient.invalidateQueries({ queryKey: getListFragmentSummariesQueryKey(projectId) }),
         queryClient.invalidateQueries({ queryKey: getListSequencesQueryKey(projectId) }),
+        // The source fragment was truncated to piece 1 and its Margin lost the
+        // migrated comments — refresh both so an open editor reflects the split
+        // instead of showing stale cached content.
+        queryClient.invalidateQueries({ queryKey: getGetFragmentQueryKey(projectId, fragmentId) }),
+        queryClient.invalidateQueries({ queryKey: getGetMarginQueryKey(projectId, fragmentId) }),
       ]);
       invalidateActionLog();
       onOpenChange(false);
@@ -149,7 +156,7 @@ export const SplitFragmentDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <div className="flex items-center gap-2">
             <Select
               value={delimiterType}
@@ -186,7 +193,7 @@ export const SplitFragmentDialog = ({
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 {pieceCount} piece{pieceCount === 1 ? "" : "s"}
@@ -205,12 +212,14 @@ export const SplitFragmentDialog = ({
                 {pieces.map((piece) => (
                   <li
                     key={piece.pieceIndex}
-                    className="flex flex-col rounded-md border border-border/50 px-3 py-2"
+                    className="flex min-w-0 flex-col rounded-md border border-border/50 px-3 py-2"
                   >
-                    <span className="text-sm font-medium tabular-nums">
+                    <span className="text-sm font-medium break-words">
                       {piece.pieceIndex}. {piece.key}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate">{piece.excerpt}</span>
+                    <span className="text-xs text-muted-foreground break-words line-clamp-2">
+                      {piece.excerpt}
+                    </span>
                   </li>
                 ))}
               </ol>

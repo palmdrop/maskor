@@ -223,6 +223,10 @@ describe("splitFragmentCommand", () => {
     );
     expect(created.content).toContain("<!--c:moveme-->");
     expect(created.content).toContain("Second block");
+    // The anchor marker must never leak into the derived key.
+    expect(created.key).toMatch(/^Second block/);
+    expect(created.key).not.toContain("c:");
+    expect(created.key).not.toContain("moveme");
 
     // The original's Margin keeps only the comment whose block stayed (+ its notes).
     const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);

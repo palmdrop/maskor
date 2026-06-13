@@ -67,7 +67,7 @@ const placeInSequence = defineScopeCommand(fragmentEditorScope, {
 
 const split = defineScopeCommand(fragmentEditorScope, {
   id: "fragment-editor:split",
-  label: "Split fragment…",
+  label: "Split fragment",
   category: "create",
   disabled: (ctx) =>
     !ctx.hasFragment

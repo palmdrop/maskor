@@ -2,7 +2,7 @@ import mammoth from "mammoth";
 import TurndownService from "turndown";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import type { PhrasingContent, RootContent } from "mdast";
-import { sanitizeEntityKey } from "@maskor/shared";
+import { sanitizeEntityKey, stripCommentMarkers } from "@maskor/shared";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -16,18 +16,30 @@ export type RawPiece = {
   content: string;
 };
 
+// A key is derived from human text — a heading or the first line of prose. Keep
+// only the first few words so a whole paragraph never becomes the key, and strip
+// anchor markers (`<!--c:ID-->`) first so a marker on the line never leaks into
+// the key. Returns null when nothing usable remains.
+const MAX_KEY_WORDS = 8;
+
+const toKeyCandidate = (raw: string): string | null => {
+  const sanitized = sanitizeEntityKey(stripCommentMarkers(raw));
+  if (!sanitized) return null;
+  return sanitized.split(/\s+/).slice(0, MAX_KEY_WORDS).join(" ");
+};
+
 export function deriveKey(piece: RawPiece, existingKeys: Set<string>): string {
   const candidates: string[] = [];
 
   if (piece.headingText) {
-    const sanitized = sanitizeEntityKey(piece.headingText);
-    if (sanitized) candidates.push(sanitized);
+    const candidate = toKeyCandidate(piece.headingText);
+    if (candidate) candidates.push(candidate);
   }
 
   const firstNonEmptyLine = piece.content.split("\n").find((line) => line.trim().length > 0);
   if (firstNonEmptyLine) {
-    const sanitized = sanitizeEntityKey(firstNonEmptyLine);
-    if (sanitized) candidates.push(sanitized);
+    const candidate = toKeyCandidate(firstNonEmptyLine);
+    if (candidate) candidates.push(candidate);
   }
 
   const baseKey: string =

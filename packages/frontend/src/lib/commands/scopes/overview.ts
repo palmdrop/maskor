@@ -34,8 +34,9 @@ export interface OverviewContext {
   mergeSectionDown: (sectionUuid: string) => Promise<void>;
   placedFragmentsForUnplace: ReadonlyArray<{ uuid: string; key: string }>;
   unplaceFragment: (fragmentUuid: string) => Promise<void>;
-  splittableFragments: ReadonlyArray<{ uuid: string; key: string }>;
-  openSplit: (fragmentUuid: string) => void;
+  // The currently selected fragment in the spine, or null. Split acts on it.
+  selectedFragmentId: string | null;
+  openSplit: () => void;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {
@@ -204,16 +205,10 @@ const unplaceFragment = defineScopeCommand(overviewScope, {
 
 const splitFragment = defineScopeCommand(overviewScope, {
   id: "overview:split-fragment",
-  label: "Split fragment…",
+  label: "Split selected fragment",
   category: "create",
-  disabled: (ctx) => (ctx.splittableFragments.length > 0 ? undefined : "No fragments to split"),
-  arg: {
-    items: (ctx) => ctx.splittableFragments,
-    getKey: (item) => item.uuid,
-    getLabel: (item) => item.key,
-    placeholder: "Split fragment…",
-  },
-  run: (ctx, target) => ctx.openSplit(target.uuid),
+  disabled: (ctx) => (ctx.selectedFragmentId ? undefined : "No fragment selected"),
+  run: (ctx) => ctx.openSplit(),
 });
 
 export const overviewCommands = [

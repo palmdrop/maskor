@@ -4,7 +4,7 @@
 **Last updated**: 2026-06-13
 **Shipped**:
 
-- 2026-06-13 — Identity-preserving fragment split. A fragment can be divided into multiple fragments along a chosen delimiter (heading level, thematic break, or blank-line). A dialog previews the resulting pieces (keys + excerpts + count) before committing; Confirm is disabled for a single-piece (no-op) split and a non-blocking warning appears past 10 pieces. The original keeps its identity as the first piece (UUID, key, aspects, readiness, references, sequence placements); the remaining pieces become new fragments inheriting the original's aspects + references (readiness 0), inserted immediately after it in every sequence it is placed in. Margin comments follow their block: a comment whose block moves into a new piece migrates into that piece's Margin (re-anchored), while one whose block is dropped orphans on the original. Recorded as a single non-undoable `fragment:split` action-log entry. Surfaced from the fragment editor and as a parameterized "Split fragment…" command in Overview and the fragment list. The thematic-break and blank-line delimiter modes were added to the shared `@maskor/importer` engine and are available in the import preview too.
+- 2026-06-13 — Identity-preserving fragment split. A fragment can be divided into multiple fragments along a chosen delimiter (heading level, thematic break, or blank-line). A dialog previews the resulting pieces (keys + excerpts + count) before committing; Confirm is disabled for a single-piece (no-op) split and a non-blocking warning appears past 10 pieces. The original keeps its identity as the first piece (UUID, key, aspects, readiness, references, sequence placements); the remaining pieces become new fragments inheriting the original's aspects + references (readiness 0), inserted immediately after it in every sequence it is placed in. Margin comments follow their block: a comment whose block moves into a new piece migrates into that piece's Margin (re-anchored), while one whose block is dropped orphans on the original. Recorded as a single non-undoable `fragment:split` action-log entry. Surfaced as "Split fragment" in the fragment editor (the open fragment) and "Split selected fragment" in Overview (the selected spine fragment). Derived keys are the heading or the first few words of the first line, with anchor markers and special symbols stripped, suffixed on collision against existing + just-minted keys. The thematic-break and blank-line delimiter modes were added to the shared `@maskor/importer` engine and are available in the import preview too.
 
 ---
 
@@ -23,7 +23,7 @@ A user working on a fragment that has grown too large can divide it into several
 - A read-only **preview** of the resulting pieces (derived keys + excerpts + count) before committing
 - Identity-preserving semantics: the original becomes the first piece (see `references/adr/0014-identity-preserving-fragment-split.md`)
 - Inserting the new pieces after the original in every sequence the original is placed in
-- Surfacing the action from the fragment editor and from Overview / the fragment list
+- Surfacing the action from the fragment editor (the open fragment) and from Overview (the selected spine fragment)
 - Reusing and extending the shared split engine in `@maskor/importer`
 
 ### Out of scope
@@ -40,7 +40,7 @@ A user working on a fragment that has grown too large can divide it into several
 
 ### Trigger and delimiter
 
-1. The user invokes the split command — `fragment-editor:split` for the fragment open in the editor, or a parameterized "Split fragment…" command that picks a fragment from Overview / the fragment list.
+1. The user invokes the split command on a fragment they are already focused on — `fragment-editor:split` ("Split fragment") for the fragment open in the editor, or `overview:split-fragment` ("Split selected fragment") for the selected fragment in the Overview spine. There is no fragment-picker variant: splitting a fragment you are not viewing is not a meaningful action.
 2. A dialog opens showing a delimiter selector. The delimiter is a **type**, not a marker the user inserts: the splitter cuts at every existing occurrence of that delimiter in the fragment's body.
    - **Heading level (H1–H6)** — cut before each heading at or above the chosen level (reuses `splitMarkdown`).
    - **Thematic break (`---`)** — cut at each markdown horizontal rule. A `---` in the body is a thematic break, never the YAML frontmatter fence (already stripped from `content`).

@@ -441,16 +441,12 @@ export const OverviewPage = () => {
 
   const commands = useCommands();
 
-  // Split fragment dialog (opened by the parameterized overview:split-fragment command).
+  // Split fragment dialog (opened by overview:split-fragment — acts on the
+  // currently selected spine fragment, not a picker).
   const [splitFragmentId, setSplitFragmentId] = useState<string | null>(null);
-  const openSplit = useCallback((fragmentUuid: string) => setSplitFragmentId(fragmentUuid), []);
-  const splittableFragments = useMemo(
-    () =>
-      allFragments
-        .filter((fragment) => !fragment.isDiscarded)
-        .map((fragment) => ({ uuid: fragment.uuid, key: fragment.key })),
-    [allFragments],
-  );
+  const openSplit = useCallback(() => {
+    if (primarySelectedUuid) setSplitFragmentId(primarySelectedUuid);
+  }, [primarySelectedUuid]);
 
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
   const toggleArcExpanded = useCallback(() => setArcExpanded((expanded) => !expanded), []);
@@ -542,7 +538,7 @@ export const OverviewPage = () => {
     mergeSectionDown,
     placedFragmentsForUnplace,
     unplaceFragment,
-    splittableFragments,
+    selectedFragmentId: primarySelectedUuid,
     openSplit,
   });
 

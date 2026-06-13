@@ -90,4 +90,31 @@ describe("deriveKey", () => {
     const key = deriveKey({ content: "Hello, (World)!\nother" }, existing);
     expect(key).toBe("Hello World");
   });
+
+  it("strips comment anchor markers from the first line", () => {
+    const existing = new Set<string>();
+    const key = deriveKey({ content: "Second block <!--c:moveme-->\nmore" }, existing);
+    expect(key).toBe("Second block");
+  });
+
+  it("strips a comment anchor marker from heading text", () => {
+    const existing = new Set<string>();
+    const key = deriveKey({ headingText: "My Heading <!--c:abc123-->", content: "x" }, existing);
+    expect(key).toBe("My Heading");
+  });
+
+  it("caps the key to the first few words of a long first line", () => {
+    const existing = new Set<string>();
+    const key = deriveKey(
+      { content: "one two three four five six seven eight nine ten eleven" },
+      existing,
+    );
+    expect(key).toBe("one two three four five six seven eight");
+  });
+
+  it("falls back to fragment-<uuid> when the line is only a comment marker", () => {
+    const existing = new Set<string>();
+    const key = deriveKey({ content: "<!--c:abc123-->" }, existing);
+    expect(key).toMatch(/^fragment-[0-9a-f-]{36}$/);
+  });
 });

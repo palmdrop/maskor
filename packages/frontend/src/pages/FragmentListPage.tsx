@@ -25,9 +25,6 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { CreateEntityDialog } from "@components/create-entity-dialog";
-import { SplitFragmentDialog } from "@components/fragments/SplitFragmentDialog";
-import { useCommandScope } from "@lib/commands/useCommandScope";
-import { fragmentListScope } from "@lib/commands/scopes/fragment-list";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedString } from "@hooks/usePersistedString";
 import {
@@ -120,19 +117,6 @@ export const FragmentListPage = () => {
       });
     }
   };
-
-  // Split fragment dialog (opened by the parameterized fragment-list:split-fragment
-  // command). Derived from the envelope here — before the early returns — so the
-  // scope is published unconditionally per the rules of hooks.
-  const [splitFragmentId, setSplitFragmentId] = useState<string | null>(null);
-  const openSplit = useCallback((fragmentUuid: string) => setSplitFragmentId(fragmentUuid), []);
-  const splittableFragments = useMemo(() => {
-    const list = envelope?.status === 200 ? envelope.data : [];
-    return list
-      .filter((fragment) => !fragment.isDiscarded)
-      .map((fragment) => ({ uuid: fragment.uuid, key: fragment.key }));
-  }, [envelope]);
-  useCommandScope(fragmentListScope, { splittableFragments, openSplit });
 
   if (isLoading && isRebuilding)
     return <p className="p-4 text-sm text-muted-foreground">Rebuilding project index…</p>;
@@ -325,16 +309,6 @@ export const FragmentListPage = () => {
           <p className="text-sm text-muted-foreground">Select a fragment to edit.</p>
         )}
       </main>
-      {splitFragmentId && (
-        <SplitFragmentDialog
-          projectId={projectId}
-          fragmentId={splitFragmentId}
-          open={splitFragmentId !== null}
-          onOpenChange={(next) => {
-            if (!next) setSplitFragmentId(null);
-          }}
-        />
-      )}
     </div>
   );
 };
