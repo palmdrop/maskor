@@ -8,11 +8,19 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] Margins: if a comment is longer than the block, BUT there is no comments below, let it expand over other blocks. IF there are other comments, then only show the part of the comment that fits. HOWEVER: might be a good idea to add a scrollbar, so it is clear that there is more, and so that the user can scroll inside the comment without having to click it (which also prompts editing).
+
+- [ ] Need to make it easier to manage and overview aspects. Should be possible to inspect aspect folder structure, and move between them while reading the contents (similar to obsidian, or just the fragment list). Also, should have an indication showing how many fragments are attached to the aspect. Finally, a way of reading aspect content while in a fragment? tabbed view? idk
+
+- [ ] When I expand the sequencer, suggestion engine, interleavmenet, etc, maybe add "template fragments" that adhere to the desired shape, and can be filled with specific content 
+
 - [ ] still a flicker on refresh in overview on scroll
 
 - [ ] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence
 
-- [ ] sequence placement command should be more slimmed and have drag and drop, a mini version of the actual overview page
+- [ ] fragment splitter - make it possible to split an existing fragment into multiple by adding delimiters and then running a split command. Could be headlines, line breaks, or "---"
+
+- [ ] sequence placement command should be more slimmed and have (basic) drag and drop, a mini version of the actual overview page
   - IFF it is possible to do that without enabling drag/drop for all fragments in the sequence
 
 - [ ] import sequences should not be visible in the sequence placement modal
@@ -22,7 +30,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] full-text fuzzy search in all entities
 
-- [ ] investigate focus view, i.e editing a single fragment without rest of the view visible. COuld be used as a replacement for the in-place edits that occur in overview and previt ew
+- [x] investigate focus view, i.e editing a single fragment without rest of the view visible. COuld be used as a replacement for the in-place edits that occur in overview and previt ew
 
 - [x] extra newlines on top of a fragment does not correctly offset the margins alignment - margins are not offset
 
