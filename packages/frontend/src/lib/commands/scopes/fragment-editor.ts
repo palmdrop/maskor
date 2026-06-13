@@ -8,6 +8,7 @@ export interface FragmentEditorContext {
   restore: () => Promise<void>;
   sequences: Sequence[];
   openPlaceInSequence: (sequenceId: string) => void;
+  openSplit: () => void;
 }
 
 export const fragmentEditorScope = defineScope<FragmentEditorContext>("fragment-editor", {
@@ -64,4 +65,17 @@ const placeInSequence = defineScopeCommand(fragmentEditorScope, {
   run: (ctx, sequence) => ctx.openPlaceInSequence(sequence.uuid),
 });
 
-export const fragmentEditorCommands = [discard, restore, placeInSequence] as const;
+const split = defineScopeCommand(fragmentEditorScope, {
+  id: "fragment-editor:split",
+  label: "Split fragment…",
+  category: "create",
+  disabled: (ctx) =>
+    !ctx.hasFragment
+      ? "No fragment to split"
+      : ctx.isDiscarded
+        ? "Fragment is discarded"
+        : undefined,
+  run: (ctx) => ctx.openSplit(),
+});
+
+export const fragmentEditorCommands = [discard, restore, placeInSequence, split] as const;

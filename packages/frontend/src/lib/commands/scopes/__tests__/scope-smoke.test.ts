@@ -3,6 +3,8 @@ import { overviewCommands, type OverviewContext } from "../overview";
 import { sequenceSidebarCommands, type SequenceSidebarContext } from "../sequence-sidebar";
 import { fragmentEditorCommands, type FragmentEditorContext } from "../fragment-editor";
 import { fragmentImportCommands, type FragmentImportContext } from "../fragment-import";
+import { fragmentListCommands, type FragmentListContext } from "../fragment-list";
+import { fragmentSplitCommands, type FragmentSplitContext } from "../fragment-split";
 import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
 import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
 import { projectShellCommands, type ProjectShellContext } from "../project-shell";
@@ -40,6 +42,8 @@ describe("scopes/overview", () => {
     mergeSectionDown: vi.fn(),
     placedFragmentsForUnplace: [],
     unplaceFragment: vi.fn(),
+    splittableFragments: [],
+    openSplit: vi.fn(),
   };
 
   it("designate-main runs and disables when sequence is already main", () => {
@@ -151,6 +155,15 @@ describe("scopes/overview", () => {
     cmd.run(eligible, { uuid: "frag-1", key: "frag-one" });
     expect(ctx.unplaceFragment).toHaveBeenCalledWith("frag-1");
   });
+
+  it("split-fragment opens the dialog for the chosen fragment and is gated on availability", () => {
+    const cmd = find(overviewCommands, "overview:split-fragment");
+    expect(cmd.disabled?.({ ...ctx, splittableFragments: [] })).toMatch(/No fragments to split/);
+    const eligible = { ...ctx, splittableFragments: [{ uuid: "frag-1", key: "frag-one" }] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, { uuid: "frag-1", key: "frag-one" });
+    expect(ctx.openSplit).toHaveBeenCalledWith("frag-1");
+  });
 });
 
 describe("scopes/sequence-sidebar", () => {
@@ -220,6 +233,7 @@ describe("scopes/fragment-editor", () => {
     restore: vi.fn(),
     sequences: [],
     openPlaceInSequence: vi.fn(),
+    openSplit: vi.fn(),
   };
 
   it("discard runs and is disabled in obvious bad states", () => {
@@ -247,6 +261,48 @@ describe("scopes/fragment-editor", () => {
     expect(cmd.disabled?.({ ...ctx, hasFragment: false })).toBe("No fragment to place");
     expect(cmd.disabled?.({ ...ctx, isDiscarded: true })).toBe("Fragment is discarded");
     expect(cmd.disabled?.({ ...ctx, sequences: [] })).toBe("No sequences");
+    expect(cmd.disabled?.(ctx)).toBeUndefined();
+  });
+
+  it("split opens the dialog and disables when discarded or absent", () => {
+    const cmd = find(fragmentEditorCommands, "fragment-editor:split");
+    cmd.run(baseCtx);
+    expect(baseCtx.openSplit).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...baseCtx, hasFragment: false })).toBe("No fragment to split");
+    expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe("Fragment is discarded");
+    expect(cmd.disabled?.(baseCtx)).toBeUndefined();
+  });
+});
+
+describe("scopes/fragment-list", () => {
+  const ctx: FragmentListContext = {
+    splittableFragments: [],
+    openSplit: vi.fn(),
+  };
+
+  it("split-fragment opens the dialog for the chosen fragment and is gated on availability", () => {
+    const cmd = find(fragmentListCommands, "fragment-list:split-fragment");
+    expect(cmd.disabled?.({ ...ctx, splittableFragments: [] })).toMatch(/No fragments to split/);
+    const eligible = { ...ctx, splittableFragments: [{ uuid: "frag-1", key: "frag-one" }] };
+    expect(cmd.disabled?.(eligible)).toBeUndefined();
+    cmd.run(eligible, { uuid: "frag-1", key: "frag-one" });
+    expect(ctx.openSplit).toHaveBeenCalledWith("frag-1");
+  });
+});
+
+describe("scopes/fragment-split", () => {
+  const ctx: FragmentSplitContext = {
+    pieceCount: 3,
+    isPending: false,
+    confirm: vi.fn(),
+  };
+
+  it("confirm runs and is gated on piece count + pending state", () => {
+    const cmd = find(fragmentSplitCommands, "fragment-split:confirm");
+    cmd.run(ctx);
+    expect(ctx.confirm).toHaveBeenCalled();
+    expect(cmd.disabled?.({ ...ctx, pieceCount: 1 })).toMatch(/nothing to split/);
+    expect(cmd.disabled?.({ ...ctx, isPending: true })).toBe("Splitting…");
     expect(cmd.disabled?.(ctx)).toBeUndefined();
   });
 });

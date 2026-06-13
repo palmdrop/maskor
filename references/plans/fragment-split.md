@@ -65,11 +65,11 @@ A dialog with live preview, modelled on the extract-to-entity dialog + the impor
 
 ### Phase 5 — Surfaces (`packages/frontend`)
 
-- [ ] Add `fragment-editor:split` in the `fragment-editor` scope (opens the dialog for the current fragment), mirroring how `editor.extract-to-*` is surfaced.
-- [ ] Add a parameterized "Split fragment…" command in the Overview and fragment-list scopes that picks a fragment then opens the same dialog (shared dialog takes a `fragmentId`).
-- [ ] Register new commands in the scope barrels (`scopes/index.ts`).
-- [ ] Tests for command wiring + scope registration.
-- [ ] Commit.
+- [x] Add `fragment-editor:split` in the `fragment-editor` scope (opens the dialog for the current fragment), mirroring how `editor.extract-to-*` is surfaced.
+- [x] Add a parameterized "Split fragment…" command in the Overview and fragment-list scopes that picks a fragment then opens the same dialog (shared dialog takes a `fragmentId`).
+- [x] Register new commands in the scope barrels (`scopes/index.ts`).
+- [x] Tests for command wiring + scope registration.
+- [x] Commit.
 
 ### Phase 6 — Deferred: Margin comment migration
 

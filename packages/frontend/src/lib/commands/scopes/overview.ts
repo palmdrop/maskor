@@ -34,6 +34,8 @@ export interface OverviewContext {
   mergeSectionDown: (sectionUuid: string) => Promise<void>;
   placedFragmentsForUnplace: ReadonlyArray<{ uuid: string; key: string }>;
   unplaceFragment: (fragmentUuid: string) => Promise<void>;
+  splittableFragments: ReadonlyArray<{ uuid: string; key: string }>;
+  openSplit: (fragmentUuid: string) => void;
 }
 
 export const overviewScope = defineScope<OverviewContext>("overview", {
@@ -200,6 +202,20 @@ const unplaceFragment = defineScopeCommand(overviewScope, {
   run: (ctx, target) => ctx.unplaceFragment(target.uuid),
 });
 
+const splitFragment = defineScopeCommand(overviewScope, {
+  id: "overview:split-fragment",
+  label: "Split fragment…",
+  category: "create",
+  disabled: (ctx) => (ctx.splittableFragments.length > 0 ? undefined : "No fragments to split"),
+  arg: {
+    items: (ctx) => ctx.splittableFragments,
+    getKey: (item) => item.uuid,
+    getLabel: (item) => item.key,
+    placeholder: "Split fragment…",
+  },
+  run: (ctx, target) => ctx.openSplit(target.uuid),
+});
+
 export const overviewCommands = [
   designateMain,
   addSection,
@@ -215,4 +231,5 @@ export const overviewCommands = [
   mergeSectionUp,
   mergeSectionDown,
   unplaceFragment,
+  splitFragment,
 ] as const;

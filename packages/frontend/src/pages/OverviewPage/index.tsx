@@ -30,6 +30,7 @@ import { ReorderList } from "./components/ReorderList";
 import { ProseSpine } from "./components/ProseSpine";
 import { fragmentAnchorId } from "./components/FragmentProse";
 import { FragmentEditor } from "@components/fragments/fragment-editor";
+import { SplitFragmentDialog } from "@components/fragments/SplitFragmentDialog";
 import { Button } from "@components/ui/button";
 import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
 import { overviewEditOrder } from "@lib/fragments/order-neighbors";
@@ -440,6 +441,17 @@ export const OverviewPage = () => {
 
   const commands = useCommands();
 
+  // Split fragment dialog (opened by the parameterized overview:split-fragment command).
+  const [splitFragmentId, setSplitFragmentId] = useState<string | null>(null);
+  const openSplit = useCallback((fragmentUuid: string) => setSplitFragmentId(fragmentUuid), []);
+  const splittableFragments = useMemo(
+    () =>
+      allFragments
+        .filter((fragment) => !fragment.isDiscarded)
+        .map((fragment) => ({ uuid: fragment.uuid, key: fragment.key })),
+    [allFragments],
+  );
+
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
   const toggleArcExpanded = useCallback(() => setArcExpanded((expanded) => !expanded), []);
   const toggleVerticalArcStrip = useCallback(() => setVerticalStripOpen((open) => !open), []);
@@ -530,6 +542,8 @@ export const OverviewPage = () => {
     mergeSectionDown,
     placedFragmentsForUnplace,
     unplaceFragment,
+    splittableFragments,
+    openSplit,
   });
 
   // The overlay editor's Previous / Next / Close. goToFragment retargets the
@@ -778,6 +792,16 @@ export const OverviewPage = () => {
             : undefined
         }
       />
+      {splitFragmentId && (
+        <SplitFragmentDialog
+          projectId={projectId}
+          fragmentId={splitFragmentId}
+          open={splitFragmentId !== null}
+          onOpenChange={(next) => {
+            if (!next) setSplitFragmentId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

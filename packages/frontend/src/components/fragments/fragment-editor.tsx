@@ -26,6 +26,7 @@ import { FragmentMetadataForm } from "./fragment-metadata-form";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
+import { SplitFragmentDialog } from "@components/fragments/SplitFragmentDialog";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
@@ -104,6 +105,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     setPlaceInSequenceId(sequenceId);
     setIsPlaceInSequenceOpen(true);
   }, []);
+  const [isSplitOpen, setIsSplitOpen] = useState(false);
+  const openSplit = useCallback(() => setIsSplitOpen(true), []);
   const { mutateAsync: discardFragment, isPending: isDiscardPending } = useDiscardFragment();
   const { mutateAsync: restoreFragment, isPending: isRestorePending } = useRestoreFragment();
 
@@ -243,6 +246,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     restore: handleRestore,
     sequences,
     openPlaceInSequence,
+    openSplit,
   });
 
   // The linked pair's single "restore from server": revert both the fragment and the Margin to the
@@ -426,6 +430,14 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           sequenceId={placeInSequenceId}
           open={isPlaceInSequenceOpen}
           onOpenChange={setIsPlaceInSequenceOpen}
+        />
+      )}
+      {isSplitOpen && (
+        <SplitFragmentDialog
+          projectId={projectId}
+          fragmentId={fragmentId}
+          open={isSplitOpen}
+          onOpenChange={setIsSplitOpen}
         />
       )}
     </>
