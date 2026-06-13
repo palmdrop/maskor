@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import type { FragmentSummary, Sequence } from "@api/generated/maskorAPI.schemas";
 import { getListSequencesQueryKey } from "@api/generated/sequences/sequences";
@@ -84,10 +84,10 @@ export const SequenceArranger = ({
     [allFragments, fragmentSectionMap],
   );
 
-  // Selection drives the row highlight only; the active fragment starts selected.
-  const [selectedFragmentUuid, setSelectedFragmentUuid] = useState(activeFragmentUuid);
-  useEffect(() => setSelectedFragmentUuid(activeFragmentUuid), [activeFragmentUuid]);
-  const selectionSet = useMemo(() => new Set([selectedFragmentUuid]), [selectedFragmentUuid]);
+  // The arranger is opened for a single fragment: the highlight tracks that
+  // fragment and is not user-selectable, so it always matches what the footer
+  // buttons and ←/→/Backspace act on.
+  const selectionSet = useMemo(() => new Set([activeFragmentUuid]), [activeFragmentUuid]);
 
   const dnd = useSequenceDnD({
     sequence,
@@ -184,7 +184,7 @@ export const SequenceArranger = ({
             colorByAspectKey={NO_ASPECT_COLORS}
             fragmentByUuid={fragmentByUuid}
             selectedFragmentUuids={selectionSet}
-            onSelectFragment={setSelectedFragmentUuid}
+            onSelectFragment={NOOP}
             onRemoveFragment={handleRemove}
             getViolationTooltips={NO_TOOLTIPS}
             getCycleTooltips={NO_TOOLTIPS}

@@ -17,6 +17,7 @@ import {
 } from "@api/generated/fragments/fragments";
 import { useGetProject } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
+import { isSequenceReadOnly } from "@lib/sequences/readOnly";
 import { useInvalidateActionLog } from "@api/action-log";
 import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -99,7 +100,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   // Import-sequences (carrying an `origin`) are read-only snapshots and cannot be
   // placed into — exclude them from the "Place in sequence…" picker. To build on
   // one the user clones it first.
-  const placeableSequences = sequences.filter((sequence) => sequence.origin === undefined);
+  const placeableSequences = sequences.filter((sequence) => !isSequenceReadOnly(sequence));
   const [placeInSequenceId, setPlaceInSequenceId] = useState<string | null>(null);
   const [isPlaceInSequenceOpen, setIsPlaceInSequenceOpen] = useState(false);
   // Keep `open` separate from the mounted/unmounted decision so Radix can run

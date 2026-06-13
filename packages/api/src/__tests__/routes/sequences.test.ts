@@ -1668,14 +1668,21 @@ describe("Phase 3 clone / insert operations", () => {
 
 describe("import-sequence read-only enforcement", () => {
   // A sequence carrying an `origin` is an import-sequence: frozen. The backend
-  // must reject placement and section mutations regardless of the UI.
-  const createImportSequence = async (name: string): Promise<SequenceFull> => {
+  // must reject every placement / section-structure mutation regardless of the
+  // UI. The sequencer-level guard is exercised exhaustively in the sequencer
+  // package; here we assert every mutating route maps the rejection to
+  // `409 { reason: "sequence_read_only" }`.
+  let importSequence: SequenceFull;
+  let fragmentUuid: string;
+  let sectionId: string;
+
+  beforeAll(async () => {
     const bundle = (await (
       await testContext.app.request(baseUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
+          name: "Imported — read-only",
           isMain: false,
           projectUuid: project.projectUUID,
           origin: {
@@ -1687,45 +1694,108 @@ describe("import-sequence read-only enforcement", () => {
         }),
       })
     ).json()) as SequenceBundle;
-    return bundle.sequences.find((s) => s.name === name)! as SequenceFull;
-  };
+    importSequence = bundle.sequences.find((s) => s.name === "Imported — read-only")!;
+    sectionId = importSequence.sections[0]!.uuid;
 
-  it("rejects placing a fragment into an import-sequence with 409", async () => {
     const summaries = (await (
       await testContext.app.request(`/projects/${project.projectUUID}/fragments/summaries`)
     ).json()) as Array<{ uuid: string }>;
     const fragment = summaries[0];
     if (!fragment) throw new Error("expected at least one seeded fragment");
-
-    const importSequence = await createImportSequence("Imported — no place");
-    const response = await testContext.app.request(
-      `${baseUrl()}/${importSequence.uuid}/positions`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fragmentUuid: fragment.uuid,
-          sectionUuid: importSequence.sections[0]!.uuid,
-          position: 0,
-        }),
-      },
-    );
-
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { reason?: string };
-    expect(body.reason).toBe("sequence_read_only");
+    fragmentUuid = fragment.uuid;
   });
 
-  it("rejects creating a section in an import-sequence with 409", async () => {
-    const importSequence = await createImportSequence("Imported — no section");
-    const response = await testContext.app.request(`${baseUrl()}/${importSequence.uuid}/sections`, {
+  // Each mutating route, with a body that passes request-schema validation so the
+  // handler reaches the read-only guard. Built lazily because they depend on the
+  // sequence/section/fragment ids resolved in beforeAll.
+  const mutatingRequests = (): {
+    name: string;
+    path: string;
+    method: string;
+    body?: unknown;
+  }[] => [
+    {
+      name: "place-fragment",
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "New section" }),
-    });
+      path: `${baseUrl()}/${importSequence.uuid}/positions`,
+      body: { fragmentUuid, sectionUuid: sectionId, position: 0 },
+    },
+    {
+      name: "move-fragment",
+      method: "PATCH",
+      path: `${baseUrl()}/${importSequence.uuid}/positions/${fragmentUuid}`,
+      body: { sectionUuid: sectionId, position: 0 },
+    },
+    {
+      name: "unplace-fragment",
+      method: "DELETE",
+      path: `${baseUrl()}/${importSequence.uuid}/positions/${fragmentUuid}`,
+    },
+    {
+      name: "create-section",
+      method: "POST",
+      path: `${baseUrl()}/${importSequence.uuid}/sections`,
+      body: { name: "New section" },
+    },
+    {
+      name: "rename-section",
+      method: "PATCH",
+      path: `${baseUrl()}/${importSequence.uuid}/sections/${sectionId}`,
+      body: { name: "Renamed" },
+    },
+    {
+      name: "reorder-section",
+      method: "PATCH",
+      path: `${baseUrl()}/${importSequence.uuid}/sections/${sectionId}/position`,
+      body: { position: 0 },
+    },
+    {
+      name: "delete-section",
+      method: "DELETE",
+      path: `${baseUrl()}/${importSequence.uuid}/sections/${sectionId}`,
+    },
+    {
+      name: "group-fragments",
+      method: "POST",
+      path: `${baseUrl()}/${importSequence.uuid}/group-fragments`,
+      body: { fragmentUuids: [fragmentUuid], name: "Grouped" },
+    },
+    {
+      name: "move-fragments",
+      method: "POST",
+      path: `${baseUrl()}/${importSequence.uuid}/move-fragments`,
+      body: { fragmentUuids: [fragmentUuid], sectionUuid: sectionId, position: 0 },
+    },
+    {
+      name: "split-section",
+      method: "POST",
+      path: `${baseUrl()}/${importSequence.uuid}/split-section`,
+      body: { fragmentUuid, name: "Split" },
+    },
+    {
+      name: "merge-section",
+      method: "POST",
+      path: `${baseUrl()}/${importSequence.uuid}/sections/${sectionId}/merge-next`,
+    },
+  ];
 
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { reason?: string };
-    expect(body.reason).toBe("sequence_read_only");
+  it("rejects every mutating route with 409 sequence_read_only", async () => {
+    for (const request of mutatingRequests()) {
+      const response = await testContext.app.request(request.path, {
+        method: request.method,
+        ...(request.body
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(request.body),
+            }
+          : {}),
+      });
+
+      expect(response.status, `${request.name} should be rejected`).toBe(409);
+      const body = (await response.json()) as { reason?: string };
+      expect(body.reason, `${request.name} should report sequence_read_only`).toBe(
+        "sequence_read_only",
+      );
+    }
   });
 });

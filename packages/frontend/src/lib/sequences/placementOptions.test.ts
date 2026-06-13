@@ -63,11 +63,11 @@ describe("buildPlacementOptions", () => {
 describe("placementOptionLabel", () => {
   it("suffixes member options with the section, plain name otherwise", () => {
     expect(placementOptionLabel({ uuid: "s", name: "Beta", sectionName: "Act II" })).toBe(
-      'Beta · in "Act II"',
+      "Beta — already in «Act II»",
     );
     expect(placementOptionLabel({ uuid: "s", name: "Beta", sectionName: null })).toBe("Beta");
     expect(placementOptionLabel({ uuid: "s", name: "Beta", sectionName: "" })).toBe(
-      'Beta · in "Untitled section"',
+      "Beta — already in «Untitled section»",
     );
   });
 });

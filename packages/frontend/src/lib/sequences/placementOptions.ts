@@ -39,5 +39,5 @@ export const buildPlacementOptions = (
 // user knows selecting one lets them move the fragment, not just add it.
 export const placementOptionLabel = (option: PlacementOption): string =>
   option.sectionName !== null
-    ? `${option.name} · in "${option.sectionName || "Untitled section"}"`
+    ? `${option.name} — already in «${option.sectionName || "Untitled section"}»`
     : option.name;

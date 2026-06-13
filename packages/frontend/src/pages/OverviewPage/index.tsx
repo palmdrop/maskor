@@ -23,6 +23,7 @@ import {
 } from "@api/generated/projects/projects";
 import type { Violation } from "@api/generated/maskorAPI.schemas";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { isSequenceReadOnly } from "@lib/sequences/readOnly";
 import { SequenceSidebar } from "./components/SequenceSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 import { SequenceHeader } from "./components/SequenceHeader";
@@ -116,7 +117,7 @@ export const OverviewPage = () => {
   // An import-sequence (origin set) is a read-only snapshot: arranging and
   // section editing are disabled, mirroring the backend guard. To build on it
   // the user clones it.
-  const isSequenceReadOnly = sequence?.origin !== undefined;
+  const sequenceReadOnly = sequence ? isSequenceReadOnly(sequence) : false;
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
 
@@ -580,11 +581,11 @@ export const OverviewPage = () => {
         <DndContext
           sensors={dnd.sensors}
           collisionDetection={dnd.collisionDetection}
-          onDragStart={isSequenceReadOnly ? undefined : dnd.handleDragStart}
-          onDragEnd={isSequenceReadOnly ? undefined : dnd.handleDragEnd}
+          onDragStart={sequenceReadOnly ? undefined : dnd.handleDragStart}
+          onDragEnd={sequenceReadOnly ? undefined : dnd.handleDragEnd}
         >
           <aside className="w-64 shrink-0 border-r border-border overflow-y-auto p-3">
-            {isSequenceReadOnly && (
+            {sequenceReadOnly && (
               <p className="mb-3 rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground">
                 Import-sequence — read-only. Clone it to rearrange.
               </p>
@@ -613,7 +614,7 @@ export const OverviewPage = () => {
               hasSequence={!!sequence}
               createSectionPending={sectionManager.createSection.isPending}
               onAddSection={() => commands.run("overview:add-section")}
-              readOnly={isSequenceReadOnly}
+              readOnly={sequenceReadOnly}
             />
           </aside>
           <DragOverlay dropAnimation={null}>
@@ -745,8 +746,8 @@ export const OverviewPage = () => {
             <DndContext
               sensors={dnd.sensors}
               collisionDetection={dnd.collisionDetection}
-              onDragStart={isSequenceReadOnly ? undefined : dnd.handleDragStart}
-              onDragEnd={isSequenceReadOnly ? undefined : dnd.handleDragEnd}
+              onDragStart={sequenceReadOnly ? undefined : dnd.handleDragStart}
+              onDragEnd={sequenceReadOnly ? undefined : dnd.handleDragEnd}
             >
               <div className="flex gap-4">
                 {verticalStripOpen && (
@@ -767,9 +768,9 @@ export const OverviewPage = () => {
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
                     onSelectFragment={handleSelectFragment}
-                    onRemoveFragment={isSequenceReadOnly ? undefined : handleRemoveFragment}
+                    onRemoveFragment={sequenceReadOnly ? undefined : handleRemoveFragment}
                     onEdit={handleEdit}
-                    readOnly={isSequenceReadOnly}
+                    readOnly={sequenceReadOnly}
                   />
                 </div>
               </div>
@@ -795,7 +796,7 @@ export const OverviewPage = () => {
         // in the active sequence (the unplace target) and the sequence is writable
         // (import-sequences are read-only).
         onRemoveFragment={
-          !isSequenceReadOnly && primarySelectedUuid && fragmentSectionMap.has(primarySelectedUuid)
+          !sequenceReadOnly && primarySelectedUuid && fragmentSectionMap.has(primarySelectedUuid)
             ? handleRemoveFragment
             : undefined
         }
