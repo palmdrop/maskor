@@ -4,7 +4,6 @@ import { sequenceSidebarCommands, type SequenceSidebarContext } from "../sequenc
 import { fragmentEditorCommands, type FragmentEditorContext } from "../fragment-editor";
 import { fragmentImportCommands, type FragmentImportContext } from "../fragment-import";
 import { fragmentListCommands, type FragmentListContext } from "../fragment-list";
-import { fragmentSplitCommands, type FragmentSplitContext } from "../fragment-split";
 import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
 import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
 import { projectShellCommands, type ProjectShellContext } from "../project-shell";
@@ -287,23 +286,6 @@ describe("scopes/fragment-list", () => {
     expect(cmd.disabled?.(eligible)).toBeUndefined();
     cmd.run(eligible, { uuid: "frag-1", key: "frag-one" });
     expect(ctx.openSplit).toHaveBeenCalledWith("frag-1");
-  });
-});
-
-describe("scopes/fragment-split", () => {
-  const ctx: FragmentSplitContext = {
-    pieceCount: 3,
-    isPending: false,
-    confirm: vi.fn(),
-  };
-
-  it("confirm runs and is gated on piece count + pending state", () => {
-    const cmd = find(fragmentSplitCommands, "fragment-split:confirm");
-    cmd.run(ctx);
-    expect(ctx.confirm).toHaveBeenCalled();
-    expect(cmd.disabled?.({ ...ctx, pieceCount: 1 })).toMatch(/nothing to split/);
-    expect(cmd.disabled?.({ ...ctx, isPending: true })).toBe("Splitting…");
-    expect(cmd.disabled?.(ctx)).toBeUndefined();
   });
 });
 

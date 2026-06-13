@@ -5,7 +5,6 @@ import { fragmentEditorCommands } from "./fragment-editor";
 import { fragmentNavCommands } from "./fragment-nav";
 import { marginCommands } from "./margin";
 import { fragmentImportCommands } from "./fragment-import";
-import { fragmentSplitCommands } from "./fragment-split";
 import { fragmentListCommands } from "./fragment-list";
 import { fragmentMetadataCommands } from "./fragment-metadata";
 import { projectConfigCommands } from "./project-config";
@@ -28,7 +27,6 @@ export const scopeCommands = [
   ...fragmentNavCommands,
   ...marginCommands,
   ...fragmentImportCommands,
-  ...fragmentSplitCommands,
   ...fragmentListCommands,
   ...fragmentMetadataCommands,
   ...projectConfigCommands,

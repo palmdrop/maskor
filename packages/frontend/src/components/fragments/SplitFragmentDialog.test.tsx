@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { CommandsProvider } from "@lib/commands/CommandsProvider";
 
 const previewMutateAsync = vi.fn();
 const splitMutateAsync = vi.fn();
@@ -33,15 +32,13 @@ const previewResponse = (
 
 const renderDialog = (onOpenChange = vi.fn(), onSplit = vi.fn()) =>
   render(
-    <CommandsProvider>
-      <SplitFragmentDialog
-        projectId="project-1"
-        fragmentId="fragment-1"
-        open
-        onOpenChange={onOpenChange}
-        onSplit={onSplit}
-      />
-    </CommandsProvider>,
+    <SplitFragmentDialog
+      projectId="project-1"
+      fragmentId="fragment-1"
+      open
+      onOpenChange={onOpenChange}
+      onSplit={onSplit}
+    />,
   );
 
 beforeEach(() => {
@@ -79,7 +76,7 @@ describe("SplitFragmentDialog", () => {
     expect(screen.getByRole("button", { name: "Split" })).toBeDisabled();
   });
 
-  it("dispatches the split through the command system on confirm", async () => {
+  it("runs the split mutation directly on confirm and closes on success", async () => {
     previewMutateAsync.mockResolvedValue(
       previewResponse([
         { pieceIndex: 1, key: "a", excerpt: "a" },

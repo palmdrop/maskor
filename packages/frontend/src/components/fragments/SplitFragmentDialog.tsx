@@ -25,9 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { useCommands } from "@lib/commands/useCommands";
-import { useCommandScope } from "@lib/commands/useCommandScope";
-import { fragmentSplitScope } from "@lib/commands/scopes/fragment-split";
 
 type DelimiterType = SplitDelimiter["type"];
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -59,13 +56,13 @@ export const SplitFragmentDialog = ({
   onSplit,
 }: SplitFragmentDialogProps) => {
   const queryClient = useQueryClient();
-  const commands = useCommands();
   const invalidateActionLog = useInvalidateActionLog(projectId);
 
   const [delimiterType, setDelimiterType] = useState<DelimiterType>("heading");
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>(1);
   const [pieces, setPieces] = useState<SplitPiecePreview[]>([]);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [splitError, setSplitError] = useState<string | null>(null);
 
   const delimiter = useMemo<SplitDelimiter>(
     () =>
@@ -112,16 +109,24 @@ export const SplitFragmentDialog = ({
   const isPending = splitFragment.isPending;
   const canConfirm = pieceCount > 1 && !isPending;
 
+  // Dialog-internal confirmation (a form submit inside an open modal): runs the
+  // mutation directly and surfaces failures in-place, like the other modals —
+  // not through the command system.
   const handleConfirm = useCallback(async () => {
-    await splitFragment.mutateAsync({ projectId, data: { fragmentId, delimiter } });
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
-      queryClient.invalidateQueries({ queryKey: getListFragmentSummariesQueryKey(projectId) }),
-      queryClient.invalidateQueries({ queryKey: getListSequencesQueryKey(projectId) }),
-    ]);
-    invalidateActionLog();
-    onOpenChange(false);
-    onSplit?.();
+    setSplitError(null);
+    try {
+      await splitFragment.mutateAsync({ projectId, data: { fragmentId, delimiter } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
+        queryClient.invalidateQueries({ queryKey: getListFragmentSummariesQueryKey(projectId) }),
+        queryClient.invalidateQueries({ queryKey: getListSequencesQueryKey(projectId) }),
+      ]);
+      invalidateActionLog();
+      onOpenChange(false);
+      onSplit?.();
+    } catch {
+      setSplitError("Split failed. Try again.");
+    }
   }, [
     splitFragment,
     projectId,
@@ -132,12 +137,6 @@ export const SplitFragmentDialog = ({
     onOpenChange,
     onSplit,
   ]);
-
-  useCommandScope(fragmentSplitScope, {
-    pieceCount,
-    isPending,
-    confirm: handleConfirm,
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -225,6 +224,7 @@ export const SplitFragmentDialog = ({
                 This will create {pieceCount - 1} new fragments.
               </p>
             )}
+            {splitError && <p className="text-sm text-destructive">{splitError}</p>}
           </div>
         </div>
 
@@ -232,7 +232,7 @@ export const SplitFragmentDialog = ({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={!canConfirm} onClick={() => commands.run("fragment-split:confirm")}>
+          <Button disabled={!canConfirm} onClick={() => void handleConfirm()}>
             {isPending ? "Splitting…" : "Split"}
           </Button>
         </DialogFooter>
