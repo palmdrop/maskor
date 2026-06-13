@@ -47,6 +47,7 @@ interface SortableSpineFragmentProps {
   onSelect: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
+  readOnly?: boolean;
 }
 
 const SortableSpineFragment = ({
@@ -57,9 +58,11 @@ const SortableSpineFragment = ({
   onSelect,
   onEdit,
   onRemoveFragment,
+  readOnly = false,
 }: SortableSpineFragmentProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
+    disabled: readOnly,
   });
 
   return (
@@ -72,11 +75,13 @@ const SortableSpineFragment = ({
       }}
       className={`flex items-start gap-1 ${fragment.isDiscarded ? "bg-muted" : ""}`}
     >
-      <DragHandle
-        attributes={attributes}
-        listeners={listeners}
-        label={`Drag to reorder "${fragment.key}"`}
-      />
+      {!readOnly && (
+        <DragHandle
+          attributes={attributes}
+          listeners={listeners}
+          label={`Drag to reorder "${fragment.key}"`}
+        />
+      )}
       <div className="flex-1 min-w-0">
         <FragmentProse
           fragmentUuid={fragment.uuid}
@@ -104,6 +109,7 @@ interface SpineSectionProps {
   onSelectFragment: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
+  readOnly?: boolean;
 }
 
 const SpineSection = ({
@@ -115,6 +121,7 @@ const SpineSection = ({
   onSelectFragment,
   onEdit,
   onRemoveFragment,
+  readOnly,
 }: SpineSectionProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: section.uuid });
 
@@ -149,6 +156,7 @@ const SpineSection = ({
                 onSelect={onSelectFragment}
                 onEdit={onEdit}
                 onRemoveFragment={onRemoveFragment}
+                readOnly={readOnly}
               />
             );
           })}
@@ -167,6 +175,8 @@ interface ProseSpineProps {
   onSelectFragment: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
+  // Read-only sequence (an import-sequence): no drag handles, no remove.
+  readOnly?: boolean;
 }
 
 // The vertical reading spine: placed fragments rendered as flowing prose in
@@ -185,6 +195,7 @@ export const ProseSpine = ({
   onSelectFragment,
   onEdit,
   onRemoveFragment,
+  readOnly,
 }: ProseSpineProps) => {
   // Only bail out entirely when the sequence has no sections at all. Empty
   // sections still render as droppable zones so the first fragment can be
@@ -210,6 +221,7 @@ export const ProseSpine = ({
           onSelectFragment={onSelectFragment}
           onEdit={onEdit}
           onRemoveFragment={onRemoveFragment}
+          readOnly={readOnly}
         />
       ))}
     </div>

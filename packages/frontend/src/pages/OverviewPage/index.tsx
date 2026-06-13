@@ -767,8 +767,9 @@ export const OverviewPage = () => {
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
                     onSelectFragment={handleSelectFragment}
-                    onRemoveFragment={handleRemoveFragment}
+                    onRemoveFragment={isSequenceReadOnly ? undefined : handleRemoveFragment}
                     onEdit={handleEdit}
+                    readOnly={isSequenceReadOnly}
                   />
                 </div>
               </div>
@@ -791,9 +792,10 @@ export const OverviewPage = () => {
         cycles={bundle?.cycles ?? []}
         fragmentByUuid={fragmentByUuid}
         // Only offer "remove from sequence" when the selected fragment is placed
-        // in the active sequence (the unplace target).
+        // in the active sequence (the unplace target) and the sequence is writable
+        // (import-sequences are read-only).
         onRemoveFragment={
-          primarySelectedUuid && fragmentSectionMap.has(primarySelectedUuid)
+          !isSequenceReadOnly && primarySelectedUuid && fragmentSectionMap.has(primarySelectedUuid)
             ? handleRemoveFragment
             : undefined
         }
