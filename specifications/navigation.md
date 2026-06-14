@@ -1,14 +1,14 @@
 # Spec: Navigation
 
 **Status**: Stable
-**Last updated**: 2026-06-09
+**Last updated**: 2026-06-14
 
 **Shipped**:
 
 - 2026-04-20 — Project selection screen at `/`; the project shell requires an active project — no view is accessible without one. (plan: references/plans/project-switching-view.md)
 - 2026-04-27 — Application shell renders a persistent navigation bar scoped to the active project, with links to Fragment list, Overview, and Project config. (plan: references/plans/frontend-navigation.md)
 - 2026-04-27 — Fragment list view is available: users can browse, search, and open any fragment into the editor from a dedicated route. (plan: references/plans/frontend-navigation.md)
-- 2026-04-27 — Navigating away from the Fragment editor with unsaved changes triggers a save/discard prompt. (plan: references/plans/frontend-navigation.md)
+- 2026-05-19 — Unsaved fragment-editor edits survive leaving the editor via the swap/recovery model (`useEntityContentSwap`): the in-progress buffer is restored when the fragment is reopened. The overlay editor's Close is a save-then-close ("Done"). This supersedes the originally-planned 2026-04-27 "save/discard prompt on leave", which was never built — recovery (nothing lost) was adopted instead of a blocking prompt. (plan: references/plans/frontend-navigation.md)
 - 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-05-20 — Chord-based keyboard shortcuts (`g+f`, `g+o`, `g+c`) removed; replaced by command-palette navigation commands accessible via `Cmd/Ctrl+K`. (plan: references/plans/command-palette.md)
 - 2026-06-09 — View-state restoration: re-entering Fragments via navbar or command restores the last-opened fragment; Overview restores selected sequence, scroll position, and fragment selection; Preview restores selected sequence and scroll position. State persists across reloads via per-project localStorage. Stale references (deleted fragments/sequences/selections) are cleared or filtered on restore. (plan: references/plans/view-state-restoration.md)
@@ -61,7 +61,7 @@ The shell renders a persistent navigation bar or sidebar with links to Overview,
 
 - Routes are client-side (React Router or equivalent).
 - The active project UUID is part of the route context. All views operate within the context of one project.
-- Navigating away from the Fragment editor with unsaved changes prompts the user to save or discard before leaving.
+- Leaving the Fragment editor with unsaved changes does not prompt. The dedicated editor unmounts on leave and the swap/recovery model (`useEntityContentSwap`) restores the in-progress buffer when the fragment is reopened, so nothing is lost. The overlay editor saves before closing ("Done").
 - Deep links to a specific fragment (`/fragments/:uuid`) are supported — the Fragment editor opens with that fragment loaded.
 
 ### Fragment selection
@@ -69,7 +69,7 @@ The shell renders a persistent navigation bar or sidebar with links to Overview,
 The user can open a fragment in the editor from:
 
 - The **Fragment list** view (the primary browsing surface).
-- A **tile in the Overview** — clicking a fragment tile opens it in the editor.
+- A **fragment in the Overview** — clicking a fragment (its prose block or condensed title row) opens it in the editor.
 - A **prompt** surfaced by Maskor after finishing work on a fragment (see below).
 
 The Fragment editor does not decide which fragment to show. It receives a fragment UUID from the caller (the routing layer). Fragment navigation within the editor (prev/next) is an optional convenience shortcut; the ordering is not defined yet.
@@ -96,7 +96,7 @@ Keyboard-driven navigation is owned by the command system. See `command-palette.
 
 - The active project must be set before any view is usable. If no project is open, the user is shown a project selection screen.
 - The Fragment editor is always opened with a specific fragment UUID. There is no "empty" editor state.
-- Navigating away from unsaved changes must always prompt the user — no silent discard.
+- Leaving the editor with unsaved changes must never silently lose work. This is guaranteed by the swap/recovery model (the buffer is restored on reopen), not by a save/discard prompt.
 
 ---
 
@@ -113,8 +113,8 @@ Keyboard-driven navigation is owned by the command system. See `command-palette.
 ## Acceptance criteria
 
 - The shell renders a persistent navigation bar with links to Overview, Fragment list, and Project config.
-- Clicking a fragment tile in the Overview opens the Fragment editor with that fragment loaded.
-- Navigating away from the Fragment editor with unsaved changes triggers a save/discard prompt.
+- Clicking a fragment in the Overview opens the Fragment editor with that fragment loaded.
+- Leaving the Fragment editor with unsaved changes loses no work: reopening the fragment restores the in-progress buffer (swap/recovery model); the overlay editor saves on Close.
 - After saving a fragment, Maskor presents a prompt suggesting a next fragment from the eligible pool. The user can accept or dismiss.
 - The suggested fragment is not one of the most recently opened fragments (cooldown applies).
 - A fragment with `readyStatus === 1.0` is not surfaced by the prompting mechanism.
