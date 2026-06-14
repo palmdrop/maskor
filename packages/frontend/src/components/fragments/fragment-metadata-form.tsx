@@ -266,14 +266,19 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         {liveAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1">
             <span className="text-sm text-muted-foreground flex justify-between">
-              <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => commands.run("fragment-editor:preview-aspect", aspectKey)}
+                className="flex items-center gap-1.5 text-left transition-colors hover:text-foreground"
+                title="Preview aspect"
+              >
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: colorByAspectKey.get(aspectKey) }}
                   aria-hidden="true"
                 />
                 {aspectKey} — {Math.round(weight * 100)}%
-              </span>
+              </button>
               <button
                 type="button"
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
@@ -294,7 +299,12 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         {orphanedAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1 opacity-50">
             <span className="text-sm text-muted-foreground flex justify-between">
-              <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => commands.run("fragment-editor:preview-aspect", aspectKey)}
+                className="flex items-center gap-1.5 text-left transition-colors hover:text-foreground"
+                title="Preview aspect"
+              >
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-muted-foreground/50"
                   aria-hidden="true"
@@ -303,7 +313,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
                 <Badge variant="muted" aria-label="orphaned aspect">
                   orphaned
                 </Badge>
-              </span>
+              </button>
               <button
                 type="button"
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}

@@ -13,6 +13,10 @@ export interface FragmentEditorContext {
   activeFragmentUuid: string | undefined;
   openPlaceInSequence: (sequenceId: string) => void;
   openSplit: () => void;
+  // Aspect keys attached to the fragment (live or orphaned) — the candidates for the aspect reader.
+  attachedAspectKeys: string[];
+  // Open the gutter's Aspect tab and expand the given aspect in the reader.
+  previewAspect: (aspectKey: string) => void;
 }
 
 export const fragmentEditorScope = defineScope<FragmentEditorContext>("fragment-editor", {
@@ -82,4 +86,28 @@ const split = defineScopeCommand(fragmentEditorScope, {
   run: (ctx) => ctx.openSplit(),
 });
 
-export const fragmentEditorCommands = [discard, restore, placeInSequence, split] as const;
+const previewAspect = defineScopeCommand(fragmentEditorScope, {
+  id: "fragment-editor:preview-aspect",
+  label: "Preview aspect…",
+  category: "other",
+  disabled: (ctx) =>
+    ctx.attachedAspectKeys.length === 0 ? "No aspects on this fragment" : undefined,
+  arg: {
+    items: (ctx): string[] => ctx.attachedAspectKeys,
+    getKey: (item) => item,
+    getLabel: (item) => item,
+    placeholder: "Choose aspect…",
+  },
+  run: (ctx, aspectKey) => {
+    if (!aspectKey) return;
+    ctx.previewAspect(aspectKey);
+  },
+});
+
+export const fragmentEditorCommands = [
+  discard,
+  restore,
+  placeInSequence,
+  split,
+  previewAspect,
+] as const;

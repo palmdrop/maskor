@@ -31,6 +31,9 @@ import { SplitFragmentDialog } from "@components/fragments/SplitFragmentDialog";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import { AspectReaderTab } from "@components/aspects/aspect-reader-tab";
+import { cn } from "@/lib/utils";
 import { useFragmentMarginBridge } from "./use-fragment-margin-bridge";
 import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
 import { Separator } from "@components/ui/separator";
@@ -169,6 +172,24 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     if (fragment && !isProseDirty) setFragmentContent(fragment.content);
   }, [fragment?.content, isProseDirty]);
 
+  // Gutter tab + aspect-reader selection. Lifted here so the metadata sidebar (which dispatches the
+  // preview command) and the gutter's Aspect tab share a single selection. Single-expand accordion.
+  const [gutterTab, setGutterTab] = useState<"margin" | "aspect">("margin");
+  const [expandedAspectKey, setExpandedAspectKey] = useState<string | null>(null);
+  const previewAspect = useCallback((aspectKey: string) => {
+    setGutterTab("aspect");
+    setExpandedAspectKey(aspectKey);
+  }, []);
+  const toggleAspect = useCallback(
+    (aspectKey: string) =>
+      setExpandedAspectKey((current) => (current === aspectKey ? null : aspectKey)),
+    [],
+  );
+  const attachedAspectKeys = useMemo(
+    () => (fragment?.aspects ? Object.keys(fragment.aspects) : []),
+    [fragment],
+  );
+
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
   useEffect(() => {
@@ -253,6 +274,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     activeFragmentUuid: fragmentId,
     openPlaceInSequence,
     openSplit,
+    attachedAspectKeys,
+    previewAspect,
   });
 
   // The linked pair's single "restore from server": revert both the fragment and the Margin to the
@@ -386,25 +409,55 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         onActiveBlockChange={setActiveBlockMarker}
         rightPanel={
           showMargin ? (
-            <MarginColumn
-              ref={marginColumnRef}
-              projectId={projectId}
-              marginEditor={marginEditor}
-              fragmentContent={fragmentContent}
-              fragmentDirty={isProseDirty}
-              mode={marginMode}
-              fontSize={editorConfig.fontSize}
-              marginFontSize={editorConfig.marginFontSize}
-              onCommentBlock={() => commands.run("margin:comment-block")}
-              addAnchorAtBlock={bridge.addAnchorAtBlock}
-              removeAnchor={bridge.removeAnchor}
-              revealAnchor={bridge.revealAnchor}
-              focusAnchorBlock={bridge.focusAnchorBlock}
-              highlightAnchor={bridge.highlightAnchor}
-              highlightedMarkerId={activeBlockMarker}
-              getScrollElement={bridge.getScrollElement}
-              getBlocks={bridge.getBlocks}
-            />
+            <Tabs
+              value={gutterTab}
+              onValueChange={(value) => setGutterTab(value as "margin" | "aspect")}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <TabsList>
+                <TabsTrigger value="margin">Margin</TabsTrigger>
+                <TabsTrigger value="aspect">Aspects</TabsTrigger>
+              </TabsList>
+              {/* The Margin holds in-progress comment drafts + scroll-sync state, so it is force-mounted
+                  and merely hidden when the Aspect tab is active — never unmounted. Its geometry is
+                  driven by the always-visible editor, so hiding the column does not corrupt alignment. */}
+              <TabsContent
+                value="margin"
+                forceMount
+                className={cn(
+                  "mt-2 flex min-h-0 flex-1 flex-col",
+                  gutterTab !== "margin" && "hidden",
+                )}
+              >
+                <MarginColumn
+                  ref={marginColumnRef}
+                  projectId={projectId}
+                  marginEditor={marginEditor}
+                  fragmentContent={fragmentContent}
+                  fragmentDirty={isProseDirty}
+                  mode={marginMode}
+                  fontSize={editorConfig.fontSize}
+                  marginFontSize={editorConfig.marginFontSize}
+                  onCommentBlock={() => commands.run("margin:comment-block")}
+                  addAnchorAtBlock={bridge.addAnchorAtBlock}
+                  removeAnchor={bridge.removeAnchor}
+                  revealAnchor={bridge.revealAnchor}
+                  focusAnchorBlock={bridge.focusAnchorBlock}
+                  highlightAnchor={bridge.highlightAnchor}
+                  highlightedMarkerId={activeBlockMarker}
+                  getScrollElement={bridge.getScrollElement}
+                  getBlocks={bridge.getBlocks}
+                />
+              </TabsContent>
+              <TabsContent value="aspect" className="mt-2 min-h-0 flex-1 overflow-y-auto">
+                <AspectReaderTab
+                  projectId={projectId}
+                  fragment={fragment}
+                  expandedAspectKey={expandedAspectKey}
+                  onToggle={toggleAspect}
+                />
+              </TabsContent>
+            </Tabs>
           ) : undefined
         }
         onProseChange={() => setIsProseDirty(true)}

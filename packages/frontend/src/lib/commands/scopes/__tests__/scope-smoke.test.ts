@@ -233,6 +233,8 @@ describe("scopes/fragment-editor", () => {
     activeFragmentUuid: "frag-1",
     openPlaceInSequence: vi.fn(),
     openSplit: vi.fn(),
+    attachedAspectKeys: [],
+    previewAspect: vi.fn(),
   };
 
   it("discard runs and is disabled in obvious bad states", () => {
@@ -270,6 +272,15 @@ describe("scopes/fragment-editor", () => {
     expect(cmd.disabled?.({ ...baseCtx, hasFragment: false })).toBe("No fragment to split");
     expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe("Fragment is discarded");
     expect(cmd.disabled?.(baseCtx)).toBeUndefined();
+  });
+
+  it("preview-aspect previews the chosen aspect and disables with no aspects", () => {
+    const cmd = find(fragmentEditorCommands, "fragment-editor:preview-aspect");
+    const ctx = { ...baseCtx, attachedAspectKeys: ["the-river"] };
+    cmd.run(ctx, "the-river");
+    expect(ctx.previewAspect).toHaveBeenCalledWith("the-river");
+    expect(cmd.disabled?.(ctx)).toBeUndefined();
+    expect(cmd.disabled?.(baseCtx)).toBe("No aspects on this fragment");
   });
 });
 
