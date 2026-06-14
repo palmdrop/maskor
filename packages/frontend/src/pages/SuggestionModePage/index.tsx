@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
-import { getNextSuggestion } from "@api/suggestion";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { suggestionModeScope } from "@lib/commands/scopes/suggestion-mode";
 import {
+  GetNextSuggestion,
   useGetCurrentSuggestion,
   getGetCurrentSuggestionQueryKey,
   useSetCurrentSuggestion,
@@ -38,8 +38,10 @@ export const SuggestionModePage = () => {
       setIsLoadingNext(true);
       setSaveError(null);
       try {
-        // TODO: why does hits use custom fetch instead of generated orval mutation?
-        const result = await getNextSuggestion(projectId, excludeUuid);
+        const result = await GetNextSuggestion(
+          projectId,
+          excludeUuid ? { exclude: excludeUuid } : undefined,
+        );
         if (result.status !== 200) {
           setSaveError("Failed to load next suggestion.");
           return;

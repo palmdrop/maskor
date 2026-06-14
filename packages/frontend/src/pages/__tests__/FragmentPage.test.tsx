@@ -28,8 +28,8 @@ vi.mock("@contexts/FragmentListOrderContext", () => ({ useFragmentListOrder: () 
 const recordFragmentVisitMock = vi.fn((_projectId: string, _fragmentId: string) =>
   Promise.resolve(),
 );
-vi.mock("@api/suggestion", () => ({
-  recordFragmentVisit: (projectId: string, fragmentId: string) =>
+vi.mock("@api/generated/suggestion/suggestion", () => ({
+  RecordFragmentVisit: (projectId: string, fragmentId: string) =>
     recordFragmentVisitMock(projectId, fragmentId),
 }));
 

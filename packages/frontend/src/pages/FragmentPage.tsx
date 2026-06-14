@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
-import { recordFragmentVisit } from "@api/suggestion";
+import { RecordFragmentVisit } from "@api/generated/suggestion/suggestion";
 import { useGetFragment } from "@api/generated/fragments/fragments";
 import { writeLastFragment, clearLastFragment } from "@lib/nav-state";
 import { useFragmentListOrder } from "@contexts/FragmentListOrderContext";
@@ -78,7 +78,7 @@ export const FragmentPage = () => {
     if (recordedFragmentIdRef.current === fragmentId) return;
     recordedFragmentIdRef.current = fragmentId;
     writeLastFragment(projectId, fragmentId);
-    void recordFragmentVisit(projectId, fragmentId).catch(() => {
+    void RecordFragmentVisit(projectId, fragmentId).catch(() => {
       // Non-critical; ignore failures.
     });
   }, [projectId, fragmentId]);
