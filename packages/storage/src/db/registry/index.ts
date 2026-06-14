@@ -24,6 +24,11 @@ export const createRegistryDatabase = (configDirectory: string) => {
   const isFreshDatabase = !existsSync(databaseFilePath);
 
   const database = new Database(databaseFilePath);
+  // Enforce FK constraints uniformly across every Maskor DB. The registry schema
+  // has no foreign keys today, so this is a no-op now — but it future-proofs the
+  // registry against the silent "cascades never fire" trap that bit the vault DB
+  // (bun:sqlite defaults foreign_keys OFF). Mirrors createVaultDatabase.
+  database.exec("PRAGMA foreign_keys = ON");
   const registryDatabase = drizzle(database, { schema });
 
   migrate(registryDatabase, { migrationsFolder });
