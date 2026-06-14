@@ -382,6 +382,11 @@ export const OverviewPage = () => {
   };
 
   // Restore focus to the moved fragment after the list re-renders (see the ref).
+  // In the reorder column the row is dnd-kit-focusable, so `focus()` lands on it
+  // and the next keystroke reaches the row→aside handler. In the spine the prose
+  // block is intentionally not focusable, so `focus()` is a no-op there — focus
+  // stays on the scroll container (which carries the same handler), so repeated
+  // ↑/↓ keep sorting regardless. `scrollIntoView` keeps the row in view either way.
   useEffect(() => {
     const surface = keyboardMoveSurfaceRef.current;
     if (!surface || !primarySelectedUuid) return;
@@ -702,7 +707,7 @@ export const OverviewPage = () => {
           />
         </div>
       )}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         ref={scrollContainerRef}
         className={`flex-1 flex-col gap-6 p-4 overflow-y-auto ${

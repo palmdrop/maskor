@@ -1,4 +1,8 @@
-import type { FragmentPosition, Sequence } from "@maskor/shared";
+import { type FragmentPosition, type Sequence, isSequenceReadOnly } from "@maskor/shared";
+
+// Re-exported so callers reaching for the read-only predicate alongside the
+// sequencer's mutating ops (and `assertSequenceMutable`) get it from one place.
+export { isSequenceReadOnly };
 
 const compactPositions = (fragments: FragmentPosition[]): FragmentPosition[] =>
   [...fragments]
@@ -14,14 +18,9 @@ export class SequenceReadOnlyError extends Error {
   }
 }
 
-// An import-sequence — a sequence carrying an `origin` — is a frozen snapshot of
-// its original import order. Its placements and section structure cannot change;
-// to build on it the user clones it first. The rule lives here in the sequencer
-// so it holds for every caller, not just the UI.
-export function isSequenceReadOnly(sequence: Sequence): boolean {
-  return sequence.origin !== undefined;
-}
-
+// `isSequenceReadOnly` lives in `@maskor/shared` (the single source of truth for
+// the rule). The sequencer enforces it: a frozen sequence cannot be mutated by
+// any caller, not just the UI.
 export function assertSequenceMutable(sequence: Sequence): void {
   if (isSequenceReadOnly(sequence)) {
     throw new SequenceReadOnlyError(sequence.name);

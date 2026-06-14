@@ -1,8 +1,6 @@
-import type { Sequence } from "@api/generated/maskorAPI.schemas";
-
-// An import-sequence — a sequence carrying an `origin` — is a read-only snapshot
-// of its original import order: its placements and section structure are frozen.
-// The backend enforces this in `@maskor/sequencer` (`assertSequenceMutable`); this
-// mirrors the same rule on the generated schema type so every frontend surface
-// tests the one condition rather than hand-rolling an `origin` check inline.
-export const isSequenceReadOnly = (sequence: Sequence): boolean => sequence.origin !== undefined;
+// Re-export of the shared single source of truth. An import-sequence — a sequence
+// carrying an `origin` — is a read-only snapshot of its original import order: its
+// placements and section structure are frozen, and the backend enforces this in
+// `@maskor/sequencer` (`assertSequenceMutable`). The predicate is defined once in
+// `@maskor/shared` so the frontend mirror cannot drift from the backend rule.
+export { isSequenceReadOnly } from "@maskor/shared";

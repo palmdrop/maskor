@@ -59,6 +59,16 @@ export const SequenceSchema = z.object({
 
 export type Sequence = z.infer<typeof SequenceSchema>;
 
+// An import-sequence — a sequence carrying an `origin` — is a read-only snapshot
+// of its original import order: its placements and section structure are frozen.
+// To build on it the user clones it first. This predicate is the single source of
+// truth for the condition, shared by the backend (where `@maskor/sequencer`'s
+// `assertSequenceMutable` enforces it) and the frontend (which mirrors it in the
+// UI). Typed structurally so both the domain `Sequence` and the orval-generated
+// schema type satisfy it without coupling to either.
+export const isSequenceReadOnly = (sequence: { origin?: unknown }): boolean =>
+  sequence.origin !== undefined;
+
 export const SequenceCreateSchema = z.object({
   name: z.string().min(1),
   isMain: z.boolean().default(false),
