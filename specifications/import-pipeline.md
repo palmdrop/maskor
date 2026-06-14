@@ -86,7 +86,7 @@ A raw `.md` file dropped directly into `fragments/` is auto-adopted by the watch
 
 ### Shared split engine
 
-The split functions (`splitMarkdown`, `splitPlainText`, `deriveKey`) in `@maskor/importer` are shared with the **fragment splitter** (`specifications/fragment-split.md`), which divides an existing vault fragment into multiple fragments along a delimiter. The fragment splitter extends this engine with **thematic-break (`---`) and blank-line** delimiter modes; those modes are consequently available in the import preview too. The engine is the single place split behavior is defined for both features.
+The split functions (`splitMarkdown`, `splitPlainText`, `deriveKey`) in `@maskor/importer` are shared with the **fragment splitter** (`specifications/fragment-split.md`), which divides an existing vault fragment into multiple fragments along a delimiter. The fragment splitter extends this engine with **thematic-break (`---`) and blank-line** delimiter modes; those modes are consequently available in the import preview too. The engine is the single place split behavior is defined for both features. Heading-mode takes a `retainHeadingInContent` option: import leaves it **off** (the heading is lifted into the new entity's title and dropped from the body), while the fragment splitter turns it **on** (the heading line stays in the piece so a split loses no prose).
 
 ### In-memory pieces (importer only)
 

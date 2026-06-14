@@ -34,7 +34,11 @@ const delimiterLabel = (delimiter: SplitDelimiter): string =>
 export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResult> = {
   async execute(ctx, input) {
     const original = await ctx.storageService.fragments.read(ctx.projectContext, input.fragmentId);
-    const pieces = splitByDelimiter(original.content, input.delimiter);
+    // Retain heading lines in piece content: a split must never lose prose (unlike
+    // import, which lifts the heading into the new entity's title). See the spec.
+    const pieces = splitByDelimiter(original.content, input.delimiter, {
+      retainHeadingInContent: true,
+    });
 
     if (pieces.length <= 1) {
       throw new SplitNoOpError(
@@ -58,20 +62,16 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     );
     const pieceMarkerSets = pieces.map((piece) => markerIdSet(piece.content));
 
-    // Piece 1 keeps the original's identity: truncate the original to the first
-    // piece's content, preserving uuid, key, aspects, readiness, references and
-    // unmanaged frontmatter. Anchor markers ride along with their blocks in every
+    // Create pieces 2…N FIRST, while the original still holds the full prose. The
+    // split is not one atomic transaction (each write takes the vault lock on its
+    // own), so the original is only truncated once every new piece is safely on
+    // disk: a failure mid-creation then leaves the source intact rather than
+    // losing the prose that had not yet been written elsewhere. New pieces inherit
+    // the original's aspects + references, readiness reset to 0. deriveKey suffixes
+    // against existing keys (which still include the original's) and keys minted
+    // earlier in this split. Anchor markers ride along with their blocks in every
     // piece (no stripping) so each moved comment can be re-anchored in its new
     // piece's Margin.
-    const firstPiece = pieces[0]!;
-    await ctx.storageService.fragments.write(ctx.projectContext, {
-      ...original,
-      content: firstPiece.content,
-    });
-
-    // Pieces 2…N become new fragments inheriting the original's aspects +
-    // references, readiness reset to 0. deriveKey suffixes against existing keys
-    // (which still include the original's) and keys minted earlier in this split.
     const createdUuids: string[] = [];
     // Piece array index (1…N-1) → the new fragment's uuid, for Margin migration.
     const createdUuidByPieceIndex = new Map<number, string>();
@@ -93,6 +93,16 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       createdUuids.push(written.uuid);
       createdUuidByPieceIndex.set(index, written.uuid);
     }
+
+    // Piece 1 keeps the original's identity: truncate the original to the first
+    // piece's content, preserving uuid, key, aspects, readiness, references and
+    // unmanaged frontmatter. Done last, after every new piece is persisted (see
+    // above), so the original is never the sole holder of prose it is about to drop.
+    const firstPiece = pieces[0]!;
+    await ctx.storageService.fragments.write(ctx.projectContext, {
+      ...original,
+      content: firstPiece.content,
+    });
 
     // Placement: in every sequence the original is placed in, insert the new
     // pieces in order immediately after it. Reuses the sequencer's pure

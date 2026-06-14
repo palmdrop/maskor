@@ -34,7 +34,11 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
         .map((summary) => summary.key.toLowerCase()),
     );
 
-    const rawPieces = splitByDelimiter(fragment.content, input.delimiter);
+    // Retain heading lines in piece content: a split must never drop prose (unlike
+    // import, which lifts the heading into the new entity's title). See the spec.
+    const rawPieces = splitByDelimiter(fragment.content, input.delimiter, {
+      retainHeadingInContent: true,
+    });
 
     const pieces: SplitPiecePreview[] = rawPieces.map((piece, index) => {
       // Piece 1 keeps the original's identity, so it reports the original's

@@ -72,14 +72,28 @@ export type SplitDelimiter =
   | { type: "thematic-break" }
   | { type: "blank-line" };
 
+// Options shared across delimiter modes.
+export type SplitOptions = {
+  // When true, the heading line that starts a piece is kept in that piece's
+  // content (the fragment splitter — no prose may be lost across a split). When
+  // false (the default, used by the import path), the heading line is consumed
+  // into the piece's `title` and dropped from the body, since import lifts the
+  // title into the new entity's frontmatter. Only affects heading-mode.
+  retainHeadingInContent?: boolean;
+};
+
 // Single call site expressing every delimiter mode. `deriveKey` title derivation
 // keeps working for each: heading pieces carry the heading text as `title`;
 // thematic-break and blank-line pieces have no title and fall back to the first
 // non-empty line.
-export function splitByDelimiter(content: string, delimiter: SplitDelimiter): Piece[] {
+export function splitByDelimiter(
+  content: string,
+  delimiter: SplitDelimiter,
+  options: SplitOptions = {},
+): Piece[] {
   switch (delimiter.type) {
     case "heading":
-      return splitMarkdown(content, delimiter.level);
+      return splitMarkdown(content, delimiter.level, options);
     case "thematic-break":
       return splitThematicBreak(content);
     case "blank-line":
@@ -87,7 +101,11 @@ export function splitByDelimiter(content: string, delimiter: SplitDelimiter): Pi
   }
 }
 
-export function splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): Piece[] {
+export function splitMarkdown(
+  content: string,
+  maxHeadingLevel: HeadingLevel,
+  options: SplitOptions = {},
+): Piece[] {
   const tree = fromMarkdown(content);
   const pieces: Piece[] = [];
 
@@ -109,8 +127,17 @@ export function splitMarkdown(content: string, maxHeadingLevel: HeadingLevel): P
     if (before) {
       pieces.push({ title: prevTitle, content: before });
     }
-    const newlineIdx = content.indexOf("\n", startOffset);
-    prevEnd = newlineIdx >= 0 ? newlineIdx + 1 : content.length;
+
+    if (options.retainHeadingInContent) {
+      // Keep the heading line in the piece it introduces — the body must survive
+      // the split intact, and the heading still derives the piece's key via `title`.
+      prevEnd = startOffset;
+    } else {
+      // Consume the heading line into the title and drop it from the body.
+      const newlineIndex = content.indexOf("\n", startOffset);
+      prevEnd = newlineIndex >= 0 ? newlineIndex + 1 : content.length;
+    }
+
     prevTitle = title;
   }
 

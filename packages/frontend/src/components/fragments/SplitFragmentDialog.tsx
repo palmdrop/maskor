@@ -31,8 +31,10 @@ import {
 type DelimiterType = SplitDelimiter["type"];
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
-// Above this, an aggressive (usually blank-line) split is flagged so the user
-// confirms it deliberately — never blocked, just a heads-up. See the spec.
+// When the split would produce more than this many resulting fragments (the kept
+// original + the new pieces, i.e. `pieceCount`), an aggressive (usually blank-line)
+// split is flagged so the user confirms it deliberately — never blocked, just a
+// heads-up. See the spec.
 const MANY_PIECES_THRESHOLD = 10;
 
 const DELIMITER_TYPE_OPTIONS: ReadonlyArray<{ value: DelimiterType; label: string }> = [
@@ -109,7 +111,10 @@ export const SplitFragmentDialog = ({
 
   const pieceCount = pieces.length;
   const isPending = splitFragment.isPending;
-  const canConfirm = pieceCount > 1 && !isPending;
+  // Gate on the preview being settled too: between switching to a delimiter and
+  // its preview returning, `pieces` still holds the previous delimiter's result,
+  // so confirming would dispatch against a stale count. Disable until it lands.
+  const canConfirm = pieceCount > 1 && !isPending && !previewSplit.isPending;
 
   // Dialog-internal confirmation (a form submit inside an open modal): runs the
   // mutation directly and surfaces failures in-place, like the other modals —
@@ -230,7 +235,7 @@ export const SplitFragmentDialog = ({
             )}
             {pieceCount > MANY_PIECES_THRESHOLD && (
               <p className="text-sm text-amber-600 dark:text-amber-500">
-                This will create {pieceCount - 1} new fragments.
+                This will create {pieceCount - 1} new fragments ({pieceCount} total).
               </p>
             )}
             {splitError && <p className="text-sm text-destructive">{splitError}</p>}

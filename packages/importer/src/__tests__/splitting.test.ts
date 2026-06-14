@@ -87,6 +87,39 @@ describe("splitMarkdown", () => {
     expect(pieces).toHaveLength(1);
     expect(pieces[0]?.title).toBe("Real heading");
   });
+
+  describe("retainHeadingInContent", () => {
+    it("keeps the heading line in each piece's content while still deriving titles", () => {
+      const content = "# First\nContent one\n# Second\nContent two";
+      const pieces = splitMarkdown(content, 1, { retainHeadingInContent: true });
+      expect(pieces).toHaveLength(2);
+      expect(pieces[0]).toEqual({ title: "First", content: "# First\nContent one" });
+      expect(pieces[1]).toEqual({ title: "Second", content: "# Second\nContent two" });
+    });
+
+    it("preserves leading content before the first heading as its own piece", () => {
+      const content = "Preamble content\n# First heading\nBody";
+      const pieces = splitMarkdown(content, 1, { retainHeadingInContent: true });
+      expect(pieces).toHaveLength(2);
+      expect(pieces[0]).toEqual({ title: undefined, content: "Preamble content" });
+      expect(pieces[1]).toEqual({ title: "First heading", content: "# First heading\nBody" });
+    });
+
+    it("loses no content across all pieces", () => {
+      const content = "# Alpha\nBody A\n# Beta\nBody B";
+      const pieces = splitMarkdown(content, 1, { retainHeadingInContent: true });
+      const rejoined = pieces.map((piece) => piece.content).join("\n");
+      expect(rejoined).toBe(content);
+    });
+
+    it("keeps a body-less heading as its own piece rather than dropping it", () => {
+      const content = "# First\n# Second\nContent";
+      const pieces = splitMarkdown(content, 1, { retainHeadingInContent: true });
+      expect(pieces).toHaveLength(2);
+      expect(pieces[0]).toEqual({ title: "First", content: "# First" });
+      expect(pieces[1]).toEqual({ title: "Second", content: "# Second\nContent" });
+    });
+  });
 });
 
 describe("splitPlainText", () => {
@@ -270,5 +303,16 @@ describe("splitByDelimiter", () => {
   it("returns a single piece when the delimiter does not occur", () => {
     const pieces = splitByDelimiter("No breaks here", { type: "thematic-break" });
     expect(pieces).toHaveLength(1);
+  });
+
+  it("threads retainHeadingInContent through to heading-mode", () => {
+    const content = "# One\nBody one\n# Two\nBody two";
+    const pieces = splitByDelimiter(
+      content,
+      { type: "heading", level: 1 },
+      { retainHeadingInContent: true },
+    );
+    expect(pieces[0]?.content).toBe("# One\nBody one");
+    expect(pieces[1]?.content).toBe("# Two\nBody two");
   });
 });

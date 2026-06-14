@@ -93,7 +93,8 @@ describe("splitFragmentCommand", () => {
     expect(reread.readiness).toBe(0.6);
     expect(reread.references).toEqual(["some-ref"]);
     expect(reread.aspects).toEqual({ theme: { weight: 0.4 } });
-    expect(reread.content.trim()).toBe("Intro body");
+    // The heading line is retained — a split must not drop prose.
+    expect(reread.content.trim()).toBe("# Intro\nIntro body");
   });
 
   it("creates new pieces inheriting aspects + references with readiness 0", async () => {
@@ -123,7 +124,8 @@ describe("splitFragmentCommand", () => {
     expect(created.isDiscarded).toBe(false);
     expect(created.references).toEqual(["ref-a", "ref-b"]);
     expect(created.aspects).toEqual({ mood: { weight: 0.5 } });
-    expect(created.content.trim()).toBe("Body two");
+    // The heading line is retained in the new piece's content too.
+    expect(created.content.trim()).toBe("# Two\nBody two");
   });
 
   it("suffixes derived keys that conflict with existing keys", async () => {
@@ -271,11 +273,11 @@ describe("splitFragmentCommand", () => {
     expect(createdMargin).toBeNull();
   });
 
-  it("orphans a comment on the original when its block is dropped (heading line) rather than moved", async () => {
+  it("keeps a comment anchored on the original when its heading stays in piece 1", async () => {
     const ctx = await makeCommandContext();
     const original = await writeFragment(
       ctx,
-      `markers-orphan-${Date.now()}`,
+      `markers-heading-stay-${Date.now()}`,
       "# Heading <!--c:onheading-->\nBody one\n# Second\nBody two",
     );
     await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
@@ -288,8 +290,12 @@ describe("splitFragmentCommand", () => {
       delimiter: { type: "heading", level: 1 },
     });
 
-    // The heading line (and its marker) is dropped by the split, so the comment
-    // cannot follow a block — it stays on the original, frozen.
+    // The heading line is retained, so the first heading + its marker stay in
+    // piece 1 — the comment stays anchored on the original, not orphaned.
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content).toContain("# Heading");
+    expect(reread.content).toContain("<!--c:onheading-->");
+
     const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
     expect(originalMargin?.comments.map((comment) => comment.markerId)).toEqual(["onheading"]);
     const createdMargin = await ctx.storageService.margins.read(
@@ -297,6 +303,65 @@ describe("splitFragmentCommand", () => {
       result.createdUuids[0]!,
     );
     expect(createdMargin).toBeNull();
+  });
+
+  it("migrates a comment whose heading moves into a new piece (heading line retained)", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `markers-heading-move-${Date.now()}`,
+      "Intro prose\n# Heading <!--c:onheading-->\nBody one",
+    );
+    await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+      notes: "",
+      comments: [{ markerId: "onheading", excerpt: "Heading", body: "anchored to the heading" }],
+    });
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // Piece 1 is the leading prose (no heading, no marker); the heading line and
+    // its marker move into the new piece, so the comment migrates with it.
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content.trim()).toBe("Intro prose");
+    const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
+    expect(originalMargin?.comments ?? []).toEqual([]);
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.content).toContain("# Heading");
+    expect(created.content).toContain("<!--c:onheading-->");
+    const createdMargin = await ctx.storageService.margins.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(createdMargin?.comments.map((comment) => comment.markerId)).toEqual(["onheading"]);
+  });
+
+  it("preserves all prose across the resulting pieces (no content loss)", async () => {
+    const ctx = await makeCommandContext();
+    const body = "# Alpha\nBody A\n# Beta\nBody B\n# Gamma\nBody C";
+    const original = await writeFragment(ctx, `no-loss-${Date.now()}`, body);
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    const createdContents = await Promise.all(
+      result.createdUuids.map(async (uuid) => {
+        const fragment = await ctx.storageService.fragments.read(ctx.projectContext, uuid);
+        return fragment.content.trim();
+      }),
+    );
+
+    const rejoined = [reread.content.trim(), ...createdContents].join("\n");
+    expect(rejoined).toBe(body);
   });
 
   it("inserts new pieces immediately after the original in every sequence it is placed in", async () => {
