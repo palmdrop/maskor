@@ -6,7 +6,7 @@ const logger = createLogger({ service: "api", level: process.env.LOG_LEVEL ?? "i
 const storageService = createStorageService({ logger });
 const app = createApp(storageService, logger);
 
-const port = Number(process.env.PORT ?? 3001);
+const port = Number(process.env.MASKOR_API_PORT ?? 3001);
 
 Bun.serve({
   port,

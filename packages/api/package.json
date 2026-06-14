@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run ./src/index.ts",
-    "dev": "bun --watch run ./src/index.ts",
+    "start": "bun --env-file=../../.env run ./src/index.ts",
+    "dev": "bun --watch --env-file=../../.env run ./src/index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",

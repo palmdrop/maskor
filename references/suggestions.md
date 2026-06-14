@@ -18,8 +18,6 @@
 
 - **Add MSW for frontend API mocking** (`packages/frontend/src/test/`): The testing framework is set up but MSW (Mock Service Worker) is not yet installed. Once the frontend starts making API calls, add `msw` and create handler fixtures in `src/test/handlers.ts` so tests intercept HTTP at the network level rather than mocking `fetch` manually. Install: `bun add -D msw --cwd packages/frontend`.
 
-- **Port/environment config** (`packages/api/src/index.ts`, `packages/frontend/`): API defaults to `3001` via `process.env.PORT`. When wiring the frontend, ensure both agree on port — consider a shared `.env` file at the repo root or a workspace-level config package to avoid silent mismatches.
-
 - **`vaultPath` discovery for frontend** (`packages/api/src/routes/projects.ts`): `POST /projects` expects a raw filesystem path in the body. The frontend (Tauri/Electron) must know the path to supply it. Deferred options: expose a file-picker over IPC, add a `/projects/discover` endpoint, or drive from a config file. Resolve before frontend integration begins.
 
 - **`rebuild()` loads all vault entities into memory** (`packages/storage/src/index/indexer.ts`): The two-phase approach (read all → write in transaction) holds all fragment/aspect/note/reference entries in memory simultaneously. For very large vaults this may become a concern. Consider chunked or streaming writes as a follow-up if memory pressure is observed.
