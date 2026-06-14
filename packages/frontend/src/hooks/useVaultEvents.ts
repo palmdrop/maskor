@@ -22,7 +22,10 @@ export const useVaultEvents = (projectId: string) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const source = new EventSource(`http://localhost:3001/projects/${projectId}/events`);
+    // Relative path so the stream routes through the same `/api` proxy as every
+    // other API call (`customFetch` → `/api${url}`). Hardcoding the host+port
+    // silently breaks the live-update stream outside `localhost:3001`.
+    const source = new EventSource(`/api/projects/${projectId}/events`);
 
     const handleEvent = (_event: MessageEvent) => {
       // Broad invalidation — refetches all queries for this project.

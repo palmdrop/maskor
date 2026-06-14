@@ -20,8 +20,6 @@
 
 - **Port/environment config** (`packages/api/src/index.ts`, `packages/frontend/`): API defaults to `3001` via `process.env.PORT`. When wiring the frontend, ensure both agree on port — consider a shared `.env` file at the repo root or a workspace-level config package to avoid silent mismatches.
 
-- **Log level via `LOG_LEVEL` env var** (`packages/api/src/index.ts`): The logger is wired end-to-end but the level is hardcoded to `"info"`. Pass `process.env.LOG_LEVEL ?? "info"` so dev can switch to `"debug"` (vault/watcher sync details) without code changes.
-
 - **`vaultPath` discovery for frontend** (`packages/api/src/routes/projects.ts`): `POST /projects` expects a raw filesystem path in the body. The frontend (Tauri/Electron) must know the path to supply it. Deferred options: expose a file-picker over IPC, add a `/projects/discover` endpoint, or drive from a config file. Resolve before frontend integration begins.
 
 - **`rebuild()` loads all vault entities into memory** (`packages/storage/src/index/indexer.ts`): The two-phase approach (read all → write in transaction) holds all fragment/aspect/note/reference entries in memory simultaneously. For very large vaults this may become a concern. Consider chunked or streaming writes as a follow-up if memory pressure is observed.
@@ -33,8 +31,6 @@
 - **`TagCombobox` has no keyboard shortcut to dismiss without selecting** (`packages/frontend/src/components/ui/tag-combobox.tsx`): Pressing `Escape` closes the popover and blurs the input, but there is no way to keep focus in the input while dismissing the dropdown. If the UX calls for it, add a second `Escape` press that re-focuses without reopening.
 
 - **Raw async functions from orval are PascalCase** (`packages/frontend/src/api/generated/`): The `operationName` capitalizer makes type names PascalCase but also affects the raw async functions (`ListFragments`, `GetProject`, etc.). These are unconventional for JS variables. If it becomes a problem, look into a custom `transformer` in orval config that renames only the type aliases post-generation while keeping function names camelCase.
-
-- **`useVaultEvents` hardcodes `localhost:3001`** (`packages/frontend/src/hooks/useVaultEvents.ts:21`): The `EventSource` URL bypasses the Vite proxy, breaking in any environment where the API isn't on that exact host/port. Change to `/api/projects/${projectId}/events` so it routes through the proxy like all other API calls.
 
 - **Watcher start is a side effect in `resolveProject` middleware** (`packages/api/src/middleware/resolve-project.ts`): Starting the watcher inside request middleware is pragmatic but mixes concerns — a side effect (process-level resource acquisition) is hidden inside what reads as a lookup. When project lifecycle management is formalised (explicit project open/close flow), move watcher start to an explicit startup call rather than a middleware side effect.
 

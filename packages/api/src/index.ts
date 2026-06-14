@@ -2,7 +2,7 @@ import { createStorageService } from "@maskor/storage";
 import { createApp } from "./app";
 import { createLogger } from "@maskor/shared/logger";
 
-const logger = createLogger({ service: "api" });
+const logger = createLogger({ service: "api", level: process.env.LOG_LEVEL ?? "info" });
 const storageService = createStorageService({ logger });
 const app = createApp(storageService, logger);
 
