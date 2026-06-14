@@ -78,22 +78,6 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 
 ---
 
-## Pin fragment for continuous writing
-
-**Why:** Early in a fragment's life, a writer wants to keep coming back to the _same_ fragment across sessions instead of being prompted with a different one each time. Today the prompting mechanism surfaces a new fragment after each save; there's no "stay on this one" signal.
-
-**Related specs:** `prompting.md`, `fragment-editor.md`, `navigation.md`
-
-**Initial questions:**
-
-- Is "pinned" a property of the fragment, of the session, or of the user's last-edited state?
-- How does pinning interact with `readyStatus` and the suggestion-mode eligible pool — does a pinned fragment still respect cooldown?
-- Could this be subsumed by "Maskor remembers where you were working last and returns you there" (no explicit pin), or is the explicit signal valuable?
-- Visual indicator that a fragment is pinned?
-- Unpin on what trigger — explicit user action, hitting `readyStatus === 1.0`, manual save-and-next?
-
----
-
 ## Novel-scale preview rendering (pagination / chapter-style)
 
 **Why:** Preview and import now render the entire assembled document in a single read-only Tiptap/ProseMirror instance. ProseMirror does not virtualize, so a novel-sized sequence (100k+ words) lives in the DOM at once — a real risk of stutter on scroll/render that has not yet been validated at scale. Rather than holding the whole document live, a "paginated" or chapter-style rendering could render only the visible/nearby slice, keeping the surface responsive regardless of manuscript length.
