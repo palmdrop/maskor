@@ -412,11 +412,25 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             <Tabs
               value={gutterTab}
               onValueChange={(value) => setGutterTab(value as "margin" | "aspect")}
-              className="flex min-h-0 flex-1 flex-col"
+              className="relative flex min-h-0 min-w-0 flex-1 flex-col"
             >
-              <TabsList>
-                <TabsTrigger value="margin">Margin</TabsTrigger>
-                <TabsTrigger value="aspect">Aspects</TabsTrigger>
+              {/* The switcher floats top-right with no layout footprint: the Margin scroller is
+                  deliberately flush to the editor's first line, so any chrome *above* it would shift
+                  every comment down out of alignment. Floating keeps the Margin flush; the Aspect
+                  panel is padded to clear it. */}
+              <TabsList className="absolute right-0 top-0 z-10 w-auto rounded-md border border-border bg-background/95 p-0.5 shadow-sm backdrop-blur">
+                <TabsTrigger
+                  value="margin"
+                  className="rounded border-0 px-2 py-0.5 text-xs data-[state=active]:border-transparent data-[state=active]:bg-muted"
+                >
+                  Margin
+                </TabsTrigger>
+                <TabsTrigger
+                  value="aspect"
+                  className="rounded border-0 px-2 py-0.5 text-xs data-[state=active]:border-transparent data-[state=active]:bg-muted"
+                >
+                  Aspects
+                </TabsTrigger>
               </TabsList>
               {/* The Margin holds in-progress comment drafts + scroll-sync state, so it is force-mounted
                   and merely hidden when the Aspect tab is active — never unmounted. Its geometry is
@@ -425,7 +439,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                 value="margin"
                 forceMount
                 className={cn(
-                  "mt-2 flex min-h-0 flex-1 flex-col",
+                  "mt-0 flex min-h-0 min-w-0 flex-1 flex-col",
                   gutterTab !== "margin" && "hidden",
                 )}
               >
@@ -449,7 +463,10 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                   getBlocks={bridge.getBlocks}
                 />
               </TabsContent>
-              <TabsContent value="aspect" className="mt-2 min-h-0 flex-1 overflow-y-auto">
+              <TabsContent
+                value="aspect"
+                className="mt-0 min-h-0 min-w-0 flex-1 overflow-y-auto pt-9"
+              >
                 <AspectReaderTab
                   projectId={projectId}
                   fragment={fragment}

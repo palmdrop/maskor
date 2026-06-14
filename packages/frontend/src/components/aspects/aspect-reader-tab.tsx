@@ -70,7 +70,7 @@ export const AspectReaderTab = ({ projectId, fragment, expandedAspectKey, onTogg
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 flex-col">
       {rows.map(({ key, weight, isLive }) => {
         const isExpanded = expandedAspectKey === key;
         return (
@@ -104,7 +104,7 @@ export const AspectReaderTab = ({ projectId, fragment, expandedAspectKey, onTogg
               <span className="shrink-0 text-muted-foreground">{Math.round(weight * 100)}%</span>
             </button>
             {isExpanded && (
-              <div className="pb-3 pl-5 pr-1">
+              <div className="min-w-0 break-words pb-3 pl-5 pr-1">
                 {isLive ? (
                   <AspectPreview projectId={projectId} aspectKey={key} />
                 ) : (
