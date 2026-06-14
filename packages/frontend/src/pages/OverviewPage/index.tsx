@@ -58,6 +58,7 @@ import { useArcData } from "./hooks/useArcData";
 import { useFragmentSelection } from "./hooks/useFragmentSelection";
 import { useOverviewInlineEditor } from "./hooks/useOverviewInlineEditor";
 import { useSectionOps } from "./hooks/useSectionOps";
+import { useProjectEditorConfig } from "../../hooks/useProjectEditorConfig";
 
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
@@ -65,6 +66,8 @@ export const OverviewPage = () => {
   const { sequence: sequenceParam, detail: urlDetailLevel } = useSearch({ from });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const vimMode = useProjectEditorConfig(projectId).vimMode;
 
   const { data: projectEnvelope } = useGetProject(projectId);
   const project = projectEnvelope?.status === 200 ? projectEnvelope.data : undefined;
@@ -367,8 +370,8 @@ export const OverviewPage = () => {
     if (editingFragmentUuid) return;
     if (isTextEntryTarget(event.target as HTMLElement)) return;
 
-    const isArrowUp = event.key === "ArrowUp";
-    const isArrowDown = event.key === "ArrowDown";
+    const isArrowUp = event.key === "ArrowUp" || (vimMode && event.key.toLowerCase() === "k");
+    const isArrowDown = event.key === "ArrowDown" || (vimMode && event.key.toLowerCase() === "j");
     if (!isArrowUp && !isArrowDown) return;
 
     event.preventDefault();
