@@ -35,7 +35,7 @@ export const AspectPreview = ({ projectId, aspectKey }: Props) => {
   const notes = aspect?.notes ?? [];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <div className="flex justify-end">
         <Link
           to="/projects/$projectId/aspects/$aspectId"

@@ -456,7 +456,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             // sits in the right gutter at a fixed, sensible width (it no longer flex-grows to claim —
             // and leave mostly empty — the whole right side). The `ch` unit resolves against the prose
             // column's own font size, so it is set there. Stacks vertically below `lg`.
-            <div className="flex flex-1 min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-0">
+            <div className="flex flex-1 min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0">
               <main
                 className="w-full min-w-0 min-h-0 overflow-y-auto lg:col-start-2 lg:w-(--prose-width) lg:max-w-full"
                 style={
