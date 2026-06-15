@@ -2,12 +2,30 @@ import { describe, it, expect } from "vitest";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { buildSequenceOrder, encodeSortMode, parseSortMode, sortFragments } from "./sort";
 
-type Row = { uuid: string; key: string; updatedAt: string };
+type Row = { uuid: string; key: string; createdAt: string; updatedAt: string };
 
+// createdAt is deliberately ordered differently from updatedAt so the two
+// date-sort modes can be told apart: updatedAt desc → [a, c, b];
+// createdAt desc → [b, c, a].
 const rows: Row[] = [
-  { uuid: "a", key: "Charlie", updatedAt: "2026-01-03T00:00:00.000Z" },
-  { uuid: "b", key: "alpha", updatedAt: "2026-01-01T00:00:00.000Z" },
-  { uuid: "c", key: "Bravo", updatedAt: "2026-01-02T00:00:00.000Z" },
+  {
+    uuid: "a",
+    key: "Charlie",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+  },
+  {
+    uuid: "b",
+    key: "alpha",
+    createdAt: "2026-01-03T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    uuid: "c",
+    key: "Bravo",
+    createdAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+  },
 ];
 
 const sequence = (): Sequence => ({
@@ -37,11 +55,13 @@ const sequence = (): Sequence => ({
 });
 
 describe("parseSortMode / encodeSortMode", () => {
-  it("round-trips name, updatedAt, and sequence modes", () => {
+  it("round-trips name, createdAt, updatedAt, and sequence modes", () => {
     expect(parseSortMode("name")).toEqual({ kind: "name" });
+    expect(parseSortMode("createdAt")).toEqual({ kind: "createdAt" });
     expect(parseSortMode("updatedAt")).toEqual({ kind: "updatedAt" });
     expect(parseSortMode("sequence:seq-1")).toEqual({ kind: "sequence", sequenceUuid: "seq-1" });
     expect(encodeSortMode({ kind: "name" })).toBe("name");
+    expect(encodeSortMode({ kind: "createdAt" })).toBe("createdAt");
     expect(encodeSortMode({ kind: "updatedAt" })).toBe("updatedAt");
     expect(encodeSortMode({ kind: "sequence", sequenceUuid: "x" })).toBe("sequence:x");
   });
@@ -72,12 +92,27 @@ describe("sortFragments", () => {
     expect(result).toEqual(["a", "c", "b"]);
   });
 
+  it("sorts most-recently-created first for createdAt mode", () => {
+    const result = sortFragments(rows, { kind: "createdAt" }).map((r) => r.uuid);
+    expect(result).toEqual(["b", "c", "a"]);
+  });
+
   it("orders placed fragments by sequence, unplaced at the bottom by key", () => {
     const order = buildSequenceOrder(sequence());
     const extended: Row[] = [
       ...rows,
-      { uuid: "z", key: "Zeta", updatedAt: "2026-01-09T00:00:00.000Z" },
-      { uuid: "y", key: "delta", updatedAt: "2026-01-08T00:00:00.000Z" },
+      {
+        uuid: "z",
+        key: "Zeta",
+        createdAt: "2026-01-09T00:00:00.000Z",
+        updatedAt: "2026-01-09T00:00:00.000Z",
+      },
+      {
+        uuid: "y",
+        key: "delta",
+        createdAt: "2026-01-08T00:00:00.000Z",
+        updatedAt: "2026-01-08T00:00:00.000Z",
+      },
     ];
     const result = sortFragments(extended, { kind: "sequence", sequenceUuid: "seq-1" }, order).map(
       (r) => r.uuid,

@@ -36,6 +36,7 @@ export const assembleFragment = (
   readiness: row.readiness,
   contentHash: row.contentHash,
   filePath: row.filePath,
+  createdAt: row.createdAt,
   updatedAt: row.updatedAt,
   references: referenceRows.map((reference) => reference.referenceKey),
   aspects: propertyRows.reduce(

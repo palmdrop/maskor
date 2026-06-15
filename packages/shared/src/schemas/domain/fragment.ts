@@ -11,6 +11,7 @@ export const FragmentSchema = z.object({
   content: z.string(),
   readiness: z.number().min(0).max(1),
   contentHash: z.string(),
+  createdAt: z.date(),
   updatedAt: z.date(),
   references: z.array(z.string()),
   isDiscarded: z.boolean(),

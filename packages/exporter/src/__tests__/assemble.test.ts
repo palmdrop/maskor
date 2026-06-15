@@ -8,6 +8,7 @@ const makeFragment = (overrides: Partial<Fragment> & { uuid: string; key: string
   content: `Content of ${overrides.key}`,
   readiness: 1,
   contentHash: "",
+  createdAt: new Date(),
   updatedAt: new Date(),
   references: [],
   isDiscarded: false,

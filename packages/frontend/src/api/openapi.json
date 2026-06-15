@@ -533,6 +533,10 @@
           "filePath": {
             "type": "string"
           },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-01-01T00:00:00.000Z"
+          },
           "updatedAt": {
             "type": "string",
             "example": "2026-01-01T00:00:00.000Z"
@@ -547,6 +551,7 @@
           "isDiscarded",
           "aspects",
           "filePath",
+          "createdAt",
           "updatedAt"
         ]
       },
@@ -595,6 +600,10 @@
               }
             }
           },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-01-01T00:00:00.000Z"
+          },
           "updatedAt": {
             "type": "string",
             "example": "2026-01-01T00:00:00.000Z"
@@ -609,6 +618,7 @@
           "references",
           "isDiscarded",
           "aspects",
+          "createdAt",
           "updatedAt"
         ]
       },

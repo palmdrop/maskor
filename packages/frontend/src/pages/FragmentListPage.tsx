@@ -232,6 +232,7 @@ export const FragmentListPage = () => {
             <SelectContent>
               <SelectGroup>
                 <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="createdAt">Created at</SelectItem>
                 <SelectItem value="updatedAt">Updated at</SelectItem>
               </SelectGroup>
               {sequences.length > 0 && (

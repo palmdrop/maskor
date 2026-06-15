@@ -20,6 +20,7 @@ export const fragmentsTable = sqliteTable(
     excerpt: text("excerpt"),
     contentHash: text("content_hash").notNull(),
     filePath: text("file_path").notNull().unique(), // relative to vault root
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
     syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
   },

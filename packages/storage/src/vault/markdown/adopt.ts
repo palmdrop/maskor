@@ -3,6 +3,17 @@ import type { Logger } from "@maskor/shared/logger";
 import type { ParsedFile } from "./parse";
 import { serializeFile } from "./serialize";
 import * as fragmentMapper from "./mappers/fragment";
+import { stat } from "node:fs/promises";
+
+// Filesystem birthtime of a file, or undefined if it cannot be read. Used as the createdAt bootstrap
+// for a freshly-adopted fragment whose frontmatter carries no createdAt yet.
+const readBirthtime = async (absolutePath: string): Promise<Date | undefined> => {
+  try {
+    return (await stat(absolutePath)).birthtime;
+  } catch {
+    return undefined;
+  }
+};
 
 // Adoption / canonicalization helpers shared by the watcher (incremental, per-file sync) and the
 // indexer rebuild (bulk scan). When a vault file is first detected without Maskor metadata, these
@@ -82,12 +93,17 @@ export const assignNewUuid = async (
 // rewritten raw content so callers reuse the exact same entity for the DB upsert — calling
 // fromFile again would mint a fresh `new Date()` updatedAt and drift apart from what was serialized
 // to disk.
+//
+// The file's birthtime is used as the createdAt bootstrap: an externally-authored file (e.g. from
+// Obsidian) carries no createdAt frontmatter, so its filesystem creation time is the best available
+// origin. fromFile's chain still prefers an explicit frontmatter.createdAt if one is present.
 export const writeBackFragmentFrontmatter = async (
   parsed: ParsedFile,
   absolutePath: string,
   entityRelativePath: string,
 ): Promise<{ fragment: Fragment; rawContent: string }> => {
-  const fragment = fragmentMapper.fromFile(parsed, entityRelativePath);
+  const birthtime = await readBirthtime(absolutePath);
+  const fragment = fragmentMapper.fromFile(parsed, entityRelativePath, birthtime);
   const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
   const rawContent = serializeFile({ frontmatter, inlineFields, body });
   await Bun.write(absolutePath, rawContent);

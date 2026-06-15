@@ -1,11 +1,13 @@
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 
-// Fragment-list sort modes. "name" and "updatedAt" are intrinsic to the index
-// row; "sequence" orders by a chosen sequence's placement (unplaced fragments
-// fall to the bottom). Encoded as a string for the <Select> value + persistence:
-//   "name" | "updatedAt" | "sequence:<uuid>"
+// Fragment-list sort modes. "name", "createdAt", and "updatedAt" are intrinsic
+// to the index row; "sequence" orders by a chosen sequence's placement (unplaced
+// fragments fall to the bottom). Encoded as a string for the <Select> value +
+// persistence:
+//   "name" | "createdAt" | "updatedAt" | "sequence:<uuid>"
 export type FragmentSortMode =
   | { kind: "name" }
+  | { kind: "createdAt" }
   | { kind: "updatedAt" }
   | { kind: "sequence"; sequenceUuid: string };
 
@@ -15,6 +17,7 @@ export const encodeSortMode = (mode: FragmentSortMode): string =>
   mode.kind === "sequence" ? `${SEQUENCE_PREFIX}${mode.sequenceUuid}` : mode.kind;
 
 export const parseSortMode = (value: string): FragmentSortMode => {
+  if (value === "createdAt") return { kind: "createdAt" };
   if (value === "updatedAt") return { kind: "updatedAt" };
   if (value.startsWith(SEQUENCE_PREFIX)) {
     return { kind: "sequence", sequenceUuid: value.slice(SEQUENCE_PREFIX.length) };
@@ -37,7 +40,7 @@ export const buildSequenceOrder = (sequence: Sequence): Map<string, number> => {
   return order;
 };
 
-type SortableFragment = { uuid: string; key: string; updatedAt: string };
+type SortableFragment = { uuid: string; key: string; createdAt: string; updatedAt: string };
 
 const byKey = (a: SortableFragment, b: SortableFragment) => a.key.localeCompare(b.key);
 
@@ -52,6 +55,10 @@ export const sortFragments = <T extends SortableFragment>(
   const copy = [...fragments];
   if (mode.kind === "name") {
     return copy.sort(byKey);
+  }
+  if (mode.kind === "createdAt") {
+    // ISO-8601 strings sort lexically; most recently created first.
+    return copy.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
   if (mode.kind === "updatedAt") {
     // ISO-8601 strings sort lexically; most recently updated first.

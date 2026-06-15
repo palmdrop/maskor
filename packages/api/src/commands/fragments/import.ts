@@ -150,6 +150,7 @@ export const createImportCommand = (
         references: [],
         aspects: {},
         contentHash: "",
+        createdAt: new Date(),
         updatedAt: new Date(),
       };
 

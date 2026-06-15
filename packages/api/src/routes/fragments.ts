@@ -435,6 +435,7 @@ fragmentsRouter.openapi(createFragmentRoute, async (ctx) => {
       references: [],
       aspects: {},
       contentHash: "",
+      createdAt: new Date(),
       updatedAt: new Date(),
     };
 
@@ -495,6 +496,7 @@ fragmentsRouter.openapi(extractFragmentRoute, async (ctx) => {
       references: [],
       aspects: {},
       contentHash: "",
+      createdAt: new Date(),
       updatedAt: new Date(),
     };
 

@@ -176,6 +176,7 @@ export const upsertFragment = (
       excerpt,
       contentHash,
       filePath,
+      createdAt: fragment.createdAt,
       updatedAt: fragment.updatedAt,
       syncedAt,
     })
@@ -188,6 +189,7 @@ export const upsertFragment = (
         excerpt,
         contentHash,
         filePath,
+        createdAt: fragment.createdAt,
         updatedAt: fragment.updatedAt,
         syncedAt,
       },

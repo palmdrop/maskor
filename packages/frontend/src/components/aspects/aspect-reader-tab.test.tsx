@@ -27,6 +27,7 @@ const baseFragment: Fragment = {
   references: [],
   isDiscarded: false,
   aspects: {},
+  createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
 

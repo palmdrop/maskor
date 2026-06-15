@@ -301,6 +301,34 @@ describe("StorageService.fragments.write — case-only rename", () => {
   });
 });
 
+describe("StorageService.fragments.write — createdAt preservation", () => {
+  it("keeps createdAt stable across a content update while updatedAt advances", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+
+    await service.index.rebuild(context);
+
+    const allFragments = await service.fragments.readAll(context);
+    const indexed = allFragments.find((fragment) => !fragment.isDiscarded);
+    if (!indexed) throw new Error("expected at least one active fragment in fixtures");
+
+    const fragment = await service.fragments.read(context, indexed.uuid);
+    const originalCreatedAt = fragment.createdAt;
+
+    const updated = await service.fragments.write(context, {
+      ...fragment,
+      content: `${fragment.content}\n\nAn appended line.`,
+    });
+
+    // createdAt is carried through verbatim; the write only advances updatedAt.
+    expect(updated.createdAt.getTime()).toBe(originalCreatedAt.getTime());
+
+    const reread = await service.fragments.read(context, fragment.uuid);
+    expect(reread.createdAt.getTime()).toBe(originalCreatedAt.getTime());
+  });
+});
+
 describe("StorageService keyed-entity update — case-only rename", () => {
   it("preserves note UUID and content when key changes only in case", async () => {
     const service = makeService();

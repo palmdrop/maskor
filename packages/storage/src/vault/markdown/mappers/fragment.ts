@@ -6,7 +6,14 @@ import { basename } from "node:path";
 // Frontmatter keys Maskor manages directly. `notes` is intentionally included: the fragment notes
 // attachment was removed (ADR 0007 / margins), so a legacy `notes:` list is dropped on the next save
 // rather than preserved as user data. Every other frontmatter key is preserved verbatim.
-const MANAGED_FRONTMATTER_KEYS = new Set(["uuid", "updatedAt", "readiness", "references", "notes"]);
+const MANAGED_FRONTMATTER_KEYS = new Set([
+  "uuid",
+  "createdAt",
+  "updatedAt",
+  "readiness",
+  "references",
+  "notes",
+]);
 
 const extractExtraFrontmatter = (frontmatter: Record<string, unknown>): Record<string, unknown> => {
   const extra: Record<string, unknown> = {};
@@ -16,7 +23,12 @@ const extractExtraFrontmatter = (frontmatter: Record<string, unknown>): Record<s
   return extra;
 };
 
-export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
+// `fileBirthtime` is the filesystem birthtime of the source file, consulted only when frontmatter
+// carries no `createdAt` (the bootstrap case for externally-authored files being adopted). The
+// resolution chain is: frontmatter.createdAt → fileBirthtime → updatedAt → now. Once a bootstrapped
+// fragment is saved, `createdAt` lives in frontmatter and birthtime is never consulted again. The
+// mapper itself does no IO — callers stat and pass the birthtime in (see writeBackFragmentFrontmatter).
+export const fromFile = (parsed: ParsedFile, filePath: string, fileBirthtime?: Date): Fragment => {
   const frontmatter = parsed.frontmatter;
 
   const key = basename(filePath).replace(/\.md$/, "");
@@ -24,6 +36,11 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
   const updatedAtRaw = frontmatter.updatedAt;
   const updatedAt =
     typeof updatedAtRaw === "string" && updatedAtRaw ? new Date(updatedAtRaw) : new Date();
+  const createdAtRaw = frontmatter.createdAt;
+  const createdAt =
+    typeof createdAtRaw === "string" && createdAtRaw
+      ? new Date(createdAtRaw)
+      : (fileBirthtime ?? updatedAt);
 
   return {
     uuid: frontmatter.uuid as string,
@@ -34,6 +51,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string): Fragment => {
     aspects: inlineFieldsToAspects(parsed.inlineFields),
     content: parsed.body,
     contentHash: "",
+    createdAt,
     updatedAt,
     extraFrontmatter: extractExtraFrontmatter(frontmatter),
   };
@@ -51,6 +69,7 @@ export const toFile = (
       // Unmanaged user keys first, so the managed keys below always win on a name clash.
       ...(fragment.extraFrontmatter ?? {}),
       uuid: fragment.uuid,
+      createdAt: fragment.createdAt.toISOString(),
       updatedAt: fragment.updatedAt.toISOString(),
       readiness: fragment.readiness,
       references: fragment.references,

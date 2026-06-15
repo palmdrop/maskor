@@ -54,6 +54,7 @@ const writeFragment = async (
     content,
     readiness: 0.5,
     contentHash: "",
+    createdAt: new Date(),
     updatedAt: new Date(),
     references: [],
     isDiscarded: false,

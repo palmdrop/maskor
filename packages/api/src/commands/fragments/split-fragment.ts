@@ -84,6 +84,9 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         content: piece.content,
         readiness: 0,
         contentHash: "",
+        // New piece — fresh createdAt. The original keeps its own createdAt (it is truncated in
+        // place, preserving identity — ADR 0014).
+        createdAt: new Date(),
         updatedAt: new Date(),
         references: [...original.references],
         isDiscarded: false,

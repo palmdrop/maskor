@@ -54,6 +54,10 @@ describe("adopt.writeBackFragmentFrontmatter", () => {
     expect(reparsed.frontmatter).toHaveProperty("updatedAt");
     expect(reparsed.frontmatter).not.toHaveProperty("notes");
     expect(reparsed.frontmatter).toHaveProperty("references");
+    // Adoption bootstraps createdAt from the file's birthtime and persists it to frontmatter, so a
+    // subsequent read is frontmatter-driven and never consults birthtime again.
+    expect(reparsed.frontmatter).toHaveProperty("createdAt");
+    expect(fragment.createdAt).toBeInstanceOf(Date);
   });
 
   it("preserves a user-supplied field while filling the rest", async () => {

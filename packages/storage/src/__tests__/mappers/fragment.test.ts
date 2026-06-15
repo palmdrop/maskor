@@ -59,6 +59,36 @@ describe("fragment.fromFile", () => {
     expect(fragment.updatedAt.getTime()).toBeLessThanOrEqual(after.getTime());
   });
 
+  it("reads createdAt from frontmatter when present", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, createdAt: "2026-03-01T08:00:00.000Z" },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md");
+    expect(fragment.createdAt).toEqual(new Date("2026-03-01T08:00:00.000Z"));
+  });
+
+  it("falls back to the file birthtime when frontmatter has no createdAt", () => {
+    const birthtime = new Date("2025-01-15T00:00:00.000Z");
+    const fragment = fromFile(PARSED, "the-bridge.md", birthtime);
+    expect(fragment.createdAt).toEqual(birthtime);
+  });
+
+  it("falls back to updatedAt when neither frontmatter createdAt nor birthtime is available", () => {
+    // No birthtime argument, no frontmatter createdAt — createdAt mirrors updatedAt.
+    const fragment = fromFile(PARSED, "the-bridge.md");
+    expect(fragment.createdAt).toEqual(new Date("2026-04-01T12:00:00.000Z"));
+  });
+
+  it("prefers frontmatter createdAt over a provided birthtime", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, createdAt: "2026-03-01T08:00:00.000Z" },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md", new Date("2020-01-01T00:00:00.000Z"));
+    expect(fragment.createdAt).toEqual(new Date("2026-03-01T08:00:00.000Z"));
+  });
+
   it("maps inline fields to aspects", () => {
     const fragment = fromFile(PARSED, "the-bridge.md");
     expect(fragment.aspects["grief"]).toEqual({ weight: 0.6 });
@@ -96,6 +126,7 @@ describe("fragment.fromFile", () => {
 
 describe("fragment.toFile", () => {
   const updatedAt = new Date("2026-04-01T12:00:00.000Z");
+  const createdAt = new Date("2026-03-01T08:00:00.000Z");
   const fragment: Fragment = {
     uuid: "frag-0001-0000-0000-000000000001",
     key: "the-bridge",
@@ -105,6 +136,7 @@ describe("fragment.toFile", () => {
     aspects: { grief: { weight: 0.6 }, city: { weight: 0.9 } },
     content: "She crossed it every morning.",
     contentHash: "abc123",
+    createdAt,
     updatedAt,
     extraFrontmatter: { tags: ["wip"] },
   };
@@ -112,6 +144,7 @@ describe("fragment.toFile", () => {
   it("writes all frontmatter fields", () => {
     const { frontmatter } = toFile(fragment);
     expect(frontmatter.uuid).toBe(fragment.uuid);
+    expect(frontmatter.createdAt).toBe("2026-03-01T08:00:00.000Z");
     expect(frontmatter.updatedAt).toBe("2026-04-01T12:00:00.000Z");
     expect(frontmatter.readiness).toBe(0.8);
   });
