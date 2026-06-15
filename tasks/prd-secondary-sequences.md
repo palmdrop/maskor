@@ -329,7 +329,7 @@ Slice 2 also makes **sections** a first-class UI concept. Until now sections exi
 ## Functional Requirements
 
 - **FR-1:** A project supports an unbounded number of sequences. Exactly one is `isMain: true` at all times.
-- **FR-2:** Sequence names are unique within a project (case-sensitive). Creation or rename that would collide is rejected by the API.
+- **FR-2:** Sequence names are unique within a project (case-sensitive). Creation or rename that would collide is rejected by the API. The case-sensitive comparison is intentional and safe: sequence files are named `<uuid>.yaml`, so `Main` and `main` cannot collide on the filesystem (unlike fragment keys, which name `<key>.md` files and therefore use case-insensitive uniqueness to avoid clobbering on macOS/Windows). The only consequence of allowing case-only-distinct names is two near-identical sidebar entries — a minor UX wart, not a data hazard.
 - **FR-3:** The main sequence cannot be deleted. Deletion of the main rejects with a structured error directing the user to designate another sequence as main first.
 - **FR-4:** Any non-main sequence can be designated as the new main via a single atomic API command; the previous main is downgraded to non-main in the same transaction.
 - **FR-5:** A fragment may appear in any sequence and may appear in many sequences simultaneously, but at most once per sequence. Placement in one sequence is fully independent of placement in any other.

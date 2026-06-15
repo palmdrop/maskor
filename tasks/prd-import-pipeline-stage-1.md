@@ -42,7 +42,7 @@ Enable users to import external documents into a Maskor project as fragments. St
 - [ ] `Piece` type is `{ title?: string; content: string }` — `title` is the raw heading text when present (markdown/docx); undefined for plaintext
 - [ ] Content of each markdown piece excludes the heading line that introduced it
 - [ ] For plaintext, the first non-empty line is **not** stripped — it remains in `content` even if used to derive the key later
-- [ ] Empty pieces (no content after stripping the delimiter/heading) are not emitted by the splitter; the importCommand records them in `errors[]` (see US-004)
+- [ ] Empty pieces (no content after stripping the delimiter/heading) are not emitted by the splitter and are silently discarded — they are **not** reported as errors (an empty piece is nothing to import, and the user reviews the resulting fragments in the import preview before committing)
 - [ ] `type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6` is defined locally in the importer package
 - [ ] Unit tests cover: single heading level, mixed heading levels, heading inside fenced code block (must not split), pre-first-heading content, delimiter at start/end, delimiter not present, empty input
 - [ ] Typecheck passes
@@ -95,12 +95,12 @@ Enable users to import external documents into a Maskor project as fragments. St
   3. Calls the appropriate splitter
   4. For each piece: derives the key, builds a Fragment draft, calls `createFragmentCommand.execute(ctx, draft)`
   5. Catches per-piece errors — including storage `KEY_CONFLICT` from race conditions with concurrent writes — and appends them to `errors[]`
-  6. Empty pieces (no content after split-trim) are reported in `errors[]` with reason `"empty piece"` and are not written
+  6. Empty pieces (no content after split-trim) are discarded by the splitter, so they never reach the importCommand — they are neither written nor reported as errors
 - [ ] Response: `{ created: FragmentUUID[]; errors: { pieceIndex: number; pieceKey?: string; error: string }[] }` — `pieceIndex` is always present (1-based position in split output); `pieceKey` is included when key derivation succeeded before the failure
 - [ ] A piece that fails to create is logged and added to `errors`; remaining pieces proceed
 - [ ] Per-fragment `fragment:created` log entries are emitted as normal by `createFragmentCommand`; no separate batch entry is introduced
 - [ ] The endpoint is registered in the OpenAPI spec with request/response schemas; the Orval client is regenerated
-- [ ] Route-level integration tests cover: markdown import, plaintext import, docx import, key collision (existing fragment with same key), partial failure (one piece fails, others succeed), empty piece reporting
+- [ ] Route-level integration tests cover: markdown import, plaintext import, docx import, key collision (existing fragment with same key), partial failure (one piece fails, others succeed), empty-piece discard (produces no fragment and no error)
 - [ ] Typecheck passes
 
 ### US-005: Frontend import dialog
@@ -124,11 +124,11 @@ Enable users to import external documents into a Maskor project as fragments. St
 
 - FR-1: Splitting on heading level N must also split on all heading levels 1 through N–1
 - FR-2: Heading text used as the section boundary in markdown/docx is stripped from the piece body; it becomes the raw `title` on the `Piece` (later sanitized into a `key` by `deriveKey`)
-- FR-3: Plain-text delimiter string is stripped from piece content on split; empty pieces (delimiter with no content between, or markdown headings with no body) are discarded from the splitter output and reported in `errors[]` by the importCommand
+- FR-3: Plain-text delimiter string is stripped from piece content on split; empty pieces (delimiter with no content between, or markdown headings with no body) are discarded from the splitter output and are **not** reported as errors — an empty piece is nothing to import, and the user inspects the resulting fragments before committing
 - FR-4: Key derivation priority: heading text → first non-empty content line → `fragment-<uuid>`, each candidate sanitized to match `validateEntityKey` rules before use
 - FR-5: Duplicate key resolution: append `_1`, `_2`, … (checked **case-insensitively** against all keys already created in this import batch plus non-discarded keys in the vault)
 - FR-6: Import is fire-and-forget — fragments are created immediately; no preview or confirmation step (the review step in the source spec is deferred to a later stage)
-- FR-7: Per-piece failures are collected and returned in the response; they do not abort the batch. Failures include: empty pieces, key sanitization failures, and storage `KEY_CONFLICT` from concurrent writes.
+- FR-7: Per-piece failures are collected and returned in the response; they do not abort the batch. Failures include: key sanitization failures and storage `KEY_CONFLICT` from concurrent writes. (Empty pieces are not failures — they are silently discarded by the splitter.)
 - FR-8: The importer package contains only pure splitting/conversion logic; it has no HTTP or storage dependencies
 - FR-9: The import route accepts `multipart/form-data`; file size limits follow the existing API server / Hono / runtime configuration — no Stage 1 cap
 - FR-10: All mutations go through `importCommand` in `packages/api/src/commands/`; the route handler is read-only except for invoking the command
@@ -172,11 +172,11 @@ Enable users to import external documents into a Maskor project as fragments. St
 
 ## Success Metrics
 
-- A `.md` file with N headings at or above the chosen level produces exactly N fragments after import (modulo empty-piece discards reported in `errors[]`)
+- A `.md` file with N headings at or above the chosen level produces exactly N fragments after import (modulo empty-piece discards, which are silent)
 - A `.docx` file with Word heading styles produces the same result as the equivalent markdown file (images excluded)
 - A `.txt` file with K delimiter occurrences produces K+1 fragments (or fewer if empty pieces are discarded)
 - A key collision within a batch or against the vault resolves to a `_N`-suffixed key without error or abort
-- Per-piece failures (empty piece, sanitization failure, `KEY_CONFLICT` race) surface in the response without blocking the rest of the batch
+- Per-piece failures (sanitization failure, `KEY_CONFLICT` race) surface in the response without blocking the rest of the batch; empty pieces are silently discarded, not surfaced
 - Headings inside fenced code blocks do not produce extra pieces
 
 ---
