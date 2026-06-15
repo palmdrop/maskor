@@ -100,7 +100,14 @@ export function TagCombobox({
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
-              setOpen(false);
+              // First Escape dismisses the dropdown but keeps focus in the input,
+              // so the user can keep editing. A second Escape (dropdown already
+              // closed) blurs the input.
+              if (open) {
+                event.preventDefault();
+                setOpen(false);
+                return;
+              }
               inputRef.current?.blur();
               return;
             }

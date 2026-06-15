@@ -63,3 +63,35 @@ describe("TagCombobox — Enter key behavior", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 });
+
+describe("TagCombobox — Escape key behavior", () => {
+  it("first Escape closes the dropdown but keeps focus in the input; second Escape blurs", async () => {
+    render(<TagCombobox availableOptions={["foo", "bar"]} onSelect={vi.fn()} onCreate={vi.fn()} />);
+
+    const input = screen.getByRole("textbox");
+
+    // Focus opens the dropdown. Use the real .focus() so activeElement is set
+    // (fireEvent.focus does not move focus in jsdom).
+    await act(async () => {
+      input.focus();
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("option", { name: "foo" })).toBeInTheDocument();
+    });
+
+    // First Escape: dropdown dismissed, focus retained.
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("option", { name: "foo" })).not.toBeInTheDocument();
+    });
+    expect(input).toHaveFocus();
+
+    // Second Escape (dropdown already closed): input blurs.
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
+    expect(input).not.toHaveFocus();
+  });
+});
