@@ -12,7 +12,7 @@ type AttachableEntityPanelProps = {
   dialogTitle: string;
   entityName: string;
   onConfirmCreate: (label: string, content: string) => Promise<void>;
-  onDelete: (uuid: string) => Promise<void>;
+  onDelete: (item: Item) => void;
   isCreating: boolean;
 };
 
@@ -62,7 +62,7 @@ export const AttachableEntityPanel = ({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => onDelete(item.uuid)}
+                  onClick={() => onDelete(item)}
                   aria-label={`Delete ${item.label}`}
                 >
                   <Trash2Icon />

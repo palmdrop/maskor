@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListNotes,
@@ -6,12 +7,16 @@ import {
   getListNotesQueryKey,
 } from "@api/generated/notes/notes";
 import { AttachableEntityPanel } from "@components/attachable-entity-panel";
+import { useCommands } from "@lib/commands/useCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { notesPanelScope } from "@lib/commands/scopes/config-entities";
 
 export const NotesTab = ({ projectId }: { projectId: string }) => {
   const queryClient = useQueryClient();
   const { data: envelope, isLoading } = useListNotes(projectId);
   const createNote = useCreateNote();
   const deleteNote = useDeleteNote();
+  const commands = useCommands();
 
   const items =
     envelope?.status === 200
@@ -28,10 +33,18 @@ export const NotesTab = ({ projectId }: { projectId: string }) => {
     queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
   };
 
-  const handleDelete = async (noteId: string) => {
-    await deleteNote.mutateAsync({ projectId, noteId });
-    queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
-  };
+  const deleteNoteAction = useCallback(
+    async (noteId: string) => {
+      await deleteNote.mutateAsync({ projectId, noteId });
+      await queryClient.invalidateQueries({ queryKey: getListNotesQueryKey(projectId) });
+    },
+    [deleteNote, projectId, queryClient],
+  );
+
+  useCommandScope(notesPanelScope, {
+    notes: items.map((item) => ({ uuid: item.uuid, label: item.label })),
+    deleteNote: deleteNoteAction,
+  });
 
   return (
     <AttachableEntityPanel
@@ -41,7 +54,7 @@ export const NotesTab = ({ projectId }: { projectId: string }) => {
       dialogTitle="New note"
       entityName="note"
       onConfirmCreate={handleCreate}
-      onDelete={handleDelete}
+      onDelete={(item) => commands.run("notes:delete", item)}
       isCreating={createNote.isPending}
     />
   );

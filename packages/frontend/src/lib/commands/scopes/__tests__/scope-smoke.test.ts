@@ -7,6 +7,12 @@ import { fragmentImportCommands, type FragmentImportContext } from "../fragment-
 import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
 import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
 import { projectShellCommands, type ProjectShellContext } from "../project-shell";
+import { fragmentListCommands, type FragmentListContext } from "../fragment-list";
+import {
+  configEntitiesCommands,
+  type NotesPanelContext,
+  type ReferencesPanelContext,
+} from "../config-entities";
 
 const find = <T extends { id: string }, Id extends T["id"]>(
   list: readonly T[],
@@ -363,5 +369,58 @@ describe("scopes/project-shell", () => {
 
     find(projectShellCommands, "create:aspect").run(ctx);
     expect(openCreate).toHaveBeenLastCalledWith("aspect");
+  });
+});
+
+describe("scopes/fragment-list", () => {
+  const ctx: FragmentListContext = {
+    discardableFragments: [{ uuid: "a", key: "alpha" }],
+    discardedFragments: [{ uuid: "b", key: "beta" }],
+    discardFragment: vi.fn().mockResolvedValue(undefined),
+    restoreFragment: vi.fn().mockResolvedValue(undefined),
+    deleteFragment: vi.fn().mockResolvedValue(undefined),
+  };
+
+  it("discard runs against the chosen fragment and disables when none are discardable", () => {
+    const cmd = find(fragmentListCommands, "fragment-list:discard");
+    void cmd.run(ctx, { uuid: "a", key: "alpha" });
+    expect(ctx.discardFragment).toHaveBeenCalledWith("a");
+    expect(cmd.disabled?.({ ...ctx, discardableFragments: [] })).toMatch(/No fragments to discard/);
+  });
+
+  it("restore and delete run against the chosen fragment and disable when none are discarded", () => {
+    const restore = find(fragmentListCommands, "fragment-list:restore");
+    void restore.run(ctx, { uuid: "b", key: "beta" });
+    expect(ctx.restoreFragment).toHaveBeenCalledWith("b");
+    expect(restore.disabled?.({ ...ctx, discardedFragments: [] })).toMatch(/No discarded/);
+
+    const remove = find(fragmentListCommands, "fragment-list:delete");
+    void remove.run(ctx, { uuid: "b", key: "beta" });
+    expect(ctx.deleteFragment).toHaveBeenCalledWith("b");
+    expect(remove.disabled?.({ ...ctx, discardedFragments: [] })).toMatch(/No discarded/);
+  });
+});
+
+describe("scopes/config-entities", () => {
+  it("delete-note runs against the chosen note and disables when empty", () => {
+    const ctx: NotesPanelContext = {
+      notes: [{ uuid: "n1", label: "note" }],
+      deleteNote: vi.fn().mockResolvedValue(undefined),
+    };
+    const cmd = find(configEntitiesCommands, "notes:delete");
+    void cmd.run(ctx, { uuid: "n1", label: "note" });
+    expect(ctx.deleteNote).toHaveBeenCalledWith("n1");
+    expect(cmd.disabled?.({ ...ctx, notes: [] })).toMatch(/No notes to delete/);
+  });
+
+  it("delete-reference runs against the chosen reference and disables when empty", () => {
+    const ctx: ReferencesPanelContext = {
+      references: [{ uuid: "r1", label: "ref" }],
+      deleteReference: vi.fn().mockResolvedValue(undefined),
+    };
+    const cmd = find(configEntitiesCommands, "references:delete");
+    void cmd.run(ctx, { uuid: "r1", label: "ref" });
+    expect(ctx.deleteReference).toHaveBeenCalledWith("r1");
+    expect(cmd.disabled?.({ ...ctx, references: [] })).toMatch(/No references to delete/);
   });
 });

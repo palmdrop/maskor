@@ -35,6 +35,9 @@ import {
 } from "@lib/fragments/sort";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { FragmentListOrderProvider } from "@contexts/FragmentListOrderContext";
+import { useCommands } from "@lib/commands/useCommands";
+import { useCommandScope } from "@lib/commands/useCommandScope";
+import { fragmentListScope } from "@lib/commands/scopes/fragment-list";
 import { UploadIcon } from "lucide-react";
 
 export const FragmentListPage = () => {
@@ -47,10 +50,11 @@ export const FragmentListPage = () => {
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
   const { data: sequencesEnvelope } = useListSequences(projectId);
   const { isRebuilding } = useRebuildStatus();
-  const { mutate: discardFragment } = useDiscardFragment();
-  const { mutate: restoreFragment } = useRestoreFragment();
-  const { mutate: deleteFragment } = useDeleteFragment();
+  const { mutateAsync: discardFragment } = useDiscardFragment();
+  const { mutateAsync: restoreFragment } = useRestoreFragment();
+  const { mutateAsync: deleteFragment } = useDeleteFragment();
   const createFragment = useCreateFragment();
+  const commands = useCommands();
 
   const [filter, setFilter] = useState("");
   const [showDiscarded, , toggleShowDiscarded] = usePersistedBoolean(
@@ -89,6 +93,58 @@ export const FragmentListPage = () => {
     [queryClient, projectId],
   );
 
+  // Computed before the early returns so the command scope can publish
+  // unconditionally (Rules of Hooks). The render path reuses these.
+  const allFragments = useMemo(() => (envelope?.status === 200 ? envelope.data : []), [envelope]);
+  const discardableFragments = useMemo(
+    () => allFragments.filter((fragment) => !fragment.isDiscarded),
+    [allFragments],
+  );
+  const discardedFragments = useMemo(
+    () => allFragments.filter((fragment) => fragment.isDiscarded),
+    [allFragments],
+  );
+
+  const discardFragmentAction = useCallback(
+    async (fragmentUuid: string) => {
+      await discardFragment({ projectId, fragmentId: fragmentUuid });
+      await invalidateList();
+    },
+    [discardFragment, projectId, invalidateList],
+  );
+  const restoreFragmentAction = useCallback(
+    async (fragmentUuid: string) => {
+      await restoreFragment({ projectId, fragmentId: fragmentUuid });
+      await invalidateList();
+    },
+    [restoreFragment, projectId, invalidateList],
+  );
+  const deleteFragmentAction = useCallback(
+    async (fragmentUuid: string) => {
+      // Confirm lives in the primitive so the palette path is guarded too.
+      const fragment = allFragments.find((candidate) => candidate.uuid === fragmentUuid);
+      const key = fragment?.key ?? fragmentUuid;
+      if (
+        !confirm(
+          `Permanently delete fragment "${key}"? This removes the file from the vault and cannot be undone.`,
+        )
+      ) {
+        return;
+      }
+      await deleteFragment({ projectId, fragmentId: fragmentUuid });
+      await invalidateList();
+    },
+    [deleteFragment, projectId, invalidateList, allFragments],
+  );
+
+  useCommandScope(fragmentListScope, {
+    discardableFragments,
+    discardedFragments,
+    discardFragment: discardFragmentAction,
+    restoreFragment: restoreFragmentAction,
+    deleteFragment: deleteFragmentAction,
+  });
+
   const handleImportFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
@@ -124,9 +180,8 @@ export const FragmentListPage = () => {
   if (isError || !envelope)
     return <p className="p-4 text-sm text-muted-foreground">Failed to load fragments.</p>;
 
-  const fragments = envelope.status === 200 ? envelope.data : [];
-  const discardedCount = fragments.reduce((count, f) => count + (f.isDiscarded ? 1 : 0), 0);
-  const visible = showDiscarded ? fragments : fragments.filter((f) => !f.isDiscarded);
+  const discardedCount = discardedFragments.length;
+  const visible = showDiscarded ? allFragments : discardableFragments;
   const filtered = filter
     ? visible.filter((f) => f.key.toLowerCase().includes(filter.toLowerCase()))
     : visible;
@@ -249,12 +304,7 @@ export const FragmentListPage = () => {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() =>
-                        restoreFragment(
-                          { projectId, fragmentId: fragment.uuid },
-                          { onSuccess: invalidateList },
-                        )
-                      }
+                      onClick={() => commands.run("fragment-list:restore", fragment)}
                     >
                       Restore
                     </Button>
@@ -262,18 +312,7 @@ export const FragmentListPage = () => {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Permanently delete fragment "${fragment.key}"? This removes the file from the vault and cannot be undone.`,
-                          )
-                        ) {
-                          deleteFragment(
-                            { projectId, fragmentId: fragment.uuid },
-                            { onSuccess: invalidateList },
-                          );
-                        }
-                      }}
+                      onClick={() => commands.run("fragment-list:delete", fragment)}
                     >
                       Delete
                     </Button>
@@ -283,12 +322,7 @@ export const FragmentListPage = () => {
                     size="sm"
                     variant="ghost"
                     className="h-6 px-2 text-xs"
-                    onClick={() =>
-                      discardFragment(
-                        { projectId, fragmentId: fragment.uuid },
-                        { onSuccess: invalidateList },
-                      )
-                    }
+                    onClick={() => commands.run("fragment-list:discard", fragment)}
                   >
                     Discard
                   </Button>
