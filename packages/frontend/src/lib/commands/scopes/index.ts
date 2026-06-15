@@ -6,6 +6,7 @@ import { fragmentNavCommands } from "./fragment-nav";
 import { marginCommands } from "./margin";
 import { fragmentImportCommands } from "./fragment-import";
 import { fragmentMetadataCommands } from "./fragment-metadata";
+import { aspectReaderCommands } from "./aspect-reader";
 import { projectConfigCommands } from "./project-config";
 import { projectManagementCommands } from "./project-management";
 import { projectShellCommands } from "./project-shell";
@@ -27,6 +28,7 @@ export const scopeCommands = [
   ...marginCommands,
   ...fragmentImportCommands,
   ...fragmentMetadataCommands,
+  ...aspectReaderCommands,
   ...projectConfigCommands,
   ...projectManagementCommands,
   ...projectShellCommands,

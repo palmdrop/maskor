@@ -1,14 +1,13 @@
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import {
-  useCreateAspect,
-  useListAspects,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { useListAspects } from "@api/generated/aspects/aspects";
 import type { Fragment } from "@api/generated/maskorAPI.schemas";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
+import { useCreateAspectByKey } from "@hooks/useCreateAspectByKey";
+import { useCommands } from "../../lib/commands/useCommands";
+import { useCommandScope } from "../../lib/commands/useCommandScope";
+import { aspectReaderScope } from "../../lib/commands/scopes/aspect-reader";
 import { AspectPreview } from "./aspect-preview";
 import { resolveAspectColor } from "../../pages/OverviewPage/utils/aspectColors";
 
@@ -26,9 +25,9 @@ type Props = {
 // `AspectPreview`. Orphaned rows (a weight key with no aspect entity) render muted with a
 // create-the-aspect affordance instead of a preview.
 export const AspectReaderTab = ({ projectId, fragment, expandedAspectKey, onToggle }: Props) => {
-  const queryClient = useQueryClient();
   const { data: aspectsEnvelope } = useListAspects(projectId);
-  const { mutateAsync: createAspect, isPending: isCreating } = useCreateAspect();
+  const { createAspect, isCreating } = useCreateAspectByKey(projectId);
+  const commands = useCommands();
 
   const projectAspects = useMemo(
     () => (aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : []),
@@ -58,12 +57,14 @@ export const AspectReaderTab = ({ projectId, fragment, expandedAspectKey, onTogg
     [fragment.aspects, knownAspectKeys],
   );
 
-  // TODO: route aspect creation through the command system (mirrors the metadata form's existing
-  // TODO for create-and-attach).
-  const handleCreate = async (aspectKey: string) => {
-    await createAspect({ projectId, data: { key: aspectKey } });
-    await queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
-  };
+  const orphanedAspectKeys = useMemo(
+    () => rows.filter((row) => !row.isLive).map((row) => row.key),
+    [rows],
+  );
+
+  // Creation routes through `aspect-reader:create-aspect` (palette-discoverable from the orphaned
+  // keys); failures surface via the command's `onFailure` toast.
+  useCommandScope(aspectReaderScope, { orphanedAspectKeys, createAspect });
 
   if (rows.length === 0) {
     return <p className="px-1 text-sm text-muted-foreground">No aspects on this fragment.</p>;
@@ -116,7 +117,7 @@ export const AspectReaderTab = ({ projectId, fragment, expandedAspectKey, onTogg
                       size="sm"
                       variant="outline"
                       disabled={isCreating}
-                      onClick={() => handleCreate(key)}
+                      onClick={() => commands.run("aspect-reader:create-aspect", key)}
                       className="self-start"
                     >
                       {isCreating ? "Creating…" : "Create aspect"}

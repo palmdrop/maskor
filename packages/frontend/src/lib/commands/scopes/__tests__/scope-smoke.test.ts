@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { overviewCommands, type OverviewContext } from "../overview";
 import { sequenceSidebarCommands, type SequenceSidebarContext } from "../sequence-sidebar";
 import { fragmentEditorCommands, type FragmentEditorContext } from "../fragment-editor";
+import { aspectReaderCommands, type AspectReaderContext } from "../aspect-reader";
 import { fragmentImportCommands, type FragmentImportContext } from "../fragment-import";
 import { projectConfigCommands, type ProjectConfigContext } from "../project-config";
 import { projectManagementCommands, type ProjectManagementContext } from "../project-management";
@@ -326,6 +327,22 @@ describe("scopes/project-management", () => {
     cmd.run(ctx);
     expect(ctx.saveSettings).toHaveBeenCalled();
     expect(cmd.disabled?.({ ...ctx, canSaveSettings: false })).toBe("No changes to save");
+  });
+});
+
+describe("scopes/aspect-reader", () => {
+  it("create-aspect creates the chosen orphan and disables with no orphans", async () => {
+    const createAspect = vi.fn().mockResolvedValue(undefined);
+    const ctx: AspectReaderContext = { orphanedAspectKeys: ["ghost"], createAspect };
+    const cmd = find(aspectReaderCommands, "aspect-reader:create-aspect");
+
+    await cmd.run(ctx, "ghost");
+    expect(createAspect).toHaveBeenCalledWith("ghost");
+
+    expect(cmd.disabled?.(ctx)).toBeUndefined();
+    expect(cmd.disabled?.({ ...ctx, orphanedAspectKeys: [] })).toBe(
+      "No orphaned aspects to create",
+    );
   });
 });
 

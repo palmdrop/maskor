@@ -1,14 +1,10 @@
 import { useMemo, useCallback, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import type { Fragment } from "@api/generated/maskorAPI.schemas";
-import {
-  useListAspects,
-  useCreateAspect,
-  getListAspectsQueryKey,
-} from "@api/generated/aspects/aspects";
+import { useListAspects } from "@api/generated/aspects/aspects";
 import { useListReferences } from "@api/generated/references/references";
 import { useEntityFieldSave } from "@lib/entity-kinds/useEntityFieldSave";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
+import { useCreateAspectByKey } from "@hooks/useCreateAspectByKey";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
 import { Badge } from "@components/ui/badge";
@@ -43,12 +39,15 @@ const aspectsEqual = (
 type Props = {
   fragment: Fragment;
   projectId: string;
+  // Whether the aspect reader gutter is mounted alongside this form. When false (the inline
+  // Overview/Preview overlay, which suppresses the Margin), the chips render as plain text instead
+  // of buttons — dispatching `fragment-editor:preview-aspect` there would be a silent no-op.
+  canPreviewAspects?: boolean;
 };
 
-export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
-  const queryClient = useQueryClient();
-  const { mutateAsync: createAspect } = useCreateAspect();
+export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = false }: Props) => {
   const { makeFieldSave } = useEntityFieldSave("fragment", projectId, fragment.uuid);
+  const { createAspect } = useCreateAspectByKey(projectId);
   const [createAspectError, setCreateAspectError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);
@@ -149,25 +148,23 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
     [aspectsField],
   );
 
-  // TODO: add command palette command for this
+  // Free-text create-and-attach from the combobox: the typed key has no existing entity, so this is
+  // an inline create (like `FragmentListPage`'s create-on-type) rather than a palette command — it
+  // can't be discovered from a fixed item list. Errors render in place below the field.
   const createAndAttachAspect = useCallback(
     async (aspectKey: string) => {
       setCreateAspectError(null);
       try {
-        const result = await createAspect({ projectId, data: { key: aspectKey } });
-        if (result.status !== 201) {
-          const message = (result.data as { message?: string }).message;
-          throw new Error(message ?? "Failed to create aspect.");
-        }
-        await queryClient.invalidateQueries({ queryKey: getListAspectsQueryKey(projectId) });
+        await createAspect(aspectKey);
         attachAspect(aspectKey);
       } catch (error) {
         const message = (error as { message?: string })?.message ?? "Failed to create aspect.";
         setCreateAspectError(message);
+        // Rethrow so the combobox keeps the typed query for retry (it clears only on success).
         throw error;
       }
     },
-    [createAspect, projectId, queryClient, attachAspect],
+    [createAspect, attachAspect],
   );
 
   const commands = useCommands();
@@ -213,6 +210,43 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
       }
     },
   });
+
+  // The aspect chip: a color dot + key + weight (+ orphaned badge). When the reader gutter is mounted
+  // it is a button that opens the reader on this aspect; otherwise a plain span (no dead click).
+  const renderAspectChip = (aspectKey: string, weight: number, isOrphaned: boolean) => {
+    const content = (
+      <>
+        <span
+          className={`inline-block w-2.5 h-2.5 rounded-full shrink-0${
+            isOrphaned ? " border border-muted-foreground/50" : ""
+          }`}
+          style={isOrphaned ? undefined : { backgroundColor: colorByAspectKey.get(aspectKey) }}
+          aria-hidden="true"
+        />
+        {aspectKey} — {Math.round(weight * 100)}%
+        {isOrphaned && (
+          <Badge variant="muted" aria-label="orphaned aspect">
+            orphaned
+          </Badge>
+        )}
+      </>
+    );
+
+    if (!canPreviewAspects) {
+      return <span className="flex items-center gap-1.5">{content}</span>;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => commands.run("fragment-editor:preview-aspect", aspectKey)}
+        className="flex items-center gap-1.5 text-left transition-colors hover:text-foreground"
+        title="Preview aspect"
+      >
+        {content}
+      </button>
+    );
+  };
 
   return (
     <form className="flex flex-col gap-4">
@@ -266,19 +300,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         {liveAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1">
             <span className="text-sm text-muted-foreground flex justify-between">
-              <button
-                type="button"
-                onClick={() => commands.run("fragment-editor:preview-aspect", aspectKey)}
-                className="flex items-center gap-1.5 text-left transition-colors hover:text-foreground"
-                title="Preview aspect"
-              >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: colorByAspectKey.get(aspectKey) }}
-                  aria-hidden="true"
-                />
-                {aspectKey} — {Math.round(weight * 100)}%
-              </button>
+              {renderAspectChip(aspectKey, weight, false)}
               <button
                 type="button"
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
@@ -299,21 +321,7 @@ export const FragmentMetadataForm = ({ fragment, projectId }: Props) => {
         {orphanedAspects.map(([aspectKey, { weight }]) => (
           <div key={aspectKey} className="flex flex-col gap-1 opacity-50">
             <span className="text-sm text-muted-foreground flex justify-between">
-              <button
-                type="button"
-                onClick={() => commands.run("fragment-editor:preview-aspect", aspectKey)}
-                className="flex items-center gap-1.5 text-left transition-colors hover:text-foreground"
-                title="Preview aspect"
-              >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-muted-foreground/50"
-                  aria-hidden="true"
-                />
-                {aspectKey} — {Math.round(weight * 100)}%
-                <Badge variant="muted" aria-label="orphaned aspect">
-                  orphaned
-                </Badge>
-              </button>
+              {renderAspectChip(aspectKey, weight, true)}
               <button
                 type="button"
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}

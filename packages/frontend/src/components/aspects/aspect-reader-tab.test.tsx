@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -14,6 +14,7 @@ vi.mock("./aspect-preview", () => ({
 import { AspectReaderTab } from "./aspect-reader-tab";
 import { getListAspectsQueryKey } from "@api/generated/aspects/aspects";
 import type { Fragment } from "@api/generated/maskorAPI.schemas";
+import { CommandsProvider } from "@lib/commands/CommandsProvider";
 
 const projectId = "project-1";
 
@@ -41,7 +42,9 @@ const renderTab = (fragment: Fragment, expandedAspectKey: string | null, onToggl
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   seedAspects(queryClient);
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <CommandsProvider>{children}</CommandsProvider>
+    </QueryClientProvider>
   );
   render(
     <AspectReaderTab
@@ -56,6 +59,10 @@ const renderTab = (fragment: Fragment, expandedAspectKey: string | null, onToggl
 };
 
 describe("AspectReaderTab", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows the empty state when the fragment has no aspects", () => {
     renderTab(baseFragment, null);
     expect(screen.getByText("No aspects on this fragment.")).toBeInTheDocument();
@@ -92,6 +99,33 @@ describe("AspectReaderTab", () => {
     renderTab(fragment, "ghost");
     expect(screen.queryByTestId("aspect-preview")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create aspect" })).toBeInTheDocument();
+  });
+
+  it("creating an orphan dispatches the command and POSTs the new aspect", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ uuid: "ghost-uuid", key: "ghost", notes: [] }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fragment: Fragment = {
+      ...baseFragment,
+      aspects: { ghost: { weight: 0.5 } },
+    };
+    renderTab(fragment, "ghost");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create aspect" }));
+
+    // The seeded list query may background-refetch (GET); assert the create POST among the calls.
+    const findCreateCall = () =>
+      fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes(`/projects/${projectId}/aspects`) &&
+          (init as RequestInit | undefined)?.method === "POST",
+      );
+    await waitFor(() => expect(findCreateCall()).toBeTruthy());
   });
 
   it("toggles via the row header", () => {

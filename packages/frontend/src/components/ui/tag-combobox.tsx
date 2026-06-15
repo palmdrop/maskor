@@ -75,7 +75,6 @@ export function TagCombobox({
     }
   }
 
-  console.log({ query, highlightedValue, hasOptions, showCreate });
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Anchor asChild>

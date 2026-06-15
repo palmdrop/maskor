@@ -487,7 +487,11 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         onContentSave={onContentSave}
         sidebar={
           <div className="flex flex-col gap-4">
-            <FragmentMetadataForm fragment={fragment} projectId={projectId} />
+            <FragmentMetadataForm
+              fragment={fragment}
+              projectId={projectId}
+              canPreviewAspects={showMargin}
+            />
             <Separator />
             <FragmentSequenceMembership projectId={projectId} fragmentId={fragmentId} />
             {showFragmentStats && (

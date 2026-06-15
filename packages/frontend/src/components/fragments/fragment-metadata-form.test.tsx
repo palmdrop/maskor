@@ -344,3 +344,54 @@ describe("FragmentMetadataForm — orphaned aspects", () => {
     expect(JSON.parse(init.body as string)).toEqual({ aspects: {} });
   });
 });
+
+describe("FragmentMetadataForm — aspect preview chip", () => {
+  const seedWithAspect = (queryClient: QueryClient) => {
+    const fragment: Fragment = {
+      ...baseFragment,
+      aspects: { "the-river": { weight: 0.7 } },
+    };
+    const headers = new Headers();
+    queryClient.setQueryData(getGetFragmentQueryKey(projectId, fragment.uuid), {
+      data: fragment,
+      status: 200,
+      headers,
+    });
+    queryClient.setQueryData(getListAspectsQueryKey(projectId), {
+      data: [{ uuid: "aspect-river", key: "the-river", category: "general" }],
+      status: 200,
+      headers,
+    });
+    queryClient.setQueryData(getListNotesQueryKey(projectId), { data: [], status: 200, headers });
+    queryClient.setQueryData(getListReferencesQueryKey(projectId), {
+      data: [],
+      status: 200,
+      headers,
+    });
+    return fragment;
+  };
+
+  it("renders the chip as a preview button when the reader gutter is available", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const fragment = seedWithAspect(queryClient);
+
+    render(<FragmentMetadataForm fragment={fragment} projectId={projectId} canPreviewAspects />, {
+      wrapper: wrap(queryClient),
+    });
+
+    expect(screen.getByRole("button", { name: /the-river/ })).toBeInTheDocument();
+  });
+
+  it("renders the chip as plain text when the reader gutter is absent", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const fragment = seedWithAspect(queryClient);
+
+    render(
+      <FragmentMetadataForm fragment={fragment} projectId={projectId} canPreviewAspects={false} />,
+      { wrapper: wrap(queryClient) },
+    );
+
+    expect(screen.getByText(/the-river/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /the-river/ })).not.toBeInTheDocument();
+  });
+});
