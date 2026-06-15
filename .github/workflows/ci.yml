@@ -20,6 +20,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Guard the committed openapi.json against drift from the route definitions.
+      # Must run BEFORE codegen — codegen regenerates the snapshot, so running this
+      # afterwards would always pass and never catch a stale committed snapshot.
+      - name: Verify OpenAPI snapshot
+        run: bun run verify:openapi
+
       # The orval client (src/api/generated/) is gitignored, so it does not exist
       # in a fresh checkout. Generate it from the committed openapi.json snapshot
       # (in-process, no server) before typecheck/test/lint — otherwise every
