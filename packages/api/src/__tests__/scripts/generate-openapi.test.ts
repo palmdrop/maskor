@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import type { StorageService } from "@maskor/storage";
 import { createApp } from "../../app";
 import { OPENAPI_DOCUMENT_CONFIG } from "../../openapi-config";
+import { assertOpenAPIPathsUseBraces, renderOpenAPISnapshot } from "../../scripts/generate-openapi";
 
 // The snapshot generator (scripts/generate-openapi.ts) builds the document with
 // createApp({} as StorageService).getOpenAPIDocument(OPENAPI_DOCUMENT_CONFIG).
@@ -30,5 +31,26 @@ describe("OpenAPI snapshot generator", () => {
     expect(document.openapi).toBe("3.1.0");
     expect(document.info.title).toBe("Maskor API");
     expect(Object.keys(document.paths ?? {}).length).toBeGreaterThan(0);
+  });
+});
+
+// Guards the `:param` vs `{param}` footgun: a Hono `:param` route lands literally
+// in the OpenAPI document, so orval builds a client that requests `/visit/:id`.
+// The snapshot still equals the routes, so this is the only thing that catches it.
+describe("assertOpenAPIPathsUseBraces", () => {
+  it("passes for OpenAPI `{param}` template paths", () => {
+    expect(() =>
+      assertOpenAPIPathsUseBraces({ "/projects/{projectId}/fragments/{fragmentId}": {} }),
+    ).not.toThrow();
+  });
+
+  it("throws naming the offending path when a route uses `:param` syntax", () => {
+    expect(() => assertOpenAPIPathsUseBraces({ "/visit/:fragmentId": {} })).toThrow(
+      "/visit/:fragmentId",
+    );
+  });
+
+  it("does not throw on the real generated document (every route is clean)", () => {
+    expect(() => renderOpenAPISnapshot()).not.toThrow();
   });
 });
