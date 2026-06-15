@@ -450,13 +450,17 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
             </div>
           )}
           {rightPanel ? (
-            // Editor + Margin laid out as a 3-column grid (`1fr | prose | 1fr`) on `lg`: the prose
-            // column is sized to its own width (`maxParagraphWidth`ch at the prose font size) and the
-            // equal `1fr` gutters keep the editor body centred regardless of the Margin. The Margin
-            // sits in the right gutter at a fixed, sensible width (it no longer flex-grows to claim —
-            // and leave mostly empty — the whole right side). The `ch` unit resolves against the prose
-            // column's own font size, so it is set there. Stacks vertically below `lg`.
-            <div className="flex flex-1 min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0">
+            // Editor + Margin laid out as a 3-column grid on `lg`:
+            //   [ small left gutter | prose (auto) | margin (grows) ]
+            // The left gutter is capped small (`minmax(0,12rem)`) so it never mirrors the margin and
+            // strands space on the left. The prose column is sized to its own width
+            // (`maxParagraphWidth`ch). The Margin column grows from a usable floor up to a sensible cap
+            // (`minmax(24rem,34rem)`) and the Margin element fills it (`w-full`), so when there is room
+            // the Margin widens and pushes the prose left rather than leaving the left empty. Both
+            // gutter tracks are length-bounded (no `1fr`), so on ultra-wide screens leftover space sits
+            // to the far right and the grid can never blow out past the container. The `ch` unit
+            // resolves against the prose column's own font size, so it is set there. Stacks below `lg`.
+            <div className="flex flex-1 min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,12rem)_auto_minmax(24rem,34rem)] lg:gap-0">
               <main
                 className="w-full min-w-0 min-h-0 overflow-y-auto lg:col-start-2 lg:w-(--prose-width) lg:max-w-full"
                 style={
@@ -470,7 +474,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
               </main>
               {/* A faint vertical separator with padding keeps the editor and Margin reading as two
                   seamless pieces of text (margins-4 #12). */}
-              <div className="flex w-full min-w-0 flex-col min-h-0 border-t border-border/50 pt-4 lg:col-start-3 lg:w-132 lg:max-w-full lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+              <div className="flex w-full min-w-0 flex-col min-h-0 border-t border-border/50 pt-4 lg:col-start-3 lg:w-full lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
                 {rightPanel}
               </div>
             </div>
