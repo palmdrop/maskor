@@ -7,6 +7,7 @@ import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { Button } from "@components/ui/button";
 import { CategoryField } from "@components/category-field";
 import { EntityEditorShell } from "@components/entity-editor-shell";
+import { BacklinksPanel } from "@components/document-links/BacklinksPanel";
 
 type Props = {
   projectId: string;
@@ -63,6 +64,7 @@ export const ReferenceEditor = ({ projectId, referenceId, fragmentId }: Props) =
         onChange={categoryField.onChange}
         error={categoryField.error}
       />
+      <BacklinksPanel projectId={projectId} targetType="reference" targetKey={reference.key} />
     </div>
   );
 

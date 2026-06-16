@@ -15,6 +15,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   };
 });
 
+vi.mock("@components/document-links/BacklinksPanel", () => ({ BacklinksPanel: () => null }));
+
 vi.mock("@components/entity-editor-shell", () => ({
   EntityEditorShell: ({ sidebar }: { sidebar?: ReactNode }) => (
     <div data-testid="editor-shell">{sidebar}</div>

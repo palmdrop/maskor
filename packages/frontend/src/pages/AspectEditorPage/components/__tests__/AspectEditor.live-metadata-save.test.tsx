@@ -17,6 +17,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 // EntityEditorShell has heavy dependencies (ProseEditor + TipTap, project config hook).
 // For this test we only care about the sidebar wiring and isPending propagation —
 // stub the shell to expose those as plain DOM and skip the editor surface.
+vi.mock("@components/document-links/BacklinksPanel", () => ({ BacklinksPanel: () => null }));
+
 vi.mock("@components/entity-editor-shell", () => ({
   EntityEditorShell: ({ sidebar, isPending }: { sidebar?: ReactNode; isPending: boolean }) => (
     <div>

@@ -141,6 +141,23 @@ describe("FragmentMetadataForm — live metadata save", () => {
     expect(JSON.parse(init.body as string)).toEqual({ references: [] });
   });
 
+  it("disables the reference X-button when an inline link pins it in the body", () => {
+    const seeded: Fragment = {
+      ...baseFragment,
+      references: ["bridge-obs"],
+      content: "Body cites [[references/bridge-obs]].",
+    };
+    seedQueries(queryClient, seeded);
+
+    render(<FragmentMetadataForm fragment={seeded} projectId={projectId} />, {
+      wrapper: wrap(queryClient),
+    });
+
+    const removeButton = screen.getByRole("button", { name: "×" });
+    expect(removeButton).toBeDisabled();
+    expect(removeButton).toHaveAttribute("title", "Remove the [[link]] from the body first");
+  });
+
   it("toggling back within the debounce window cancels the PATCH entirely", async () => {
     // Two notes seeded so we can remove one and re-add it (via combobox-equivalent path).
     // The simplest "toggle back" interaction: remove a note, then re-add by clicking

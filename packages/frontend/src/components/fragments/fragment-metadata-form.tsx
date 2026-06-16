@@ -10,6 +10,7 @@ import { Slider } from "@components/ui/slider";
 import { Badge } from "@components/ui/badge";
 import { TagCombobox, type OptionGroup } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
+import { deriveInlineLinkMetadata } from "@maskor/shared";
 import { groupByCategory } from "@/utils/group-by-category";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentMetadataScope } from "../../lib/commands/scopes/fragment-metadata";
@@ -77,6 +78,14 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
     () => new Set(projectAspects.map((a) => a.key)),
     [projectAspects],
   );
+
+  // References / aspects pinned by an inline `[[…]]` link in the body: their form X-button is disabled
+  // (removing the chip while the body still links would re-add it on the next save — document-links.md).
+  const inlineLinked = useMemo(() => {
+    const { referenceKeys, aspectKeys } = deriveInlineLinkMetadata(fragment.content ?? "");
+    return { references: new Set(referenceKeys), aspects: new Set(aspectKeys) };
+  }, [fragment.content]);
+  const inlineLinkHint = "Remove the [[link]] from the body first";
 
   const colorByAspectKey = useMemo(() => {
     const map = new Map<string, string>();
@@ -281,6 +290,9 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
                     : undefined
                 }
                 onRemove={() => commands.run("fragment-metadata:detach-reference", referenceKey)}
+                removeDisabledReason={
+                  inlineLinked.references.has(referenceKey) ? inlineLinkHint : undefined
+                }
               />
             );
           })}
@@ -303,8 +315,10 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
               {renderAspectChip(aspectKey, weight, false)}
               <button
                 type="button"
+                disabled={inlineLinked.aspects.has(aspectKey)}
+                title={inlineLinked.aspects.has(aspectKey) ? inlineLinkHint : undefined}
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
-                className="ml-1 text-muted-foreground hover:text-foreground"
+                className="ml-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
               >
                 ×
               </button>
@@ -324,8 +338,10 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
               {renderAspectChip(aspectKey, weight, true)}
               <button
                 type="button"
+                disabled={inlineLinked.aspects.has(aspectKey)}
+                title={inlineLinked.aspects.has(aspectKey) ? inlineLinkHint : undefined}
                 onClick={() => commands.run("fragment-metadata:detach-aspect", aspectKey)}
-                className="ml-1 text-muted-foreground hover:text-foreground"
+                className="ml-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
               >
                 ×
               </button>

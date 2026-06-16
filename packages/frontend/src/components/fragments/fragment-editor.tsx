@@ -24,6 +24,7 @@ import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import type { EditorMode } from "@components/margins/slot-editor";
 import { EditorNavigationControls } from "./editor-navigation-controls";
 import { FragmentMetadataForm } from "./fragment-metadata-form";
+import { BacklinksPanel } from "@components/document-links/BacklinksPanel";
 import { FragmentSequenceMembership } from "./fragment-sequence-membership";
 import { FragmentStatsInspector } from "./fragment-stats-inspector";
 import { PlaceInSequenceModal } from "@components/sequences/PlaceInSequenceModal";
@@ -492,6 +493,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
               projectId={projectId}
               canPreviewAspects={showMargin}
             />
+            <Separator />
+            <BacklinksPanel projectId={projectId} targetType="fragment" targetKey={fragment.key} />
             <Separator />
             <FragmentSequenceMembership projectId={projectId} fragmentId={fragmentId} />
             {showFragmentStats && (

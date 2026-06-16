@@ -11,6 +11,7 @@ import { EntityTag } from "@components/entity-tag";
 import { TagCombobox } from "@components/ui/tag-combobox";
 import { CategoryField } from "@components/category-field";
 import { EntityEditorShell } from "@components/entity-editor-shell";
+import { BacklinksPanel } from "@components/document-links/BacklinksPanel";
 import { ASPECT_COLOR_PALETTE, resolveAspectColor } from "../../OverviewPage/utils/aspectColors";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
@@ -141,6 +142,7 @@ export const AspectEditor = ({ projectId, aspectId }: Props) => {
         />
         {notesField.error && <p className="text-xs text-destructive">{notesField.error}</p>}
       </div>
+      <BacklinksPanel projectId={projectId} targetType="aspect" targetKey={aspect.key} />
     </div>
   );
 
