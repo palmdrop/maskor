@@ -195,3 +195,44 @@ a {
   color: var(--color-destructive, #dc2626);
   text-decoration: underline dotted;
 }
+
+/* `[[` autocomplete popup in the rich editor (imperatively rendered by document-link-suggestion-tiptap). */
+.doc-link-suggestion-popup {
+  z-index: 50;
+  min-width: 12rem;
+  max-width: 22rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-popover, #fff);
+  color: var(--color-popover-foreground, #111);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+.doc-link-suggestion-option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  text-align: left;
+  font-size: 0.875rem;
+}
+.doc-link-suggestion-option[data-selected="true"] {
+  background: var(--color-accent, #eee);
+  color: var(--color-accent-foreground, #111);
+}
+.doc-link-suggestion-type {
+  color: var(--color-muted-foreground, #6b7280);
+  font-size: 0.75rem;
+}
+.doc-link-suggestion-empty {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground, #6b7280);
+}

@@ -102,6 +102,21 @@ export const parseDocumentLinks = (body: string): ParsedDocumentLink[] => {
   return links;
 };
 
+// Replace every document link with its visible label (alias, else the bare key), stripping the
+// `[[…]]` markup. For plain-text contexts like backlink snippets where the raw brackets are noise.
+// Non-link text is untouched; parse order guarantees non-overlapping, left-to-right replacement.
+export const stripDocumentLinkMarkup = (text: string): string => {
+  const links = parseDocumentLinks(text);
+  if (links.length === 0) return text;
+  let result = "";
+  let cursor = 0;
+  for (const link of links) {
+    result += text.slice(cursor, link.index) + (link.alias ?? link.targetKey);
+    cursor = link.index + link.raw.length;
+  }
+  return result + text.slice(cursor);
+};
+
 // The canonical full-path link Maskor always inserts: `[[type/key]]` or `[[type/key|alias]]`.
 export const buildDocumentLink = (
   pathType: LinkPathType,

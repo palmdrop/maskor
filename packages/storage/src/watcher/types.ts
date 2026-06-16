@@ -4,6 +4,10 @@ export type CascadeCallbacks = {
   onNoteRename: (oldKey: string, newKey: string) => Promise<void>;
   onReferenceRename: (oldKey: string, newKey: string) => Promise<void>;
   onAspectRename: (oldKey: string, newKey: string) => Promise<void>;
+  // Fragments are link targets too, so a fragment rename must rewrite `[[fragments/oldKey]]` links in
+  // every referring body. Carries the renamed fragment's uuid so the cascade can skip its own file
+  // (the sync that triggered the rename owns it).
+  onFragmentRename: (oldKey: string, newKey: string, renamedUuid: string) => Promise<void>;
 };
 
 export type VaultWatcher = {

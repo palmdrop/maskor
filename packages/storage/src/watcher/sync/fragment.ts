@@ -1,6 +1,8 @@
+import { basename } from "node:path";
 import type { Fragment, VaultSyncEvent } from "@maskor/shared";
 import type { Logger } from "@maskor/shared/logger";
 import type { VaultDatabase } from "../../db/vault";
+import type { RenameBuffer } from "../utils/rename-buffer";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
 import { parseEntityFileOrThrow } from "../../vault/markdown/parse";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
@@ -38,12 +40,21 @@ const fragmentMetadataEqual = (a: Fragment, b: Fragment): boolean => {
   return aspectKeysA.every((key) => a.aspects[key]?.weight === b.aspects[key]?.weight);
 };
 
+// Rename support mirrors the keyed-entity sync: a deferred unlink (rename buffer) lets a following add
+// on the same UUID be recognised as a rename, and a fragment key change rewrites `[[fragments/oldKey]]`
+// links in every referring body via the cascade callback.
+type FragmentRenameOptions = {
+  renameBuffer: RenameBuffer;
+  cascadeRename?: (oldKey: string, newKey: string, renamedUuid: string) => Promise<void>;
+};
+
 export const syncFragment = async (
   vaultDatabase: VaultDatabase,
   emit: (event: VaultSyncEvent) => void,
   log: Logger,
   absolutePath: string,
   entityRelativePath: string,
+  renameOptions: FragmentRenameOptions,
 ): Promise<void> => {
   // Fragments must live at fragments/<key>.md or fragments/discarded/<key>.md.
   // Any other nesting is invalid; surface as a warning and skip indexing so the
@@ -78,13 +89,36 @@ export const syncFragment = async (
     { writeBack: false },
   );
 
-  // Collision check only needed when UUID was already present (not freshly minted).
+  // Rename detection (mirrors syncKeyedEntity), run before the collision check. The old filename's
+  // unlink is deferred via the rename buffer, so a buffered entry on this UUID means the same fragment
+  // was renamed — not a genuine UUID collision. Recognising it here skips the collision reassignment
+  // below, which would otherwise mint a new UUID because the old row still lingers in the index.
+  const { renameBuffer, cascadeRename } = renameOptions;
+  const filenameKey = basename(normalizedPath, ".md");
+  const renameCheck = renameBuffer.check(uuid, filenameKey);
+  const isBufferRename = renameCheck?.kind === "rename";
+
+  if (renameCheck?.kind === "collision") {
+    // A different file took this key slot — drop the buffered (now-stale) source row.
+    vaultDatabase.transaction((tx) => deleteFragmentByFilePath(tx, renameCheck.filePath));
+    emit({ type: "fragment:deleted", filePath: renameCheck.filePath });
+  }
+
+  // Collision check only needed when UUID was already present (not freshly minted) and this is not a
+  // recognised rename of the same fragment.
   let resolvedUuid = uuid;
   let resolvedRawContent = rawContent;
   // Set during adoption so the DB upsert below reuses the exact fragment that was serialized to
   // disk — avoids a second fromFile() call whose fresh `new Date()` would drift updatedAt apart.
   let adoptedFragment: Fragment | null = null;
-  if (!wasAssigned) {
+  if (wasAssigned) {
+    // New fragment adoption: write back complete canonical frontmatter. The shared helper derives
+    // read-time defaults (readiness, notes, references, etc.), preserving any fields the user
+    // already supplied. The UUID was already assigned above. Shared with the indexer rebuild.
+    const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, entityRelativePath);
+    adoptedFragment = adopted.fragment;
+    resolvedRawContent = adopted.rawContent;
+  } else if (!isBufferRename) {
     const collision = findFragmentUuidCollision(vaultDatabase, uuid, entityRelativePath);
     if (collision) {
       const { uuid: newUuid, rawContent: newRawContent } = await assignNewUuid(
@@ -109,27 +143,34 @@ export const syncFragment = async (
       resolvedUuid = newUuid;
       resolvedRawContent = newRawContent;
     }
-  } else {
-    // New fragment adoption: write back complete canonical frontmatter. The shared helper derives
-    // read-time defaults (readiness, notes, references, etc.), preserving any fields the user
-    // already supplied. The UUID was already assigned above. Shared with the indexer rebuild.
-    const adopted = await writeBackFragmentFrontmatter(parsed, absolutePath, entityRelativePath);
-    adoptedFragment = adopted.fragment;
-    resolvedRawContent = adopted.rawContent;
+  }
+
+  // Cascade a buffer rename whose key actually changed (a discard/restore move keeps the same key).
+  if (isBufferRename && renameCheck.oldKey !== filenameKey && cascadeRename) {
+    await cascadeRename(renameCheck.oldKey, filenameKey, resolvedUuid);
   }
 
   const storedRow = vaultDatabase
-    .select({ contentHash: fragmentsTable.contentHash })
+    .select({ key: fragmentsTable.key, contentHash: fragmentsTable.contentHash })
     .from(fragmentsTable)
     .where(eq(fragmentsTable.uuid, resolvedUuid))
     .get();
 
-  if (storedRow?.contentHash === hashContent(resolvedRawContent)) {
-    log.debug(
-      { filePath: entityRelativePath },
-      "watcher: fragment unchanged (hash match) — skipping",
-    );
-    return;
+  // DB-rename detection only when no buffer rename was seen — the row exists under a different key
+  // (a Maskor-internal rename after a rebuild, or an external rename whose unlink never buffered). The
+  // hash-guard early-return is skipped on either rename path so the key change is committed below.
+  if (!isBufferRename) {
+    const isDbRename = storedRow !== undefined && storedRow.key !== filenameKey;
+    if (isDbRename && cascadeRename) {
+      await cascadeRename(storedRow.key, filenameKey, resolvedUuid);
+    }
+    if (!isDbRename && storedRow?.contentHash === hashContent(resolvedRawContent)) {
+      log.debug(
+        { filePath: entityRelativePath },
+        "watcher: fragment unchanged (hash match) — skipping",
+      );
+      return;
+    }
   }
 
   const parsedFragment = adoptedFragment ?? fragmentMapper.fromFile(parsed, entityRelativePath);
@@ -193,33 +234,38 @@ export const unlinkFragment = (
   vaultDatabase: VaultDatabase,
   emit: (event: VaultSyncEvent) => void,
   entityRelativePath: string,
+  renameBuffer: RenameBuffer,
 ): void => {
   // Capture the aspect keys this fragment referenced before deleting it, so we can reconcile their
   // UNKNOWN_ASPECT_KEY warnings afterwards: a removed fragment may have been the last referencer of
   // an unknown key, which should clear the warning.
   const storedRow = vaultDatabase
-    .select({ uuid: fragmentsTable.uuid })
+    .select({ uuid: fragmentsTable.uuid, key: fragmentsTable.key })
     .from(fragmentsTable)
     .where(eq(fragmentsTable.filePath, entityRelativePath))
     .get();
+  if (!storedRow) return;
 
-  const previousAspectKeys = storedRow
-    ? vaultDatabase
-        .select({ aspectKey: fragmentAspectsTable.aspectKey })
-        .from(fragmentAspectsTable)
-        .where(eq(fragmentAspectsTable.fragmentUuid, storedRow.uuid))
-        .all()
-        .map((row) => row.aspectKey)
-    : [];
+  const previousAspectKeys = vaultDatabase
+    .select({ aspectKey: fragmentAspectsTable.aspectKey })
+    .from(fragmentAspectsTable)
+    .where(eq(fragmentAspectsTable.fragmentUuid, storedRow.uuid))
+    .all()
+    .map((row) => row.aspectKey);
 
-  vaultDatabase.transaction((tx) => {
-    deleteFragmentByFilePath(tx, entityRelativePath);
+  // Defer the delete ~RENAME_BUFFER_MS so a following add on the same UUID is recognised as a rename
+  // (and the cascade fires) instead of a delete-then-fresh-add that would orphan referring links. A
+  // rename cancels this callback. See the watcher-lifetime caveat in sync/keyed-entity.ts.
+  renameBuffer.add(storedRow.uuid, storedRow.key, entityRelativePath, () => {
+    vaultDatabase.transaction((tx) => {
+      deleteFragmentByFilePath(tx, entityRelativePath);
+    });
+
+    emit({ type: "fragment:deleted", filePath: entityRelativePath });
+
+    const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
+    if (reconcileUnknownAspectKeyWarnings(vaultDatabase, previousAspectKeys, knownAspectKeys)) {
+      emit({ type: "vault:warning" });
+    }
   });
-
-  emit({ type: "fragment:deleted", filePath: entityRelativePath });
-
-  const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
-  if (reconcileUnknownAspectKeyWarnings(vaultDatabase, previousAspectKeys, knownAspectKeys)) {
-    emit({ type: "vault:warning" });
-  }
 };

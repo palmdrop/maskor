@@ -17,6 +17,10 @@ import { cmAnchorExtension, setCmAnchorsEffect, cmAnchorBlockIndex } from "./anc
 import { cmAnchorHighlightExtension } from "./anchor-highlight-cm";
 import { cmDocumentLinkExtension, setCmLinkConfigEffect } from "./document-link-cm";
 import { DocumentLink, documentLinkPluginKey } from "./document-link-tiptap";
+import {
+  buildDocumentLinkSuggestion,
+  type LinkSuggestionItem,
+} from "./document-link-suggestion-tiptap";
 import { EMPTY_LINK_LOOKUPS, type LinkLookups } from "@lib/document-links/resolver";
 import type { LinkPathType } from "@maskor/shared";
 import { tiptapAnchorExtension, extractTiptapAnchors } from "./anchor-tiptap";
@@ -300,9 +304,24 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     [cmTheme, selectionListener],
   );
 
+  // Flattened linkable entities for the rich-mode `[[` autocomplete. Held in a ref so the suggestion
+  // extension (built once at editor creation) always reads the current project entities.
+  const linkSuggestionItemsRef = useRef<LinkSuggestionItem[]>([]);
+  linkSuggestionItemsRef.current = useMemo(() => {
+    const lookups = linkLookups ?? EMPTY_LINK_LOOKUPS;
+    return (["fragments", "notes", "references", "aspects"] as LinkPathType[]).flatMap((pathType) =>
+      [...lookups[pathType].keys()].map((key) => ({ pathType, key })),
+    );
+  }, [linkLookups]);
+
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
-    extensions: [...buildSharedProseExtensions(), tiptapAnchorExtension, DocumentLink],
+    extensions: [
+      ...buildSharedProseExtensions(),
+      tiptapAnchorExtension,
+      DocumentLink,
+      buildDocumentLinkSuggestion({ getItems: () => linkSuggestionItemsRef.current }),
+    ],
     content,
     onUpdate: () => {
       // The marker-stripping load transaction changes the doc but must not dirty the buffer.

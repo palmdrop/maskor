@@ -6,6 +6,7 @@ import {
   linkPathTypeToEntityKind,
   entityKindToLinkPathType,
   deriveInlineLinkMetadata,
+  stripDocumentLinkMarkup,
 } from "../utils/document-link";
 
 describe("parseDocumentLinks", () => {
@@ -132,5 +133,33 @@ describe("path type <-> entity kind", () => {
     expect(linkPathTypeToEntityKind("aspects")).toBe("aspect");
     expect(entityKindToLinkPathType("note")).toBe("notes");
     expect(entityKindToLinkPathType("reference")).toBe("references");
+  });
+});
+
+describe("stripDocumentLinkMarkup", () => {
+  it("replaces a full-path link with its key", () => {
+    expect(stripDocumentLinkMarkup("see [[notes/setting-notes]] here")).toBe(
+      "see setting-notes here",
+    );
+  });
+
+  it("replaces an aliased link with its alias", () => {
+    expect(stripDocumentLinkMarkup("see [[notes/setting-notes|the manor]] here")).toBe(
+      "see the manor here",
+    );
+  });
+
+  it("strips multiple links and leaves surrounding prose intact", () => {
+    expect(stripDocumentLinkMarkup("[[references/a]] and [[aspects/b|Beta]] done")).toBe(
+      "a and Beta done",
+    );
+  });
+
+  it("leaves text without links untouched", () => {
+    expect(stripDocumentLinkMarkup("plain prose, no links")).toBe("plain prose, no links");
+  });
+
+  it("ignores an unknown-type pseudo-link", () => {
+    expect(stripDocumentLinkMarkup("[[gibberish/foo]] stays")).toBe("[[gibberish/foo]] stays");
   });
 });

@@ -71,6 +71,7 @@ export const createVaultWatcher = (
   let isPaused = false;
   const inFlight = createInFlightTracker();
 
+  const fragmentRenameBuffer = createRenameBuffer();
   const noteRenameBuffer = createRenameBuffer();
   const referenceRenameBuffer = createRenameBuffer();
   const aspectRenameBuffer = createRenameBuffer();
@@ -201,11 +202,14 @@ export const createVaultWatcher = (
       entityKind: "fragment",
       handleAddOrChange: (absolutePath, vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(FRAGMENT_PREFIX.length);
-        return syncFragment(vaultDatabase, emit, log, absolutePath, entityRelativePath);
+        return syncFragment(vaultDatabase, emit, log, absolutePath, entityRelativePath, {
+          renameBuffer: fragmentRenameBuffer,
+          cascadeRename: cascadeCallbacks?.onFragmentRename,
+        });
       },
       handleUnlink: (vaultRelativePath) => {
         const entityRelativePath = vaultRelativePath.slice(FRAGMENT_PREFIX.length);
-        unlinkFragment(vaultDatabase, emit, entityRelativePath);
+        unlinkFragment(vaultDatabase, emit, entityRelativePath, fragmentRenameBuffer);
       },
     },
     {
@@ -434,6 +438,7 @@ export const createVaultWatcher = (
 
     async stop() {
       if (!watcher) return;
+      fragmentRenameBuffer.drainAll();
       noteRenameBuffer.drainAll();
       referenceRenameBuffer.drainAll();
       aspectRenameBuffer.drainAll();

@@ -49,6 +49,7 @@ const makeWatcher = (callbacks: {
   onNoteRename?: (oldKey: string, newKey: string) => Promise<void>;
   onReferenceRename?: (oldKey: string, newKey: string) => Promise<void>;
   onAspectRename?: (oldKey: string, newKey: string) => Promise<void>;
+  onFragmentRename?: (oldKey: string, newKey: string, renamedUuid: string) => Promise<void>;
 }) => {
   const vault = createVault({ root: vaultDir });
   const vaultDatabase = createVaultDatabase(vaultDir);
@@ -60,6 +61,7 @@ const makeWatcher = (callbacks: {
     onNoteRename: callbacks.onNoteRename ?? (async () => {}),
     onReferenceRename: callbacks.onReferenceRename ?? (async () => {}),
     onAspectRename: callbacks.onAspectRename ?? (async () => {}),
+    onFragmentRename: callbacks.onFragmentRename ?? (async () => {}),
   });
   return {
     vault,
@@ -248,6 +250,57 @@ describe("rename buffer — aspect external rename", () => {
     await waitFor(() => calls.length > 0);
     expect(calls).toHaveLength(1);
     expect(calls[0]).toEqual(["grief", "sorrow"]);
+  });
+});
+
+describe("rename buffer — fragment external rename", () => {
+  it("fires onFragmentRename (with uuid) when a fragment file is renamed on disk", async () => {
+    const calls: [string, string, string][] = [];
+    const { vaultDatabase } = await rebuildAndWatch({
+      onFragmentRename: async (oldKey, newKey, renamedUuid) => {
+        calls.push([oldKey, newKey, renamedUuid]);
+      },
+    });
+
+    renameSync(
+      join(vaultDir, "fragments", "the-bridge.md"),
+      join(vaultDir, "fragments", "the-crossing.md"),
+    );
+
+    await waitFor(() => calls.length > 0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual([
+      "the-bridge",
+      "the-crossing",
+      "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b",
+    ]);
+
+    // The fragment row follows the file to its new key (rename, not delete-then-fresh-add).
+    await waitFor(() => {
+      const row = vaultDatabase
+        .select({ key: fragmentsTable.key })
+        .from(fragmentsTable)
+        .where(eq(fragmentsTable.uuid, "f4c8c7ab-d6ed-44df-9763-5aabc98a3f2b"))
+        .get();
+      return row?.key === "the-crossing";
+    });
+  });
+
+  it("does not fire onFragmentRename for a pure discard move (key unchanged)", async () => {
+    const calls: [string, string, string][] = [];
+    await rebuildAndWatch({
+      onFragmentRename: async (oldKey, newKey, renamedUuid) => {
+        calls.push([oldKey, newKey, renamedUuid]);
+      },
+    });
+
+    const discardedDir = join(vaultDir, "fragments", "discarded");
+    mkdirSync(discardedDir, { recursive: true });
+    renameSync(join(vaultDir, "fragments", "the-bridge.md"), join(discardedDir, "the-bridge.md"));
+
+    // Give the watcher time to process the move (the same key under discarded/ must not cascade).
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    expect(calls).toHaveLength(0);
   });
 });
 

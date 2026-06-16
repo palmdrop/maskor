@@ -56,6 +56,7 @@ const rebuildAndWatch = async () => {
     onNoteRename: async () => {},
     onReferenceRename: async () => {},
     onAspectRename: async () => {},
+    onFragmentRename: async () => {},
   });
   created.start();
   watcher = created;

@@ -59,8 +59,10 @@ const linkDecorations = EditorView.decorations.compute(
 const linkAt = (state: EditorState, pos: number) => {
   const config = state.field(cmLinkConfigField);
   if (!config) return null;
+  // Half-open [from, to): a click exactly at `to` belongs to whatever follows (e.g. an adjacent
+  // link), never to this one — matches the decorated range so only styled text is clickable.
   const range = findLinkRanges(state.doc.toString(), config.lookups).find(
-    (candidate) => pos >= candidate.from && pos <= candidate.to,
+    (candidate) => pos >= candidate.from && pos < candidate.to,
   );
   if (!range || !range.resolved.uuid || range.resolved.pathType === null) return null;
   return { pathType: range.resolved.pathType, uuid: range.resolved.uuid, config };

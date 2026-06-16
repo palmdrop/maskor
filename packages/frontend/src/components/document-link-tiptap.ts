@@ -48,7 +48,8 @@ const linkAt = (
     for (const parsed of parseDocumentLinks(node.text)) {
       const from = nodePos + parsed.index;
       const to = from + parsed.raw.length;
-      if (pos >= from && pos <= to) {
+      // Half-open [from, to) so a click at the boundary maps to the following link, not this one.
+      if (pos >= from && pos < to) {
         const resolved = resolveParsedLink(parsed, config.lookups);
         if (resolved.uuid && resolved.pathType) {
           hit = { pathType: resolved.pathType, uuid: resolved.uuid };

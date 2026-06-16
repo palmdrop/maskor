@@ -4,6 +4,7 @@ import {
   parseDocumentLinks,
   linkPathTypeToEntityKind,
   stripCommentMarkers,
+  stripDocumentLinkMarkup,
   type LinkEntityKind,
 } from "@maskor/shared";
 import {
@@ -27,7 +28,9 @@ const deriveSnippet = (body: string, index: number, rawLength: number): string =
   const start = Math.max(0, index - Math.max(half, 0));
   const end = Math.min(body.length, index + rawLength + Math.max(half, 0));
   const slice = body.slice(start, end);
-  const cleaned = stripCommentMarkers(slice).replace(/\s+/g, " ").trim();
+  // Strip comment anchors and reduce `[[type/key|alias]]` links to their visible label so the snippet
+  // reads as plain prose rather than raw markup.
+  const cleaned = stripDocumentLinkMarkup(stripCommentMarkers(slice)).replace(/\s+/g, " ").trim();
   const prefix = start > 0 ? "…" : "";
   const suffix = end < body.length ? "…" : "";
   return `${prefix}${cleaned}${suffix}`;

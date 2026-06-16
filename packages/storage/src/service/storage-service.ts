@@ -355,6 +355,10 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           const payload = await cascadeAspectKeyRename(context, oldKey, newKey);
           vaultDatabase.transaction((tx) => payload.commit(tx));
         },
+        onFragmentRename: async (oldKey, newKey, renamedUuid) => {
+          const payload = await cascadeFragmentKeyRename(context, oldKey, newKey, renamedUuid);
+          vaultDatabase.transaction((tx) => payload.commit(tx));
+        },
       },
     );
     vaultWatcherCache.set(context.projectUUID, watcher);
