@@ -184,3 +184,14 @@ button,
 a {
   cursor: pointer;
 }
+
+/* Document links ([[type/key]]) in the rich (TipTap) editor — decoration classes applied to the
+   link text range. Resolved links read as entity tags; broken links are dotted/red. */
+.doc-link {
+  color: var(--color-primary, #2563eb);
+  cursor: pointer;
+}
+.doc-link-broken {
+  color: var(--color-destructive, #dc2626);
+  text-decoration: underline dotted;
+}

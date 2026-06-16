@@ -15,6 +15,10 @@ import { splitCommentMarkers } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { cmAnchorExtension, setCmAnchorsEffect, cmAnchorBlockIndex } from "./anchor-cm";
 import { cmAnchorHighlightExtension } from "./anchor-highlight-cm";
+import { cmDocumentLinkExtension, setCmLinkConfigEffect } from "./document-link-cm";
+import { DocumentLink, documentLinkPluginKey } from "./document-link-tiptap";
+import { EMPTY_LINK_LOOKUPS, type LinkLookups } from "@lib/document-links/resolver";
+import type { LinkPathType } from "@maskor/shared";
 import { tiptapAnchorExtension, extractTiptapAnchors } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
 import { markerForBlock, type EditorBlock } from "./editor-geometry";
@@ -93,6 +97,10 @@ type Props = {
   // The comment markerId of the block the caret is in (or null), reported on selection change so the
   // Margin can highlight that block's comment — the reciprocal half of the connection cue.
   onActiveBlockChange?: (markerId: string | null) => void;
+  // Document-link rendering: key→uuid lookups (resolved vs broken styling) and a navigate action for
+  // Cmd/Ctrl-click. Omitted on editors that don't render links (resolution is then always "broken").
+  linkLookups?: LinkLookups;
+  onNavigateLink?: (pathType: LinkPathType, uuid: string) => void;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
@@ -108,6 +116,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     onChange,
     cursor,
     onActiveBlockChange,
+    linkLookups,
+    onNavigateLink,
   },
   ref,
 ) {
@@ -271,17 +281,25 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       selectionListener,
       cmAnchorExtension,
       cmAnchorHighlightExtension,
+      cmDocumentLinkExtension,
     ],
     [cmTheme, selectionListener],
   );
   const rawExtensions = useMemo(
-    () => [markdown(), cmTheme, selectionListener, cmAnchorExtension, cmAnchorHighlightExtension],
+    () => [
+      markdown(),
+      cmTheme,
+      selectionListener,
+      cmAnchorExtension,
+      cmAnchorHighlightExtension,
+      cmDocumentLinkExtension,
+    ],
     [cmTheme, selectionListener],
   );
 
   // NOTE: TipTap editor is always created, even when in vim/raw mode. Split into two components?
   const editor = useEditor({
-    extensions: [...buildSharedProseExtensions(), tiptapAnchorExtension],
+    extensions: [...buildSharedProseExtensions(), tiptapAnchorExtension, DocumentLink],
     content,
     onUpdate: () => {
       // The marker-stripping load transaction changes the doc but must not dirty the buffer.
@@ -301,6 +319,31 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // Latest editor instance, read by the TipTap adapter's `getEditor` accessor.
   const editorRef = useRef<Editor | null>(editor);
   editorRef.current = editor;
+
+  // Document-link config shared by both editor extensions (resolved/broken styling + click navigate).
+  const linkConfig = useMemo(
+    () => ({
+      lookups: linkLookups ?? EMPTY_LINK_LOOKUPS,
+      navigate: onNavigateLink ?? (() => {}),
+    }),
+    [linkLookups, onNavigateLink],
+  );
+  const linkConfigRef = useRef(linkConfig);
+  linkConfigRef.current = linkConfig;
+
+  // Push the link config into the TipTap plugin whenever it (or the editor) changes.
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dispatch(editor.state.tr.setMeta(documentLinkPluginKey, linkConfig));
+  }, [editor, linkConfig]);
+
+  // Push the link config into the CM6 field whenever it changes (the initial seed is in onCreateEditor).
+  useEffect(() => {
+    if (!(vimMode || rawMarkdownMode)) return;
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: setCmLinkConfigEffect.of(linkConfig) });
+  }, [linkConfig, vimMode, rawMarkdownMode]);
 
   // Sync server content into the rich editor, then restore the persisted caret.
   // Restoring here — rather than in a separate effect — guarantees the document
@@ -407,6 +450,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             viewRef.current = view;
             // Seed the anchors parsed out of the on-disk content (the buffer shows `cleanContent`).
             view.dispatch({ effects: setCmAnchorsEffect.of(loadedAnchors) });
+            // Seed the document-link config so links style/navigate from first paint.
+            view.dispatch({ effects: setCmLinkConfigEffect.of(linkConfigRef.current) });
 
             Vim.defineEx("w", "", () => onSaveRef.current?.());
             // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37

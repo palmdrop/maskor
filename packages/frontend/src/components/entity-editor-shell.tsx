@@ -23,6 +23,7 @@ import { EditorDisplaySettings } from "./editor-display-settings";
 import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
+import { useDocumentLinks } from "@lib/document-links/useDocumentLinks";
 import { useProjectSetting } from "@hooks/useProjectSetting";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedCursor } from "@hooks/usePersistedCursor";
@@ -124,6 +125,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     ref,
   ) {
     const editorConfig = useProjectEditorConfig(projectId);
+    // Document-link resolution + navigation for the prose editor (resolved/broken styling, Cmd-click).
+    const documentLinks = useDocumentLinks(projectId);
     // Cursor position is persisted per editing mode — switching mode reads that
     // mode's own slot (or starts from the top), and offsets aren't comparable
     // across the CodeMirror/ProseMirror backends anyway.
@@ -339,6 +342,8 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         onChange={handleProseChange}
         onActiveBlockChange={onActiveBlockChange}
         cursor={cursor}
+        linkLookups={documentLinks.lookups}
+        onNavigateLink={documentLinks.navigateToLink}
       />
     );
 
