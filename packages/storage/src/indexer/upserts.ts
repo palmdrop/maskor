@@ -21,6 +21,12 @@ import type * as schema from "../db/vault/schema";
 import type { VaultDatabase } from "../db/vault";
 import type { UnknownAspectKeyWarning } from "./types";
 import { hashContent } from "../utils/hash";
+import {
+  syncLinks,
+  bindUnresolvedLinks,
+  deleteLinksForSource,
+  unbindLinksForTarget,
+} from "./links";
 
 // Loads all aspect keys from the DB.
 // Used for drift detection: a fragment property whose key is not in this set produces a SyncWarning.
@@ -82,6 +88,9 @@ export const upsertAspect = (
   for (const noteKey of aspect.notes) {
     tx.insert(aspectNotesTable).values({ aspectUuid: aspect.uuid, noteKey }).run();
   }
+
+  // Aspects are link targets (not sources): bind any unresolved link pointing at this key.
+  bindUnresolvedLinks(tx, "aspect", aspect.key, aspect.uuid);
 };
 
 export const upsertNote = (
@@ -111,6 +120,10 @@ export const upsertNote = (
       set: { key: note.key, contentHash, filePath, syncedAt },
     })
     .run();
+
+  // Note bodies are link sources; notes are also link targets.
+  syncLinks(tx, "note", note.uuid, note.content);
+  bindUnresolvedLinks(tx, "note", note.key, note.uuid);
 };
 
 export const upsertReference = (
@@ -140,6 +153,10 @@ export const upsertReference = (
       set: { key: reference.key, contentHash, filePath, syncedAt },
     })
     .run();
+
+  // Reference bodies are link sources; references are also link targets.
+  syncLinks(tx, "reference", reference.uuid, reference.content);
+  bindUnresolvedLinks(tx, "reference", reference.key, reference.uuid);
 };
 
 const buildExcerpt = (content: string, maxLength = 200): string => {
@@ -213,6 +230,10 @@ export const upsertFragment = (
       .run();
   }
 
+  // Fragment bodies are link sources; fragments are also link targets.
+  syncLinks(tx, "fragment", fragment.uuid, fragment.content);
+  bindUnresolvedLinks(tx, "fragment", fragment.key, fragment.uuid);
+
   // Eager stats row creation — every fragment gets a row on first index/upsert.
   tx.insert(fragmentStatsTable).values({ fragmentUuid: fragment.uuid }).onConflictDoNothing().run();
 
@@ -225,18 +246,54 @@ export const upsertFragment = (
 };
 
 export const deleteFragmentByFilePath = (tx: Transaction, filePath: string): void => {
+  // Clean the link index: remove this fragment's outgoing links, and un-bind links pointing at it
+  // (rows stay as broken links — bodies are never auto-rewritten).
+  const row = tx
+    .select({ uuid: fragmentsTable.uuid, key: fragmentsTable.key })
+    .from(fragmentsTable)
+    .where(eq(fragmentsTable.filePath, filePath))
+    .get();
+  if (row) {
+    deleteLinksForSource(tx, "fragment", row.uuid);
+    unbindLinksForTarget(tx, "fragment", row.key);
+  }
   tx.delete(fragmentsTable).where(eq(fragmentsTable.filePath, filePath)).run();
 };
 
 export const deleteAspectByFilePath = (tx: Transaction, filePath: string): void => {
+  // Aspects are link targets only — un-bind links pointing at this aspect.
+  const row = tx
+    .select({ key: aspectsTable.key })
+    .from(aspectsTable)
+    .where(eq(aspectsTable.filePath, filePath))
+    .get();
+  if (row) unbindLinksForTarget(tx, "aspect", row.key);
   tx.delete(aspectsTable).where(eq(aspectsTable.filePath, filePath)).run();
 };
 
 export const deleteNoteByFilePath = (tx: Transaction, filePath: string): void => {
+  const row = tx
+    .select({ uuid: notesTable.uuid, key: notesTable.key })
+    .from(notesTable)
+    .where(eq(notesTable.filePath, filePath))
+    .get();
+  if (row) {
+    deleteLinksForSource(tx, "note", row.uuid);
+    unbindLinksForTarget(tx, "note", row.key);
+  }
   tx.delete(notesTable).where(eq(notesTable.filePath, filePath)).run();
 };
 
 export const deleteReferenceByFilePath = (tx: Transaction, filePath: string): void => {
+  const row = tx
+    .select({ uuid: referencesTable.uuid, key: referencesTable.key })
+    .from(referencesTable)
+    .where(eq(referencesTable.filePath, filePath))
+    .get();
+  if (row) {
+    deleteLinksForSource(tx, "reference", row.uuid);
+    unbindLinksForTarget(tx, "reference", row.key);
+  }
   tx.delete(referencesTable).where(eq(referencesTable.filePath, filePath)).run();
 };
 

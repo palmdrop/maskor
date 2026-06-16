@@ -22,7 +22,8 @@ export type LinkTargetType = z.infer<typeof LinkTargetTypeSchema>;
 export const DocumentLinkSchema = z.object({
   sourceType: LinkSourceTypeSchema,
   sourceUuid: z.uuid(),
-  targetType: LinkTargetTypeSchema,
+  // null for an unresolved bare `[[key]]` link whose type is not yet known.
+  targetType: LinkTargetTypeSchema.nullable(),
   targetKey: z.string(),
   targetUuid: z.uuid().nullable(),
   alias: z.string().nullable(),

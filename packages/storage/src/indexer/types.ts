@@ -1,4 +1,5 @@
-import type { Aspect, Fragment, Note, Reference, Sequence } from "@maskor/shared";
+import type { Aspect, Fragment, LinkEntityKind, Note, Reference, Sequence } from "@maskor/shared";
+import type { BacklinkRow, LinkSourceType, OutgoingLinkRow } from "./links";
 
 // A detected vault warning (content only — the stored form adds id/category/timestamps,
 // see warnings/warnings-repo.ts). Discriminated on `kind`.
@@ -91,5 +92,10 @@ export interface VaultIndexer {
   margins: {
     findByFragmentUuid(fragmentUuid: string): Promise<IndexedMargin | null>;
     findFilePath(fragmentUuid: string): Promise<string | null>;
+  };
+
+  links: {
+    findBacklinks(targetType: LinkEntityKind, targetKey: string): Promise<BacklinkRow[]>;
+    findOutgoing(sourceType: LinkSourceType, sourceUuid: string): Promise<OutgoingLinkRow[]>;
   };
 }

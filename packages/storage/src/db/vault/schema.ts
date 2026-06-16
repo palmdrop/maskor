@@ -211,6 +211,34 @@ export const projectStateTable = sqliteTable("project_state", {
   currentFragmentUUID: text("current_fragment_uuid"),
 });
 
+// Document links (`[[type/key]]`) parsed from fragment / note / reference bodies. A persisted,
+// derived index (vault files authoritative) maintained by the watcher and the write paths — it powers
+// backlinks and the rename cascade. No cross-type FK: `sourceUuid`/`targetUuid` span four entity
+// tables, so rows are managed explicitly (replaced per source on body change; re-bound/un-bound as
+// targets appear/disappear). `targetUuid` is NULL for an unresolved link (target does not yet exist),
+// with the raw `targetType` + `targetKey` always preserved so the row binds when the target appears.
+export const linksTable = sqliteTable(
+  "links",
+  {
+    id: text("id").primaryKey(),
+    sourceType: text("source_type").notNull(), // fragment | note | reference
+    sourceUuid: text("source_uuid").notNull(),
+    // fragment | note | reference | aspect — or NULL for an unresolved bare `[[key]]` link whose type
+    // is not yet known. Bound to a concrete type when an entity with the matching key appears.
+    targetType: text("target_type"),
+    targetKey: text("target_key").notNull(),
+    targetUuid: text("target_uuid"),
+    alias: text("alias"),
+    ordinal: integer("ordinal").notNull().default(0),
+    snippet: text("snippet"),
+    syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("links_target_idx").on(table.targetType, table.targetKey),
+    index("links_source_idx").on(table.sourceType, table.sourceUuid),
+  ],
+);
+
 export const fragmentPositionsTable = sqliteTable(
   "fragment_positions",
   {

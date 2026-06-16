@@ -8,6 +8,7 @@ import {
   fragmentPositionsTable,
   fragmentReferencesTable,
   fragmentsTable,
+  linksTable,
   marginsTable,
   notesTable,
   referencesTable,
@@ -42,6 +43,9 @@ import {
   upsertReference,
   upsertSequence,
 } from "./upserts";
+import { findBacklinks, findOutgoingLinks, resolveAllLinks } from "./links";
+import type { BacklinkRow, LinkSourceType, OutgoingLinkRow } from "./links";
+import type { LinkEntityKind } from "@maskor/shared";
 import { setWordCount } from "../suggestion/stats-repo";
 import { computeWordCount } from "../suggestion/word-count";
 import { deleteStateWarnings, insertWarning, STATE_WARNING_KINDS } from "../warnings/warnings-repo";
@@ -139,6 +143,10 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
     const fragmentWarnings: UnknownAspectKeyWarning[] = [];
 
     vaultDatabase.transaction((tx) => {
+      // Clear the link index up front: each entity upsert re-populates its own outgoing links via
+      // syncLinks, but a source that vanished from the vault would otherwise leave stale rows behind.
+      tx.delete(linksTable).run();
+
       // 1. Upsert aspects.
       for (const { entity: aspect, filePath, rawContent } of aspectEntries) {
         upsertAspect(tx, aspect, filePath, rawContent);
@@ -218,6 +226,10 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
       } else {
         tx.delete(marginsTable).run();
       }
+
+      // 7. Resolve links: every entity is now indexed, so a link authored before its target was
+      // upserted (e.g. a note → fragment link, with notes upserted before fragments) can now bind.
+      resolveAllLinks(tx);
     });
 
     // Backfill word counts for all fragments. Runs outside the main transaction because
@@ -526,6 +538,18 @@ export const createVaultIndexer = (vaultDatabase: VaultDatabase, vault: Vault): 
 
         if (!row) return null;
         return row.filePath;
+      },
+    },
+
+    links: {
+      async findBacklinks(targetType: LinkEntityKind, targetKey: string): Promise<BacklinkRow[]> {
+        return findBacklinks(vaultDatabase, targetType, targetKey);
+      },
+      async findOutgoing(
+        sourceType: LinkSourceType,
+        sourceUuid: string,
+      ): Promise<OutgoingLinkRow[]> {
+        return findOutgoingLinks(vaultDatabase, sourceType, sourceUuid);
       },
     },
 
