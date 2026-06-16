@@ -3,7 +3,6 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, unlinkSync } from "node:
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase, type VaultDatabase } from "../db/vault";
 import { createVaultIndexer } from "../indexer/indexer";
@@ -46,8 +45,7 @@ const setup = () => {
   return { database, indexer };
 };
 
-const allLinks = (database: VaultDatabase) =>
-  database.select().from(linksTable).all();
+const allLinks = (database: VaultDatabase) => database.select().from(linksTable).all();
 
 describe("link table sync", () => {
   it("populates the table on rebuild and resolves existing targets", async () => {

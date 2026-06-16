@@ -598,7 +598,8 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     return {
       touched,
       commit: (tx) => {
-        for (const { note, filePath, rawContent } of cascaded) upsertNote(tx, note, filePath, rawContent);
+        for (const { note, filePath, rawContent } of cascaded)
+          upsertNote(tx, note, filePath, rawContent);
       },
     };
   };
@@ -656,7 +657,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
     const notePayload = await cascadeNotes(
       context,
-      findLinkSourceUuids(vaultDatabase, kind, oldKey, "note").filter((uuid) => uuid !== excludeUuid),
+      findLinkSourceUuids(vaultDatabase, kind, oldKey, "note").filter(
+        (uuid) => uuid !== excludeUuid,
+      ),
       (note) => ({ ...note, content: rewrite(note.content) }),
     );
     const referencePayload = await cascadeReferences(

@@ -1169,10 +1169,26 @@ describe("StorageService document-link rename cascade & backlinks", () => {
     return { service, context };
   };
 
-  const writeFrag = (service: ReturnType<typeof makeService>, context: any, uuid: string, key: string, content: string) =>
+  const writeFrag = (
+    service: ReturnType<typeof makeService>,
+    context: any,
+    uuid: string,
+    key: string,
+    content: string,
+  ) =>
     service.fragments.write(
       context,
-      { uuid, key, isDiscarded: false, readiness: 0, references: [], aspects: {}, content, contentHash: "", updatedAt: new Date() },
+      {
+        uuid,
+        key,
+        isDiscarded: false,
+        readiness: 0,
+        references: [],
+        aspects: {},
+        content,
+        contentHash: "",
+        updatedAt: new Date(),
+      },
       { contentChanged: true },
     );
 
@@ -1180,8 +1196,18 @@ describe("StorageService document-link rename cascade & backlinks", () => {
     const { service, context } = await setup();
     const noteUuid = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     await service.notes.write(context, { uuid: noteUuid, key: "old-note", content: "Note body." });
-    await writeFrag(service, context, "dddddddd-dddd-dddd-dddd-dddddddddddd", "frag-a", "See [[notes/old-note|the manor]] and [[notes/old-note]].");
-    await service.references.write(context, { uuid: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", key: "ref-a", content: "Ref links [[notes/old-note]]." });
+    await writeFrag(
+      service,
+      context,
+      "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "frag-a",
+      "See [[notes/old-note|the manor]] and [[notes/old-note]].",
+    );
+    await service.references.write(context, {
+      uuid: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+      key: "ref-a",
+      content: "Ref links [[notes/old-note]].",
+    });
 
     await service.notes.update(context, noteUuid, { key: "new-note" });
 
@@ -1199,11 +1225,27 @@ describe("StorageService document-link rename cascade & backlinks", () => {
 
   it("cascades a fragment rename to referring bodies (net-new)", async () => {
     const { service, context } = await setup();
-    await writeFrag(service, context, "10101010-1010-1010-1010-101010101010", "target-frag", "I am the target.");
-    await writeFrag(service, context, "20202020-2020-2020-2020-202020202020", "referrer", "Points to [[fragments/target-frag]].");
+    await writeFrag(
+      service,
+      context,
+      "10101010-1010-1010-1010-101010101010",
+      "target-frag",
+      "I am the target.",
+    );
+    await writeFrag(
+      service,
+      context,
+      "20202020-2020-2020-2020-202020202020",
+      "referrer",
+      "Points to [[fragments/target-frag]].",
+    );
 
     const target = await service.fragments.read(context, "10101010-1010-1010-1010-101010101010");
-    await service.fragments.write(context, { ...target, key: "renamed-target" }, { contentChanged: false });
+    await service.fragments.write(
+      context,
+      { ...target, key: "renamed-target" },
+      { contentChanged: false },
+    );
 
     const referrer = await service.fragments.read(context, "20202020-2020-2020-2020-202020202020");
     expect(referrer.content).toContain("[[fragments/renamed-target]]");
@@ -1212,8 +1254,18 @@ describe("StorageService document-link rename cascade & backlinks", () => {
   it("on reference delete: strips the fragment attachment and leaves the inline link broken", async () => {
     const { service, context } = await setup();
     const refUuid = "30303030-3030-3030-3030-303030303030";
-    await service.references.write(context, { uuid: refUuid, key: "doomed-ref", content: "A reference." });
-    await writeFrag(service, context, "40404040-4040-4040-4040-404040404040", "citing", "Cites [[references/doomed-ref]].");
+    await service.references.write(context, {
+      uuid: refUuid,
+      key: "doomed-ref",
+      content: "A reference.",
+    });
+    await writeFrag(
+      service,
+      context,
+      "40404040-4040-4040-4040-404040404040",
+      "citing",
+      "Cites [[references/doomed-ref]].",
+    );
 
     // The inline link auto-attached the reference.
     const before = await service.fragments.read(context, "40404040-4040-4040-4040-404040404040");

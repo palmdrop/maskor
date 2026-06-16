@@ -1,8 +1,4 @@
-import {
-  parseDocumentLinks,
-  type LinkPathType,
-  type ParsedDocumentLink,
-} from "@maskor/shared";
+import { parseDocumentLinks, type LinkPathType, type ParsedDocumentLink } from "@maskor/shared";
 
 // key -> uuid for each entity type, used to resolve a `[[type/key]]` link to a navigable target.
 export type LinkLookups = {
@@ -87,7 +83,10 @@ export const linkRouteFor = (
 ): { to: string; params: Record<string, string> } => {
   switch (pathType) {
     case "fragments":
-      return { to: "/projects/$projectId/fragments/$fragmentId", params: { projectId, fragmentId: uuid } };
+      return {
+        to: "/projects/$projectId/fragments/$fragmentId",
+        params: { projectId, fragmentId: uuid },
+      };
     case "notes":
       return { to: "/projects/$projectId/notes/$noteId", params: { projectId, noteId: uuid } };
     case "references":
@@ -96,6 +95,9 @@ export const linkRouteFor = (
         params: { projectId, referenceId: uuid },
       };
     case "aspects":
-      return { to: "/projects/$projectId/aspects/$aspectId", params: { projectId, aspectId: uuid } };
+      return {
+        to: "/projects/$projectId/aspects/$aspectId",
+        params: { projectId, aspectId: uuid },
+      };
   }
 };

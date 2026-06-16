@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-06-16 — An inline `[[aspects/key]]` link in a fragment body auto-attaches the aspect at weight 0 on a content save (the user sets a real weight via the metadata form); removing the last inline link reaps the aspect iff its weight is still 0 (weight > 0 is preserved). See `specifications/document-links.md`. (plan: `references/plans/document-links.md`)
 - 2026-04-15 — Aspects can be created and deleted within a project. (plan: references/plans/aspects-notes-references-crud.md)
 - 2026-05-06 — Fragments can be assigned aspect weights; the weight interface supports adding, removing, and editing values. (plan: references/plans/fragment-aspects-rename-and-dynamic-form.md)
 - 2026-05-09 — Aspect weight changes on fragments save immediately without a manual save step. (plan: references/plans/entity-live-metadata-save.md)

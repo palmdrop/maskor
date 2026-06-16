@@ -1,11 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseDocumentLinks } from "@maskor/shared";
-import {
-  resolveParsedLink,
-  findLinkRanges,
-  linkRouteFor,
-  type LinkLookups,
-} from "./resolver";
+import { resolveParsedLink, findLinkRanges, linkRouteFor, type LinkLookups } from "./resolver";
 
 const lookups: LinkLookups = {
   fragments: new Map([["chapter-1", "frag-uuid"]]),

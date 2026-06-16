@@ -35,11 +35,7 @@ const deriveSnippet = (body: string, index: number, rawLength: number): string =
 
 // Resolve a (kind, key) target to its entity UUID, or null if no such entity exists. Fragments prefer
 // the active file over a discarded one with the same key.
-const queryEntityUuid = (
-  tx: Transaction,
-  kind: LinkEntityKind,
-  key: string,
-): string | null => {
+const queryEntityUuid = (tx: Transaction, kind: LinkEntityKind, key: string): string | null => {
   switch (kind) {
     case "fragment": {
       const active = tx
@@ -56,8 +52,10 @@ const queryEntityUuid = (
       return any?.uuid ?? null;
     }
     case "note":
-      return tx.select({ uuid: notesTable.uuid }).from(notesTable).where(eq(notesTable.key, key)).get()
-        ?.uuid ?? null;
+      return (
+        tx.select({ uuid: notesTable.uuid }).from(notesTable).where(eq(notesTable.key, key)).get()
+          ?.uuid ?? null
+      );
     case "reference":
       return (
         tx
@@ -216,11 +214,14 @@ export const resolveAllLinks = (tx: Transaction): void => {
 const SOURCE_KEY_QUERY: Record<LinkSourceType, (db: VaultDatabase, uuid: string) => string | null> =
   {
     fragment: (db, uuid) =>
-      db.select({ key: fragmentsTable.key }).from(fragmentsTable).where(eq(fragmentsTable.uuid, uuid)).get()
-        ?.key ?? null,
+      db
+        .select({ key: fragmentsTable.key })
+        .from(fragmentsTable)
+        .where(eq(fragmentsTable.uuid, uuid))
+        .get()?.key ?? null,
     note: (db, uuid) =>
-      db.select({ key: notesTable.key }).from(notesTable).where(eq(notesTable.uuid, uuid)).get()?.key ??
-      null,
+      db.select({ key: notesTable.key }).from(notesTable).where(eq(notesTable.uuid, uuid)).get()
+        ?.key ?? null,
     reference: (db, uuid) =>
       db
         .select({ key: referencesTable.key })

@@ -1,7 +1,11 @@
 # Spec: Document Links
 
-**Status**: Draft
-**Last updated**: 2026-05-20
+**Status**: Stable
+**Last updated**: 2026-06-16
+
+**Shipped**:
+
+- 2026-06-16 — Document links end to end (plan: `references/plans/document-links.md`; ADR 0015). Obsidian-style `[[type/key]]` / `[[type/key|alias]]` links in fragment, note, and reference bodies: a shared link grammar (parse / build / rewrite), a persisted derived **link table** (forward edges, resolved + unresolved, watcher- and write-path-maintained, rebuilt from scratch each rebuild), and `[[…]]` rendering in **all three editor modes** — resolved vs broken styling and Cmd/Ctrl-click navigation (decoration-based, so links round-trip through markdown untouched). Inline `[[references/…]]` / `[[aspects/…]]` links **auto-attach** to fragment metadata on a content save (references added, aspects added at weight 0; a weight-0 aspect whose inline link is gone is reaped — reaping gated on a body change so metadata-only saves never drop a form-set weight-0 aspect); note links are link-table/backlink citizens only (ADR 0007). **Rename cascade** rewrites inline links (alias-preserving) across every fragment / note / reference body and updates the table — including net-new **fragment** rename cascade. **Delete** strips the reference attachment from fragments and leaves inline links broken (rows un-bound; bodies never auto-rewritten). A **Backlinks** panel (from the `GET /links/backlinks` endpoint, deduped per source) is surfaced on every entity page; the metadata form **disables the X-button** for any chip pinned by an inline link. `[[` autocomplete in raw/vim (CM6) plus a mode-agnostic command-palette **Insert link** action. (Deferred: rich-mode `[[` autocomplete — command-palette Insert link covers rich mode; see `references/suggestions.md`.)
 
 ---
 
@@ -170,7 +174,7 @@ Note and reference bodies are also link sources, but they have no metadata-attac
 
 - [ ] 2026-05-20 — **Form X-button cascade behaviour**: currently spec'd as disabled while inline links exist. This is conservative but mildly unintuitive ("why can't I remove this chip?"). Reconsider once the feature is in user hands. Alternatives to revisit: track an `origin` field per attachment so form-X can remove form-origin entries without touching inline ones; or have form-X strip the inline link from the body (destructive but consistent).
 - [ ] 2026-05-20 — **Broken-link "offer to create"**: deferred. Since Maskor inserts full-path links the target type is always known on broken links, so this affordance is feasible. (Comments are no longer a candidate trigger — they live in the Margin now, not as inline-created files. See ADR 0007.)
-- [ ] 2026-05-20 — **Backlink snippet detail**: should the backlinks panel show just the source key, or also a contextual excerpt around the link? Excerpts are more useful but cost extra parsing/storage. Pick after a basic implementation is live.
+- [x] 2026-05-20 — **Backlink snippet detail**: should the backlinks panel show just the source key, or also a contextual excerpt around the link? **Resolved (2026-06-16)**: the link table stores a short single-line `snippet` (a ~120-char window around the link, markers stripped) derived at parse time; the panel shows source key + type + snippet. Cheap to store, derived on the same body parse that builds the link row.
 - [ ] 2026-05-20 — **Watcher catch-up performance at scale**: a project with many bodies and many cross-references will rebuild the link table from scratch on a full sync. Acceptable for greenfield. If projects grow large, an incremental rebuild strategy may become necessary.
 - [ ] 2026-05-20 — **Sequencing constraints from links**: explicitly deferred. A user-authored `[[fragments/foo]]` link could later be interpreted as "this fragment should come near foo" or "before/after foo." Tracked as a future direction; not part of this spec.
 

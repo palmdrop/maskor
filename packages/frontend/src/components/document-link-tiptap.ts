@@ -70,9 +70,7 @@ export const DocumentLink = Extension.create({
         state: {
           init: () => null,
           apply(transaction, value) {
-            const next = transaction.getMeta(documentLinkPluginKey) as
-              | TiptapLinkConfig
-              | undefined;
+            const next = transaction.getMeta(documentLinkPluginKey) as TiptapLinkConfig | undefined;
             return next ?? value;
           },
         },

@@ -89,9 +89,9 @@ describe("rewriteDocumentLinks", () => {
   });
 
   it("preserves the alias", () => {
-    expect(
-      rewriteDocumentLinks("[[notes/old-key|the manor]]", "notes", "old-key", "new-key"),
-    ).toBe("[[notes/new-key|the manor]]");
+    expect(rewriteDocumentLinks("[[notes/old-key|the manor]]", "notes", "old-key", "new-key")).toBe(
+      "[[notes/new-key|the manor]]",
+    );
   });
 
   it("leaves unrelated links and bare names untouched", () => {

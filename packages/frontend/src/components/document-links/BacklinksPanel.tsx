@@ -37,7 +37,9 @@ export const BacklinksPanel = ({ projectId, targetType, targetKey }: Props) => {
             </Link>
             <span className="ml-1 text-xs text-muted-foreground">{backlink.sourceType}</span>
             {backlink.snippet && (
-              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{backlink.snippet}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                {backlink.snippet}
+              </p>
             )}
           </li>
         ))}
