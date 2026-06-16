@@ -68,6 +68,7 @@ import { hashContent } from "../utils/hash";
 import { joinCategoryPath } from "../utils/category";
 import { ensureVaultSkeleton } from "../utils/vault-skeleton";
 import { parseFile } from "../vault/markdown/parse";
+import { applyInlineLinkMetadata } from "../vault/markdown/inline-link-metadata";
 import * as fragmentMapper from "../vault/markdown/mappers/fragment";
 import { CooldownSet } from "../suggestion/cooldown";
 import { selectNextSuggestion } from "../suggestion/selector";
@@ -789,9 +790,19 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         return getVaultIndexer(context).fragments.findAllSummaries();
       },
 
-      async write(context: ProjectContext, fragment: Fragment): Promise<Fragment> {
+      async write(
+        context: ProjectContext,
+        fragment: Fragment,
+        options?: { contentChanged?: boolean },
+      ): Promise<Fragment> {
         return withVaultWriteLock(context.vaultPath, async () => {
-          const fragmentToWrite = { ...fragment, updatedAt: new Date() };
+          // Auto-sync inline `[[references/…]]` / `[[aspects/…]]` links into metadata before persisting
+          // (document-links.md). Aspect reaping only follows a body change so a metadata-only save never
+          // drops a weight-0 aspect the user just set via the form.
+          const fragmentToWrite = {
+            ...applyInlineLinkMetadata(fragment, options?.contentChanged ?? false),
+            updatedAt: new Date(),
+          };
 
           // Capture old path before writing the new file — needed for orphan cleanup on rename.
           const indexer = getVaultIndexer(context);

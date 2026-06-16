@@ -130,6 +130,25 @@ export const rewriteDocumentLinks = (
   );
 };
 
+// The reference and aspect keys a fragment body links to inline, deduped in first-seen order. Backs
+// the auto-sync of inline links into fragment metadata (references / aspect weights). Notes contribute
+// nothing to metadata (ADR 0007). Bare-name links are ignored here — auto-attach needs an explicit
+// type to know which metadata list to touch.
+export const deriveInlineLinkMetadata = (
+  body: string,
+): { referenceKeys: string[]; aspectKeys: string[] } => {
+  const referenceKeys: string[] = [];
+  const aspectKeys: string[] = [];
+  for (const link of parseDocumentLinks(body)) {
+    if (link.targetType === "references" && !referenceKeys.includes(link.targetKey)) {
+      referenceKeys.push(link.targetKey);
+    } else if (link.targetType === "aspects" && !aspectKeys.includes(link.targetKey)) {
+      aspectKeys.push(link.targetKey);
+    }
+  }
+  return { referenceKeys, aspectKeys };
+};
+
 // Char class for an entity key — reused so a link's key validity matches the rest of the entity-key
 // machinery. Exported for editors building their own anchored link matchers without re-hardcoding it.
 export const LINK_KEY_CHAR_CLASS = ENTITY_KEY_CHAR_CLASS;

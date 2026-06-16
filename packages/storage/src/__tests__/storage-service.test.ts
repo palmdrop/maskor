@@ -1091,3 +1091,71 @@ describe("StorageService.fragments — Margin index relocation (inline, no watch
     expect(await service.margins.read(context, fragment.uuid)).toBeNull();
   });
 });
+
+describe("StorageService inline-link metadata auto-sync", () => {
+  const setup = async () => {
+    const service = makeService();
+    const record = await service.registerProject("Links Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+    await service.index.rebuild(context);
+    return { service, context };
+  };
+
+  it("attaches an inline-linked reference and aspect on write", async () => {
+    const { service, context } = await setup();
+    const written = await service.fragments.write(
+      context,
+      {
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        key: "link-fragment",
+        isDiscarded: false,
+        readiness: 0,
+        references: [],
+        aspects: {},
+        content: "Body links [[references/city research]] and [[aspects/grief]].",
+        contentHash: "",
+        updatedAt: new Date(),
+      },
+      { contentChanged: true },
+    );
+
+    expect(written.references).toContain("city research");
+    expect(written.aspects.grief).toEqual({ weight: 0 });
+
+    // Re-read from the index to confirm it persisted.
+    const reread = await service.fragments.read(context, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    expect(reread.references).toContain("city research");
+    expect(reread.aspects.grief).toEqual({ weight: 0 });
+  });
+
+  it("reaps a weight-0 aspect when its inline link is removed on a content save", async () => {
+    const { service, context } = await setup();
+    await service.fragments.write(
+      context,
+      {
+        uuid: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        key: "reap-fragment",
+        isDiscarded: false,
+        readiness: 0,
+        references: [],
+        aspects: {},
+        content: "Has [[aspects/grief]].",
+        contentHash: "",
+        updatedAt: new Date(),
+      },
+      { contentChanged: true },
+    );
+
+    const linked = await service.fragments.read(context, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    expect(linked.aspects.grief).toEqual({ weight: 0 });
+
+    // Remove the link in a content save — the weight-0 aspect is reaped.
+    await service.fragments.write(
+      context,
+      { ...linked, content: "Link removed." },
+      { contentChanged: true },
+    );
+    const reaped = await service.fragments.read(context, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    expect(reaped.aspects.grief).toBeUndefined();
+  });
+});

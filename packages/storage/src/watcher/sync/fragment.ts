@@ -4,6 +4,8 @@ import type { VaultDatabase } from "../../db/vault";
 import { fragmentAspectsTable, fragmentsTable } from "../../db/vault/schema";
 import { parseEntityFileOrThrow } from "../../vault/markdown/parse";
 import * as fragmentMapper from "../../vault/markdown/mappers/fragment";
+import { serializeFile } from "../../vault/markdown/serialize";
+import { applyInlineLinkMetadata } from "../../vault/markdown/inline-link-metadata";
 import { hashContent } from "../../utils/hash";
 import {
   loadKnownAspectKeys,
@@ -22,6 +24,19 @@ import {
 } from "../../vault/markdown/adopt";
 import { setWordCount } from "../../suggestion/stats-repo";
 import { computeWordCount } from "../../suggestion/word-count";
+
+// Whether two fragments carry the same auto-syncable metadata (references + aspect weights). Used to
+// decide whether the inline-link merge actually changed anything and a file write-back is warranted.
+const fragmentMetadataEqual = (a: Fragment, b: Fragment): boolean => {
+  if (a.references.length !== b.references.length) return false;
+  const referencesB = new Set(b.references);
+  if (!a.references.every((reference) => referencesB.has(reference))) return false;
+
+  const aspectKeysA = Object.keys(a.aspects);
+  const aspectKeysB = Object.keys(b.aspects);
+  if (aspectKeysA.length !== aspectKeysB.length) return false;
+  return aspectKeysA.every((key) => a.aspects[key]?.weight === b.aspects[key]?.weight);
+};
 
 export const syncFragment = async (
   vaultDatabase: VaultDatabase,
@@ -117,7 +132,20 @@ export const syncFragment = async (
     return;
   }
 
-  const fragment = adoptedFragment ?? fragmentMapper.fromFile(parsed, entityRelativePath);
+  const parsedFragment = adoptedFragment ?? fragmentMapper.fromFile(parsed, entityRelativePath);
+
+  // Auto-sync inline `[[references/…]]` / `[[aspects/…]]` links into metadata (document-links.md).
+  // We are past the hash guard, so this is a genuine external body edit — reap weight-0 aspects whose
+  // inline link is gone. When the merge changes metadata, write the canonical file back (the resulting
+  // watcher event hash-guards to a no-op because the merge is idempotent).
+  const fragment = applyInlineLinkMetadata(parsedFragment, true);
+  let indexedRawContent = resolvedRawContent;
+  if (!fragmentMetadataEqual(parsedFragment, fragment)) {
+    const { frontmatter, inlineFields, body } = fragmentMapper.toFile(fragment);
+    indexedRawContent = serializeFile({ frontmatter, inlineFields, body });
+    await Bun.write(absolutePath, indexedRawContent);
+  }
+
   const knownAspectKeys = loadKnownAspectKeys(vaultDatabase);
 
   // Aspect keys this fragment referenced before the upsert. Combined with its new keys, these
@@ -130,7 +158,7 @@ export const syncFragment = async (
     .map((row) => row.aspectKey);
 
   const warnings = vaultDatabase.transaction((tx) => {
-    return upsertFragment(tx, fragment, entityRelativePath, resolvedRawContent, knownAspectKeys);
+    return upsertFragment(tx, fragment, entityRelativePath, indexedRawContent, knownAspectKeys);
   });
 
   setWordCount(vaultDatabase, resolvedUuid, computeWordCount(fragment.content));

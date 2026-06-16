@@ -29,10 +29,11 @@ export const insertFragmentCommand: Command<InsertFragmentInput, Fragment> = {
   ) {
     const existing = await ctx.storageService.fragments.read(ctx.projectContext, fragmentId);
     const newContent = applyInsertion(existing.content, insertedBody, position);
-    const updated = await ctx.storageService.fragments.write(ctx.projectContext, {
-      ...existing,
-      content: newContent,
-    });
+    const updated = await ctx.storageService.fragments.write(
+      ctx.projectContext,
+      { ...existing, content: newContent },
+      { contentChanged: true },
+    );
     return {
       result: updated,
       logEntries: [

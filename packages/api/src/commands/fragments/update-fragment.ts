@@ -40,10 +40,11 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       return { result: existing, logEntries: [] };
     }
 
-    const fragment = await ctx.storageService.fragments.write(ctx.projectContext, {
-      ...existing,
-      ...patch,
-    });
+    const fragment = await ctx.storageService.fragments.write(
+      ctx.projectContext,
+      { ...existing, ...patch },
+      { contentChanged },
+    );
 
     if (anyNonKeyChanged) {
       ctx.storageService.suggestion.recordEditSaved(ctx.projectContext, existing.uuid);

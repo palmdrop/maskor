@@ -5,6 +5,7 @@ import {
   rewriteDocumentLinks,
   linkPathTypeToEntityKind,
   entityKindToLinkPathType,
+  deriveInlineLinkMetadata,
 } from "../utils/document-link";
 
 describe("parseDocumentLinks", () => {
@@ -104,6 +105,24 @@ describe("rewriteDocumentLinks", () => {
     expect(rewriteDocumentLinks("[[notes/a]] x [[notes/a]]", "notes", "a", "b")).toBe(
       "[[notes/b]] x [[notes/b]]",
     );
+  });
+});
+
+describe("deriveInlineLinkMetadata", () => {
+  it("collects reference and aspect keys, ignoring notes/fragments/bare", () => {
+    const body =
+      "[[references/a]] [[aspects/b]] [[notes/c]] [[fragments/d]] [[bare]] [[references/a]]";
+    expect(deriveInlineLinkMetadata(body)).toEqual({
+      referenceKeys: ["a"],
+      aspectKeys: ["b"],
+    });
+  });
+
+  it("returns empty arrays for a body with no links", () => {
+    expect(deriveInlineLinkMetadata("plain prose")).toEqual({
+      referenceKeys: [],
+      aspectKeys: [],
+    });
   });
 });
 

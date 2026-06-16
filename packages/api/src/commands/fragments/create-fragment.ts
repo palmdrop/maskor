@@ -3,7 +3,9 @@ import type { Command } from "../types";
 
 export const createFragmentCommand: Command<Fragment, Fragment> = {
   async execute(ctx, input) {
-    const fragment = await ctx.storageService.fragments.write(ctx.projectContext, input);
+    const fragment = await ctx.storageService.fragments.write(ctx.projectContext, input, {
+      contentChanged: true,
+    });
     return {
       result: fragment,
       logEntries: [
