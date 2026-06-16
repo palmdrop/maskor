@@ -1704,6 +1704,40 @@
           "comments"
         ]
       },
+      "Backlink": {
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "fragment",
+              "note",
+              "reference"
+            ]
+          },
+          "sourceUuid": {
+            "type": "string"
+          },
+          "sourceKey": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string",
+            "nullable": true
+          },
+          "snippet": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "sourceType",
+          "sourceUuid",
+          "sourceKey",
+          "alias",
+          "snippet"
+        ]
+      },
       "RebuildStats": {
         "type": "object",
         "properties": {
@@ -6458,6 +6492,76 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/links/backlinks": {
+      "get": {
+        "operationId": "listBacklinks",
+        "tags": [
+          "Links"
+        ],
+        "summary": "List every body that links to a target entity",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fragment",
+                "note",
+                "reference",
+                "aspect"
+              ],
+              "example": "note"
+            },
+            "required": true,
+            "name": "targetType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "setting-notes"
+            },
+            "required": true,
+            "name": "targetKey",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backlinks for the target entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Backlink"
+                  }
                 }
               }
             }

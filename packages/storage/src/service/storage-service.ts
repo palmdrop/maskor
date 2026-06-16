@@ -63,6 +63,12 @@ import {
   findFragmentUuidsByAspectKey,
 } from "../indexer/upserts";
 import { markerIdSet, extractBlockOpening } from "@maskor/shared";
+import {
+  rewriteDocumentLinks,
+  entityKindToLinkPathType,
+  type LinkEntityKind,
+} from "@maskor/shared";
+import { findLinkSourceUuids } from "../indexer/links";
 import type { Transaction } from "../indexer/upserts";
 import { hashContent } from "../utils/hash";
 import { joinCategoryPath } from "../utils/category";
@@ -563,14 +569,124 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     };
   };
 
+  // Body-rewrite cascade for notes — read each affected note, transform its content, write it back,
+  // and stage the re-index. Mirrors cascadeFragments/cascadeAspects (key/category unchanged here, so
+  // the file path is stable).
+  const cascadeNotes = async (
+    context: ProjectContext,
+    affectedUuids: string[],
+    updateFn: (note: Note) => Note,
+  ): Promise<{ touched: string[]; commit: (tx: Transaction) => void }> => {
+    const vault = getVault(context);
+    const indexer = getVaultIndexer(context);
+    type Cascaded = { note: Note; filePath: string; rawContent: string };
+    const touched: string[] = [];
+    const cascaded: Cascaded[] = [];
+    for (const uuid of affectedUuids) {
+      const indexed = await indexer.notes.findByUUID(uuid);
+      if (!indexed) {
+        touched.push(uuid);
+        continue;
+      }
+      const updated = updateFn(await vault.notes.read(indexed.filePath));
+      await vault.notes.write(updated);
+      const filePath = joinCategoryPath(updated.category, updated.key);
+      const rawContent = await Bun.file(join(context.vaultPath, "notes", filePath)).text();
+      cascaded.push({ note: updated, filePath, rawContent });
+      touched.push(uuid);
+    }
+    return {
+      touched,
+      commit: (tx) => {
+        for (const { note, filePath, rawContent } of cascaded) upsertNote(tx, note, filePath, rawContent);
+      },
+    };
+  };
+
+  // Body-rewrite cascade for references — same shape as cascadeNotes.
+  const cascadeReferences = async (
+    context: ProjectContext,
+    affectedUuids: string[],
+    updateFn: (reference: Reference) => Reference,
+  ): Promise<{ touched: string[]; commit: (tx: Transaction) => void }> => {
+    const vault = getVault(context);
+    const indexer = getVaultIndexer(context);
+    type Cascaded = { reference: Reference; filePath: string; rawContent: string };
+    const touched: string[] = [];
+    const cascaded: Cascaded[] = [];
+    for (const uuid of affectedUuids) {
+      const indexed = await indexer.references.findByUUID(uuid);
+      if (!indexed) {
+        touched.push(uuid);
+        continue;
+      }
+      const updated = updateFn(await vault.references.read(indexed.filePath));
+      await vault.references.write(updated);
+      const filePath = joinCategoryPath(updated.category, updated.key);
+      const rawContent = await Bun.file(join(context.vaultPath, "references", filePath)).text();
+      cascaded.push({ reference: updated, filePath, rawContent });
+      touched.push(uuid);
+    }
+    return {
+      touched,
+      commit: (tx) => {
+        for (const { reference, filePath, rawContent } of cascaded)
+          upsertReference(tx, reference, filePath, rawContent);
+      },
+    };
+  };
+
+  // Union of two UUID lists, order-preserving and deduped.
+  const unionUuids = (a: string[], b: string[]): string[] => [...new Set([...a, ...b])];
+
+  // Rewrite inline `[[kind/oldKey]]` links to `newKey` in every note and reference body that links to
+  // the renamed entity. (Fragments are handled by the caller's combined fragment pass so a fragment is
+  // never written twice.) `excludeUuid` skips the renamed entity itself (its own file is written by the
+  // primary update). Returns the touched uuids + a batched commit.
+  const cascadeLinkBodiesNotesReferences = async (
+    context: ProjectContext,
+    kind: LinkEntityKind,
+    oldKey: string,
+    newKey: string,
+    excludeUuid: string | undefined,
+  ): Promise<{ notes: string[]; references: string[]; commit: (tx: Transaction) => void }> => {
+    const pathType = entityKindToLinkPathType(kind);
+    const vaultDatabase = getVaultDatabase(context);
+    const rewrite = (content: string) => rewriteDocumentLinks(content, pathType, oldKey, newKey);
+
+    const notePayload = await cascadeNotes(
+      context,
+      findLinkSourceUuids(vaultDatabase, kind, oldKey, "note").filter((uuid) => uuid !== excludeUuid),
+      (note) => ({ ...note, content: rewrite(note.content) }),
+    );
+    const referencePayload = await cascadeReferences(
+      context,
+      findLinkSourceUuids(vaultDatabase, kind, oldKey, "reference").filter(
+        (uuid) => uuid !== excludeUuid,
+      ),
+      (reference) => ({ ...reference, content: rewrite(reference.content) }),
+    );
+
+    return {
+      notes: notePayload.touched,
+      references: referencePayload.touched,
+      commit: (tx) => {
+        notePayload.commit(tx);
+        referencePayload.commit(tx);
+      },
+    };
+  };
+
   const cascadeNoteKeyRename = async (
     context: ProjectContext,
     oldKey: string,
     newKey: string,
+    renamedUuid?: string,
   ): Promise<{ fragments: string[]; aspects: string[]; commit: (tx: Transaction) => void }> => {
     const vaultDatabase = getVaultDatabase(context);
-    // Fragments no longer carry a notes attachment (margins replaced it — ADR 0007), so a note
-    // rename only cascades to aspects, which keep their notes list.
+    const pathType = entityKindToLinkPathType("note");
+    // Fragments no longer carry a notes attachment (margins replaced it — ADR 0007), so a note rename
+    // cascades to aspects' notes list (metadata) and to inline `[[notes/oldKey]]` links in every body.
     const aspectPayload = await cascadeAspects(
       context,
       findAspectUuidsByNoteKey(vaultDatabase, oldKey),
@@ -579,11 +695,28 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         notes: aspect.notes.map((note) => (note === oldKey ? newKey : note)),
       }),
     );
+    const fragmentLinkPayload = await cascadeFragments(
+      context,
+      findLinkSourceUuids(vaultDatabase, "note", oldKey, "fragment"),
+      (fragment) => ({
+        ...fragment,
+        content: rewriteDocumentLinks(fragment.content, pathType, oldKey, newKey),
+      }),
+    );
+    const bodyPayload = await cascadeLinkBodiesNotesReferences(
+      context,
+      "note",
+      oldKey,
+      newKey,
+      renamedUuid,
+    );
     return {
-      fragments: [],
+      fragments: fragmentLinkPayload.touched,
       aspects: aspectPayload.touched,
       commit: (tx) => {
         aspectPayload.commit(tx);
+        fragmentLinkPayload.commit(tx);
+        bodyPayload.commit(tx);
       },
     };
   };
@@ -592,21 +725,36 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
     context: ProjectContext,
     oldKey: string,
     newKey: string,
+    renamedUuid?: string,
   ): Promise<{ fragments: string[]; commit: (tx: Transaction) => void }> => {
     const vaultDatabase = getVaultDatabase(context);
-    const fragmentPayload = await cascadeFragments(
-      context,
+    const pathType = entityKindToLinkPathType("reference");
+    // Fragments are affected both via their reference list (metadata) and inline `[[references/oldKey]]`
+    // links — combine into one fragment pass over the union so a fragment is never written twice.
+    const fragmentUuids = unionUuids(
       findFragmentUuidsByReferenceKey(vaultDatabase, oldKey),
-      (fragment) => ({
-        ...fragment,
-        references: fragment.references.map((reference) =>
-          reference === oldKey ? newKey : reference,
-        ),
-      }),
+      findLinkSourceUuids(vaultDatabase, "reference", oldKey, "fragment"),
+    );
+    const fragmentPayload = await cascadeFragments(context, fragmentUuids, (fragment) => ({
+      ...fragment,
+      references: fragment.references.map((reference) =>
+        reference === oldKey ? newKey : reference,
+      ),
+      content: rewriteDocumentLinks(fragment.content, pathType, oldKey, newKey),
+    }));
+    const bodyPayload = await cascadeLinkBodiesNotesReferences(
+      context,
+      "reference",
+      oldKey,
+      newKey,
+      renamedUuid,
     );
     return {
       fragments: fragmentPayload.touched,
-      commit: fragmentPayload.commit,
+      commit: (tx) => {
+        fragmentPayload.commit(tx);
+        bodyPayload.commit(tx);
+      },
     };
   };
 
@@ -621,22 +769,76 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       await deleteArc(context, oldKey);
     }
     const vaultDatabase = getVaultDatabase(context);
-    const fragmentPayload = await cascadeFragments(
-      context,
+    const pathType = entityKindToLinkPathType("aspect");
+    // Fragments are affected both via their aspect map (metadata) and inline `[[aspects/oldKey]]` links
+    // — combine into one fragment pass over the union.
+    const fragmentUuids = unionUuids(
       findFragmentUuidsByAspectKey(vaultDatabase, oldKey),
-      (fragment) => {
-        const oldAspect = fragment.aspects[oldKey];
-        const updatedAspects = { ...fragment.aspects };
-        delete updatedAspects[oldKey];
-        if (oldAspect !== undefined) {
-          updatedAspects[newKey] = oldAspect;
-        }
-        return { ...fragment, aspects: updatedAspects };
-      },
+      findLinkSourceUuids(vaultDatabase, "aspect", oldKey, "fragment"),
+    );
+    const fragmentPayload = await cascadeFragments(context, fragmentUuids, (fragment) => {
+      const oldAspect = fragment.aspects[oldKey];
+      const updatedAspects = { ...fragment.aspects };
+      delete updatedAspects[oldKey];
+      if (oldAspect !== undefined) {
+        updatedAspects[newKey] = oldAspect;
+      }
+      return {
+        ...fragment,
+        aspects: updatedAspects,
+        content: rewriteDocumentLinks(fragment.content, pathType, oldKey, newKey),
+      };
+    });
+    // Aspects are not link sources, so only note + reference bodies need link rewriting.
+    const bodyPayload = await cascadeLinkBodiesNotesReferences(
+      context,
+      "aspect",
+      oldKey,
+      newKey,
+      undefined,
     );
     return {
       fragments: fragmentPayload.touched,
-      commit: fragmentPayload.commit,
+      commit: (tx) => {
+        fragmentPayload.commit(tx);
+        bodyPayload.commit(tx);
+      },
+    };
+  };
+
+  // Fragment rename cascade (net-new — fragment renames previously did not cascade). Fragments are not
+  // attached anywhere via metadata, so this is purely an inline `[[fragments/oldKey]]` link rewrite
+  // across every fragment / note / reference body, excluding the renamed fragment itself.
+  const cascadeFragmentKeyRename = async (
+    context: ProjectContext,
+    oldKey: string,
+    newKey: string,
+    renamedUuid: string,
+  ): Promise<{ commit: (tx: Transaction) => void }> => {
+    const vaultDatabase = getVaultDatabase(context);
+    const pathType = entityKindToLinkPathType("fragment");
+    const fragmentPayload = await cascadeFragments(
+      context,
+      findLinkSourceUuids(vaultDatabase, "fragment", oldKey, "fragment").filter(
+        (uuid) => uuid !== renamedUuid,
+      ),
+      (fragment) => ({
+        ...fragment,
+        content: rewriteDocumentLinks(fragment.content, pathType, oldKey, newKey),
+      }),
+    );
+    const bodyPayload = await cascadeLinkBodiesNotesReferences(
+      context,
+      "fragment",
+      oldKey,
+      newKey,
+      renamedUuid,
+    );
+    return {
+      commit: (tx) => {
+        fragmentPayload.commit(tx);
+        bodyPayload.commit(tx);
+      },
     };
   };
 
@@ -659,6 +861,25 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
       fragments: fragmentPayload.touched,
       commit: fragmentPayload.commit,
     };
+  };
+
+  // Strip a deleted reference key from every fragment's reference list. Inline `[[references/key]]`
+  // links in bodies are deliberately left intact (they become broken links — bodies are never
+  // auto-rewritten on delete; document-links.md).
+  const cascadeReferenceDelete = async (
+    context: ProjectContext,
+    referenceKey: string,
+  ): Promise<{ fragments: string[]; commit: (tx: Transaction) => void }> => {
+    const vaultDatabase = getVaultDatabase(context);
+    const fragmentPayload = await cascadeFragments(
+      context,
+      findFragmentUuidsByReferenceKey(vaultDatabase, referenceKey),
+      (fragment) => ({
+        ...fragment,
+        references: fragment.references.filter((reference) => reference !== referenceKey),
+      }),
+    );
+    return { fragments: fragmentPayload.touched, commit: fragmentPayload.commit };
   };
 
   // --- public API ---
@@ -844,13 +1065,21 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           });
 
           // Cascade a key rename to the fragment's Margin (margins/<key>.md follows the fragment
-          // key). No-op when the key is unchanged or the fragment has no Margin.
+          // key) and to inline `[[fragments/oldKey]]` links in every referring body. No-op when the
+          // key is unchanged or the fragment has no Margin / referrers.
           let marginRenamed = false;
+          let renameCascade: { commit: (tx: Transaction) => void } | null = null;
           if (oldFilePath) {
             const oldKey = basename(oldFilePath).replace(/\.md$/, "");
             if (oldKey !== fragmentToWrite.key) {
               await getVault(context).margins.rename(oldKey, fragmentToWrite.key);
               marginRenamed = true;
+              renameCascade = await cascadeFragmentKeyRename(
+                context,
+                oldKey,
+                fragmentToWrite.key,
+                fragmentToWrite.uuid,
+              );
             }
           }
 
@@ -862,6 +1091,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
           vaultDatabase.transaction((tx) => {
             upsertFragment(tx, fragmentToWrite, entityRelativePath, rawContent, knownAspectKeys);
+            // Rewrite + re-index referring bodies after the renamed fragment's own row is updated, so
+            // their links resolve to the new key.
+            renameCascade?.commit(tx);
             // Keep the Margin index in step with the renamed file inline (the watcher would
             // otherwise lag); the margins/<key>.md path mirrors the fragment's relative path.
             if (marginRenamed) {
@@ -1399,7 +1631,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
             const cascadePayload =
               patch.key !== undefined && patch.key !== oldKey
-                ? await cascadeNoteKeyRename(context, oldKey, updated.key)
+                ? await cascadeNoteKeyRename(context, oldKey, updated.key, uuid)
                 : null;
 
             const warnings = cascadePayload
@@ -1565,7 +1797,7 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
 
             const cascadePayload =
               patch.key !== undefined && patch.key !== oldKey
-                ? await cascadeReferenceKeyRename(context, oldKey, updated.key)
+                ? await cascadeReferenceKeyRename(context, oldKey, updated.key, uuid)
                 : null;
 
             const warnings = cascadePayload
@@ -1621,9 +1853,14 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
             throw error;
           }
 
+          // Strip the reference from every fragment's reference list (inline links stay, becoming
+          // broken). Computed before the delete-by-path so the cascade reads the live files.
+          const cascadePayload = await cascadeReferenceDelete(context, indexed.key);
+
           const vaultDatabase = getVaultDatabase(context);
           vaultDatabase.transaction((tx) => {
             deleteReferenceByFilePath(tx, indexed.filePath);
+            cascadePayload.commit(tx);
           });
         });
       },
@@ -1677,6 +1914,21 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
           await Bun.write(join(exportsDirectory, archiveFileName), bytes);
           return join(".maskor", "exports", archiveFileName);
         });
+      },
+    },
+
+    // Document-link queries (read-only; the link index is maintained by the upsert/cascade paths).
+
+    links: {
+      async backlinks(context: ProjectContext, targetType: LinkEntityKind, targetKey: string) {
+        return getVaultIndexer(context).links.findBacklinks(targetType, targetKey);
+      },
+      async outgoing(
+        context: ProjectContext,
+        sourceType: "fragment" | "note" | "reference",
+        sourceUuid: string,
+      ) {
+        return getVaultIndexer(context).links.findOutgoing(sourceType, sourceUuid);
       },
     },
 

@@ -255,7 +255,12 @@ export const findBacklinks = (
     .where(and(eq(linksTable.targetType, kind), eq(linksTable.targetKey, key)))
     .all();
 
+  // One entry per referring body, even if it links the target multiple times (the first link's
+  // alias/snippet wins). Backlinks list "every body that links to it," not every link.
+  const seen = new Set<string>();
   return rows.flatMap((row) => {
+    if (seen.has(row.sourceUuid)) return [];
+    seen.add(row.sourceUuid);
     const sourceType = row.sourceType as LinkSourceType;
     const sourceKey = SOURCE_KEY_QUERY[sourceType]?.(db, row.sourceUuid) ?? null;
     if (sourceKey === null) return [];
@@ -269,6 +274,28 @@ export const findBacklinks = (
       },
     ];
   });
+};
+
+// Distinct source UUIDs of one source type that link to (targetKind, targetKey). Backs the rename
+// cascade — the set of bodies whose inline `[[targetKind/targetKey]]` links must be rewritten.
+export const findLinkSourceUuids = (
+  db: VaultDatabase,
+  targetKind: LinkEntityKind,
+  targetKey: string,
+  sourceType: LinkSourceType,
+): string[] => {
+  const rows = db
+    .select({ sourceUuid: linksTable.sourceUuid })
+    .from(linksTable)
+    .where(
+      and(
+        eq(linksTable.targetType, targetKind),
+        eq(linksTable.targetKey, targetKey),
+        eq(linksTable.sourceType, sourceType),
+      ),
+    )
+    .all();
+  return [...new Set(rows.map((row) => row.sourceUuid))];
 };
 
 export type OutgoingLinkRow = {

@@ -13,6 +13,7 @@ import { aspectsRouter } from "./routes/aspects";
 import { notesRouter } from "./routes/notes";
 import { referencesRouter } from "./routes/references";
 import { marginsRouter } from "./routes/margins";
+import { linksRouter } from "./routes/links";
 import { vaultIndexRouter } from "./routes/vault-index-routes";
 import { warningsRouter } from "./routes/warnings";
 import { eventsRouter } from "./routes/events";
@@ -108,6 +109,7 @@ export const createApp = (
   projectScopedApp.route("/notes", notesRouter);
   projectScopedApp.route("/references", referencesRouter);
   projectScopedApp.route("/margins", marginsRouter);
+  projectScopedApp.route("/links", linksRouter);
   projectScopedApp.route("/index", vaultIndexRouter);
   projectScopedApp.route("/warnings", warningsRouter);
   projectScopedApp.route("/events", eventsRouter);
