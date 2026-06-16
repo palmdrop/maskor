@@ -50,6 +50,15 @@ export const useDocumentLinks = (projectId: string) => {
     [lookups],
   );
 
+  // Flat list of every linkable entity, for the "Insert link" picker.
+  const entities = useMemo(
+    () =>
+      (["fragments", "notes", "references", "aspects"] as LinkPathType[]).flatMap((pathType) =>
+        [...lookups[pathType].keys()].map((key) => ({ pathType, key })),
+      ),
+    [lookups],
+  );
+
   const navigateToLink = useCallback(
     (pathType: LinkPathType, uuid: string) => {
       const route = linkRouteFor(pathType, uuid, projectId);
@@ -58,7 +67,7 @@ export const useDocumentLinks = (projectId: string) => {
     [navigate, projectId],
   );
 
-  return { lookups, resolve, navigateToLink };
+  return { lookups, entities, resolve, navigateToLink };
 };
 
 export type DocumentLinksApi = ReturnType<typeof useDocumentLinks>;

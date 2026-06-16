@@ -24,6 +24,7 @@ import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useDocumentLinks } from "@lib/document-links/useDocumentLinks";
+import { buildDocumentLink } from "@maskor/shared";
 import { useProjectSetting } from "@hooks/useProjectSetting";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedCursor } from "@hooks/usePersistedCursor";
@@ -301,6 +302,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       decreaseFontSize: handleDecreaseFontSize,
       increaseMargin: handleIncreaseMargin,
       decreaseMargin: handleDecreaseMargin,
+      linkTargets: documentLinks.entities,
+      insertLink: (target) =>
+        proseEditorRef.current?.insertAtCursor(buildDocumentLink(target.pathType, target.key)),
     });
 
     const handleProseChange = useCallback(() => {

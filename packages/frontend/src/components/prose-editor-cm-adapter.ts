@@ -125,5 +125,16 @@ export const createCodeMirrorProseAdapter = (
     setHighlightedAnchor: (markerId: string | null) => {
       getView()?.dispatch({ effects: setHighlightedAnchorEffect.of(markerId) });
     },
+    insertAtCursor: (text: string) => {
+      const view = getView();
+      if (!view) return;
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+      });
+      view.focus();
+      notifyChange();
+    },
   };
 };

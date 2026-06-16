@@ -130,5 +130,12 @@ export const createTiptapProseAdapter = (deps: TiptapProseAdapterDeps): ProseEdi
     setHighlightedAnchor: () => {
       // vim/raw only (the bug-fix + cue scope). Rich mode is a no-op for now.
     },
+    insertAtCursor: (text: string) => {
+      const editor = getEditor();
+      if (!editor) return;
+      // insertContent on a plain string inserts it as text (no HTML/markdown parsing of `[[…]]`),
+      // so the link round-trips as literal prose.
+      editor.chain().focus().insertContent(text).run();
+    },
   };
 };

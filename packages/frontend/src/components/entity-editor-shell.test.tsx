@@ -24,6 +24,15 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   };
 });
 
+vi.mock("@lib/document-links/useDocumentLinks", () => ({
+  useDocumentLinks: () => ({
+    lookups: { fragments: new Map(), notes: new Map(), references: new Map(), aspects: new Map() },
+    entities: [],
+    resolve: vi.fn(),
+    navigateToLink: vi.fn(),
+  }),
+}));
+
 vi.mock("@api/generated/projects/projects", () => ({
   useGetProject: () => ({ data: undefined }),
   useUpdateProject: () => ({ mutateAsync: vi.fn().mockResolvedValue({ status: 200 }) }),

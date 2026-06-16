@@ -28,6 +28,8 @@ const makeCtx = (overrides: Partial<EditorContext> = {}): EditorContext => ({
   decreaseFontSize: vi.fn(),
   increaseMargin: vi.fn(),
   decreaseMargin: vi.fn(),
+  linkTargets: [{ pathType: "notes", key: "note" }],
+  insertLink: vi.fn(),
   ...overrides,
 });
 
@@ -44,6 +46,22 @@ describe("scopes/editor — toggle focus", () => {
     expect(find("editor:toggle-focus").disabled?.(ctx)).toBeUndefined();
     find("editor:toggle-focus").run(ctx);
     expect(toggle).toHaveBeenCalledOnce();
+  });
+});
+
+describe("scopes/editor — insert link", () => {
+  it("offers all link targets and inserts the chosen one", () => {
+    const ctx = makeCtx();
+    const command = find("editor:insert-link");
+    expect(command.arg!.items(ctx)).toEqual(ctx.linkTargets);
+    const target = ctx.linkTargets[0]!;
+    command.run(ctx, target);
+    expect(ctx.insertLink).toHaveBeenCalledWith(target);
+  });
+
+  it("is disabled when there are no linkable entities", () => {
+    const ctx = makeCtx({ linkTargets: [] });
+    expect(find("editor:insert-link").disabled?.(ctx)).toBe("No linkable entities yet");
   });
 });
 

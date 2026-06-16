@@ -6,8 +6,15 @@ import {
   StateField,
   type EditorState,
 } from "@uiw/react-codemirror";
+import {
+  autocompletion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import { findLinkRanges, type LinkLookups } from "@lib/document-links/resolver";
 import type { LinkPathType } from "@maskor/shared";
+
+const PATH_TYPES: LinkPathType[] = ["fragments", "notes", "references", "aspects"];
 
 // Document-link rendering for the raw/vim (CM6) editor: a mark decoration styles every `[[type/key]]`
 // occurrence (resolved vs broken) and Cmd/Ctrl-click on a resolved link navigates to its target. The
@@ -83,4 +90,28 @@ const linkTheme = EditorView.baseTheme({
   },
 });
 
-export const cmDocumentLinkExtension = [cmLinkConfigField, linkDecorations, linkClickHandler, linkTheme];
+// `[[` autocomplete: when the caret follows an open `[[…` (no closing `]]` yet), offer every linkable
+// entity. Selecting one completes the canonical `type/key]]`.
+const linkCompletionSource = (context: CompletionContext): CompletionResult | null => {
+  const config = context.state.field(cmLinkConfigField, false);
+  if (!config) return null;
+  // Matches an open `[[` plus any query typed so far (zero-width query is fine — fires right at `[[`).
+  const before = context.matchBefore(/\[\[[^[\]\n]*/);
+  if (!before) return null;
+  const options = PATH_TYPES.flatMap((pathType) =>
+    [...config.lookups[pathType].keys()].map((key) => ({
+      label: `${pathType}/${key}`,
+      apply: `${pathType}/${key}]]`,
+      type: "link",
+    })),
+  );
+  return { from: before.from + 2, options, filter: true };
+};
+
+export const cmDocumentLinkExtension = [
+  cmLinkConfigField,
+  linkDecorations,
+  linkClickHandler,
+  linkTheme,
+  autocompletion({ override: [linkCompletionSource] }),
+];

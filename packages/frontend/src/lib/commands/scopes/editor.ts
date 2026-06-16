@@ -1,9 +1,16 @@
 import type { SelectionCapture } from "@components/prose-editor";
 import type { EntityKind } from "@lib/entity-kinds/registry";
+import type { LinkPathType } from "@maskor/shared";
 import { defineScope, defineScopeCommand } from "../define";
 
 export type InsertCommandTarget = {
   uuid: string;
+  key: string;
+};
+
+// A linkable entity offered by the "Insert link" picker.
+export type LinkInsertTarget = {
+  pathType: LinkPathType;
   key: string;
 };
 
@@ -28,6 +35,10 @@ export interface EditorContext {
   decreaseFontSize: () => void;
   increaseMargin: () => void;
   decreaseMargin: () => void;
+  // Linkable entities project-wide, for the "Insert link" picker.
+  linkTargets: LinkInsertTarget[];
+  // Insert a canonical `[[pathType/key]]` link at the caret.
+  insertLink: (target: LinkInsertTarget) => void;
 }
 
 // Singleton scope — only one EntityEditorShell may be mounted at a time.
@@ -312,9 +323,26 @@ const decreaseMargin = defineScopeCommand(editorScope, {
   run: (ctx) => ctx.decreaseMargin(),
 });
 
+// --- Insert document link ---
+
+const insertLink = defineScopeCommand(editorScope, {
+  id: "editor:insert-link",
+  label: "Insert link…",
+  category: "other",
+  disabled: (ctx) => (ctx.linkTargets.length === 0 ? "No linkable entities yet" : undefined),
+  arg: {
+    items: (ctx) => ctx.linkTargets,
+    getKey: (target) => `${target.pathType}/${target.key}`,
+    getLabel: (target) => `${target.key} · ${target.pathType}`,
+    placeholder: "Link to…",
+  },
+  run: (ctx, target) => ctx.insertLink(target),
+});
+
 export const editorCommands = [
   save,
   toggleFocus,
+  insertLink,
   extractToFragment,
   extractToNote,
   extractToReference,

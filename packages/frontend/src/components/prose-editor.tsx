@@ -76,6 +76,9 @@ export type ProseEditorHandle = {
   // Highlight the block a Margin comment is anchored to (the reciprocal connection cue), or null to
   // clear. Presentation only (a line decoration). vim/raw only; rich is a no-op in this iteration.
   setHighlightedAnchor: (markerId: string | null) => void;
+  // Insert plain text at the caret (replacing any selection), then focus. Backs the command-palette
+  // "Insert link" action across all modes.
+  insertAtCursor: (text: string) => void;
 };
 
 type Props = {
@@ -464,7 +467,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             focusAndCenterCaret(view);
           }}
           onChange={() => onChangeRef.current?.()}
-          basicSetup={{ lineNumbers: false, foldGutter: false }}
+          // autocompletion is provided by cmDocumentLinkExtension (the `[[` link picker); disabling
+          // the basic-setup instance avoids a duplicate, while completionKeymap stays on for it.
+          basicSetup={{ lineNumbers: false, foldGutter: false, autocompletion: false }}
           className="h-full"
         />
       </div>
