@@ -14,6 +14,26 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] When I expand the sequencer, suggestion engine, interleavmenet, etc, maybe add "template fragments" that adhere to the desired shape, and can be filled with specific content 
 
+- [ ] BIG ISSUE: when having maskor opened in multiple tabs, cache is sometimes overwritten? a change in one tab, in an unrelated document, might cause the dirty document in the other tab to be restored to the pre-edit state. A refresh will re-surface the edits from the server swap file... not sure why this happens.
+  - NOTE: sometimes happens when only one maskor-instance is opened. It is enough to navigate between different fragments, and then back to the one that was edited.
+
+- [ ] Renaming a fragment using the inline editor on the overview page does not update the fragment title in the sequence sidebar
+
+- [ ] Use actual browser tabs as the tab implementation somehow
+
+- [ ] When splitting, it should be possible to rename fragments in the modal before committing
+- [ ] Smart splitting auto-select - if a fragment has headlines, split on that, if it has page breaks, split on that, etc... (but never default to newline?)
+
+- [ ] Ability to create and add reference from the modal, without navigating away 
+
+- [ ] Ability to add a fragment to a sequence on creation - and, if in fragment list view, if sorting on a sequence, have that sequence pre-selected for addition 
+
+- [ ] Splitting on "---" caused "split failed", however, the split did succeed
+
+- [ ] make it possible to highlight a sequence in another sequence
+
+- [ ] show a dot or indicator on fragments that have unsaved changes 
+
 - [ ] still a flicker on refresh in overview on scroll
 
 - [x] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence (member sequences float to top, labelled with their section; move-ability now conveyed by the modal's drag UI — plan: `references/plans/sequence-placement-improvements.md`)
