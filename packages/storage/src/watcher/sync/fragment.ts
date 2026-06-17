@@ -93,6 +93,13 @@ export const syncFragment = async (
   // unlink is deferred via the rename buffer, so a buffered entry on this UUID means the same fragment
   // was renamed — not a genuine UUID collision. Recognising it here skips the collision reassignment
   // below, which would otherwise mint a new UUID because the old row still lingers in the index.
+  //
+  // Limitation: this relies on the unlink(old) arriving before (or within the buffer window of) the
+  // add(new) — the order chokidar emits for a `mv`/Obsidian rename. If a platform ever delivers
+  // add-before-unlink, the buffer is still empty here, the collision check mints a new UUID, and the
+  // rename degrades to a delete + fresh-add (referring links go broken, no cascade) — exactly the
+  // pre-existing fragment-collision behaviour. Keyed entities share this constraint. See
+  // references/suggestions.md.
   const { renameBuffer, cascadeRename } = renameOptions;
   const filenameKey = basename(normalizedPath, ".md");
   const renameCheck = renameBuffer.check(uuid, filenameKey);
