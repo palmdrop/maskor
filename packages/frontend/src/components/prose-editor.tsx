@@ -349,10 +349,15 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // initial mount seeds via `onCreateEditor`; this covers later content changes / restores.
   useEffect(() => {
     if (!(vimMode || rawMarkdownMode)) return;
+    // The buffer is authoritative while dirty (see the cmValue guard above). `loadedAnchors` derives
+    // from the `content` prop, so re-seeding here while the doc text is frozen would point the anchors
+    // at server offsets that no longer match the unsaved buffer. Reconciles on the dirty→clean
+    // transition after save (isDirty is in the deps).
+    if (isDirty) return;
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({ effects: setCmAnchorsEffect.of(loadedAnchors) });
-  }, [cleanContent, loadedAnchors, vimMode, rawMarkdownMode]);
+  }, [cleanContent, loadedAnchors, vimMode, rawMarkdownMode, isDirty]);
 
   // The two backends behind the handle, each a pure adapter reading its live backend, the latest
   // content, and the change notifier through injected accessors. Both are stable.

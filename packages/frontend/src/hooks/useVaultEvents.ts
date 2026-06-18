@@ -13,6 +13,11 @@ import { VAULT_SYNC_EVENT_TYPES } from "@maskor/shared";
 //
 // Prefixes are matched against `queryKey[0]` (a URL-path string like
 // `/projects/${id}/fragments/summaries`). `null` means "invalidate everything for the project".
+//
+// TODO: this map is hand-maintained and has no compile-time link to the route surface — a new
+// project-scoped query family that derives from an existing entity (e.g. a fragment-derived view
+// under a new path prefix) will silently not refetch on that entity's event until added here.
+// Revisit whenever a new project-scoped query family is introduced.
 const eventInvalidationPrefixes = (eventType: string): readonly string[] | null => {
   switch (eventType) {
     case "fragment:synced":
