@@ -117,6 +117,7 @@ vi.mock("@api/generated/fragments/fragments", () => ({
   useRestoreFragment: () => ({ mutate: vi.fn(), isPending: false }),
   getGetFragmentQueryKey: () => ["fragment"],
   getListFragmentsQueryKey: () => ["fragments"],
+  getListFragmentSummariesQueryKey: () => ["fragments", "summaries"],
 }));
 
 vi.mock("@api/generated/projects/projects", () => ({

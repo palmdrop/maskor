@@ -1,22 +1,52 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { VAULT_SYNC_EVENT_TYPES } from "@maskor/shared";
 
-// TODO: find way of sharing this across shared and frontend without strange issues
-const VAULT_SYNC_EVENT_TYPES = [
-  "fragment:synced",
-  "fragment:deleted",
-  "aspect:synced",
-  "aspect:deleted",
-  "note:synced",
-  "note:deleted",
-  "reference:synced",
-  "reference:deleted",
-  "margin:synced",
-  "margin:deleted",
-  "vault:restored",
-  "vault:reset",
-  "vault:warning",
-];
+// Maps each vault SSE event to the set of project-scoped query-key prefixes it can affect, so an
+// unrelated change no longer refetches every query for the project (which, combined with the
+// editor's content-sync, used to clobber the open editor's unsaved buffer — see
+// specifications/fragment-editor.md). The mapping is deliberately a safe over-approximation:
+// over-invalidation only costs a refetch (a no-op under structural sharing), while under-invalidation
+// would leave a view stale. Cross-entity edits (e.g. an aspect rename rewriting fragment frontmatter)
+// rewrite the referenced files, which emit their own per-entity events, so each event only needs to
+// cover its own entity plus the queries that directly derive from it.
+//
+// Prefixes are matched against `queryKey[0]` (a URL-path string like
+// `/projects/${id}/fragments/summaries`). `null` means "invalidate everything for the project".
+const eventInvalidationPrefixes = (eventType: string): readonly string[] | null => {
+  switch (eventType) {
+    case "fragment:synced":
+    case "fragment:deleted":
+      // Fragment GET/list/summaries (+ per-fragment stats), sequence contents (excerpts) and
+      // placement-derived violations/cycles, and project stats.
+      return ["fragments", "sequences", "stats"];
+    case "aspect:synced":
+    case "aspect:deleted":
+      // Aspect GET/list, fragments (arc colours + unknown-aspect references), project stats, and
+      // the warnings list (UNKNOWN_ASPECT_KEY).
+      return ["aspects", "fragments", "stats", "warnings"];
+    case "note:synced":
+    case "note:deleted":
+      // Note GET/list, and aspects (which carry a notes list).
+      return ["notes", "aspects"];
+    case "reference:synced":
+    case "reference:deleted":
+      // Reference GET/list, and fragments (which attach references by name).
+      return ["references", "fragments"];
+    case "margin:synced":
+    case "margin:deleted":
+      return ["margins"];
+    case "vault:warning":
+      return ["warnings"];
+    case "vault:restored":
+    case "vault:reset":
+      // The whole vault DB was replaced/re-derived — refetch everything for the project.
+      return null;
+    default:
+      // Unknown event: fall back to the safe, broad invalidation.
+      return null;
+  }
+};
 
 export const useVaultEvents = (projectId: string) => {
   const queryClient = useQueryClient();
@@ -27,25 +57,32 @@ export const useVaultEvents = (projectId: string) => {
     // silently breaks the live-update stream outside `localhost:3001`.
     const source = new EventSource(`/api/projects/${projectId}/events`);
 
-    const handleEvent = (_event: MessageEvent) => {
-      // Broad invalidation — refetches all queries for this project.
-      // Query keys are URL-path strings (e.g. `/projects/${projectId}/fragments`),
-      // so we use a predicate to match all queries scoped to this project.
+    const projectPrefix = `/projects/${projectId}/`;
+
+    const handlerFor = (eventType: string) => () => {
+      const prefixes = eventInvalidationPrefixes(eventType);
+      // Query keys are URL-path strings (e.g. `/projects/${projectId}/fragments`), so we match by
+      // prefix with a predicate.
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === "string" && key.startsWith(`/projects/${projectId}/`);
+          if (typeof key !== "string" || !key.startsWith(projectPrefix)) return false;
+          // null → invalidate every project-scoped query (e.g. vault:restored / vault:reset).
+          if (prefixes === null) return true;
+          return prefixes.some((prefix) => key.startsWith(`${projectPrefix}${prefix}`));
         },
       });
     };
 
-    for (const type of VAULT_SYNC_EVENT_TYPES) {
-      source.addEventListener(type, handleEvent);
-    }
+    const handlers = VAULT_SYNC_EVENT_TYPES.map((type) => {
+      const handler = handlerFor(type);
+      source.addEventListener(type, handler);
+      return [type, handler] as const;
+    });
 
     return () => {
-      for (const type of VAULT_SYNC_EVENT_TYPES) {
-        source.removeEventListener(type, handleEvent);
+      for (const [type, handler] of handlers) {
+        source.removeEventListener(type, handler);
       }
       source.close();
     };

@@ -22,6 +22,7 @@ import {
   useUpdateFragment,
   getGetFragmentQueryKey,
   getListFragmentsQueryKey,
+  getListFragmentSummariesQueryKey,
 } from "@api/generated/fragments/fragments";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
 import type {
@@ -148,6 +149,14 @@ export const ENTITY_HOOKS: Record<EntityKind, EntityHooks> = {
     bodyField: "content",
     selectEntity: (data) => (data as FragmentUpdateResponse).fragment,
     selectWarnings: (data) => (data as FragmentUpdateResponse).warnings,
-    getExtraInvalidateKeys: (projectId, uuid) => [getGetFragmentStatsQueryKey(projectId, uuid)],
+    // The fragment summaries list (uuid, key, isDiscarded, excerpt) backs the Overview's left
+    // column and prose spine. A rename changes `key` there, and `key` is not part of the watcher's
+    // content hash, so a rename emits no `fragment:synced` SSE event — without this the Overview
+    // shows the stale name until a manual refresh. Invalidating it on every fragment update is
+    // harmless (structural sharing no-ops when the summary is unchanged).
+    getExtraInvalidateKeys: (projectId, uuid) => [
+      getGetFragmentStatsQueryKey(projectId, uuid),
+      getListFragmentSummariesQueryKey(projectId),
+    ],
   },
 };

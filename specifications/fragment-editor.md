@@ -1,9 +1,11 @@
 # Spec: Fragment Editor
 
 **Status**: Stable
-**Last updated**: 2026-05-15
+**Last updated**: 2026-06-17
 
 **Shipped**:
+
+- 2026-06-17 — **Buffer authority + scoped live-update invalidation**: the prose buffer is now authoritative while dirty — `ProseEditor` no longer overwrites unsaved edits when its `content` prop changes from a background refetch (same fragment saved in another tab, external Obsidian edit, etc.). Previously the edits were silently clobbered (the swap file retained them, so the symptom was "buffer reverted, refresh recovers"). Additionally, `useVaultEvents` now invalidates only the queries that depend on the changed entity instead of every project query, so an unrelated change no longer refetches the open editor. Also: a fragment update now invalidates the fragment **summaries** list, so an inline rename updates the name in the Overview's left column + spine immediately (a rename emits no `fragment:synced` SSE event because the key is the filename, not part of the watcher's content hash).
 
 - 2026-06-14 — **Aspect reader**: the editor's Margin gutter is now tabbed (`[Margin] [Aspects]`). The Aspects tab lists the fragment's attached aspects (color dot + key + weight), each expandable (single-expand accordion) to a read-only `AspectPreview` — the aspect's description rendered as markdown, its notes, and a deep-link to the aspect editor. Clicking an aspect chip in the metadata sidebar opens the tab and expands that aspect (`fragment-editor:preview-aspect`). Orphaned aspect rows (a weight key with no aspect entity) render muted with a create affordance. The reader lives only where the gutter renders (the dedicated fragment editor, including focus mode), not the inline Overview/Preview overlay. `AspectPreview` is standalone and reusable by aspect key. (plan: references/plans/aspect-preview-reader.md)
 - 2026-06-11 — **Focus mode**: an explicit, per-project-persisted toggle (default off, honored on mount, never auto-forced) lifts the editor into a fixed full-viewport overlay below the navbar, hiding all host chrome. Available wherever the fragment editor mounts (dedicated editor, list, Overview/Preview inline overlay, suggestion). Toggling never remounts the editor, so the unsaved buffer + cursor survive. Independent of the metadata-sidebar collapse. (`editor:toggle-focus`; plan: references/plans/fragment-editor-focus-mode.md)
@@ -123,7 +125,11 @@ The save pipeline is designed to be non-destructive: a save that does not change
 
 ### Live updates
 
-An SSE connection notifies the editor when the vault changes. On relevant events the fragment query is invalidated, causing a re-fetch. The form resets to the new server state only when there are no unsaved changes.
+An SSE connection notifies the editor when the vault changes. Each event invalidates only the queries that depend on the changed entity (a fragment event refetches fragment/sequence/stats queries; a note or aspect event does not touch the open fragment's query), rather than refetching every query for the project.
+
+### Buffer authority
+
+The prose buffer is authoritative while it is dirty. A refetch of the open fragment (from an SSE invalidation, a window-focus refetch, or any other cache refresh) **must not** overwrite unsaved edits with the incoming server content — `ProseEditor`'s content-sync is gated on `isDirty`. Without this, a background refetch that returns different server content (e.g. the same fragment saved in another tab, or edited in Obsidian) silently discards the in-memory edits; the swap file still holds them, so the symptom is "the buffer reverted to the pre-edit state and a refresh brings the edits back". A clean buffer still adopts incoming server content as before. The metadata form follows the same rule (it resets to server state only when not dirty). Restoring from server is the only path that replaces a dirty buffer, and it is explicit and user-initiated.
 
 ---
 

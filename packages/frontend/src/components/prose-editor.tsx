@@ -76,6 +76,12 @@ export type ProseEditorHandle = {
 
 type Props = {
   content: string;
+  // When true, the live buffer holds unsaved edits and is authoritative: the content-sync effects
+  // below must NOT overwrite it with an incoming `content` prop (e.g. a background refetch after the
+  // same fragment was saved in another tab, or edited externally). Without this guard those edits are
+  // silently clobbered — the swap file still holds them, so it looks like "the buffer reverted and a
+  // refresh brings the edits back". See specifications/fragment-editor.md (buffer authority).
+  isDirty: boolean;
   vimMode: boolean;
   rawMarkdownMode: boolean;
   fontSize: number;
@@ -92,6 +98,7 @@ type Props = {
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
   {
     content,
+    isDirty,
     vimMode,
     rawMarkdownMode,
     fontSize,
@@ -149,6 +156,8 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   const [cmValue, setCmValue] = useState(cleanContent);
   useEffect(() => {
     if (!(vimMode || rawMarkdownMode)) return;
+    // The buffer is authoritative while dirty — never replace unsaved edits with server content.
+    if (isDirty) return;
     const view = viewRef.current;
     const current = view ? view.state.doc.toString() : cmValue;
     if (isTrailingWhitespaceEquivalent(cleanContent, current)) {
@@ -160,7 +169,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     // `cmValue` is intentionally not a dependency: this effect decides whether to adopt `cleanContent`,
     // and re-running it on its own output would loop.
     setCmValue(cleanContent);
-  }, [cleanContent, vimMode, rawMarkdownMode]);
+  }, [cleanContent, vimMode, rawMarkdownMode, isDirty]);
 
   // The `selection` prop places the caret on the initial state; this focuses
   // the fresh view and centers that caret in the viewport (like vim `zz`).
@@ -299,6 +308,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // instead of clamping against an empty doc on refresh.
   useEffect(() => {
     if (!editor) return;
+    // The buffer is authoritative while dirty — never replace unsaved edits with server content
+    // (and never move the caret mid-edit). The cursor restore below is gated on the same condition.
+    if (isDirty) return;
 
     // The buffer holds clean markdown, so compare against the clean content. A real change reloads:
     // set the marker-bearing content (markdown-it parses each marker into a transient `commentMarker`
@@ -330,7 +342,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       .scrollIntoView();
     if (isNewTarget) chain.focus();
     chain.run();
-  }, [content, cleanContent, editor, cursor, vimMode, rawMarkdownMode]);
+  }, [content, cleanContent, editor, cursor, vimMode, rawMarkdownMode, isDirty]);
 
   // CM6 anchor seeding: the raw/vim buffer is the clean string (`value={cleanContent}` below), so seed
   // the anchor field from the markers parsed out of the on-disk content whenever it (re)loads. The

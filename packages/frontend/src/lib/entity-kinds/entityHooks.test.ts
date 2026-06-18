@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getGetFragmentStatsQueryKey } from "@api/generated/stats/stats";
+import { getListFragmentSummariesQueryKey } from "@api/generated/fragments/fragments";
 import { ENTITY_HOOKS } from "./entityHooks";
 
 describe("ENTITY_HOOKS selectors", () => {
@@ -27,7 +28,7 @@ describe("ENTITY_HOOKS selectors", () => {
     expect(ENTITY_HOOKS.aspect.idParamKey).toBe("aspectId");
   });
 
-  it("fragment: picks .fragment, flat warnings, and invalidates fragment stats", () => {
+  it("fragment: picks .fragment, flat warnings, and invalidates fragment stats + summaries", () => {
     const data = { fragment: { uuid: "fr1" }, warnings: [] };
     expect(ENTITY_HOOKS.fragment.selectEntity(data)).toEqual({ uuid: "fr1" });
     expect(ENTITY_HOOKS.fragment.selectWarnings(data)).toEqual([]);
@@ -35,6 +36,7 @@ describe("ENTITY_HOOKS selectors", () => {
     expect(ENTITY_HOOKS.fragment.idParamKey).toBe("fragmentId");
     expect(ENTITY_HOOKS.fragment.getExtraInvalidateKeys?.("p1", "fr1")).toEqual([
       getGetFragmentStatsQueryKey("p1", "fr1"),
+      getListFragmentSummariesQueryKey("p1"),
     ]);
   });
 

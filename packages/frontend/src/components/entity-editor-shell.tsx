@@ -329,6 +329,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       <ProseEditor
         ref={proseEditorRef}
         content={content}
+        isDirty={isDirty}
         vimMode={editorConfig.vimMode}
         rawMarkdownMode={editorConfig.rawMarkdownMode}
         fontSize={fontSize.draft}

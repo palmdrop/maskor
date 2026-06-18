@@ -39,6 +39,7 @@ vi.mock("@api/generated/fragments/fragments", () => ({
   usePreviewImportFragments: vi.fn(),
   useImportFragments: vi.fn(),
   getListFragmentsQueryKey: vi.fn(() => ["fragments", PROJECT_ID]),
+  getListFragmentSummariesQueryKey: vi.fn(() => ["fragments", "summaries", PROJECT_ID]),
 }));
 
 const makeImportPreview = (overrides: Partial<ImportPreviewResult> = {}): ImportPreviewResult => ({

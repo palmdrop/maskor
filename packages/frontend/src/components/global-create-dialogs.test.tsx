@@ -26,6 +26,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 vi.mock("@api/generated/fragments/fragments", () => ({
   useCreateFragment: () => ({ mutateAsync: mutateFragment, isPending: false }),
   getListFragmentsQueryKey: () => ["fragments"],
+  getListFragmentSummariesQueryKey: () => ["fragments", "summaries"],
 }));
 vi.mock("@api/generated/notes/notes", () => ({
   useCreateNote: () => ({ mutateAsync: mutateNote, isPending: false }),

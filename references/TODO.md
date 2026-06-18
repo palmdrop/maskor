@@ -14,10 +14,11 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] When I expand the sequencer, suggestion engine, interleavmenet, etc, maybe add "template fragments" that adhere to the desired shape, and can be filled with specific content 
 
-- [ ] BIG ISSUE: when having maskor opened in multiple tabs, cache is sometimes overwritten? a change in one tab, in an unrelated document, might cause the dirty document in the other tab to be restored to the pre-edit state. A refresh will re-surface the edits from the server swap file... not sure why this happens.
+- [x] BIG ISSUE: when having maskor opened in multiple tabs, cache is sometimes overwritten? a change in one tab, in an unrelated document, might cause the dirty document in the other tab to be restored to the pre-edit state. A refresh will re-surface the edits from the server swap file... not sure why this happens.
   - NOTE: sometimes happens when only one maskor-instance is opened. It is enough to navigate between different fragments, and then back to the one that was edited.
+  - FIXED 2026-06-17: root cause was `ProseEditor` overwriting the dirty buffer whenever its `content` prop refreshed (no `isDirty` guard), amplified by `useVaultEvents` invalidating every project query on any vault event. The buffer is now authoritative while dirty, and live-update invalidation is scoped per entity. (swap recovery on simple navigate-back already worked — verified.) See `specifications/fragment-editor.md` (Buffer authority).
 
-- [ ] Renaming a fragment using the inline editor on the overview page does not update the fragment title in the sequence sidebar
+- [x] Renaming a fragment using the inline editor on the overview page does not update the fragment title in the sequence sidebar (FIXED 2026-06-17: the rename now invalidates the fragment summaries list, which backs the Overview's left column + spine. A rename emits no `fragment:synced` SSE event — the key is the filename, not part of the watcher's content hash — so the invalidation has to come from the update mutation.)
 
 - [ ] Use actual browser tabs as the tab implementation somehow
 
