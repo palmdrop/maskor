@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "bun --env-file=../../.env run ./src/index.ts",
-    "dev": "bun --watch --env-file=../../.env run ./src/index.ts",
+    "dev": "MASKOR_DB_AUTO_RESET=1 bun --watch --env-file=../../.env run ./src/index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",

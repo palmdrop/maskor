@@ -1,13 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync, existsSync, cpSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, cpSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
 import { createVaultDatabase } from "../db/vault";
 import { createRegistryDatabase } from "../db/registry";
 import { createVaultIndexer } from "../indexer/indexer";
-import { MASKOR_DB_AUTO_RESET_ENV, computeSchemaFingerprint } from "../db/schema-fingerprint";
+import {
+  MASKOR_DB_AUTO_RESET_ENV,
+  computeSchemaFingerprint,
+  resetDatabaseIfSchemaDrifted,
+} from "../db/schema-fingerprint";
 import { BASIC_VAULT } from "@maskor/test-fixtures";
 
 const vaultMigrationsFolder = join(import.meta.dir, "..", "db", "vault", "migrations");
@@ -62,11 +66,52 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
+// Build a minimal migrations folder (journal + one `.sql` per entry) so we can mutate the
+// migration set the way `db:generate` would and observe the fingerprint / reset reacting to it —
+// the real-world trigger, not an artificially-stamped `user_version`.
+const writeMigrationsFolder = (folder: string, tags: string[]): void => {
+  mkdirSync(join(folder, "meta"), { recursive: true });
+  const entries = tags.map((tag, index) => ({
+    idx: index,
+    version: "7",
+    when: 1700000000000 + index,
+    tag,
+    breakpoints: true,
+  }));
+  writeFileSync(join(folder, "meta", "_journal.json"), JSON.stringify({ version: "7", entries }));
+  for (const tag of tags) {
+    writeFileSync(join(folder, `${tag}.sql`), `CREATE TABLE ${tag.replace(/\W/g, "_")} (x);`);
+  }
+};
+
 describe("computeSchemaFingerprint", () => {
   it("is deterministic for a given migration set", () => {
     expect(computeSchemaFingerprint(vaultMigrationsFolder)).toBe(
       computeSchemaFingerprint(vaultMigrationsFolder),
     );
+  });
+
+  it("changes when a migration is added (the db:generate workflow)", () => {
+    const folder = join(tmpDir, "migrations");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+    const before = computeSchemaFingerprint(folder);
+
+    writeMigrationsFolder(folder, ["0001_init", "0002_more", "0003_new_column"]);
+    const after = computeSchemaFingerprint(folder);
+
+    expect(after).not.toBe(before);
+  });
+
+  it("changes when an already-applied migration's SQL is amended in place", () => {
+    const folder = join(tmpDir, "migrations-amend");
+    writeMigrationsFolder(folder, ["0001_init"]);
+    const before = computeSchemaFingerprint(folder);
+
+    // Same journal/tag, different SQL body — the amend case migrate() cannot reconcile.
+    writeFileSync(join(folder, "0001_init.sql"), "CREATE TABLE init_amended (x, y);");
+    const after = computeSchemaFingerprint(folder);
+
+    expect(after).not.toBe(before);
   });
 
   it("fits the positive 31-bit range required by PRAGMA user_version", () => {
@@ -80,6 +125,62 @@ describe("createVaultDatabase schema fingerprint stamping", () => {
   it("stamps the current fingerprint into a freshly created DB", () => {
     createVaultDatabase(vaultDir);
     expect(readUserVersion()).toBe(computeSchemaFingerprint(vaultMigrationsFolder));
+  });
+});
+
+describe("resetDatabaseIfSchemaDrifted — migration-set change is the real trigger", () => {
+  // Stamp a standalone sqlite DB with a given user_version (a fingerprint).
+  const stamp = (path: string, fingerprint: number): void => {
+    const database = new Database(path);
+    database.exec(`PRAGMA user_version = ${fingerprint}`);
+    database.close();
+  };
+
+  it("resets when a migration is added after the DB was stamped (flag set)", () => {
+    const folder = join(tmpDir, "migrations-trigger");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+
+    const dbPath = join(tmpDir, "drift.db");
+    // DB built and stamped against the original 2-migration set.
+    stamp(dbPath, computeSchemaFingerprint(folder));
+
+    // db:generate adds a migration — the set (and its fingerprint) changes.
+    writeMigrationsFolder(folder, ["0001_init", "0002_more", "0003_new_column"]);
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
+
+    expect(didReset).toBe(true);
+    expect(existsSync(dbPath)).toBe(false); // dropped so the caller recreates it clean
+  });
+
+  it("does not reset when the migration set is unchanged (flag set)", () => {
+    const folder = join(tmpDir, "migrations-stable");
+    writeMigrationsFolder(folder, ["0001_init"]);
+
+    const dbPath = join(tmpDir, "stable.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
+
+    expect(didReset).toBe(false);
+    expect(existsSync(dbPath)).toBe(true);
+  });
+
+  it("does not reset on a migration change when the flag is unset", () => {
+    const folder = join(tmpDir, "migrations-flagoff");
+    writeMigrationsFolder(folder, ["0001_init"]);
+
+    const dbPath = join(tmpDir, "flagoff.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+    writeMigrationsFolder(folder, ["0001_init", "0002_added"]);
+
+    // Flag unset (default).
+    const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
+
+    expect(didReset).toBe(false);
+    expect(existsSync(dbPath)).toBe(true);
   });
 });
 
