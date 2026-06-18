@@ -32,3 +32,21 @@ export const SwapReadResponseSchema = z
     savedAt: z.string().nullable(),
   })
   .openapi("SwapReadResponse");
+
+export const SwapListEntrySchema = z
+  .object({
+    entityType: SwapEntityTypeSchema,
+    entityUUID: z.uuid(),
+    savedAt: z.string().openapi({ example: "2026-05-19T10:00:00.000Z" }),
+  })
+  .openapi("SwapListEntry");
+
+// Lists every entity that currently has an unsaved-content swap file. Used to
+// surface an "unsaved changes" indicator in entity lists without reading each
+// entity's swap individually. A swap entry is present iff the entity had unsaved
+// edits at the last debounce and they have not since been saved (which clears it).
+export const SwapListResponseSchema = z
+  .object({
+    entries: z.array(SwapListEntrySchema),
+  })
+  .openapi("SwapListResponse");

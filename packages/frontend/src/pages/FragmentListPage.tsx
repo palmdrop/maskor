@@ -33,6 +33,7 @@ import {
   parseSortMode,
   sortFragments,
 } from "@lib/fragments/sort";
+import { useUnsavedFragmentUuids } from "@hooks/useUnsavedFragmentUuids";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { FragmentListOrderProvider } from "@contexts/FragmentListOrderContext";
 import { useCommands } from "@lib/commands/useCommands";
@@ -49,6 +50,7 @@ export const FragmentListPage = () => {
 
   const { data: envelope, isLoading, isError } = useListFragments(projectId);
   const { data: sequencesEnvelope } = useListSequences(projectId);
+  const unsavedFragmentUuids = useUnsavedFragmentUuids(projectId);
   const { isRebuilding } = useRebuildStatus();
   const { mutateAsync: discardFragment } = useDiscardFragment();
   const { mutateAsync: restoreFragment } = useRestoreFragment();
@@ -290,8 +292,16 @@ export const FragmentListPage = () => {
                 <Link
                   to="/projects/$projectId/fragments/$fragmentId"
                   params={{ projectId, fragmentId: fragment.uuid }}
-                  className="flex-1 min-w-0 truncate"
+                  className="flex flex-1 min-w-0 items-center truncate"
                 >
+                  {unsavedFragmentUuids.has(fragment.uuid) && (
+                    <span
+                      className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+                      role="img"
+                      aria-label="Unsaved changes"
+                      title="Unsaved changes"
+                    />
+                  )}
                   <span className={fragment.isDiscarded ? "line-through" : undefined}>
                     {fragment.key}
                   </span>

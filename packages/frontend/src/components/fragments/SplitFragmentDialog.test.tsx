@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const previewMutateAsync = vi.fn();
 const splitMutateAsync = vi.fn();
+const invalidateQueries = vi.fn();
 
 vi.mock("@api/generated/fragments/fragments", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -21,7 +22,7 @@ vi.mock("@api/action-log", () => ({
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
+  return { ...actual, useQueryClient: () => ({ invalidateQueries }) };
 });
 
 import { SplitFragmentDialog } from "./SplitFragmentDialog";
@@ -44,6 +45,8 @@ const renderDialog = (onOpenChange = vi.fn(), onSplit = vi.fn()) =>
 beforeEach(() => {
   previewMutateAsync.mockReset();
   splitMutateAsync.mockReset();
+  invalidateQueries.mockReset();
+  invalidateQueries.mockResolvedValue(undefined);
 });
 
 describe("SplitFragmentDialog", () => {
@@ -106,5 +109,57 @@ describe("SplitFragmentDialog", () => {
       expect(onSplit).toHaveBeenCalled();
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
+  });
+
+  it("treats a post-split cache-refresh failure as success (no bogus error)", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: { sourceFragmentUuid: "fragment-1", createdCount: 1, createdUuids: ["new-1"] },
+    });
+    // The split committed, but a query refetch triggered by invalidation rejects.
+    // This must not surface as "Split failed." (Regression: TODO `---` split.)
+    invalidateQueries.mockRejectedValue(new Error("refetch failed"));
+    const onOpenChange = vi.fn();
+    const onSplit = vi.fn();
+
+    renderDialog(onOpenChange, onSplit);
+
+    const confirm = await screen.findByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() => {
+      expect(onSplit).toHaveBeenCalled();
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+    expect(screen.queryByText("Split failed. Try again.")).not.toBeInTheDocument();
+  });
+
+  it("shows an error and keeps the dialog open when the split itself fails", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockRejectedValue(new Error("split failed"));
+    const onOpenChange = vi.fn();
+    const onSplit = vi.fn();
+
+    renderDialog(onOpenChange, onSplit);
+
+    const confirm = await screen.findByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() => expect(screen.getByText("Split failed. Try again.")).toBeInTheDocument());
+    expect(onSplit).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });

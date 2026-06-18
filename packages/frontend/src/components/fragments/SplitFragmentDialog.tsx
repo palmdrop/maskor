@@ -123,6 +123,16 @@ export const SplitFragmentDialog = ({
     setSplitError(null);
     try {
       await splitFragment.mutateAsync({ projectId, data: { fragmentId, delimiter } });
+    } catch {
+      setSplitError("Split failed. Try again.");
+      return;
+    }
+    // The split committed server-side. From here on, a refetch rejection must
+    // not be reported as a split failure — invalidate best-effort and swallow
+    // any error so the dialog still closes cleanly. (A refetch that throws here
+    // is what previously surfaced the bogus "Split failed" after a successful
+    // split, e.g. on a `---` thematic-break split.)
+    try {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
         queryClient.invalidateQueries({ queryKey: getListFragmentSummariesQueryKey(projectId) }),
@@ -133,12 +143,13 @@ export const SplitFragmentDialog = ({
         queryClient.invalidateQueries({ queryKey: getGetFragmentQueryKey(projectId, fragmentId) }),
         queryClient.invalidateQueries({ queryKey: getGetMarginQueryKey(projectId, fragmentId) }),
       ]);
-      invalidateActionLog();
-      onOpenChange(false);
-      onSplit?.();
     } catch {
-      setSplitError("Split failed. Try again.");
+      // Non-fatal: the split is already persisted; stale caches will reconcile
+      // on the next fetch. Do not surface this as a split failure.
     }
+    invalidateActionLog();
+    onOpenChange(false);
+    onSplit?.();
   }, [
     splitFragment,
     projectId,

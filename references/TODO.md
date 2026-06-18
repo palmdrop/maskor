@@ -27,17 +27,18 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [ ] When splitting, it should be possible to rename fragments in the modal before committing
 - [ ] Smart splitting auto-select - if a fragment has headlines, split on that, if it has page breaks, split on that, etc... (but never default to newline?)
 
-- [ ] Ability to create and add reference from the modal, without navigating away 
+- [x] Ability to create and add reference from the modal, without navigating away (fragment metadata reference combobox now has create-and-attach, mirroring aspects)
 
 - [ ] Ability to add a fragment to a sequence on creation - and, if in fragment list view, if sorting on a sequence, have that sequence pre-selected for addition 
 
-- [ ] Splitting on "---" caused "split failed", however, the split did succeed
+- [x] Splitting on "---" caused "split failed", however, the split did succeed (post-split cache-refresh failure was caught as a split failure; mutation and invalidations now decoupled)
 
 - [ ] make it possible to highlight a sequence in another sequence
 
-- [ ] show a dot or indicator on fragments that have unsaved changes 
+- [x] show a dot or indicator on fragments that have unsaved changes (fragment list shows a dot for fragments with a swap file, via new `GET /swap` list endpoint; could extend to overview/sidebar later)
 
 - [ ] still a flicker on refresh in overview on scroll
+  - INVESTIGATED (2026-06-18): root cause is the one-frame flash from scroll restoration. The spine renders one async-mounting Tiptap (`ReadonlyProse`) per fragment, so the spine height grows over several frames after `spineContentReady`; the single `requestAnimationFrame` scroll restore in `OverviewPage/index.tsx` fires after the first paint (at scrollTop 0) and then jumps to the remembered offset. Fix needs in-browser verification (e.g. hold the spine hidden until restore applied, or gate restore on a stable-height signal) and touches the delicate `resolveOverviewLoadScroll` / anchor-reconciliation path — deferred rather than guess-patched.
 
 - [x] when using command system to place a fragment in a sequence, the sequences it is already in should be on the top, and there should be an indication so that user knows they can move the fragment in the sequence (member sequences float to top, labelled with their section; move-ability now conveyed by the modal's drag UI — plan: `references/plans/sequence-placement-improvements.md`)
 
@@ -67,7 +68,8 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - even when fragment titles are hidden
   - redesign, make more minimal, closer to have a document actually looks
 
-- [ ] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
+- [x] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
+  - ROOT CAUSE (2026-06-18): the auto-reset works, but `MASKOR_DB_AUTO_RESET` was undocumented in `.env.example` and there is no `.env`, so `isAutoResetEnabled()` was always false — the reset never fired. Documented the flag in `.env.example` (off by default; requires a real `.env`). To use it: copy `.env.example` to `.env`, uncomment `MASKOR_DB_AUTO_RESET=1`, restart the API. See the suggestions.md entry for a secondary wart (every new migration triggers a full reset on next restart while the flag is on).
 
 - [x] make it possible to "clone" a sequence, or insert one sequence into another, etc
 

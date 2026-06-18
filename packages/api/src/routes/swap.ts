@@ -2,7 +2,9 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { ErrorResponseSchema } from "../schemas/error";
+import { z } from "@hono/zod-openapi";
 import {
+  SwapListResponseSchema,
   SwapParamSchema,
   SwapReadResponseSchema,
   SwapWriteBodySchema,
@@ -10,6 +12,25 @@ import {
 } from "../schemas/swap";
 
 export const swapRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+const listSwapsRoute = createRoute({
+  operationId: "listSwaps",
+  method: "get",
+  path: "/",
+  tags: ["Swap"],
+  summary: "List all entities that currently have an unsaved-content swap file",
+  request: { params: z.object({ projectId: z.uuid() }) },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SwapListResponseSchema } },
+      description: "Swap entries for every entity with unsaved content",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
 
 const putSwapRoute = createRoute({
   operationId: "putSwap",
@@ -70,6 +91,17 @@ const deleteSwapRoute = createRoute({
       description: "Internal error",
     },
   },
+});
+
+swapRouter.openapi(listSwapsRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const entries = await storageService.swap.list(projectContext);
+    return ctx.json({ entries }, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
 });
 
 swapRouter.openapi(putSwapRoute, async (ctx) => {

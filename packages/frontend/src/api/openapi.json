@@ -3086,6 +3086,49 @@
           "saveCurrentFirst"
         ]
       },
+      "SwapListResponse": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SwapListEntry"
+            }
+          }
+        },
+        "required": [
+          "entries"
+        ]
+      },
+      "SwapListEntry": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "fragment",
+              "aspect",
+              "note",
+              "reference",
+              "margin"
+            ],
+            "example": "fragment"
+          },
+          "entityUUID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "savedAt": {
+            "type": "string",
+            "example": "2026-05-19T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "entityType",
+          "entityUUID",
+          "savedAt"
+        ]
+      },
       "SwapWriteResponse": {
         "type": "object",
         "properties": {
@@ -15446,6 +15489,48 @@
           },
           "507": {
             "description": "Insufficient disk space (pre-restore snapshot)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/swap": {
+      "get": {
+        "operationId": "listSwaps",
+        "tags": [
+          "Swap"
+        ],
+        "summary": "List all entities that currently have an unsaved-content swap file",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Swap entries for every entity with unsaved content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwapListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
             "content": {
               "application/json": {
                 "schema": {

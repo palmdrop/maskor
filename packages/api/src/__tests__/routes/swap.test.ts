@@ -89,6 +89,52 @@ describe("GET /projects/:projectId/swap/:entityType/:entityUUID", () => {
   });
 });
 
+describe("GET /projects/:projectId/swap", () => {
+  it("lists entities that currently have a swap file", async () => {
+    const fragmentUUID = randomUUID();
+    await testContext.app.request(
+      `/projects/${project.projectUUID}/swap/fragment/${fragmentUUID}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "unsaved fragment body" }),
+      },
+    );
+
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/swap`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      entries: Array<{ entityType: string; entityUUID: string; savedAt: string }>;
+    };
+    const match = body.entries.find((entry) => entry.entityUUID === fragmentUUID);
+    expect(match).toBeDefined();
+    expect(match!.entityType).toBe("fragment");
+    expect(typeof match!.savedAt).toBe("string");
+  });
+
+  it("does not list an entity whose swap was deleted", async () => {
+    const fragmentUUID = randomUUID();
+    await testContext.app.request(
+      `/projects/${project.projectUUID}/swap/fragment/${fragmentUUID}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "temporary" }),
+      },
+    );
+    await testContext.app.request(
+      `/projects/${project.projectUUID}/swap/fragment/${fragmentUUID}`,
+      { method: "DELETE" },
+    );
+
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/swap`);
+    const body = (await response.json()) as {
+      entries: Array<{ entityUUID: string }>;
+    };
+    expect(body.entries.some((entry) => entry.entityUUID === fragmentUUID)).toBe(false);
+  });
+});
+
 describe("DELETE /projects/:projectId/swap/:entityType/:entityUUID", () => {
   it("deletes an existing swap and returns 204", async () => {
     const entityUUID = randomUUID();

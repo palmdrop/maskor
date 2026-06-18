@@ -271,6 +271,86 @@ describe("FragmentMetadataForm — live metadata save", () => {
   });
 });
 
+describe("FragmentMetadataForm — create-and-attach reference", () => {
+  let queryClient: QueryClient;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity, refetchOnMount: false },
+        mutations: { retry: false },
+      },
+    });
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    queryClient.clear();
+  });
+
+  it("typing a new key and confirming creates the reference (empty body) and attaches it", async () => {
+    seedQueries(queryClient, baseFragment);
+    // POST create reference → 201; the create invalidation refetches the references list (GET);
+    // the subsequent debounced PATCH attaches it to the fragment.
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ uuid: "reference-new", key: "fresh-source", category: "general" }),
+            { status: 201, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      if (
+        url.endsWith("/references") &&
+        (!init || init.method === undefined || init.method === "GET")
+      ) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              { uuid: "reference-1", key: "bridge-obs", category: "general" },
+              { uuid: "reference-new", key: "fresh-source", category: "general" },
+            ]),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(mockPatchResponse({ ...baseFragment, references: ["fresh-source"] }));
+    });
+
+    render(<FragmentMetadataForm fragment={baseFragment} projectId={projectId} />, {
+      wrapper: wrap(queryClient),
+    });
+
+    const input = screen.getByPlaceholderText("Add reference — type to filter or create");
+    fireEvent.change(input, { target: { value: "fresh-source" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await screen.findByText(/Create/i);
+    // Re-fire Enter now that the create affordance is highlighted.
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await vi.waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+      expect(postCall).toBeTruthy();
+      const [url, init] = postCall!;
+      expect(url).toBe(`/api/projects/${projectId}/references`);
+      expect(JSON.parse(init.body as string)).toEqual({ key: "fresh-source", content: "" });
+    });
+
+    // Wait for the debounced attach PATCH so it lands before teardown unstubs fetch
+    // (avoids a late real-network call), and confirm the new key is attached.
+    await vi.waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+      expect(patchCall).toBeTruthy();
+      expect(JSON.parse(patchCall![1].body as string)).toEqual({ references: ["fresh-source"] });
+    });
+  });
+});
+
 describe("FragmentMetadataForm — orphaned aspects", () => {
   let queryClient: QueryClient;
   let fetchMock: ReturnType<typeof vi.fn>;

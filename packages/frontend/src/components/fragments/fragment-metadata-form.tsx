@@ -5,6 +5,7 @@ import { useListReferences } from "@api/generated/references/references";
 import { useEntityFieldSave } from "@lib/entity-kinds/useEntityFieldSave";
 import { useLiveFieldSave } from "@hooks/useLiveFieldSave";
 import { useCreateAspectByKey } from "@hooks/useCreateAspectByKey";
+import { useCreateReferenceByKey } from "@hooks/useCreateReferenceByKey";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
 import { Badge } from "@components/ui/badge";
@@ -49,7 +50,9 @@ type Props = {
 export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = false }: Props) => {
   const { makeFieldSave } = useEntityFieldSave("fragment", projectId, fragment.uuid);
   const { createAspect } = useCreateAspectByKey(projectId);
+  const { createReference } = useCreateReferenceByKey(projectId);
   const [createAspectError, setCreateAspectError] = useState<string | null>(null);
+  const [createReferenceError, setCreateReferenceError] = useState<string | null>(null);
   const { data: aspectsEnvelope } = useListAspects(projectId);
   const { data: referencesEnvelope } = useListReferences(projectId);
 
@@ -176,6 +179,32 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
     [createAspect, attachAspect],
   );
 
+  const attachReference = useCallback(
+    (referenceKey: string) => {
+      referencesField.onChange([...referencesField.value, referenceKey]);
+    },
+    [referencesField],
+  );
+
+  // Free-text create-and-attach for references, mirroring the aspect flow above: a typed key with no
+  // existing reference is created (empty body) and attached inline, so the writer never leaves the
+  // editor to mint a reference in project config. Errors render in place below the field.
+  const createAndAttachReference = useCallback(
+    async (referenceKey: string) => {
+      setCreateReferenceError(null);
+      try {
+        await createReference(referenceKey);
+        attachReference(referenceKey);
+      } catch (error) {
+        const message = (error as { message?: string })?.message ?? "Failed to create reference.";
+        setCreateReferenceError(message);
+        // Rethrow so the combobox keeps the typed query for retry (it clears only on success).
+        throw error;
+      }
+    },
+    [createReference, attachReference],
+  );
+
   const commands = useCommands();
   useCommandScope(fragmentMetadataScope, {
     attachEntity: (kind, key) => {
@@ -299,12 +328,17 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
         </div>
         <TagCombobox
           groups={availableReferenceGroups}
-          placeholder="Add reference — type to filter"
-          onSelect={(value) => commands.run("fragment-metadata:attach-reference", value)}
+          placeholder="Add reference — type to filter or create"
+          onSelect={(value) => {
+            setCreateReferenceError(null);
+            commands.run("fragment-metadata:attach-reference", value);
+          }}
+          onCreate={createAndAttachReference}
         />
         {referencesField.error && (
           <p className="text-xs text-destructive">{referencesField.error}</p>
         )}
+        {createReferenceError && <p className="text-xs text-destructive">{createReferenceError}</p>}
       </div>
 
       <div className="flex flex-col gap-3">

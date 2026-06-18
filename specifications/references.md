@@ -7,6 +7,7 @@
 
 - 2026-04-30 — References can be created and deleted from the project config page. (plan: references/plans/project-config-page.md)
 - 2026-05-09 — Reference field edits are committed immediately with optimistic UI and recorded in the action log. (plan: references/plans/entity-live-metadata-save.md)
+- 2026-06-18 — Inline create-and-attach from the fragment editor: typing a new key into the fragment metadata form's reference combobox and confirming the "Create" affordance mints a reference (empty body) and attaches it in one step, without navigating to project config — mirroring the existing aspect create-and-attach flow.
 
 ---
 
