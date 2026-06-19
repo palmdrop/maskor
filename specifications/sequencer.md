@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-06-19 — Place a fragment into a sequence on creation: the "New fragment" dialog has an optional "Add to sequence" picker (import-sequences excluded — they are read-only). When a sequence is chosen, the new fragment is appended to that sequence's last section after creation. In the fragment list, the picker pre-selects the sequence the list is currently sorted by, so creating a fragment while viewing a sequence's order offers to add it there. Placement is best-effort (the fragment is created regardless; a placement failure surfaces a toast).
 - 2026-05-12 — Users can manually arrange fragments into an ordered main sequence. Non-discarded fragments not yet placed appear in an unassigned pool. Fragments can be dragged from the pool into the sequence, reordered within it, or dragged back out to unplace them; the arrangement survives a reload. (plan: references/plans/sequencer-manual-placement.md)
 - 2026-05-18 — Sequence placement, move, and unplace actions log the sequence name and fragment key for human-readable action log rendering. (plan: references/plans/sequence-action-log-human-readable.md)
 - 2026-05-18 - Secondary sequences as soft constraints, sequence CRUD, violation and cycle detection, sidebar for switching between sequences. (prd: tasks/prd-secondary-sequences.md)

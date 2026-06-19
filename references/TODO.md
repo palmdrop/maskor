@@ -29,7 +29,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] Ability to create and add reference from the modal, without navigating away (fragment metadata reference combobox now has create-and-attach, mirroring aspects)
 
-- [ ] Ability to add a fragment to a sequence on creation - and, if in fragment list view, if sorting on a sequence, have that sequence pre-selected for addition 
+- [x] Ability to add a fragment to a sequence on creation - and, if in fragment list view, if sorting on a sequence, have that sequence pre-selected for addition (New-fragment dialog has an optional "Add to sequence" picker, pre-selecting the list's current sort sequence; appends to the sequence's last section; import-sequences excluded)
 
 - [x] Splitting on "---" caused "split failed", however, the split did succeed (post-split cache-refresh failure was caught as a split failure; mutation and invalidations now decoupled)
 
@@ -64,9 +64,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] when navigating away from a suggestion, then back, sometimes the fragment BEFORE the previously viewed fragment is shown instead. Backend state is probably not updated properly?
 
-- [ ] sticky fragment titles showing which fragment we are in during import/preview/export
-  - even when fragment titles are hidden
-  - redesign, make more minimal, closer to have a document actually looks
+- [x] sticky fragment titles showing which fragment we are in during import/preview/export (shared `ActiveFragmentLabel` in the sticky header of preview + import, driven by the scroll-spy; shown regardless of the titles toggle. "export" = the preview-before-export surface, already covered.)
+  - [x] even when fragment titles are hidden
+  - [x] redesign, make more minimal, closer to how a document actually looks (muted, icon + truncated key, reads as a location cue not a control — further aesthetic iteration left to the broader UI design pass, TODO line ~86)
 
 - [x] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
   - ROOT CAUSE (2026-06-18): the auto-reset logic works (verified empirically), but `MASKOR_DB_AUTO_RESET` was undocumented and there is no `.env`, so `isAutoResetEnabled()` was always false — the reset never fired. FIXED: the API `dev` script now sets `MASKOR_DB_AUTO_RESET=1` inline, so `bun run dev` auto-resets on a migration-set change with no setup (never under the packaged `start`). Fires on the next restart after the migration set changes — under `bun --watch`, saving the imported `schema.ts` triggers that restart. Added regression tests for the real trigger (migration add/amend). See the suggestions.md entry for a secondary wart (every new migration triggers a full reset+rebuild, discarding `fragment_stats` telemetry).

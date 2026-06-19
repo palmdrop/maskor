@@ -113,8 +113,8 @@ export const PreviewToolbar = ({
           </SelectContent>
         </Select>
       </div>
-      {children ?? <div className="flex items-center gap-1.5">{children}</div>}
-      <div className="ml-auto">
+      <div className="ml-auto flex min-w-0 items-center gap-3">
+        {children}
         <Button variant="outline" size="sm" onClick={onExport}>
           Export
         </Button>

@@ -26,6 +26,7 @@ import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { useScrollSpy } from "@hooks/useScrollSpy";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
+import { ActiveFragmentLabel } from "@components/active-fragment-label";
 import { FragmentEditor, type FragmentEditorHandle } from "@components/fragments/fragment-editor";
 import { Button } from "@components/ui/button";
 import { PreviewToolbar } from "./PreviewToolbar";
@@ -293,7 +294,9 @@ export const PreviewPage = () => {
           }
         }}
       >
-        {activeFragmentId && fragmentsMap.get(activeFragmentId)?.key}
+        <ActiveFragmentLabel
+          fragmentKey={activeFragmentId ? fragmentsMap.get(activeFragmentId)?.key : undefined}
+        />
       </PreviewToolbar>
       <div className="flex flex-1 min-h-0">
         <FragmentNavSidebar

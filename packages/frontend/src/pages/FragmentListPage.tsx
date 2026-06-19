@@ -9,7 +9,9 @@ import {
   useDeleteFragment,
   getListFragmentsQueryKey,
 } from "@api/generated/fragments/fragments";
-import { useListSequences } from "@api/generated/sequences/sequences";
+import { useListSequences, getListSequencesQueryKey } from "@api/generated/sequences/sequences";
+import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { toast } from "sonner";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
@@ -57,6 +59,7 @@ export const FragmentListPage = () => {
   const { mutateAsync: deleteFragment } = useDeleteFragment();
   const createFragment = useCreateFragment();
   const commands = useCommands();
+  const sequenceMutations = useSequenceMutations(getListSequencesQueryKey(projectId));
 
   const [filter, setFilter] = useState("");
   const [showDiscarded, , toggleShowDiscarded] = usePersistedBoolean(
@@ -85,6 +88,22 @@ export const FragmentListPage = () => {
     const sequence = sequences.find((s) => s.uuid === sortMode.sequenceUuid);
     return sequence ? buildSequenceOrder(sequence) : undefined;
   }, [sortMode, sequences]);
+
+  // Sequences a new fragment can be placed into on creation: import-sequences are
+  // read-only snapshots, so they are excluded.
+  const placeableSequences = useMemo(
+    () =>
+      sequences.filter((sequence) => !sequence.origin).map((s) => ({ uuid: s.uuid, name: s.name })),
+    [sequences],
+  );
+
+  // Pre-select the sequence the list is currently sorted by (when it is placeable),
+  // so creating a fragment while viewing a sequence's order offers to add it there.
+  const defaultCreateSequenceId =
+    sortMode.kind === "sequence" &&
+    placeableSequences.some((sequence) => sequence.uuid === sortMode.sequenceUuid)
+      ? sortMode.sequenceUuid
+      : null;
 
   const location = useRouterState({ select: (s) => s.location.pathname });
   const fragmentIdMatch = location.match(/\/projects\/[^/]+\/fragments\/([^/]+)/);
@@ -162,18 +181,42 @@ export const FragmentListPage = () => {
     });
   };
 
-  const handleCreateFragment = async (key: string, content: string) => {
+  const handleCreateFragment = async (key: string, content: string, sequenceId?: string) => {
     const response = await createFragment.mutateAsync({
       projectId,
       data: { key, content },
     });
     await invalidateList();
-    if (response.status === 201) {
-      navigate({
-        to: "/projects/$projectId/fragments/$fragmentId",
-        params: { projectId, fragmentId: response.data.uuid },
-      });
+    if (response.status !== 201) return;
+    const createdUuid = response.data.uuid;
+
+    // Optionally place the new fragment at the end of the chosen sequence (its last
+    // section). Best-effort: the fragment already exists, so a placement failure
+    // must not block navigation — surface it as a toast instead.
+    if (sequenceId) {
+      const targetSequence = sequences.find((sequence) => sequence.uuid === sequenceId);
+      const lastSection = targetSequence?.sections.at(-1);
+      if (lastSection) {
+        try {
+          await sequenceMutations.placeFragment.mutateAsync({
+            projectId,
+            sequenceId,
+            data: {
+              fragmentUuid: createdUuid,
+              sectionUuid: lastSection.uuid,
+              position: lastSection.fragments.length,
+            },
+          });
+        } catch {
+          toast.error("Fragment created, but couldn't add it to the sequence.");
+        }
+      }
     }
+
+    navigate({
+      to: "/projects/$projectId/fragments/$fragmentId",
+      params: { projectId, fragmentId: createdUuid },
+    });
   };
 
   if (isLoading && isRebuilding)
@@ -200,6 +243,8 @@ export const FragmentListPage = () => {
             contentRequired
             isPending={createFragment.isPending}
             onCreate={handleCreateFragment}
+            sequenceOptions={placeableSequences}
+            defaultSequenceId={defaultCreateSequenceId}
           />
           <Button
             variant="outline"

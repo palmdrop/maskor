@@ -18,6 +18,7 @@ import { useFragmentAnchor } from "@hooks/useFragmentAnchor";
 import { useScrollSpy } from "@hooks/useScrollSpy";
 import { ReadonlyProse } from "@components/readonly-prose";
 import { FragmentNavSidebar } from "@components/FragmentNavSidebar";
+import { ActiveFragmentLabel } from "@components/active-fragment-label";
 import { Button } from "@components/ui/button";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -251,6 +252,13 @@ export const FragmentImportPage = () => {
         <span className="text-sm text-muted-foreground shrink-0">
           {formatContextLabel(format, headingLevel, delimiter)}
         </span>
+        <ActiveFragmentLabel
+          fragmentKey={
+            activeFragmentId
+              ? pieces.find((piece) => piece.uuid === activeFragmentId)?.key
+              : undefined
+          }
+        />
         <div className="flex items-center gap-2 ml-auto">
           {showHeadingLevel && (
             <div className="flex items-center gap-1.5">
