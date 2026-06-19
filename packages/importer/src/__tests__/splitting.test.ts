@@ -5,6 +5,7 @@ import {
   splitThematicBreak,
   splitBlankLine,
   splitByDelimiter,
+  detectSplitDelimiter,
 } from "../index";
 
 describe("splitMarkdown", () => {
@@ -314,5 +315,33 @@ describe("splitByDelimiter", () => {
     );
     expect(pieces[0]?.content).toBe("# One\nBody one");
     expect(pieces[1]?.content).toBe("# Two\nBody two");
+  });
+});
+
+describe("detectSplitDelimiter", () => {
+  it("prefers headings, choosing the shallowest level that actually splits", () => {
+    const content = "# First\nBody one\n# Second\nBody two";
+    // Two H1s → level 1 already splits, so the shallowest splitting level is 1.
+    expect(detectSplitDelimiter(content)).toEqual({ type: "heading", level: 1 });
+  });
+
+  it("picks the heading level that produces a split when the top level does not", () => {
+    const content = "# Only Title\n## Section A\nBody\n## Section B\nBody";
+    // A single H1 at the very top → level 1 is a no-op; level 2 splits into two.
+    expect(detectSplitDelimiter(content)).toEqual({ type: "heading", level: 2 });
+  });
+
+  it("falls back to thematic break when there are no splitting headings", () => {
+    const content = "Some prose\n\n---\n\nMore prose";
+    expect(detectSplitDelimiter(content)).toEqual({ type: "thematic-break" });
+  });
+
+  it("never auto-selects blank-line, returning null for plain multi-paragraph prose", () => {
+    const content = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+    expect(detectSplitDelimiter(content)).toBeNull();
+  });
+
+  it("returns null when nothing would split", () => {
+    expect(detectSplitDelimiter("Just a single line of prose")).toBeNull();
   });
 });

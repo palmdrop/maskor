@@ -6,7 +6,11 @@ import type { ProjectRecord } from "@maskor/storage";
 import type { Fragment, Sequence } from "@maskor/shared";
 import type { CommandContext } from "../../commands/types";
 import { executeCommand } from "../../commands/types";
-import { splitFragmentCommand, SplitNoOpError } from "../../commands/fragments/split-fragment";
+import {
+  splitFragmentCommand,
+  SplitNoOpError,
+  SplitKeyConflictError,
+} from "../../commands/fragments/split-fragment";
 import type { Logger } from "@maskor/shared/logger";
 
 const makeLogger = (): Logger => {
@@ -151,6 +155,97 @@ describe("splitFragmentCommand", () => {
       result.createdUuids[0]!,
     );
     expect(created.key).toMatch(/_1$/);
+  });
+
+  it("applies user-chosen keys to the new pieces (piece 1 keeps the original key)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `rename-src-${stamp}`,
+      "# One\nBody one\n# Two\nBody two\n# Three\nBody three",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      pieceKeys: [
+        { pieceIndex: 2, key: `chosen-two-${stamp}` },
+        { pieceIndex: 3, key: `chosen-three-${stamp}` },
+      ],
+    });
+
+    // Piece 1 keeps the original's key.
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(original.key);
+
+    const createdKeys = await Promise.all(
+      result.createdUuids.map(async (uuid) => {
+        const fragment = await ctx.storageService.fragments.read(ctx.projectContext, uuid);
+        return fragment.key;
+      }),
+    );
+    expect(createdKeys).toEqual([`chosen-two-${stamp}`, `chosen-three-${stamp}`]);
+  });
+
+  it("falls back to the derived key for pieces without an override", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const headingTwo = `DerivedTwo${stamp}`;
+    const original = await writeFragment(
+      ctx,
+      `rename-partial-${stamp}`,
+      `# One\nBody one\n# ${headingTwo}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      // No override for piece 2 → derived key from its heading text.
+      pieceKeys: [],
+    });
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.key).toBe(headingTwo);
+  });
+
+  it("rejects an override key that collides with an existing fragment", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    await writeFragment(ctx, `taken-key-${stamp}`, "occupier");
+    const original = await writeFragment(
+      ctx,
+      `rename-conflict-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "heading", level: 1 },
+        pieceKeys: [{ pieceIndex: 2, key: `taken-key-${stamp}` }],
+      }),
+    ).rejects.toBeInstanceOf(SplitKeyConflictError);
+  });
+
+  it("rejects an invalid override key", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `rename-invalid-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "heading", level: 1 },
+        pieceKeys: [{ pieceIndex: 2, key: "bad/slash:key" }],
+      }),
+    ).rejects.toBeInstanceOf(SplitKeyConflictError);
   });
 
   it("rejects a single-piece (no-op) split and writes nothing", async () => {

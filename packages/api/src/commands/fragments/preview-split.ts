@@ -1,11 +1,18 @@
 import type { SplitDelimiter } from "@maskor/importer";
-import { splitByDelimiter, deriveKey } from "@maskor/importer";
+import { splitByDelimiter, deriveKey, detectSplitDelimiter } from "@maskor/importer";
 import { deriveExcerpt } from "@maskor/shared";
 import type { Command } from "../types";
 
+// The fallback when no delimiter is requested and the content has no structural
+// delimiter to auto-detect: heading level 1. It yields a single piece (a no-op the
+// dialog surfaces as "nothing to split"), prompting the user to pick a delimiter.
+const DEFAULT_DELIMITER: SplitDelimiter = { type: "heading", level: 1 };
+
 export type PreviewSplitInput = {
   fragmentId: string;
-  delimiter: SplitDelimiter;
+  // Optional: when omitted, the command auto-detects a smart default delimiter for
+  // the fragment's content and returns it as `appliedDelimiter`.
+  delimiter?: SplitDelimiter;
 };
 
 export type SplitPiecePreview = {
@@ -17,6 +24,7 @@ export type SplitPiecePreview = {
 export type PreviewSplitResult = {
   pieces: SplitPiecePreview[];
   count: number;
+  appliedDelimiter: SplitDelimiter;
 };
 
 // Read-derivation, mirroring `preview-import`: runs through `executeCommand` with
@@ -34,9 +42,15 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
         .map((summary) => summary.key.toLowerCase()),
     );
 
+    // No requested delimiter → smart-select one from the content (shallowest
+    // splitting heading level → thematic break; never blank-line), falling back to
+    // the default no-op delimiter when nothing would split.
+    const appliedDelimiter =
+      input.delimiter ?? detectSplitDelimiter(fragment.content) ?? DEFAULT_DELIMITER;
+
     // Retain heading lines in piece content: a split must never drop prose (unlike
     // import, which lifts the heading into the new entity's title). See the spec.
-    const rawPieces = splitByDelimiter(fragment.content, input.delimiter, {
+    const rawPieces = splitByDelimiter(fragment.content, appliedDelimiter, {
       retainHeadingInContent: true,
     });
 
@@ -57,7 +71,7 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
     });
 
     return {
-      result: { pieces, count: pieces.length },
+      result: { pieces, count: pieces.length, appliedDelimiter },
       logEntries: [],
     };
   },

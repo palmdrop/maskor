@@ -101,6 +101,28 @@ export function splitByDelimiter(
   }
 }
 
+const HEADING_LEVELS: readonly HeadingLevel[] = [1, 2, 3, 4, 5, 6];
+
+// Pick the most natural delimiter for a body, for the splitter's "smart" default.
+// Priority: a heading level (the shallowest level that actually produces more than
+// one piece) → thematic break → none. Blank-line is deliberately never auto-chosen
+// (too aggressive for prose; offered only as an explicit user choice). Returns the
+// chosen delimiter, or null when no structural delimiter would split the body — the
+// caller then falls back to a sensible default and lets the user pick. The check is
+// "would it actually split" (pieces > 1), so a body with a single leading heading
+// and no other structure is not mistaken for splittable.
+export function detectSplitDelimiter(content: string): SplitDelimiter | null {
+  for (const level of HEADING_LEVELS) {
+    if (splitMarkdown(content, level, { retainHeadingInContent: true }).length > 1) {
+      return { type: "heading", level };
+    }
+  }
+  if (splitThematicBreak(content).length > 1) {
+    return { type: "thematic-break" };
+  }
+  return null;
+}
+
 export function splitMarkdown(
   content: string,
   maxHeadingLevel: HeadingLevel,

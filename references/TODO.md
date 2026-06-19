@@ -24,8 +24,8 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] Use actual browser tabs as the tab implementation somehow
 
-- [ ] When splitting, it should be possible to rename fragments in the modal before committing
-- [ ] Smart splitting auto-select - if a fragment has headlines, split on that, if it has page breaks, split on that, etc... (but never default to newline?)
+- [x] When splitting, it should be possible to rename fragments in the modal before committing (new pieces 2…N render as editable key inputs; piece 1 keeps the original's key; server validates `pieceKeys` overrides)
+- [x] Smart splitting auto-select - if a fragment has headlines, split on that, if it has page breaks, split on that, etc... (but never default to newline?) (server-side `detectSplitDelimiter`: shallowest splitting heading level → thematic break; never blank-line; seeds the dialog on open)
 
 - [x] Ability to create and add reference from the modal, without navigating away (fragment metadata reference combobox now has create-and-attach, mirroring aspects)
 

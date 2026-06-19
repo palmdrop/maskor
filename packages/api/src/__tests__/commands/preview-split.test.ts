@@ -131,4 +131,58 @@ describe("previewSplitCommand", () => {
     expect(result.pieces[0]?.excerpt).toContain("First part prose");
     expect(result.pieces[1]?.excerpt).toContain("Second part prose");
   });
+
+  it("echoes the requested delimiter as appliedDelimiter", async () => {
+    const ctx = await makeCommandContext();
+    const fragment = await writeFragment(ctx, `split-applied-${Date.now()}`, "# A\nx\n# B\ny");
+
+    const { result } = await previewSplitCommand.execute(ctx, {
+      fragmentId: fragment.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.appliedDelimiter).toEqual({ type: "heading", level: 1 });
+  });
+
+  it("auto-selects a delimiter when none is requested (headings preferred)", async () => {
+    const ctx = await makeCommandContext();
+    const fragment = await writeFragment(
+      ctx,
+      `split-auto-heading-${Date.now()}`,
+      "# Alpha\nBody A\n# Beta\nBody B",
+    );
+
+    const { result } = await previewSplitCommand.execute(ctx, { fragmentId: fragment.uuid });
+
+    expect(result.appliedDelimiter).toEqual({ type: "heading", level: 1 });
+    expect(result.count).toBe(2);
+  });
+
+  it("auto-selects thematic break when there are no headings", async () => {
+    const ctx = await makeCommandContext();
+    const fragment = await writeFragment(
+      ctx,
+      `split-auto-thematic-${Date.now()}`,
+      "Prose one\n\n---\n\nProse two",
+    );
+
+    const { result } = await previewSplitCommand.execute(ctx, { fragmentId: fragment.uuid });
+
+    expect(result.appliedDelimiter).toEqual({ type: "thematic-break" });
+    expect(result.count).toBe(2);
+  });
+
+  it("falls back to a no-op heading default when nothing would split (never blank-line)", async () => {
+    const ctx = await makeCommandContext();
+    const fragment = await writeFragment(
+      ctx,
+      `split-auto-none-${Date.now()}`,
+      "First paragraph.\n\nSecond paragraph.",
+    );
+
+    const { result } = await previewSplitCommand.execute(ctx, { fragmentId: fragment.uuid });
+
+    expect(result.appliedDelimiter).toEqual({ type: "heading", level: 1 });
+    expect(result.count).toBe(1);
+  });
 });

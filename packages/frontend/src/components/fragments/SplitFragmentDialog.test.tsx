@@ -29,7 +29,14 @@ import { SplitFragmentDialog } from "./SplitFragmentDialog";
 
 const previewResponse = (
   pieces: ReadonlyArray<{ pieceIndex: number; key: string; excerpt: string }>,
-) => ({ status: 200 as const, data: { pieces, count: pieces.length } });
+) => ({
+  status: 200 as const,
+  data: {
+    pieces,
+    count: pieces.length,
+    appliedDelimiter: { type: "heading" as const, level: 1 as const },
+  },
+});
 
 const renderDialog = (onOpenChange = vi.fn(), onSplit = vi.fn()) =>
   render(
@@ -62,8 +69,80 @@ describe("SplitFragmentDialog", () => {
     renderDialog();
 
     await waitFor(() => expect(screen.getByText("3 pieces")).toBeInTheDocument());
-    expect(screen.getByText("1. intro")).toBeInTheDocument();
-    expect(screen.getByText("3. end")).toBeInTheDocument();
+    // Piece 1 keeps the original's key (read-only, marked "kept").
+    expect(screen.getByText(/intro/)).toBeInTheDocument();
+    expect(screen.getByText("(kept)")).toBeInTheDocument();
+    // Pieces 2…N are editable key inputs seeded with the derived keys.
+    expect(screen.getByDisplayValue("middle")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("end")).toBeInTheDocument();
+  });
+
+  it("auto-selects the server-suggested delimiter on open (no delimiter sent first)", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+
+    renderDialog();
+
+    await waitFor(() => expect(previewMutateAsync).toHaveBeenCalled());
+    // The first preview request omits the delimiter (auto-detect).
+    expect(previewMutateAsync.mock.calls[0]![0]).toEqual({
+      projectId: "project-1",
+      data: { fragmentId: "fragment-1", delimiter: undefined },
+    });
+  });
+
+  it("lets the user rename a new piece and sends it as a pieceKey override", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "derived-b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: { sourceFragmentUuid: "fragment-1", createdCount: 1, createdUuids: ["new-1"] },
+    });
+
+    renderDialog();
+
+    const keyInput = await screen.findByDisplayValue("derived-b");
+    fireEvent.change(keyInput, { target: { value: "my-renamed-piece" } });
+
+    const confirm = screen.getByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(splitMutateAsync).toHaveBeenCalledWith({
+        projectId: "project-1",
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          pieceKeys: [{ pieceIndex: 2, key: "my-renamed-piece" }],
+        },
+      }),
+    );
+  });
+
+  it("disables Split and shows an error when a piece key is emptied", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+
+    renderDialog();
+
+    const keyInput = await screen.findByDisplayValue("b");
+    fireEvent.change(keyInput, { target: { value: "  " } });
+
+    expect(await screen.findByText("Piece keys must not be empty.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Split" })).toBeDisabled();
   });
 
   it("disables Split for a single-piece (no-op) preview", async () => {

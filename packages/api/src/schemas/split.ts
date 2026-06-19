@@ -25,7 +25,10 @@ export type SplitDelimiterInput = z.infer<typeof SplitDelimiterSchema>;
 export const SplitPreviewBodySchema = z
   .object({
     fragmentId: z.string().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
-    delimiter: SplitDelimiterSchema,
+    // Optional: when omitted, the server picks a smart default delimiter for the
+    // fragment's content (shallowest splitting heading level → thematic break;
+    // never blank-line) and reports it back as `appliedDelimiter`.
+    delimiter: SplitDelimiterSchema.optional(),
   })
   .openapi("SplitPreviewBody");
 
@@ -41,13 +44,29 @@ export const SplitPreviewResultSchema = z
   .object({
     pieces: z.array(SplitPiecePreviewSchema),
     count: z.number().int().openapi({ example: 3 }),
+    // The delimiter the preview was computed with — echoes the request delimiter,
+    // or the smart-detected default when the request omitted one. Lets the dialog
+    // seed its delimiter controls to match the auto-selected split.
+    appliedDelimiter: SplitDelimiterSchema,
   })
   .openapi("SplitPreviewResult");
+
+// A user-chosen key for one of the new pieces (pieceIndex 2…N, 1-based as in the
+// preview). Piece 1 keeps the original fragment's key and cannot be renamed here.
+const SplitPieceKeySchema = z
+  .object({
+    pieceIndex: z.number().int().min(2).openapi({ example: 2 }),
+    key: z.string().min(1).openapi({ example: "renamed-piece" }),
+  })
+  .openapi("SplitPieceKey");
 
 export const SplitBodySchema = z
   .object({
     fragmentId: z.string().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     delimiter: SplitDelimiterSchema,
+    // Optional per-piece key overrides for the new pieces. Any new piece without an
+    // override falls back to the derived key. Piece 1 (the original) is never renamed.
+    pieceKeys: z.array(SplitPieceKeySchema).optional(),
   })
   .openapi("SplitBody");
 

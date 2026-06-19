@@ -15,6 +15,7 @@ import {
   previewSplitCommand,
   splitFragmentCommand,
   SplitNoOpError,
+  SplitKeyConflictError,
 } from "../commands";
 import type { CommandContext } from "../commands";
 
@@ -107,7 +108,7 @@ splitRouter.openapi(splitPreviewRoute, async (ctx) => {
 });
 
 splitRouter.openapi(splitRoute, async (ctx) => {
-  const { fragmentId, delimiter } = ctx.req.valid("json");
+  const { fragmentId, delimiter, pieceKeys } = ctx.req.valid("json");
 
   try {
     const result = await executeCommand(
@@ -117,6 +118,7 @@ splitRouter.openapi(splitRoute, async (ctx) => {
       {
         fragmentId,
         delimiter,
+        pieceKeys,
       },
     );
     return ctx.json(result, 200);
@@ -124,6 +126,14 @@ splitRouter.openapi(splitRoute, async (ctx) => {
     if (error instanceof SplitNoOpError) {
       throw new HTTPException(400, {
         res: new Response(JSON.stringify({ error: "SPLIT_NO_OP", message: error.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      });
+    }
+    if (error instanceof SplitKeyConflictError) {
+      throw new HTTPException(400, {
+        res: new Response(JSON.stringify({ error: "SPLIT_KEY_CONFLICT", message: error.message }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }),

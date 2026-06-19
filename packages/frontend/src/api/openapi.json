@@ -2784,11 +2784,15 @@
           "count": {
             "type": "integer",
             "example": 3
+          },
+          "appliedDelimiter": {
+            "$ref": "#/components/schemas/SplitDelimiter"
           }
         },
         "required": [
           "pieces",
-          "count"
+          "count",
+          "appliedDelimiter"
         ]
       },
       "SplitPiecePreview": {
@@ -2811,22 +2815,6 @@
           "pieceIndex",
           "key",
           "excerpt"
-        ]
-      },
-      "SplitPreviewBody": {
-        "type": "object",
-        "properties": {
-          "fragmentId": {
-            "type": "string",
-            "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
-          },
-          "delimiter": {
-            "$ref": "#/components/schemas/SplitDelimiter"
-          }
-        },
-        "required": [
-          "fragmentId",
-          "delimiter"
         ]
       },
       "SplitDelimiter": {
@@ -2916,6 +2904,21 @@
           }
         ]
       },
+      "SplitPreviewBody": {
+        "type": "object",
+        "properties": {
+          "fragmentId": {
+            "type": "string",
+            "example": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+          },
+          "delimiter": {
+            "$ref": "#/components/schemas/SplitDelimiter"
+          }
+        },
+        "required": [
+          "fragmentId"
+        ]
+      },
       "SplitResult": {
         "type": "object",
         "properties": {
@@ -2952,11 +2955,36 @@
           },
           "delimiter": {
             "$ref": "#/components/schemas/SplitDelimiter"
+          },
+          "pieceKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SplitPieceKey"
+            }
           }
         },
         "required": [
           "fragmentId",
           "delimiter"
+        ]
+      },
+      "SplitPieceKey": {
+        "type": "object",
+        "properties": {
+          "pieceIndex": {
+            "type": "integer",
+            "minimum": 2,
+            "example": 2
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "example": "renamed-piece"
+          }
+        },
+        "required": [
+          "pieceIndex",
+          "key"
         ]
       },
       "ExportSequenceBody": {

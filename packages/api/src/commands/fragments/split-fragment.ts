@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Comment, Fragment, LogEntry, Sequence } from "@maskor/shared";
-import { markerIdSet } from "@maskor/shared";
+import { markerIdSet, validateEntityKey } from "@maskor/shared";
 import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey } from "@maskor/importer";
 import { placeFragment } from "@maskor/sequencer";
@@ -16,9 +16,26 @@ export class SplitNoOpError extends Error {
   }
 }
 
+// A user-supplied per-piece key is invalid (bad characters / empty) or collides
+// with an existing fragment or another piece in the same split. Surfaced as a 400.
+export class SplitKeyConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SplitKeyConflictError";
+  }
+}
+
+// A user-chosen key for a new piece (pieceIndex is 1-based, as in the preview;
+// piece 1 is the original and is never renamed).
+export type SplitPieceKey = {
+  pieceIndex: number;
+  key: string;
+};
+
 export type SplitFragmentInput = {
   fragmentId: string;
   delimiter: SplitDelimiter;
+  pieceKeys?: SplitPieceKey[];
 };
 
 export type SplitFragmentResult = {
@@ -30,6 +47,25 @@ export type SplitFragmentResult = {
 // The label recorded in the action-log payload + history view.
 const delimiterLabel = (delimiter: SplitDelimiter): string =>
   delimiter.type === "heading" ? `heading:${delimiter.level}` : delimiter.type;
+
+// Validate a user-chosen piece key (same rules as entity creation) and assert it
+// does not collide with an existing fragment key or one already minted earlier in
+// this split. On success the key is reserved in `existingKeys` so a later piece
+// can't reuse it. `existingKeys` holds lowercased keys (the case-insensitive
+// uniqueness space the vault enforces).
+const resolveOverrideKey = (rawKey: string, existingKeys: Set<string>): string => {
+  let key: string;
+  try {
+    key = validateEntityKey(rawKey);
+  } catch (error) {
+    throw new SplitKeyConflictError((error as Error).message);
+  }
+  if (existingKeys.has(key.toLowerCase())) {
+    throw new SplitKeyConflictError(`A fragment with the key "${key}" already exists.`);
+  }
+  existingKeys.add(key.toLowerCase());
+  return key;
+};
 
 export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResult> = {
   async execute(ctx, input) {
@@ -72,12 +108,25 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // earlier in this split. Anchor markers ride along with their blocks in every
     // piece (no stripping) so each moved comment can be re-anchored in its new
     // piece's Margin.
+    // User-chosen key overrides for the new pieces, keyed by 1-based pieceIndex
+    // (piece 1 is the original and is never renamed, so any override for it is
+    // ignored). Each override is validated for shape and uniqueness as it is
+    // applied below; falling back to the derived key when absent.
+    const overrideKeyByPieceIndex = new Map<number, string>();
+    for (const override of input.pieceKeys ?? []) {
+      if (override.pieceIndex >= 2) overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
+    }
+
     const createdUuids: string[] = [];
     // Piece array index (1…N-1) → the new fragment's uuid, for Margin migration.
     const createdUuidByPieceIndex = new Map<number, string>();
     for (let index = 1; index < pieces.length; index++) {
       const piece = pieces[index]!;
-      const key = deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
+      // pieceIndex is 1-based (matches the preview); array index 1 is piece 2.
+      const override = overrideKeyByPieceIndex.get(index + 1);
+      const key = override
+        ? resolveOverrideKey(override, existingKeys)
+        : deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
       const newFragment: Fragment = {
         uuid: randomUUID(),
         key,
