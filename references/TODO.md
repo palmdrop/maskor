@@ -69,7 +69,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - redesign, make more minimal, closer to have a document actually looks
 
 - [x] database schema changes still cause permanent db errors without the previously implemented database reset taking effect. See `@references/plans/dev-db-auto-reset.md`. Need to investigate.
-  - ROOT CAUSE (2026-06-18): the auto-reset works, but `MASKOR_DB_AUTO_RESET` was undocumented in `.env.example` and there is no `.env`, so `isAutoResetEnabled()` was always false — the reset never fired. Documented the flag in `.env.example` (off by default; requires a real `.env`). To use it: copy `.env.example` to `.env`, uncomment `MASKOR_DB_AUTO_RESET=1`, restart the API. See the suggestions.md entry for a secondary wart (every new migration triggers a full reset on next restart while the flag is on).
+  - ROOT CAUSE (2026-06-18): the auto-reset logic works (verified empirically), but `MASKOR_DB_AUTO_RESET` was undocumented and there is no `.env`, so `isAutoResetEnabled()` was always false — the reset never fired. FIXED: the API `dev` script now sets `MASKOR_DB_AUTO_RESET=1` inline, so `bun run dev` auto-resets on a migration-set change with no setup (never under the packaged `start`). Fires on the next restart after the migration set changes — under `bun --watch`, saving the imported `schema.ts` triggers that restart. Added regression tests for the real trigger (migration add/amend). See the suggestions.md entry for a secondary wart (every new migration triggers a full reset+rebuild, discarding `fragment_stats` telemetry).
 
 - [x] make it possible to "clone" a sequence, or insert one sequence into another, etc
 
