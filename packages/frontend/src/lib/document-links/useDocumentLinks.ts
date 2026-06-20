@@ -18,6 +18,22 @@ type KeyedEntity = { key: string; uuid: string };
 const toLookup = (entities: KeyedEntity[] | undefined): Map<string, string> =>
   new Map((entities ?? []).map((entity) => [entity.key, entity.uuid]));
 
+// Fragment keys can be shared by an active and a discarded fragment. Resolve a `[[fragments/key]]`
+// link to the *active* one (insert discarded first, then let active overwrite) — matching storage's
+// link resolution, so clicking a link never opens a stale discarded copy.
+export const toFragmentLookup = (
+  fragments: (KeyedEntity & { isDiscarded: boolean })[] | undefined,
+): Map<string, string> => {
+  const lookup = new Map<string, string>();
+  for (const fragment of fragments ?? []) {
+    if (fragment.isDiscarded) lookup.set(fragment.key, fragment.uuid);
+  }
+  for (const fragment of fragments ?? []) {
+    if (!fragment.isDiscarded) lookup.set(fragment.key, fragment.uuid);
+  }
+  return lookup;
+};
+
 // Project-wide document-link plumbing: the key→uuid lookups (built from the four entity lists), a
 // pure resolver, and a navigate-to-target action. Shared by the editor link extensions and any link
 // surface. Lists are cached by React Query, so this is cheap to call per editor.
@@ -38,7 +54,7 @@ export const useDocumentLinks = (projectId: string) => {
       return EMPTY_LINK_LOOKUPS;
     }
     return {
-      fragments: toLookup(fragmentsEnvelope?.status === 200 ? fragmentsEnvelope.data : []),
+      fragments: toFragmentLookup(fragmentsEnvelope?.status === 200 ? fragmentsEnvelope.data : []),
       notes: toLookup(notesEnvelope?.status === 200 ? notesEnvelope.data : []),
       references: toLookup(referencesEnvelope?.status === 200 ? referencesEnvelope.data : []),
       aspects: toLookup(aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : []),

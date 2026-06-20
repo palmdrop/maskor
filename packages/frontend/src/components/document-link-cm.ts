@@ -4,6 +4,7 @@ import {
   EditorView,
   StateEffect,
   StateField,
+  keymap,
   type EditorState,
 } from "@uiw/react-codemirror";
 import {
@@ -37,6 +38,12 @@ export const cmLinkConfigField = StateField.define<CmLinkConfig | null>({
     return value;
   },
 });
+
+// True when a closing `]]` (auto-inserted by CodeMirror's closeBrackets the moment the user typed
+// `[[`) sits immediately after the completion range and must be swallowed — otherwise completing the
+// link yields `[[type/key]]]]`.
+export const hasAutoClosedBrackets = (textAfterCursor: string): boolean =>
+  textAfterCursor.startsWith("]]");
 
 const resolvedMark = Decoration.mark({ class: "cm-doc-link" });
 const brokenMark = Decoration.mark({ class: "cm-doc-link-broken" });
@@ -81,6 +88,19 @@ const linkClickHandler = EditorView.domEventHandlers({
   },
 });
 
+// Navigate the resolved link the caret sits in (vim `gd` + the `Mod-Enter` keymap below). Returns
+// false when the caret is not inside a resolved link, so the key falls through to its default.
+export const navigateDocumentLinkAtCursor = (view: EditorView): boolean => {
+  const hit = linkAt(view.state, view.state.selection.main.head);
+  if (!hit) return false;
+  hit.config.navigate(hit.pathType, hit.uuid);
+  return true;
+};
+
+const linkKeymap = keymap.of([
+  { key: "Mod-Enter", run: (view) => navigateDocumentLinkAtCursor(view) },
+]);
+
 const linkTheme = EditorView.baseTheme({
   ".cm-doc-link": {
     color: "var(--color-primary, #2563eb)",
@@ -93,7 +113,7 @@ const linkTheme = EditorView.baseTheme({
 });
 
 // `[[` autocomplete: when the caret follows an open `[[…` (no closing `]]` yet), offer every linkable
-// entity. Selecting one completes the canonical `type/key]]`.
+// entity. Selecting one completes the canonical `[[type/key]]`.
 const linkCompletionSource = (context: CompletionContext): CompletionResult | null => {
   const config = context.state.field(cmLinkConfigField, false);
   if (!config) return null;
@@ -103,10 +123,20 @@ const linkCompletionSource = (context: CompletionContext): CompletionResult | nu
   const options = PATH_TYPES.flatMap((pathType) =>
     [...config.lookups[pathType].keys()].map((key) => ({
       label: `${pathType}/${key}`,
-      apply: `${pathType}/${key}]]`,
       type: "link",
+      // Insert `type/key]]` after the existing `[[`, and swallow a closing `]]` that CodeMirror's
+      // closeBrackets auto-inserted when the user typed `[[` — otherwise the result is `[[type/key]]]]`.
+      apply: (view: EditorView, _completion: unknown, from: number, to: number) => {
+        const insert = `${pathType}/${key}]]`;
+        const trailing = hasAutoClosedBrackets(view.state.sliceDoc(to, to + 2)) ? 2 : 0;
+        view.dispatch({
+          changes: { from, to: to + trailing, insert },
+          selection: { anchor: from + insert.length },
+        });
+      },
     })),
   );
+  // `from` after the `[[` so the typed query (not the brackets) drives filtering against the labels.
   return { from: before.from + 2, options, filter: true };
 };
 
@@ -114,6 +144,7 @@ export const cmDocumentLinkExtension = [
   cmLinkConfigField,
   linkDecorations,
   linkClickHandler,
+  linkKeymap,
   linkTheme,
   autocompletion({ override: [linkCompletionSource] }),
 ];

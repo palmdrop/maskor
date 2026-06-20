@@ -15,7 +15,11 @@ import { splitCommentMarkers } from "@maskor/shared";
 import { buildSharedProseExtensions, proseClassName } from "./shared-prose-extensions";
 import { cmAnchorExtension, setCmAnchorsEffect, cmAnchorBlockIndex } from "./anchor-cm";
 import { cmAnchorHighlightExtension } from "./anchor-highlight-cm";
-import { cmDocumentLinkExtension, setCmLinkConfigEffect } from "./document-link-cm";
+import {
+  cmDocumentLinkExtension,
+  setCmLinkConfigEffect,
+  navigateDocumentLinkAtCursor,
+} from "./document-link-cm";
 import { DocumentLink, documentLinkPluginKey } from "./document-link-tiptap";
 import {
   buildDocumentLinkSuggestion,
@@ -482,6 +486,18 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
               const getClipboardSync = () => vimClipboardSyncRef.current;
               Vim.defineOperator("yank", yankGenerator(registerController, getClipboardSync));
               patchDeleteClipboard(registerController, getClipboardSync);
+              // `gd` (go to definition) navigates the document link under the caret. Defined globally
+              // but targets whichever view fires it via `cm.cm6`, so it always acts on the active editor.
+              Vim.defineAction("documentLinkGoToDefinition", (codeMirror) => {
+                navigateDocumentLinkAtCursor(codeMirror.cm6);
+              });
+              Vim.mapCommand(
+                "gd",
+                "action",
+                "documentLinkGoToDefinition",
+                {},
+                { context: "normal" },
+              );
             }
             focusAndCenterCaret(view);
           }}

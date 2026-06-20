@@ -7,8 +7,11 @@ import { resolveParsedLink, type LinkLookups } from "@lib/document-links/resolve
 
 // Document-link rendering for the rich (TipTap) editor. The link text `[[type/key]]` is ordinary
 // prose text — it round-trips through markdown untouched (no special node), so this extension only
-// *decorates* link ranges (resolved vs broken) and handles Cmd/Ctrl-click navigation. Decorations are
-// computed per text node, mapping in-node match offsets to absolute ProseMirror positions.
+// *decorates* link ranges (resolved vs broken) and handles navigation. Decorations are computed per
+// text node, mapping in-node match offsets to absolute ProseMirror positions.
+//
+// Navigation: a plain click on a *resolved* link navigates (rich mode reads like Obsidian's live
+// preview); a broken link is left clickable for editing. `Mod-Enter` navigates the link at the caret.
 
 export type TiptapLinkConfig = {
   lookups: LinkLookups;
@@ -64,6 +67,19 @@ const linkAt = (
 export const DocumentLink = Extension.create({
   name: "documentLink",
 
+  addKeyboardShortcuts() {
+    return {
+      "Mod-Enter": () => {
+        const state = this.editor.state;
+        const config = documentLinkPluginKey.getState(state) ?? null;
+        const hit = linkAt(state, config, state.selection.from);
+        if (!hit || !config) return false;
+        config.navigate(hit.pathType, hit.uuid);
+        return true;
+      },
+    };
+  },
+
   addProseMirrorPlugins() {
     return [
       new Plugin<TiptapLinkConfig | null>({
@@ -79,18 +95,15 @@ export const DocumentLink = Extension.create({
           decorations(state) {
             return buildDecorations(state, this.getState(state) ?? null);
           },
-          handleDOMEvents: {
-            mousedown(view, event) {
-              if (!(event.metaKey || event.ctrlKey)) return false;
-              const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
-              if (!coords) return false;
-              const config = documentLinkPluginKey.getState(view.state) ?? null;
-              const hit = linkAt(view.state, config, coords.pos);
-              if (!hit || !config) return false;
-              event.preventDefault();
-              config.navigate(hit.pathType, hit.uuid);
-              return true;
-            },
+          // Plain click navigates a resolved link (its `pos` is ProseMirror's own resolved click
+          // position — more reliable than posAtCoords). Broken links fall through so they stay
+          // editable. Holding a modifier still navigates.
+          handleClick(view, pos) {
+            const config = documentLinkPluginKey.getState(view.state) ?? null;
+            const hit = linkAt(view.state, config, pos);
+            if (!hit || !config) return false;
+            config.navigate(hit.pathType, hit.uuid);
+            return true;
           },
         },
       }),
