@@ -42,6 +42,10 @@ interface ReorderRowProps {
   onRemove?: (fragmentUuid: string) => void;
   // Read-only row (e.g. an import-sequence in the Overview): no drag, no remove.
   disabled?: boolean;
+  // The fragment has an unsaved-content swap file — shows a leading "dirty" dot
+  // (matching the fragment list). Leading position + tooltip distinguish it from
+  // the trailing violation/cycle dots.
+  isUnsaved?: boolean;
 }
 
 // A single placed/pool fragment row: a compact, draggable, selectable title line.
@@ -54,6 +58,7 @@ export const ReorderRow = ({
   onSelect,
   onRemove,
   disabled = false,
+  isUnsaved = false,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -111,6 +116,13 @@ export const ReorderRow = ({
         className="h-3 w-1 rounded-sm shrink-0"
       />
       */}
+      {isUnsaved && (
+        <span
+          className="inline-block w-1.5 h-1.5 shrink-0 rounded-full bg-amber-500"
+          title="Unsaved changes"
+          aria-label="Unsaved changes"
+        />
+      )}
       <span className="truncate flex-1">{fragment.key}</span>
       <RowIndicators violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
       {onRemove && !disabled && (

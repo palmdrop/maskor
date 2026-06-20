@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -106,6 +107,11 @@ export const CreateEntityDialog = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            Give the {entityName} a unique key
+            {contentRequired ? " and content" : " (content optional)"}
+            {showSequencePicker ? ", and optionally add it to a sequence" : ""}.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <Field label={labelField}>

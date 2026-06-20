@@ -17,6 +17,10 @@ interface ReorderListProps {
   onRemoveFragment: (fragmentUuid: string) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
+  // Whether a fragment has unsaved edits (a swap file). Optional — surfaces a
+  // leading "dirty" dot on its row; defaults to no-op for surfaces that don't
+  // track it (e.g. the placement-modal arranger).
+  isUnsaved?: (fragmentUuid: string) => boolean;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -61,6 +65,7 @@ export const ReorderList = ({
   onRemoveFragment,
   getViolationTooltips,
   getCycleTooltips,
+  isUnsaved = () => false,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -98,6 +103,7 @@ export const ReorderList = ({
             onRemoveFragment={onRemoveFragment}
             getViolationTooltips={getViolationTooltips}
             getCycleTooltips={getCycleTooltips}
+            isUnsaved={isUnsaved}
             editingSectionId={editingSectionId}
             setEditingSectionId={setEditingSectionId}
             editingSectionValue={editingSectionValue}
@@ -149,6 +155,7 @@ export const ReorderList = ({
               colorByAspectKey={colorByAspectKey}
               violationTooltips={[]}
               cycleTooltips={getCycleTooltips(fragmentUuid)}
+              isUnsaved={isUnsaved(fragmentUuid)}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
             />

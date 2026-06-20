@@ -79,4 +79,16 @@ describe("ReorderList", () => {
     expect(screen.getByText("frag-1")).toBeInTheDocument();
     expect(screen.getByText("pool-1")).toBeInTheDocument();
   });
+
+  it("shows an unsaved-changes dot only on fragments with unsaved edits", () => {
+    wrap(<ReorderList {...baseProps} isUnsaved={(uuid) => uuid === "frag-1"} />);
+    const dots = screen.getAllByLabelText("Unsaved changes");
+    // The placed fragment frag-1 is dirty; the pool fragment pool-1 is not.
+    expect(dots).toHaveLength(1);
+  });
+
+  it("shows no unsaved dots by default", () => {
+    wrap(<ReorderList {...baseProps} />);
+    expect(screen.queryByLabelText("Unsaved changes")).not.toBeInTheDocument();
+  });
 });

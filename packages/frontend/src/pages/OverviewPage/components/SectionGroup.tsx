@@ -19,6 +19,7 @@ interface SectionGroupProps {
   onRemoveFragment: (fragmentUuid: string) => void;
   getViolationTooltips: (fragmentUuid: string) => string[];
   getCycleTooltips: (fragmentUuid: string) => string[];
+  isUnsaved: (fragmentUuid: string) => boolean;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -55,6 +56,7 @@ export const SectionGroup = ({
   onRemoveFragment,
   getViolationTooltips,
   getCycleTooltips,
+  isUnsaved,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -204,6 +206,7 @@ export const SectionGroup = ({
               colorByAspectKey={colorByAspectKey}
               violationTooltips={getViolationTooltips(fragmentUuid)}
               cycleTooltips={getCycleTooltips(fragmentUuid)}
+              isUnsaved={isUnsaved(fragmentUuid)}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
               onRemove={onRemoveFragment}

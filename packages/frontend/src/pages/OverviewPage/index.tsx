@@ -59,6 +59,7 @@ import { useFragmentSelection } from "./hooks/useFragmentSelection";
 import { useOverviewInlineEditor } from "./hooks/useOverviewInlineEditor";
 import { useSectionOps } from "./hooks/useSectionOps";
 import { useProjectEditorConfig } from "../../hooks/useProjectEditorConfig";
+import { useUnsavedFragmentUuids } from "@hooks/useUnsavedFragmentUuids";
 
 export const OverviewPage = () => {
   const from = "/projects/$projectId/overview" as const;
@@ -267,6 +268,14 @@ export const OverviewPage = () => {
   const getCycleTooltips = useCallback(
     (fragmentUuid: string): string[] => cycleTooltipByFragmentUuid.get(fragmentUuid) ?? [],
     [cycleTooltipByFragmentUuid],
+  );
+
+  // Fragments with unsaved edits (a swap file) get a leading "dirty" dot on their
+  // reorder row, matching the fragment list.
+  const unsavedFragmentUuids = useUnsavedFragmentUuids(projectId);
+  const isFragmentUnsaved = useCallback(
+    (fragmentUuid: string): boolean => unsavedFragmentUuids.has(fragmentUuid),
+    [unsavedFragmentUuids],
   );
 
   const listQueryKey = getListSequencesQueryKey(projectId);
@@ -651,6 +660,7 @@ export const OverviewPage = () => {
               onRemoveFragment={handleRemoveFragment}
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}
+              isUnsaved={isFragmentUnsaved}
               editingSectionId={sectionManager.editingSectionId}
               setEditingSectionId={sectionManager.setEditingSectionId}
               editingSectionValue={sectionManager.editingSectionValue}

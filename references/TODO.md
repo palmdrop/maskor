@@ -35,7 +35,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] make it possible to highlight a sequence in another sequence
 
-- [x] show a dot or indicator on fragments that have unsaved changes (fragment list shows a dot for fragments with a swap file, via new `GET /swap` list endpoint; could extend to overview/sidebar later)
+- [x] show a dot or indicator on fragments that have unsaved changes (amber dot for fragments with a swap file, via new `GET /swap` list endpoint — in the fragment list and the Overview reorder column; could still extend to the sequence sidebar)
 
 - [ ] still a flicker on refresh in overview on scroll
   - INVESTIGATED (2026-06-18): root cause is the one-frame flash from scroll restoration. The spine renders one async-mounting Tiptap (`ReadonlyProse`) per fragment, so the spine height grows over several frames after `spineContentReady`; the single `requestAnimationFrame` scroll restore in `OverviewPage/index.tsx` fires after the first paint (at scrollTop 0) and then jumps to the remembered offset. Fix needs in-browser verification (e.g. hold the spine hidden until restore applied, or gate restore on a stable-height signal) and touches the delicate `resolveOverviewLoadScroll` / anchor-reconciliation path — deferred rather than guess-patched.
