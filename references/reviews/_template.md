@@ -1,8 +1,9 @@
 # Review: [Feature / area name]
 
 **Date**: YYYY-MM-DD
+**Status**: Open <!-- Open | Partially addressed | Resolved — the work board reads this -->
 **Scope**: `packages/...`
-**Plan**: `references/plans/....md` <!-- omit if no plan -->
+**Plan**: `references/plans/....md` <!-- omit if no plan; the board links the review to this plan -->
 **Spec**: `specifications/....md` <!-- omit if no spec -->
 
 ---
@@ -60,3 +61,16 @@ reviews. Format as a flat bullet list.
 -->
 
 - **Pattern name** — why it's fine.
+
+---
+
+## Resolution
+
+<!--
+Add this section once findings are addressed, and flip **Status** above to Resolved (or Partially addressed).
+One numbered entry per finding above, mirroring its number. Mark each: Fixed / Mitigated / Won't fix (reason).
+The work board counts a review's open findings from **Status** — keep it current so reviewed-but-unfixed work
+stays visible. Until this section exists and **Status** is updated, the board treats the findings as open.
+-->
+
+1. **Fixed.** What changed.

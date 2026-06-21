@@ -3,7 +3,16 @@
 **Date**: DD-MM-YYYY
 **Status**: In progress <!-- Todo | In progress | Done -->
 **Specs**: `specifications/<relevant specification>.md` <!-- Add if there is a relevant specification for this plan -->
+**Branch**: agent/<plan-filename-stem> <!-- optional; only needed to resolve a name mismatch the board can't infer -->
+**Lifecycle**: <!-- optional override; one of: idea planned building in-review fixes-pending merged done abandoned. Leave blank — the board infers this from git + status. Set only to correct a wrong inference. -->
 **Closed**: DD-MM-YYYY <!-- Add when Status becomes Done -->
+
+<!--
+The work board (`bun run board`) joins this plan with its live git/review/spec state.
+It infers lifecycle from git reality + **Status** above, so you normally do NOT set
+**Lifecycle** or **Branch**. Set them only to fix drift the board flags.
+Branch naming rule the board expects: branch = `agent/<this-file's-stem>`, worktree dir = same stem.
+-->
 
 ---
 

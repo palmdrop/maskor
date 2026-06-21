@@ -1,8 +1,16 @@
 # Plans manifest and Shipped backfill
 
 **Date**: 14-05-2026
-**Status**: In Progress
-**Closed**:
+**Status**: Done <!-- superseded -->
+**Lifecycle**: abandoned
+**Closed**: 21-06-2026
+
+> **Superseded (2026-06-21)** by `references/plans/work-tracking-board.md`. The
+> standalone `plans-manifest.yaml` and its generator skill were retired — they
+> drifted (covered 38 of 81 plans) and used a separate status vocabulary. The
+> work board (`bun run board`) regenerates the same plan rollup live from git on
+> every run, so there is nothing to keep in sync. Spec `**Shipped**:` backfill,
+> if still wanted, can read the board's `--json` output instead of a static file.
 
 ---
 

@@ -38,6 +38,7 @@ storybook-static
 # Maskor
 .maskor
 references/CODEBASE_SNAPSHOT.md
+references/STATUS.md
 packages/test-fixtures/user-vault
 generated
 certs
