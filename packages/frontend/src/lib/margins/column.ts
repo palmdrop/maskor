@@ -39,6 +39,25 @@ export const buildColumn = (blocks: FragmentBlock[], comments: Comment[]): Colum
   return { rows, orphans };
 };
 
+// How far a tall idle comment may extend before it would meet the next anchored comment below it.
+// For each row (document order), returns the vertical distance from this row's block top to the next
+// commented row's top, or `null` when no comment lies below — in which case the comment may extend
+// freely over the empty blocks beneath it. The clip target is the *next comment*, not the paragraph
+// boundary, so a comment spans the intervening un-annotated blocks and is cut off only where it would
+// collide with the next comment.
+export const computeCommentClipHeights = (
+  rows: readonly { top: number; hasComment: boolean }[],
+): (number | null)[] => {
+  const clipHeights: (number | null)[] = new Array(rows.length).fill(null);
+  let nextCommentTop: number | null = null;
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index]!;
+    clipHeights[index] = nextCommentTop === null ? null : Math.max(0, nextCommentTop - row.top);
+    if (row.hasComment) nextCommentTop = row.top;
+  }
+  return clipHeights;
+};
+
 // Fuzzy recovery (ADR 0009): re-anchor orphaned comments whose last-known excerpt still uniquely
 // matches an un-anchored block's opening. Conservative — a comment is rebound only when exactly one
 // free block matches (no silent mis-binding), and each block is consumed once so two orphans never

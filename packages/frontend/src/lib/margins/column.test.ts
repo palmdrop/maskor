@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { buildColumn, planOrphanRebinds, nextSlotIndex, previousSlotIndex } from "./column";
+import {
+  buildColumn,
+  computeCommentClipHeights,
+  planOrphanRebinds,
+  nextSlotIndex,
+  previousSlotIndex,
+} from "./column";
 import { enumerateBlocks } from "./column.test-helpers";
 import type { Comment } from "@api/generated/maskorAPI.schemas";
 
@@ -84,6 +90,48 @@ describe("planOrphanRebinds (fuzzy recovery)", () => {
     expect(
       planOrphanRebinds(blocks, [comment("b", "", "Same."), comment("c", "", "Same.")]),
     ).toEqual([{ markerId: "b", blockIndex: 0 }]);
+  });
+});
+
+describe("computeCommentClipHeights", () => {
+  it("returns null for a comment with no comment below (it may extend freely)", () => {
+    expect(
+      computeCommentClipHeights([
+        { top: 0, hasComment: true },
+        { top: 60, hasComment: false },
+      ]),
+    ).toEqual([null, null]);
+  });
+
+  it("clips a comment to the distance to the next comment's top, spanning empty blocks", () => {
+    // Comment at top 0, two empty blocks, then a comment at top 150 → the first clips to 150.
+    expect(
+      computeCommentClipHeights([
+        { top: 0, hasComment: true },
+        { top: 50, hasComment: false },
+        { top: 100, hasComment: false },
+        { top: 150, hasComment: true },
+      ]),
+    ).toEqual([150, 100, 50, null]);
+  });
+
+  it("clips to ~one block when the next comment is adjacent", () => {
+    expect(
+      computeCommentClipHeights([
+        { top: 0, hasComment: true },
+        { top: 80, hasComment: true },
+      ]),
+    ).toEqual([80, null]);
+  });
+
+  it("never returns a negative clip height", () => {
+    // Out-of-order tops should not yield a negative clamp.
+    expect(
+      computeCommentClipHeights([
+        { top: 100, hasComment: true },
+        { top: 40, hasComment: true },
+      ]),
+    ).toEqual([0, null]);
   });
 });
 

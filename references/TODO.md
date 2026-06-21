@@ -10,7 +10,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] In rich mode, add a button for adding a link 
 
-- [ ] Margins: if a comment is longer than the block, BUT there is no comments below, let it expand over other blocks. IF there are other comments, then only show the part of the comment that fits. HOWEVER: might be a good idea to add a scrollbar, so it is clear that there is more, and so that the user can scroll inside the comment without having to click it (which also prompts editing).
+- [x] Margins: if a comment is longer than the block, BUT there is no comments below, let it expand over other blocks. IF there are other comments, then only show the part of the comment that fits. HOWEVER: might be a good idea to add a scrollbar, so it is clear that there is more, and so that the user can scroll inside the comment without having to click it (which also prompts editing). (clip now stops at the next comment, not the paragraph; free extension when none below; thin always-visible scrollbar on overflow — plan: `references/plans/margins-overflow.md`)
 
 - [ ] Need to make it easier to manage and overview aspects. Should be possible to inspect aspect folder structure, and move between them while reading the contents (similar to obsidian, or just the fragment list). Also, should have an indication showing how many fragments are attached to the aspect. Finally, a way of reading aspect content while in a fragment? tabbed view? idk
 

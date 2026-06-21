@@ -12,9 +12,9 @@ type Props = {
   // Anchored mode positions the row at its block's measured top; expand-all relaxes to normal flow.
   positioned: boolean;
   top: number;
-  blockHeight: number;
-  // Collapse the idle row to its block's height (so a tall comment can't run into its neighbour).
-  clip: boolean;
+  // The height an idle comment may occupy before it would meet the next comment below — null means no
+  // comment lies below, so it extends freely (no clip). A clipped, overflowing comment scrolls.
+  clipHeight: number | null;
   isOverflowing: boolean;
   mode: EditorMode;
   draft: string;
@@ -42,8 +42,7 @@ export function MarginRow({
   isCaretBlock,
   positioned,
   top,
-  blockHeight,
-  clip,
+  clipHeight,
   isOverflowing,
   mode,
   draft,
@@ -62,7 +61,6 @@ export function MarginRow({
   const comment = row.comment;
   return (
     <div
-      data-row-index={row.block.index}
       {...(comment
         ? { "data-slot-marker": comment.markerId }
         : { "data-slot-block": row.block.index })}
@@ -73,12 +71,9 @@ export function MarginRow({
       } ${isActive ? "z-10 rounded-sm border-border/60 bg-background shadow-sm" : ""} ${
         isCaretBlock ? "rounded-sm bg-muted/40" : ""
       }`}
-      style={{
-        ...(positioned
-          ? { position: "absolute", top, left: 0, right: 0 }
-          : { position: "relative" }),
-        ...(clip ? { maxHeight: blockHeight || undefined, overflow: "hidden" } : {}),
-      }}
+      style={
+        positioned ? { position: "absolute", top, left: 0, right: 0 } : { position: "relative" }
+      }
     >
       {comment && (
         // Floating remove control in the left gutter — visible on hover (or while editing) so a
@@ -118,17 +113,30 @@ export function MarginRow({
           onEscape={onEscape}
         />
       ) : comment ? (
-        <button
-          type="button"
-          className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
-          style={serifTextStyle(fontSize)}
-          onClick={() => {
-            onRevealComment(comment.markerId);
-            onActivateComment(comment.markerId);
-          }}
+        // A clipped comment scrolls inside its own gap (data-row-index is the measured element); an
+        // unclipped one (no comment below) renders flush and extends over the blocks beneath it. The
+        // scrollbar lets the rest be read by wheel/drag without clicking into edit mode.
+        <div
+          {...(clipHeight !== null
+            ? {
+                "data-row-index": row.block.index,
+                className: "margin-scrollbar overflow-y-auto",
+                style: { maxHeight: clipHeight || undefined },
+              }
+            : {})}
         >
-          {comment.body}
-        </button>
+          <button
+            type="button"
+            className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
+            style={serifTextStyle(fontSize)}
+            onClick={() => {
+              onRevealComment(comment.markerId);
+              onActivateComment(comment.markerId);
+            }}
+          >
+            {comment.body}
+          </button>
+        </div>
       ) : (
         <button
           type="button"

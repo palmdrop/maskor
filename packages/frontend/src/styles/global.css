@@ -66,6 +66,26 @@
     width: 0;
     height: 0;
   }
+
+  /* A thin but clearly visible scrollbar for an overflowing margin comment, so the writer can see
+     there is more and scroll it (wheel/drag) without clicking into edit mode. Self-hides when the
+     content fits (overflow-y: auto). */
+  .margin-scrollbar {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--border) transparent;
+  }
+  .margin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .margin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .margin-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+  }
+  .margin-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+  }
 }
 
 @theme inline {

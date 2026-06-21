@@ -196,7 +196,7 @@ describe("MarginColumn", () => {
     expect(rowB.style.top).toBe("80px");
   });
 
-  it("clips an idle comment row to its block's height so a tall comment can't run into its neighbour", () => {
+  it("lets an idle comment with no comment below extend freely over the blocks beneath it (no clip)", () => {
     renderColumn({
       fragmentContent: "Long. <!--c:a-->\n\nShort.",
       marginEditor: buildMarginEditor({ comments: [comment("a", "a tall comment body")] }),
@@ -206,8 +206,28 @@ describe("MarginColumn", () => {
       ],
     });
     const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
-    expect(row.style.overflow).toBe("hidden");
-    expect(row.style.maxHeight).toBe("50px");
+    // No clipping container (no comment lies below), so the comment flows over the empty block.
+    expect(row.querySelector("[data-row-index]")).toBeNull();
+  });
+
+  it("clips an idle comment to the gap before the next comment and makes it scrollable", () => {
+    renderColumn({
+      fragmentContent: "Long. <!--c:a-->\n\nNext. <!--c:b-->",
+      marginEditor: buildMarginEditor({
+        comments: [comment("a", "a tall comment body"), comment("b", "on b")],
+      }),
+      getBlocks: () => [
+        { markerId: "a", text: "Long.", top: 0, height: 50 },
+        { markerId: "b", text: "Next.", top: 80, height: 24 },
+      ],
+    });
+    const row = document.querySelector('[data-slot-marker="a"]') as HTMLElement;
+    const clip = row.querySelector("[data-row-index='0']") as HTMLElement;
+    // Clipped to the distance to the next comment's top (80 − 0), with a clear scrollbar so the rest
+    // can be read by wheel/drag without clicking into edit mode.
+    expect(clip.style.maxHeight).toBe("80px");
+    expect(clip.className).toContain("margin-scrollbar");
+    expect(clip.className).toContain("overflow-y-auto");
   });
 
   it("expand-all relaxes anchoring into a plain stacked column (no absolute tops)", () => {

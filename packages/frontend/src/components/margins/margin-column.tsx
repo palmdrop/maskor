@@ -15,6 +15,7 @@ import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 import type { EditorBlock } from "@components/prose-editor";
 import {
   buildColumn,
+  computeCommentClipHeights,
   nextSlotIndex,
   previousSlotIndex,
   planOrphanRebinds,
@@ -143,6 +144,20 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     [fragmentContent, markerIds],
   );
   const { rows, orphans } = useMemo(() => buildColumn(blocks, comments), [blocks, comments]);
+
+  // Per-row clip height: how far each idle comment may extend before meeting the next comment below
+  // (null = no comment below, so it extends freely). The clip stops at the next comment, not the
+  // paragraph, so a tall comment spans the empty blocks beneath it.
+  const clipHeights = useMemo(
+    () =>
+      computeCommentClipHeights(
+        rows.map((row) => ({
+          top: editorBlocks[row.block.index]?.top ?? 0,
+          hasComment: !!row.comment,
+        })),
+      ),
+    [rows, editorBlocks],
+  );
 
   // Until the editor has emitted its block list, `getBlocks()` returns [] — every comment would bind
   // to nothing and flash in the orphan group for a frame (review #7). Treat the column as "measured"
@@ -273,6 +288,9 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
               (activeSlot?.kind === "comment" && comment?.markerId === activeSlot.markerId) ||
               (activeSlot?.kind === "block" && activeSlot.index === row.block.index);
             const geometry = editorBlocks[row.block.index];
+            // Clip the idle, anchored row to the gap before the next comment; a null gap (no comment
+            // below) and the expand-all / active states render unclipped.
+            const clipHeight = expandAll || isActive ? null : (clipHeights[rowIndex] ?? null);
             return (
               <MarginRow
                 key={`row-${row.block.index}`}
@@ -282,11 +300,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 isCaretBlock={!!comment && comment.markerId === highlightedMarkerId && !isActive}
                 positioned={!expandAll}
                 top={geometry?.top ?? 0}
-                blockHeight={geometry?.height ?? 0}
-                clip={!expandAll && !isActive}
-                isOverflowing={
-                  !expandAll && !isActive && overflowingBlocks.includes(row.block.index)
-                }
+                clipHeight={clipHeight}
+                isOverflowing={clipHeight !== null && overflowingBlocks.includes(row.block.index)}
                 mode={mode}
                 draft={draft}
                 onHoverChange={setHoveredMarkerId}
