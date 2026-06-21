@@ -15,6 +15,9 @@ type Props = {
   // The height an idle comment may occupy before it would meet the next comment below — null means no
   // comment lies below, so it extends freely (no clip). A clipped, overflowing comment scrolls.
   clipHeight: number | null;
+  // This empty slot sits under an overflowing comment extending over it — render a compact, pointer-
+  // transparent affordance so the comment beneath stays readable while the paragraph is hover-commentable.
+  covered: boolean;
   isOverflowing: boolean;
   mode: EditorMode;
   draft: string;
@@ -43,6 +46,7 @@ export function MarginRow({
   positioned,
   top,
   clipHeight,
+  covered,
   isOverflowing,
   mode,
   draft,
@@ -70,7 +74,7 @@ export function MarginRow({
         comment && !isActive ? "border-t-border/40" : ""
       } ${isActive ? "z-10 rounded-sm border-border/60 bg-background shadow-sm" : ""} ${
         isCaretBlock ? "rounded-sm bg-muted/40" : ""
-      }`}
+      } ${covered && !comment && !isActive ? "pointer-events-none" : ""}`}
       style={
         positioned ? { position: "absolute", top, left: 0, right: 0 } : { position: "relative" }
       }
@@ -121,7 +125,7 @@ export function MarginRow({
             ? {
                 "data-row-index": row.block.index,
                 className: "margin-scrollbar overflow-y-auto",
-                style: { maxHeight: clipHeight || undefined },
+                style: { maxHeight: clipHeight },
               }
             : {})}
         >
@@ -137,6 +141,18 @@ export function MarginRow({
             {comment.body}
           </button>
         </div>
+      ) : covered ? (
+        // A comment above extends over this slot. A full-width button would blanket it (stealing the
+        // comment's wheel/clicks), so this affordance is compact and self-revealing (the row container
+        // is pointer-transparent; only this button is interactive) — the paragraph stays
+        // hover-commentable while the comment beneath remains readable and scrollable.
+        <button
+          type="button"
+          className="pointer-events-auto inline-flex rounded-sm bg-background/80 px-1 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+          onClick={() => onActivateBlock(row.block.index)}
+        >
+          + comment
+        </button>
       ) : (
         <button
           type="button"

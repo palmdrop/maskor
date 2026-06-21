@@ -52,10 +52,33 @@ export const computeCommentClipHeights = (
   let nextCommentTop: number | null = null;
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]!;
-    clipHeights[index] = nextCommentTop === null ? null : Math.max(0, nextCommentTop - row.top);
-    if (row.hasComment) nextCommentTop = row.top;
+    const gap = nextCommentTop === null ? null : nextCommentTop - row.top;
+    // A non-positive gap (no comment below, or degenerate out-of-order tops) means there is nothing
+    // to clip into — leave the row unclipped (null) rather than collapsing it to a 0px box.
+    clipHeights[index] = gap !== null && gap > 0 ? gap : null;
+    if (row.hasComment) {
+      nextCommentTop = row.top;
+    }
   }
   return clipHeights;
+};
+
+// Which empty slots are "covered" by an overflowing comment above them — one tall enough to extend
+// down over the intervening un-annotated blocks to the next comment. A covered slot must not blanket
+// that comment (a full-width hover button would steal the comment's wheel/clicks), so the column
+// renders it as a compact, pointer-transparent affordance instead. Takes the rows in document order
+// with each row's comment flag and whether its (clipped) comment overflows.
+export const computeCoveredSlots = (
+  rows: readonly { hasComment: boolean; isOverflowing: boolean }[],
+): boolean[] => {
+  let coveredByOverflow = false;
+  return rows.map((row) => {
+    if (row.hasComment) {
+      coveredByOverflow = row.isOverflowing;
+      return false;
+    }
+    return coveredByOverflow;
+  });
 };
 
 // Fuzzy recovery (ADR 0009): re-anchor orphaned comments whose last-known excerpt still uniquely

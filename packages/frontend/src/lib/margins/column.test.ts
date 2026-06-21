@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildColumn,
   computeCommentClipHeights,
+  computeCoveredSlots,
   planOrphanRebinds,
   nextSlotIndex,
   previousSlotIndex,
@@ -124,14 +125,46 @@ describe("computeCommentClipHeights", () => {
     ).toEqual([80, null]);
   });
 
-  it("never returns a negative clip height", () => {
-    // Out-of-order tops should not yield a negative clamp.
+  it("does not clip on a non-positive gap (degenerate out-of-order tops)", () => {
+    // Out-of-order tops yield no room to clip into → unclipped (null), never a 0px / negative box.
     expect(
       computeCommentClipHeights([
         { top: 100, hasComment: true },
         { top: 40, hasComment: true },
       ]),
-    ).toEqual([0, null]);
+    ).toEqual([null, null]);
+  });
+});
+
+describe("computeCoveredSlots", () => {
+  it("marks empty slots after an overflowing comment as covered, up to the next comment", () => {
+    expect(
+      computeCoveredSlots([
+        { hasComment: true, isOverflowing: true },
+        { hasComment: false, isOverflowing: false },
+        { hasComment: false, isOverflowing: false },
+        { hasComment: true, isOverflowing: false },
+        { hasComment: false, isOverflowing: false },
+      ]),
+    ).toEqual([false, true, true, false, false]);
+  });
+
+  it("does not cover empty slots below a comment that fits (non-overflowing)", () => {
+    expect(
+      computeCoveredSlots([
+        { hasComment: true, isOverflowing: false },
+        { hasComment: false, isOverflowing: false },
+      ]),
+    ).toEqual([false, false]);
+  });
+
+  it("never marks a commented row itself as covered", () => {
+    expect(
+      computeCoveredSlots([
+        { hasComment: true, isOverflowing: true },
+        { hasComment: true, isOverflowing: true },
+      ]),
+    ).toEqual([false, false]);
   });
 });
 

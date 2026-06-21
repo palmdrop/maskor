@@ -16,6 +16,7 @@ import type { EditorBlock } from "@components/prose-editor";
 import {
   buildColumn,
   computeCommentClipHeights,
+  computeCoveredSlots,
   nextSlotIndex,
   previousSlotIndex,
   planOrphanRebinds,
@@ -157,6 +158,21 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         })),
       ),
     [rows, editorBlocks],
+  );
+
+  // An empty slot is "covered" when an overflowing comment above extends down over it (to the next
+  // comment). Such a slot renders a compact, pointer-transparent affordance instead of a full-width
+  // hover button, so the comment beneath stays readable/scrollable while the paragraph is still
+  // hover-commentable.
+  const coveredFlags = useMemo(
+    () =>
+      computeCoveredSlots(
+        rows.map((row) => ({
+          hasComment: !!row.comment,
+          isOverflowing: overflowingBlocks.includes(row.block.index),
+        })),
+      ),
+    [rows, overflowingBlocks],
   );
 
   // Until the editor has emitted its block list, `getBlocks()` returns [] — every comment would bind
@@ -301,6 +317,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 positioned={!expandAll}
                 top={geometry?.top ?? 0}
                 clipHeight={clipHeight}
+                covered={coveredFlags[rowIndex] ?? false}
                 isOverflowing={clipHeight !== null && overflowingBlocks.includes(row.block.index)}
                 mode={mode}
                 draft={draft}
