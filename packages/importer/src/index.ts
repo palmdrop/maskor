@@ -1,7 +1,7 @@
 import mammoth from "mammoth";
 import TurndownService from "turndown";
 import { fromMarkdown } from "mdast-util-from-markdown";
-import type { PhrasingContent, RootContent } from "mdast";
+import type { PhrasingContent, Root, RootContent } from "mdast";
 import { sanitizeEntityKey, stripCommentMarkers } from "@maskor/shared";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -111,13 +111,19 @@ const HEADING_LEVELS: readonly HeadingLevel[] = [1, 2, 3, 4, 5, 6];
 // caller then falls back to a sensible default and lets the user pick. The check is
 // "would it actually split" (pieces > 1), so a body with a single leading heading
 // and no other structure is not mistaken for splittable.
+//
+// The body is parsed once and the shared tree is reused across every level + the
+// thematic-break check (the parse is level-independent — `maxHeadingLevel` only
+// filters which headings are cut points).
 export function detectSplitDelimiter(content: string): SplitDelimiter | null {
+  const tree = fromMarkdown(content);
+
   for (const level of HEADING_LEVELS) {
-    if (splitMarkdown(content, level, { retainHeadingInContent: true }).length > 1) {
+    if (splitMarkdownFromTree(tree, content, level, { retainHeadingInContent: true }).length > 1) {
       return { type: "heading", level };
     }
   }
-  if (splitThematicBreak(content).length > 1) {
+  if (splitThematicBreakFromTree(tree, content).length > 1) {
     return { type: "thematic-break" };
   }
   return null;
@@ -128,7 +134,18 @@ export function splitMarkdown(
   maxHeadingLevel: HeadingLevel,
   options: SplitOptions = {},
 ): Piece[] {
-  const tree = fromMarkdown(content);
+  return splitMarkdownFromTree(fromMarkdown(content), content, maxHeadingLevel, options);
+}
+
+// Heading-split over an already-parsed tree. Split point detection only reads the
+// tree's heading nodes, so callers that split a body at several levels (delimiter
+// auto-detection) parse once and reuse the tree.
+function splitMarkdownFromTree(
+  tree: Root,
+  content: string,
+  maxHeadingLevel: HeadingLevel,
+  options: SplitOptions = {},
+): Piece[] {
   const pieces: Piece[] = [];
 
   const splitPoints: Array<{ title: string; startOffset: number }> = [];
@@ -178,7 +195,11 @@ export function splitMarkdown(
 // pieces. Thematic-break pieces carry no title; `deriveKey` falls back to the
 // first non-empty line.
 export function splitThematicBreak(content: string): Piece[] {
-  const tree = fromMarkdown(content);
+  return splitThematicBreakFromTree(fromMarkdown(content), content);
+}
+
+// Thematic-break split over an already-parsed tree (see `splitMarkdownFromTree`).
+function splitThematicBreakFromTree(tree: Root, content: string): Piece[] {
   const breaks = tree.children.filter((node) => node.type === "thematicBreak");
 
   if (breaks.length === 0) {

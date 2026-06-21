@@ -20,6 +20,7 @@ export {
   splitFragmentCommand,
   SplitNoOpError,
   SplitKeyConflictError,
+  SplitKeyInvalidError,
 } from "./fragments/split-fragment";
 export type { SplitFragmentInput, SplitFragmentResult } from "./fragments/split-fragment";
 export { updateFragmentCommand } from "./fragments/update-fragment";

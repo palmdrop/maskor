@@ -10,6 +10,7 @@ import {
   splitFragmentCommand,
   SplitNoOpError,
   SplitKeyConflictError,
+  SplitKeyInvalidError,
 } from "../../commands/fragments/split-fragment";
 import type { Logger } from "@maskor/shared/logger";
 
@@ -245,7 +246,7 @@ describe("splitFragmentCommand", () => {
         delimiter: { type: "heading", level: 1 },
         pieceKeys: [{ pieceIndex: 2, key: "bad/slash:key" }],
       }),
-    ).rejects.toBeInstanceOf(SplitKeyConflictError);
+    ).rejects.toBeInstanceOf(SplitKeyInvalidError);
   });
 
   it("rejects a single-piece (no-op) split and writes nothing", async () => {

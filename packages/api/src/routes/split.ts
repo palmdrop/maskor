@@ -16,6 +16,7 @@ import {
   splitFragmentCommand,
   SplitNoOpError,
   SplitKeyConflictError,
+  SplitKeyInvalidError,
 } from "../commands";
 import type { CommandContext } from "../commands";
 
@@ -134,6 +135,14 @@ splitRouter.openapi(splitRoute, async (ctx) => {
     if (error instanceof SplitKeyConflictError) {
       throw new HTTPException(400, {
         res: new Response(JSON.stringify({ error: "SPLIT_KEY_CONFLICT", message: error.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      });
+    }
+    if (error instanceof SplitKeyInvalidError) {
+      throw new HTTPException(400, {
+        res: new Response(JSON.stringify({ error: "SPLIT_KEY_INVALID", message: error.message }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }),

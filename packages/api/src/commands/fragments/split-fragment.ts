@@ -16,12 +16,23 @@ export class SplitNoOpError extends Error {
   }
 }
 
-// A user-supplied per-piece key is invalid (bad characters / empty) or collides
-// with an existing fragment or another piece in the same split. Surfaced as a 400.
+// A user-supplied per-piece key collides with an existing fragment or another
+// piece in the same split. Surfaced as a 400 (SPLIT_KEY_CONFLICT).
 export class SplitKeyConflictError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "SplitKeyConflictError";
+  }
+}
+
+// A user-supplied per-piece key is malformed (empty / illegal characters) — a
+// shape problem, distinct from a name collision. Surfaced as a 400
+// (SPLIT_KEY_INVALID). The dialog validates shape in-modal, so this is the rare
+// fall-through (e.g. a direct API call).
+export class SplitKeyInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SplitKeyInvalidError";
   }
 }
 
@@ -58,7 +69,7 @@ const resolveOverrideKey = (rawKey: string, existingKeys: Set<string>): string =
   try {
     key = validateEntityKey(rawKey);
   } catch (error) {
-    throw new SplitKeyConflictError((error as Error).message);
+    throw new SplitKeyInvalidError((error as Error).message);
   }
   if (existingKeys.has(key.toLowerCase())) {
     throw new SplitKeyConflictError(`A fragment with the key "${key}" already exists.`);
@@ -114,7 +125,9 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // applied below; falling back to the derived key when absent.
     const overrideKeyByPieceIndex = new Map<number, string>();
     for (const override of input.pieceKeys ?? []) {
-      if (override.pieceIndex >= 2) overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
+      if (override.pieceIndex >= 2) {
+        overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
+      }
     }
 
     const createdUuids: string[] = [];

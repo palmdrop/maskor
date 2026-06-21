@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useDeleteSwap, useGetSwap, usePutSwap } from "@api/generated/swap/swap";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  getListSwapsQueryKey,
+  useDeleteSwap,
+  useGetSwap,
+  usePutSwap,
+} from "@api/generated/swap/swap";
 
 export type SwapEntityKind = "fragment" | "aspect" | "note" | "reference" | "margin";
 
@@ -54,6 +60,16 @@ export const useEntityContentSwap = (
   putMutateRef.current = putMutation.mutate;
   const deleteMutateAsyncRef = useRef(deleteMutation.mutateAsync);
   deleteMutateAsyncRef.current = deleteMutation.mutateAsync;
+
+  // Refresh the project-wide swap list (drives the unsaved-changes dot in the
+  // fragment list / Overview) when this entity's swap presence flips — created on
+  // the first write, removed on clear. Held in a ref so the debounce effect's deps
+  // stay free of `queryClient`.
+  const queryClient = useQueryClient();
+  const invalidateSwapListRef = useRef<() => void>(() => {});
+  invalidateSwapListRef.current = () => {
+    void queryClient.invalidateQueries({ queryKey: getListSwapsQueryKey(projectId) });
+  };
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWrittenRef = useRef<string | null>(null);
@@ -131,7 +147,14 @@ export const useEntityContentSwap = (
         },
         {
           onSuccess: () => {
+            // A null `lastWritten` means no swap existed before this write, so the
+            // file was just created — flip the dot on. Subsequent writes don't
+            // change presence, so they skip the refetch.
+            const swapWasAbsent = lastWrittenRef.current === null;
             lastWrittenRef.current = valueToWrite;
+            if (swapWasAbsent) {
+              invalidateSwapListRef.current();
+            }
           },
           onError: (error) => {
             if (warnedRef.current) return;
@@ -156,6 +179,9 @@ export const useEntityContentSwap = (
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    // Only the removal of an existing swap flips the dot off; a clear with no swap
+    // present is a no-op for the list.
+    const swapWasPresent = lastWrittenRef.current !== null;
     try {
       await deleteMutateAsyncRef.current({ projectId, entityType, entityUUID });
     } catch {
@@ -164,6 +190,9 @@ export const useEntityContentSwap = (
     }
     lastWrittenRef.current = null;
     setRecovery(null);
+    if (swapWasPresent) {
+      invalidateSwapListRef.current();
+    }
   }, [projectId, entityType, entityUUID]);
 
   return { recovery, clear };

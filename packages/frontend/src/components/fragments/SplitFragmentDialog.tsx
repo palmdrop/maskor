@@ -140,7 +140,9 @@ export const SplitFragmentDialog = ({
         if (delimiterType === null) {
           const applied = response.data.appliedDelimiter;
           setDelimiterType(applied.type);
-          if (applied.type === "heading") setHeadingLevel(applied.level as HeadingLevel);
+          if (applied.type === "heading") {
+            setHeadingLevel(applied.level as HeadingLevel);
+          }
         }
       } catch {
         if (cancelled) return;
@@ -168,7 +170,7 @@ export const SplitFragmentDialog = ({
     for (const piece of pieces) {
       const key = effectiveKey(piece).trim();
       if (piece.pieceIndex >= 2) {
-        if (key.length === 0) return "Piece keys must not be empty.";
+        if (!key.length) return "Piece keys must not be empty.";
         if (!ENTITY_KEY_REGEX.test(key)) {
           return "Keys may only contain letters, numbers, spaces, hyphens, and underscores.";
         }
@@ -206,7 +208,7 @@ export const SplitFragmentDialog = ({
     try {
       await splitFragment.mutateAsync({
         projectId,
-        data: { fragmentId, delimiter, pieceKeys: pieceKeys.length > 0 ? pieceKeys : undefined },
+        data: { fragmentId, delimiter, pieceKeys: pieceKeys.length ? pieceKeys : undefined },
       });
     } catch (error) {
       // Surface the server's key-conflict message when present (e.g. a chosen key

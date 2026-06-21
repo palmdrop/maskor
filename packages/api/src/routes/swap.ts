@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
 import { ErrorResponseSchema } from "../schemas/error";
-import { z } from "@hono/zod-openapi";
+import { projectIdParamSchema } from "../schemas/shared";
 import {
   SwapListResponseSchema,
   SwapParamSchema,
@@ -19,7 +19,7 @@ const listSwapsRoute = createRoute({
   path: "/",
   tags: ["Swap"],
   summary: "List all entities that currently have an unsaved-content swap file",
-  request: { params: z.object({ projectId: z.uuid() }) },
+  request: { params: projectIdParamSchema },
   responses: {
     200: {
       content: { "application/json": { schema: SwapListResponseSchema } },

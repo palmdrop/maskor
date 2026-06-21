@@ -9,6 +9,12 @@ vi.mock("@api/generated/swap/swap", () => ({
   useGetSwap: (...args: unknown[]) => useGetSwapMock(...args),
   usePutSwap: (...args: unknown[]) => usePutSwapMock(...args),
   useDeleteSwap: (...args: unknown[]) => useDeleteSwapMock(...args),
+  getListSwapsQueryKey: (projectId: string) => ["listSwaps", projectId],
+}));
+
+const invalidateQueriesMock = vi.fn();
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
 }));
 
 import { useEntityContentSwap } from "./useEntityContentSwap";
@@ -51,6 +57,7 @@ beforeEach(() => {
   useGetSwapMock.mockReset();
   usePutSwapMock.mockReset();
   useDeleteSwapMock.mockReset();
+  invalidateQueriesMock.mockReset();
 });
 
 afterEach(() => {
@@ -241,5 +248,75 @@ describe("useEntityContentSwap — clear()", () => {
         await result.current.clear();
       }),
     ).resolves.not.toThrow();
+  });
+});
+
+describe("useEntityContentSwap — swap-list refresh (unsaved-changes dot)", () => {
+  it("refreshes the swap list once when the first write creates the swap", async () => {
+    const putMutate = vi.fn((_vars: unknown, opts?: { onSuccess?: () => void }) =>
+      opts?.onSuccess?.(),
+    );
+    setupMocks(emptySwapQuery(), putMutate);
+
+    const { rerender } = renderHook(
+      ({ currentValue }: { currentValue: string }) =>
+        useEntityContentSwap({ ...baseProps, currentValue }),
+      { initialProps: { currentValue: "server content" } },
+    );
+
+    rerender({ currentValue: "draft body" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
+    expect(invalidateQueriesMock).toHaveBeenCalledTimes(1);
+    expect(invalidateQueriesMock.mock.calls[0]?.[0]).toEqual({
+      queryKey: ["listSwaps", "project-1"],
+    });
+
+    // A second write to the same (now-present) swap does not re-fetch the list.
+    rerender({ currentValue: "draft body 2" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+    expect(invalidateQueriesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the swap list when clear() removes an existing swap", async () => {
+    setupMocks(
+      mountedQuery({
+        status: 200,
+        data: { content: "cached body", savedAt: "2026-05-19T10:00:00.000Z" },
+      }),
+    );
+
+    const { result } = renderHook(() => useEntityContentSwap(baseProps));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await act(async () => {
+      await result.current.clear();
+    });
+
+    expect(invalidateQueriesMock).toHaveBeenCalledTimes(1);
+    expect(invalidateQueriesMock.mock.calls[0]?.[0]).toEqual({
+      queryKey: ["listSwaps", "project-1"],
+    });
+  });
+
+  it("does not refresh the swap list when clear() finds no swap present", async () => {
+    setupMocks(emptySwapQuery());
+
+    const { result } = renderHook(() => useEntityContentSwap(baseProps));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await act(async () => {
+      await result.current.clear();
+    });
+
+    expect(invalidateQueriesMock).not.toHaveBeenCalled();
   });
 });
