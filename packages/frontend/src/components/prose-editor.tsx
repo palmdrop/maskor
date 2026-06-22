@@ -484,6 +484,13 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
             // Seed the document-link config so links style/navigate from first paint.
             view.dispatch({ effects: setCmLinkConfigEffect.of(linkConfigRef.current) });
 
+            // NOTE: Vim.defineEx registers `:w` *globally* on the vim state machine and is never
+            // torn down on unmount (the lib has no undefineEx). Harmless today: only one
+            // ProseEditor is ever mounted, and `onSaveRef` keeps `:w` pointed at the live editor's
+            // latest onSave. But with multiple ProseEditor instances mounted at once, the
+            // last-created one's registration wins for everyone — `:w` would save that editor, not
+            // the focused one. Revisit (register once at module scope, routed to the active editor)
+            // if multi-pane editing is ever added.
             Vim.defineEx("w", "", () => onSaveRef.current?.());
             // Kudos https://github.com/ianhi/jupyterlab-vimrc/blob/2dedaf7f48b7b3bd462defda77ae3865fbff70e9/src/index.ts#L34-L37
             if (vimMode) {
