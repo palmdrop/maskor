@@ -26,6 +26,7 @@ import {
   type LinkSuggestionItem,
 } from "./document-link-suggestion-tiptap";
 import { EMPTY_LINK_LOOKUPS, type LinkLookups } from "@lib/document-links/resolver";
+import { unescapeDocumentLinks } from "@lib/document-links/markdown";
 import type { LinkPathType } from "@maskor/shared";
 import { tiptapAnchorExtension, extractTiptapAnchors } from "./anchor-tiptap";
 import { blockRanges } from "@lib/margins/block-ranges";
@@ -387,7 +388,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     // Trailing whitespace is normalized by the server on write (body.trim()), so trim both sides
     // before comparing — a trailing-newline difference must not trigger a full setContent that resets
     // the caret.
-    const current = (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown();
+    // Unescape link spans so the comparison matches the canonical (clean) `cleanContent` — otherwise
+    // a fragment containing a link would look perpetually "changed" and re-sync on every render.
+    const current = unescapeDocumentLinks(
+      (editor.storage as unknown as MarkdownStorage).markdown.getMarkdown(),
+    );
     const didSyncContent = !isTrailingWhitespaceEquivalent(cleanContent, current);
     if (didSyncContent) {
       isLoadingRef.current = true;

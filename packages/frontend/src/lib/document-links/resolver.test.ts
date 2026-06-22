@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { parseDocumentLinks } from "@maskor/shared";
-import { resolveParsedLink, findLinkRanges, linkRouteFor, type LinkLookups } from "./resolver";
+import {
+  resolveParsedLink,
+  findLinkRanges,
+  linkRouteFor,
+  trailingLinkSpan,
+  type LinkLookups,
+} from "./resolver";
 
 const lookups: LinkLookups = {
   fragments: new Map([["chapter-1", "frag-uuid"]]),
@@ -63,5 +69,25 @@ describe("linkRouteFor", () => {
       "/projects/$projectId/fragments/$fragmentId",
     );
     expect(linkRouteFor("aspects", "u", "p").params).toEqual({ projectId: "p", aspectId: "u" });
+  });
+});
+
+describe("trailingLinkSpan", () => {
+  it("consumes a closeBrackets-inserted `]]` right after the cursor", () => {
+    expect(trailingLinkSpan("]]")).toBe(2);
+    expect(trailingLinkSpan("]] trailing prose")).toBe(2);
+  });
+
+  it("consumes the tail of an existing link being edited (through its `]]`)", () => {
+    // Editing `[[fragments/ol|d-key]]` with the caret after "ol": the text after the caret is the
+    // remaining key plus the closing brackets — all of it is replaced.
+    expect(trailingLinkSpan("d-key]]")).toBe(7);
+  });
+
+  it("returns 0 for an open link (no closing `]]` before a newline or the next `[[`)", () => {
+    expect(trailingLinkSpan("")).toBe(0);
+    expect(trailingLinkSpan(" rest of line")).toBe(0);
+    expect(trailingLinkSpan("\n]]")).toBe(0);
+    expect(trailingLinkSpan("foo [[notes/bar]]")).toBe(0);
   });
 });

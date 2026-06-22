@@ -189,6 +189,8 @@ a {
    link text range. Resolved links read as entity tags; broken links are dotted/red. */
 .doc-link {
   color: var(--color-primary, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 .doc-link-broken {
@@ -230,9 +232,4 @@ a {
 .doc-link-suggestion-type {
   color: var(--color-muted-foreground, #6b7280);
   font-size: 0.75rem;
-}
-.doc-link-suggestion-empty {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  color: var(--color-muted-foreground, #6b7280);
 }

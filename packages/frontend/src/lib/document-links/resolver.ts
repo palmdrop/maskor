@@ -75,6 +75,21 @@ export const findLinkRanges = (text: string, lookups: LinkLookups): LinkRange[] 
     raw: parsed.raw,
   }));
 
+// How many characters *after* the cursor an accepted `[[` completion should also replace: through a
+// closing `]]` that belongs to this link, so (a) editing an existing `[[type/key]]` replaces the whole
+// link rather than appending a second `]]`, and (b) the `]]` CodeMirror's closeBrackets auto-inserts
+// is consumed. Returns 0 when no `]]` closes the link before the next `[[` or a newline (an open link —
+// the completion supplies its own `]]`). `textAfterCursor` should run to the end of the line/block.
+export const trailingLinkSpan = (textAfterCursor: string): number => {
+  for (let index = 0; index < textAfterCursor.length - 1; index += 1) {
+    const char = textAfterCursor[index];
+    if (char === "\n") return 0;
+    if (char === "[" && textAfterCursor[index + 1] === "[") return 0; // next link begins; ours is open
+    if (char === "]" && textAfterCursor[index + 1] === "]") return index + 2; // consume through `]]`
+  }
+  return 0;
+};
+
 // The TanStack route + params for navigating to a resolved link target.
 export const linkRouteFor = (
   pathType: LinkPathType,

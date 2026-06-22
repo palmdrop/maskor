@@ -5,6 +5,7 @@ import {
   StateEffect,
   StateField,
   keymap,
+  Prec,
   type EditorState,
 } from "@uiw/react-codemirror";
 import {
@@ -12,15 +13,15 @@ import {
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
-import { findLinkRanges, type LinkLookups } from "@lib/document-links/resolver";
+import { findLinkRanges, trailingLinkSpan, type LinkLookups } from "@lib/document-links/resolver";
 import type { LinkPathType } from "@maskor/shared";
 
 const PATH_TYPES: LinkPathType[] = ["fragments", "notes", "references", "aspects"];
 
 // Document-link rendering for the raw/vim (CM6) editor: a mark decoration styles every `[[type/key]]`
-// occurrence (resolved vs broken) and Cmd/Ctrl-click on a resolved link navigates to its target. The
-// link text stays in the buffer verbatim (unlike comment anchors) — links are user-visible,
-// Obsidian-compatible content.
+// occurrence (resolved vs broken) and a click on a resolved link navigates to its target (the vim
+// `gd` motion and `Mod-Enter` do the same from the caret). The link text stays in the buffer verbatim
+// (unlike comment anchors) — links are user-visible, Obsidian-compatible content.
 
 export type CmLinkConfig = {
   lookups: LinkLookups;
@@ -38,12 +39,6 @@ export const cmLinkConfigField = StateField.define<CmLinkConfig | null>({
     return value;
   },
 });
-
-// True when a closing `]]` (auto-inserted by CodeMirror's closeBrackets the moment the user typed
-// `[[`) sits immediately after the completion range and must be swallowed — otherwise completing the
-// link yields `[[type/key]]]]`.
-export const hasAutoClosedBrackets = (textAfterCursor: string): boolean =>
-  textAfterCursor.startsWith("]]");
 
 const resolvedMark = Decoration.mark({ class: "cm-doc-link" });
 const brokenMark = Decoration.mark({ class: "cm-doc-link-broken" });
@@ -75,18 +70,22 @@ const linkAt = (state: EditorState, pos: number) => {
   return { pathType: range.resolved.pathType, uuid: range.resolved.uuid, config };
 };
 
-const linkClickHandler = EditorView.domEventHandlers({
-  mousedown(event, view) {
-    if (!(event.metaKey || event.ctrlKey)) return false;
-    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-    if (pos === null) return false;
-    const hit = linkAt(view.state, pos);
-    if (!hit) return false;
-    event.preventDefault();
-    hit.config.navigate(hit.pathType, hit.uuid);
-    return true;
-  },
-});
+// A plain click on a resolved link navigates (matching rich mode; broken links fall through so they
+// stay editable). High precedence so it runs before vim's own mouse handling. Uses `click` rather than
+// `mousedown` so a text-selection drag that begins on a link isn't hijacked.
+const linkClickHandler = Prec.high(
+  EditorView.domEventHandlers({
+    click(event, view) {
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos === null) return false;
+      const hit = linkAt(view.state, pos);
+      if (!hit) return false;
+      event.preventDefault();
+      hit.config.navigate(hit.pathType, hit.uuid);
+      return true;
+    },
+  }),
+);
 
 // Navigate the resolved link the caret sits in (vim `gd` + the `Mod-Enter` keymap below). Returns
 // false when the caret is not inside a resolved link, so the key falls through to its default.
@@ -104,6 +103,8 @@ const linkKeymap = keymap.of([
 const linkTheme = EditorView.baseTheme({
   ".cm-doc-link": {
     color: "var(--color-primary, #2563eb)",
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
     cursor: "pointer",
   },
   ".cm-doc-link-broken": {
@@ -124,13 +125,14 @@ const linkCompletionSource = (context: CompletionContext): CompletionResult | nu
     [...config.lookups[pathType].keys()].map((key) => ({
       label: `${pathType}/${key}`,
       type: "link",
-      // Insert `type/key]]` after the existing `[[`, and swallow a closing `]]` that CodeMirror's
-      // closeBrackets auto-inserted when the user typed `[[` — otherwise the result is `[[type/key]]]]`.
+      // Insert `type/key]]` after the existing `[[`, replacing through any closing `]]` already present
+      // — closeBrackets' auto-inserted `]]`, or the tail of a link being edited — so we never produce
+      // `[[type/key]]]]` and editing an existing link rewrites it cleanly.
       apply: (view: EditorView, _completion: unknown, from: number, to: number) => {
         const insert = `${pathType}/${key}]]`;
-        const trailing = hasAutoClosedBrackets(view.state.sliceDoc(to, to + 2)) ? 2 : 0;
+        const span = trailingLinkSpan(view.state.sliceDoc(to, view.state.doc.lineAt(to).to));
         view.dispatch({
-          changes: { from, to: to + trailing, insert },
+          changes: { from, to: to + span, insert },
           selection: { anchor: from + insert.length },
         });
       },

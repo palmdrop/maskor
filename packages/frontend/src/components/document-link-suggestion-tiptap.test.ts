@@ -35,6 +35,13 @@ describe("filterItems", () => {
     expect(filterItems(items, "nonexistent")).toEqual([]);
   });
 
+  it("returns nothing when the query contains a bracket (caret is in/after a closed link)", () => {
+    // The matcher sweeps up a `]` when the caret sits in or just past an existing `[[…]]` link;
+    // returning nothing keeps the popup from appearing there.
+    expect(filterItems(items, "notes/setting-notes]]")).toEqual([]);
+    expect(filterItems(items, "grief]")).toEqual([]);
+  });
+
   it("caps the result list", () => {
     const many: LinkSuggestionItem[] = Array.from({ length: 50 }, (_, index) => ({
       pathType: "notes" as const,

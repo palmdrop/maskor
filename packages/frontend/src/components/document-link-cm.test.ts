@@ -4,23 +4,9 @@ import {
   cmLinkConfigField,
   setCmLinkConfigEffect,
   navigateDocumentLinkAtCursor,
-  hasAutoClosedBrackets,
   type CmLinkConfig,
 } from "./document-link-cm";
 import { EMPTY_LINK_LOOKUPS } from "@lib/document-links/resolver";
-
-describe("hasAutoClosedBrackets", () => {
-  it("detects a closeBrackets-inserted `]]` right after the cursor", () => {
-    expect(hasAutoClosedBrackets("]]")).toBe(true);
-    expect(hasAutoClosedBrackets("]] more")).toBe(true);
-  });
-
-  it("is false when no closing brackets follow", () => {
-    expect(hasAutoClosedBrackets("")).toBe(false);
-    expect(hasAutoClosedBrackets("] ")).toBe(false);
-    expect(hasAutoClosedBrackets(" text")).toBe(false);
-  });
-});
 
 describe("navigateDocumentLinkAtCursor", () => {
   const config = (navigate: CmLinkConfig["navigate"]): CmLinkConfig => ({

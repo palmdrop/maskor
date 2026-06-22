@@ -2,6 +2,7 @@ import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import { buildDocumentLink, type LinkPathType } from "@maskor/shared";
+import { trailingLinkSpan } from "@lib/document-links/resolver";
 
 // Rich-mode `[[` autocomplete (the CM6 editor has the equivalent via @codemirror/autocomplete). Typing
 // `[[` opens a popup listing every linkable entity project-wide; selecting one replaces the typed
@@ -16,7 +17,10 @@ export const documentLinkSuggestionPluginKey = new PluginKey("documentLinkSugges
 const MAX_RESULTS = 30;
 
 // Exported for unit testing. Case-insensitive substring match on the key and on `type/key`, capped.
+// A query containing a bracket means the caret sits in or just past an already-closed `[[…]]` link
+// (the matcher swept up a `]`), not a link being typed — return nothing so no popup is shown.
 export const filterItems = (items: LinkSuggestionItem[], query: string): LinkSuggestionItem[] => {
+  if (query.includes("[") || query.includes("]")) return [];
   const normalized = query.trim().toLowerCase();
   const matches = normalized
     ? items.filter(
@@ -39,15 +43,8 @@ const createPopup = () => {
   let selectedIndex = 0;
   let onCommand: PopupCommand = () => {};
 
-  const render = () => {
+  const renderOptions = () => {
     element.replaceChildren();
-    if (items.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "doc-link-suggestion-empty";
-      empty.textContent = "No matching entities";
-      element.appendChild(empty);
-      return;
-    }
     items.forEach((item, index) => {
       const option = document.createElement("button");
       option.type = "button";
@@ -78,45 +75,43 @@ const createPopup = () => {
     element.style.top = `${rect.bottom + window.scrollY + 4}px`;
   };
 
+  // Render the list, or hide entirely when there is nothing to offer — an empty "No matching
+  // entities" popover is noise (it appears in/around already-complete links). When hidden the popup
+  // is detached so keys fall through to the editor (Enter inserts a newline, etc.).
+  const show = (
+    nextItems: LinkSuggestionItem[],
+    command: PopupCommand,
+    rect: DOMRect | null | undefined,
+  ) => {
+    const wasHidden = items.length === 0;
+    items = nextItems;
+    onCommand = command;
+    if (items.length === 0) {
+      element.remove();
+      return;
+    }
+    if (wasHidden || selectedIndex >= items.length) selectedIndex = 0;
+    renderOptions();
+    if (!element.isConnected) document.body.appendChild(element);
+    position(rect ?? null);
+  };
+
   return {
     element,
-    mount(
-      nextItems: LinkSuggestionItem[],
-      command: PopupCommand,
-      rect: DOMRect | null | undefined,
-    ) {
-      items = nextItems;
-      onCommand = command;
-      selectedIndex = 0;
-      render();
-      position(rect ?? null);
-      document.body.appendChild(element);
-    },
-    update(
-      nextItems: LinkSuggestionItem[],
-      command: PopupCommand,
-      rect: DOMRect | null | undefined,
-    ) {
-      items = nextItems;
-      onCommand = command;
-      if (selectedIndex >= items.length) selectedIndex = Math.max(0, items.length - 1);
-      render();
-      position(rect ?? null);
-    },
-    // Returns true when the key was handled (so the editor doesn't also act on it).
+    mount: show,
+    update: show,
+    // Returns true when the key was handled (so the editor doesn't also act on it). When hidden
+    // (no items) nothing is handled, so the keystroke does its normal editor thing.
     onKeyDown(event: KeyboardEvent): boolean {
-      if (items.length === 0) {
-        // Still swallow Escape so it closes nothing-but-the-popup cleanly elsewhere; let the rest pass.
-        return event.key === "Escape";
-      }
+      if (items.length === 0) return false;
       if (event.key === "ArrowDown") {
         selectedIndex = (selectedIndex + 1) % items.length;
-        render();
+        renderOptions();
         return true;
       }
       if (event.key === "ArrowUp") {
         selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-        render();
+        renderOptions();
         return true;
       }
       if (event.key === "Enter") {
@@ -149,10 +144,18 @@ export const buildDocumentLinkSuggestion = (config: { getItems: () => LinkSugges
         startOfLine: false,
         items: ({ query }) => filterItems(config.getItems(), query),
         command: ({ editor, range, props }) => {
+          // Replace through a closing `]]` that already follows (editing an existing link) so we don't
+          // leave a dangling `]]`; `buildDocumentLink` supplies the canonical brackets either way.
+          const { state } = editor;
+          const blockEnd = state.doc.resolve(range.to).end();
+          const span = trailingLinkSpan(state.doc.textBetween(range.to, blockEnd, "\n", "\n"));
           editor
             .chain()
             .focus()
-            .insertContentAt(range, buildDocumentLink(props.pathType, props.key))
+            .insertContentAt(
+              { from: range.from, to: range.to + span },
+              buildDocumentLink(props.pathType, props.key),
+            )
             .run();
         },
         render: () => {

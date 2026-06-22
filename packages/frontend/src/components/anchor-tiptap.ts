@@ -1,5 +1,6 @@
 import { Extension, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
+import { unescapeDocumentLinks } from "@lib/document-links/markdown";
 
 // Comment anchors for the rich (TipTap) editor (ADR 0009). The `<!--c:ID-->` marker never lives in
 // the live document; on load it is parsed into a transient node, converted to one of these anchors,
@@ -64,7 +65,11 @@ export const serializeTiptapWithMarkers = (editor: Editor): string => {
   const storage = editor.storage as unknown as MarkdownStorage;
   const markerType = editor.schema.nodes.commentMarker;
   const anchors = tiptapAnchorKey.getState(editor.state) ?? [];
-  if (!markerType || anchors.length === 0) return storage.markdown.getMarkdown();
+  // The markdown serializer backslash-escapes `[`/`]`, mangling `[[type/key]]` links — undo that for
+  // link spans so they round-trip to the vault file cleanly (see lib/document-links/markdown.ts).
+  if (!markerType || anchors.length === 0) {
+    return unescapeDocumentLinks(storage.markdown.getMarkdown());
+  }
   let transaction = editor.state.tr;
   for (const anchor of [...anchors].sort((a, b) => b.pos - a.pos)) {
     try {
@@ -76,7 +81,7 @@ export const serializeTiptapWithMarkers = (editor: Editor): string => {
       // A drifted position that can't host an inline node — drop the marker rather than throw.
     }
   }
-  return storage.markdown.serializer.serialize(transaction.doc);
+  return unescapeDocumentLinks(storage.markdown.serializer.serialize(transaction.doc));
 };
 
 export const tiptapAnchorExtension = Extension.create({
