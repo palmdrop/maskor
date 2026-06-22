@@ -9,6 +9,7 @@ import { createRegistryDatabase } from "../db/registry";
 import { createVaultIndexer } from "../indexer/indexer";
 import {
   MASKOR_DB_AUTO_RESET_ENV,
+  classifySchemaState,
   computeSchemaFingerprint,
   resetDatabaseIfSchemaDrifted,
 } from "../db/schema-fingerprint";
@@ -136,22 +137,56 @@ describe("resetDatabaseIfSchemaDrifted — migration-set change is the real trig
     database.close();
   };
 
-  it("resets when a migration is added after the DB was stamped (flag set)", () => {
-    const folder = join(tmpDir, "migrations-trigger");
+  it("does NOT reset when a migration is appended — migrate() applies it forward (flag set)", () => {
+    const folder = join(tmpDir, "migrations-forward");
     writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
 
-    const dbPath = join(tmpDir, "drift.db");
+    const dbPath = join(tmpDir, "forward.db");
     // DB built and stamped against the original 2-migration set.
     stamp(dbPath, computeSchemaFingerprint(folder));
 
-    // db:generate adds a migration — the set (and its fingerprint) changes.
+    // db:generate appends a migration — a forward-only change migrate() can apply in place.
     writeMigrationsFolder(folder, ["0001_init", "0002_more", "0003_new_column"]);
 
     process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
     const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
 
+    expect(didReset).toBe(false);
+    expect(existsSync(dbPath)).toBe(true); // preserved — migrate() applies 0003, data survives
+  });
+
+  it("resets when an already-applied migration is amended in place (flag set)", () => {
+    const folder = join(tmpDir, "migrations-amend-reset");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+
+    const dbPath = join(tmpDir, "amend.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+
+    // Same tags/journal, but 0001's SQL body changes — migrate() can't reconcile this.
+    writeFileSync(join(folder, "0001_init.sql"), "CREATE TABLE init_amended (x, y);");
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
+
     expect(didReset).toBe(true);
-    expect(existsSync(dbPath)).toBe(false); // dropped so the caller recreates it clean
+    expect(existsSync(dbPath)).toBe(false);
+  });
+
+  it("resets when a previously-applied migration is removed (flag set)", () => {
+    const folder = join(tmpDir, "migrations-remove");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+
+    const dbPath = join(tmpDir, "remove.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+
+    // 0002 dropped — the stamp is no longer a prefix of the current set.
+    writeMigrationsFolder(folder, ["0001_init"]);
+
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    const didReset = resetDatabaseIfSchemaDrifted(dbPath, folder, "vault");
+
+    expect(didReset).toBe(true);
+    expect(existsSync(dbPath)).toBe(false);
   });
 
   it("does not reset when the migration set is unchanged (flag set)", () => {
@@ -181,6 +216,54 @@ describe("resetDatabaseIfSchemaDrifted — migration-set change is the real trig
 
     expect(didReset).toBe(false);
     expect(existsSync(dbPath)).toBe(true);
+  });
+});
+
+describe("classifySchemaState", () => {
+  const stamp = (path: string, fingerprint: number): void => {
+    const database = new Database(path);
+    database.exec(`PRAGMA user_version = ${fingerprint}`);
+    database.close();
+  };
+
+  it("is 'absent' when the DB file does not exist", () => {
+    const folder = join(tmpDir, "migrations-absent");
+    writeMigrationsFolder(folder, ["0001_init"]);
+    expect(classifySchemaState(join(tmpDir, "nope.db"), folder)).toBe("absent");
+  });
+
+  it("is 'match' when the stamp equals the current migration set", () => {
+    const folder = join(tmpDir, "migrations-match");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+    const dbPath = join(tmpDir, "match.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+    expect(classifySchemaState(dbPath, folder)).toBe("match");
+  });
+
+  it("is 'forward' when the stamp equals a proper prefix (migrations appended)", () => {
+    const folder = join(tmpDir, "migrations-fwd");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+    const dbPath = join(tmpDir, "fwd.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+    writeMigrationsFolder(folder, ["0001_init", "0002_more", "0003_new"]);
+    expect(classifySchemaState(dbPath, folder)).toBe("forward");
+  });
+
+  it("is 'drift' when an already-applied migration is amended", () => {
+    const folder = join(tmpDir, "migrations-drift-amend");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+    const dbPath = join(tmpDir, "drift-amend.db");
+    stamp(dbPath, computeSchemaFingerprint(folder));
+    writeFileSync(join(folder, "0001_init.sql"), "CREATE TABLE init_amended (x, y);");
+    expect(classifySchemaState(dbPath, folder)).toBe("drift");
+  });
+
+  it("is 'drift' for an unrelated stamp that matches no prefix", () => {
+    const folder = join(tmpDir, "migrations-drift-unrelated");
+    writeMigrationsFolder(folder, ["0001_init", "0002_more"]);
+    const dbPath = join(tmpDir, "drift-unrelated.db");
+    stamp(dbPath, 999);
+    expect(classifySchemaState(dbPath, folder)).toBe("drift");
   });
 });
 

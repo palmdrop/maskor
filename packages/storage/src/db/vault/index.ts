@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import * as schema from "./schema";
 import {
+  classifySchemaState,
   deleteDatabaseFiles,
   resetDatabaseIfSchemaDrifted,
   stampSchemaFingerprint,
@@ -27,9 +28,11 @@ export const createVaultDatabase = (vaultRoot: string) => {
   mkdirSync(maskorDirectory, { recursive: true });
 
   const databaseFilePath = vaultDatabaseFilePath(vaultRoot);
+  // Classify before any reset: a forward-only migration addition is applied incrementally by
+  // migrate() below (preserving fragment_stats etc.), while a genuine drift (amend/remove/corrupt)
+  // is reset here. The captured state also decides whether to re-stamp after migrate().
+  const schemaState = classifySchemaState(databaseFilePath, migrationsFolder);
   resetDatabaseIfSchemaDrifted(databaseFilePath, migrationsFolder, "vault");
-  // Capture freshness after any reset: a fresh DB gets the full schema from migrate(), so its
-  // fingerprint is stamped below. An existing DB is left unstamped to preserve drift detection.
   const isFreshDatabase = !existsSync(databaseFilePath);
 
   const database = new Database(databaseFilePath);
@@ -38,7 +41,11 @@ export const createVaultDatabase = (vaultRoot: string) => {
 
   migrate(vaultDatabase, { migrationsFolder });
 
-  if (isFreshDatabase) {
+  // Re-stamp whenever the DB now matches the current migration set: a fresh / just-reset DB (full
+  // schema from migrate()), an already-current DB, or a forward DB whose appended migrations
+  // migrate() just applied. A drift left in place (auto-reset off) is left unstamped so its stale
+  // fingerprint keeps the drift detectable on a later flag-on run.
+  if (isFreshDatabase || schemaState === "match" || schemaState === "forward") {
     stampSchemaFingerprint(database, migrationsFolder);
   }
 

@@ -2,8 +2,9 @@ import { Database } from "bun:sqlite";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-// Opt-in dev escape hatch. When set, a DB whose schema fingerprint no longer matches the
-// code's migration set is dropped and recreated clean on open, instead of forcing the
+// Opt-in dev escape hatch. When set, a DB whose schema has genuinely drifted from the code's
+// migration set (an amended/removed migration, or a corrupt file — NOT a forward-only addition,
+// which migrate() applies in place) is dropped and recreated clean on open, instead of forcing the
 // developer to manually delete the DB + restart + reload after a schema change.
 //
 // Off by default: a normal/packaged run never resets. The reset discards DB-only state that
@@ -37,21 +38,32 @@ interface JournalEntry {
   tag: string;
 }
 
-// Deterministic fingerprint of the migration set. The journal records each migration's tag and
-// timestamp — enough to catch added, removed, or regenerated migrations, but NOT an in-place edit
-// to an already-applied migration's SQL (its journal entry is unchanged). That amend case is one
-// of the drift scenarios the reset must catch, so we fold in every migration's SQL body too: any
-// add, remove, regenerate, or amend changes the fingerprint.
-export const computeSchemaFingerprint = (migrationsFolder: string): number => {
+// The migration tags in journal (apply) order.
+const readMigrationTags = (migrationsFolder: string): string[] => {
   const journal = readFileSync(journalFilePath(migrationsFolder), "utf8");
   const entries = (JSON.parse(journal) as { entries?: JournalEntry[] }).entries ?? [];
-
-  const migrationSql = entries
-    .map((entry) => readFileSync(join(migrationsFolder, `${entry.tag}.sql`), "utf8"))
-    .join("\n");
-
-  return hashString(`${journal}\n${migrationSql}`);
+  return entries.map((entry) => entry.tag);
 };
+
+// Fingerprint of the first `count` migrations, folding each migration's tag + SQL body in apply
+// order. Folding per-migration (rather than hashing the whole journal blob) makes the fingerprint
+// *prefix-stable*: the fingerprint of a migration set equals the fingerprint of its first-N
+// migrations. So a set that only had migrations appended shares the earlier set's prefix
+// fingerprint — which is what lets `classifySchemaState` tell a forward-only addition (migrate()
+// reconciles it, data preserved) apart from an in-place amend/removal (genuine drift).
+const fingerprintForCount = (migrationsFolder: string, count: number): number => {
+  const tags = readMigrationTags(migrationsFolder).slice(0, count);
+  const payload = tags
+    .map((tag) => `${tag}\n${readFileSync(join(migrationsFolder, `${tag}.sql`), "utf8")}`)
+    .join("\n--\n");
+  return hashString(payload);
+};
+
+// Deterministic fingerprint of the full migration set. Any add, remove, regenerate, or in-place
+// amend changes it: tags capture add/remove; folding each SQL body captures an amend (whose
+// journal entry is otherwise unchanged).
+export const computeSchemaFingerprint = (migrationsFolder: string): number =>
+  fingerprintForCount(migrationsFolder, readMigrationTags(migrationsFolder).length);
 
 // Read the stamped fingerprint, or null if the file can't be opened/read — a corrupt or
 // half-written DB (e.g. a half-failed migration) is itself a drift signal, so the caller treats
@@ -77,25 +89,50 @@ export const deleteDatabaseFiles = (databaseFilePath: string): void => {
   }
 };
 
-// If auto-reset is enabled and the on-disk DB's schema fingerprint no longer matches the code's
-// migration set, delete the DB files so the caller recreates them clean (a fresh migrate() then
-// applies the full, current schema). Dev-only; returns true if a reset happened. Targets
-// cross-restart drift: callers cache one DB connection per process (getVaultDatabase /
-// getRegistryDatabase), so the fingerprint always matches on a same-process re-open and this is a
-// no-op there. Because of that single-open-per-process guarantee there is never a live handle to
-// tear down when this fires, so it deletes the files directly rather than going through
-// closeRawVaultDatabase.
+// How the on-disk DB's stamped schema fingerprint relates to the code's current migration set:
+//   "absent"  — no DB file yet (a fresh create).
+//   "match"   — the stamp equals the current set; nothing to do.
+//   "forward" — the stamp equals a *proper prefix* of the current set: the set only had migrations
+//               appended, so migrate() applies them in place and the existing data is preserved.
+//   "drift"   — anything else (an amended/removed migration, an unrelated/older stamp, or an
+//               unreadable/corrupt file): migrate() cannot reconcile it, so a reset is warranted.
+export type SchemaState = "absent" | "match" | "forward" | "drift";
+
+export const classifySchemaState = (
+  databaseFilePath: string,
+  migrationsFolder: string,
+): SchemaState => {
+  if (!existsSync(databaseFilePath)) return "absent";
+
+  const stored = readStoredFingerprint(databaseFilePath);
+  if (stored === null) return "drift";
+
+  const current = computeSchemaFingerprint(migrationsFolder);
+  if (stored === current) return "match";
+
+  // Forward-only addition: the stamp matches some shorter prefix of the current set.
+  const total = readMigrationTags(migrationsFolder).length;
+  for (let count = 1; count < total; count += 1) {
+    if (fingerprintForCount(migrationsFolder, count) === stored) return "forward";
+  }
+  return "drift";
+};
+
+// If auto-reset is enabled and the on-disk DB has genuinely drifted — an amended or removed
+// migration, or a corrupt file, as opposed to a forward-only addition migrate() can apply — delete
+// the DB files so the caller recreates them clean (a fresh migrate() then applies the full, current
+// schema). Dev-only; returns true if a reset happened. Targets cross-restart drift: callers cache
+// one DB connection per process (getVaultDatabase / getRegistryDatabase), so a same-process re-open
+// is always "match" and this is a no-op there. Because of that single-open-per-process guarantee
+// there is never a live handle to tear down when this fires, so it deletes the files directly rather
+// than going through closeRawVaultDatabase.
 export const resetDatabaseIfSchemaDrifted = (
   databaseFilePath: string,
   migrationsFolder: string,
   label: string,
 ): boolean => {
   if (!isAutoResetEnabled()) return false;
-  if (!existsSync(databaseFilePath)) return false;
-
-  const current = computeSchemaFingerprint(migrationsFolder);
-  const stored = readStoredFingerprint(databaseFilePath);
-  if (stored === current) return false;
+  if (classifySchemaState(databaseFilePath, migrationsFolder) !== "drift") return false;
 
   // The registry holds the global project registry — not vault-derived, so a reset loses it until
   // projects re-register. The vault DB is repopulated by the startup rebuild.
@@ -105,16 +142,19 @@ export const resetDatabaseIfSchemaDrifted = (
       : "discarding fragment_stats telemetry and dismissed UUID_COLLISION warnings; " +
         "re-derived from the vault on next rebuild";
   console.warn(
-    `[maskor] ${MASKOR_DB_AUTO_RESET_ENV} is set and the ${label} DB schema fingerprint changed ` +
-      `(${stored ?? "unreadable"} → ${current}). Resetting ${databaseFilePath} (${consequence}).`,
+    `[maskor] ${MASKOR_DB_AUTO_RESET_ENV} is set and the ${label} DB schema has drifted ` +
+      `(an amended/removed migration or a corrupt file). Resetting ${databaseFilePath} ` +
+      `(${consequence}).`,
   );
   deleteDatabaseFiles(databaseFilePath);
   return true;
 };
 
-// Stamp the current schema fingerprint into the DB so a later run can detect drift. Call only
-// after a successful migrate() on a freshly created DB — stamping an already-existing DB whose
-// schema may be stale (amended migration never re-applied) would mask the very drift we detect.
+// Stamp the current schema fingerprint into the DB so a later run can detect drift. Safe to call
+// after a successful migrate() whenever the DB now corresponds to the current migration set: a
+// fresh / just-reset DB (migrate() built the full schema), an already-current DB, or a forward DB
+// whose appended migrations migrate() just applied. Must NOT be called for a drift left in place
+// (auto-reset off): the schema is stale, so re-stamping would mask the very drift we detect.
 export const stampSchemaFingerprint = (database: Database, migrationsFolder: string): void => {
   database.exec(`PRAGMA user_version = ${computeSchemaFingerprint(migrationsFolder)}`);
 };

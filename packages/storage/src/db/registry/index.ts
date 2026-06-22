@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import * as schema from "./schema";
-import { resetDatabaseIfSchemaDrifted, stampSchemaFingerprint } from "../schema-fingerprint";
+import {
+  classifySchemaState,
+  resetDatabaseIfSchemaDrifted,
+  stampSchemaFingerprint,
+} from "../schema-fingerprint";
 
 export type RegistryDatabase = ReturnType<typeof createRegistryDatabase>;
 
@@ -18,9 +22,10 @@ export const createRegistryDatabase = (configDirectory: string) => {
   mkdirSync(configDirectory, { recursive: true });
 
   const databaseFilePath = join(configDirectory, "registry.db");
+  // See createVaultDatabase: classify before any reset so a forward-only addition is applied in
+  // place by migrate() while a genuine drift is reset, and so the state can drive re-stamping.
+  const schemaState = classifySchemaState(databaseFilePath, migrationsFolder);
   resetDatabaseIfSchemaDrifted(databaseFilePath, migrationsFolder, "registry");
-  // See createVaultDatabase: only a freshly created DB carries the full current schema, so only
-  // a fresh DB is stamped. An existing DB stays unstamped to preserve drift detection.
   const isFreshDatabase = !existsSync(databaseFilePath);
 
   const database = new Database(databaseFilePath);
@@ -33,7 +38,9 @@ export const createRegistryDatabase = (configDirectory: string) => {
 
   migrate(registryDatabase, { migrationsFolder });
 
-  if (isFreshDatabase) {
+  // Re-stamp whenever the DB now matches the current migration set (see createVaultDatabase). A
+  // drift left in place (auto-reset off) is left unstamped to preserve drift detection.
+  if (isFreshDatabase || schemaState === "match" || schemaState === "forward") {
     stampSchemaFingerprint(database, migrationsFolder);
   }
 
