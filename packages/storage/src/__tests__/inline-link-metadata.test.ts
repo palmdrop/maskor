@@ -11,6 +11,7 @@ const makeFragment = (overrides: Partial<Fragment>): Fragment => ({
   aspects: {},
   content: "",
   contentHash: "",
+  createdAt: new Date("2026-06-16T00:00:00.000Z"),
   updatedAt: new Date("2026-06-16T00:00:00.000Z"),
   ...overrides,
 });
