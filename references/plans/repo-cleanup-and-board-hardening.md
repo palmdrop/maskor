@@ -15,17 +15,21 @@ green. Local prune executed with developer approval: **46 → 19 local branches*
 merge-confirmed + 7 verify-confirmed-shipped + `obsidian-comments` dropped/abandoned).
 Two safety bundles written to the repo root.
 
+Second prune pass (developer approved "delete all but this branch + main"): deleted the
+remaining 15 working branches after confirming or accepting bundle-recoverability —
+`actual-document-links` confirmed byte-identical to main (document-links shipped),
+`editor-flicker` confirmed (flicker fix + margin refactor in main; only an unadopted
+ProseEditor split left behind), `scroll-issue` superseded (ADR-0013 overlay), the rest
+stale and bundle-backed. **Kept the two `backup/main-pre-rewrite*` branches** (deliberate
+full-rewrite safety nets — pushed back on deleting these).
+
+Final local branches: `main`, `agent/repo-cleanup-and-board-hardening`, `backup/main-pre-rewrite{,-2}`.
+
 Remaining (handed to developer):
 
 - Merge `agent/repo-cleanup-and-board-hardening` → main (carries board, hardening, docs,
-  status updates). Then prune `agent/work-tracking-board` (contained in it) and remove the
-  `manual-todos` worktree.
+  status updates), then remove the `manual-todos` worktree and delete this branch.
 - Delete the 20 merged **remote** branches (`bun run board --prune`) — needs network.
-- ~12 unclassified branches (no Done plan, merge unconfirmed: `better-navigation`,
-  `cache-issues`, `editor-flicker`, `export`, `inline-editing`, `scroll-issue`,
-  `suggestion-fixes`, `suggestion-fixes2`, `toast-errors`, `fix/*`, `ralph/small-improvements`)
-  plus verify-list `actual-document-links` and `margins-review` — need the assisted
-  feature-presence check before pruning (the inline-editor cluster looks superseded, not merged).
 
 ---
 
