@@ -157,7 +157,14 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Workflow / tooling
 
+- [ ] Add ability to push, make PRs, AND MOST IMPORTANTLY, listen for comments on PRs and react accordingly
+  - review could be from me or another agent
+- [ ] Listen to "issues" created, pick them up, run a loop, make a plan, etc, then wait for review
+
+- [ ] Add way of automatically continuing a session when the usage limits resets 
+
 - [ ] add claude browser MCP server and skill for testing manually in browser
+  - important: ability to screenshot views, try different user flows, get direct feedback
 
 - [ ] try the "improve codebase architecture" skill: https://github.com/mattpocock/skills/blob/main/skills/engineering/improve-codebase-architecture/SKILL.md
 
