@@ -1,8 +1,8 @@
 # Fragment editor + Margin: flicker/alignment fixes and component refactor
 
 **Date**: 05-06-2026
-**Status**: In progress <!-- code complete; manual vim-mode browser smoke owed (Phase 5) -->
-**Closed**: —
+**Status**: Done <!-- shipped to main; manual vim-mode browser smoke still owed (Phase 5) -->
+**Closed**: 23-06-2026
 **Specs**: `specifications/margins.md`
 
 ---

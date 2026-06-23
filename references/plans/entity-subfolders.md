@@ -1,7 +1,8 @@
 # Entity subfolders (categories) and UUID-anchored identity
 
 **Date**: 26-05-2026
-**Status**: In progress
+**Status**: Done <!-- shipped to main; all tasks complete -->
+**Closed**: 23-06-2026
 **Specs**: `specifications/aspect-arc-model.md`, `specifications/attachments.md`, `specifications/storage-sync.md`, `specifications/project-management.md`
 **ADR**: `references/adr/0002-uuid-revival-on-return.md`
 

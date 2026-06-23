@@ -1,7 +1,8 @@
 # Entity Editor Unification
 
 **Date**: 04-05-2026
-**Status**: Phases 1–5 complete; Phase 6 (tests, codegen) remaining
+**Status**: Done <!-- Phase 6 landed: entity-editor-shell.test.tsx confirmed in main -->
+**Closed**: 23-06-2026
 
 ---
 

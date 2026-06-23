@@ -38,9 +38,32 @@ no branch, and plan content that diverges across worktrees.
 `idea → planned → building → in-review → fixes-pending → merged → done` (+ `abandoned`)
 
 The board **infers** the stage from git reality plus the plan's `**Status**:` line,
-so you normally write nothing extra. Git wins over claims: a plan marked Done whose
-branch never merged surfaces as `building`, flagged. Override only to correct a wrong
-inference, with a `**Lifecycle**:` line in the plan (see the plan template).
+so you normally write nothing extra. Override only to correct a wrong inference, with
+a `**Lifecycle**:` line in the plan (see the plan template).
+
+## Confirming a merge (and why squash-merges are hard)
+
+The board decides "is this branch's work in main?" with a ladder, strongest first:
+
+1. **ancestor** — the branch tip is reachable from main (fast-forward / merge commit). Definitive.
+2. **provenance** — the plan's `**Merged**: <sha>` is reachable from main. Definitive.
+3. **squash** — best-effort: the branch's *combined* diff is already a patch in main
+   (`git commit-tree` + `git cherry`). This is fragile: once main edits the same lines
+   after the squash, it stops matching and falls through to…
+4. **unconfirmed** — no evidence. This is **not** proof the work is unmerged. A Done plan
+   here is shown as `done` with a "merge unconfirmed — verify before pruning" flag, never
+   auto-listed for deletion.
+
+Because this project squash-merges and main keeps moving, content detection alone is
+unreliable for older branches. **The durable signal is `**Merged**: <sha>`, recorded at
+merge time.** Set it and the branch is confirmed forever, regardless of later edits.
+
+## On merge — the ritual
+
+When a plan's work lands in main: set `**Status**: Done`, `**Closed**`, and
+`**Merged**: <sha>` in the plan, then **delete the branch and its worktree**. Pruning
+right after merge is what keeps the board clean — an un-pruned squash-merged branch
+otherwise sits on the "verify" list indefinitely.
 
 ## Reviews track their own resolution
 
@@ -51,9 +74,17 @@ reviews with no markers are assumed resolved once their work has merged.
 
 ## Hygiene
 
-`bun run board --prune` lists merged local/remote branches with the exact delete
-commands (it never runs them), plus worktree/branch/plan name mismatches and orphan
-worktrees. Prune merged branches regularly — they are pure noise otherwise.
+`bun run board --prune` (it never deletes anything) lists:
+
+- **prunable** — merge-confirmed local branches with the exact command: `-d` for
+  ancestors, `-D` for squash/provenance-confirmed (not ancestors, so `-d` refuses).
+- **verify** — Done plans whose merge is unconfirmed. Confirm the work is in main
+  (it may be squash-merged with main moved on, or genuinely unmerged) before deleting;
+  record `**Merged**: <sha>` once confirmed.
+- merged remote branches, worktree/branch/plan name mismatches, and orphan worktrees.
+
+Backups (`backup/*`) and worktree-attached branches are never listed as prunable.
+Prune merged branches regularly — they are pure noise otherwise.
 
 ## Retired
 

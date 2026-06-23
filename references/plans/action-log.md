@@ -1,7 +1,8 @@
 # Plan: Action Log v1 (observability + history page)
 
 **Date**: 08-05-2026
-**Status**: In Progress
+**Status**: Done <!-- feature shipped to main; the 2 unchecked tasks below are owed test coverage, tracked as follow-up -->
+**Closed**: 23-06-2026
 **Specs**: `specifications/action-log.md`
 
 ---

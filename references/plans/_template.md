@@ -5,6 +5,7 @@
 **Specs**: `specifications/<relevant specification>.md` <!-- Add if there is a relevant specification for this plan -->
 **Branch**: agent/<plan-filename-stem> <!-- optional; only needed to resolve a name mismatch the board can't infer -->
 **Lifecycle**: <!-- optional override; one of: idea planned building in-review fixes-pending merged done abandoned. Leave blank — the board infers this from git + status. Set only to correct a wrong inference. -->
+**Merged**: <!-- the squash/merge commit sha, recorded at merge time. Authoritative proof the work is in main when the branch isn't a fast-forward ancestor (the common case here). Set this and the board stops flagging "merge unconfirmed". -->
 **Closed**: DD-MM-YYYY <!-- Add when Status becomes Done -->
 
 <!--
@@ -12,6 +13,10 @@ The work board (`bun run board`) joins this plan with its live git/review/spec s
 It infers lifecycle from git reality + **Status** above, so you normally do NOT set
 **Lifecycle** or **Branch**. Set them only to fix drift the board flags.
 Branch naming rule the board expects: branch = `agent/<this-file's-stem>`, worktree dir = same stem.
+
+On merge: set **Status**: Done, **Closed**, and **Merged**: <sha>, then delete the branch
+and its worktree. Recording **Merged** is what lets the board confirm a squash-merge whose
+content main has since edited — without it such a branch shows as "verify before pruning".
 -->
 
 ---
