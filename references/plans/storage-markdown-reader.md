@@ -1,5 +1,7 @@
 # Plan: Storage — Markdown Reader/Writer
 
+**Status**: Done
+
 Scope: implement markdown parsing, serializing, and vault-level file operations in `packages/storage`.
 No DB sync for now — pure file I/O against the vault directory.
 Existing files in `packages/storage/src/backend/` can be disregarded and rewritten from scratch.

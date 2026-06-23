@@ -1,7 +1,7 @@
 # Plan: External Rename Cascade for Notes, References, and Aspects
 
 **Date**: 06-05-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/fragment-model.md`
 
 ---

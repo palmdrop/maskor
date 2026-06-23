@@ -1,7 +1,7 @@
 # Plan: Spec Extraction and Spec-Driven Development Setup
 
 **Date**: 22-04-2026
-**Status**: Todo
+**Status**: Done
 
 ---
 
