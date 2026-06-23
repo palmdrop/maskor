@@ -1,11 +1,31 @@
 # Repo cleanup and board hardening
 
 **Date**: 21-06-2026
-**Status**: Todo <!-- Todo | In progress | Done -->
+**Status**: In progress
 **Branch**: agent/repo-cleanup-and-board-hardening
-**Lifecycle**: planned
 **Specs**: <!-- none; workflow tooling, documented in references/WORKFLOW.md -->
 **Closed**:
+
+---
+
+## Progress (2026-06-23)
+
+Phases 0–5 done (board hardening + docs + 4 shipped plans marked Done), `bun run verify`
+green. Local prune executed with developer approval: **46 → 19 local branches** (20
+merge-confirmed + 7 verify-confirmed-shipped + `obsidian-comments` dropped/abandoned).
+Two safety bundles written to the repo root.
+
+Remaining (handed to developer):
+
+- Merge `agent/repo-cleanup-and-board-hardening` → main (carries board, hardening, docs,
+  status updates). Then prune `agent/work-tracking-board` (contained in it) and remove the
+  `manual-todos` worktree.
+- Delete the 20 merged **remote** branches (`bun run board --prune`) — needs network.
+- ~12 unclassified branches (no Done plan, merge unconfirmed: `better-navigation`,
+  `cache-issues`, `editor-flicker`, `export`, `inline-editing`, `scroll-issue`,
+  `suggestion-fixes`, `suggestion-fixes2`, `toast-errors`, `fix/*`, `ralph/small-improvements`)
+  plus verify-list `actual-document-links` and `margins-review` — need the assisted
+  feature-presence check before pruning (the inline-editor cluster looks superseded, not merged).
 
 ---
 
