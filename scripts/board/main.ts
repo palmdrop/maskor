@@ -16,9 +16,9 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { collectAcrossWorktrees, countMarkdownFiles, countUncheckedItems } from "./collect.ts";
 import {
+  confirmMerge,
   describeBranch,
   listLocalBranches,
-  listMergedLocalBranches,
   listMergedRemoteBranches,
   listWorktrees,
   matchPlanToBranch,
@@ -33,6 +33,7 @@ import type {
   BoardRow,
   HygieneReport,
   PlanRecord,
+  PrunableBranch,
   ReviewRecord,
   SpecState,
 } from "./types.ts";
@@ -42,8 +43,13 @@ function mainWorktreePath(worktrees: Worktree[], repoRoot: string): string {
   return main?.path ?? repoRoot;
 }
 
-function buildHygiene(worktrees: Worktree[], plans: PlanRecord[], repoRoot: string): HygieneReport {
-  const planStems = new Set(plans.map((plan) => plan.stem));
+function buildHygiene(
+  allBranches: string[],
+  rows: BoardRow[],
+  worktrees: Worktree[],
+  repoRoot: string,
+): HygieneReport {
+  const planStems = new Set(rows.map((row) => row.plan.stem));
   const nameMismatches: string[] = [];
   const orphanWorktrees: string[] = [];
 
@@ -62,16 +68,39 @@ function buildHygiene(worktrees: Worktree[], plans: PlanRecord[], repoRoot: stri
     }
   }
 
-  // A branch checked out in any worktree cannot be `git branch -d`-deleted, so
-  // it is not actually prunable.
-  const attachedBranches = new Set(
+  // A branch checked out in any worktree cannot be deleted; backups are never pruned.
+  const attached = new Set(
     worktrees.map((entry) => entry.branch).filter((name): name is string => !!name),
   );
+  // Reuse the confirmation already computed per plan-branch (it used the plan's
+  // **Merged** provenance); fall back to a provenance-less probe for plan-less branches.
+  const confirmationByBranch = new Map(
+    rows
+      .filter((row) => row.git.branch)
+      .map((row) => [row.git.branch!, row.git.mergeConfirmation] as const),
+  );
+  const donePlanBranches = new Set(
+    rows
+      .filter((row) => row.git.branch && row.plan.humanStatus === "done")
+      .map((row) => row.git.branch!),
+  );
+
+  const prunable: PrunableBranch[] = [];
+  const verify: string[] = [];
+  for (const branch of allBranches) {
+    if (branch === "main" || attached.has(branch) || branch.startsWith("backup/")) continue;
+    const confirmation = confirmationByBranch.get(branch) ?? confirmMerge(branch, repoRoot, null);
+    if (confirmation !== "unconfirmed") {
+      prunable.push({ branch, confirmation });
+    } else if (donePlanBranches.has(branch)) {
+      // Plan says Done but no merge evidence — surface for a human check, never auto-prune.
+      verify.push(branch);
+    }
+  }
 
   return {
-    mergedLocalBranches: listMergedLocalBranches(repoRoot).filter(
-      (branch) => !attachedBranches.has(branch),
-    ),
+    prunable,
+    verify,
     mergedRemoteBranches: listMergedRemoteBranches(repoRoot),
     nameMismatches,
     orphanWorktrees,
@@ -83,7 +112,6 @@ function buildBoard(cwd: string): Board {
   const worktrees = listWorktrees(repoRoot);
   const mainPath = mainWorktreePath(worktrees, repoRoot);
   const branches = listLocalBranches(repoRoot);
-  const mergedLocal = listMergedLocalBranches(repoRoot);
 
   // Collect across the union of worktrees.
   const planFiles = collectAcrossWorktrees(worktrees, "references/plans", mainPath);
@@ -116,7 +144,6 @@ function buildBoard(cwd: string): Board {
     }
   }
 
-  const plans: PlanRecord[] = [];
   const rows: BoardRow[] = [];
 
   for (const file of planFiles) {
@@ -127,16 +154,22 @@ function buildBoard(cwd: string): Board {
       humanStatus: parsed.humanStatus,
       declaredLifecycle: parsed.declaredLifecycle,
       declaredBranch: parsed.declaredBranch,
+      declaredMergeSha: parsed.declaredMergeSha,
       specs: parsed.specs,
       tasksDone: parsed.tasksDone,
       tasksTotal: parsed.tasksTotal,
       worktrees: file.worktrees,
       diverges: file.diverges,
     };
-    plans.push(plan);
 
     const match = matchPlanToBranch(plan.stem, plan.declaredBranch, branches);
-    const git = describeBranch(match.branch, match.ambiguous, repoRoot, worktrees, mergedLocal);
+    const git = describeBranch(
+      match.branch,
+      match.ambiguous,
+      repoRoot,
+      worktrees,
+      plan.declaredMergeSha,
+    );
     git.ambiguous = match.ambiguous;
 
     const review = reviewsByStem.get(plan.stem) ?? null;
@@ -174,7 +207,7 @@ function buildBoard(cwd: string): Board {
     generatedAt: new Date().toISOString(),
     vantageWorktrees: worktrees.map((entry) => entry.path),
     rows,
-    hygiene: buildHygiene(worktrees, plans, repoRoot),
+    hygiene: buildHygiene(branches, rows, worktrees, repoRoot),
     inbox,
   };
 }

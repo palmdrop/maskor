@@ -65,11 +65,20 @@ function parseSpecs(content: string): string[] {
   return matches.map((token) => token.replace(/`/g, "").trim());
 }
 
+/** Reads a commit SHA out of a `**Merged**: <sha>` line (ignores `#PR` or prose). */
+function parseMergeSha(content: string): string | null {
+  const raw = readBoldField(content, "Merged");
+  if (!raw) return null;
+  const match = raw.match(/\b[0-9a-f]{7,40}\b/i);
+  return match ? match[0] : null;
+}
+
 export interface ParsedPlan {
   title: string;
   humanStatus: PlanHumanStatus;
   declaredLifecycle: LifecycleStage | null;
   declaredBranch: string | null;
+  declaredMergeSha: string | null;
   specs: string[];
   tasksDone: number;
   tasksTotal: number;
@@ -82,6 +91,7 @@ export function parsePlan(content: string, stem: string): ParsedPlan {
     humanStatus: normalizeHumanStatus(readBoldField(content, "Status")),
     declaredLifecycle: normalizeLifecycle(readBoldField(content, "Lifecycle")),
     declaredBranch: readBoldField(content, "Branch"),
+    declaredMergeSha: parseMergeSha(content),
     specs: parseSpecs(content),
     tasksDone: tasks.done,
     tasksTotal: tasks.total,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { matchPlanToBranch } from "./git.ts";
+import { classifyMergeConfirmation, matchPlanToBranch } from "./git.ts";
 
 const BRANCHES = [
   "main",
@@ -50,5 +50,33 @@ describe("matchPlanToBranch", () => {
     const result = matchPlanToBranch("margin", null, BRANCHES);
     expect(result.ambiguous).toBe(true);
     expect(result.branch).toContain("margin");
+  });
+});
+
+describe("classifyMergeConfirmation", () => {
+  const base = { isAncestor: false, declaredShaInMain: false, squashEquivalent: false };
+
+  test("ancestor wins over everything", () => {
+    expect(
+      classifyMergeConfirmation({
+        isAncestor: true,
+        declaredShaInMain: true,
+        squashEquivalent: true,
+      }),
+    ).toBe("ancestor");
+  });
+
+  test("provenance beats squash", () => {
+    expect(
+      classifyMergeConfirmation({ ...base, declaredShaInMain: true, squashEquivalent: true }),
+    ).toBe("provenance");
+  });
+
+  test("squash when only patch-equivalence holds", () => {
+    expect(classifyMergeConfirmation({ ...base, squashEquivalent: true })).toBe("squash");
+  });
+
+  test("unconfirmed when no signal", () => {
+    expect(classifyMergeConfirmation(base)).toBe("unconfirmed");
   });
 });

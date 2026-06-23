@@ -10,6 +10,7 @@ function row(overrides: Partial<BoardRow> = {}): BoardRow {
       humanStatus: "in-progress",
       declaredLifecycle: null,
       declaredBranch: null,
+      declaredMergeSha: null,
       specs: ["specifications/margins.md"],
       tasksDone: 3,
       tasksTotal: 5,
@@ -20,6 +21,7 @@ function row(overrides: Partial<BoardRow> = {}): BoardRow {
       branch: "agent/margins",
       exists: true,
       merged: false,
+      mergeConfirmation: "unconfirmed",
       hasWorktree: true,
       worktreePath: "/wt/margins",
       ahead: 4,
@@ -54,7 +56,11 @@ function board(rows: BoardRow[]): Board {
     vantageWorktrees: ["/main", "/wt/margins"],
     rows,
     hygiene: {
-      mergedLocalBranches: ["agent/old"],
+      prunable: [
+        { branch: "agent/old", confirmation: "ancestor" },
+        { branch: "agent/squashed", confirmation: "squash" },
+      ],
+      verify: ["agent/maybe-shipped"],
       mergedRemoteBranches: ["origin/agent/old"],
       nameMismatches: ["worktree dir `x` ≠ branch `agent/y`"],
       orphanWorktrees: [],
@@ -86,7 +92,8 @@ describe("renderMarkdown", () => {
   });
 
   test("includes hygiene and inbox", () => {
-    expect(output).toContain("Merged local branches (prunable): 1");
+    expect(output).toContain("Prunable local branches (merge confirmed): 2");
+    expect(output).toContain("Verify before pruning (Done but unconfirmed): 1");
     expect(output).toContain("`references/TODO.md`: 12 open");
   });
 
@@ -98,8 +105,16 @@ describe("renderMarkdown", () => {
 
 describe("renderPrune", () => {
   const output = renderPrune(board([row()]));
-  test("emits deletion commands", () => {
+  test("uses -d for ancestor and -D for squash", () => {
     expect(output).toContain("git branch -d agent/old");
+    expect(output).toContain("git branch -D agent/squashed");
+  });
+  test("lists verify branches separately, not as delete commands", () => {
+    expect(output).toContain("Verify before pruning");
+    expect(output).toContain("- agent/maybe-shipped");
+    expect(output).not.toContain("git branch -d agent/maybe-shipped");
+  });
+  test("emits remote deletion command", () => {
     expect(output).toContain("git push origin --delete agent/old");
   });
   test("never deletes", () => {

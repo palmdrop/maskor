@@ -23,6 +23,17 @@ export const LIFECYCLE_STAGES = [
 
 export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number];
 
+/**
+ * How confident we are that a branch's work is in `main`, strongest first:
+ * - `ancestor`   — branch tip is reachable from main (normal/ff/merge-commit). Definitive.
+ * - `provenance` — the plan's `**Merged**: <sha>` is reachable from main. Definitive.
+ * - `squash`     — the branch's combined diff is already in main (best-effort patch match).
+ * - `unconfirmed`— no evidence found. NOT proof of unmerged; once main edits the same area
+ *                  after a squash, the `squash` check fails to this. Treated as "verify, do
+ *                  not auto-prune" — never as license to delete.
+ */
+export type MergeConfirmation = "ancestor" | "provenance" | "squash" | "unconfirmed";
+
 /** Human `**Status**:` values found in plan files, normalized. */
 export type PlanHumanStatus = "todo" | "in-progress" | "done" | "unknown";
 
@@ -35,6 +46,12 @@ export interface PlanRecord {
   declaredLifecycle: LifecycleStage | null;
   /** Optional branch hint via a `**Branch**:` line, to resolve name drift. */
   declaredBranch: string | null;
+  /**
+   * Optional merge provenance via a `**Merged**: <sha>` line — the authoritative
+   * record that the work landed in main, for when content detection cannot confirm
+   * it (squash + main moved on). Recorded at merge time.
+   */
+  declaredMergeSha: string | null;
   specs: string[];
   tasksDone: number;
   tasksTotal: number;
@@ -64,7 +81,10 @@ export interface ReviewRecord {
 export interface BranchState {
   branch: string | null;
   exists: boolean;
+  /** True when the branch's work is confirmed in main by any method (≠ "unconfirmed"). */
   merged: boolean;
+  /** How that confirmation was reached — drives prune safety (`-d` vs `-D` vs verify). */
+  mergeConfirmation: MergeConfirmation;
   hasWorktree: boolean;
   worktreePath: string | null;
   ahead: number;
@@ -97,9 +117,19 @@ export interface BoardRow {
   attention: string[];
 }
 
+/** A local branch the board judges safe to delete, with how that was confirmed. */
+export interface PrunableBranch {
+  branch: string;
+  /** Never "unconfirmed" — those go to `verify` instead. */
+  confirmation: Exclude<MergeConfirmation, "unconfirmed">;
+}
+
 /** Hygiene findings surfaced by `--prune`. */
 export interface HygieneReport {
-  mergedLocalBranches: string[];
+  /** Confirmed-in-main locals, not worktree-attached, not backups — safe to delete. */
+  prunable: PrunableBranch[];
+  /** Unconfirmed locals whose plan is Done — likely shipped, but verify before pruning. */
+  verify: string[];
   mergedRemoteBranches: string[];
   nameMismatches: string[];
   orphanWorktrees: string[];

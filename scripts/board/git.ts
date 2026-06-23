@@ -5,7 +5,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { STALE_DAYS, type BranchState } from "./types.ts";
+import { STALE_DAYS, type BranchState, type MergeConfirmation } from "./types.ts";
 
 const MAIN_BRANCH = "main";
 
@@ -18,6 +18,16 @@ function git(args: string[], cwd: string): string {
     }).trim();
   } catch {
     return "";
+  }
+}
+
+/** Run a git command for its exit code only (0 → true). For predicates like --is-ancestor. */
+function gitOk(args: string[], cwd: string): boolean {
+  try {
+    execFileSync("git", args, { cwd, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -100,6 +110,59 @@ export function matchPlanToBranch(
   return { branch: null, ambiguous: false };
 }
 
+/**
+ * Pure merge-confirmation ladder: given the three signals, pick the strongest.
+ * Separated from git so it can be unit-tested with injected results.
+ */
+export function classifyMergeConfirmation(signals: {
+  isAncestor: boolean;
+  declaredShaInMain: boolean;
+  squashEquivalent: boolean;
+}): MergeConfirmation {
+  if (signals.isAncestor) return "ancestor";
+  if (signals.declaredShaInMain) return "provenance";
+  if (signals.squashEquivalent) return "squash";
+  return "unconfirmed";
+}
+
+/**
+ * Best-effort squash detection: is the branch's *combined* diff (squashed onto the
+ * merge-base) already a patch in main? Synthesizes a throwaway squash commit and
+ * asks `git cherry` for patch-equivalence. Fails to `false` once main edits the
+ * same lines after the squash — a safe false-negative, never a false-positive.
+ */
+function isSquashEquivalent(branch: string, repoRoot: string): boolean {
+  const mergeBase = git(["merge-base", MAIN_BRANCH, branch], repoRoot);
+  if (!mergeBase) return false;
+  const tree = git(["rev-parse", `${branch}^{tree}`], repoRoot);
+  if (!tree) return false;
+  const squashCommit = git(["commit-tree", tree, "-p", mergeBase, "-m", "_"], repoRoot);
+  if (!squashCommit) return false;
+  // A `-`-prefixed line means the combined patch already exists in main.
+  return git(["cherry", MAIN_BRANCH, squashCommit], repoRoot)
+    .split("\n")
+    .some((line) => line.startsWith("-"));
+}
+
+/**
+ * Confirm whether a branch's work is in main, running the ladder's git probes in
+ * cost order and short-circuiting on the first definitive hit.
+ */
+export function confirmMerge(
+  branch: string,
+  repoRoot: string,
+  declaredMergeSha: string | null,
+): MergeConfirmation {
+  const isAncestor = gitOk(["merge-base", "--is-ancestor", branch, MAIN_BRANCH], repoRoot);
+  const declaredShaInMain =
+    !isAncestor && !!declaredMergeSha
+      ? gitOk(["merge-base", "--is-ancestor", declaredMergeSha, MAIN_BRANCH], repoRoot)
+      : false;
+  const squashEquivalent =
+    !isAncestor && !declaredShaInMain ? isSquashEquivalent(branch, repoRoot) : false;
+  return classifyMergeConfirmation({ isAncestor, declaredShaInMain, squashEquivalent });
+}
+
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
@@ -112,13 +175,14 @@ export function describeBranch(
   ambiguous: boolean,
   repoRoot: string,
   worktrees: Worktree[],
-  mergedLocal: string[],
+  declaredMergeSha: string | null,
 ): BranchState {
   if (!branch) {
     return {
       branch: null,
       exists: false,
       merged: false,
+      mergeConfirmation: "unconfirmed",
       hasWorktree: false,
       worktreePath: null,
       ahead: 0,
@@ -131,7 +195,10 @@ export function describeBranch(
   }
 
   const exists = git(["rev-parse", "--verify", "--quiet", branch], repoRoot).length > 0;
-  const merged = mergedLocal.includes(branch);
+  const mergeConfirmation = exists
+    ? confirmMerge(branch, repoRoot, declaredMergeSha)
+    : "unconfirmed";
+  const merged = mergeConfirmation !== "unconfirmed";
   const worktree = worktrees.find((entry) => entry.branch === branch) ?? null;
 
   let ahead = 0;
@@ -156,6 +223,7 @@ export function describeBranch(
     branch,
     exists,
     merged,
+    mergeConfirmation,
     hasWorktree: worktree !== null,
     worktreePath: worktree?.path ?? null,
     ahead,

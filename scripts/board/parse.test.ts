@@ -54,6 +54,13 @@ describe("parsePlan", () => {
     const plan = parsePlan("**Status**: Done (with follow-up)", "x");
     expect(plan.humanStatus).toBe("done");
   });
+
+  test("parses a **Merged** provenance sha (ignoring surrounding prose)", () => {
+    expect(parsePlan("**Merged**: 1a2b3c4 (squash into main)", "x").declaredMergeSha).toBe(
+      "1a2b3c4",
+    );
+    expect(parsePlan("# no merged line", "x").declaredMergeSha).toBeNull();
+  });
 });
 
 describe("countTasks", () => {

@@ -36,14 +36,7 @@ export function deriveStage(
     return { stage: plan.declaredLifecycle, attention };
   }
 
-  if (plan.humanStatus === "done" && git.branch && !git.merged && git.exists) {
-    attention.push("plan marked Done but branch not merged");
-  }
-  if (plan.humanStatus === "in-progress" && !git.exists) {
-    attention.push("plan In progress but has no branch");
-  }
-
-  // Merged branch.
+  // Confirmed in main (ancestor / provenance / squash). git.merged ≡ confirmation ≠ unconfirmed.
   if (git.merged) {
     if (openFindings > 0) {
       attention.push(`${openFindings} open review finding(s) on merged branch`);
@@ -51,8 +44,14 @@ export function deriveStage(
     return { stage: plan.humanStatus === "done" ? "done" : "merged", attention };
   }
 
-  // Live, unmerged branch.
+  // Live branch whose merge we could NOT confirm.
   if (git.exists) {
+    if (plan.humanStatus === "done") {
+      // The plan claims Done but git can't confirm the merge (squash + main moved on, or
+      // genuinely unmerged). Safe-by-default: surface it; never infer "prune me" from this.
+      attention.push("merge unconfirmed — verify before pruning");
+      return { stage: "done", attention };
+    }
     if (review && openFindings > 0) {
       attention.push(`${openFindings} open review finding(s)`);
       return { stage: "fixes-pending", attention };
@@ -66,7 +65,10 @@ export function deriveStage(
 
   // No branch.
   if (plan.humanStatus === "done") return { stage: "done", attention };
-  if (plan.humanStatus === "in-progress") return { stage: "building", attention };
+  if (plan.humanStatus === "in-progress") {
+    attention.push("plan In progress but has no branch");
+    return { stage: "building", attention };
+  }
   if (plan.humanStatus === "todo") return { stage: "planned", attention };
   return { stage: "planned", attention };
 }

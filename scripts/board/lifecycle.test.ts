@@ -9,6 +9,7 @@ function plan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     humanStatus: "todo",
     declaredLifecycle: null,
     declaredBranch: null,
+    declaredMergeSha: null,
     specs: [],
     tasksDone: 0,
     tasksTotal: 0,
@@ -19,10 +20,12 @@ function plan(overrides: Partial<PlanRecord> = {}): PlanRecord {
 }
 
 function branch(overrides: Partial<BranchState> = {}): BranchState {
+  const merged = overrides.merged ?? false;
   return {
     branch: null,
     exists: false,
-    merged: false,
+    merged,
+    mergeConfirmation: merged ? "ancestor" : "unconfirmed",
     hasWorktree: false,
     worktreePath: null,
     ahead: 0,
@@ -97,15 +100,21 @@ describe("deriveStage", () => {
     expect(result.stage).toBe("merged");
   });
 
-  test("git reality overrides a Done plan with an unmerged branch", () => {
+  test("Done plan + live branch whose merge is unconfirmed → done + verify flag (safe)", () => {
     const result = deriveStage(
       plan({ humanStatus: "done" }),
       branch({ branch: "agent/x", exists: true, merged: false }),
       null,
       0,
     );
+    expect(result.stage).toBe("done");
+    expect(result.attention).toContain("merge unconfirmed — verify before pruning");
+  });
+
+  test("in-progress plan with no branch → building + attention", () => {
+    const result = deriveStage(plan({ humanStatus: "in-progress" }), branch(), null, 0);
     expect(result.stage).toBe("building");
-    expect(result.attention).toContain("plan marked Done but branch not merged");
+    expect(result.attention).toContain("plan In progress but has no branch");
   });
 
   test("explicit lifecycle override wins", () => {

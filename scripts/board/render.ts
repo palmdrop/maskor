@@ -87,7 +87,8 @@ export function renderMarkdown(board: Board): string {
   lines.push("## Hygiene");
   lines.push("");
   const { hygiene } = board;
-  lines.push(`- Merged local branches (prunable): ${hygiene.mergedLocalBranches.length}`);
+  lines.push(`- Prunable local branches (merge confirmed): ${hygiene.prunable.length}`);
+  lines.push(`- Verify before pruning (Done but unconfirmed): ${hygiene.verify.length}`);
   lines.push(`- Merged remote branches (prunable): ${hygiene.mergedRemoteBranches.length}`);
   lines.push(`- Name mismatches: ${hygiene.nameMismatches.length}`);
   lines.push(`- Orphan worktrees: ${hygiene.orphanWorktrees.length}`);
@@ -117,12 +118,29 @@ export function renderPrune(board: Board): string {
   lines.push("# Prune report");
   lines.push("");
 
-  lines.push("## Merged local branches — safe to delete");
-  if (hygiene.mergedLocalBranches.length === 0) {
+  lines.push("## Local branches — merge confirmed, safe to delete");
+  if (hygiene.prunable.length === 0) {
     lines.push("None.");
   } else {
-    for (const branch of hygiene.mergedLocalBranches) {
-      lines.push(`git branch -d ${branch}`);
+    for (const { branch, confirmation } of hygiene.prunable) {
+      // ancestor is reachable from main → safe `-d`; squash/provenance are not
+      // ancestors so git refuses `-d` — `-D` is required (content is in main).
+      const flag = confirmation === "ancestor" ? "-d" : "-D";
+      lines.push(`git branch ${flag} ${branch}    # ${confirmation}`);
+    }
+  }
+  lines.push("");
+
+  lines.push("## Verify before pruning — plan Done, but merge unconfirmed");
+  if (hygiene.verify.length === 0) {
+    lines.push("None.");
+  } else {
+    lines.push("Confirm the work is in main (it may be squash-merged with main moved on,");
+    lines.push(
+      "or genuinely unmerged) before deleting. Record `**Merged**: <sha>` once confirmed.",
+    );
+    for (const branch of hygiene.verify) {
+      lines.push(`- ${branch}`);
     }
   }
   lines.push("");
