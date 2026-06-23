@@ -230,6 +230,34 @@ describe("MarginColumn", () => {
     expect(clip.className).toContain("overflow-y-auto");
   });
 
+  it("clips a comment at a newly-activated middle slot before the new comment is committed", () => {
+    renderColumn({
+      fragmentContent: "Long. <!--c:a-->\n\nMiddle.\n\nNext. <!--c:b-->",
+      marginEditor: buildMarginEditor({
+        comments: [comment("a", "a tall comment body"), comment("b", "on b")],
+      }),
+      getBlocks: () => [
+        { markerId: "a", text: "Long.", top: 0, height: 24 },
+        { markerId: null, text: "Middle.", top: 80, height: 24 },
+        { markerId: "b", text: "Next.", top: 200, height: 24 },
+      ],
+    });
+    // Initially the comment extends over the empty middle block, clipping at the next comment (200).
+    const before = document.querySelector(
+      '[data-slot-marker="a"] [data-row-index="0"]',
+    ) as HTMLElement;
+    expect(before.style.maxHeight).toBe("200px");
+
+    // Open a new comment on the empty middle slot (block index 1) — the slot is now occupied space.
+    fireEvent.click(screen.getByText("+ comment"));
+
+    // The comment above re-clips at the open editor's top (80) instead of showing through below it.
+    const after = document.querySelector(
+      '[data-slot-marker="a"] [data-row-index="0"]',
+    ) as HTMLElement;
+    expect(after.style.maxHeight).toBe("80px");
+  });
+
   it("expand-all relaxes anchoring into a plain stacked column (no absolute tops)", () => {
     renderColumn({
       fragmentContent: "First. <!--c:a-->",

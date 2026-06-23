@@ -21,6 +21,7 @@ import {
   previousSlotIndex,
   planOrphanRebinds,
   type FragmentBlock,
+  type SlotRow,
 } from "@lib/margins/column";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
 import type { EditorMode } from "./slot-editor";
@@ -146,33 +147,45 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   );
   const { rows, orphans } = useMemo(() => buildColumn(blocks, comments), [blocks, comments]);
 
+  // A row is "active" when its slot is the one being edited — an existing comment, or an empty block
+  // whose new comment is being authored (the slot editor is open before the comment is committed).
+  const isRowActive = useCallback(
+    (row: SlotRow) =>
+      (activeSlot?.kind === "comment" && row.comment?.markerId === activeSlot.markerId) ||
+      (activeSlot?.kind === "block" && activeSlot.index === row.block.index),
+    [activeSlot],
+  );
+
   // Per-row clip height: how far each idle comment may extend before meeting the next comment below
   // (null = no comment below, so it extends freely). The clip stops at the next comment, not the
-  // paragraph, so a tall comment spans the empty blocks beneath it.
+  // paragraph, so a tall comment spans the empty blocks beneath it. An *active* slot counts as
+  // occupied too: authoring a new comment in the middle of a long one clips that comment at the new
+  // slot immediately, so it no longer shows through below the open editor before being committed.
   const clipHeights = useMemo(
     () =>
       computeCommentClipHeights(
         rows.map((row) => ({
           top: editorBlocks[row.block.index]?.top ?? 0,
-          hasComment: !!row.comment,
+          hasComment: !!row.comment || isRowActive(row),
         })),
       ),
-    [rows, editorBlocks],
+    [rows, editorBlocks, isRowActive],
   );
 
   // An empty slot is "covered" when an overflowing comment above extends down over it (to the next
   // comment). Such a slot renders a compact, pointer-transparent affordance instead of a full-width
   // hover button, so the comment beneath stays readable/scrollable while the paragraph is still
-  // hover-commentable.
+  // hover-commentable. An active slot is treated as occupied here too, so it stops coverage at its
+  // position (the comment above no longer extends past the open editor).
   const coveredFlags = useMemo(
     () =>
       computeCoveredSlots(
         rows.map((row) => ({
-          hasComment: !!row.comment,
+          hasComment: !!row.comment || isRowActive(row),
           isOverflowing: overflowingBlocks.includes(row.block.index),
         })),
       ),
-    [rows, overflowingBlocks],
+    [rows, overflowingBlocks, isRowActive],
   );
 
   // Until the editor has emitted its block list, `getBlocks()` returns [] — every comment would bind
@@ -300,9 +313,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         >
           {rows.map((row, rowIndex) => {
             const comment = row.comment;
-            const isActive =
-              (activeSlot?.kind === "comment" && comment?.markerId === activeSlot.markerId) ||
-              (activeSlot?.kind === "block" && activeSlot.index === row.block.index);
+            const isActive = isRowActive(row);
             const geometry = editorBlocks[row.block.index];
             // Clip the idle, anchored row to the gap before the next comment; a null gap (no comment
             // below) and the expand-all / active states render unclipped.
