@@ -185,3 +185,5 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 - [ ] obsidian-plugin angle — port Maskor (or part of it) to an Obsidian plugin while keeping the standalone app? side thought from the mermaid draft
 
 - [ ] trash folder for aspects / notes / refs instead of hard-delete — spec'd in `specifications/attachments.md`, but worth revisiting once it's been in use (retention policy, restore UX, etc.)
+
+- [ ] Obsidian-style `%%…%%` inline comments — explored on `agent/obsidian-comments` (plan + `specifications/obsidian-comments.md` + `obsidian-comment.*` impl), **abandoned 2026-06-23** during repo cleanup; never merged to main. Recoverable from the `maskor-branches-*.bundle` backup if revisited.
