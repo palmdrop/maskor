@@ -53,10 +53,10 @@ Stop a single thrown load from sticking the change chain off forever.
 
 The change chain must not be the *only* source of truth for "there are unsaved edits".
 
-- [ ] Add a backstop that derives dirty/diff from an actual buffer-vs-server comparison (read `proseEditorRef.getContent()` vs server `content`), so a missed `onChange` cannot leave `isDirty` false while the buffer differs. Run it on a low-frequency heartbeat and/or on save-intent and on blur — not per keystroke.
-- [ ] Feed the backstop into both the swap-write decision and the Save enablement so neither depends solely on `onChange` having fired.
-- [ ] Confirm the backstop respects buffer authority (it must not itself trigger a clobbering reload) and the trailing-whitespace normalization contract in `specifications/fragment-editor.md`.
-- [ ] Tests: with `onChange` suppressed, the backstop still marks dirty, still writes a swap, and still enables Save.
+- [x] Add a backstop that derives dirty from a buffer-vs-server comparison inside `ProseEditor` (marker-free, trailing-whitespace-tolerant — the same check the load effects use), on a 1.5s heartbeat. When `!isDirty` yet the live buffer differs from server `content`, it fires `onChange` to re-engage the change chain. _(2026-06-25)_
+- [x] Feed the backstop into swap + Save by routing through the existing `onChange` → `setLiveContent`/`setIsProseDirty` path — so once it fires, swap writes and Save enables exactly as a normal edit. No new wiring needed. _(2026-06-25)_
+- [x] Respects buffer authority: when `isDirty` it does nothing (and skips serialization); firing `onChange` flips the host dirty, which then arms the existing buffer-authority guard against the next refetch. _(2026-06-25)_
+- [x] Tests: a missed `onChange` (divergent `setContent` with `emitUpdate:false`) is recovered by the heartbeat; a clean fragment never fires; an already-dirty host is left alone (`prose-editor.dirty-backstop.test.tsx`). _(2026-06-25)_
 - [ ] Commit Phase 2.
 
 ### Phase 3 — Surface swap and save failures (TODO #1)

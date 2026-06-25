@@ -52,6 +52,11 @@ type MarkdownStorage = {
 
 export type SelectionCapture = { text: string; isEmpty: boolean };
 
+// How often the dirty backstop re-checks the live buffer against the server content (Phase 2). A
+// safety net for a missed change-event, not the primary signal — so it runs infrequently. The
+// worst-case unsynced-edit window it bounds is paired with the page-hide swap flush (Phase 4).
+const DIRTY_BACKSTOP_INTERVAL_MS = 1500;
+
 export type ProseEditorHandle = {
   getContent: () => string;
   setContent: (value: string) => void;
@@ -442,6 +447,44 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     if (!view) return;
     view.dispatch({ effects: setCmAnchorsEffect.of(loadedAnchors) });
   }, [cleanContent, loadedAnchors, vimMode, rawMarkdownMode, isDirty]);
+
+  // Dirty backstop (never-lose-writing, Phase 2). The change chain (onUpdate → onChange) is the
+  // primary "buffer changed" signal, but it is a single point of failure: if it ever misses an edit
+  // (a swallowed load error left the guard mid-flight, an IME/paste path that didn't emit, a backend
+  // quirk), the host stays `isDirty: false` while the buffer holds unsaved edits — and *every*
+  // protection (explicit save, swap mirror, buffer authority) silently disengages at once. That was
+  // the data-loss incident. This low-frequency heartbeat re-derives the truth independently: when the
+  // host believes the buffer is clean (`!isDirty`) yet the live buffer differs from the server
+  // content, fire onChange to re-engage the protections (dirty → swap writes, Save enables, buffer
+  // authority guards the buffer from the next refetch). When `isDirty` is already true the normal
+  // path is working, so the heartbeat does nothing (and skips the serialization cost). The comparison
+  // mirrors the load effects' marker-free, trailing-whitespace-tolerant check so it never false-fires
+  // on a clean fragment.
+  const readCleanBuffer = useCallback((): string | null => {
+    if (vimMode || rawMarkdownMode) {
+      const view = viewRef.current;
+      return view ? view.state.doc.toString() : null;
+    }
+    const richEditor = editorRef.current;
+    if (!richEditor) return null;
+    return unescapeDocumentLinks(
+      (richEditor.storage as unknown as MarkdownStorage).markdown.getMarkdown(),
+    );
+  }, [vimMode, rawMarkdownMode]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (isLoadingRef.current) return;
+      // The host already knows there are edits — the normal path is alive, nothing to recover.
+      if (isDirty) return;
+      const current = readCleanBuffer();
+      if (current === null) return;
+      if (!isTrailingWhitespaceEquivalent(cleanContent, current)) {
+        onChangeRef.current?.();
+      }
+    }, DIRTY_BACKSTOP_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [cleanContent, isDirty, readCleanBuffer]);
 
   // The two backends behind the handle, each a pure adapter reading its live backend, the latest
   // content, and the change notifier through injected accessors. Both are stable.
