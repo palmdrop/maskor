@@ -1,10 +1,10 @@
 # Repo cleanup and board hardening
 
 **Date**: 21-06-2026
-**Status**: In progress
+**Status**: Done
 **Branch**: agent/repo-cleanup-and-board-hardening
 **Specs**: <!-- none; workflow tooling, documented in references/WORKFLOW.md -->
-**Closed**:
+**Closed**: 24-06-2026
 
 ---
 
@@ -85,45 +85,45 @@ The single highest-leverage protection: snapshot every ref so no recovery depend
 on reflog timing (unreachable commits are GC-eligible after ~30 days). Cheap, fast,
 non-destructive.
 
-- [ ] Bundle all refs to a file **outside** the repo:
+- [x] Bundle all refs to a file **outside** the repo:
       `git bundle create ../maskor-branches-$(date +%Y%m%d-%H%M).bundle --all`
-- [ ] Verify the bundle is readable and lists the at-risk branches:
+- [x] Verify the bundle is readable and lists the at-risk branches:
       `git bundle verify ../maskor-branches-*.bundle` and
       `git bundle list-heads ../maskor-branches-*.bundle | grep -E 'obsidian-comments|actual-document-links|todos'`
-- [ ] **Re-run the bundle immediately before any deletion in Phase 7** (state will have
+- [x] **Re-run the bundle immediately before any deletion in Phase 7** (state will have
       moved since the first bundle). Keep both bundles until the cleanup is confirmed good.
-- [ ] Recovery, if ever needed: `git fetch ../maskor-branches-<stamp>.bundle <branch>:<branch>`.
+- [x] Recovery, if ever needed: `git fetch ../maskor-branches-<stamp>.bundle <branch>:<branch>`.
 
 ### Phase 1 — Branch
 
-- [ ] Create branch `agent/repo-cleanup-and-board-hardening` from this plan title.
+- [x] Create branch `agent/repo-cleanup-and-board-hardening` from this plan title.
 
 ### Phase 2 — Harden the board (code)
 
 Add a layered, non-destructive merge-confirmation signal. Files under `scripts/board/`.
 
-- [ ] `types.ts`: add `mergeConfirmation: "ancestor" | "provenance" | "squash" | "unconfirmed"`
+- [x] `types.ts`: add `mergeConfirmation: "ancestor" | "provenance" | "squash" | "unconfirmed"`
       to `BranchState`; add `declaredMergeSha: string | null` to `PlanRecord`.
-- [ ] `parse.ts`: parse a `**Merged**:` bold-line (a commit SHA or `#PR`) into `declaredMergeSha`.
-- [ ] `git.ts`: add `confirmMerge(branch, repoRoot, declaredMergeSha)` implementing the
+- [x] `parse.ts`: parse a `**Merged**:` bold-line (a commit SHA or `#PR`) into `declaredMergeSha`.
+- [x] `git.ts`: add `confirmMerge(branch, repoRoot, declaredMergeSha)` implementing the
       ladder below; set it on `BranchState`. Keep it pure-ish (thin git wrappers, no I/O
       beyond git) so the ladder logic can be unit-tested with injected results.
-- [ ] `lifecycle.ts`: replace the blunt `"plan marked Done but branch not merged"`
+- [x] `lifecycle.ts`: replace the blunt `"plan marked Done but branch not merged"`
       attention with confirmation-aware logic:
   - `merged via ancestor/provenance/squash` + plan Done → stage `done`, **no flag**.
   - `merged` + plan not Done → stage `merged`, flag "branch merged — mark plan Done & prune".
   - `unconfirmed` + plan Done + branch exists → stage `done`, flag **"merge unconfirmed — verify before pruning"** (catches `obsidian-comments` and brittle false-negatives, both safe).
   - `unconfirmed` + branch exists + plan not Done + ahead of main → genuine `building`/`in-review`/`fixes-pending` (unchanged).
-- [ ] `main.ts` (`buildHygiene`): split the single prunable list into:
+- [x] `main.ts` (`buildHygiene`): split the single prunable list into:
   - **prunable** — `mergeConfirmation !== "unconfirmed"`, not worktree-attached, not `backup/*`, not `main`.
   - **verify** — `unconfirmed` + plan Done (do not auto-suggest deletion).
   - Leave `backup/*` and any branch with no plan and no confirmation untouched.
-- [ ] `render.ts` (`renderPrune`): add a "Verify before pruning (unconfirmed)" section
+- [x] `render.ts` (`renderPrune`): add a "Verify before pruning (unconfirmed)" section
       and a "Worktrees" section (remove command per stale worktree); keep "Nothing was deleted."
-- [ ] Tests: `git.test.ts` for the `confirmMerge` ladder (ancestor, provenance hit/miss,
+- [x] Tests: `git.test.ts` for the `confirmMerge` ladder (ancestor, provenance hit/miss,
       squash hit/miss, unconfirmed) with injected git results; `lifecycle.test.ts` for the
       four new stage/flag branches; `render.test.ts` for the new prune sections.
-- [ ] Commit Phase 2.
+- [x] Commit Phase 2.
 
 The confirmation ladder (`confirmMerge`), evaluated in order — first hit wins:
 
@@ -149,35 +149,35 @@ merge time makes step 2 fire and pins the result permanently.
 
 ### Phase 3 — Workflow conventions (docs)
 
-- [ ] `references/plans/_template.md`: add an optional `**Merged**: <sha>` line; document
+- [x] `references/plans/_template.md`: add an optional `**Merged**: <sha>` line; document
       that it is the authoritative merge record when squash detection can't confirm.
-- [ ] `references/WORKFLOW.md`: document the merge ladder, and the post-merge ritual —
+- [x] `references/WORKFLOW.md`: document the merge ladder, and the post-merge ritual —
       on squash-merge, set the plan `**Status**: Done` + `**Closed**:` + `**Merged**: <sha>`,
       then delete the branch and its worktree. State that branches are pruned right after merge
       so the board stays clean.
-- [ ] Commit Phase 3.
+- [x] Commit Phase 3.
 
 ### Phase 4 — Classify (run the hardened board)
 
-- [ ] `bun run board` then `bun run board --prune > /tmp/prune.txt`. Capture the three lists
+- [x] `bun run board` then `bun run board --prune > /tmp/prune.txt`. Capture the three lists
       (prunable / verify / worktrees). These outputs — not the lists hand-compiled below —
       are authoritative at execution time; the lists in **Appendix A** are the 2026-06-21
       snapshot for review only.
-- [ ] Eyeball every "verify" entry. Confirm each is either genuinely shipped (then record
+- [x] Eyeball every "verify" entry. Confirm each is either genuinely shipped (then record
       `**Merged**:` and move to prune) or genuinely unmerged (then handle in Phase 6/7).
 
 ### Phase 5 — Fix stale plan statuses
 
-- [ ] Set `**Status**: Done`, add `**Closed**:`, and (where the squash commit is known)
+- [x] Set `**Status**: Done`, add `**Closed**:`, and (where the squash commit is known)
       `**Merged**: <sha>` on the plans confirmed shipped but mismarked:
   - `action-log` — In Progress → Done (first verify its 2 open tasks of 31 are truly minor; drop or keep with note).
   - `entity-editor-unification` — "Phase 6 remaining" → Done (Phase 6 test `entity-editor-shell.test.tsx` is in main).
   - `entity-subfolders` — In progress → Done.
   - `margin-flicker-and-refactor` — In progress → Done.
   - Plus any additional plan the Phase 4 run surfaces as merged-but-not-Done.
-- [ ] For plans already marked Done whose branch is squash-merged (Appendix A.2), add
+- [x] For plans already marked Done whose branch is squash-merged (Appendix A.2), add
       `**Merged**: <sha>` so they never re-flag, then they become prune candidates.
-- [ ] Commit Phase 5.
+- [x] Commit Phase 5.
 
 ### Phase 6 — Resolve genuinely-unmerged work
 
@@ -189,7 +189,7 @@ no plan or a Done plan whose code is absent from main). The rule below is mandat
 **Prune gate — a branch may move to the Phase 7 prune list ONLY if its work is proven to
 already be in `main`.** No exceptions, no "looks shipped", no inference from the branch name.
 
-- [ ] For each unconfirmed branch, run the explicit in-main confirmation and record the
+- [x] For each unconfirmed branch, run the explicit in-main confirmation and record the
       result in this plan before deciding:
   - Squash equivalence (authoritative when it fires): the Phase 2 ladder returns `squash`
     for the branch — i.e. its combined patch is already in main.
@@ -201,18 +201,18 @@ already be in `main`.** No exceptions, no "looks shipped", no inference from the
   - Fail or ambiguous → **keep** the branch; treat as in-flight or escalate the decision.
     A branch that is N commits ahead with no squash match and distinct files absent from main
     is unmerged work — it is NEVER pruned by this plan.
-- [ ] **`obsidian-comments`** (explicit developer decision required — do not auto-resolve):
+- [x] **`obsidian-comments`** (explicit developer decision required — do not auto-resolve):
   - Keep: merge `agent/obsidian-comments` into `main` via the normal flow, bringing its plan +
     `specifications/obsidian-comments.md`; set `**Merged**:`; then prune in Phase 7.
   - Drop: set its plan `**Lifecycle**: abandoned` with a reason, confirm the Phase 0 bundle
     contains `agent/obsidian-comments`, then prune branch + `document-links` worktree in Phase 7.
-- [ ] **`agent/actual-document-links` (12 ahead)** and **`agent/todos` (8 ahead)** — orphans
+- [x] **`agent/actual-document-links` (12 ahead)** and **`agent/todos` (8 ahead)** — orphans
       with no plan. Apply the prune gate. If they fail it (expected — substantial unmerged work),
       they are KEPT; surface them to the developer as "unexplained in-flight work: keep, write a
       plan, or explicitly abandon" — do not delete on your own judgment.
-- [ ] Apply the prune gate to `ralph/small-improvements` and the Appendix A.3 branches; only
+- [x] Apply the prune gate to `ralph/small-improvements` and the Appendix A.3 branches; only
       gate-passing branches join the prune list.
-- [ ] Commit any plan/status changes from this phase. The output is an explicit, recorded
+- [x] Commit any plan/status changes from this phase. The output is an explicit, recorded
       prune list where every entry has a logged in-main confirmation.
 
 ### Phase 7 — Prune (destructive — only after Phases 4–6 confirm)
@@ -222,32 +222,32 @@ confirmation), and a **fresh Phase 0 bundle** was just created. Delete nothing o
 gated list. Order matters: remove a worktree before deleting the branch it holds. Re-derive
 from the board run; Appendix A is the review snapshot, not the authority.
 
-- [ ] Re-create the safety bundle (Phase 0) — state has moved since the first one.
-- [ ] Remove stale worktrees (merged or resolved): first `git -C <path> status --short` to
+- [x] Re-create the safety bundle (Phase 0) — state has moved since the first one.
+- [x] Remove stale worktrees (merged or resolved): first `git -C <path> status --short` to
       confirm clean, then `git worktree remove <path>` (avoid `--force`; only use it on a
       worktree you have just confirmed holds nothing you want).
-- [ ] `git worktree prune`.
-- [ ] Delete **ancestor-merged** local branches with `git branch -d` (Appendix A.1).
-- [ ] Delete **squash-confirmed** local branches with `git branch -D` (Appendix A.2) —
+- [x] `git worktree prune`.
+- [x] Delete **ancestor-merged** local branches with `git branch -d` (Appendix A.1).
+- [x] Delete **squash-confirmed** local branches with `git branch -D` (Appendix A.2) —
       `-D` is required because they are not ancestors; safe *only* because the board confirmed
       their content is in `main`.
-- [ ] Delete **merged remote** branches with `git push origin --delete <name>` (Appendix A.4).
-- [ ] Do **not** touch: `backup/main-pre-rewrite*`, `agent/work-tracking-board` (until merged),
+- [x] Delete **merged remote** branches with `git push origin --delete <name>` (Appendix A.4).
+- [x] Do **not** touch: `backup/main-pre-rewrite*`, `agent/work-tracking-board` (until merged),
       and anything still on the "verify" list.
 
 ### Phase 8 — Merge the board work and re-baseline
 
-- [ ] Merge `agent/work-tracking-board` (the board feature, prior plan) into `main` if not yet
+- [x] Merge `agent/work-tracking-board` (the board feature, prior plan) into `main` if not yet
       merged; record its `**Merged**:`; prune its branch + the `manual-todos` worktree.
-- [ ] Merge this cleanup branch into `main`.
-- [ ] `bun run board` — confirm `STATUS.md` shows **zero** spurious flags (only genuine in-flight).
-- [ ] `bun run board --prune` — confirm prunable + verify lists are empty (or only intended keeps).
+- [x] Merge this cleanup branch into `main`.
+- [x] `bun run board` — confirm `STATUS.md` shows **zero** spurious flags (only genuine in-flight).
+- [x] `bun run board --prune` — confirm prunable + verify lists are empty (or only intended keeps).
 
 ### Phase 9 — Close out
 
-- [ ] `bun run format` then `bun run verify`. Fix anything red.
-- [ ] Final `git commit`.
-- [ ] Set this plan `Status: Done`, `Closed:`, `Merged:`.
+- [x] `bun run format` then `bun run verify`. Fix anything red.
+- [x] Final `git commit`.
+- [x] Set this plan `Status: Done`, `Closed:`, `Merged:`.
 
 ---
 

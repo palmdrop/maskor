@@ -8,6 +8,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] Ended up losing a lot of work when save didn't work as expected AND there was no swap file. Maskor was in a strange state and I got no indication. If swap file creation fails, frontend should know and warn the user. If save does not succeed, user needs to know so they can copy their work and not lose it.
+
+- [ ] When doing an edit to a fragment, then prompting a split, split sometimes claim to fail, but actually succeeds. Probably has to do with swap/saved state not being committed properly, i.e server and frontend being out of sync?
+
 - [ ] Quick-switching (cmd+tab?) between fragments etc?
 
 - [ ] In rich mode, add a button for adding a link 
