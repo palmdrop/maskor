@@ -239,6 +239,7 @@ describe("scopes/fragment-editor", () => {
     sequences: [],
     activeFragmentUuid: "frag-1",
     openPlaceInSequence: vi.fn(),
+    save: vi.fn().mockResolvedValue(undefined),
     openSplit: vi.fn(),
     attachedAspectKeys: [],
     previewAspect: vi.fn(),
@@ -272,13 +273,26 @@ describe("scopes/fragment-editor", () => {
     expect(cmd.disabled?.(ctx)).toBeUndefined();
   });
 
-  it("split opens the dialog and disables when discarded or absent", () => {
+  it("split saves first, then opens the dialog; disables when discarded or absent", async () => {
     const cmd = find(fragmentEditorCommands, "fragment-editor:split");
-    cmd.run(baseCtx);
-    expect(baseCtx.openSplit).toHaveBeenCalled();
+    const save = vi.fn().mockResolvedValue(undefined);
+    const openSplit = vi.fn();
+    await cmd.run({ ...baseCtx, save, openSplit });
+    // Save-before-split so the split reads fresh vault content, not the pre-edit version.
+    expect(save).toHaveBeenCalled();
+    expect(openSplit).toHaveBeenCalled();
+    expect(save.mock.invocationCallOrder[0]).toBeLessThan(openSplit.mock.invocationCallOrder[0]);
     expect(cmd.disabled?.({ ...baseCtx, hasFragment: false })).toBe("No fragment to split");
     expect(cmd.disabled?.({ ...baseCtx, isDiscarded: true })).toBe("Fragment is discarded");
     expect(cmd.disabled?.(baseCtx)).toBeUndefined();
+  });
+
+  it("split does NOT open the dialog when the pre-split save fails", async () => {
+    const cmd = find(fragmentEditorCommands, "fragment-editor:split");
+    const save = vi.fn().mockRejectedValue(new Error("save failed"));
+    const openSplit = vi.fn();
+    await expect(cmd.run({ ...baseCtx, save, openSplit })).rejects.toThrow("save failed");
+    expect(openSplit).not.toHaveBeenCalled();
   });
 
   it("preview-aspect previews the chosen aspect and disables with no aspects", () => {

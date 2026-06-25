@@ -12,6 +12,10 @@ export interface FragmentEditorContext {
   // "Place in sequence…" picker.
   activeFragmentUuid: string | undefined;
   openPlaceInSequence: (sequenceId: string) => void;
+  // Persist the open fragment (and its Margin) — a no-op when clean. Composed before opening the
+  // split dialog so the split reads fresh vault content instead of pre-edit content. Rejects on a
+  // save failure, which aborts the split (its onFailure surfaces the toast).
+  save: () => Promise<void>;
   openSplit: () => void;
   // Aspect keys attached to the fragment (live or orphaned) — the candidates for the aspect reader.
   attachedAspectKeys: string[];
@@ -75,6 +79,9 @@ const placeInSequence = defineScopeCommand(fragmentEditorScope, {
 
 const split = defineScopeCommand(fragmentEditorScope, {
   id: "fragment-editor:split",
+  // Save can throw (the fragment edits failed to persist) — surface it and abort, rather than
+  // splitting stale content. A clean fragment saves as a no-op and never reaches this.
+  onFailure: "Couldn't save the fragment before splitting.",
   label: "Split fragment",
   category: "create",
   disabled: (ctx) =>
@@ -83,7 +90,13 @@ const split = defineScopeCommand(fragmentEditorScope, {
       : ctx.isDiscarded
         ? "Fragment is discarded"
         : undefined,
-  run: (ctx) => ctx.openSplit(),
+  // Save first so the split operates on what the user sees, not the pre-edit vault content.
+  // Splitting a dirty fragment would divide its stale server content and leave the buffer diverged
+  // (the "split out of sync / claims to fail" report). A failed save rejects here and aborts.
+  run: async (ctx) => {
+    await ctx.save();
+    ctx.openSplit();
+  },
 });
 
 const previewAspect = defineScopeCommand(fragmentEditorScope, {

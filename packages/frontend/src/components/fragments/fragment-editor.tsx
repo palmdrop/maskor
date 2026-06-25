@@ -278,6 +278,11 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     sequences: placeableSequences,
     activeFragmentUuid: fragmentId,
     openPlaceInSequence,
+    // Save-before-split: persist the open fragment (no-op when clean) so the split reads fresh
+    // vault content. Rejects on failure, which aborts the split command.
+    save: async () => {
+      await shellRef.current?.save();
+    },
     openSplit,
     attachedAspectKeys,
     previewAspect,

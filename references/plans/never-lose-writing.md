@@ -89,11 +89,13 @@ Make the "incidental" invariant explicit and regression-proof.
 
 ### Phase 6 — Split desync (TODO #2)
 
-- [ ] Reproduce: edit a fragment (dirty), then invoke split; confirm whether split reads stale vault content and/or reports a false failure when the buffer is unsaved.
-- [ ] Make split save-before-split: the split command saves the open fragment first (a no-op when clean), exactly as the Overview/Preview overlay "Done" saves-then-acts, so the vault matches the buffer before the split runs. Confirm this composes with the 2026-06-18 fix that already separated the split mutation from its best-effort invalidations.
-- [ ] Tests: editing then splitting splits the edited content; no false "Split failed".
-- [ ] Update `references/TODO.md` (item #2) and the `Shipped` frontmatter of `specifications/fragment-split.md`.
+- [x] Confirmed the cause by reading the flow: the split (preview + commit) reads the fragment from the vault, while unsaved editor edits live only in the buffer/swap — so a dirty split divides pre-edit content and leaves the buffer diverged. _(2026-06-25)_
+- [x] Made `fragment-editor:split` save-before-split: the command composes `ctx.save()` (no-op when clean) then `ctx.openSplit()`, with `onFailure` aborting on a save error. Save happens before the dialog opens, so both preview and commit see fresh content. Composes with the 2026-06-18 refetch/commit separation (unchanged). _(2026-06-25)_
+- [x] Tests: split runs save before openSplit and a failed pre-split save does not open the dialog (`scope-smoke.test.ts`). _(2026-06-25)_
+- [x] Update `references/TODO.md` (item #2 marked done) and the `Shipped` frontmatter of `specifications/fragment-split.md`. _(2026-06-25)_
 - [ ] Commit Phase 6.
+
+> Note: the Overview's `overview:split-fragment` acts on the selected spine fragment (not necessarily an open editor) and the inline overlay already saves on "Done", so the dirty-split window there is far narrower; left as-is. If a desync is observed from the Overview path, apply the same save-before-split there.
 
 ### Phase 7 — Close out
 
