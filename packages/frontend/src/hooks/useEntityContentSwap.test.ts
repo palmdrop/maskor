@@ -307,6 +307,36 @@ describe("useEntityContentSwap — clear()", () => {
     expect(result.current.recovery).toBeNull();
   });
 
+  it("clears backupFailed (a successful save means there is nothing left to back up)", async () => {
+    // A failing PUT raises the banner; clear() (run on a successful canonical save) must lower it —
+    // otherwise the "not backed up" warning sticks as a false alarm after the work is safe.
+    const putMutate = vi.fn((_vars: unknown, opts?: { onError?: (error: unknown) => void }) => {
+      opts?.onError?.(new Error("network down"));
+    });
+    const deleteMutateAsync = vi.fn().mockResolvedValue(undefined);
+    setupMocks(emptySwapQuery(), putMutate, deleteMutateAsync);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result, rerender } = renderHook(
+      ({ currentValue }: { currentValue: string }) =>
+        useEntityContentSwap({ ...baseProps, currentValue }),
+      { initialProps: { currentValue: "server content" } },
+    );
+
+    rerender({ currentValue: "draft" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+    expect(result.current.backupFailed).toBe(true);
+
+    await act(async () => {
+      await result.current.clear();
+    });
+    expect(result.current.backupFailed).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
   it("clear() does not throw if DELETE rejects", async () => {
     const deleteMutateAsync = vi.fn().mockRejectedValue(new Error("boom"));
     setupMocks(emptySwapQuery(), undefined, deleteMutateAsync);

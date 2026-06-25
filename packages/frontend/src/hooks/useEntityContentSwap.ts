@@ -199,6 +199,10 @@ export const useEntityContentSwap = (
   // pending buffer immediately so that window can't swallow work — `visibilitychange → hidden` fires
   // early enough (before bfcache/teardown) that the request usually completes. Best-effort, matching
   // the swap contract: strictly better than waiting for the timer.
+  // TODO: the flush reuses the normal React Query PUT, whose fetch the browser may abort on a real
+  // tab close / `pagehide`. Route the flush write through `fetch(..., { keepalive: true })` (or
+  // `navigator.sendBeacon`) so it survives unload — `visibilitychange → hidden` is usually fine, but
+  // hard unload is not guaranteed today.
   useEffect(() => {
     const flush = () => {
       const value = currentValueRef.current;
@@ -237,6 +241,10 @@ export const useEntityContentSwap = (
     }
     lastWrittenRef.current = null;
     setRecovery(null);
+    // A clear means the canonical save succeeded (or the buffer was discarded) — there is no longer
+    // any pending unsaved content to back up, so a prior swap-write failure is moot. Without this the
+    // "not backed up" banner sticks after a successful save, a false alarm that erodes trust.
+    setBackupFailed(false);
     if (swapWasPresent) {
       invalidateSwapListRef.current();
     }

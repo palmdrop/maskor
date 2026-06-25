@@ -12,9 +12,9 @@ export interface FragmentEditorContext {
   // "Place in sequence…" picker.
   activeFragmentUuid: string | undefined;
   openPlaceInSequence: (sequenceId: string) => void;
-  // Persist the open fragment (and its Margin) — a no-op when clean. Composed before opening the
-  // split dialog so the split reads fresh vault content instead of pre-edit content. Rejects on a
-  // save failure, which aborts the split (its onFailure surfaces the toast).
+  // Persist the open fragment body — a no-op when clean. Composed before opening the split dialog so
+  // the split reads fresh vault content instead of pre-edit content. Rejects on a save failure, which
+  // aborts the split (its onFailure surfaces the toast).
   save: () => Promise<void>;
   openSplit: () => void;
   // Aspect keys attached to the fragment (live or orphaned) — the candidates for the aspect reader.
