@@ -1,9 +1,10 @@
 # Never lose writing — defense-in-depth for the save/swap pipeline
 
 **Date**: 25-06-2026
-**Status**: In progress
+**Status**: Done
 **Specs**: `specifications/fragment-editor.md`, `specifications/storage-sync.md`, `specifications/fragment-split.md`
 **Branch**: agent/never-lose-data <!-- implemented on the existing dedicated worktree branch, not a new agent/never-lose-writing -->
+**Closed**: 25-06-2026
 
 ---
 
@@ -47,7 +48,7 @@ Stop a single thrown load from sticking the change chain off forever.
 - [x] Wrap the `setLoading(true)` … `setLoading(false)` block in `setContent` (`packages/frontend/src/components/prose-editor-tiptap-adapter.ts`) in `try/finally`. _(2026-06-25)_
 - [x] Decide and document the throw behaviour: swallow + `console.error` (not rethrow — runs in effects, a propagating throw risks unmounting the editor) while the `finally` clears the guard. Full user-facing surface deferred to Phase 3. _(2026-06-25)_
 - [x] Tests: a `setContent` that throws leaves the load guard cleared (`prose-editor-tiptap-adapter.test.ts`). _(2026-06-25)_
-- [ ] Commit Phase 1.
+- [x] Commit Phase 1. _(2026-06-25)_
 
 ### Phase 2 — Break the single-point-of-failure (dirty backstop)
 
@@ -57,7 +58,7 @@ The change chain must not be the *only* source of truth for "there are unsaved e
 - [x] Feed the backstop into swap + Save by routing through the existing `onChange` → `setLiveContent`/`setIsProseDirty` path — so once it fires, swap writes and Save enables exactly as a normal edit. No new wiring needed. _(2026-06-25)_
 - [x] Respects buffer authority: when `isDirty` it does nothing (and skips serialization); firing `onChange` flips the host dirty, which then arms the existing buffer-authority guard against the next refetch. _(2026-06-25)_
 - [x] Tests: a missed `onChange` (divergent `setContent` with `emitUpdate:false`) is recovered by the heartbeat; a clean fragment never fires; an already-dirty host is left alone (`prose-editor.dirty-backstop.test.tsx`). _(2026-06-25)_
-- [ ] Commit Phase 2.
+- [x] Commit Phase 2. _(2026-06-25)_
 
 ### Phase 3 — Surface swap and save failures (TODO #1)
 
@@ -68,7 +69,7 @@ The user must learn when their work is not being backed up or did not persist.
 - [x] UI surface: a non-dismissable in-editor `alert` banner (destructive styling) for the "not backed up" state, rendered alongside `UnsavedRecoveryBanner`. _(2026-06-25)_
 - [x] Tests: a failing swap PUT raises `backupFailed`; a later successful write clears it (`useEntityContentSwap.test.ts`). _(2026-06-25)_
 - [x] Update `references/TODO.md` (item #1 progress noted) and the `Shipped` frontmatter of `specifications/fragment-editor.md`. _(2026-06-25)_
-- [ ] Commit Phase 3.
+- [x] Commit Phase 3. _(2026-06-25)_
 
 ### Phase 4 — Flush swap on page hide
 
@@ -77,7 +78,7 @@ Close the "tab closed mid-edit" tail-loss window without relying on the debounce
 - [x] Add a `pagehide` / `visibilitychange(hidden)` flush in `useEntityContentSwap` that writes the pending buffer immediately (cancelling the debounce), via the same PUT path the debounce uses (extracted into a shared `writeSwap`). Best-effort, matching the swap contract. _(2026-06-25)_
 - [x] Updated the `useEntityContentSwap` header comment that documented the deliberate no-flush tradeoff. _(2026-06-25)_
 - [x] Tests: a `visibilitychange → hidden` with an un-flushed dirty buffer triggers an immediate write; a clean buffer does not (`useEntityContentSwap.test.ts`). _(2026-06-25)_
-- [ ] Commit Phase 4.
+- [x] Commit Phase 4. _(2026-06-25)_
 
 ### Phase 5 — Lock in swap survival across reset and restore
 
@@ -85,7 +86,7 @@ Make the "incidental" invariant explicit and regression-proof.
 
 - [x] Regression tests asserting `.maskor/swap/` survives: dev auto-reset drift path (`schema-fingerprint.test.ts`), manual `index.reset` (`storage-service.test.ts`), and draft restore (`drafts/restore.test.ts`). _(2026-06-25)_
 - [x] Documented the invariant in `specifications/storage-sync.md` (Constraints): `.maskor/swap/` is exempt from every DB reset and draft restore; any future `.maskor/` teardown must preserve it. _(2026-06-25)_
-- [ ] Commit Phase 5.
+- [x] Commit Phase 5. _(2026-06-25)_
 
 ### Phase 6 — Split desync (TODO #2)
 
@@ -93,15 +94,15 @@ Make the "incidental" invariant explicit and regression-proof.
 - [x] Made `fragment-editor:split` save-before-split: the command composes `ctx.save()` (no-op when clean) then `ctx.openSplit()`, with `onFailure` aborting on a save error. Save happens before the dialog opens, so both preview and commit see fresh content. Composes with the 2026-06-18 refetch/commit separation (unchanged). _(2026-06-25)_
 - [x] Tests: split runs save before openSplit and a failed pre-split save does not open the dialog (`scope-smoke.test.ts`). _(2026-06-25)_
 - [x] Update `references/TODO.md` (item #2 marked done) and the `Shipped` frontmatter of `specifications/fragment-split.md`. _(2026-06-25)_
-- [ ] Commit Phase 6.
+- [x] Commit Phase 6. _(2026-06-25)_
 
 > Note: the Overview's `overview:split-fragment` acts on the selected spine fragment (not necessarily an open editor) and the inline overlay already saves on "Done", so the dirty-split window there is far narrower; left as-is. If a desync is observed from the Overview path, apply the same save-before-split there.
 
 ### Phase 7 — Close out
 
-- [ ] `bun run format` then `bun run verify`. Fix anything red.
-- [ ] Set this plan `Status: Done`, add `Closed:`, and (on merge) `Merged: <sha>`.
-- [ ] Update the `Shipped` frontmatter of the touched specs with the user-facing outcome (no granular tasks).
+- [x] `bun run format` (no changes) then `bun run verify` — green (119 files, 911 tests). _(2026-06-25)_
+- [x] Set this plan `Status: Done`, add `Closed:`. `Merged:` is recorded by the developer on merge. _(2026-06-25)_
+- [x] Updated the `Shipped` frontmatter of `fragment-editor.md`, `storage-sync.md`, and `fragment-split.md`. _(2026-06-25)_
 
 ---
 
