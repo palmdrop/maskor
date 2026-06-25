@@ -170,7 +170,7 @@ describe("useEntityContentSwap — debounced writes", () => {
     expect(putMutate).not.toHaveBeenCalled();
   });
 
-  it("does not throw when PUT fails", async () => {
+  it("does not throw when PUT fails, and surfaces backupFailed", async () => {
     const putMutate = vi.fn(
       (_vars: unknown, opts?: { onError?: (error: unknown) => void; onSuccess?: () => void }) => {
         opts?.onError?.(new Error("network down"));
@@ -180,7 +180,39 @@ describe("useEntityContentSwap — debounced writes", () => {
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
+      ({ currentValue }: { currentValue: string }) =>
+        useEntityContentSwap({ ...baseProps, currentValue }),
+      { initialProps: { currentValue: "server content" } },
+    );
+
+    expect(result.current.backupFailed).toBe(false);
+
+    rerender({ currentValue: "draft" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
+    expect(putMutate).toHaveBeenCalled();
+    // The crash net is failing — the user must be told.
+    expect(result.current.backupFailed).toBe(true);
+
+    warnSpy.mockRestore();
+  });
+
+  it("clears backupFailed once a later write succeeds", async () => {
+    // First write fails, later writes succeed.
+    let shouldFail = true;
+    const putMutate = vi.fn(
+      (_vars: unknown, opts?: { onError?: (error: unknown) => void; onSuccess?: () => void }) => {
+        if (shouldFail) opts?.onError?.(new Error("network down"));
+        else opts?.onSuccess?.();
+      },
+    );
+    setupMocks(emptySwapQuery(), putMutate);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result, rerender } = renderHook(
       ({ currentValue }: { currentValue: string }) =>
         useEntityContentSwap({ ...baseProps, currentValue }),
       { initialProps: { currentValue: "server content" } },
@@ -190,16 +222,14 @@ describe("useEntityContentSwap — debounced writes", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(150);
     });
+    expect(result.current.backupFailed).toBe(true);
 
-    expect(putMutate).toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-
-    // Subsequent failures within the same session do not re-warn.
-    rerender({ currentValue: "draft 2" });
+    shouldFail = false;
+    rerender({ currentValue: "draft recovered" });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(150);
     });
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.backupFailed).toBe(false);
 
     warnSpy.mockRestore();
   });

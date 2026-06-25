@@ -26,6 +26,11 @@ export type UseEntityContentSwapOptions = {
 export type UseEntityContentSwapResult = {
   recovery: SwapRecovery | null;
   clear: () => Promise<void>;
+  // True while the most recent swap write failed and has not since succeeded. Prose has no
+  // auto-save, so the swap file is the only crash net for unsaved prose — a silent failure (the
+  // prior behaviour) meant the user's work was unprotected with no indication. The editor surfaces
+  // this so the user can copy their work. Cleared by the next successful write. (TODO #1)
+  backupFailed: boolean;
 };
 
 // The 150ms debounce is intentionally tight — typing latency to a local API
@@ -52,6 +57,7 @@ export const useEntityContentSwap = (
 
   const [recovery, setRecovery] = useState<SwapRecovery | null>(null);
   const [hasSeeded, setHasSeeded] = useState(false);
+  const [backupFailed, setBackupFailed] = useState(false);
 
   const putMutation = usePutSwap();
   const deleteMutation = useDeleteSwap();
@@ -73,7 +79,6 @@ export const useEntityContentSwap = (
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWrittenRef = useRef<string | null>(null);
-  const warnedRef = useRef(false);
 
   // Reset all per-entity tracking when the swap target changes.
   useEffect(() => {
@@ -82,9 +87,9 @@ export const useEntityContentSwap = (
       timerRef.current = null;
     }
     lastWrittenRef.current = null;
-    warnedRef.current = false;
     setRecovery(null);
     setHasSeeded(false);
+    setBackupFailed(false);
   }, [projectId, entityType, entityUUID]);
 
   // Seed from the swap read exactly once per entity. Run after the query settles.
@@ -152,15 +157,16 @@ export const useEntityContentSwap = (
             // change presence, so they skip the refetch.
             const swapWasAbsent = lastWrittenRef.current === null;
             lastWrittenRef.current = valueToWrite;
+            setBackupFailed(false);
             if (swapWasAbsent) {
               invalidateSwapListRef.current();
             }
           },
           onError: (error) => {
-            if (warnedRef.current) return;
-            warnedRef.current = true;
-
+            // Surface it: the swap is the only crash net for unsaved prose, so a silent failure
+            // (the prior behaviour) left the user's work unprotected with no indication. (TODO #1)
             console.warn("[useEntityContentSwap] swap write failed", error);
+            setBackupFailed(true);
           },
         },
       );
@@ -195,5 +201,5 @@ export const useEntityContentSwap = (
     }
   }, [projectId, entityType, entityUUID]);
 
-  return { recovery, clear };
+  return { recovery, clear, backupFailed };
 };

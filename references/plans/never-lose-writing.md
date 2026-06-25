@@ -63,11 +63,11 @@ The change chain must not be the *only* source of truth for "there are unsaved e
 
 The user must learn when their work is not being backed up or did not persist.
 
-- [ ] Replace the silent `console.warn` in `useEntityContentSwap.ts` `onError` with a surfaced, persistent warning state the editor can render ("Unsaved changes are not being backed up — copy your work"). Persistent and not auto-dismissed while the failure condition holds; cleared on the next successful swap write.
-- [ ] Surface a save that did not persist: distinguish "save returned non-2xx" (already routed via `editor:save` `onFailure`) from "save reported success but the buffer still differs from server after reconcile". Warn on the latter rather than silently trusting the round-trip.
-- [ ] Decide the UI surface (banner near the editor vs. toast vs. both) consistent with `UnsavedRecoveryBanner` and the command-failure toast conventions in `packages/frontend/CLAUDE.md`. Prefer a non-dismissable in-editor banner for the "not backed up" state.
-- [ ] Tests: a failing swap PUT raises the warning; a recovered swap clears it; a save whose reconciled content still differs raises the save warning.
-- [ ] Update `references/TODO.md` (mark item #1 addressed) and the `Shipped` frontmatter of `specifications/fragment-editor.md`.
+- [x] Replace the silent `console.warn` in `useEntityContentSwap.ts` `onError` with a surfaced `backupFailed` state, cleared on the next successful write and reset per entity. A non-dismissable `BackupFailedBanner` renders while it holds. The fragment editor combines fragment + Margin failure into one banner over the linked pair; plain entity editors render the shell's own. _(2026-06-25)_
+- [-] Surface a save that did not persist (2xx-but-stale) — **dropped**. The realistic silent-save path from the incident was the change-chain no-op, now fixed by Phase 1+2 (the backstop re-enables a wrongly-disabled Save); non-2xx already toasts via `editor:save` `onFailure`. A reconciled-content-diff check is false-positive-prone (the server legitimately normalizes body + auto-syncs inline links on save — exactly the kind of mismatch that produced the bogus "Split failed"), so a warning there would erode trust more than it protects. Kept as an open question instead.
+- [x] UI surface: a non-dismissable in-editor `alert` banner (destructive styling) for the "not backed up" state, rendered alongside `UnsavedRecoveryBanner`. _(2026-06-25)_
+- [x] Tests: a failing swap PUT raises `backupFailed`; a later successful write clears it (`useEntityContentSwap.test.ts`). _(2026-06-25)_
+- [x] Update `references/TODO.md` (item #1 progress noted) and the `Shipped` frontmatter of `specifications/fragment-editor.md`. _(2026-06-25)_
 - [ ] Commit Phase 3.
 
 ### Phase 4 — Flush swap on page hide
@@ -107,7 +107,8 @@ Make the "incidental" invariant explicit and regression-proof.
 
 - Phase 2: heartbeat interval vs. event-driven (save-intent + blur) — which is enough? A heartbeat is simplest and most robust; settle on a cheap interval that cannot itself cause caret/buffer churn.
 - Phase 3: should the "not backed up" warning also disable navigation away (a hard gate) or only warn? Leaning warn-only to avoid trapping the user, but the whole point is to prevent loss — decide with the developer.
-- Phase 1: when a load genuinely cannot apply (malformed content/anchors), what is the safe end state — keep the prior buffer and warn, or refuse to mount? Must not present the user a blank/wrong buffer that reads as clean.
+- Phase 1: when a load genuinely cannot apply (malformed content/anchors), what is the safe end state — keep the prior buffer and warn, or refuse to mount? Must not present the user a blank/wrong buffer that reads as clean. (Today: guard clears, error logged, buffer left as-is; the Phase 2 backstop will mark it dirty if it diverges from server.)
+- Phase 3 (dropped subtask): detecting a "2xx-but-didn't-persist" save without false positives. The server normalizes the body and auto-syncs inline links on save, so a naive reconciled-content diff false-fires. A safer direction if this is ever needed: do not clear the swap on save until a subsequent server read confirms the persisted content matches — keeping the crash net until the round-trip is verified, rather than warning on a diff.
 
 ---
 

@@ -37,6 +37,7 @@ import { AspectReaderTab } from "@components/aspects/aspect-reader-tab";
 import { cn } from "@/lib/utils";
 import { useFragmentMarginBridge } from "./use-fragment-margin-bridge";
 import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
+import { BackupFailedBanner } from "@components/backup-failed-banner";
 import { Separator } from "@components/ui/separator";
 import { useMarginEditor } from "@hooks/useMarginEditor";
 import { useEntityContentSwap } from "@hooks/useEntityContentSwap";
@@ -147,6 +148,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   // Fragment swap recovery, reported up from the shell so it can be coordinated with the margin's.
   const [fragmentRecovery, setFragmentRecovery] = useState<{ at: Date } | null>(null);
+  // Fragment swap-backup failure, reported up from the shell; combined with the margin's into one
+  // "not backed up" warning over the linked pair.
+  const [fragmentBackupFailed, setFragmentBackupFailed] = useState(false);
 
   // Apply the recovered Margin buffer once, mirroring the shell's fragment-recovery behaviour.
   const marginRecoveryAppliedRef = useRef(false);
@@ -378,11 +382,15 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   // The shell's own fragment banner is suppressed; this single banner covers the linked pair and
   // restores both fragment and Margin together.
+  // One "not backed up" warning covers the linked pair — either side's swap failing means unsaved
+  // work is unprotected.
+  const pairBackupFailed = fragmentBackupFailed || marginSwap.backupFailed;
   const pairBanner = (
     <>
       {pairRecovery && (
         <UnsavedRecoveryBanner cachedAt={pairRecovery.at} onDismiss={handlePairRestore} />
       )}
+      {pairBackupFailed && <BackupFailedBanner />}
       {discardedBanner}
     </>
   );
@@ -403,6 +411,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         banner={pairBanner}
         suppressRecoveryBanner
         onRecoveryChange={setFragmentRecovery}
+        onBackupFailedChange={setFragmentBackupFailed}
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}
         enableFocusMode

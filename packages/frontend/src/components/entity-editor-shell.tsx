@@ -16,6 +16,7 @@ import {
 } from "./prose-editor";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
+import { BackupFailedBanner } from "./backup-failed-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
@@ -88,9 +89,13 @@ type Props = {
   onActiveBlockChange?: (markerId: string | null) => void;
   // When true, this shell does not render its own unsaved-recovery banner — a parent coordinates a
   // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
+  // The same flag suppresses the shell's own backup-failed banner, reported up instead.
   suppressRecoveryBanner?: boolean;
   // Reports the fragment swap recovery up to a coordinating parent (linked swap pair).
   onRecoveryChange?: (recovery: { at: Date } | null) => void;
+  // Reports whether this entity's swap write is currently failing, up to a coordinating parent so a
+  // linked swap pair (fragment ↔ Margin) can surface one combined "not backed up" warning.
+  onBackupFailedChange?: (failed: boolean) => void;
 };
 
 export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
@@ -122,6 +127,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onActiveBlockChange,
       suppressRecoveryBanner = false,
       onRecoveryChange,
+      onBackupFailedChange,
     },
     ref,
   ) {
@@ -184,13 +190,26 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       if (!isDirty) setLiveContent(content);
     }, [content, isDirty]);
 
-    const { recovery, clear: clearSwap } = useEntityContentSwap({
+    const {
+      recovery,
+      clear: clearSwap,
+      backupFailed,
+    } = useEntityContentSwap({
       projectId,
       entityType: entityKind,
       entityUUID,
       currentValue: liveContent,
       serverValue: content,
     });
+
+    // Report swap-backup failure up so a coordinating parent (the fragment editor's linked
+    // fragment ↔ Margin pair) can surface one combined warning. Ref so a fresh callback identity
+    // each render doesn't re-fire the effect.
+    const onBackupFailedChangeRef = useRef(onBackupFailedChange);
+    onBackupFailedChangeRef.current = onBackupFailedChange;
+    useEffect(() => {
+      onBackupFailedChangeRef.current?.(backupFailed);
+    }, [backupFailed]);
 
     const recoveryAppliedRef = useRef(false);
     useEffect(() => {
@@ -356,6 +375,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         {recovery && !suppressRecoveryBanner && (
           <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
         )}
+        {backupFailed && !suppressRecoveryBanner && <BackupFailedBanner />}
         {banner}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">

@@ -8,9 +8,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] Ended up losing a lot of work when save didn't work as expected AND there was no swap file. Maskor was in a strange state and I got no indication. If swap file creation fails, frontend should know and warn the user. If save does not succeed, user needs to know so they can copy their work and not lose it.
+- [ ] Ended up losing a lot of work when save didn't work as expected AND there was no swap file. Maskor was in a strange state and I got no indication. If swap file creation fails, frontend should know and warn the user. If save does not succeed, user needs to know so they can copy their work and not lose it. (in progress — plan: `references/plans/never-lose-writing.md`. Root cause found: a stuck load guard silently killed the editor's change chain, disengaging save+swap+buffer-authority at once. Fixed: crash-safe load guards (Phase 1), a dirty backstop (Phase 2), and a non-dismissable "not backed up" banner when a swap write fails (Phase 3). Split desync = Phase 6.)
 
-- [ ] When doing an edit to a fragment, then prompting a split, split sometimes claim to fail, but actually succeeds. Probably has to do with swap/saved state not being committed properly, i.e server and frontend being out of sync?
+- [ ] When doing an edit to a fragment, then prompting a split, split sometimes claim to fail, but actually succeeds. Probably has to do with swap/saved state not being committed properly, i.e server and frontend being out of sync? (plan: `references/plans/never-lose-writing.md`, Phase 6.)
 
 - [ ] Quick-switching (cmd+tab?) between fragments etc?
 
