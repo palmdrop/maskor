@@ -94,4 +94,26 @@ describe("createTiptapProseAdapter", () => {
     const { adapter } = makeAdapter(editor);
     expect(() => adapter.setHighlightedAnchor("m1")).not.toThrow();
   });
+
+  it("clears the load guard even when setContent throws (data-loss vector)", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    // A stub editor whose setContent blows up mid-load, simulating a malformed-content / anchor
+    // parse throw. The real `editor.commands` regenerates per access, so a stub is the reliable
+    // way to force the throw before `extractTiptapAnchors` runs.
+    const throwingEditor = {
+      commands: {
+        setContent: () => {
+          throw new Error("boom");
+        },
+      },
+    } as unknown as Editor;
+    const { adapter, setLoading } = makeAdapter(throwingEditor);
+
+    expect(() => adapter.setContent("Beta")).not.toThrow();
+    // The guard must be turned back off — a stuck `true` silences every later onUpdate.
+    const calls = setLoading.mock.calls.map(([value]) => value);
+    expect(calls).toEqual([true, false]);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });

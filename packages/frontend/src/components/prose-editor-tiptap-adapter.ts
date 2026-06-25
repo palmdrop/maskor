@@ -56,10 +56,22 @@ export const createTiptapProseAdapter = (deps: TiptapProseAdapterDeps): ProseEdi
     setContent: (value: string) => {
       const editor = getEditor();
       if (!editor) return;
+      // The load guard MUST clear even if setContent / extractTiptapAnchors throws. Without the
+      // finally, a single thrown load leaves `isLoadingRef` stuck true, so TipTap's onUpdate
+      // returns early on every later keystroke — the change chain dies silently and the buffer is
+      // saved/swapped by nothing. This was the data-loss vector (plan: never-lose-writing, Phase 1).
       setLoading(true);
-      editor.commands.setContent(value, { emitUpdate: false });
-      extractTiptapAnchors(editor);
-      setLoading(false);
+      try {
+        editor.commands.setContent(value, { emitUpdate: false });
+        extractTiptapAnchors(editor);
+      } catch (error) {
+        // Swallow rather than rethrow: setContent runs inside React effects (recovery apply,
+        // restore-from-server), and a throw escaping there risks unmounting the editor tree. Log
+        // loudly so the failure is not silent; the user-facing surface is Phase 3.
+        console.error("[ProseEditor] setContent failed", error);
+      } finally {
+        setLoading(false);
+      }
     },
     getSelection: (): SelectionCapture => {
       const editor = getEditor();

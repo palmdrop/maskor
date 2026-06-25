@@ -395,10 +395,20 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     );
     const didSyncContent = !isTrailingWhitespaceEquivalent(cleanContent, current);
     if (didSyncContent) {
+      // try/finally so a thrown setContent / extractTiptapAnchors can never leave `isLoadingRef`
+      // stuck true. A stuck flag silences onUpdate (line ~333) for the rest of the session, killing
+      // the change chain that drives dirty/swap/save — the data-loss vector this plan closes
+      // (never-lose-writing, Phase 1). Swallow + log rather than rethrow: this runs in an effect, so
+      // a propagating throw risks tearing down the editor.
       isLoadingRef.current = true;
-      editor.commands.setContent(content, { emitUpdate: false });
-      extractTiptapAnchors(editor);
-      isLoadingRef.current = false;
+      try {
+        editor.commands.setContent(content, { emitUpdate: false });
+        extractTiptapAnchors(editor);
+      } catch (error) {
+        console.error("[ProseEditor] content sync failed", error);
+      } finally {
+        isLoadingRef.current = false;
+      }
     }
 
     if (vimMode || rawMarkdownMode) return;
