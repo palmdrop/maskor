@@ -92,6 +92,28 @@ describe("restoreDraft", () => {
     expect(afterRestore).toBe(beforeRestore);
   });
 
+  // Invariant (never-lose-writing, Phase 5): `.maskor/swap/` is the transient unsaved-content crash
+  // net. It is NOT snapshotted and MUST NOT be purged by a restore — a restore must never throw away
+  // the edits a user is in the middle of.
+  it("leaves the unsaved-content swap files untouched", async () => {
+    const swapDir = join(vault.vaultPath, ".maskor", "swap", "fragment");
+    mkdirSync(swapDir, { recursive: true });
+    const swapFile = join(swapDir, "open-fragment.json");
+    const swapPayload = JSON.stringify({ content: "in-progress unsaved edits", savedAt: "now" });
+    writeFileSync(swapFile, swapPayload, "utf8");
+
+    const draft = await createDraft({
+      vaultPath: vault.vaultPath,
+      vaultDatabase: vault.vaultDatabase,
+      name: "Swap survival",
+    });
+
+    await restoreDraft({ vaultPath: vault.vaultPath, uuid: draft.uuid });
+
+    expect(existsSync(swapFile)).toBe(true);
+    expect(readFileSync(swapFile, "utf8")).toBe(swapPayload);
+  });
+
   it("throws DRAFT_NOT_FOUND for missing uuid", async () => {
     let error: unknown;
     try {

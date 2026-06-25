@@ -7,6 +7,7 @@ import {
   mkdirSync,
   readdirSync,
   writeFileSync,
+  readFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -134,6 +135,26 @@ describe("StorageService.index.reset", () => {
     // Caches were dropped during reset — a follow-up rebuild must still work on the fresh handles.
     const stats = await service.index.rebuild(context);
     expect(stats.fragments).toBeGreaterThan(0);
+  });
+
+  // Invariant (never-lose-writing, Phase 5): a manual DB reset drops vault.db only — it MUST NOT
+  // purge `.maskor/swap/`, the transient unsaved-content crash net. A user who triggers Reset
+  // database while mid-edit must not lose the work in their open editor.
+  it("leaves the unsaved-content swap files untouched", async () => {
+    const service = makeService();
+    const record = await service.registerProject("Test Project", vaultDir, "adopt");
+    const context = await service.resolveProject(record.projectUUID);
+    await service.index.rebuild(context);
+
+    const swapFile = join(vaultDir, ".maskor", "swap", "fragment", "open-fragment.json");
+    mkdirSync(join(vaultDir, ".maskor", "swap", "fragment"), { recursive: true });
+    const swapPayload = JSON.stringify({ content: "in-progress unsaved edits", savedAt: "now" });
+    writeFileSync(swapFile, swapPayload);
+
+    await service.index.reset(context);
+
+    expect(existsSync(swapFile)).toBe(true);
+    expect(readFileSync(swapFile, "utf8")).toBe(swapPayload);
   });
 });
 

@@ -83,8 +83,8 @@ Close the "tab closed mid-edit" tail-loss window without relying on the debounce
 
 Make the "incidental" invariant explicit and regression-proof.
 
-- [ ] Add regression tests asserting `.maskor/swap/` survives: dev auto-reset (drift path), manual `index.reset`, and draft restore. (Storage package — extend `swap.test.ts` / `drafts/restore.test.ts`.)
-- [ ] Document the invariant: swap is transient per-machine unsaved-content cache and must NOT be purged by any DB reset or draft restore. Record it in `specifications/storage-sync.md` (the swap/`.maskor`-ownership section) and/or alongside the reset/restore code, so the spec's "Maskor may overwrite any file in `.maskor/`" carve-out explicitly excludes `swap/`.
+- [x] Regression tests asserting `.maskor/swap/` survives: dev auto-reset drift path (`schema-fingerprint.test.ts`), manual `index.reset` (`storage-service.test.ts`), and draft restore (`drafts/restore.test.ts`). _(2026-06-25)_
+- [x] Documented the invariant in `specifications/storage-sync.md` (Constraints): `.maskor/swap/` is exempt from every DB reset and draft restore; any future `.maskor/` teardown must preserve it. _(2026-06-25)_
 - [ ] Commit Phase 5.
 
 ### Phase 6 — Split desync (TODO #2)

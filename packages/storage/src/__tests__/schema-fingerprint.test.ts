@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync, existsSync, cpSync, writeFileSync, mkdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  cpSync,
+  writeFileSync,
+  readFileSync,
+  mkdirSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createVault } from "../vault/markdown";
@@ -304,6 +312,28 @@ describe("createVaultDatabase auto-reset", () => {
     expect(markerExists()).toBe(true);
     // Unstamped: the stale fingerprint is preserved so a later flag-on run still detects drift.
     expect(readUserVersion()).toBe(999);
+  });
+
+  // Invariant (never-lose-writing, Phase 5): a DB reset drops vault.db (+ WAL/SHM) only — it MUST
+  // NOT touch `.maskor/swap/`, the transient unsaved-content crash net. `.maskor/` is declared
+  // freely overwritable, so this guards a silent future regression where a reset wipes work in flight.
+  it("leaves the unsaved-content swap files untouched when it resets a drifted DB", () => {
+    createVaultDatabase(vaultDir);
+    writeMarker();
+
+    const swapFile = join(vaultDir, ".maskor", "swap", "fragment", "open-fragment.json");
+    mkdirSync(join(vaultDir, ".maskor", "swap", "fragment"), { recursive: true });
+    const swapPayload = JSON.stringify({ content: "in-progress unsaved edits", savedAt: "now" });
+    writeFileSync(swapFile, swapPayload);
+
+    setUserVersion(999); // simulate drift
+    process.env[MASKOR_DB_AUTO_RESET_ENV] = "1";
+    createVaultDatabase(vaultDir);
+
+    // The DB was reset (marker gone) but the swap survived intact.
+    expect(markerExists()).toBe(false);
+    expect(existsSync(swapFile)).toBe(true);
+    expect(readFileSync(swapFile, "utf8")).toBe(swapPayload);
   });
 
   it("treats an unreadable DB file as drift and recreates it when the flag is set", () => {
