@@ -35,8 +35,10 @@ export type UseEntityContentSwapResult = {
 
 // The 150ms debounce is intentionally tight — typing latency to a local API
 // is low and a tight window makes the worst-case typing loss small if the
-// browser is killed before the timer fires. There is no beforeunload flush;
-// see references/plans/entity-content-swap-files.md for the tradeoff.
+// browser is killed before the timer fires. A page-hide flush (below) writes the
+// pending buffer immediately on `pagehide` / `visibilitychange → hidden`, closing
+// most of that window; it is best-effort, not a guarantee. (Supersedes the prior
+// "no beforeunload flush" tradeoff in references/plans/entity-content-swap-files.md.)
 export const useEntityContentSwap = (
   options: UseEntityContentSwapOptions,
 ): UseEntityContentSwapResult => {
@@ -130,33 +132,19 @@ export const useEntityContentSwap = (
     serverValue,
   ]);
 
-  // Debounced PUT on currentValue change.
-  useEffect(() => {
-    if (currentValue === serverValue) {
-      // Editor matches the server — nothing worth caching. Don't overwrite the
-      // existing swap (if any) here; clear() is the explicit path for cleanup.
-      return;
-    }
-    if (currentValue === lastWrittenRef.current) return;
-
-    if (timerRef.current !== null) clearTimeout(timerRef.current);
-    const valueToWrite = currentValue;
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
+  // The single PUT path, shared by the debounced writer and the page-hide flush. Stable across
+  // renders (refs/setstate only) so the flush listener can be subscribed once.
+  const writeSwap = useCallback(
+    (value: string) => {
       putMutateRef.current(
-        {
-          projectId,
-          entityType,
-          entityUUID,
-          data: { content: valueToWrite },
-        },
+        { projectId, entityType, entityUUID, data: { content: value } },
         {
           onSuccess: () => {
             // A null `lastWritten` means no swap existed before this write, so the
             // file was just created — flip the dot on. Subsequent writes don't
             // change presence, so they skip the refetch.
             const swapWasAbsent = lastWrittenRef.current === null;
-            lastWrittenRef.current = valueToWrite;
+            lastWrittenRef.current = value;
             setBackupFailed(false);
             if (swapWasAbsent) {
               invalidateSwapListRef.current();
@@ -170,6 +158,32 @@ export const useEntityContentSwap = (
           },
         },
       );
+    },
+    [projectId, entityType, entityUUID],
+  );
+  const writeSwapRef = useRef(writeSwap);
+  writeSwapRef.current = writeSwap;
+
+  // Latest currentValue/serverValue, read by the page-hide flush without re-subscribing its listener.
+  const currentValueRef = useRef(currentValue);
+  currentValueRef.current = currentValue;
+  const serverValueRef = useRef(serverValue);
+  serverValueRef.current = serverValue;
+
+  // Debounced PUT on currentValue change.
+  useEffect(() => {
+    if (currentValue === serverValue) {
+      // Editor matches the server — nothing worth caching. Don't overwrite the
+      // existing swap (if any) here; clear() is the explicit path for cleanup.
+      return;
+    }
+    if (currentValue === lastWrittenRef.current) return;
+
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    const valueToWrite = currentValue;
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      writeSwapRef.current(valueToWrite);
     }, debounceMs);
 
     return () => {
@@ -178,7 +192,34 @@ export const useEntityContentSwap = (
         timerRef.current = null;
       }
     };
-  }, [currentValue, serverValue, debounceMs, projectId, entityType, entityUUID]);
+  }, [currentValue, serverValue, debounceMs]);
+
+  // Page-hide flush (Phase 4). The debounce leaves a short window where the latest edits aren't yet
+  // on disk, and there is no other unload flush. When the page is being hidden or unloaded, write the
+  // pending buffer immediately so that window can't swallow work — `visibilitychange → hidden` fires
+  // early enough (before bfcache/teardown) that the request usually completes. Best-effort, matching
+  // the swap contract: strictly better than waiting for the timer.
+  useEffect(() => {
+    const flush = () => {
+      const value = currentValueRef.current;
+      if (value === serverValueRef.current) return;
+      if (value === lastWrittenRef.current) return;
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      writeSwapRef.current(value);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   const clear = useCallback(async () => {
     if (timerRef.current !== null) {

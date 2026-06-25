@@ -74,9 +74,9 @@ The user must learn when their work is not being backed up or did not persist.
 
 Close the "tab closed mid-edit" tail-loss window without relying on the debounce.
 
-- [ ] Add a `pagehide` / `visibilitychange(hidden)` flush that writes the current buffer to the swap synchronously-as-possible (best-effort; align with the existing swap write path). Prefer `pagehide`/`visibilitychange` over `beforeunload` (more reliable on mobile/bfcache).
-- [ ] Reconcile with the `useEntityContentSwap.ts:31-34` comment that documents the deliberate no-flush tradeoff — update or remove it to match the new behaviour.
-- [ ] Tests: a simulated `pagehide` with a dirty buffer triggers a swap write.
+- [x] Add a `pagehide` / `visibilitychange(hidden)` flush in `useEntityContentSwap` that writes the pending buffer immediately (cancelling the debounce), via the same PUT path the debounce uses (extracted into a shared `writeSwap`). Best-effort, matching the swap contract. _(2026-06-25)_
+- [x] Updated the `useEntityContentSwap` header comment that documented the deliberate no-flush tradeoff. _(2026-06-25)_
+- [x] Tests: a `visibilitychange → hidden` with an un-flushed dirty buffer triggers an immediate write; a clean buffer does not (`useEntityContentSwap.test.ts`). _(2026-06-25)_
 - [ ] Commit Phase 4.
 
 ### Phase 5 — Lock in swap survival across reset and restore

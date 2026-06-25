@@ -235,6 +235,46 @@ describe("useEntityContentSwap — debounced writes", () => {
   });
 });
 
+describe("useEntityContentSwap — page-hide flush", () => {
+  it("flushes the pending buffer immediately on visibilitychange → hidden", async () => {
+    const { putMutate } = setupMocks(emptySwapQuery());
+
+    const { rerender } = renderHook(
+      ({ currentValue }: { currentValue: string }) =>
+        useEntityContentSwap({ ...baseProps, currentValue }),
+      { initialProps: { currentValue: "server content" } },
+    );
+
+    // Edit, but DON'T let the 150ms debounce fire — the work is still only in memory.
+    rerender({ currentValue: "draft not yet flushed" });
+    expect(putMutate).not.toHaveBeenCalled();
+
+    // Page is being hidden (tab close / switch away): flush now.
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(putMutate).toHaveBeenCalledTimes(1);
+    expect(putMutate.mock.calls[0]?.[0]?.data).toEqual({ content: "draft not yet flushed" });
+  });
+
+  it("does not flush when the buffer matches the server content", async () => {
+    const { putMutate } = setupMocks(emptySwapQuery());
+
+    renderHook(() => useEntityContentSwap(baseProps));
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(putMutate).not.toHaveBeenCalled();
+  });
+});
+
 describe("useEntityContentSwap — clear()", () => {
   it("fires DELETE and clears recovery", async () => {
     const deleteMutateAsync = vi.fn().mockResolvedValue(undefined);
