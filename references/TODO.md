@@ -8,6 +8,21 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] loosing work still happens somehow... usually when I continue from an existing session in a tab... 
+
+- [ ] sometimes, when a fragment is refetched, a comment is temporarily orphaned. I changed the readiness slider and the comment lost its anchor. On refresh, it was back. 
+
+- [ ] document links are sometimes broken. I split a document, added a document link, but then, that link pointed to the next fragment in the sequence, NOT the actually linked fragment
+
+- [ ] comments close to the bottom notes tab are offset on creation, then hidden behind tab... need to move the general notes tab, maybe behind a third tab beside margins/aspect on the right panel 
+
+- [ ] discarding a fragment in a sequence does not remove it in the frontend. Using the remove from sequence command fails, because in the backend, the fragment is probably already removed - the frontend cache was never updated
+
+- [ ] fragment split still "fails", but actually succeeds 
+
+- [ ] tabbing when selecting link should auto-complete (atm, just enter works)
+
+
 - [x] Ended up losing a lot of work when save didn't work as expected AND there was no swap file. Maskor was in a strange state and I got no indication. If swap file creation fails, frontend should know and warn the user. If save does not succeed, user needs to know so they can copy their work and not lose it. (in progress — plan: `references/plans/never-lose-writing.md`. Root cause found: a stuck load guard silently killed the editor's change chain, disengaging save+swap+buffer-authority at once. Fixed: crash-safe load guards (Phase 1), a dirty backstop (Phase 2), and a non-dismissable "not backed up" banner when a swap write fails (Phase 3). Split desync = Phase 6.)
 
 - [x] When doing an edit to a fragment, then prompting a split, split sometimes claim to fail, but actually succeeds. Probably has to do with swap/saved state not being committed properly, i.e server and frontend being out of sync? (Fixed: **Split fragment** now saves the open fragment before opening the dialog, so the split reads fresh vault content instead of the pre-edit version — plan `references/plans/never-lose-writing.md`, Phase 6.)
@@ -115,6 +130,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - fadeout surroundings when focusing a fragment/sequence for editing
   - show sidebars with action log, other views - make UI fully composable, customizable
   - define own flows, concepts, structures?
+  - TODO: consider rebuilding maskor as an obsidian plugin, where the graph view and sequencing and randomiser are obsidian addons, rather than a complete app?
 
 - [x] finish persist cursor position implementation
 
