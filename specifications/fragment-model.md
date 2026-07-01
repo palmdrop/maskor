@@ -1,10 +1,11 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-06-15
+**Last updated**: 2026-06-27
 
 **Shipped**:
 
+- 2026-06-27 — Fragments carry an optional per-fragment writing-language override, stored in frontmatter as `lang` (a curated BCP-47 code). Absent = inherit the project language; an unknown value degrades to inherit. Set from the fragment metadata sidebar (live save; "Inherit project" clears it). Resolved as `fragment.language ?? project.editor.language` for spell-check. (plan: `references/plans/language-spelling.md`)
 - 2026-06-16 — Inline `[[references/…]]` / `[[aspects/…]]` links in a fragment body auto-attach to its metadata on a content save: references are added (never auto-removed), aspects added at weight 0, and a weight-0 aspect whose inline link is gone is reaped (reaping follows a body change only). `[[notes/…]]` links contribute to the link table / backlinks only — there is still no fragment note attachment (ADR 0007). The metadata form disables a chip's X-button while an inline link pins it. See `specifications/document-links.md`. (plan: `references/plans/document-links.md`)
 - 2026-06-15 — Fragments carry a durable `createdAt` timestamp, and the fragment-list sort dropdown gains a "Created at" option. `createdAt` is sourced frontmatter-first with a one-time filesystem-birthtime bootstrap for externally-authored files; once saved it lives in frontmatter. (plan: `references/plans/fragment-created-at.md`)
 - 2026-06-11 — The fragment list can be sorted via a sidebar dropdown: by name, by last-updated, or by any sequence's order (placed fragments follow the sequence, unplaced fragments fall to the bottom alphabetically). The choice persists per project. (plan: `references/plans/overview-scroll-list-sort-and-panel-excerpt.md`)

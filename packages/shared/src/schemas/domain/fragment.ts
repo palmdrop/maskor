@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FragmentLanguageSchema } from "./language";
 
 export const AspectWeightsSchema = z.record(
   z.string(),
@@ -16,6 +17,9 @@ export const FragmentSchema = z.object({
   references: z.array(z.string()),
   isDiscarded: z.boolean(),
   aspects: AspectWeightsSchema,
+  // Per-fragment writing-language override (frontmatter `lang`). Absent = inherit the project language;
+  // a concrete code (including the empty-string "browser default") overrides it.
+  language: FragmentLanguageSchema,
   // Frontmatter keys Maskor does not manage (user-authored, e.g. Obsidian `tags`/`aliases`). Carried
   // through read→write so a Maskor save never strips user data. Storage-internal; omitted from API
   // responses.
@@ -36,6 +40,8 @@ export const FragmentUpdateSchema = z.object({
   readiness: z.number().min(0).max(1).optional(),
   references: z.array(z.string()).optional(),
   aspects: AspectWeightsSchema.optional(),
+  // `null` clears the override (inherit project language); a code sets it; `undefined` leaves unchanged.
+  language: FragmentLanguageSchema.nullable(),
 });
 
 export type FragmentCreate = z.infer<typeof FragmentCreateSchema>;

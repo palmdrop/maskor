@@ -71,6 +71,7 @@ const PROJECT_CONFIG_DEFAULTS = {
     marginFontSize: 15,
     maxParagraphWidth: 72,
     vimClipboardSync: true,
+    language: "" as const,
   },
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },

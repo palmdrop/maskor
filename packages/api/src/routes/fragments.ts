@@ -39,10 +39,14 @@ const classifyFragmentSource = (patch: {
   readiness?: unknown;
   references?: unknown;
   aspects?: unknown;
+  language?: unknown;
 }): UpdateSource => {
   const hasContent = patch.content !== undefined;
   const hasMetadata =
-    patch.readiness !== undefined || patch.references !== undefined || patch.aspects !== undefined;
+    patch.readiness !== undefined ||
+    patch.references !== undefined ||
+    patch.aspects !== undefined ||
+    patch.language !== undefined;
   if (hasContent && !hasMetadata) return "user-content-save";
   if (!hasContent && hasMetadata) return "user-metadata";
   return "programmatic";

@@ -1,4 +1,4 @@
-import type { Fragment, LogEntry } from "@maskor/shared";
+import type { Fragment, LanguageCode, LogEntry } from "@maskor/shared";
 import type { Command } from "../types";
 import {
   diffAspectWeights,
@@ -17,6 +17,8 @@ type UpdateFragmentInput = {
     readiness?: number;
     references?: string[];
     aspects?: Record<string, { weight: number }>;
+    // `null` clears the override (inherit project language); a code sets it; absent leaves it unchanged.
+    language?: LanguageCode | null;
   };
   source?: UpdateSource;
 };
@@ -32,9 +34,12 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
       patch.references !== undefined && !stringArraysEqual(patch.references, existing.references);
     const aspectsChanged =
       patch.aspects !== undefined && !aspectWeightsEqual(patch.aspects, existing.aspects);
+    // Normalize the override to the domain shape (no `null`): `null` clears back to inherit (undefined).
+    const nextLanguage = patch.language === null ? undefined : patch.language;
+    const languageChanged = patch.language !== undefined && nextLanguage !== existing.language;
 
     const anyNonKeyChanged =
-      contentChanged || readinessChanged || referencesChanged || aspectsChanged;
+      contentChanged || readinessChanged || referencesChanged || aspectsChanged || languageChanged;
 
     if (!keyChanged && !anyNonKeyChanged) {
       return { result: existing, logEntries: [] };
@@ -42,7 +47,7 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
 
     const fragment = await ctx.storageService.fragments.write(
       ctx.projectContext,
-      { ...existing, ...patch },
+      { ...existing, ...patch, language: languageChanged ? nextLanguage : existing.language },
       { contentChanged },
     );
 
@@ -91,6 +96,17 @@ export const updateFragmentCommand: Command<UpdateFragmentInput, Fragment> = {
         actor: ctx.actor,
         target: { type: "fragment", uuid: existing.uuid, key: patch.key ?? existing.key },
         payload: { from: existing.readiness, to: patch.readiness! },
+        undoable: true,
+      });
+    }
+
+    if (languageChanged) {
+      // No dedicated single-intent type for the language override; route through the generic catch-all.
+      logEntries.push({
+        type: "fragment:updated",
+        actor: ctx.actor,
+        target: { type: "fragment", uuid: existing.uuid, key: patch.key ?? existing.key },
+        payload: { changedFields: ["language"] },
         undoable: true,
       });
     }

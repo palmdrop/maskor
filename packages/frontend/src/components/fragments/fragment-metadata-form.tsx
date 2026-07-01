@@ -9,14 +9,25 @@ import { useCreateReferenceByKey } from "@hooks/useCreateReferenceByKey";
 import { Label } from "@components/ui/label";
 import { Slider } from "@components/ui/slider";
 import { Badge } from "@components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { TagCombobox, type OptionGroup } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
-import { deriveInlineLinkMetadata } from "@maskor/shared";
+import { deriveInlineLinkMetadata, LANGUAGE_CATALOG, type LanguageCode } from "@maskor/shared";
 import { groupByCategory } from "@/utils/group-by-category";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentMetadataScope } from "../../lib/commands/scopes/fragment-metadata";
 import { useCommands } from "../../lib/commands/useCommands";
 import { resolveAspectColor } from "../../pages/OverviewPage/utils/aspectColors";
+
+// "Inherit project" maps to a cleared override (null). Radix `SelectItem` also rejects empty-string
+// values, so the override dropdown offers only this sentinel plus the catalog's concrete languages.
+const LANGUAGE_INHERIT_SENTINEL = "__inherit__";
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -69,6 +80,12 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
   const readinessField = useLiveFieldSave({
     serverValue: fragment.readiness,
     save: makeFieldSave<number>((value) => ({ readiness: value })),
+  });
+
+  // Per-fragment writing-language override. `null` clears it back to inheriting the project language.
+  const languageField = useLiveFieldSave<LanguageCode | null>({
+    serverValue: fragment.language ?? null,
+    save: makeFieldSave<LanguageCode | null>((value) => ({ language: value })),
   });
 
   const referencesField = useLiveFieldSave({
@@ -298,6 +315,34 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
           step={1}
         />
         {readinessField.error && <p className="text-xs text-destructive">{readinessField.error}</p>}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="fragment-language">Language</Label>
+        <Select
+          value={languageField.value ?? LANGUAGE_INHERIT_SENTINEL}
+          onValueChange={(value) =>
+            languageField.onChange(
+              value === LANGUAGE_INHERIT_SENTINEL ? null : (value as LanguageCode),
+            )
+          }
+        >
+          <SelectTrigger id="fragment-language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={LANGUAGE_INHERIT_SENTINEL}>Inherit project</SelectItem>
+            {LANGUAGE_CATALOG.filter((entry) => entry.code !== "").map((entry) => (
+              <SelectItem key={entry.code} value={entry.code}>
+                {entry.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Overrides the project language for spell-check in this fragment.
+        </p>
+        {languageField.error && <p className="text-xs text-destructive">{languageField.error}</p>}
       </div>
 
       <div className="flex flex-col gap-2">

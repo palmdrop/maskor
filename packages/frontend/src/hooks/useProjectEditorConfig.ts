@@ -7,6 +7,8 @@ export type ProjectEditorConfig = {
   marginFontSize: number;
   maxParagraphWidth: number;
   vimClipboardSync: boolean;
+  // Project-wide writing language (BCP-47); empty string = browser/OS default.
+  language: string;
 };
 
 export const useProjectEditorConfig = (projectId: string): ProjectEditorConfig => {
@@ -19,5 +21,6 @@ export const useProjectEditorConfig = (projectId: string): ProjectEditorConfig =
     marginFontSize: project?.editor?.marginFontSize ?? 15,
     maxParagraphWidth: project?.editor?.maxParagraphWidth ?? 72,
     vimClipboardSync: project?.editor?.vimClipboardSync ?? true,
+    language: project?.editor?.language ?? "",
   };
 };

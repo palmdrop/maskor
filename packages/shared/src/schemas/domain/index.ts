@@ -3,6 +3,7 @@ export * from "./fragment";
 export * from "./note";
 export * from "./margin";
 export * from "./document-link";
+export * from "./language";
 export * from "./project";
 export * from "./reference";
 export * from "./arc";

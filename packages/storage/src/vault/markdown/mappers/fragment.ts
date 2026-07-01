@@ -1,4 +1,5 @@
-import type { Fragment } from "@maskor/shared";
+import type { Fragment, LanguageCode } from "@maskor/shared";
+import { LanguageCodeSchema } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { inlineFieldsToAspects, aspectsToInlineFields } from "./aspect";
 import { basename } from "node:path";
@@ -13,7 +14,17 @@ const MANAGED_FRONTMATTER_KEYS = new Set([
   "readiness",
   "references",
   "notes",
+  "lang",
 ]);
+
+// The per-fragment language override lives in frontmatter as `lang` (short, Obsidian-neutral). A value
+// outside the curated catalog degrades to "inherit" (undefined) rather than breaking the read — the
+// catalog stays the single source of truth and an unknown code never reaches the API response schema.
+const readFragmentLanguage = (raw: unknown): LanguageCode | undefined => {
+  if (typeof raw !== "string" || raw === "") return undefined;
+  const parsed = LanguageCodeSchema.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
+};
 
 const extractExtraFrontmatter = (frontmatter: Record<string, unknown>): Record<string, unknown> => {
   const extra: Record<string, unknown> = {};
@@ -49,6 +60,7 @@ export const fromFile = (parsed: ParsedFile, filePath: string, fileBirthtime?: D
     readiness: typeof frontmatter.readiness === "number" ? frontmatter.readiness : 0,
     references: (frontmatter.references as string[]) ?? [],
     aspects: inlineFieldsToAspects(parsed.inlineFields),
+    language: readFragmentLanguage(frontmatter.lang),
     content: parsed.body,
     contentHash: "",
     createdAt,
@@ -73,6 +85,9 @@ export const toFile = (
       updatedAt: fragment.updatedAt.toISOString(),
       readiness: fragment.readiness,
       references: fragment.references,
+      // Persist the override only when a concrete language is set; an absent/empty value means
+      // "inherit the project language" and leaves no `lang` key behind.
+      ...(fragment.language ? { lang: fragment.language } : {}),
     },
     inlineFields: aspectsToInlineFields(fragment.aspects),
     body: fragment.content,

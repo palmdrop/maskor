@@ -71,6 +71,7 @@ describe("registry.registerProject", () => {
     expect(record.editor.fontSize).toBe(16);
     expect(record.editor.marginFontSize).toBe(15);
     expect(record.editor.maxParagraphWidth).toBe(72);
+    expect(record.editor.language).toBe("");
   });
 
   it("throws when vault path does not exist", async () => {

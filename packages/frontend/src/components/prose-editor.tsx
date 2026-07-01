@@ -33,6 +33,7 @@ import { blockRanges } from "@lib/margins/block-ranges";
 import { markerForBlock, type EditorBlock } from "./editor-geometry";
 import { isTrailingWhitespaceEquivalent } from "./buffer-sync";
 import { ProseToolbar } from "./prose-toolbar";
+import { spellProvider } from "../lib/spellcheck/provider";
 import { createCodeMirrorProseAdapter } from "./prose-editor-cm-adapter";
 import { createTiptapProseAdapter } from "./prose-editor-tiptap-adapter";
 
@@ -108,6 +109,8 @@ type Props = {
   fontSize: number;
   maxParagraphWidth: number;
   vimClipboardSync: boolean;
+  // Resolved BCP-47 writing language for native spell-check; empty string = browser/OS default.
+  language: string;
   onSave?: () => void;
   onChange?: () => void;
   cursor?: PersistedCursor;
@@ -129,6 +132,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     fontSize,
     maxParagraphWidth,
     vimClipboardSync,
+    language,
     onSave,
     onChange,
     cursor,
@@ -299,8 +303,11 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       cmAnchorExtension,
       cmAnchorHighlightExtension,
       cmDocumentLinkExtension,
+      // Re-enables native spell-check (CM6 hard-disables it) in the resolved language. @uiw
+      // reconfigures the view when the extensions array changes, so a language switch takes effect.
+      spellProvider.codeMirrorExtension(language),
     ],
-    [cmTheme, selectionListener],
+    [cmTheme, selectionListener, language],
   );
   const rawExtensions = useMemo(
     () => [
@@ -310,8 +317,9 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
       cmAnchorExtension,
       cmAnchorHighlightExtension,
       cmDocumentLinkExtension,
+      spellProvider.codeMirrorExtension(language),
     ],
-    [cmTheme, selectionListener],
+    [cmTheme, selectionListener, language],
   );
 
   // Flattened linkable entities for the rich-mode `[[` autocomplete. Held in a ref so the suggestion
@@ -344,6 +352,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     editorProps: {
       attributes: {
         class: `${proseClassName} focus:outline-none min-h-[200px] px-1 py-2`,
+        ...spellProvider.proseAttributes(language),
       },
     },
   });
@@ -351,6 +360,20 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
   // Latest editor instance, read by the TipTap adapter's `getEditor` accessor.
   const editorRef = useRef<Editor | null>(editor);
   editorRef.current = editor;
+
+  // Keep the rich editor's contenteditable spell-check attributes in sync when the language changes
+  // (useEditor isn't re-created on language change, so this reconciles `lang`/`spellcheck` in place).
+  useEffect(() => {
+    if (!editor) return;
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          class: `${proseClassName} focus:outline-none min-h-[200px] px-1 py-2`,
+          ...spellProvider.proseAttributes(language),
+        },
+      },
+    });
+  }, [editor, language]);
 
   // Document-link config shared by both editor extensions (resolved/broken styling + click navigate).
   const linkConfig = useMemo(

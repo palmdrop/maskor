@@ -194,6 +194,46 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
     expect(entry?.payload.to).toBe(0.9);
   });
 
+  it("persists a language override and surfaces it on the next read", async () => {
+    const fragment = await findFragmentByKey("late-winter");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: "sv" }),
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { fragment: { language?: string } };
+    expect(body.fragment.language).toBe("sv");
+
+    const reread = await findFragmentByKey("late-winter");
+    expect(reread.language).toBe("sv");
+
+    const entries = await tailEntries();
+    const entry = entries.find(
+      (e) => e.type === "fragment:updated" && e.target.uuid === fragment.uuid,
+    );
+    expect((entry?.payload.changedFields as string[] | undefined)?.includes("language")).toBe(true);
+  });
+
+  it("clears a language override back to inherit when patched with null", async () => {
+    const fragment = await findFragmentByKey("late-winter");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: null }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const reread = await findFragmentByKey("late-winter");
+    expect(reread.language).toBeUndefined();
+  });
+
   it("emits 'fragment:updated' catch-all for a multi-field programmatic patch", async () => {
     const fragment = await findFragmentByKey("harbour-lights-v2");
     const response = await testContext.app.request(

@@ -1,10 +1,11 @@
 # Spec: Project Configuration
 
 **Status**: Stable
-**Last updated**: 2026-06-01
+**Last updated**: 2026-06-27
 
 **Shipped**:
 
+- 2026-06-27 — `editor.language` added to `project.json`: a per-project writing language (BCP-47, default `""` = browser/OS default) selected from a curated dropdown in the General tab. Drives native spell-check in the editor; fragments can override it individually. (plan: `references/plans/language-spelling.md`)
 - 2026-06-11 — `editor.marginFontSize` added to `project.json`: a per-project integer (default `15`, range 10–22) controlling the Margin column's text size, independent of the prose `editor.fontSize`. Adjustable from the editor's "Aa" display-settings popover and the General tab's typography settings. (plan: `references/plans/margins-fixes.md`)
 - 2026-06-05 — TODO Triage — small bug fixes and minor editor features triaged from references/TODO.md: suggestion-mode state, editor save round-trip, margin alignment, aspect picker, auto-typography, vim clipboard toggle. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)
 - 2026-06-05 — `editor.vimClipboardSync` added to `project.json`: a per-project boolean (default `true`) controlling whether vim yank/delete operations mirror text to the system clipboard. Toggled from the editor's "Aa" popover when vim mode is active. (plan: scripts/ralph/archive/2026-06-05-todo-triage-fixes/)

@@ -11,6 +11,14 @@ import { Label } from "@components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { Slider } from "@components/ui/slider";
 import { Button } from "@components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
+import { LANGUAGE_CATALOG, type LanguageCode } from "@maskor/shared";
 import { useRebuildIndex, useResetDatabase } from "@api/generated/index";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -23,6 +31,10 @@ import { SettingRow } from "../components/SettingRow";
 // instead of a generic "see server logs".
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "see server logs.";
+
+// Radix `SelectItem` rejects an empty-string value, but the catalog's "browser default" entry is `""`.
+// Map it through this sentinel for the Select only; the stored value stays the empty string.
+const LANGUAGE_DEFAULT_SENTINEL = "__default__";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
@@ -104,6 +116,7 @@ export const GeneralTab = ({ project }: { project: Project }) => {
   const fontSize = useProjectSetting(projectId, "editor.fontSize", 16);
   const marginFontSize = useProjectSetting(projectId, "editor.marginFontSize", 15);
   const maxParagraphWidth = useProjectSetting(projectId, "editor.maxParagraphWidth", 72);
+  const language = useProjectSetting(projectId, "editor.language", "");
   const readinessThreshold = useProjectSetting(projectId, "suggestion.readinessThreshold", 0.8);
   const showFragmentStats = useProjectSetting(projectId, "advanced.showFragmentStats", false);
   const vimClipboardSync = useProjectSetting(projectId, "editor.vimClipboardSync", true);
@@ -305,6 +318,37 @@ export const GeneralTab = ({ project }: { project: Project }) => {
               onValueCommit={([value]) => void maxParagraphWidth.commit(value!)}
               disabled={maxParagraphWidth.isPending}
             />
+          }
+        />
+        <SettingRow
+          id="language"
+          label="Language"
+          description="Writing language for spell-check. Fragments can override this individually."
+          error={language.error}
+          control={
+            <Select
+              value={language.value || LANGUAGE_DEFAULT_SENTINEL}
+              onValueChange={(value) =>
+                void language.set(
+                  (value === LANGUAGE_DEFAULT_SENTINEL ? "" : value) as LanguageCode,
+                )
+              }
+              disabled={language.isPending}
+            >
+              <SelectTrigger id="language" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_CATALOG.map((entry) => (
+                  <SelectItem
+                    key={entry.code || LANGUAGE_DEFAULT_SENTINEL}
+                    value={entry.code || LANGUAGE_DEFAULT_SENTINEL}
+                  >
+                    {entry.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           }
         />
       </div>

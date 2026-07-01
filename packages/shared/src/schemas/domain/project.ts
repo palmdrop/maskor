@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LanguageCodeSchema } from "./language";
 
 export const ProjectSchema = z.object({
   uuid: z.uuid(),
@@ -15,6 +16,8 @@ export const ProjectSchema = z.object({
     marginFontSize: z.number().int().min(10).max(22),
     maxParagraphWidth: z.number().int().min(40).max(120),
     vimClipboardSync: z.boolean(),
+    // BCP-47 writing language for native spell-check; empty string = browser/OS default.
+    language: LanguageCodeSchema,
   }),
   suggestion: z.object({
     readinessThreshold: z.number().min(0).max(1),
@@ -53,6 +56,7 @@ export const ProjectUpdateSchema = z.object({
       marginFontSize: z.number().int().min(10).max(22).optional(),
       maxParagraphWidth: z.number().int().min(40).max(120).optional(),
       vimClipboardSync: z.boolean().optional(),
+      language: LanguageCodeSchema.optional(),
     })
     .optional(),
   suggestion: z

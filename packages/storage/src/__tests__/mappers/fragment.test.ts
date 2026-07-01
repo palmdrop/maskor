@@ -122,6 +122,31 @@ describe("fragment.fromFile", () => {
     const fragment = fromFile(parsed, "the-bridge.md");
     expect(fragment.references).toEqual([]);
   });
+
+  it("reads a valid `lang` frontmatter key into the language override", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, lang: "sv" },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md");
+    expect(fragment.language).toBe("sv");
+    // A managed key never leaks into extraFrontmatter.
+    expect(fragment.extraFrontmatter?.lang).toBeUndefined();
+  });
+
+  it("leaves the language override undefined when `lang` is absent", () => {
+    const fragment = fromFile(PARSED, "the-bridge.md");
+    expect(fragment.language).toBeUndefined();
+  });
+
+  it("degrades an unknown `lang` value to inherit (undefined) rather than failing", () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, lang: "klingon" },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md");
+    expect(fragment.language).toBeUndefined();
+  });
 });
 
 describe("fragment.toFile", () => {
@@ -170,5 +195,21 @@ describe("fragment.toFile", () => {
   it("writes content as body", () => {
     const { body } = toFile(fragment);
     expect(body).toBe("She crossed it every morning.");
+  });
+
+  it("writes the language override as a `lang` key when set", () => {
+    const { frontmatter } = toFile({ ...fragment, language: "sv" });
+    expect(frontmatter.lang).toBe("sv");
+  });
+
+  it("omits `lang` when the override is absent (inherits the project language)", () => {
+    const { frontmatter } = toFile({ ...fragment, language: undefined });
+    expect("lang" in frontmatter).toBe(false);
+  });
+
+  it("round-trips a language override through write then read", () => {
+    const { frontmatter, body } = toFile({ ...fragment, language: "en-GB" });
+    const reread = fromFile({ frontmatter, inlineFields: {}, body }, "the-bridge.md");
+    expect(reread.language).toBe("en-GB");
   });
 });

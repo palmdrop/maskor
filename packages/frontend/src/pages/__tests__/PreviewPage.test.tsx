@@ -88,6 +88,7 @@ const makeProject = (overrides?: Partial<Project>): Project => ({
     marginFontSize: 15,
     maxParagraphWidth: 72,
     vimClipboardSync: true,
+    language: "",
   },
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },

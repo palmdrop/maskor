@@ -23,9 +23,15 @@ type NumberSettingPath =
   | "editor.maxParagraphWidth"
   | "suggestion.readinessThreshold";
 
-export type SettingPath = BooleanSettingPath | NumberSettingPath;
+type StringSettingPath = "editor.language";
 
-export type SettingValue<P extends SettingPath> = P extends BooleanSettingPath ? boolean : number;
+export type SettingPath = BooleanSettingPath | NumberSettingPath | StringSettingPath;
+
+export type SettingValue<P extends SettingPath> = P extends BooleanSettingPath
+  ? boolean
+  : P extends NumberSettingPath
+    ? number
+    : string;
 
 type SettingSection = "editor" | "suggestion" | "advanced";
 

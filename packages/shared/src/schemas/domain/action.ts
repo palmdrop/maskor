@@ -128,7 +128,9 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry(
     "fragment:updated",
     z.object({
-      changedFields: z.array(z.enum(["content", "readiness", "aspects", "notes", "references"])),
+      changedFields: z.array(
+        z.enum(["content", "readiness", "aspects", "notes", "references", "language"]),
+      ),
     }),
   ),
   entry("fragment:renamed", renamed),

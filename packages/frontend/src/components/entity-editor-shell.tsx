@@ -25,7 +25,7 @@ import { useDelayedPending } from "@hooks/useDelayedPending";
 import { useKeyEdit } from "@hooks/useKeyEdit";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
 import { useDocumentLinks } from "@lib/document-links/useDocumentLinks";
-import { buildDocumentLink } from "@maskor/shared";
+import { buildDocumentLink, resolveLanguage, type LanguageCode } from "@maskor/shared";
 import { useProjectSetting } from "@hooks/useProjectSetting";
 import { usePersistedBoolean } from "@hooks/usePersistedBoolean";
 import { usePersistedCursor } from "@hooks/usePersistedCursor";
@@ -87,6 +87,9 @@ type Props = {
   // The comment markerId of the block the caret is in (or null) — lets a paired Margin highlight the
   // matching comment (the reciprocal connection cue).
   onActiveBlockChange?: (markerId: string | null) => void;
+  // Per-entity writing-language override (fragments only). Absent/undefined inherits the project
+  // language; a concrete code (or the empty-string "browser default") overrides it for spell-check.
+  fragmentLanguage?: LanguageCode;
   // When true, this shell does not render its own unsaved-recovery banner — a parent coordinates a
   // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
   // The same flag suppresses the shell's own backup-failed banner, reported up instead.
@@ -125,6 +128,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onContentSave,
       onLiveContentChange,
       onActiveBlockChange,
+      fragmentLanguage,
       suppressRecoveryBanner = false,
       onRecoveryChange,
       onBackupFailedChange,
@@ -132,6 +136,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     ref,
   ) {
     const editorConfig = useProjectEditorConfig(projectId);
+    // The fragment override wins over the project language; non-fragment editors pass no override.
+    const resolvedLanguage = resolveLanguage(
+      fragmentLanguage,
+      editorConfig.language as LanguageCode,
+    );
     // Document-link resolution + navigation for the prose editor (resolved/broken styling, Cmd-click).
     const documentLinks = useDocumentLinks(projectId);
     // Cursor position is persisted per editing mode — switching mode reads that
@@ -361,6 +370,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         fontSize={fontSize.draft}
         maxParagraphWidth={maxParagraphWidth.draft}
         vimClipboardSync={vimClipboardSync.value}
+        language={resolvedLanguage}
         onSave={() => commands.run("editor:save")}
         onChange={handleProseChange}
         onActiveBlockChange={onActiveBlockChange}

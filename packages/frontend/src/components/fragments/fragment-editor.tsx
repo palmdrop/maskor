@@ -412,6 +412,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         content={fragment.content}
         isPending={isActionPending}
         isDirty={isDirty}
+        fragmentLanguage={fragment.language}
         backNode={backNode}
         banner={pairBanner}
         suppressRecoveryBanner
