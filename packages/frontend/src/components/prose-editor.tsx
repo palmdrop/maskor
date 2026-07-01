@@ -363,10 +363,13 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
 
   // Keep the rich editor's contenteditable spell-check attributes in sync when the language changes
   // (useEditor isn't re-created on language change, so this reconciles `lang`/`spellcheck` in place).
+  // `setOptions` replaces `editorProps` wholesale, so spread the existing props to preserve any other
+  // handlers an extension may have set rather than clobbering them.
   useEffect(() => {
     if (!editor) return;
     editor.setOptions({
       editorProps: {
+        ...editor.options.editorProps,
         attributes: {
           class: `${proseClassName} focus:outline-none min-h-[200px] px-1 py-2`,
           ...spellProvider.proseAttributes(language),

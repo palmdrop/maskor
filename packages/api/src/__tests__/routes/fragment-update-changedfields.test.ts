@@ -234,6 +234,19 @@ describe("PATCH /fragments/:fragmentId — single-intent action types", () => {
     expect(reread.language).toBeUndefined();
   });
 
+  it('rejects the empty-string language — `""` is a project-level sentinel, not a fragment override', async () => {
+    const fragment = await findFragmentByKey("late-winter");
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/fragments/${fragment.uuid}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: "" }),
+      },
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("emits 'fragment:updated' catch-all for a multi-field programmatic patch", async () => {
     const fragment = await findFragmentByKey("harbour-lights-v2");
     const response = await testContext.app.request(

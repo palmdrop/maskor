@@ -11,7 +11,7 @@ import {
   ExistingVaultManifestError,
 } from "./errors";
 import { LOCAL_USER_UUID, type ProjectRecord } from "./types";
-import type { ProjectUpdate } from "@maskor/shared";
+import { LanguageCodeSchema, type ProjectUpdate } from "@maskor/shared";
 
 type ProjectManifest = {
   projectUUID: string;
@@ -84,12 +84,15 @@ const toProjectRecord = (
   manifest: ProjectManifest | null,
 ): ProjectRecord => {
   const config = manifest?.config;
+  const editor = { ...PROJECT_CONFIG_DEFAULTS.editor, ...config?.editor };
   return {
     projectUUID: row.uuid,
     userUUID: row.userUuid,
     name: manifest?.name ?? "",
     vaultPath: row.vaultPath,
-    editor: { ...PROJECT_CONFIG_DEFAULTS.editor, ...config?.editor },
+    // Coerce a hand-edited / out-of-catalog `editor.language` back to the browser-default sentinel on
+    // read, so an invalid value never reaches the API response (mirrors the fragment `lang` read guard).
+    editor: { ...editor, language: LanguageCodeSchema.safeParse(editor.language).data ?? "" },
     suggestion: { ...PROJECT_CONFIG_DEFAULTS.suggestion, ...config?.suggestion },
     advanced: { ...PROJECT_CONFIG_DEFAULTS.advanced, ...config?.advanced },
     preview: { ...PROJECT_CONFIG_DEFAULTS.preview, ...config?.preview },

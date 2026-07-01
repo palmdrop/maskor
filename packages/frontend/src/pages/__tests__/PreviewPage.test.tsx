@@ -43,6 +43,7 @@ vi.mock("@hooks/useProjectEditorConfig", () => ({
     marginFontSize: 15,
     maxParagraphWidth: 72,
     vimClipboardSync: true,
+    language: "",
   }),
 }));
 

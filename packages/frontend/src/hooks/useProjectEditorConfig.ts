@@ -1,4 +1,5 @@
 import { useGetProject } from "@api/generated/projects/projects";
+import type { LanguageCode } from "@maskor/shared";
 
 export type ProjectEditorConfig = {
   vimMode: boolean;
@@ -7,8 +8,9 @@ export type ProjectEditorConfig = {
   marginFontSize: number;
   maxParagraphWidth: number;
   vimClipboardSync: boolean;
-  // Project-wide writing language (BCP-47); empty string = browser/OS default.
-  language: string;
+  // Project-wide writing language (BCP-47); empty string = browser/OS default. Always a catalog member
+  // (the API validates on read and the fallback below is `""`), so downstream needs no runtime guard.
+  language: LanguageCode;
 };
 
 export const useProjectEditorConfig = (projectId: string): ProjectEditorConfig => {

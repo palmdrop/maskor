@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { LANGUAGE_CATALOG, type LanguageCode } from "@maskor/shared";
+import { LANGUAGE_CATALOG, LANGUAGE_SELECT_EMPTY_VALUE, type LanguageCode } from "@maskor/shared";
 import { useRebuildIndex, useResetDatabase } from "@api/generated/index";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -31,10 +31,6 @@ import { SettingRow } from "../components/SettingRow";
 // instead of a generic "see server logs".
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "see server logs.";
-
-// Radix `SelectItem` rejects an empty-string value, but the catalog's "browser default" entry is `""`.
-// Map it through this sentinel for the Select only; the stored value stays the empty string.
-const LANGUAGE_DEFAULT_SENTINEL = "__default__";
 
 export const GeneralTab = ({ project }: { project: Project }) => {
   const queryClient = useQueryClient();
@@ -327,10 +323,10 @@ export const GeneralTab = ({ project }: { project: Project }) => {
           error={language.error}
           control={
             <Select
-              value={language.value || LANGUAGE_DEFAULT_SENTINEL}
+              value={language.value || LANGUAGE_SELECT_EMPTY_VALUE}
               onValueChange={(value) =>
                 void language.set(
-                  (value === LANGUAGE_DEFAULT_SENTINEL ? "" : value) as LanguageCode,
+                  (value === LANGUAGE_SELECT_EMPTY_VALUE ? "" : value) as LanguageCode,
                 )
               }
               disabled={language.isPending}
@@ -341,8 +337,8 @@ export const GeneralTab = ({ project }: { project: Project }) => {
               <SelectContent>
                 {LANGUAGE_CATALOG.map((entry) => (
                   <SelectItem
-                    key={entry.code || LANGUAGE_DEFAULT_SENTINEL}
-                    value={entry.code || LANGUAGE_DEFAULT_SENTINEL}
+                    key={entry.code || LANGUAGE_SELECT_EMPTY_VALUE}
+                    value={entry.code || LANGUAGE_SELECT_EMPTY_VALUE}
                   >
                     {entry.label}
                   </SelectItem>

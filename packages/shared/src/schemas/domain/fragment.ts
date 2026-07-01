@@ -18,7 +18,7 @@ export const FragmentSchema = z.object({
   isDiscarded: z.boolean(),
   aspects: AspectWeightsSchema,
   // Per-fragment writing-language override (frontmatter `lang`). Absent = inherit the project language;
-  // a concrete code (including the empty-string "browser default") overrides it.
+  // a concrete code overrides it. "Browser default" is project-level only — not a valid fragment override.
   language: FragmentLanguageSchema,
   // Frontmatter keys Maskor does not manage (user-authored, e.g. Obsidian `tags`/`aliases`). Carried
   // through read→write so a Maskor save never strips user data. Storage-internal; omitted from API

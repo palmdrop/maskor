@@ -1,4 +1,4 @@
-import type { Fragment, LanguageCode, LogEntry } from "@maskor/shared";
+import type { Fragment, FragmentLanguageCode, LogEntry } from "@maskor/shared";
 import type { Command } from "../types";
 import {
   diffAspectWeights,
@@ -18,7 +18,7 @@ type UpdateFragmentInput = {
     references?: string[];
     aspects?: Record<string, { weight: number }>;
     // `null` clears the override (inherit project language); a code sets it; absent leaves it unchanged.
-    language?: LanguageCode | null;
+    language?: FragmentLanguageCode | null;
   };
   source?: UpdateSource;
 };

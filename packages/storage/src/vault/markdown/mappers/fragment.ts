@@ -1,5 +1,5 @@
-import type { Fragment, LanguageCode } from "@maskor/shared";
-import { LanguageCodeSchema } from "@maskor/shared";
+import type { Fragment, FragmentLanguageCode } from "@maskor/shared";
+import { FragmentLanguageCodeSchema } from "@maskor/shared";
 import type { ParsedFile } from "../parse";
 import { inlineFieldsToAspects, aspectsToInlineFields } from "./aspect";
 import { basename } from "node:path";
@@ -17,12 +17,13 @@ const MANAGED_FRONTMATTER_KEYS = new Set([
   "lang",
 ]);
 
-// The per-fragment language override lives in frontmatter as `lang` (short, Obsidian-neutral). A value
-// outside the curated catalog degrades to "inherit" (undefined) rather than breaking the read — the
-// catalog stays the single source of truth and an unknown code never reaches the API response schema.
-const readFragmentLanguage = (raw: unknown): LanguageCode | undefined => {
-  if (typeof raw !== "string" || raw === "") return undefined;
-  const parsed = LanguageCodeSchema.safeParse(raw);
+// The per-fragment language override lives in frontmatter as `lang` (short, Obsidian-neutral). Any value
+// that is not a concrete catalog code — absent, empty, or unknown — degrades to "inherit" (undefined)
+// rather than breaking the read. The empty string is intentionally not a valid override (browser default
+// is project-level only), so `safeParse` rejecting `""` is the correct behaviour, not a special case.
+const readFragmentLanguage = (raw: unknown): FragmentLanguageCode | undefined => {
+  if (typeof raw !== "string") return undefined;
+  const parsed = FragmentLanguageCodeSchema.safeParse(raw);
   return parsed.success ? parsed.data : undefined;
 };
 
@@ -85,9 +86,10 @@ export const toFile = (
       updatedAt: fragment.updatedAt.toISOString(),
       readiness: fragment.readiness,
       references: fragment.references,
-      // Persist the override only when a concrete language is set; an absent/empty value means
-      // "inherit the project language" and leaves no `lang` key behind.
-      ...(fragment.language ? { lang: fragment.language } : {}),
+      // Persist the override only when set; an absent override means "inherit the project language" and
+      // leaves no `lang` key behind. `language` is a concrete code or undefined (never `""`), so an
+      // explicit undefined check is exact.
+      ...(fragment.language !== undefined ? { lang: fragment.language } : {}),
     },
     inlineFields: aspectsToInlineFields(fragment.aspects),
     body: fragment.content,

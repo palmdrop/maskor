@@ -147,6 +147,15 @@ describe("fragment.fromFile", () => {
     const fragment = fromFile(parsed, "the-bridge.md");
     expect(fragment.language).toBeUndefined();
   });
+
+  it('treats an empty `lang` value as inherit — `""` is not a valid fragment override', () => {
+    const parsed: ParsedFile = {
+      ...PARSED,
+      frontmatter: { ...PARSED.frontmatter, lang: "" },
+    };
+    const fragment = fromFile(parsed, "the-bridge.md");
+    expect(fragment.language).toBeUndefined();
+  });
 });
 
 describe("fragment.toFile", () => {

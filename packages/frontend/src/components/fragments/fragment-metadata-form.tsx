@@ -18,16 +18,21 @@ import {
 } from "@components/ui/select";
 import { TagCombobox, type OptionGroup } from "@components/ui/tag-combobox";
 import { EntityTag } from "@components/entity-tag";
-import { deriveInlineLinkMetadata, LANGUAGE_CATALOG, type LanguageCode } from "@maskor/shared";
+import {
+  deriveInlineLinkMetadata,
+  LANGUAGE_CATALOG,
+  LANGUAGE_SELECT_EMPTY_VALUE,
+  type FragmentLanguageCode,
+} from "@maskor/shared";
 import { groupByCategory } from "@/utils/group-by-category";
 import { useCommandScope } from "../../lib/commands/useCommandScope";
 import { fragmentMetadataScope } from "../../lib/commands/scopes/fragment-metadata";
 import { useCommands } from "../../lib/commands/useCommands";
 import { resolveAspectColor } from "../../pages/OverviewPage/utils/aspectColors";
 
-// "Inherit project" maps to a cleared override (null). Radix `SelectItem` also rejects empty-string
-// values, so the override dropdown offers only this sentinel plus the catalog's concrete languages.
-const LANGUAGE_INHERIT_SENTINEL = "__inherit__";
+// The concrete languages a fragment can override to — the catalog minus the empty-string "browser
+// default" (that is project-level only). Computed once at module load, not per render.
+const FRAGMENT_LANGUAGE_OPTIONS = LANGUAGE_CATALOG.filter((entry) => entry.code !== "");
 
 const stringSetEqual = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
@@ -83,9 +88,9 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
   });
 
   // Per-fragment writing-language override. `null` clears it back to inheriting the project language.
-  const languageField = useLiveFieldSave<LanguageCode | null>({
+  const languageField = useLiveFieldSave<FragmentLanguageCode | null>({
     serverValue: fragment.language ?? null,
-    save: makeFieldSave<LanguageCode | null>((value) => ({ language: value })),
+    save: makeFieldSave<FragmentLanguageCode | null>((value) => ({ language: value })),
   });
 
   const referencesField = useLiveFieldSave({
@@ -320,10 +325,10 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
       <div className="flex flex-col gap-2">
         <Label htmlFor="fragment-language">Language</Label>
         <Select
-          value={languageField.value ?? LANGUAGE_INHERIT_SENTINEL}
+          value={languageField.value ?? LANGUAGE_SELECT_EMPTY_VALUE}
           onValueChange={(value) =>
             languageField.onChange(
-              value === LANGUAGE_INHERIT_SENTINEL ? null : (value as LanguageCode),
+              value === LANGUAGE_SELECT_EMPTY_VALUE ? null : (value as FragmentLanguageCode),
             )
           }
         >
@@ -331,8 +336,8 @@ export const FragmentMetadataForm = ({ fragment, projectId, canPreviewAspects = 
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={LANGUAGE_INHERIT_SENTINEL}>Inherit project</SelectItem>
-            {LANGUAGE_CATALOG.filter((entry) => entry.code !== "").map((entry) => (
+            <SelectItem value={LANGUAGE_SELECT_EMPTY_VALUE}>Inherit project</SelectItem>
+            {FRAGMENT_LANGUAGE_OPTIONS.map((entry) => (
               <SelectItem key={entry.code} value={entry.code}>
                 {entry.label}
               </SelectItem>
