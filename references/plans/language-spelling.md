@@ -1,9 +1,11 @@
 # Language settings & spelling
 
 **Date**: 25-06-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/fragment-editor.md`, `specifications/project-config.md`, `specifications/fragment-model.md`
-**Branch**: agent/language-spelling
+**Branch**: agent/language <!-- actual branch name; plan stem differs -->
+**Merged**: 607c013287b6c72bf7c1860da193df0efbd4da15 <!-- work landed on main as cee5dee + 607c013 (review fixes) -->
+**Closed**: 01-07-2026
 
 ---
 
