@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ENTITY_KEY_REGEX } from "@maskor/shared";
 import {
@@ -205,11 +206,15 @@ export const SplitFragmentDialog = ({
     const pieceKeys: SplitPieceKey[] = Object.entries(editedKeys)
       .map(([pieceIndex, key]) => ({ pieceIndex: Number(pieceIndex), key: key.trim() }))
       .filter((override) => override.pieceIndex >= 2);
+    let splitWarnings: string[] = [];
     try {
-      await splitFragment.mutateAsync({
+      const response = await splitFragment.mutateAsync({
         projectId,
         data: { fragmentId, delimiter, pieceKeys: pieceKeys.length ? pieceKeys : undefined },
       });
+      if (response.status === 200) {
+        splitWarnings = response.data.warnings;
+      }
     } catch (error) {
       // Surface the server's key-conflict message when present (e.g. a chosen key
       // collides with an existing fragment); otherwise a generic failure.
@@ -238,6 +243,12 @@ export const SplitFragmentDialog = ({
       // on the next fetch. Do not surface this as a split failure.
     }
     invalidateActionLog();
+    // Non-fatal follow-up failures (sequence placement, Margin migration): the
+    // split itself committed, so the dialog closes as a success and the warnings
+    // surface as a toast rather than a bogus "Split failed".
+    for (const warning of splitWarnings) {
+      toast.warning(warning);
+    }
     onOpenChange(false);
     onSplit?.();
   }, [

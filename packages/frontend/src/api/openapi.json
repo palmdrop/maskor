@@ -2998,12 +2998,22 @@
             "example": [
               "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
             ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "The new pieces could not be inserted into sequence \"Main\". Place them manually."
+            ]
           }
         },
         "required": [
           "sourceFragmentUuid",
           "createdCount",
-          "createdUuids"
+          "createdUuids",
+          "warnings"
         ]
       },
       "SplitBody": {
@@ -15113,7 +15123,7 @@
         },
         "responses": {
           "200": {
-            "description": "The split result: source uuid + the created pieces",
+            "description": "The split result: source uuid + the created pieces, plus any non-fatal follow-up warnings (the split itself committed)",
             "content": {
               "application/json": {
                 "schema": {

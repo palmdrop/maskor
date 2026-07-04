@@ -49,9 +49,9 @@
 
 ### Phase 3 — Split partial-failure resilience (backend)
 
-- [ ] Restructure `splitFragmentCommand` so all validation/derivation happens before the first write, and the writes that can still fail afterwards (sequence rewrites, margin migration) are collected as **warnings** instead of failing the whole command: the split result gains a `warnings: string[]` (empty on clean success), returned with 200. Log each warning server-side.
-- [ ] Frontend: surface non-empty `warnings` from the split result as a warning toast (split still counts as succeeded; dialog closes, caches refresh).
-- [ ] Tests: inject a sequence-write failure after fragment writes → 200 + warning + fragments persisted; margin-migration failure likewise; clean split returns empty warnings. A pre-write validation failure still 400/500s with nothing written.
+- [x] Restructure `splitFragmentCommand`: all validation/derivation (piece keys included — hoisted out of the write loop) happens before the first write; sequence rewrites (per-sequence isolation) and Margin migration are collected as `warnings: string[]` on the 200 result instead of failing the command. Each warning logged server-side via `ctx.logger.warn`. Margin migration now writes the piece Margins BEFORE rewriting the original's, so a mid-migration failure duplicates a comment rather than losing it.
+- [x] Frontend: non-empty `warnings` surfaced as `toast.warning` per warning (split still counts as succeeded; dialog closes, caches refresh). `SplitResultSchema` gained `warnings`; codegen re-run.
+- [x] Tests: sequence-write failure after fragment writes → warnings + fragments persisted + original truncated; Margin-migration failure → warning + comment retained on the original; clean split returns empty warnings; a pre-write key conflict rejects with nothing written. Dialog test: warnings toast + dialog still closes as success.
 
 ### Phase 4 — Close out
 

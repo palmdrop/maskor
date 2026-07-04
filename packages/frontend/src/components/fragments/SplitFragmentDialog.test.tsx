@@ -19,6 +19,11 @@ vi.mock("@api/action-log", () => ({
   useInvalidateActionLog: () => vi.fn(),
 }));
 
+const toastWarning = vi.fn();
+vi.mock("sonner", () => ({
+  toast: { warning: (...parameters: unknown[]) => toastWarning(...parameters) },
+}));
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -54,6 +59,7 @@ beforeEach(() => {
   splitMutateAsync.mockReset();
   invalidateQueries.mockReset();
   invalidateQueries.mockResolvedValue(undefined);
+  toastWarning.mockReset();
 });
 
 describe("SplitFragmentDialog", () => {
@@ -104,7 +110,12 @@ describe("SplitFragmentDialog", () => {
     );
     splitMutateAsync.mockResolvedValue({
       status: 200,
-      data: { sourceFragmentUuid: "fragment-1", createdCount: 1, createdUuids: ["new-1"] },
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+      },
     });
 
     renderDialog();
@@ -167,7 +178,12 @@ describe("SplitFragmentDialog", () => {
     );
     splitMutateAsync.mockResolvedValue({
       status: 200,
-      data: { sourceFragmentUuid: "fragment-1", createdCount: 1, createdUuids: ["new-1"] },
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+      },
     });
     const onOpenChange = vi.fn();
     const onSplit = vi.fn();
@@ -199,7 +215,12 @@ describe("SplitFragmentDialog", () => {
     );
     splitMutateAsync.mockResolvedValue({
       status: 200,
-      data: { sourceFragmentUuid: "fragment-1", createdCount: 1, createdUuids: ["new-1"] },
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+      },
     });
     // The split committed, but a query refetch triggered by invalidation rejects.
     // This must not surface as "Split failed." (Regression: TODO `---` split.)
@@ -217,6 +238,43 @@ describe("SplitFragmentDialog", () => {
       expect(onSplit).toHaveBeenCalled();
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
+    expect(screen.queryByText("Split failed. Try again.")).not.toBeInTheDocument();
+  });
+
+  it("surfaces split warnings as a warning toast while still closing as a success", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    // The split committed but a follow-up write failed server-side (e.g. a
+    // sequence placement) — the 200 carries the warning instead of a bogus 500.
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: ['The new pieces could not be inserted into sequence "Main". Place them manually.'],
+      },
+    });
+    const onOpenChange = vi.fn();
+    const onSplit = vi.fn();
+
+    renderDialog(onOpenChange, onSplit);
+
+    const confirm = await screen.findByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() => {
+      expect(onSplit).toHaveBeenCalled();
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+    expect(toastWarning).toHaveBeenCalledWith(
+      'The new pieces could not be inserted into sequence "Main". Place them manually.',
+    );
     expect(screen.queryByText("Split failed. Try again.")).not.toBeInTheDocument();
   });
 
