@@ -28,6 +28,7 @@ const renderEditor = (
     fontSize={16}
     maxParagraphWidth={72}
     vimClipboardSync={false}
+    language=""
     onChange={onChange}
   />
 );
