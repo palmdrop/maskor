@@ -155,7 +155,9 @@ describe("useEntityContentSwap — debounced writes", () => {
     });
 
     expect(putMutate).toHaveBeenCalledTimes(1);
-    expect(putMutate.mock.calls[0]?.[0]?.data).toEqual({ content: "abc" });
+    // The write also carries a baseline fingerprint of the server content (multi-tab-swap-hardening).
+    expect(putMutate.mock.calls[0]?.[0]?.data).toMatchObject({ content: "abc" });
+    expect(putMutate.mock.calls[0]?.[0]?.data?.baseHash).toEqual(expect.any(String));
   });
 
   it("does not write when currentValue matches serverValue", async () => {
@@ -259,7 +261,7 @@ describe("useEntityContentSwap — page-hide flush", () => {
     });
 
     expect(putMutate).toHaveBeenCalledTimes(1);
-    expect(putMutate.mock.calls[0]?.[0]?.data).toEqual({ content: "draft not yet flushed" });
+    expect(putMutate.mock.calls[0]?.[0]?.data).toMatchObject({ content: "draft not yet flushed" });
   });
 
   it("does not flush when the buffer matches the server content", async () => {

@@ -38,6 +38,47 @@ describe("createSwapStorage", () => {
     expect(result?.content).toBe("aspect prose");
   });
 
+  it("persists and round-trips the baseline fingerprint (multi-tab-swap-hardening)", async () => {
+    const storage = createSwapStorage({ vaultPath });
+    await storage.write("fragment", "uuid-base", "buffered edits", "base-fingerprint");
+
+    const onDisk = JSON.parse(
+      readFileSync(join(vaultPath, ".maskor", "swap", "fragment", "uuid-base.json"), "utf8"),
+    );
+    expect(onDisk.baseHash).toBe("base-fingerprint");
+
+    const result = await storage.read("fragment", "uuid-base");
+    expect(result?.baseHash).toBe("base-fingerprint");
+  });
+
+  it("omits baseHash on disk when none is supplied (legacy-compatible)", async () => {
+    const storage = createSwapStorage({ vaultPath });
+    await storage.write("note", "uuid-nobase", "content");
+
+    const onDisk = JSON.parse(
+      readFileSync(join(vaultPath, ".maskor", "swap", "note", "uuid-nobase.json"), "utf8"),
+    );
+    expect("baseHash" in onDisk).toBe(false);
+
+    const result = await storage.read("note", "uuid-nobase");
+    expect(result?.baseHash).toBeUndefined();
+  });
+
+  it("reads a legacy swap file that has no baseHash field", async () => {
+    const storage = createSwapStorage({ vaultPath });
+    const dir = join(vaultPath, ".maskor", "swap", "fragment");
+    mkdirSync(dir, { recursive: true });
+    // A swap written before baselines existed: content + savedAt only.
+    writeFileSync(
+      join(dir, "legacy-uuid.json"),
+      JSON.stringify({ content: "legacy body", savedAt: "2026-05-19T10:00:00.000Z" }),
+    );
+
+    const result = await storage.read("fragment", "legacy-uuid");
+    expect(result?.content).toBe("legacy body");
+    expect(result?.baseHash).toBeUndefined();
+  });
+
   it("read returns null for a missing swap file", async () => {
     const storage = createSwapStorage({ vaultPath });
     const result = await storage.read("note", "missing-uuid");

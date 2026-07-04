@@ -109,8 +109,14 @@ swapRouter.openapi(putSwapRoute, async (ctx) => {
     const storageService = ctx.get("storageService");
     const projectContext = ctx.get("projectContext")!;
     const { entityType, entityUUID } = ctx.req.valid("param");
-    const { content } = ctx.req.valid("json");
-    const result = await storageService.swap.write(projectContext, entityType, entityUUID, content);
+    const { content, baseHash } = ctx.req.valid("json");
+    const result = await storageService.swap.write(
+      projectContext,
+      entityType,
+      entityUUID,
+      content,
+      baseHash,
+    );
     return ctx.json({ savedAt: result.savedAt }, 200);
   } catch (error) {
     return throwStorageError(error);
@@ -123,7 +129,14 @@ swapRouter.openapi(getSwapRoute, async (ctx) => {
     const projectContext = ctx.get("projectContext")!;
     const { entityType, entityUUID } = ctx.req.valid("param");
     const result = await storageService.swap.read(projectContext, entityType, entityUUID);
-    return ctx.json(result ?? { content: null, savedAt: null }, 200);
+    // Normalize to the always-200 shape: null fields when no swap exists, and null baseHash for a
+    // legacy swap that predates baselines.
+    return ctx.json(
+      result
+        ? { content: result.content, savedAt: result.savedAt, baseHash: result.baseHash ?? null }
+        : { content: null, savedAt: null, baseHash: null },
+      200,
+    );
   } catch (error) {
     return throwStorageError(error);
   }

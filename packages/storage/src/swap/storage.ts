@@ -31,10 +31,12 @@ export const createSwapStorage = (config: SwapStorageConfig): SwapStorage => {
   const dirPathFor = (entityType: SwapEntityType): string => join(swapRoot, entityType);
 
   return {
-    async write(entityType, entityUUID, content) {
+    async write(entityType, entityUUID, content, baseHash) {
       assertEntityType(entityType);
       const savedAt = new Date().toISOString();
-      const payload: SwapFile = { content, savedAt };
+      // Omit baseHash from the file when the client didn't supply one, so a legacy/undefined baseline
+      // round-trips as absent rather than the string "undefined".
+      const payload: SwapFile = baseHash === undefined ? { content, savedAt } : { content, savedAt, baseHash };
       await mkdir(dirPathFor(entityType), { recursive: true });
       await writeFile(filePathFor(entityType, entityUUID), JSON.stringify(payload), "utf8");
       return payload;
@@ -56,7 +58,10 @@ export const createSwapStorage = (config: SwapStorageConfig): SwapStorage => {
         if (typeof parsed.content !== "string" || typeof parsed.savedAt !== "string") {
           throw new Error("Swap file missing required fields");
         }
-        return { content: parsed.content, savedAt: parsed.savedAt };
+        // baseHash is optional (legacy swaps predate it); only carry it forward when it's a string.
+        return typeof parsed.baseHash === "string"
+          ? { content: parsed.content, savedAt: parsed.savedAt, baseHash: parsed.baseHash }
+          : { content: parsed.content, savedAt: parsed.savedAt };
       } catch (error) {
         // TODO: .corrupt files are never cleaned up. One stays per entity that
         // ever had a malformed swap; subsequent corruptions overwrite the same

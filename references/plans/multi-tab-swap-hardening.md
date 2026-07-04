@@ -50,11 +50,14 @@ Traced the real sequence through `entity-editor-shell.tsx` (`liveContent` sync),
 
 **Direction adjustment.** The plan's Phase 2 "baseline-aware *writes*" is downgraded: a behavioral write-side guard would risk dropping a genuinely-dirty crash-net write (Vector 1/2 don't reproduce to justify it). Phase 2 instead only *attaches* the baseline to each write (plumbing for the recovery guard). The load-bearing fix is Phase 3: recovery becomes baseline-aware — a swap whose recorded baseline no longer matches the current server is a **conflict** requiring an explicit user choice, never a silent auto-apply.
 
-### Phase 2 — Fix: baseline-aware swap writes
+### Phase 2 — Fix: baseline-aware swap writes (narrowed per Phase 1)
 
-- [ ] Chosen direction (adjust if Phase 1 disproves it): make swap writes **baseline-aware**. Track the server content (hash or string) the buffer was seeded from; a swap write (debounced or flush) only proceeds when `currentValue` actually diverges from the *seed baseline* — a buffer that merely lags a newer server state is stale, not dirty. The backstop must use the same rule: buffer ≠ seed baseline → genuinely unsaved edits; buffer = seed baseline but ≠ refetched server content → stale, sync buffer instead of dirtying.
-- [ ] Ensure a genuinely-dirty-but-stale case (user edited in tab A *and* tab B saved meanwhile) is not silently dropped: that is a real conflict — keep the buffer, keep it dirty, and surface the existing "unsaved changes" affordances; the swap may hold tab A's content but recovery must not silently clobber (see Phase 3).
-- [ ] Keep the crash-net property: a single-tab crash still recovers the last keystrokes (do not weaken the debounced write or the flush for the genuinely-dirty case).
+Per the Phase 1 findings the write-side vectors don't reproduce (a clean buffer adopts the newer server; a divergent buffer is genuinely dirty and must be mirrored). So Phase 2 was narrowed to **attaching** the baseline to each write (plumbing for the Phase 3 recovery guard) — no behavioral write-side guard, which would risk dropping a genuinely-dirty crash-net write.
+
+- [x] Swap file + write path carry an optional `baseHash` (fingerprint of the server content at write time). Storage (`SwapFile`, `createSwapStorage.write/read`), storage-service, API schema (`SwapWriteBody`, `SwapReadResponse`), and routes plumb it through; legacy swaps without it round-trip as absent/null. _(2026-07-04)_
+- [x] Frontend `hashContent` util (trailing-whitespace-tolerant, matching `isTrailingWhitespaceEquivalent`); `useEntityContentSwap` sends `hashContent(serverValue)` on every write. _(2026-07-04)_
+- [x] Kept the crash-net property: debounce + page-hide flush still mirror a genuinely-dirty buffer unchanged. _(2026-07-04)_
+- [x] Tests: baseline round-trip + legacy back-compat (`swap.test.ts` storage + api route), write carries a baseHash, `content-hash.test.ts`. _(2026-07-04)_
 
 ### Phase 3 — Recovery guard
 

@@ -83,9 +83,46 @@ describe("GET /projects/:projectId/swap/:entityType/:entityUUID", () => {
       `/projects/${project.projectUUID}/swap/note/${randomUUID()}`,
     );
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { content: string | null; savedAt: string | null };
+    const body = (await response.json()) as {
+      content: string | null;
+      savedAt: string | null;
+      baseHash: string | null;
+    };
     expect(body.content).toBeNull();
     expect(body.savedAt).toBeNull();
+    expect(body.baseHash).toBeNull();
+  });
+
+  it("round-trips the baseline fingerprint written with the swap (multi-tab-swap-hardening)", async () => {
+    const entityUUID = randomUUID();
+    await testContext.app.request(`/projects/${project.projectUUID}/swap/fragment/${entityUUID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "buffered edits", baseHash: "server-v1-fingerprint" }),
+    });
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/swap/fragment/${entityUUID}`,
+    );
+    const body = (await response.json()) as { content: string | null; baseHash: string | null };
+    expect(body.content).toBe("buffered edits");
+    expect(body.baseHash).toBe("server-v1-fingerprint");
+  });
+
+  it("returns baseHash null for a swap written without a baseline (legacy-compatible)", async () => {
+    const entityUUID = randomUUID();
+    await testContext.app.request(`/projects/${project.projectUUID}/swap/fragment/${entityUUID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "no baseline" }),
+    });
+
+    const response = await testContext.app.request(
+      `/projects/${project.projectUUID}/swap/fragment/${entityUUID}`,
+    );
+    const body = (await response.json()) as { content: string | null; baseHash: string | null };
+    expect(body.content).toBe("no baseline");
+    expect(body.baseHash).toBeNull();
   });
 });
 

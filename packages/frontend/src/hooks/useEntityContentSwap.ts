@@ -6,12 +6,20 @@ import {
   useGetSwap,
   usePutSwap,
 } from "@api/generated/swap/swap";
+import { hashContent } from "@lib/swap/content-hash";
 
 export type SwapEntityKind = "fragment" | "aspect" | "note" | "reference" | "margin";
 
 export type SwapRecovery = {
   content: string;
   at: Date;
+  // True when the swap's recorded baseline (the server content the buffered edits diverged from) no
+  // longer matches the current server content — i.e. the server advanced elsewhere (another tab / an
+  // external edit) since this swap was written. Applying it would clobber that newer work, so the
+  // editor must require an explicit user choice instead of silently auto-applying (multi-tab-swap-
+  // hardening, Phase 3). A legacy swap with no recorded baseline is never a conflict (keeps the prior
+  // auto-apply behaviour). See specifications/fragment-editor.md (Buffer authority).
+  isConflict: boolean;
 };
 
 export type UseEntityContentSwapOptions = {
@@ -120,7 +128,11 @@ export const useEntityContentSwap = (
     // content — the swap file already holds this exact string.
     lastWrittenRef.current = cached.content;
     if (cached.content !== serverValue) {
-      setRecovery({ content: cached.content, at: new Date(cached.savedAt) });
+      // A recorded baseline that no longer fingerprints the current server means the server advanced
+      // since this swap was written (another tab saved, or an external edit) — a conflicting backup.
+      // A legacy swap (baseHash null) can't tell, so it keeps the prior non-conflict behaviour.
+      const isConflict = cached.baseHash != null && cached.baseHash !== hashContent(serverValue);
+      setRecovery({ content: cached.content, at: new Date(cached.savedAt), isConflict });
     }
     setHasSeeded(true);
   }, [
@@ -136,8 +148,12 @@ export const useEntityContentSwap = (
   // renders (refs/setstate only) so the flush listener can be subscribed once.
   const writeSwap = useCallback(
     (value: string) => {
+      // Record the baseline this buffer diverged from — the server content at write time. Recovery
+      // uses it to detect a stale multi-tab overwrite (Phase 3). Read off the ref so the flush path
+      // (which doesn't re-subscribe) sees the latest server content.
+      const baseHash = hashContent(serverValueRef.current);
       putMutateRef.current(
-        { projectId, entityType, entityUUID, data: { content: value } },
+        { projectId, entityType, entityUUID, data: { content: value, baseHash } },
         {
           onSuccess: () => {
             // A null `lastWritten` means no swap existed before this write, so the
