@@ -134,7 +134,16 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
     }),
   ),
   entry("fragment:renamed", renamed),
-  entry("fragment:discarded", empty),
+  // Discarding a placed fragment also removes it from every mutable sequence it
+  // sat in (import-sequences are frozen snapshots and are left intact). The
+  // removed sequences' uuids ride along on this single entry so it explains the
+  // side effect — no separate sequence:fragment-unplaced entries are emitted
+  // (mirrors fragment:split's single-entry convention). Defaulted so entries
+  // written before this field existed still parse.
+  entry(
+    "fragment:discarded",
+    z.object({ unplacedFromSequenceUuids: z.array(z.string()).default([]) }),
+  ),
   entry("fragment:restored", empty),
   entry("fragment:deleted", empty),
   entry("fragment:readiness-changed", z.object({ from: z.number(), to: z.number() })),
