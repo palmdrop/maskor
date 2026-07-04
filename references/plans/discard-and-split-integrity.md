@@ -43,9 +43,9 @@
 
 ### Phase 2 — Frontend cache coherence on discard/restore
 
-- [ ] Invalidate sequence caches (`getListSequencesQueryKey`, sequence contents, main-sequence — grep the generated query keys) on discard and restore, in `fragment-editor.tsx` `handleDiscard`/`handleRestore` **and** the fragment-list discard/restore path (`fragment-list.tsx` — locate its mutation callbacks).
-- [ ] Reproduce the "remove from sequence fails" report: with the fix, a discarded fragment is no longer in any sequence, so the unplace command should no longer even offer it. Verify `placedFragmentsForUnplace` (OverviewPage `useSectionOps.ts:179`) reflects the refreshed cache.
-- [ ] Tests: component/hook-level test that discard triggers the sequence invalidations.
+- [x] Invalidate sequence caches on discard and restore. New reusable `useInvalidateSequences` hook (`packages/frontend/src/lib/sequences/useInvalidateSequences.ts`) — a URL-prefix predicate covering the whole generated family (list, main, individual, contents) in one call. Wired into `fragment-editor.tsx` `handleDiscard`/`handleRestore` and the fragment-list discard/restore path (`FragmentListPage.tsx` `discardFragmentAction`/`restoreFragmentAction`; `fragment-list.tsx` is a dumb presentational list — the mutations live in the page).
+- [x] "Remove from sequence fails" report: root cause found — the `fragment_positions` cascade dropped placement index rows on discard while the sequence YAML files kept them (see Phase 1 note + `references/suggestions.md`); unplace-before-discard plus these invalidations close it. `placedFragmentsForUnplace` (OverviewPage `hooks/useSectionOps.ts`) derives from the sequence queries, so the prefix invalidation refreshes it — a discarded fragment is no longer offered for unplace.
+- [x] Tests: hook-level test that the prefix predicate invalidates exactly the project's sequence family (`useInvalidateSequences.test.tsx`); component-level tests that discard and restore trigger the sequence invalidation (`fragment-editor.test.tsx`).
 
 ### Phase 3 — Split partial-failure resilience (backend)
 

@@ -11,6 +11,7 @@ import {
 } from "@api/generated/fragments/fragments";
 import { useListSequences, getListSequencesQueryKey } from "@api/generated/sequences/sequences";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { useInvalidateSequences } from "@lib/sequences/useInvalidateSequences";
 import { toast } from "sonner";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
@@ -113,6 +114,7 @@ export const FragmentListPage = () => {
     () => queryClient.invalidateQueries({ queryKey: getListFragmentsQueryKey(projectId) }),
     [queryClient, projectId],
   );
+  const invalidateSequences = useInvalidateSequences(projectId);
 
   // Computed before the early returns so the command scope can publish
   // unconditionally (Rules of Hooks). The render path reuses these.
@@ -129,16 +131,19 @@ export const FragmentListPage = () => {
   const discardFragmentAction = useCallback(
     async (fragmentUuid: string) => {
       await discardFragment({ projectId, fragmentId: fragmentUuid });
-      await invalidateList();
+      // Discard unplaces the fragment from every sequence it sat in (backend), so
+      // refresh the sequence caches too — otherwise the sidebar/overview keep
+      // showing the now-discarded placement.
+      await Promise.all([invalidateList(), invalidateSequences()]);
     },
-    [discardFragment, projectId, invalidateList],
+    [discardFragment, projectId, invalidateList, invalidateSequences],
   );
   const restoreFragmentAction = useCallback(
     async (fragmentUuid: string) => {
       await restoreFragment({ projectId, fragmentId: fragmentUuid });
-      await invalidateList();
+      await Promise.all([invalidateList(), invalidateSequences()]);
     },
-    [restoreFragment, projectId, invalidateList],
+    [restoreFragment, projectId, invalidateList, invalidateSequences],
   );
   const deleteFragmentAction = useCallback(
     async (fragmentUuid: string) => {

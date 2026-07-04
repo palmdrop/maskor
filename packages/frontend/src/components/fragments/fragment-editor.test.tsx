@@ -11,6 +11,21 @@ const marginClearSpy = vi.fn();
 const marginRevertSpy = vi.fn();
 const marginSaveSpy = vi.fn(() => Promise.resolve());
 const updateFragmentSpy = vi.fn(() => Promise.resolve({ status: 200, data: {} }));
+const invalidateSequencesSpy = vi.fn();
+// mutateAsync stubs that honor react-query's (variables, { onSuccess }) shape so
+// the discard/restore onSuccess invalidations actually run in the test.
+const discardFragmentSpy = vi.fn(
+  (_variables: unknown, options?: { onSuccess?: () => void }): Promise<void> => {
+    options?.onSuccess?.();
+    return Promise.resolve();
+  },
+);
+const restoreFragmentSpy = vi.fn(
+  (_variables: unknown, options?: { onSuccess?: () => void }): Promise<void> => {
+    options?.onSuccess?.();
+    return Promise.resolve();
+  },
+);
 
 let fragmentRecovery: SwapRecovery | null = null;
 let marginRecovery: SwapRecovery | null = null;
@@ -113,8 +128,8 @@ vi.mock("@api/generated/fragments/fragments", () => ({
     isError: false,
   }),
   useUpdateFragment: () => ({ mutateAsync: updateFragmentSpy, isPending: false }),
-  useDiscardFragment: () => ({ mutate: vi.fn(), isPending: false }),
-  useRestoreFragment: () => ({ mutate: vi.fn(), isPending: false }),
+  useDiscardFragment: () => ({ mutateAsync: discardFragmentSpy, isPending: false }),
+  useRestoreFragment: () => ({ mutateAsync: restoreFragmentSpy, isPending: false }),
   getGetFragmentQueryKey: () => ["fragment"],
   getListFragmentsQueryKey: () => ["fragments"],
   getListFragmentSummariesQueryKey: () => ["fragments", "summaries"],
@@ -139,6 +154,10 @@ vi.mock("@api/action-log", () => ({
   getActionLogQueryKey: (projectId: string) => ["action-log", projectId],
 }));
 
+vi.mock("@lib/sequences/useInvalidateSequences", () => ({
+  useInvalidateSequences: () => invalidateSequencesSpy,
+}));
+
 vi.mock("../../lib/commands/useCommands", () => ({
   useCommands: () => ({ run: vi.fn() }),
 }));
@@ -159,6 +178,9 @@ beforeEach(() => {
   marginRevertSpy.mockReset();
   marginSaveSpy.mockClear();
   updateFragmentSpy.mockClear();
+  invalidateSequencesSpy.mockClear();
+  discardFragmentSpy.mockClear();
+  restoreFragmentSpy.mockClear();
   fragmentRecovery = null;
   marginRecovery = null;
   marginEditor.isDirty = false;
@@ -204,6 +226,44 @@ describe("FragmentEditor placement picker", () => {
     const sequences = (publishedContext as { sequences: Array<{ uuid: string }> }).sequences;
 
     expect(sequences.map((sequence) => sequence.uuid)).toEqual(["seq-writable"]);
+  });
+});
+
+describe("FragmentEditor discard/restore sequence-cache coherence", () => {
+  const findEditorScopeContext = () =>
+    vi
+      .mocked(useCommandScope)
+      .mock.calls.map((call) => call[1] as Record<string, unknown> | undefined)
+      .find((context) => context && "discard" in context) as
+      | { discard: () => Promise<void>; restore: () => Promise<void> }
+      | undefined;
+
+  it("invalidates the sequence caches when the fragment is discarded", async () => {
+    renderEditor();
+    const context = findEditorScopeContext();
+    expect(context).toBeDefined();
+
+    await act(async () => {
+      await context!.discard();
+    });
+
+    // The backend unplaces the fragment from every sequence on discard; without
+    // this invalidation the sidebar/overview keep rendering the stale placement.
+    expect(discardFragmentSpy).toHaveBeenCalledTimes(1);
+    expect(invalidateSequencesSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates the sequence caches when the fragment is restored", async () => {
+    renderEditor();
+    const context = findEditorScopeContext();
+    expect(context).toBeDefined();
+
+    await act(async () => {
+      await context!.restore();
+    });
+
+    expect(restoreFragmentSpy).toHaveBeenCalledTimes(1);
+    expect(invalidateSequencesSpy).toHaveBeenCalledTimes(1);
   });
 });
 

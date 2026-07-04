@@ -8894,7 +8894,15 @@
                           },
                           "payload": {
                             "type": "object",
-                            "properties": {}
+                            "properties": {
+                              "unplacedFromSequenceUuids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "default": []
+                              }
+                            }
                           }
                         },
                         "required": [
