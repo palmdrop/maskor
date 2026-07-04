@@ -1,10 +1,11 @@
 # Spec: Sequencer
 
 **Status**: In Progress
-**Last updated**: 2026-06-13
+**Last updated**: 2026-07-04
 
 **Shipped**:
 
+- 2026-07-04 — Discard ↔ sequence coherence. Discarding a fragment now removes it from every mutable sequence it is placed in (read-only import-sequences keep their snapshot placements); the single `fragment:discarded` action-log entry carries the removed sequence uuids and the history view reports the count. Restoring does **not** re-place the fragment — it returns to the unassigned pool. The frontend invalidates the whole sequence-query family on discard/restore (new `useInvalidateSequences` hook), so the sidebar, Overview, and unplace picker drop the stale placement immediately. (plan: references/plans/discard-and-split-integrity.md, Phases 1–2)
 - 2026-06-19 — Place a fragment into a sequence on creation: the "New fragment" dialog has an optional "Add to sequence" picker (import-sequences excluded — they are read-only). When a sequence is chosen, the new fragment is appended to that sequence's last section after creation. In the fragment list, the picker pre-selects the sequence the list is currently sorted by, so creating a fragment while viewing a sequence's order offers to add it there. Placement is best-effort (the fragment is created regardless; a placement failure surfaces a toast).
 - 2026-05-12 — Users can manually arrange fragments into an ordered main sequence. Non-discarded fragments not yet placed appear in an unassigned pool. Fragments can be dragged from the pool into the sequence, reordered within it, or dragged back out to unplace them; the arrangement survives a reload. (plan: references/plans/sequencer-manual-placement.md)
 - 2026-05-18 — Sequence placement, move, and unplace actions log the sequence name and fragment key for human-readable action log rendering. (plan: references/plans/sequence-action-log-human-readable.md)

@@ -1,7 +1,7 @@
 # Discard ↔ sequence coherence + split partial-failure integrity
 
 **Date**: 04-07-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/sequencer.md`, `specifications/fragment-model.md`, `specifications/fragment-split.md`
 **Branch**: agent/discard-and-split-integrity
 
@@ -55,9 +55,9 @@
 
 ### Phase 4 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update `Shipped` frontmatter of the touched specs (`fragment-split.md` for Phase 3; `sequencer.md`/`fragment-model.md` for Phases 1–2).
-- [ ] Set plan status, commit.
+- [x] `bun run format` then `bun run verify`; fix all issues.
+- [x] Update `Shipped` frontmatter of the touched specs (`fragment-split.md` for Phase 3; `sequencer.md`/`fragment-model.md` for Phases 1–2).
+- [x] Set plan status, commit.
 
 ---
 

@@ -633,9 +633,7 @@ describe("splitFragmentCommand", () => {
       `prewrite-src-${stamp}`,
       "# One\nBody one\n# Two\nBody two\n# Three\nBody three",
     );
-    const summariesBefore = await ctx.storageService.fragments.readAllSummaries(
-      ctx.projectContext,
-    );
+    const summariesBefore = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
 
     // Piece 2 gets a valid unique key; piece 3 collides. Key resolution happens
     // before the first write, so piece 2 must NOT be created.
@@ -652,9 +650,7 @@ describe("splitFragmentCommand", () => {
 
     const summariesAfter = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
     expect(summariesAfter.length).toBe(summariesBefore.length);
-    expect(summariesAfter.some((summary) => summary.key === `prewrite-fresh-${stamp}`)).toBe(
-      false,
-    );
+    expect(summariesAfter.some((summary) => summary.key === `prewrite-fresh-${stamp}`)).toBe(false);
     // The original is untouched — full prose intact.
     const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
     expect(reread.content).toContain("Body three");

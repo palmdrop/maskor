@@ -256,7 +256,9 @@ describe("SplitFragmentDialog", () => {
         sourceFragmentUuid: "fragment-1",
         createdCount: 1,
         createdUuids: ["new-1"],
-        warnings: ['The new pieces could not be inserted into sequence "Main". Place them manually.'],
+        warnings: [
+          'The new pieces could not be inserted into sequence "Main". Place them manually.',
+        ],
       },
     });
     const onOpenChange = vi.fn();

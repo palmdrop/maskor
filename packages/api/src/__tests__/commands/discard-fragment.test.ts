@@ -131,8 +131,9 @@ describe("discardFragmentCommand", () => {
     expect(logEntries).toHaveLength(1);
     const [entry] = logEntries;
     expect(entry!.type).toBe("fragment:discarded");
-    expect((entry!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids)
-      .toEqual([sequence.uuid]);
+    expect(
+      (entry!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids,
+    ).toEqual([sequence.uuid]);
   });
 
   it("leaves sequences untouched when discarding an unplaced fragment", async () => {
@@ -148,8 +149,9 @@ describe("discardFragmentCommand", () => {
 
     const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequence.uuid);
     expect(placedFragmentUuids(reread)).toEqual([placed.uuid]);
-    expect((logEntries[0]!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids)
-      .toEqual([]);
+    expect(
+      (logEntries[0]!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids,
+    ).toEqual([]);
   });
 
   it("leaves read-only import-sequences intact", async () => {
@@ -185,8 +187,9 @@ describe("discardFragmentCommand", () => {
     );
     const rawYaml = await Bun.file(sequenceFilePath).text();
     expect(rawYaml).toContain(target.uuid);
-    expect((logEntries[0]!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids)
-      .toEqual([]);
+    expect(
+      (logEntries[0]!.payload as { unplacedFromSequenceUuids: string[] }).unplacedFromSequenceUuids,
+    ).toEqual([]);
   });
 
   it("restore does not re-place the fragment into its former sequences", async () => {
