@@ -18,6 +18,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 import { useEntityContentSwap } from "./useEntityContentSwap";
+import { hashContent } from "@lib/swap/content-hash";
 
 const baseProps = {
   projectId: "project-1",
@@ -29,7 +30,7 @@ const baseProps = {
 
 type SwapReadEnvelope = {
   status: 200;
-  data: { content: string | null; savedAt: string | null };
+  data: { content: string | null; savedAt: string | null; baseHash?: string | null };
 };
 
 const mountedQuery = (data: SwapReadEnvelope | undefined, error: unknown = null) => ({
@@ -108,6 +109,105 @@ describe("useEntityContentSwap — mount-time recovery", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(result.current.recovery).toBeNull();
+  });
+});
+
+describe("useEntityContentSwap — conflicting backup detection (multi-tab-swap-hardening)", () => {
+  it("flags a conflict when the swap's baseline no longer matches the current server", async () => {
+    // The swap was written while the server held v1; another tab has since saved v2. Applying the
+    // backup would revert that newer work, so recovery must require an explicit choice.
+    setupMocks(
+      mountedQuery({
+        status: 200,
+        data: {
+          content: "v1 with tab A edits",
+          savedAt: "2026-07-04T10:00:00.000Z",
+          baseHash: hashContent("v1 server content"),
+        },
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useEntityContentSwap({
+        ...baseProps,
+        currentValue: "v2 newer server content",
+        serverValue: "v2 newer server content",
+      }),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.recovery?.content).toBe("v1 with tab A edits");
+    expect(result.current.recovery?.isConflict).toBe(true);
+  });
+
+  it("does NOT flag a conflict when the baseline still matches the current server (single-tab crash)", async () => {
+    setupMocks(
+      mountedQuery({
+        status: 200,
+        data: {
+          content: "server content plus my unsaved edits",
+          savedAt: "2026-07-04T10:00:00.000Z",
+          baseHash: hashContent("server content"),
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useEntityContentSwap(baseProps));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.recovery?.content).toBe("server content plus my unsaved edits");
+    expect(result.current.recovery?.isConflict).toBe(false);
+  });
+
+  it("treats a baseline differing only by trailing whitespace as matching (save normalization)", async () => {
+    // The server normalizes trailing whitespace (body.trim()), so a baseline recorded before a
+    // round-trip must not read as a conflict afterwards.
+    setupMocks(
+      mountedQuery({
+        status: 200,
+        data: {
+          content: "server content plus edits",
+          savedAt: "2026-07-04T10:00:00.000Z",
+          baseHash: hashContent("server content\n"),
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useEntityContentSwap(baseProps));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.recovery?.isConflict).toBe(false);
+  });
+
+  it("a legacy swap without a baseline is never a conflict (keeps the prior auto-apply)", async () => {
+    setupMocks(
+      mountedQuery({
+        status: 200,
+        data: {
+          content: "legacy cached body",
+          savedAt: "2026-05-19T10:00:00.000Z",
+          baseHash: null,
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useEntityContentSwap(baseProps));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.recovery?.content).toBe("legacy cached body");
+    expect(result.current.recovery?.isConflict).toBe(false);
   });
 });
 

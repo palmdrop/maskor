@@ -1,9 +1,10 @@
 # Multi-tab swap hardening — stale tabs must never overwrite newer work
 
 **Date**: 04-07-2026
-**Status**: In Progress
+**Status**: Done
 **Specs**: `specifications/fragment-editor.md`, `specifications/storage-sync.md`
 **Branch**: agent/multi-tab-swap-hardening
+**Closed**: 04-07-2026
 
 ---
 
@@ -61,13 +62,17 @@ Per the Phase 1 findings the write-side vectors don't reproduce (a clean buffer 
 
 ### Phase 3 — Recovery guard
 
-- [ ] Swap payload gains the baseline (hash of the server content the buffer diverged from). On recovery offer, when the swap's baseline no longer matches current server content, do not silently apply: show the existing recovery banner in a "conflicting backup" variant that requires explicit user choice (keep server / restore backup). Check the swap schema + `GET /swap` list endpoint for compatibility (additive field; old swaps without a baseline keep today's behavior).
-- [ ] Update `specifications/fragment-editor.md` (Buffer authority) and `specifications/storage-sync.md` (swap contract) to document baseline-aware swap semantics.
+- [x] `useEntityContentSwap` recovery carries `isConflict`: true when the swap's recorded `baseHash` no longer fingerprints the current server content; legacy baseline-less swaps are never conflicts. Comparison uses `hashContent` (trailing-whitespace-tolerant, matching the server's `body.trim()` normalization so a save round-trip can't false-conflict). _(2026-07-04)_
+- [x] A conflicting recovery is never auto-applied: the shell holds the backup back (buffer keeps the server content) and renders `ConflictingBackupBanner` (role=alert) with an explicit choice — "Keep server version" (revert + clear swap) / "Restore backup" (apply + mark dirty; buffer authority then protects it). Shell handle gained `restoreBackup` for the pair. _(2026-07-04)_
+- [x] Linked pair (fragment ↔ Margin): either side conflicting makes the whole pair a conflict; one banner, both sides restored or kept together (`handlePairRestoreBackup` / `handlePairRestore`). A held-back conflicting Margin backup is not auto-applied. _(2026-07-04)_
+- [x] Compatibility checked: `baseHash` is additive on `SwapWriteBody`/`SwapReadResponse` (nullable on read); the `GET /swap` list endpoint is untouched (it never exposed content). Old swaps keep today's auto-apply. _(2026-07-04)_
+- [x] Tests: conflict detection incl. whitespace-tolerance + legacy back-compat (`useEntityContentSwap.test.ts`), shell hold-back + both choices + unchanged non-conflict auto-apply (`entity-editor-shell.test.tsx`), pair coordination (`fragment-editor.test.tsx`). _(2026-07-04)_
+- [x] Updated `specifications/fragment-editor.md` (Buffer authority — baseline-aware swap recovery) and `specifications/storage-sync.md` (swap contract — baseHash). _(2026-07-04)_
 
 ### Phase 4 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update the `Shipped` frontmatter of both specs; set plan status; commit.
+- [x] `bun run format` then `bun run verify`; fixed all issues. Also fixed two pre-existing breakages unrelated to this plan: Node ≥ 25's experimental `localStorage` global shadowing happy-dom's storage in the frontend test setup (every persisted-state test crashed on newer Node), and a missing required `language` prop in `prose-editor.dirty-backstop.test.tsx` left behind by the language-spelling work (typecheck failure). _(2026-07-04)_
+- [x] Updated the `Shipped` frontmatter of both specs; set plan status; committed per phase. _(2026-07-04)_
 
 ---
 

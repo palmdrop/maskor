@@ -17,10 +17,7 @@ export const SwapWriteBodySchema = z
     // Fingerprint of the server content the buffered edits diverged from. Lets recovery distinguish a
     // single-tab crash (baseline still matches the current server) from a stale multi-tab overwrite
     // (the server advanced elsewhere). Optional so legacy clients keep working. (multi-tab-swap-hardening)
-    baseHash: z
-      .string()
-      .optional()
-      .openapi({ example: "a1b2c3d4" }),
+    baseHash: z.string().optional().openapi({ example: "a1b2c3d4" }),
   })
   .openapi("SwapWriteBody");
 

@@ -7,6 +7,7 @@ import type { UseMarginEditorResult } from "@hooks/useMarginEditor";
 // --- Controllable mock state ---
 
 const restoreFromServerSpy = vi.fn();
+const restoreBackupSpy = vi.fn();
 const marginClearSpy = vi.fn();
 const marginRevertSpy = vi.fn();
 const marginSaveSpy = vi.fn(() => Promise.resolve());
@@ -17,7 +18,9 @@ let marginRecovery: SwapRecovery | null = null;
 // Controllable sequence bundle so the placement-picker filter (import-sequences
 // excluded) is testable.
 let sequenceListData: Array<Record<string, unknown>> = [];
-let capturedOnRecoveryChange: ((recovery: { at: Date } | null) => void) | undefined;
+let capturedOnRecoveryChange:
+  | ((recovery: { at: Date; isConflict: boolean } | null) => void)
+  | undefined;
 // Captured from the shell stub so the coupled-save path (margins-4 Phase 4) is testable.
 let capturedIsDirty: boolean | undefined;
 let capturedOnProseChange: (() => void) | undefined;
@@ -28,7 +31,7 @@ let capturedOnContentSave: ((content: string) => Promise<unknown>) | undefined;
 type ShellProps = {
   banner?: ReactNode;
   rightPanel?: ReactNode;
-  onRecoveryChange?: (recovery: { at: Date } | null) => void;
+  onRecoveryChange?: (recovery: { at: Date; isConflict: boolean } | null) => void;
   isDirty?: boolean;
   onProseChange?: () => void;
   onContentSave?: (content: string) => Promise<unknown>;
@@ -39,6 +42,7 @@ type ShellHandle = {
   getCurrentBlock: () => { text: string } | null;
   revealAnchor: (markerId: string) => void;
   restoreFromServer: () => void;
+  restoreBackup: () => void;
 };
 
 vi.mock("@components/entity-editor-shell", () => ({
@@ -51,7 +55,11 @@ vi.mock("@components/entity-editor-shell", () => ({
     capturedOnProseChange = onProseChange;
     capturedOnContentSave = onContentSave;
     useEffect(() => {
-      onRecoveryChange?.(fragmentRecovery ? { at: fragmentRecovery.at } : null);
+      onRecoveryChange?.(
+        fragmentRecovery
+          ? { at: fragmentRecovery.at, isConflict: fragmentRecovery.isConflict }
+          : null,
+      );
     }, [onRecoveryChange]);
     useImperativeHandle(ref, () => ({
       save: vi.fn(),
@@ -59,6 +67,7 @@ vi.mock("@components/entity-editor-shell", () => ({
       getCurrentBlock: () => null,
       revealAnchor: vi.fn(),
       restoreFromServer: restoreFromServerSpy,
+      restoreBackup: restoreBackupSpy,
     }));
     return (
       <div data-testid="shell-stub">
@@ -155,10 +164,12 @@ const renderEditor = (props?: { showMargin?: boolean }) =>
 
 beforeEach(() => {
   restoreFromServerSpy.mockReset();
+  restoreBackupSpy.mockReset();
   marginClearSpy.mockReset();
   marginRevertSpy.mockReset();
   marginSaveSpy.mockClear();
   updateFragmentSpy.mockClear();
+  vi.mocked(marginEditor.applySerialized).mockClear();
   fragmentRecovery = null;
   marginRecovery = null;
   marginEditor.isDirty = false;
@@ -214,29 +225,29 @@ describe("FragmentEditor linked swap pair", () => {
   });
 
   it("shows a single banner when only the Margin has a recovered buffer", () => {
-    marginRecovery = { content: "{}", at };
+    marginRecovery = { content: "{}", at, isConflict: false };
     renderEditor();
     const banners = screen.queryAllByRole("status");
     expect(banners).toHaveLength(1);
   });
 
   it("shows a single banner when only the fragment has a recovered buffer", () => {
-    fragmentRecovery = { content: "body", at };
+    fragmentRecovery = { content: "body", at, isConflict: false };
     renderEditor();
     const banners = screen.queryAllByRole("status");
     expect(banners).toHaveLength(1);
   });
 
   it("shows exactly one banner — not two — when both sides have recovered buffers", () => {
-    fragmentRecovery = { content: "body", at };
-    marginRecovery = { content: "{}", at: new Date("2026-06-02T10:05:00.000Z") };
+    fragmentRecovery = { content: "body", at, isConflict: false };
+    marginRecovery = { content: "{}", at: new Date("2026-06-02T10:05:00.000Z"), isConflict: false };
     renderEditor();
     expect(screen.queryAllByRole("status")).toHaveLength(1);
   });
 
   it("restores both fragment and Margin atomically from the single banner", () => {
-    fragmentRecovery = { content: "body", at };
-    marginRecovery = { content: "{}", at };
+    fragmentRecovery = { content: "body", at, isConflict: false };
+    marginRecovery = { content: "{}", at, isConflict: false };
     renderEditor();
     fireEvent.click(screen.getByRole("button", { name: "Restore from server" }));
     expect(restoreFromServerSpy).toHaveBeenCalledTimes(1);
@@ -245,12 +256,59 @@ describe("FragmentEditor linked swap pair", () => {
   });
 
   it("clears the banner after the fragment recovery is reported as resolved", () => {
-    fragmentRecovery = { content: "body", at };
+    fragmentRecovery = { content: "body", at, isConflict: false };
     renderEditor();
     expect(screen.queryAllByRole("status")).toHaveLength(1);
     // Simulate the shell reporting the fragment swap cleared (e.g. after restore/ save).
     act(() => capturedOnRecoveryChange?.(null));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("FragmentEditor linked swap pair — conflicting backup (multi-tab-swap-hardening)", () => {
+  it("shows the conflict banner instead of auto-restoring when either side conflicts", () => {
+    // The margin's backup was written against a server version that has since advanced.
+    marginRecovery = { content: "{}", at, isConflict: true };
+    renderEditor();
+
+    // A held-back conflicting Margin backup is NOT auto-applied.
+    expect(marginEditor.applySerialized).not.toHaveBeenCalled();
+    // The conflict variant renders (role alert), not the auto-restored variant (role status).
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toMatch(/backup conflict/i);
+  });
+
+  it("a fragment-side conflict also makes the whole pair conflict", () => {
+    fragmentRecovery = { content: "body", at, isConflict: true };
+    renderEditor();
+    expect(screen.getByRole("alert").textContent).toMatch(/backup conflict/i);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("Restore backup applies both sides together and hides the banner", () => {
+    fragmentRecovery = { content: "body", at, isConflict: true };
+    marginRecovery = { content: "{}", at, isConflict: true };
+    renderEditor();
+
+    fireEvent.click(screen.getByRole("button", { name: "Restore backup" }));
+
+    expect(restoreBackupSpy).toHaveBeenCalledTimes(1);
+    expect(marginEditor.applySerialized).toHaveBeenCalledWith("{}");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("Keep server version restores both sides from the server and clears both swaps", () => {
+    fragmentRecovery = { content: "body", at, isConflict: true };
+    marginRecovery = { content: "{}", at, isConflict: true };
+    renderEditor();
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep server version" }));
+
+    expect(restoreFromServerSpy).toHaveBeenCalledTimes(1);
+    expect(marginRevertSpy).toHaveBeenCalledTimes(1);
+    expect(marginClearSpy).toHaveBeenCalledTimes(1);
+    expect(marginEditor.applySerialized).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 

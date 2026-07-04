@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useFragmentMarginBridge } from "./use-fragment-margin-bridge";
 import { UnsavedRecoveryBanner } from "@components/unsaved-recovery-banner";
 import { BackupFailedBanner } from "@components/backup-failed-banner";
+import { ConflictingBackupBanner } from "@components/conflicting-backup-banner";
 import { Separator } from "@components/ui/separator";
 import { useMarginEditor } from "@hooks/useMarginEditor";
 import { useEntityContentSwap } from "@hooks/useEntityContentSwap";
@@ -147,18 +148,30 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   });
 
   // Fragment swap recovery, reported up from the shell so it can be coordinated with the margin's.
-  const [fragmentRecovery, setFragmentRecovery] = useState<{ at: Date } | null>(null);
+  const [fragmentRecovery, setFragmentRecovery] = useState<{
+    at: Date;
+    isConflict: boolean;
+  } | null>(null);
   // Fragment swap-backup failure, reported up from the shell; combined with the margin's into one
   // "not backed up" warning over the linked pair.
   const [fragmentBackupFailed, setFragmentBackupFailed] = useState(false);
 
   // Apply the recovered Margin buffer once, mirroring the shell's fragment-recovery behaviour.
   const marginRecoveryAppliedRef = useRef(false);
+  // Explicit choice made on a conflicting pair backup — hides the pair conflict banner after the
+  // user picked (mirrors the shell's own conflictResolution for the non-pair case).
+  const [pairConflictResolution, setPairConflictResolution] = useState<"restored" | "kept" | null>(
+    null,
+  );
   useEffect(() => {
     marginRecoveryAppliedRef.current = false;
+    setPairConflictResolution(null);
   }, [projectId, fragmentId]);
   useEffect(() => {
     if (!marginSwap.recovery) return;
+    // A conflicting Margin backup is held back like the fragment's (multi-tab-swap-hardening,
+    // Phase 3) — applied only via the pair banner's explicit "Restore backup".
+    if (marginSwap.recovery.isConflict) return;
     if (marginRecoveryAppliedRef.current) return;
     marginRecoveryAppliedRef.current = true;
     marginEditor.applySerialized(marginSwap.recovery.content);
@@ -293,10 +306,25 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const handlePairRestore = useCallback(() => {
     shellRef.current?.restoreFromServer();
     marginEditor.revertToServer();
+    setPairConflictResolution("kept");
     void marginSwap.clear();
   }, [marginEditor, marginSwap]);
 
+  // The pair's explicit "Restore backup" for a conflicting recovery: apply both held-back backups
+  // together (the shell no-ops if its side has none / already applied; same for the Margin), so the
+  // pair restores atomically — never one without the other.
+  const handlePairRestoreBackup = useCallback(() => {
+    shellRef.current?.restoreBackup();
+    if (marginSwap.recovery && !marginRecoveryAppliedRef.current) {
+      marginRecoveryAppliedRef.current = true;
+      marginEditor.applySerialized(marginSwap.recovery.content);
+    }
+    setPairConflictResolution("restored");
+  }, [marginEditor, marginSwap.recovery]);
+
   // One recovery offer covers the pair; surface whichever side cached most recently for the label.
+  // Either side conflicting makes the whole pair a conflict — the pair restores together, so a
+  // silent auto-apply of one side alongside an explicit choice on the other would tear the pair.
   const pairRecovery = useMemo(() => {
     const fragmentAt = fragmentRecovery?.at ?? null;
     const marginAt = marginSwap.recovery?.at ?? null;
@@ -307,7 +335,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           ? fragmentAt
           : marginAt
         : (fragmentAt ?? marginAt!);
-    return { at };
+    const isConflict =
+      (fragmentRecovery?.isConflict ?? false) || (marginSwap.recovery?.isConflict ?? false);
+    return { at, isConflict };
   }, [fragmentRecovery, marginSwap.recovery]);
 
   // The "Comment this block" gesture is now a *jump*: it moves focus to the margin slot beside the
@@ -392,9 +422,18 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   const pairBackupFailed = fragmentBackupFailed || marginSwap.backupFailed;
   const pairBanner = (
     <>
-      {pairRecovery && (
-        <UnsavedRecoveryBanner cachedAt={pairRecovery.at} onDismiss={handlePairRestore} />
-      )}
+      {pairRecovery &&
+        (pairRecovery.isConflict ? (
+          pairConflictResolution === null && (
+            <ConflictingBackupBanner
+              cachedAt={pairRecovery.at}
+              onRestoreBackup={handlePairRestoreBackup}
+              onDiscardBackup={handlePairRestore}
+            />
+          )
+        ) : (
+          <UnsavedRecoveryBanner cachedAt={pairRecovery.at} onDismiss={handlePairRestore} />
+        ))}
       {pairBackupFailed && <BackupFailedBanner />}
       {discardedBanner}
     </>

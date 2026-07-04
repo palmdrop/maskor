@@ -36,7 +36,8 @@ export const createSwapStorage = (config: SwapStorageConfig): SwapStorage => {
       const savedAt = new Date().toISOString();
       // Omit baseHash from the file when the client didn't supply one, so a legacy/undefined baseline
       // round-trips as absent rather than the string "undefined".
-      const payload: SwapFile = baseHash === undefined ? { content, savedAt } : { content, savedAt, baseHash };
+      const payload: SwapFile =
+        baseHash === undefined ? { content, savedAt } : { content, savedAt, baseHash };
       await mkdir(dirPathFor(entityType), { recursive: true });
       await writeFile(filePathFor(entityType, entityUUID), JSON.stringify(payload), "utf8");
       return payload;
