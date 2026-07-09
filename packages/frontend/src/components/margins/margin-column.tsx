@@ -20,6 +20,7 @@ import {
   nextSlotIndex,
   previousSlotIndex,
   planOrphanRebinds,
+  resolveColumnBlocks,
   type FragmentBlock,
   type SlotRow,
 } from "@lib/margins/column";
@@ -128,7 +129,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   });
   useScrollSync(getScrollElement, scrollRef, editorBlocks);
 
-  const blocks = useMemo<FragmentBlock[]>(
+  // The block list built from the editor's measured geometry. It can transiently read empty while a
+  // refetch-triggered editor reload is in flight; `resolveColumnBlocks` (below) holds the previous
+  // list in that window so comments don't flicker into the orphan group.
+  const incomingBlocks = useMemo<FragmentBlock[]>(
     () =>
       editorBlocks.map((block, index) => ({
         index,
@@ -137,6 +141,15 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       })),
     [editorBlocks],
   );
+  // Last non-empty block list, reused when the incoming list transiently empties during a reload while
+  // comments still exist (Phase 1 gate). A genuine orphaning leaves a non-empty list, so the reuse
+  // never masks a real deletion.
+  const settledBlocksRef = useRef<FragmentBlock[]>([]);
+  const blocks = useMemo<FragmentBlock[]>(() => {
+    const resolved = resolveColumnBlocks(incomingBlocks, settledBlocksRef.current, comments);
+    if (resolved.length > 0) settledBlocksRef.current = resolved;
+    return resolved;
+  }, [incomingBlocks, comments]);
   const markerIds = useMemo(
     () => blocks.flatMap((block) => (block.markerId ? [block.markerId] : [])),
     [blocks],

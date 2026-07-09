@@ -375,6 +375,84 @@ describe("MarginColumn", () => {
     expect(removeComment).toHaveBeenCalledWith("a");
   });
 
+  it("keeps a comment anchored while the editor block list transiently empties (refetch reload)", () => {
+    // A metadata save (readiness change) refetches the fragment; the editor reload momentarily reports
+    // zero blocks. The comment must stay in its anchored row — not flicker into the orphan foot group.
+    let blocks: EditorBlock[] = [{ markerId: "a", text: "First.", top: 0, height: 24 }];
+    const { rerender } = render(
+      <MarginColumn
+        projectId="project-1"
+        marginEditor={buildMarginEditor({ comments: [comment("a", "on a", "First.")] })}
+        fragmentContent="First. <!--c:a-->"
+        fragmentDirty={false}
+        mode="rich"
+        fontSize={16}
+        marginFontSize={15}
+        addAnchorAtBlock={vi.fn()}
+        removeAnchor={vi.fn()}
+        revealAnchor={vi.fn()}
+        focusAnchorBlock={vi.fn()}
+        getScrollElement={() => null}
+        getBlocks={() => blocks}
+      />,
+    );
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+
+    // The reload transiently empties the block list.
+    blocks = [];
+    rerender(
+      <MarginColumn
+        projectId="project-1"
+        marginEditor={buildMarginEditor({ comments: [comment("a", "on a", "First.")] })}
+        fragmentContent="First. <!--c:a-->"
+        fragmentDirty={false}
+        mode="rich"
+        fontSize={16}
+        marginFontSize={15}
+        addAnchorAtBlock={vi.fn()}
+        removeAnchor={vi.fn()}
+        revealAnchor={vi.fn()}
+        focusAnchorBlock={vi.fn()}
+        getScrollElement={() => null}
+        getBlocks={() => blocks}
+      />,
+    );
+    // Still anchored (reused block list); no orphan group appeared.
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+    expect(screen.queryByTestId("margin-orphans")).toBeNull();
+  });
+
+  it("orphans a comment promptly when its marker is genuinely removed (list still non-empty)", () => {
+    // The block survives but its marker is stripped from the prose — a real orphaning. The block list
+    // stays non-empty, so the gate does not fire and the comment demotes to the orphan group at once.
+    let blocks: EditorBlock[] = [{ markerId: "a", text: "First.", top: 0, height: 24 }];
+    const marginEditor = buildMarginEditor({ comments: [comment("a", "on a", "First.")] });
+    const props = {
+      projectId: "project-1" as const,
+      marginEditor,
+      fragmentDirty: false,
+      mode: "rich" as const,
+      fontSize: 16,
+      marginFontSize: 15,
+      addAnchorAtBlock: vi.fn(),
+      removeAnchor: vi.fn(),
+      revealAnchor: vi.fn(),
+      focusAnchorBlock: vi.fn(),
+      getScrollElement: () => null,
+      getBlocks: () => blocks,
+    };
+    const { rerender } = render(<MarginColumn {...props} fragmentContent="First. <!--c:a-->" />);
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+
+    // Marker stripped; the block remains.
+    blocks = [{ markerId: null, text: "First.", top: 0, height: 24 }];
+    rerender(<MarginColumn {...props} fragmentContent="First." />);
+
+    // The comment demotes to the orphan group (its anchored row is gone).
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeNull();
+    expect(screen.getByText(/Orphaned \(1\)/)).toBeTruthy();
+  });
+
   it("removes an emptied comment on blur instead of leaving a blank '(empty)' slot", () => {
     const removeAnchor = vi.fn();
     const removeComment = vi.fn();

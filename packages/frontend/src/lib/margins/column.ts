@@ -25,6 +25,27 @@ export type Column = {
   orphans: Comment[];
 };
 
+// Transient-orphan gate (margin-orphan-and-notes-tab, Phase 1). A metadata save (e.g. a readiness
+// change) invalidates the fragment query → a refetch reloads the editor buffer. While that reload is
+// in flight the editor's authoritative block list can momentarily read empty — for a frame or two
+// `getBlocks()` returns []. A fragment that has comments cannot truly have zero blocks (a comment's
+// marker lives inside a block), so an empty incoming list while comments exist is an unsettled reload,
+// not a genuine deletion: reusing the last non-empty block list holds every comment on its anchor
+// instead of flickering the whole set into the orphan foot group. A genuine orphaning (a marker
+// actually removed from the prose) leaves a *non-empty* block list — the block is still there, just
+// without the marker — so this gate never fires for it and real orphans still demote promptly. With
+// no comments there is nothing to protect, so the incoming (empty) list is taken as-is.
+export const resolveColumnBlocks = (
+  incoming: FragmentBlock[],
+  previous: FragmentBlock[],
+  comments: Comment[],
+): FragmentBlock[] => {
+  if (incoming.length === 0 && comments.length > 0 && previous.length > 0) {
+    return previous;
+  }
+  return incoming;
+};
+
 export const buildColumn = (blocks: FragmentBlock[], comments: Comment[]): Column => {
   const byMarker = new Map(comments.map((comment) => [comment.markerId, comment] as const));
   const bound = new Set<string>();
