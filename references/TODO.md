@@ -8,7 +8,9 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] loosing work still happens somehow... usually when I continue from an existing session in a tab... 
+- [ ] loosing work still happens 
+  - when returning to maskor after my computer has been suspended, it fails to save work, with no visual indication for the user.
+  - Flow: I return to a maskor-tab in my browser. I make some edits to the current file. I save. Everything looks fine. But when I change fragment, or refresh, all work that session has been lost. This consistently happen after I have suspended my computer, then returned to an already opened tab. Refreshing before making any edits avoids the problem.
 
 - [ ] sometimes, when a fragment is refetched, a comment is temporarily orphaned. I changed the readiness slider and the comment lost its anchor. On refresh, it was back. 
 
