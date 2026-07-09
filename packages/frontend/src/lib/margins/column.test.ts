@@ -4,6 +4,7 @@ import {
   computeCommentClipHeights,
   computeCoveredSlots,
   planOrphanRebinds,
+  resolveColumnBlocks,
   nextSlotIndex,
   previousSlotIndex,
 } from "./column";
@@ -65,6 +66,41 @@ describe("buildColumn", () => {
     const { rows, orphans } = buildColumn(blocks, []);
     expect(rows[0]?.comment).toBeNull();
     expect(orphans).toHaveLength(0);
+  });
+});
+
+describe("resolveColumnBlocks (transient-orphan gate)", () => {
+  it("reuses the previous blocks when the incoming list transiently empties while comments exist", () => {
+    const previous = enumerateBlocks("Anchored. <!--c:a-->");
+    const comments = [comment("a", "on a")];
+    // Mid-reload: the editor momentarily reports zero blocks. The comment must stay bound, not orphan.
+    expect(resolveColumnBlocks([], previous, comments)).toBe(previous);
+    // buildColumn over the reused list keeps the comment anchored (no orphan flicker).
+    const { rows, orphans } = buildColumn(resolveColumnBlocks([], previous, comments), comments);
+    expect(rows.map((row) => row.comment?.markerId ?? null)).toEqual(["a"]);
+    expect(orphans).toEqual([]);
+  });
+
+  it("takes the incoming list once the reload settles (non-empty)", () => {
+    const previous = enumerateBlocks("Old. <!--c:a-->");
+    const incoming = enumerateBlocks("New. <!--c:a-->");
+    expect(resolveColumnBlocks(incoming, previous, [comment("a")])).toBe(incoming);
+  });
+
+  it("does not reuse when there are no comments to protect (empty is genuine)", () => {
+    const previous = enumerateBlocks("Gone.");
+    expect(resolveColumnBlocks([], previous, [])).toEqual([]);
+  });
+
+  it("lets a genuine orphaning demote promptly (marker removed, list still non-empty)", () => {
+    // The block survives, only its marker was stripped — the incoming list is non-empty, so the gate
+    // does not fire and buildColumn orphans the now-unbound comment.
+    const previous = enumerateBlocks("Anchored. <!--c:a-->");
+    const incoming = enumerateBlocks("Anchored.");
+    const comments = [comment("a", "on a", "Anchored.")];
+    const resolved = resolveColumnBlocks(incoming, previous, comments);
+    expect(resolved).toBe(incoming);
+    expect(buildColumn(resolved, comments).orphans.map((orphan) => orphan.markerId)).toEqual(["a"]);
   });
 });
 

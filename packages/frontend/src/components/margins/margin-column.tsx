@@ -20,6 +20,7 @@ import {
   nextSlotIndex,
   previousSlotIndex,
   planOrphanRebinds,
+  resolveColumnBlocks,
   type FragmentBlock,
   type SlotRow,
 } from "@lib/margins/column";
@@ -29,7 +30,6 @@ import { useMarginGeometry } from "./use-margin-geometry";
 import { useScrollSync } from "./use-scroll-sync";
 import { MarginRow } from "./margin-row";
 import { MarginOrphanGroup } from "./margin-orphan-group";
-import { MarginNotesSection } from "./margin-notes-section";
 
 export type MarginColumnHandle = {
   // Jump focus to a paragraph's slot (the "Comment this block" gesture, now a jump). Focuses the
@@ -37,11 +37,10 @@ export type MarginColumnHandle = {
   focusSlot: (target: { index: number; markerId: string | null }) => void;
 };
 
-type ActiveSlot =
-  | { kind: "notes" }
-  | { kind: "block"; index: number }
-  | { kind: "comment"; markerId: string }
-  | null;
+// The column's single active editor: a comment being edited, or an empty block whose new comment is
+// being authored. Notes moved to their own gutter tab (Phase 2), so the column no longer owns a
+// "notes" active slot — the notes tab manages its own edit state.
+type ActiveSlot = { kind: "block"; index: number } | { kind: "comment"; markerId: string } | null;
 
 type Props = {
   projectId: string;
@@ -96,12 +95,12 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   },
   ref,
 ) {
-  const { notes, comments, setNotes, updateCommentBody, addCommentStub } = marginEditor;
+  const { comments, updateCommentBody, addCommentStub } = marginEditor;
 
-  // Notes + orphans are collapsible panels pinned in the column footer (outside the comment scroller).
-  // Default collapsed: the toggle is always visible, and opening a panel takes a limited, own-scroll
-  // share of the column without unlocking the comment scroller from the editor.
-  const [notesOpen, , toggleNotes] = usePersistedBoolean(`marginNotesOpen_${projectId}`, false);
+  // The orphan group is a collapsible panel pinned in the column footer (outside the comment scroller).
+  // Default collapsed: the toggle is always visible, and opening it takes a limited, own-scroll share
+  // of the column without unlocking the comment scroller from the editor. (Notes moved to a gutter tab
+  // — Phase 2 — so the footer holds only orphans + controls now.)
   const [orphansOpen, , toggleOrphans] = usePersistedBoolean(
     `marginOrphansOpen_${projectId}`,
     false,
@@ -128,7 +127,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
   });
   useScrollSync(getScrollElement, scrollRef, editorBlocks);
 
-  const blocks = useMemo<FragmentBlock[]>(
+  // The block list built from the editor's measured geometry. It can transiently read empty while a
+  // refetch-triggered editor reload is in flight; `resolveColumnBlocks` (below) holds the previous
+  // list in that window so comments don't flicker into the orphan group.
+  const incomingBlocks = useMemo<FragmentBlock[]>(
     () =>
       editorBlocks.map((block, index) => ({
         index,
@@ -137,6 +139,15 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
       })),
     [editorBlocks],
   );
+  // Last non-empty block list, reused when the incoming list transiently empties during a reload while
+  // comments still exist (Phase 1 gate). A genuine orphaning leaves a non-empty list, so the reuse
+  // never masks a real deletion.
+  const settledBlocksRef = useRef<FragmentBlock[]>([]);
+  const blocks = useMemo<FragmentBlock[]>(() => {
+    const resolved = resolveColumnBlocks(incomingBlocks, settledBlocksRef.current, comments);
+    if (resolved.length > 0) settledBlocksRef.current = resolved;
+    return resolved;
+  }, [incomingBlocks, comments]);
   const markerIds = useMemo(
     () => blocks.flatMap((block) => (block.markerId ? [block.markerId] : [])),
     [blocks],
@@ -297,8 +308,8 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     <div className="flex h-full flex-col overflow-hidden" data-testid="margin-column">
       {/* No top chrome: the scroller is flush to the editor's first line, and each comment is anchored
           to its block's measured top. The scroller holds *only* the per-block rows, so its content
-          height matches the editor's and the two stay locked (orphans + notes + controls live in the
-          pinned footer below, never adding scrollable height that would let the column drift). */}
+          height matches the editor's and the two stay locked (orphans + controls live in the pinned
+          footer below, never adding scrollable height that would let the column drift). */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto no-scrollbar pr-1"
@@ -363,9 +374,10 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
         )}
       </div>
 
-      {/* Pinned footer — orphans, notes, and column controls. These sit *outside* the synced scroller
-          so the comment column stays locked to the editor: their toggles are always visible and a
-          panel expands in place (own capped scroll) without pushing the comments out of alignment. */}
+      {/* Pinned footer — the orphan group and column controls. These sit *outside* the synced scroller
+          so the comment column stays locked to the editor: the orphan toggle is always visible and the
+          panel expands in place (own capped scroll) without pushing the comments out of alignment.
+          (Notes moved to their own gutter tab — Phase 2 — so the footer no longer carries them.) */}
       <div className="flex shrink-0 flex-col border-t border-border" data-testid="margin-footer">
         {measured && (
           <MarginOrphanGroup
@@ -389,18 +401,6 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             }}
           />
         )}
-
-        <MarginNotesSection
-          notes={notes}
-          open={notesOpen}
-          onToggle={toggleNotes}
-          active={activeSlot?.kind === "notes"}
-          mode={mode}
-          fontSize={marginFontSize}
-          onChange={setNotes}
-          onActivate={() => setActiveSlot({ kind: "notes" })}
-          onDeactivate={() => setActiveSlot(null)}
-        />
 
         {/* The jump-to-slot gesture and the expand-all toggle. The margin saves with the editor (no
             separate Save button). */}

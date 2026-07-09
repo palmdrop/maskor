@@ -1,7 +1,7 @@
 # Margins UX — transient comment orphaning + general notes as a gutter tab
 
 **Date**: 04-07-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/margins.md`, `specifications/notes.md`
 **Branch**: agent/margin-orphan-and-notes-tab
 
@@ -31,27 +31,27 @@
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `agent/margin-orphan-and-notes-tab` from main.
+- [x] Create branch `agent/margin-orphan-and-notes-tab` (based on `agent/fixes`).
 
 ### Phase 1 — Kill the transient orphan demotion
 
-- [ ] Reproduce in a test: feed `buildColumn`/the Margin column a sequence where the block list transiently empties (or drops markers) and returns — assert the comment currently flickers to orphan.
-- [ ] Fix: don't demote to orphan while the block list is in an unsettled state. Preferred shape: the column keeps the previous binding when the incoming block list is empty while comments exist (a fragment with comments cannot have zero blocks — markers live in blocks), and/or gates orphan grouping on the editor's load state (the load-guard/`isLoading` signal already exists in `prose-editor.tsx`; check what the Margin column can observe without new coupling). Pick the smallest reliable gate and document why.
-- [ ] Make sure *real* orphaning (marker genuinely deleted from the prose) still demotes promptly — the freeze/orphan safety net from `fragment-split.md` must keep working.
-- [ ] Tests: transient empty/marker-less block list does not orphan; a genuinely removed marker still does.
+- [x] Reproduce in a test: feed `buildColumn`/the Margin column a sequence where the block list transiently empties (or drops markers) and returns — assert the comment currently flickers to orphan.
+- [x] Fix: don't demote to orphan while the block list is in an unsettled state. Chose the smallest reliable gate — `resolveColumnBlocks` reuses the last non-empty block list when the incoming list is empty while comments still exist (a fragment with comments cannot have zero blocks). Pure/testable; no new coupling to the editor's load state.
+- [x] Make sure *real* orphaning (marker genuinely deleted from the prose) still demotes promptly — a genuine orphaning leaves a non-empty block list, so the gate never fires for it. The freeze/orphan safety net is unchanged.
+- [x] Tests: transient empty block list does not orphan; a genuinely removed marker still does (pure helper + column component).
 
 ### Phase 2 — General notes → third gutter tab
 
-- [ ] Extend the gutter tab state to `"margin" | "aspect" | "notes"` (`fragment-editor.tsx:182`) and render the notes editor as that tab's content; remove `MarginNotesSection` from the column footer.
-- [ ] Keep behavior: notes remain part of the Margin save/swap pipeline (coupled save in `fragment-editor.tsx` `onContentSave`, margin swap mirror) — only the surface moves. The active-slot model (`activeSlot.kind === "notes"`) must still work from the new tab, or be simplified if the slot coupling no longer makes sense outside the column (decide and document).
-- [ ] Verify the bottom-of-column comment issues are gone with the footer removed: comment creation near the fragment end is not offset and nothing hides it. If an offset remains, inspect the geometry/clamping in `use-margin-geometry.ts` and fix.
-- [ ] Check the orphan foot group still renders sensibly now that the footer only holds orphans + controls.
-- [ ] Tests: notes tab renders/saves; existing margin-column tests updated for the removed footer section.
+- [x] Extend the gutter tab state to `"margin" | "aspect" | "notes"` (`fragment-editor.tsx`) and render the notes editor as that tab's content (`MarginNotesTab`); remove `MarginNotesSection` from the column footer (and delete it — now unused).
+- [x] Keep behavior: notes remain part of the Margin save/swap pipeline (coupled save in `fragment-editor.tsx` `onContentSave`, margin swap mirror — untouched, notes still live in `useMarginEditor`). The column's `activeSlot.kind === "notes"` was removed: notes and comments now render on separate tabs (never simultaneously), so the one-active-editor coupling no longer needs a notes slot — the notes tab owns its own edit state. (Decision documented in the code + spec.)
+- [x] Verify the bottom-of-column comment issues are gone with the footer section removed: comments position absolutely at their block tops in the scroller, independent of the footer, so removing the notes panel removes the covering/offset. No geometry/clamping change needed.
+- [x] Check the orphan foot group still renders sensibly now that the footer only holds orphans + controls.
+- [x] Tests: notes tab renders/saves; fragment-editor renders the Notes tab wired to the margin editor; margin-column footer test updated for the removed notes section.
 
 ### Phase 3 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update the `Shipped` frontmatter of `specifications/margins.md` (and `notes.md` if it documents the general-notes surface); set plan status; commit.
+- [x] `bun run format` then `bun run verify`; both green.
+- [x] Update the `Shipped` frontmatter of `specifications/margins.md` (notes.md documents project-scope vault Notes, a different surface — left unchanged); set plan status; commit.
 
 ---
 

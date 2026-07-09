@@ -270,17 +270,14 @@ describe("MarginColumn", () => {
     expect(row.style.maxHeight).toBe("");
   });
 
-  it("keeps notes + controls in a pinned footer, outside the synced scroller", () => {
+  it("keeps controls in a pinned footer, outside the synced scroller (notes moved to a gutter tab)", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
-    const notes = screen.getByTestId("margin-notes");
     const scroll = screen.getByTestId("margin-scroll");
     const footer = screen.getByTestId("margin-footer");
     const column = screen.getByTestId("margin-column");
-    // Notes live in the pinned footer (so the comment scroller stays locked to the editor), not in the
-    // synced scroller.
-    expect(scroll.contains(notes)).toBe(false);
-    expect(footer.contains(notes)).toBe(true);
-    // The controls are in the footer too, below the scroller — not a top toolbar.
+    // Notes no longer render in the column at all (they moved to their own gutter tab).
+    expect(screen.queryByTestId("margin-notes")).toBeNull();
+    // The controls live in the footer, below the scroller — not a top toolbar.
     const controls = screen.getByTestId("margin-controls");
     expect(scroll.contains(controls)).toBe(false);
     expect(footer.contains(controls)).toBe(true);
@@ -288,17 +285,6 @@ describe("MarginColumn", () => {
     expect(column.firstElementChild).toBe(scroll);
     // The footer follows the scroller.
     expect(scroll.nextElementSibling).toBe(footer);
-  });
-
-  it("collapses the notes body by default; the toggle reveals it in place", () => {
-    renderColumn({
-      fragmentContent: "First.",
-      marginEditor: buildMarginEditor({ notes: "a structural thought" }),
-    });
-    // Collapsed: the toggle shows, the body does not.
-    expect(screen.queryByText("a structural thought")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
-    expect(screen.getByText("a structural thought")).toBeTruthy();
   });
 
   it("renders an idle comment as flowing text (top rule only) and lifts the active one onto an overlay", () => {
@@ -373,6 +359,84 @@ describe("MarginColumn", () => {
     fireEvent.mouseDown(screen.getByLabelText("Remove comment"));
     expect(removeAnchor).toHaveBeenCalledWith("a");
     expect(removeComment).toHaveBeenCalledWith("a");
+  });
+
+  it("keeps a comment anchored while the editor block list transiently empties (refetch reload)", () => {
+    // A metadata save (readiness change) refetches the fragment; the editor reload momentarily reports
+    // zero blocks. The comment must stay in its anchored row — not flicker into the orphan foot group.
+    let blocks: EditorBlock[] = [{ markerId: "a", text: "First.", top: 0, height: 24 }];
+    const { rerender } = render(
+      <MarginColumn
+        projectId="project-1"
+        marginEditor={buildMarginEditor({ comments: [comment("a", "on a", "First.")] })}
+        fragmentContent="First. <!--c:a-->"
+        fragmentDirty={false}
+        mode="rich"
+        fontSize={16}
+        marginFontSize={15}
+        addAnchorAtBlock={vi.fn()}
+        removeAnchor={vi.fn()}
+        revealAnchor={vi.fn()}
+        focusAnchorBlock={vi.fn()}
+        getScrollElement={() => null}
+        getBlocks={() => blocks}
+      />,
+    );
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+
+    // The reload transiently empties the block list.
+    blocks = [];
+    rerender(
+      <MarginColumn
+        projectId="project-1"
+        marginEditor={buildMarginEditor({ comments: [comment("a", "on a", "First.")] })}
+        fragmentContent="First. <!--c:a-->"
+        fragmentDirty={false}
+        mode="rich"
+        fontSize={16}
+        marginFontSize={15}
+        addAnchorAtBlock={vi.fn()}
+        removeAnchor={vi.fn()}
+        revealAnchor={vi.fn()}
+        focusAnchorBlock={vi.fn()}
+        getScrollElement={() => null}
+        getBlocks={() => blocks}
+      />,
+    );
+    // Still anchored (reused block list); no orphan group appeared.
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+    expect(screen.queryByTestId("margin-orphans")).toBeNull();
+  });
+
+  it("orphans a comment promptly when its marker is genuinely removed (list still non-empty)", () => {
+    // The block survives but its marker is stripped from the prose — a real orphaning. The block list
+    // stays non-empty, so the gate does not fire and the comment demotes to the orphan group at once.
+    let blocks: EditorBlock[] = [{ markerId: "a", text: "First.", top: 0, height: 24 }];
+    const marginEditor = buildMarginEditor({ comments: [comment("a", "on a", "First.")] });
+    const props = {
+      projectId: "project-1" as const,
+      marginEditor,
+      fragmentDirty: false,
+      mode: "rich" as const,
+      fontSize: 16,
+      marginFontSize: 15,
+      addAnchorAtBlock: vi.fn(),
+      removeAnchor: vi.fn(),
+      revealAnchor: vi.fn(),
+      focusAnchorBlock: vi.fn(),
+      getScrollElement: () => null,
+      getBlocks: () => blocks,
+    };
+    const { rerender } = render(<MarginColumn {...props} fragmentContent="First. <!--c:a-->" />);
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeTruthy();
+
+    // Marker stripped; the block remains.
+    blocks = [{ markerId: null, text: "First.", top: 0, height: 24 }];
+    rerender(<MarginColumn {...props} fragmentContent="First." />);
+
+    // The comment demotes to the orphan group (its anchored row is gone).
+    expect(document.querySelector('[data-slot-marker="a"]')).toBeNull();
+    expect(screen.getByText(/Orphaned \(1\)/)).toBeTruthy();
   });
 
   it("removes an emptied comment on blur instead of leaving a blank '(empty)' slot", () => {
