@@ -5,6 +5,7 @@ import {
   Heading2,
   Heading3,
   Italic,
+  Link,
   List,
   ListOrdered,
   Minus,
@@ -17,6 +18,10 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   editor: Editor | null;
+  // Dispatch the mode-agnostic "Insert link" command (the shell wires it to `editor:insert-link`,
+  // which opens the entity picker and inserts a canonical `[[type/key]]` link at the caret). Omitted
+  // where no link surface is available; the button is hidden then.
+  onInsertLink?: () => void;
 };
 
 type ToolbarButtonProps = {
@@ -42,7 +47,7 @@ const ToolbarButton = ({ active, onClick, children, label }: ToolbarButtonProps)
   );
 };
 
-export const ProseToolbar = ({ editor }: Props) => {
+export const ProseToolbar = ({ editor, onInsertLink }: Props) => {
   if (!editor) {
     return null;
   }
@@ -140,6 +145,16 @@ export const ProseToolbar = ({ editor }: Props) => {
       >
         <Minus />
       </ToolbarButton>
+
+      {onInsertLink && (
+        <>
+          <div className="w-px h-4 bg-border mx-0.5" />
+
+          <ToolbarButton label="Insert link" active={false} onClick={onInsertLink}>
+            <Link />
+          </ToolbarButton>
+        </>
+      )}
     </div>
   );
 };

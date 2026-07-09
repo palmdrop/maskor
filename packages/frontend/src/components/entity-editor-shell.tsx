@@ -410,6 +410,15 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         cursor={cursor}
         linkLookups={documentLinks.lookups}
         onNavigateLink={documentLinks.navigateToLink}
+        // Open the command palette aimed at the insert-link entity picker (the command owns cursor
+        // restoration). `command-palette:open` carries the target command id as an untyped runtime arg
+        // — see its definition — so this single call site passes it through a cast.
+        onInsertLink={() =>
+          (commands.run as (id: string, arg?: unknown) => void)(
+            "command-palette:open",
+            "editor:insert-link",
+          )
+        }
       />
     );
 

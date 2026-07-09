@@ -160,6 +160,19 @@ const TestPublisher = ({ ctx }: { ctx: ArgCtx }) => {
   return null;
 };
 
+// Mirrors the rich-toolbar link button: a button that opens the palette aimed at a specific command's
+// arg picker via `command-palette:open`'s untyped runtime arg.
+const { useCommandsContext } = await import("@lib/commands/CommandsProvider");
+const OpenArgButton = ({ ctx, commandId }: { ctx: ArgCtx; commandId: string }) => {
+  useCommandScope(testScope, ctx);
+  const { run } = useCommandsContext();
+  return (
+    <button type="button" onClick={() => run("command-palette:open", commandId)}>
+      open-arg
+    </button>
+  );
+};
+
 const MyViewPublisher = ({ ctx }: { ctx: RunCtx }) => {
   useCommandScope(myViewScope, ctx);
   return null;
@@ -365,6 +378,26 @@ describe("CommandPalette", () => {
     expect(screen.getByPlaceholderText("Choose an item")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Item One" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Item Two" })).toBeInTheDocument();
+  });
+
+  it("opens directly to a command's arg picker when given an initial command id", async () => {
+    // The rich-toolbar link button opens the palette aimed straight at `editor:insert-link`'s picker.
+    const ctx: ArgCtx = {
+      onRun: vi.fn(),
+      staticItems: [{ id: "1", name: "Item One" }],
+    };
+    renderShell(<OpenArgButton ctx={ctx} commandId="cmd:with-arg" />);
+    // Palette closed initially.
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "open-arg" }));
+
+    // Jumps past the command list straight to the arg step.
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Choose an item")).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("option", { name: "Item One" })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search commands…")).not.toBeInTheDocument();
   });
 
   it("invokes run with the selected arg item and closes the palette", async () => {

@@ -121,6 +121,9 @@ type Props = {
   // Cmd/Ctrl-click. Omitted on editors that don't render links (resolution is then always "broken").
   linkLookups?: LinkLookups;
   onNavigateLink?: (pathType: LinkPathType, uuid: string) => void;
+  // Dispatch the "Insert link" command from the rich-mode toolbar link button. Omitted where no link
+  // surface exists (the button is then hidden).
+  onInsertLink?: () => void;
 };
 
 export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEditor(
@@ -139,6 +142,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
     onActiveBlockChange,
     linkLookups,
     onNavigateLink,
+    onInsertLink,
   },
   ref,
 ) {
@@ -604,7 +608,7 @@ export const ProseEditor = forwardRef<ProseEditorHandle, Props>(function ProseEd
 
   return (
     <div className="flex flex-col h-full gap-2 w-full">
-      <ProseToolbar editor={editor} />
+      <ProseToolbar editor={editor} onInsertLink={onInsertLink} />
       <div className="flex-1 overflow-y-auto" ref={richScrollerRef}>
         <div
           className="mx-auto w-full"

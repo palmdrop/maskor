@@ -143,12 +143,18 @@ export const CommandPalette = () => {
   // current picker's state.
   const argGenerationRef = useRef(0);
   const hasMountedRef = useRef(false);
+  // Set when the palette is opened aimed at a specific command's arg picker (the rich-toolbar link
+  // button). Consumed by the effect below once the palette is open and the command map is available.
+  const [pendingArgCommandId, setPendingArgCommandId] = useState<string | null>(null);
 
   const { getMap, run, getActiveScopes } = useCommandsContext();
 
   useCommandScope(commandPaletteScope, {
     isOpen: () => open,
-    open: () => setOpen(true),
+    open: (initialCommandId?: string) => {
+      setPendingArgCommandId(initialCommandId ?? null);
+      setOpen(true);
+    },
     close: () => setOpen(false),
   });
 
@@ -283,6 +289,21 @@ export const CommandPalette = () => {
       }
     }
   };
+
+  // When opened aimed at a command (`open(initialCommandId)`), jump straight to that command's arg
+  // picker — as if the user had selected it from the list. Runs once the palette is open and the
+  // command resolves; a disabled or arg-less command clears the request without transitioning.
+  useEffect(() => {
+    if (!open || !pendingArgCommandId) return;
+    const command = commandMap.get(pendingArgCommandId);
+    setPendingArgCommandId(null);
+    if (command && command.arg && !getEffectiveDisabledReason(command)) {
+      void handleSelectCommand(command);
+    }
+    // handleSelectCommand / commandMap are recreated each render; the guard above makes this a
+    // one-shot on the id, so excluding them keeps it from re-firing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pendingArgCommandId]);
 
   const handleSelectArg = (item: unknown) => {
     if (!activeArgCommand) return;
