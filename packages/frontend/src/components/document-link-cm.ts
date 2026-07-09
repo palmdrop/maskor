@@ -10,6 +10,8 @@ import {
 } from "@uiw/react-codemirror";
 import {
   autocompletion,
+  acceptCompletion,
+  completionStatus,
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
@@ -96,9 +98,20 @@ export const navigateDocumentLinkAtCursor = (view: EditorView): boolean => {
   return true;
 };
 
-const linkKeymap = keymap.of([
-  { key: "Mod-Enter", run: (view) => navigateDocumentLinkAtCursor(view) },
-]);
+// Accept the highlighted `[[` completion with Tab, but only while the completion popup is open —
+// `completionStatus === "active"` gates it so Tab keeps its normal behaviour (indent, vim, next slot)
+// everywhere else. High precedence so it runs before the editor's own Tab handling when the popup is up.
+export const acceptCompletionOnTab = (view: EditorView): boolean => {
+  if (completionStatus(view.state) !== "active") return false;
+  return acceptCompletion(view);
+};
+
+const linkKeymap = Prec.high(
+  keymap.of([
+    { key: "Mod-Enter", run: (view) => navigateDocumentLinkAtCursor(view) },
+    { key: "Tab", run: acceptCompletionOnTab },
+  ]),
+);
 
 const linkTheme = EditorView.baseTheme({
   ".cm-doc-link": {

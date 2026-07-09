@@ -36,7 +36,8 @@ export const filterItems = (items: LinkSuggestionItem[], query: string): LinkSug
 // floating-ui) for a single list — the suggestion plugin hands us a `clientRect`, which is enough.
 type PopupCommand = (item: LinkSuggestionItem) => void;
 
-const createPopup = () => {
+// Exported for unit testing the keyboard handling (Enter/Tab accept, arrows move, Escape swallowed).
+export const createPopup = () => {
   const element = document.createElement("div");
   element.className = "doc-link-suggestion-popup";
   let items: LinkSuggestionItem[] = [];
@@ -114,7 +115,9 @@ const createPopup = () => {
         renderOptions();
         return true;
       }
-      if (event.key === "Enter") {
+      // Tab accepts the selected item just like Enter (the popup is open, so Tab should complete the
+      // link rather than move focus / insert a tab). Consuming it keeps the editor from also acting.
+      if (event.key === "Enter" || event.key === "Tab") {
         const item = items[selectedIndex];
         if (item) onCommand(item);
         return true;
