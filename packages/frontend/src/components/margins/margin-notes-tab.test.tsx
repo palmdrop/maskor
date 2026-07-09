@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { EMPTY_LINK_LOOKUPS } from "@lib/document-links/resolver";
 import { MarginNotesTab } from "./margin-notes-tab";
+import type { SlotLinkApi } from "./slot-editor";
 
 // SlotEditor wraps TipTap/CM6 (not meaningful in happy-dom); stub it as a textarea that surfaces
 // value + onChange so the notes tab's activate/edit wiring is testable.
@@ -56,5 +58,44 @@ describe("MarginNotesTab", () => {
     // Back to the static body button.
     expect(screen.queryByTestId("slot-editor")).toBeNull();
     expect(screen.getByText("existing")).toBeTruthy();
+  });
+
+  it("renders a resolved [[link]] in the static notes body and navigates on click", () => {
+    const navigate = vi.fn();
+    const documentLinks: SlotLinkApi = {
+      lookups: { ...EMPTY_LINK_LOOKUPS, notes: new Map([["setting", "note-uuid"]]) },
+      suggestionItems: [],
+      navigate,
+    };
+    render(
+      <MarginNotesTab
+        notes="revisit [[notes/setting]]"
+        mode="rich"
+        fontSize={15}
+        documentLinks={documentLinks}
+        onChange={vi.fn()}
+      />,
+    );
+    const link = screen.getByRole("button", { name: "setting" });
+    fireEvent.mouseDown(link);
+    expect(navigate).toHaveBeenCalledWith("notes", "note-uuid");
+  });
+
+  it("renders a broken [[link]] in the broken style", () => {
+    const documentLinks: SlotLinkApi = {
+      lookups: EMPTY_LINK_LOOKUPS,
+      suggestionItems: [],
+      navigate: vi.fn(),
+    };
+    render(
+      <MarginNotesTab
+        notes="[[notes/missing]]"
+        mode="rich"
+        fontSize={15}
+        documentLinks={documentLinks}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("missing")).toHaveClass("doc-link-broken");
   });
 });

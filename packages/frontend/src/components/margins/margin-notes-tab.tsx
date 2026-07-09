@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { SlotEditor, type EditorMode } from "./slot-editor";
+import { SlotEditor, type EditorMode, type SlotLinkApi } from "./slot-editor";
+import { LinkedText } from "./linked-text";
 import { serifTextStyle } from "./margin-styles";
 
 const PLACEHOLDER = "Thoughts on structure, character, things to rewrite…";
@@ -9,6 +10,7 @@ type Props = {
   mode: EditorMode;
   // The configured Margin text size (`editor.marginFontSize`).
   fontSize: number;
+  documentLinks?: SlotLinkApi;
   onChange: (value: string) => void;
 };
 
@@ -19,7 +21,7 @@ type Props = {
 // through `marginEditor` (the fragment editor's coupled save flushes notes + comments together), so
 // only the surface moved. The tab is force-mounted and hidden when inactive (see fragment-editor), so
 // this component does not gate on visibility.
-export function MarginNotesTab({ notes, mode, fontSize, onChange }: Props) {
+export function MarginNotesTab({ notes, mode, fontSize, documentLinks, onChange }: Props) {
   const [active, setActive] = useState(false);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="margin-notes-tab">
@@ -35,20 +37,29 @@ export function MarginNotesTab({ notes, mode, fontSize, onChange }: Props) {
             mode={mode}
             fontSize={fontSize}
             focusOnMount
+            documentLinks={documentLinks}
             placeholder={PLACEHOLDER}
             onChange={onChange}
             onBlur={() => setActive(false)}
             onEscape={() => setActive(false)}
           />
         ) : (
-          <button
-            type="button"
-            className="min-h-6 w-full whitespace-pre-wrap text-left text-foreground/90"
+          // A div (not a button) so resolved-link buttons nest validly; clicking the text opens the
+          // editor, clicking a link navigates instead (LinkedText stops propagation).
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          <div
+            role="button"
+            tabIndex={0}
+            className="min-h-6 w-full cursor-text whitespace-pre-wrap text-left text-foreground/90"
             style={serifTextStyle(fontSize)}
             onClick={() => setActive(true)}
           >
-            {notes || <span className="text-muted-foreground">{PLACEHOLDER}</span>}
-          </button>
+            {notes ? (
+              <LinkedText text={notes} documentLinks={documentLinks} />
+            ) : (
+              <span className="text-muted-foreground">{PLACEHOLDER}</span>
+            )}
+          </div>
         )}
       </div>
     </div>

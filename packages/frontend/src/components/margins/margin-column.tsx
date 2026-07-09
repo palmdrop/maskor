@@ -25,7 +25,7 @@ import {
   type SlotRow,
 } from "@lib/margins/column";
 import { deriveLiveExcerpts } from "@lib/margins/excerpts";
-import type { EditorMode } from "./slot-editor";
+import type { EditorMode, SlotLinkApi } from "./slot-editor";
 import { useMarginGeometry } from "./use-margin-geometry";
 import { useScrollSync } from "./use-scroll-sync";
 import { MarginRow } from "./margin-row";
@@ -72,6 +72,9 @@ type Props = {
   // The editor's authoritative block list (ADR 0009): one row per entry, bound by markerId and
   // anchored at the block's measured `top`.
   getBlocks: () => EditorBlock[];
+  // Document-link support for the comment slot editors + static comment text (prop-threaded from the
+  // fragment editor; the column only forwards it). Omitted → comment links render as plain text.
+  documentLinks?: SlotLinkApi;
 };
 
 export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function MarginColumn(
@@ -92,6 +95,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
     highlightedMarkerId,
     getScrollElement,
     getBlocks,
+    documentLinks,
   },
   ref,
 ) {
@@ -343,6 +347,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
                 isOverflowing={clipHeight !== null && overflowingBlocks.includes(row.block.index)}
                 mode={mode}
                 draft={draft}
+                documentLinks={documentLinks}
                 onHoverChange={setHoveredMarkerId}
                 onRemove={removeComment}
                 onActivateComment={activateComment}
@@ -385,6 +390,7 @@ export const MarginColumn = forwardRef<MarginColumnHandle, Props>(function Margi
             activeMarkerId={activeCommentMarker}
             mode={mode}
             fontSize={marginFontSize}
+            documentLinks={documentLinks}
             open={orphansOpen}
             onToggle={toggleOrphans}
             liveExcerpts={liveExcerpts}

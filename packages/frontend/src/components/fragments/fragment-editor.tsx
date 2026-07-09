@@ -34,6 +34,8 @@ import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
 import { MarginNotesTab } from "@components/margins/margin-notes-tab";
+import type { SlotLinkApi } from "@components/margins/slot-editor";
+import { useDocumentLinks } from "@lib/document-links/useDocumentLinks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { AspectReaderTab } from "@components/aspects/aspect-reader-tab";
 import { cn } from "@/lib/utils";
@@ -137,6 +139,23 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
       : "rich";
 
   const marginEditor = useMarginEditor(projectId, fragmentId);
+
+  // Document-link support for the Margin comment + notes editors (autocomplete, resolved/broken
+  // styling, click-to-navigate). Comments/notes are link readers only — they never become link-table
+  // sources (ADR 0007; specifications/document-links.md). The underlying entity lists are React-Query
+  // cached, so calling `useDocumentLinks` here (alongside the shell's own call) shares the same fetches.
+  const documentLinksApi = useDocumentLinks(projectId);
+  const marginDocumentLinks = useMemo<SlotLinkApi>(
+    () => ({
+      lookups: documentLinksApi.lookups,
+      suggestionItems: documentLinksApi.entities.map((entity) => ({
+        pathType: entity.pathType,
+        key: entity.key,
+      })),
+      navigate: documentLinksApi.navigateToLink,
+    }),
+    [documentLinksApi],
+  );
 
   // The Margin's unsaved buffer is mirrored to `.maskor/swap/margin/<fragmentUuid>.json`, keyed by
   // the owning fragment so it forms a linked pair with the fragment swap. The single recovery banner
@@ -548,6 +567,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                   highlightedMarkerId={activeBlockMarker}
                   getScrollElement={bridge.getScrollElement}
                   getBlocks={bridge.getBlocks}
+                  documentLinks={marginDocumentLinks}
                 />
               </TabsContent>
               <TabsContent
@@ -578,6 +598,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                   notes={marginEditor.notes}
                   mode={marginMode}
                   fontSize={editorConfig.marginFontSize}
+                  documentLinks={marginDocumentLinks}
                   onChange={marginEditor.setNotes}
                 />
               </TabsContent>
