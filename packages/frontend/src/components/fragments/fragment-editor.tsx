@@ -33,6 +33,7 @@ import { SplitFragmentDialog } from "@components/fragments/SplitFragmentDialog";
 import { Button } from "@components/ui/button";
 import { EntityEditorShell, type EntityEditorShellHandle } from "@components/entity-editor-shell";
 import { MarginColumn, type MarginColumnHandle } from "@components/margins/margin-column";
+import { MarginNotesTab } from "@components/margins/margin-notes-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { AspectReaderTab } from "@components/aspects/aspect-reader-tab";
 import { cn } from "@/lib/utils";
@@ -193,7 +194,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
 
   // Gutter tab + aspect-reader selection. Lifted here so the metadata sidebar (which dispatches the
   // preview command) and the gutter's Aspect tab share a single selection. Single-expand accordion.
-  const [gutterTab, setGutterTab] = useState<"margin" | "aspect">("margin");
+  const [gutterTab, setGutterTab] = useState<"margin" | "aspect" | "notes">("margin");
   const [expandedAspectKey, setExpandedAspectKey] = useState<string | null>(null);
   const previewAspect = useCallback((aspectKey: string) => {
     setGutterTab("aspect");
@@ -491,7 +492,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           showMargin ? (
             <Tabs
               value={gutterTab}
-              onValueChange={(value) => setGutterTab(value as "margin" | "aspect")}
+              onValueChange={(value) => setGutterTab(value as "margin" | "aspect" | "notes")}
               className="relative flex min-h-0 min-w-0 flex-1 flex-col"
             >
               {/* The switcher floats top-right with no layout footprint: the Margin scroller is
@@ -510,6 +511,12 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                   className="rounded border-0 px-2 py-0.5 text-xs data-[state=active]:border-transparent data-[state=active]:bg-muted"
                 >
                   Aspects
+                </TabsTrigger>
+                <TabsTrigger
+                  value="notes"
+                  className="rounded border-0 px-2 py-0.5 text-xs data-[state=active]:border-transparent data-[state=active]:bg-muted"
+                >
+                  Notes
                 </TabsTrigger>
               </TabsList>
               {/* The Margin holds in-progress comment drafts + scroll-sync state, so it is force-mounted
@@ -552,6 +559,26 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
                   fragment={fragment}
                   expandedAspectKey={expandedAspectKey}
                   onToggle={toggleAspect}
+                />
+              </TabsContent>
+              {/* Notes is force-mounted (and hidden when inactive) so its in-progress edit state — the
+                  active slot editor + caret — survives switching to another gutter tab, matching the
+                  Margin. The notes text itself lives in `marginEditor` and saves with the fragment
+                  (coupled save), so the surface can move without touching the save/swap pipeline. The
+                  content is padded to clear the floating tab switcher, like the Aspect tab. */}
+              <TabsContent
+                value="notes"
+                forceMount
+                className={cn(
+                  "mt-0 min-h-0 min-w-0 flex-1 overflow-y-auto pt-9",
+                  gutterTab !== "notes" && "hidden",
+                )}
+              >
+                <MarginNotesTab
+                  notes={marginEditor.notes}
+                  mode={marginMode}
+                  fontSize={editorConfig.marginFontSize}
+                  onChange={marginEditor.setNotes}
                 />
               </TabsContent>
             </Tabs>

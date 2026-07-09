@@ -408,6 +408,31 @@ describe("FragmentEditor coupled save (margins-4 Phase 4)", () => {
   });
 });
 
+describe("FragmentEditor notes gutter tab (margin-orphan-and-notes-tab Phase 2)", () => {
+  it("renders a Notes gutter tab beside Margin and Aspects", () => {
+    renderEditor();
+    // The three gutter tab triggers.
+    expect(screen.getByRole("tab", { name: "Margin" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Aspects" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Notes" })).toBeInTheDocument();
+  });
+
+  it("mounts the notes tab wired to the margin editor (notes surface, coupled save)", () => {
+    marginEditor.notes = "a structural thought";
+    renderEditor();
+    // Force-mounted (hidden when inactive), so the notes body is in the DOM bound to marginEditor.
+    const notesTab = screen.getByTestId("margin-notes-tab");
+    expect(notesTab.textContent).toContain("a structural thought");
+    marginEditor.notes = "";
+  });
+
+  it("does not render the notes tab when the Margin is suppressed (inline overlay)", () => {
+    renderEditor({ showMargin: false });
+    expect(screen.queryByTestId("margin-notes-tab")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Notes" })).toBeNull();
+  });
+});
+
 describe("FragmentEditor showMargin (inline overlay suppression — ADR 0013)", () => {
   it("renders the Margin column by default", () => {
     renderEditor();

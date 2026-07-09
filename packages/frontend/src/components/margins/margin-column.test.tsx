@@ -270,17 +270,14 @@ describe("MarginColumn", () => {
     expect(row.style.maxHeight).toBe("");
   });
 
-  it("keeps notes + controls in a pinned footer, outside the synced scroller", () => {
+  it("keeps controls in a pinned footer, outside the synced scroller (notes moved to a gutter tab)", () => {
     renderColumn({ fragmentContent: "First.\n\nSecond." });
-    const notes = screen.getByTestId("margin-notes");
     const scroll = screen.getByTestId("margin-scroll");
     const footer = screen.getByTestId("margin-footer");
     const column = screen.getByTestId("margin-column");
-    // Notes live in the pinned footer (so the comment scroller stays locked to the editor), not in the
-    // synced scroller.
-    expect(scroll.contains(notes)).toBe(false);
-    expect(footer.contains(notes)).toBe(true);
-    // The controls are in the footer too, below the scroller — not a top toolbar.
+    // Notes no longer render in the column at all (they moved to their own gutter tab).
+    expect(screen.queryByTestId("margin-notes")).toBeNull();
+    // The controls live in the footer, below the scroller — not a top toolbar.
     const controls = screen.getByTestId("margin-controls");
     expect(scroll.contains(controls)).toBe(false);
     expect(footer.contains(controls)).toBe(true);
@@ -288,17 +285,6 @@ describe("MarginColumn", () => {
     expect(column.firstElementChild).toBe(scroll);
     // The footer follows the scroller.
     expect(scroll.nextElementSibling).toBe(footer);
-  });
-
-  it("collapses the notes body by default; the toggle reveals it in place", () => {
-    renderColumn({
-      fragmentContent: "First.",
-      marginEditor: buildMarginEditor({ notes: "a structural thought" }),
-    });
-    // Collapsed: the toggle shows, the body does not.
-    expect(screen.queryByText("a structural thought")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
-    expect(screen.getByText("a structural thought")).toBeTruthy();
   });
 
   it("renders an idle comment as flowing text (top rule only) and lifts the active one onto an overlay", () => {
