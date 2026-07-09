@@ -40,10 +40,7 @@ export type MarginColumnHandle = {
 // The column's single active editor: a comment being edited, or an empty block whose new comment is
 // being authored. Notes moved to their own gutter tab (Phase 2), so the column no longer owns a
 // "notes" active slot — the notes tab manages its own edit state.
-type ActiveSlot =
-  | { kind: "block"; index: number }
-  | { kind: "comment"; markerId: string }
-  | null;
+type ActiveSlot = { kind: "block"; index: number } | { kind: "comment"; markerId: string } | null;
 
 type Props = {
   projectId: string;
