@@ -1,7 +1,7 @@
 # Discard ↔ sequence coherence + split partial-failure integrity
 
 **Date**: 04-07-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/sequencer.md`, `specifications/fragment-model.md`, `specifications/fragment-split.md`
 **Branch**: agent/discard-and-split-integrity
 
@@ -31,33 +31,33 @@
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `agent/discard-and-split-integrity` from main.
+- [x] Create branch `agent/discard-and-split-integrity` from main.
 
 ### Phase 1 — Discard removes the fragment from sequences (backend)
 
-- [ ] Extend the discard flow so discarding a fragment unplaces it from **every** sequence containing it (compose the existing `unplaceFragment` sequencer function; skip sequences that don't contain it). Decide placement: inside `discardFragmentCommand` (command-level composition, mirrors how `split-fragment.ts` composes placement) rather than inside storage `discard` — commands own multi-entity orchestration.
-- [ ] Restore semantics: restoring a discarded fragment does **not** re-place it (it returns to the pool). Document this in the command and in `specifications/sequencer.md` or `fragment-model.md` (whichever owns discard semantics — check both, ask via plan notes if genuinely unclear).
-- [ ] Action log: keep one `fragment:discarded` entry; include the removed placements in its payload (sequence uuids) so the entry explains the side effect. No separate `sequence:fragment-unplaced` entries (mirrors `fragment:split`'s single-entry convention).
-- [ ] Import-sequences: decide + implement how read-only import-sequences are treated (they are snapshots — leave their placements intact and filter discarded fragments at read time for them, or unplace there too; investigate what the preview/export surfaces expect. Lean: unplace everywhere, snapshots list keys not membership — verify before committing to this).
-- [ ] Tests (API/storage): discard removes placements from all containing sequences; restore does not re-place; discard of an unplaced fragment leaves sequences untouched.
+- [x] Extend the discard flow so discarding a fragment unplaces it from **every** sequence containing it (compose the existing `unplaceFragment` sequencer function; skip sequences that don't contain it). Decide placement: inside `discardFragmentCommand` (command-level composition, mirrors how `split-fragment.ts` composes placement) rather than inside storage `discard` — commands own multi-entity orchestration. **Note:** unplace runs BEFORE `fragments.discard` — the `fragment_positions` cascade means discarding first would drop placement index rows while the YAML files kept the fragment (index/disk divergence). See `references/suggestions.md`.
+- [x] Restore semantics: restoring a discarded fragment does **not** re-place it (it returns to the pool). Documented in `restore-fragment.ts` and the specs.
+- [x] Action log: keep one `fragment:discarded` entry; include the removed placements in its payload (`unplacedFromSequenceUuids`) so the entry explains the side effect. No separate `sequence:fragment-unplaced` entries (mirrors `fragment:split`'s single-entry convention).
+- [x] Import-sequences: **left intact.** Read-only snapshots (carry an `origin`) cannot be mutated — the sequencer forbids it and a snapshot legitimately records what was imported. Skipped in the unplace loop; their YAML placements stay on disk.
+- [x] Tests (API/storage): discard removes placements from all containing sequences; restore does not re-place; discard of an unplaced fragment leaves sequences untouched; read-only import-sequences left intact. (`packages/api/src/__tests__/commands/discard-fragment.test.ts`)
 
 ### Phase 2 — Frontend cache coherence on discard/restore
 
-- [ ] Invalidate sequence caches (`getListSequencesQueryKey`, sequence contents, main-sequence — grep the generated query keys) on discard and restore, in `fragment-editor.tsx` `handleDiscard`/`handleRestore` **and** the fragment-list discard/restore path (`fragment-list.tsx` — locate its mutation callbacks).
-- [ ] Reproduce the "remove from sequence fails" report: with the fix, a discarded fragment is no longer in any sequence, so the unplace command should no longer even offer it. Verify `placedFragmentsForUnplace` (OverviewPage `useSectionOps.ts:179`) reflects the refreshed cache.
-- [ ] Tests: component/hook-level test that discard triggers the sequence invalidations.
+- [x] Invalidate sequence caches on discard and restore. New reusable `useInvalidateSequences` hook (`packages/frontend/src/lib/sequences/useInvalidateSequences.ts`) — a URL-prefix predicate covering the whole generated family (list, main, individual, contents) in one call. Wired into `fragment-editor.tsx` `handleDiscard`/`handleRestore` and the fragment-list discard/restore path (`FragmentListPage.tsx` `discardFragmentAction`/`restoreFragmentAction`; `fragment-list.tsx` is a dumb presentational list — the mutations live in the page).
+- [x] "Remove from sequence fails" report: root cause found — the `fragment_positions` cascade dropped placement index rows on discard while the sequence YAML files kept them (see Phase 1 note + `references/suggestions.md`); unplace-before-discard plus these invalidations close it. `placedFragmentsForUnplace` (OverviewPage `hooks/useSectionOps.ts`) derives from the sequence queries, so the prefix invalidation refreshes it — a discarded fragment is no longer offered for unplace.
+- [x] Tests: hook-level test that the prefix predicate invalidates exactly the project's sequence family (`useInvalidateSequences.test.tsx`); component-level tests that discard and restore trigger the sequence invalidation (`fragment-editor.test.tsx`).
 
 ### Phase 3 — Split partial-failure resilience (backend)
 
-- [ ] Restructure `splitFragmentCommand` so all validation/derivation happens before the first write, and the writes that can still fail afterwards (sequence rewrites, margin migration) are collected as **warnings** instead of failing the whole command: the split result gains a `warnings: string[]` (empty on clean success), returned with 200. Log each warning server-side.
-- [ ] Frontend: surface non-empty `warnings` from the split result as a warning toast (split still counts as succeeded; dialog closes, caches refresh).
-- [ ] Tests: inject a sequence-write failure after fragment writes → 200 + warning + fragments persisted; margin-migration failure likewise; clean split returns empty warnings. A pre-write validation failure still 400/500s with nothing written.
+- [x] Restructure `splitFragmentCommand`: all validation/derivation (piece keys included — hoisted out of the write loop) happens before the first write; sequence rewrites (per-sequence isolation) and Margin migration are collected as `warnings: string[]` on the 200 result instead of failing the command. Each warning logged server-side via `ctx.logger.warn`. Margin migration now writes the piece Margins BEFORE rewriting the original's, so a mid-migration failure duplicates a comment rather than losing it.
+- [x] Frontend: non-empty `warnings` surfaced as `toast.warning` per warning (split still counts as succeeded; dialog closes, caches refresh). `SplitResultSchema` gained `warnings`; codegen re-run.
+- [x] Tests: sequence-write failure after fragment writes → warnings + fragments persisted + original truncated; Margin-migration failure → warning + comment retained on the original; clean split returns empty warnings; a pre-write key conflict rejects with nothing written. Dialog test: warnings toast + dialog still closes as success.
 
 ### Phase 4 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update `Shipped` frontmatter of the touched specs (`fragment-split.md` for Phase 3; `sequencer.md`/`fragment-model.md` for Phases 1–2).
-- [ ] Set plan status, commit.
+- [x] `bun run format` then `bun run verify`; fix all issues.
+- [x] Update `Shipped` frontmatter of the touched specs (`fragment-split.md` for Phase 3; `sequencer.md`/`fragment-model.md` for Phases 1–2).
+- [x] Set plan status, commit.
 
 ---
 

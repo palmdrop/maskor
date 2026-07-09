@@ -18,6 +18,7 @@ import {
 import { useGetProject } from "@api/generated/projects/projects";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { isSequenceReadOnly } from "@lib/sequences/readOnly";
+import { useInvalidateSequences } from "@lib/sequences/useInvalidateSequences";
 import { useInvalidateActionLog } from "@api/action-log";
 import { useEntityEditor } from "@lib/entity-kinds/useEntityEditor";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -221,6 +222,7 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   }, [queryClient, projectId, fragmentId]);
 
   const invalidateActionLog = useInvalidateActionLog(projectId);
+  const invalidateSequences = useInvalidateSequences(projectId);
 
   const onContentSave = useCallback(
     async (content: string) => {
@@ -247,12 +249,24 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         {
           onSuccess: () => {
             invalidateFragment();
+            // Discard unplaces the fragment from every sequence it sat in
+            // (backend), so refresh the sequence caches too — otherwise the
+            // sidebar/overview keep showing the now-discarded placement.
+            invalidateSequences();
             invalidateActionLog();
             onDiscarded?.();
           },
         },
       ).then(() => {}),
-    [projectId, fragmentId, discardFragment, invalidateFragment, invalidateActionLog, onDiscarded],
+    [
+      projectId,
+      fragmentId,
+      discardFragment,
+      invalidateFragment,
+      invalidateSequences,
+      invalidateActionLog,
+      onDiscarded,
+    ],
   );
 
   const handleRestore = useCallback(
@@ -262,11 +276,22 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         {
           onSuccess: () => {
             invalidateFragment();
+            // Restore does not re-place the fragment, but the discard cascade
+            // transiently desynced the sequence index — refresh so any read-only
+            // import-sequence that still lists it renders from fresh data.
+            invalidateSequences();
             invalidateActionLog();
           },
         },
       ).then(() => {}),
-    [projectId, fragmentId, restoreFragment, invalidateFragment, invalidateActionLog],
+    [
+      projectId,
+      fragmentId,
+      restoreFragment,
+      invalidateFragment,
+      invalidateSequences,
+      invalidateActionLog,
+    ],
   );
 
   const commands = useCommands();

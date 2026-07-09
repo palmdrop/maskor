@@ -53,6 +53,11 @@ export type SplitFragmentResult = {
   sourceFragmentUuid: string;
   createdCount: number;
   createdUuids: string[];
+  // Non-fatal follow-up failures (sequence placement, Margin migration) after the
+  // split's core writes committed. The prose is safe — every piece is on disk and
+  // the original is truncated — so these surface as warnings on a 200 rather than
+  // a bogus "Split failed" 500. Empty on a clean split.
+  warnings: string[];
 };
 
 // The label recorded in the action-log payload + history view.
@@ -80,6 +85,9 @@ const resolveOverrideKey = (rawKey: string, existingKeys: Set<string>): string =
 
 export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResult> = {
   async execute(ctx, input) {
+    // ---- Phase A: reads + validation/derivation. Nothing is written yet, so any
+    // throw here (no-op split, malformed/conflicting key) fails the command with
+    // the vault untouched.
     const original = await ctx.storageService.fragments.read(ctx.projectContext, input.fragmentId);
     // Retain heading lines in piece content: a split must never lose prose (unlike
     // import, which lifts the heading into the new entity's title). See the spec.
@@ -101,38 +109,29 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     );
 
     // Read the original's Margin before truncation so anchored comments can follow
-    // their blocks into the new pieces (Phase 6 migration, below). The marker set
-    // of each piece tells us which piece a given comment's block landed in.
+    // their blocks into the new pieces (migration, below). The marker set of each
+    // piece tells us which piece a given comment's block landed in.
     const originalMargin = await ctx.storageService.margins.read(
       ctx.projectContext,
       input.fragmentId,
     );
     const pieceMarkerSets = pieces.map((piece) => markerIdSet(piece.content));
 
-    // Create pieces 2…N FIRST, while the original still holds the full prose. The
-    // split is not one atomic transaction (each write takes the vault lock on its
-    // own), so the original is only truncated once every new piece is safely on
-    // disk: a failure mid-creation then leaves the source intact rather than
-    // losing the prose that had not yet been written elsewhere. New pieces inherit
-    // the original's aspects + references, readiness reset to 0. deriveKey suffixes
-    // against existing keys (which still include the original's) and keys minted
-    // earlier in this split. Anchor markers ride along with their blocks in every
-    // piece (no stripping) so each moved comment can be re-anchored in its new
-    // piece's Margin.
     // User-chosen key overrides for the new pieces, keyed by 1-based pieceIndex
     // (piece 1 is the original and is never renamed, so any override for it is
-    // ignored). Each override is validated for shape and uniqueness as it is
-    // applied below; falling back to the derived key when absent.
+    // ignored). Every piece's key is resolved HERE, before the first write, so a
+    // malformed or conflicting override rejects the split with nothing on disk —
+    // no orphan pieces from a mid-loop validation failure. deriveKey suffixes
+    // against existing keys (which still include the original's) and keys minted
+    // earlier in this split; falling back to the derived key when no override.
     const overrideKeyByPieceIndex = new Map<number, string>();
     for (const override of input.pieceKeys ?? []) {
       if (override.pieceIndex >= 2) {
         overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
       }
     }
-
-    const createdUuids: string[] = [];
-    // Piece array index (1…N-1) → the new fragment's uuid, for Margin migration.
-    const createdUuidByPieceIndex = new Map<number, string>();
+    // Piece array index (1…N-1) → the resolved key for that new piece.
+    const keyByPieceIndex = new Map<number, string>();
     for (let index = 1; index < pieces.length; index++) {
       const piece = pieces[index]!;
       // pieceIndex is 1-based (matches the preview); array index 1 is piece 2.
@@ -140,9 +139,27 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       const key = override
         ? resolveOverrideKey(override, existingKeys)
         : deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
+      keyByPieceIndex.set(index, key);
+    }
+
+    // ---- Phase B: core writes. A throw here still fails the command (500): the
+    // split's essence has not fully committed. Ordering protects the prose:
+    // create pieces 2…N FIRST, while the original still holds the full body. The
+    // split is not one atomic transaction (each write takes the vault lock on its
+    // own), so the original is only truncated once every new piece is safely on
+    // disk — a failure mid-creation leaves the source intact rather than losing
+    // the prose that had not yet been written elsewhere. New pieces inherit the
+    // original's aspects + references, readiness reset to 0. Anchor markers ride
+    // along with their blocks in every piece (no stripping) so each moved comment
+    // can be re-anchored in its new piece's Margin.
+    const createdUuids: string[] = [];
+    // Piece array index (1…N-1) → the new fragment's uuid, for Margin migration.
+    const createdUuidByPieceIndex = new Map<number, string>();
+    for (let index = 1; index < pieces.length; index++) {
+      const piece = pieces[index]!;
       const newFragment: Fragment = {
         uuid: randomUUID(),
-        key,
+        key: keyByPieceIndex.get(index)!,
         content: piece.content,
         readiness: 0,
         contentHash: "",
@@ -169,12 +186,27 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       content: firstPiece.content,
     });
 
+    // ---- Phase C: follow-up writes. The split has committed (all prose is on
+    // disk); a failure from here on must not surface as "Split failed". Each
+    // failure is logged server-side and collected as a warning returned on the
+    // 200 result instead.
+    const warnings: string[] = [];
+
     // Placement: in every sequence the original is placed in, insert the new
     // pieces in order immediately after it. Reuses the sequencer's pure
     // placeFragment — no parallel placement logic — and writes each sequence once.
     // No per-placement action-log entry: the single fragment:split entry covers
-    // the whole operation.
-    const sequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
+    // the whole operation. Per-sequence failure isolation: one sequence failing
+    // to update does not stop the others.
+    let sequences: Sequence[] = [];
+    try {
+      sequences = await ctx.storageService.sequences.readAll(ctx.projectContext);
+    } catch (error) {
+      ctx.logger.warn({ error }, "split: reading sequences for placement failed");
+      warnings.push(
+        "The new pieces could not be inserted into the original's sequences. Place them manually.",
+      );
+    }
     for (const sequence of sequences) {
       let originalSectionUuid: string | undefined;
       let originalPosition: number | undefined;
@@ -192,16 +224,26 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         continue;
       }
 
-      let updated: Sequence = sequence;
-      createdUuids.forEach((createdUuid, offset) => {
-        updated = placeFragment(
-          updated,
-          createdUuid,
-          originalSectionUuid as string,
-          (originalPosition as number) + 1 + offset,
+      try {
+        let updated: Sequence = sequence;
+        createdUuids.forEach((createdUuid, offset) => {
+          updated = placeFragment(
+            updated,
+            createdUuid,
+            originalSectionUuid as string,
+            (originalPosition as number) + 1 + offset,
+          );
+        });
+        await ctx.storageService.sequences.write(ctx.projectContext, updated);
+      } catch (error) {
+        ctx.logger.warn(
+          { error, sequenceUuid: sequence.uuid },
+          "split: placing pieces into sequence failed",
         );
-      });
-      await ctx.storageService.sequences.write(ctx.projectContext, updated);
+        warnings.push(
+          `The new pieces could not be inserted into sequence "${sequence.name}". Place them manually.`,
+        );
+      }
     }
 
     // Margin comment migration. Each anchored comment follows its block: a comment
@@ -210,7 +252,9 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // moved block) into that piece's Margin. A comment whose marker landed in no
     // piece (e.g. a marker on a heading line the heading split drops) orphans on
     // the original, frozen — the existing orphaned-comment behavior. Notes stay on
-    // the original; they annotate the whole fragment, not a block.
+    // the original; they annotate the whole fragment, not a block. Failure here is
+    // a warning too: the comments still exist on the original's Margin (orphaned
+    // against the truncated body) rather than being lost.
     if (originalMargin && originalMargin.comments.length > 0) {
       const retainedComments: Comment[] = [];
       const commentsByPieceIndex = new Map<number, Comment[]>();
@@ -227,24 +271,32 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         }
       }
 
-      // Rewrite the original's Margin only when something actually moved off it.
-      if (retainedComments.length !== originalMargin.comments.length) {
-        await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
-          notes: originalMargin.notes,
-          comments: retainedComments,
-        });
-      }
-
-      // Seed each receiving piece's Margin with its migrated comments. persistMargin
-      // re-derives each anchored comment's excerpt from the new piece's body.
-      for (const [pieceArrayIndex, comments] of commentsByPieceIndex) {
-        const createdUuid = createdUuidByPieceIndex.get(pieceArrayIndex);
-        if (createdUuid) {
-          await ctx.storageService.margins.write(ctx.projectContext, createdUuid, {
-            notes: "",
-            comments,
+      try {
+        // Seed each receiving piece's Margin with its migrated comments FIRST, and
+        // only then rewrite the original's Margin (only when something actually
+        // moved off it). A failure between the two then leaves a comment present
+        // on both Margins (duplicated, orphaned on the original) — never on
+        // neither.
+        for (const [pieceArrayIndex, comments] of commentsByPieceIndex) {
+          const createdUuid = createdUuidByPieceIndex.get(pieceArrayIndex);
+          if (createdUuid) {
+            await ctx.storageService.margins.write(ctx.projectContext, createdUuid, {
+              notes: "",
+              comments,
+            });
+          }
+        }
+        if (retainedComments.length !== originalMargin.comments.length) {
+          await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+            notes: originalMargin.notes,
+            comments: retainedComments,
           });
         }
+      } catch (error) {
+        ctx.logger.warn({ error }, "split: migrating Margin comments failed");
+        warnings.push(
+          "Comments could not be migrated to the new pieces. They remain on the original fragment.",
+        );
       }
     }
 
@@ -268,6 +320,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         sourceFragmentUuid: original.uuid,
         createdCount: createdUuids.length,
         createdUuids,
+        warnings,
       },
       logEntries,
     };

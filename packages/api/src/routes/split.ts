@@ -73,7 +73,8 @@ const splitRoute = createRoute({
   responses: {
     200: {
       content: { "application/json": { schema: SplitResultSchema } },
-      description: "The split result: source uuid + the created pieces",
+      description:
+        "The split result: source uuid + the created pieces, plus any non-fatal follow-up warnings (the split itself committed)",
     },
     400: {
       content: { "application/json": { schema: ErrorResponseSchema } },

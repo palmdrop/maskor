@@ -77,5 +77,11 @@ export const SplitResultSchema = z
     createdUuids: z
       .array(z.string())
       .openapi({ example: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"] }),
+    // Non-fatal follow-up failures (sequence placement, Margin migration) after
+    // the split's core writes committed. The split succeeded — the frontend
+    // surfaces these as a warning toast, not a failure. Empty on a clean split.
+    warnings: z.array(z.string()).openapi({
+      example: ['The new pieces could not be inserted into sequence "Main". Place them manually.'],
+    }),
   })
   .openapi("SplitResult");

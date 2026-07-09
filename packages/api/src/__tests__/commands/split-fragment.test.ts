@@ -510,4 +510,149 @@ describe("splitFragmentCommand", () => {
       after.uuid,
     ]);
   });
+
+  it("returns empty warnings on a clean split", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `clean-warnings-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("collects a sequence-write failure as a warning; the split itself commits", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `seq-fail-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+    const sectionUuid = randomUUID();
+    const sequence: Sequence = {
+      uuid: randomUUID(),
+      name: `Seq Fail ${Date.now()}`,
+      isMain: false,
+      active: false,
+      projectUuid: project.projectUUID,
+      sections: [
+        {
+          uuid: sectionUuid,
+          name: "Section",
+          fragments: [{ uuid: randomUUID(), fragmentUuid: original.uuid, position: 0 }],
+        },
+      ],
+    };
+    await ctx.storageService.sequences.write(ctx.projectContext, sequence);
+
+    // Inject a failure into the follow-up sequence write only — the core
+    // fragment writes go through untouched.
+    const failingContext: CommandContext = {
+      ...ctx,
+      storageService: {
+        ...ctx.storageService,
+        sequences: {
+          ...ctx.storageService.sequences,
+          write: () => Promise.reject(new Error("sequence write exploded")),
+        },
+      },
+    };
+
+    const { result } = await splitFragmentCommand.execute(failingContext, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // The split committed: new piece on disk, original truncated.
+    expect(result.createdUuids).toHaveLength(1);
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.content.trim()).toBe("# Two\nBody two");
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content.trim()).toBe("# One\nBody one");
+
+    // The failure surfaced as a warning naming the sequence, not a throw.
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain(sequence.name);
+  });
+
+  it("collects a Margin-migration failure as a warning; comments remain on the original", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `margin-fail-${Date.now()}`,
+      "First block\n\n---\n\nSecond block <!--c:moveme-->",
+    );
+    await ctx.storageService.margins.write(ctx.projectContext, original.uuid, {
+      notes: "",
+      comments: [{ markerId: "moveme", excerpt: "Second block", body: "a comment that moves" }],
+    });
+
+    const failingContext: CommandContext = {
+      ...ctx,
+      storageService: {
+        ...ctx.storageService,
+        margins: {
+          ...ctx.storageService.margins,
+          write: () => Promise.reject(new Error("margin write exploded")),
+        },
+      },
+    };
+
+    const { result } = await splitFragmentCommand.execute(failingContext, {
+      fragmentId: original.uuid,
+      delimiter: { type: "thematic-break" },
+    });
+
+    // The split committed despite the Margin failure.
+    expect(result.createdUuids).toHaveLength(1);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("Comments could not be migrated");
+
+    // The comment was not lost: the original's Margin still holds it (the piece
+    // Margins are written before the original's is rewritten, so a failure never
+    // leaves a comment on neither side).
+    const originalMargin = await ctx.storageService.margins.read(ctx.projectContext, original.uuid);
+    expect(originalMargin?.comments.map((comment) => comment.markerId)).toEqual(["moveme"]);
+  });
+
+  it("a pre-write key conflict rejects with nothing written (validation precedes all writes)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    await writeFragment(ctx, `prewrite-taken-${stamp}`, "occupier");
+    const original = await writeFragment(
+      ctx,
+      `prewrite-src-${stamp}`,
+      "# One\nBody one\n# Two\nBody two\n# Three\nBody three",
+    );
+    const summariesBefore = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
+
+    // Piece 2 gets a valid unique key; piece 3 collides. Key resolution happens
+    // before the first write, so piece 2 must NOT be created.
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "heading", level: 1 },
+        pieceKeys: [
+          { pieceIndex: 2, key: `prewrite-fresh-${stamp}` },
+          { pieceIndex: 3, key: `prewrite-taken-${stamp}` },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(SplitKeyConflictError);
+
+    const summariesAfter = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
+    expect(summariesAfter.length).toBe(summariesBefore.length);
+    expect(summariesAfter.some((summary) => summary.key === `prewrite-fresh-${stamp}`)).toBe(false);
+    // The original is untouched — full prose intact.
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content).toContain("Body three");
+  });
 });

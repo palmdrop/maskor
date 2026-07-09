@@ -14,8 +14,15 @@ export const renderFragmentEntryText = (entry: ActionLogEntry): string => {
     }
     case "fragment:renamed":
       return `Fragment renamed: "${entry.payload.oldKey}" → "${entry.payload.newKey}"`;
-    case "fragment:discarded":
-      return `Fragment "${key(entry)}" discarded`;
+    case "fragment:discarded": {
+      const removedCount = entry.payload.unplacedFromSequenceUuids.length;
+      if (removedCount === 0) {
+        return `Fragment "${key(entry)}" discarded`;
+      }
+      return `Fragment "${key(entry)}" discarded (removed from ${removedCount} sequence${
+        removedCount === 1 ? "" : "s"
+      })`;
+    }
     case "fragment:restored":
       return `Fragment "${key(entry)}" restored`;
     case "fragment:deleted":

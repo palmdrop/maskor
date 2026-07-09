@@ -1,10 +1,11 @@
 # Spec: Fragment Model
 
 **Status**: Stable
-**Last updated**: 2026-06-27
+**Last updated**: 2026-07-04
 
 **Shipped**:
 
+- 2026-07-04 — Discarding a fragment unplaces it from every mutable sequence containing it (import-sequence snapshots untouched); restoring returns it to the unassigned pool without re-placing. One `fragment:discarded` action-log entry records the removed sequence uuids. (plan: references/plans/discard-and-split-integrity.md, Phase 1)
 - 2026-06-27 — Fragments carry an optional per-fragment writing-language override, stored in frontmatter as `lang` (a curated BCP-47 code). Absent = inherit the project language; an unknown value degrades to inherit. Set from the fragment metadata sidebar (live save; "Inherit project" clears it). Resolved as `fragment.language ?? project.editor.language` for spell-check. (plan: `references/plans/language-spelling.md`)
 - 2026-06-16 — Inline `[[references/…]]` / `[[aspects/…]]` links in a fragment body auto-attach to its metadata on a content save: references are added (never auto-removed), aspects added at weight 0, and a weight-0 aspect whose inline link is gone is reaped (reaping follows a body change only). `[[notes/…]]` links contribute to the link table / backlinks only — there is still no fragment note attachment (ADR 0007). The metadata form disables a chip's X-button while an inline link pins it. See `specifications/document-links.md`. (plan: `references/plans/document-links.md`)
 - 2026-06-15 — Fragments carry a durable `createdAt` timestamp, and the fragment-list sort dropdown gains a "Created at" option. `createdAt` is sourced frontmatter-first with a one-time filesystem-birthtime bootstrap for externally-authored files; once saved it lives in frontmatter. (plan: `references/plans/fragment-created-at.md`)
@@ -78,9 +79,9 @@ A fragment is a UUID-identified piece of writing. It has:
 
 6. **Fitting** — once placed, Maskor computes how well the fragment fits its position based on aspects, arcs, and interleaving rules. Handled by the sequencer (out of scope here).
 
-7. **Discard** — the user removes a fragment from the active working set. The fragment is not deleted, and can be restored whenever.
+7. **Discard** — the user removes a fragment from the active working set. The fragment is not deleted, and can be restored whenever. Discarding also removes the fragment from every mutable sequence it is placed in; read-only import-sequences (frozen snapshots of an import order) keep their placements.
 
-8. **Restore** — a discarded fragment can be moved back to the active set.
+8. **Restore** — a discarded fragment can be moved back to the active set. Restore does **not** re-place the fragment into the sequences discard removed it from — it returns to the unassigned pool, and the user re-places it deliberately.
 
 9. **Export** — fragments are merged in sequence order into a single text. Out of scope here.
 
