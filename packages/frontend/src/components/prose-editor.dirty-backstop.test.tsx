@@ -86,4 +86,28 @@ describe("ProseEditor — dirty backstop", () => {
     });
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  // Multi-tab swap hardening — Phase 1 disproof of the hypothesized backstop vector. The plan feared
+  // a stale tab whose server prop advances (another tab saved) would have its OLD buffer marked dirty
+  // by the backstop, then mirrored + save-enabled over the newer server content. In practice a CLEAN
+  // buffer adopts the refetched server content (ProseEditor's content-sync effect runs while
+  // !isDirty), so the backstop compares the buffer against the SAME advanced content and never fires.
+  // The write-side stale vector therefore does not reproduce for a clean tab; recovery is the real
+  // vector (see useEntityContentSwap.multi-tab.test.ts).
+  it("does NOT dirty a clean buffer when the server content advances (buffer adopts it)", async () => {
+    vi.useFakeTimers();
+    const ref = createRef<ProseEditorHandle>();
+    const onChange = vi.fn();
+    const { rerender } = render(renderEditor(ref, "server v1", false, onChange));
+
+    // Another tab saved: the server prop advances to v2 while this tab stays clean. The content-sync
+    // effect adopts v2 into the buffer (buffer authority only protects a DIRTY buffer).
+    rerender(renderEditor(ref, "server v2", false, onChange));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    // Buffer == advanced server content, so the backstop stays silent — no stale dirtying.
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

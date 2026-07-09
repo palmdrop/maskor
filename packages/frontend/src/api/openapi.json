@@ -3245,6 +3245,10 @@
           "content": {
             "type": "string",
             "example": "draft content the user is typing"
+          },
+          "baseHash": {
+            "type": "string",
+            "example": "a1b2c3d4"
           }
         },
         "required": [
@@ -3261,11 +3265,16 @@
           "savedAt": {
             "type": "string",
             "nullable": true
+          },
+          "baseHash": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
           "content",
-          "savedAt"
+          "savedAt",
+          "baseHash"
         ]
       }
     },

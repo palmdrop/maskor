@@ -1,9 +1,10 @@
 # Multi-tab swap hardening — stale tabs must never overwrite newer work
 
 **Date**: 04-07-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/fragment-editor.md`, `specifications/storage-sync.md`
 **Branch**: agent/multi-tab-swap-hardening
+**Closed**: 04-07-2026
 
 ---
 
@@ -31,28 +32,47 @@ The 2026-06-17 multi-tab cache fix (buffer authority) addressed refetch clobberi
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `agent/multi-tab-swap-hardening` from main.
+- [x] Create branch `agent/multi-tab-swap-hardening` from main. _(2026-07-04)_
 
 ### Phase 1 — Reproduce and pin the vectors
 
-- [ ] Write failing (or characterization) tests that simulate the timeline: tab A loads fragment → tab B edits + saves (server content advances) → tab A refetches (clean, buffer = old server content) → (a) tab A hidden → flush; (b) backstop heartbeat ticks. Assert what the swap file ends up holding today.
-- [ ] Trace whether the backstop-vs-refetch race actually occurs (buffer authority may sync the refetched content into the buffer when clean — read `prose-editor.tsx`'s content-sync effect carefully and document the real sequence). Adjust the vector list to what reproduces; record findings in this plan.
+- [x] Write characterization tests that simulate the timeline (`useEntityContentSwap.multi-tab.test.ts`, `prose-editor.dirty-backstop.test.tsx`). _(2026-07-04)_
+- [x] Trace whether the backstop-vs-refetch race actually occurs. Findings below. _(2026-07-04)_
 
-### Phase 2 — Fix: baseline-aware swap writes
+#### Phase 1 findings (04-07-2026)
 
-- [ ] Chosen direction (adjust if Phase 1 disproves it): make swap writes **baseline-aware**. Track the server content (hash or string) the buffer was seeded from; a swap write (debounced or flush) only proceeds when `currentValue` actually diverges from the *seed baseline* — a buffer that merely lags a newer server state is stale, not dirty. The backstop must use the same rule: buffer ≠ seed baseline → genuinely unsaved edits; buffer = seed baseline but ≠ refetched server content → stale, sync buffer instead of dirtying.
-- [ ] Ensure a genuinely-dirty-but-stale case (user edited in tab A *and* tab B saved meanwhile) is not silently dropped: that is a real conflict — keep the buffer, keep it dirty, and surface the existing "unsaved changes" affordances; the swap may hold tab A's content but recovery must not silently clobber (see Phase 3).
-- [ ] Keep the crash-net property: a single-tab crash still recovers the last keystrokes (do not weaken the debounced write or the flush for the genuinely-dirty case).
+Traced the real sequence through `entity-editor-shell.tsx` (`liveContent` sync), `prose-editor.tsx` (content-sync effect + dirty backstop), and `useEntityContentSwap.ts` (debounce + flush + seed). Result: **only one of the three hypothesized vectors is a real, reproducible loss vector.**
+
+- **Vector 3 — swap recovery — REAL (the actual loss).** A swap written from tab A while the server was v1 persists after another tab saves v2. On reopen (new tab / reload), `useEntityContentSwap` offers recovery purely because `cachedContent !== serverValue`; the shell (and the fragment ↔ Margin pair) then **auto-applies** it into the buffer and marks it dirty — silently reverting v2 to v1-based content, with buffer authority then protecting the stale buffer against the next refetch. The recovery banner gives no signal the server moved on. This matches the TODO report ("losing work… continuing from an existing session in a tab"). Reproduced in `useEntityContentSwap.multi-tab.test.ts`.
+
+- **Vector 2 — dirty backstop — DISPROVED (normal path).** The plan feared the backstop would dirty a stale buffer after a refetch. But a **clean** buffer *adopts* the refetched server content: `ProseEditor`'s content-sync effect runs `setContent` while `!isDirty`, and the shell's `liveContent` sync mirrors it. The backstop then compares the buffer against the same advanced content and never fires. Proven in `prose-editor.dirty-backstop.test.tsx` ("does NOT dirty a clean buffer when the server content advances"). Residual edge only: if `setContent` throws (guarded, logged) the buffer stays stale and the backstop would dirty it — rare, and arguably surfacing a genuine divergence; not addressed here.
+
+- **Vector 1 — page-hide flush — NARROWED to the recovery vector.** The flush is baseline-blind: it mirrors whatever the buffer holds (characterized in the Phase 1 test). But at the shell level the buffer only holds content that differs from the *current* server when it is genuinely dirty (real user edits — correct to mirror as a crash net) or during a one-render lag that the debounce cleanup cancels before it fires. So the flush never "overwrites a newer swap with stale content" on its own; its only danger is that the mirrored bytes were diverged from an old baseline — which is exactly Vector 3 at recovery time. Fix therefore lives in recovery, and the flush/debounce crash-net writes are left intact.
+
+**Direction adjustment.** The plan's Phase 2 "baseline-aware *writes*" is downgraded: a behavioral write-side guard would risk dropping a genuinely-dirty crash-net write (Vector 1/2 don't reproduce to justify it). Phase 2 instead only *attaches* the baseline to each write (plumbing for the recovery guard). The load-bearing fix is Phase 3: recovery becomes baseline-aware — a swap whose recorded baseline no longer matches the current server is a **conflict** requiring an explicit user choice, never a silent auto-apply.
+
+### Phase 2 — Fix: baseline-aware swap writes (narrowed per Phase 1)
+
+Per the Phase 1 findings the write-side vectors don't reproduce (a clean buffer adopts the newer server; a divergent buffer is genuinely dirty and must be mirrored). So Phase 2 was narrowed to **attaching** the baseline to each write (plumbing for the Phase 3 recovery guard) — no behavioral write-side guard, which would risk dropping a genuinely-dirty crash-net write.
+
+- [x] Swap file + write path carry an optional `baseHash` (fingerprint of the server content at write time). Storage (`SwapFile`, `createSwapStorage.write/read`), storage-service, API schema (`SwapWriteBody`, `SwapReadResponse`), and routes plumb it through; legacy swaps without it round-trip as absent/null. _(2026-07-04)_
+- [x] Frontend `hashContent` util (trailing-whitespace-tolerant, matching `isTrailingWhitespaceEquivalent`); `useEntityContentSwap` sends `hashContent(serverValue)` on every write. _(2026-07-04)_
+- [x] Kept the crash-net property: debounce + page-hide flush still mirror a genuinely-dirty buffer unchanged. _(2026-07-04)_
+- [x] Tests: baseline round-trip + legacy back-compat (`swap.test.ts` storage + api route), write carries a baseHash, `content-hash.test.ts`. _(2026-07-04)_
 
 ### Phase 3 — Recovery guard
 
-- [ ] Swap payload gains the baseline (hash of the server content the buffer diverged from). On recovery offer, when the swap's baseline no longer matches current server content, do not silently apply: show the existing recovery banner in a "conflicting backup" variant that requires explicit user choice (keep server / restore backup). Check the swap schema + `GET /swap` list endpoint for compatibility (additive field; old swaps without a baseline keep today's behavior).
-- [ ] Update `specifications/fragment-editor.md` (Buffer authority) and `specifications/storage-sync.md` (swap contract) to document baseline-aware swap semantics.
+- [x] `useEntityContentSwap` recovery carries `isConflict`: true when the swap's recorded `baseHash` no longer fingerprints the current server content; legacy baseline-less swaps are never conflicts. Comparison uses `hashContent` (trailing-whitespace-tolerant, matching the server's `body.trim()` normalization so a save round-trip can't false-conflict). _(2026-07-04)_
+- [x] A conflicting recovery is never auto-applied: the shell holds the backup back (buffer keeps the server content) and renders `ConflictingBackupBanner` (role=alert) with an explicit choice — "Keep server version" (revert + clear swap) / "Restore backup" (apply + mark dirty; buffer authority then protects it). Shell handle gained `restoreBackup` for the pair. _(2026-07-04)_
+- [x] Linked pair (fragment ↔ Margin): either side conflicting makes the whole pair a conflict; one banner, both sides restored or kept together (`handlePairRestoreBackup` / `handlePairRestore`). A held-back conflicting Margin backup is not auto-applied. _(2026-07-04)_
+- [x] Compatibility checked: `baseHash` is additive on `SwapWriteBody`/`SwapReadResponse` (nullable on read); the `GET /swap` list endpoint is untouched (it never exposed content). Old swaps keep today's auto-apply. _(2026-07-04)_
+- [x] Tests: conflict detection incl. whitespace-tolerance + legacy back-compat (`useEntityContentSwap.test.ts`), shell hold-back + both choices + unchanged non-conflict auto-apply (`entity-editor-shell.test.tsx`), pair coordination (`fragment-editor.test.tsx`). _(2026-07-04)_
+- [x] Updated `specifications/fragment-editor.md` (Buffer authority — baseline-aware swap recovery) and `specifications/storage-sync.md` (swap contract — baseHash). _(2026-07-04)_
 
 ### Phase 4 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update the `Shipped` frontmatter of both specs; set plan status; commit.
+- [x] `bun run format` then `bun run verify`; fixed all issues. Also fixed two pre-existing breakages unrelated to this plan: Node ≥ 25's experimental `localStorage` global shadowing happy-dom's storage in the frontend test setup (every persisted-state test crashed on newer Node), and a missing required `language` prop in `prose-editor.dirty-backstop.test.tsx` left behind by the language-spelling work (typecheck failure). _(2026-07-04)_
+- [x] Updated the `Shipped` frontmatter of both specs; set plan status; committed per phase. _(2026-07-04)_
 
 ---
 

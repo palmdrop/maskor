@@ -14,6 +14,10 @@ export const SwapParamSchema = z.object({
 export const SwapWriteBodySchema = z
   .object({
     content: z.string().openapi({ example: "draft content the user is typing" }),
+    // Fingerprint of the server content the buffered edits diverged from. Lets recovery distinguish a
+    // single-tab crash (baseline still matches the current server) from a stale multi-tab overwrite
+    // (the server advanced elsewhere). Optional so legacy clients keep working. (multi-tab-swap-hardening)
+    baseHash: z.string().optional().openapi({ example: "a1b2c3d4" }),
   })
   .openapi("SwapWriteBody");
 
@@ -30,6 +34,9 @@ export const SwapReadResponseSchema = z
   .object({
     content: z.string().nullable(),
     savedAt: z.string().nullable(),
+    // The baseline fingerprint recorded on the last write, or null when absent (no swap, or a legacy
+    // swap written before baselines existed). Recovery compares it to the current server content.
+    baseHash: z.string().nullable(),
   })
   .openapi("SwapReadResponse");
 

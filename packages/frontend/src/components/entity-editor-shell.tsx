@@ -17,6 +17,7 @@ import {
 import { Maximize2, Minimize2 } from "lucide-react";
 import { UnsavedRecoveryBanner } from "./unsaved-recovery-banner";
 import { BackupFailedBanner } from "./backup-failed-banner";
+import { ConflictingBackupBanner } from "./conflicting-backup-banner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
@@ -52,6 +53,10 @@ export type EntityEditorShellHandle = {
   // Reset the prose buffer to the server content and clear the fragment swap. Used by the linked
   // swap pair so a single "restore from server" reverts both fragment and Margin atomically.
   restoreFromServer: () => void;
+  // Apply a pending swap recovery that was held back because it conflicts (the server advanced since
+  // the backup was written). Used by the linked swap pair's "Restore backup" so the fragment side and
+  // the Margin restore together. No-op when there is no recovery or it was already applied.
+  restoreBackup: () => void;
 };
 
 type Props = {
@@ -94,8 +99,9 @@ type Props = {
   // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
   // The same flag suppresses the shell's own backup-failed banner, reported up instead.
   suppressRecoveryBanner?: boolean;
-  // Reports the fragment swap recovery up to a coordinating parent (linked swap pair).
-  onRecoveryChange?: (recovery: { at: Date } | null) => void;
+  // Reports the fragment swap recovery up to a coordinating parent (linked swap pair). `isConflict`
+  // marks a backup whose baseline no longer matches the server (multi-tab-swap-hardening, Phase 3).
+  onRecoveryChange?: (recovery: { at: Date; isConflict: boolean } | null) => void;
   // Reports whether this entity's swap write is currently failing, up to a coordinating parent so a
   // linked swap pair (fragment ↔ Margin) can surface one combined "not backed up" warning.
   onBackupFailedChange?: (failed: boolean) => void;
@@ -218,9 +224,14 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     }, [backupFailed]);
 
     const recoveryAppliedRef = useRef(false);
+    // Tracks the explicit choice made on a conflicting backup (multi-tab-swap-hardening, Phase 3):
+    // once the user picked, the conflict banner goes away for this entity. "kept" also clears the
+    // swap (recovery goes null), so the state mainly hides the banner after "restored".
+    const [conflictResolution, setConflictResolution] = useState<"restored" | "kept" | null>(null);
     useEffect(() => {
-      // Reset the per-entity guard when the swap target changes.
+      // Reset the per-entity guards when the swap target changes.
       recoveryAppliedRef.current = false;
+      setConflictResolution(null);
     }, [projectId, entityKind, entityUUID]);
 
     // Consumers pass a fresh onProseChange each render; ref it so the recovery
@@ -230,6 +241,11 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     useEffect(() => {
       if (!recovery) return;
+      // A conflicting backup (the server advanced since it was written — another tab saved, or an
+      // external edit) is never auto-applied: doing so would silently revert the newer work. The
+      // buffer keeps the current server content until the user explicitly chooses (banner below /
+      // the linked pair's coordinated banner).
+      if (recovery.isConflict) return;
       if (recoveryAppliedRef.current) return;
       recoveryAppliedRef.current = true;
       proseEditorRef.current?.setContent(recovery.content);
@@ -237,9 +253,26 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onProseChangeRef.current();
     }, [recovery]);
 
+    // The explicit "Restore backup" choice for a conflicting recovery: apply the held-back backup
+    // into the buffer and mark it dirty (buffer authority then protects it; save persists it over
+    // the newer server version, which is exactly what the user chose).
+    const handleRestoreBackup = useCallback(() => {
+      if (!recovery) return;
+      if (!recoveryAppliedRef.current) {
+        recoveryAppliedRef.current = true;
+        proseEditorRef.current?.setContent(recovery.content);
+        setLiveContent(recovery.content);
+        onProseChangeRef.current();
+      }
+      setConflictResolution("restored");
+    }, [recovery]);
+
     const handleRestoreFromServer = useCallback(() => {
       proseEditorRef.current?.setContent(content);
       setLiveContent(content);
+      // Hide a conflict banner immediately — clearSwap() nulls the recovery only after the DELETE
+      // round-trip settles.
+      setConflictResolution("kept");
       void clearSwap();
       onContentRevert?.();
     }, [content, clearSwap, onContentRevert]);
@@ -302,8 +335,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         setHighlightedAnchor: (markerId: string | null) =>
           proseEditorRef.current?.setHighlightedAnchor(markerId),
         restoreFromServer: () => handleRestoreFromServer(),
+        restoreBackup: () => handleRestoreBackup(),
       }),
-      [saveContent, handleRestoreFromServer],
+      [saveContent, handleRestoreFromServer, handleRestoreBackup],
     );
 
     const getEditorSelection = useCallback(
@@ -346,7 +380,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
     const onRecoveryChangeRef = useRef(onRecoveryChange);
     onRecoveryChangeRef.current = onRecoveryChange;
     useEffect(() => {
-      onRecoveryChangeRef.current?.(recovery ? { at: recovery.at } : null);
+      onRecoveryChangeRef.current?.(
+        recovery ? { at: recovery.at, isConflict: recovery.isConflict } : null,
+      );
     }, [recovery]);
 
     // Focus mode lifts the same root into a fixed overlay that starts below the
@@ -379,9 +415,19 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
 
     return (
       <div className={rootClassName} style={rootStyle}>
-        {recovery && !suppressRecoveryBanner && (
-          <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
-        )}
+        {recovery &&
+          !suppressRecoveryBanner &&
+          (recovery.isConflict ? (
+            conflictResolution === null && (
+              <ConflictingBackupBanner
+                cachedAt={recovery.at}
+                onRestoreBackup={handleRestoreBackup}
+                onDiscardBackup={handleRestoreFromServer}
+              />
+            )
+          ) : (
+            <UnsavedRecoveryBanner cachedAt={recovery.at} onDismiss={handleRestoreFromServer} />
+          ))}
         {backupFailed && !suppressRecoveryBanner && <BackupFailedBanner />}
         {banner}
         <div className="flex items-center justify-between gap-2">

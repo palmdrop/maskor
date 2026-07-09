@@ -302,6 +302,126 @@ describe("EntityEditorShell — swap integration", () => {
   });
 });
 
+describe("EntityEditorShell — conflicting backup (multi-tab-swap-hardening)", () => {
+  const conflictRecovery = {
+    content: "old backup from another session",
+    at: new Date("2026-07-04T10:00:00.000Z"),
+    isConflict: true,
+  };
+
+  it("does NOT auto-apply a conflicting recovery; requires an explicit choice", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: conflictRecovery,
+      clear: vi.fn().mockResolvedValue(undefined),
+    });
+    const onProseChange = vi.fn();
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+
+    // The backup was written against a server version that has since advanced — silently applying
+    // it would revert the newer work. The buffer keeps the server content; nothing marks dirty.
+    expect(proseSetContentMock).not.toHaveBeenCalled();
+    expect(onProseChange).not.toHaveBeenCalled();
+    // The conflict variant (role alert) renders instead of the auto-restored banner (role status).
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toMatch(/backup conflict/i);
+  });
+
+  it("Restore backup applies the held-back content, marks dirty, and hides the banner", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: conflictRecovery,
+      clear: vi.fn().mockResolvedValue(undefined),
+    });
+    const onProseChange = vi.fn();
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Restore backup" }));
+    await act(async () => {});
+
+    expect(proseSetContentMock).toHaveBeenCalledWith("old backup from another session");
+    expect(onProseChange).toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("Keep server version reverts to the server content and clears the swap", async () => {
+    const clear = vi.fn().mockResolvedValue(undefined);
+    swapHookMock.mockReturnValue({ recovery: conflictRecovery, clear });
+    const onContentRevert = vi.fn();
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        onProseChange={() => {}}
+        onSaved={() => {}}
+        onContentRevert={onContentRevert}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Keep server version" }));
+    await act(async () => {});
+
+    expect(proseSetContentMock).toHaveBeenLastCalledWith("server content");
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(onContentRevert).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("a non-conflicting recovery keeps the auto-restore behaviour (single-tab crash net)", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: { ...conflictRecovery, isConflict: false },
+      clear: vi.fn().mockResolvedValue(undefined),
+    });
+    const onProseChange = vi.fn();
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+
+    expect(proseSetContentMock).toHaveBeenCalledWith("old backup from another session");
+    expect(onProseChange).toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toMatch(/unsaved changes/i);
+  });
+});
+
 describe("EntityEditorShell — focus mode", () => {
   beforeEach(() => {
     localStorage.clear();

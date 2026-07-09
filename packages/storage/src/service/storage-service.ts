@@ -2264,8 +2264,9 @@ export const createStorageService = (config: StorageServiceConfig = {}) => {
         entityType: SwapEntityType,
         entityUUID: string,
         content: string,
+        baseHash?: string,
       ): Promise<SwapFile> {
-        return getSwapStorage(context).write(entityType, entityUUID, content);
+        return getSwapStorage(context).write(entityType, entityUUID, content, baseHash);
       },
 
       async read(
