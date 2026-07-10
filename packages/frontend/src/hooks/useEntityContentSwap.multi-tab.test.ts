@@ -28,6 +28,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 import { useEntityContentSwap } from "./useEntityContentSwap";
+import { hashContent } from "@lib/swap/content-hash";
 
 const baseProps = {
   projectId: "project-1",
@@ -127,5 +128,64 @@ describe("useEntityContentSwap — multi-tab stale-tab timeline (Phase 1)", () =
     });
 
     expect(result.current.recovery?.content).toBe("v1 with tab A edits");
+  });
+});
+
+describe("useEntityContentSwap — write baseline is the divergence point, not the write-time server (Phase 3)", () => {
+  it("stamps h(v1) when the buffer diverged from v1, even after a refetch advances serverValue to v2 (debounce)", async () => {
+    // The load-bearing conflict guard. Tab A's buffer diverged from server v1. Another tab saved v2, so
+    // a background refetch advances tab A's `content` prop to v2 while the (dirty) buffer stays at its
+    // v1-based edit — buffer authority stops the editor loading v2, but does NOT freeze the prop. The
+    // next write must fingerprint v1 (what the buffer diverged from), so reopening flags the conflict —
+    // NOT v2, which would re-baseline the swap and let recovery silently clobber tab B's work.
+    const { putMutate } = setupMocks(emptySwapQuery());
+
+    const { rerender } = renderHook(
+      (props: { currentValue: string; serverValue: string }) =>
+        useEntityContentSwap({ ...baseProps, ...props }),
+      { initialProps: { currentValue: "v1", serverValue: "v1" } },
+    );
+
+    // Buffer diverges from v1 (a real edit). Baseline should freeze at v1 from here on.
+    rerender({ currentValue: "v1 with tab A edits", serverValue: "v1" });
+    // Background refetch: server prop advances to v2 while the dirty buffer stays put.
+    rerender({ currentValue: "v1 with tab A edits", serverValue: "v2" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
+    expect(putMutate).toHaveBeenCalledTimes(1);
+    expect(putMutate.mock.calls[0]?.[0]?.data?.content).toBe("v1 with tab A edits");
+    expect(putMutate.mock.calls[0]?.[0]?.data?.baseHash).toBe(hashContent("v1"));
+    expect(putMutate.mock.calls[0]?.[0]?.data?.baseHash).not.toBe(hashContent("v2"));
+  });
+
+  it("stamps h(v1) on the page-hide flush too, even after serverValue advanced to v2", () => {
+    // Same divergence, flushed on hide rather than by the debounce. The flush shares writeSwap, so it
+    // must record the same v1 baseline — a stale hidden tab that flushes after a refetch cannot write a
+    // "fresh" v2 baseline under stale bytes.
+    const { putMutate } = setupMocks(emptySwapQuery());
+
+    const { rerender } = renderHook(
+      (props: { currentValue: string; serverValue: string }) =>
+        useEntityContentSwap({ ...baseProps, ...props }),
+      { initialProps: { currentValue: "v1", serverValue: "v1" } },
+    );
+
+    rerender({ currentValue: "v1 with tab A edits", serverValue: "v1" });
+    rerender({ currentValue: "v1 with tab A edits", serverValue: "v2" });
+
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(putMutate).toHaveBeenCalledTimes(1);
+    expect(putMutate.mock.calls[0]?.[0]?.data?.baseHash).toBe(hashContent("v1"));
+    expect(putMutate.mock.calls[0]?.[0]?.data?.baseHash).not.toBe(hashContent("v2"));
   });
 });

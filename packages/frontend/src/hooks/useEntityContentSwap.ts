@@ -90,6 +90,27 @@ export const useEntityContentSwap = (
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWrittenRef = useRef<string | null>(null);
 
+  // Latest currentValue/serverValue, read by the page-hide flush and the per-entity reset effect
+  // without re-subscribing/re-running on every prop change.
+  const currentValueRef = useRef(currentValue);
+  currentValueRef.current = currentValue;
+  const serverValueRef = useRef(serverValue);
+  serverValueRef.current = serverValue;
+
+  // The server content the buffer actually diverged from — the baseline a swap write fingerprints so
+  // recovery can detect a stale multi-tab overwrite (Phase 3). It advances to serverValue ONLY while
+  // the buffer still agrees with the server (currentValue === serverValue); once the buffer is dirty it
+  // freezes at the last-agreed server content. This matters because serverValue (the shell's `content`
+  // prop) keeps advancing on a background refetch even while the buffer is dirty — buffer authority
+  // only stops the editor from loading it, it does not freeze the prop. Fingerprinting serverValue at
+  // write time would re-baseline the swap to that newer content and mask a real conflict; the
+  // divergence point does not. Initialised to the mount-time serverValue so an existing swap whose
+  // buffer already differs (recovery pending) starts from the right baseline.
+  const baselineRef = useRef(serverValue);
+  if (currentValue === serverValue) {
+    baselineRef.current = serverValue;
+  }
+
   // Reset all per-entity tracking when the swap target changes.
   useEffect(() => {
     if (timerRef.current !== null) {
@@ -97,6 +118,7 @@ export const useEntityContentSwap = (
       timerRef.current = null;
     }
     lastWrittenRef.current = null;
+    baselineRef.current = serverValueRef.current;
     setRecovery(null);
     setHasSeeded(false);
     setBackupFailed(false);
@@ -148,10 +170,12 @@ export const useEntityContentSwap = (
   // renders (refs/setstate only) so the flush listener can be subscribed once.
   const writeSwap = useCallback(
     (value: string) => {
-      // Record the baseline this buffer diverged from — the server content at write time. Recovery
-      // uses it to detect a stale multi-tab overwrite (Phase 3). Read off the ref so the flush path
-      // (which doesn't re-subscribe) sees the latest server content.
-      const baseHash = hashContent(serverValueRef.current);
+      // Record the baseline this buffer actually diverged from — NOT the write-time server value.
+      // serverValue can advance on a background refetch under a dirty buffer, so stamping it here would
+      // re-baseline the swap to that newer content and let recovery silently auto-apply stale bytes
+      // over it (Phase 3). baselineRef froze at the last server content the buffer agreed with. Read
+      // off the ref so the flush path (which doesn't re-subscribe) sees the latest value.
+      const baseHash = hashContent(baselineRef.current);
       putMutateRef.current(
         { projectId, entityType, entityUUID, data: { content: value, baseHash } },
         {
@@ -179,12 +203,6 @@ export const useEntityContentSwap = (
   );
   const writeSwapRef = useRef(writeSwap);
   writeSwapRef.current = writeSwap;
-
-  // Latest currentValue/serverValue, read by the page-hide flush without re-subscribing its listener.
-  const currentValueRef = useRef(currentValue);
-  currentValueRef.current = currentValue;
-  const serverValueRef = useRef(serverValue);
-  serverValueRef.current = serverValue;
 
   // Debounced PUT on currentValue change.
   useEffect(() => {
