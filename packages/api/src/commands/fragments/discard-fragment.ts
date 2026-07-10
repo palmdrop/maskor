@@ -38,6 +38,12 @@ export const discardFragmentCommand: Command<DiscardFragmentInput, void> = {
         continue;
       }
       const updated = unplaceFragment(sequence, fragmentId);
+      // TODO: partial-failure shape — if this write throws mid-loop, earlier sequences are already
+      // unplaced but the command 500s before the fragment:discarded entry is written, so those
+      // unplacements go unlogged (the fragment also stays un-discarded). A retry self-heals (the
+      // `isPlaced` check above skips already-unplaced sequences), so this is acceptable for now. If
+      // it ever needs fixing, mirror split-fragment.ts's per-sequence warning isolation (try/catch
+      // per sequence, collect warnings, return a 200) rather than failing the whole command.
       await ctx.storageService.sequences.write(ctx.projectContext, updated);
       unplacedFromSequenceUuids.push(sequence.uuid);
     }

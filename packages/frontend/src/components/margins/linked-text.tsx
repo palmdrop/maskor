@@ -13,15 +13,20 @@ type Props = {
 // wired) renders verbatim. Comments are link *readers* only — they never become link-table sources
 // (ADR 0007; see specifications/document-links.md). Mirrors the editors' `.doc-link` styling.
 export function LinkedText({ text, documentLinks }: Props) {
-  if (!documentLinks) return <>{text}</>;
+  if (!documentLinks) {
+    return <>{text}</>;
+  }
   const ranges = findLinkRanges(text, documentLinks.lookups);
-  if (ranges.length === 0) return <>{text}</>;
+  if (ranges.length === 0) {
+    return <>{text}</>;
+  }
 
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
   ranges.forEach((range, index) => {
-    if (range.from > cursor)
+    if (range.from > cursor) {
       nodes.push(<Fragment key={`t-${index}`}>{text.slice(cursor, range.from)}</Fragment>);
+    }
     const { resolved } = range;
     if (resolved.uuid && resolved.pathType) {
       const { pathType, uuid } = resolved;
@@ -50,6 +55,8 @@ export function LinkedText({ text, documentLinks }: Props) {
     }
     cursor = range.to;
   });
-  if (cursor < text.length) nodes.push(<Fragment key="t-end">{text.slice(cursor)}</Fragment>);
+  if (cursor < text.length) {
+    nodes.push(<Fragment key="t-end">{text.slice(cursor)}</Fragment>);
+  }
   return <>{nodes}</>;
 }

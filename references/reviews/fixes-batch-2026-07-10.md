@@ -1,7 +1,7 @@
 # Review: fixes batch (discard/split integrity, multi-tab swap hardening, margin orphan + notes tab, document-links polish)
 
 **Date**: 2026-07-10
-**Status**: Open
+**Status**: Resolved
 **Scope**: `packages/api`, `packages/storage`, `packages/shared`, `packages/frontend` — `agent/fixes` vs `main`
 **Plan**: `references/plans/discard-and-split-integrity.md`, `references/plans/multi-tab-swap-hardening.md`, `references/plans/margin-orphan-and-notes-tab.md`, `references/plans/document-links-polish.md`
 **Spec**: `specifications/fragment-editor.md`, `specifications/storage-sync.md`, `specifications/fragment-split.md`, `specifications/sequencer.md`, `specifications/margins.md`, `specifications/document-links.md`
@@ -75,4 +75,8 @@ Fix: record the baseline the buffer actually *diverged from*, not the write-time
 
 ## Resolution
 
-<!-- Pending. -->
+1. **Fixed** (commit `79b67bb`). `writeSwap` no longer fingerprints the write-time server value; a `baselineRef` tracks the content the buffer diverged from — advancing to `serverValue` only while the buffer agrees with the server, freezing once dirty, and resetting on entity change — and both the debounced write and the page-hide flush stamp `hashContent(baselineRef)`. Regression tests pin that a write carries `h(v1)` after `serverValue` advanced to v2 under a dirty buffer.
+2. **Fixed** (commit `8501a67`). The linked fragment ↔ Margin pair no longer auto-applies a non-conflicting side while the other side's backup conflicts. `EntityEditorShell` gained a `holdRecovery` prop (gates auto-apply without marking recovery applied) and reports swap-settled state up; `FragmentEditor` derives a single `holdPairRecovery` that releases only once both sides have settled and neither conflicts. Non-pair shells keep the immediate auto-apply.
+3. **Fixed.** Memoized the `useDocumentLinks` return object itself (`packages/frontend/src/lib/document-links/useDocumentLinks.ts`), keyed on its already-memoized fields, so `[documentLinksApi]` is now referentially stable and `marginDocumentLinks` (and the shell's consumers) stop recomputing every render — no more per-render link-config dispatches into active slot editors. Fixed at the source rather than the memo dep-array so every consumer benefits.
+4. **Mitigated.** Added a `// TODO:` in the unplace loop (`packages/api/src/commands/fragments/discard-fragment.ts`) documenting the partial-failure shape (a mid-loop `sequences.write` throw leaves earlier unplacements applied but unlogged) and noting that retry self-heals via the `isPlaced` skip; points at `split-fragment.ts`'s per-sequence warning isolation as the pattern if it ever needs a real fix. Loop left unrestructured.
+5. **Fixed.** Added explicit braces to every un-braced `if` body in `packages/frontend/src/components/margins/linked-text.tsx` (the flagged multi-line body plus the two guard early-returns and the trailing-text push) per `references/CODING_STANDARDS.md`.

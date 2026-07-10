@@ -83,7 +83,13 @@ export const useDocumentLinks = (projectId: string) => {
     [navigate, projectId],
   );
 
-  return { lookups, entities, resolve, navigateToLink };
+  // Memoize the returned API object itself — not just its fields — so consumers can depend on the
+  // whole object (`[documentLinksApi]`) without recomputing every render. Each field is already
+  // internally memoized, so a fresh object literal here would defeat any downstream `useMemo`.
+  return useMemo(
+    () => ({ lookups, entities, resolve, navigateToLink }),
+    [lookups, entities, resolve, navigateToLink],
+  );
 };
 
 export type DocumentLinksApi = ReturnType<typeof useDocumentLinks>;
