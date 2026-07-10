@@ -173,6 +173,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
     at: Date;
     isConflict: boolean;
   } | null>(null);
+  // Whether the fragment swap read has settled, reported up from the shell. Combined with the
+  // margin's settled flag so the pair holds BOTH auto-applies until each side's status is known.
+  const [fragmentRecoverySettled, setFragmentRecoverySettled] = useState(false);
   // Fragment swap-backup failure, reported up from the shell; combined with the margin's into one
   // "not backed up" warning over the linked pair.
   const [fragmentBackupFailed, setFragmentBackupFailed] = useState(false);
@@ -187,16 +190,34 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
   useEffect(() => {
     marginRecoveryAppliedRef.current = false;
     setPairConflictResolution(null);
+    setFragmentRecoverySettled(false);
   }, [projectId, fragmentId]);
+
+  // The linked pair holds BOTH non-conflicting auto-applies until each side's swap read has settled
+  // AND the pair is confirmed non-conflicting. Holding while a side is still resolving closes the
+  // seed race: the two swap reads (fragment in the shell, Margin here) resolve independently, so
+  // whichever lands first must NOT auto-apply before a conflict on the still-loading side surfaces —
+  // that would tear the pair (one side backup content, the other server content) before the user
+  // chooses. Both auto-applies release together once the pair settles clean. `holdPairRecovery` starts
+  // true (nothing settled yet) and only clears when both sides are settled and neither conflicts.
+  const pairRecoverySettled = fragmentRecoverySettled && marginSwap.recoverySettled;
+  const pairIsConflict =
+    (fragmentRecovery?.isConflict ?? false) || (marginSwap.recovery?.isConflict ?? false);
+  const holdPairRecovery = !pairRecoverySettled || pairIsConflict;
+
   useEffect(() => {
     if (!marginSwap.recovery) return;
     // A conflicting Margin backup is held back like the fragment's (multi-tab-swap-hardening,
-    // Phase 3) — applied only via the pair banner's explicit "Restore backup".
+    // Phase 3) — applied only via the pair banner's explicit "Restore backup". While the pair is
+    // held (the fragment side conflicts, or either side is still resolving) this non-conflicting
+    // Margin backup is held too, so the pair never auto-applies one side alone. Re-runs when the
+    // hold releases (`holdPairRecovery` is in the deps).
     if (marginSwap.recovery.isConflict) return;
+    if (holdPairRecovery) return;
     if (marginRecoveryAppliedRef.current) return;
     marginRecoveryAppliedRef.current = true;
     marginEditor.applySerialized(marginSwap.recovery.content);
-  }, [marginSwap.recovery, marginEditor]);
+  }, [marginSwap.recovery, marginEditor, holdPairRecovery]);
 
   const [isProseDirty, setIsProseDirty] = useState(false);
   // The editor save persists the fragment and its Margin together (margins-4 #10, #13), so a
@@ -380,10 +401,8 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
           ? fragmentAt
           : marginAt
         : (fragmentAt ?? marginAt!);
-    const isConflict =
-      (fragmentRecovery?.isConflict ?? false) || (marginSwap.recovery?.isConflict ?? false);
-    return { at, isConflict };
-  }, [fragmentRecovery, marginSwap.recovery]);
+    return { at, isConflict: pairIsConflict };
+  }, [fragmentRecovery, marginSwap.recovery, pairIsConflict]);
 
   // The "Comment this block" gesture is now a *jump*: it moves focus to the margin slot beside the
   // paragraph at the cursor (the comment if one exists, otherwise the empty slot ready for
@@ -500,7 +519,9 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
         backNode={backNode}
         banner={pairBanner}
         suppressRecoveryBanner
+        holdRecovery={holdPairRecovery}
         onRecoveryChange={setFragmentRecovery}
+        onRecoverySettledChange={setFragmentRecoverySettled}
         onBackupFailedChange={setFragmentBackupFailed}
         extraActions={extraActions}
         sidebarCollapsible={sidebarCollapsible}

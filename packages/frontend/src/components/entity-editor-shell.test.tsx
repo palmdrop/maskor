@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
-import { forwardRef, useImperativeHandle } from "react";
+import { createRef, forwardRef, useImperativeHandle } from "react";
 import type { Ref } from "react";
+import type { EntityEditorShellHandle } from "./entity-editor-shell";
 import { CommandsProvider } from "@lib/commands/CommandsProvider";
 import { InsertTogglesProvider } from "@lib/insert-toggles/InsertTogglesProvider";
 import type { ReactNode } from "react";
@@ -419,6 +420,120 @@ describe("EntityEditorShell — conflicting backup (multi-tab-swap-hardening)", 
     expect(proseSetContentMock).toHaveBeenCalledWith("old backup from another session");
     expect(onProseChange).toHaveBeenCalled();
     expect(screen.getByRole("status").textContent).toMatch(/unsaved changes/i);
+  });
+});
+
+describe("EntityEditorShell — holdRecovery (linked swap pair)", () => {
+  const nonConflictingRecovery = {
+    content: "cached body from this session",
+    at: new Date("2026-07-04T10:00:00.000Z"),
+    isConflict: false,
+  };
+
+  it("holds a non-conflicting recovery while holdRecovery is set (pair still resolving/conflicting)", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: nonConflictingRecovery,
+      clear: vi.fn().mockResolvedValue(undefined),
+      recoverySettled: true,
+    });
+    const onProseChange = vi.fn();
+
+    render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        holdRecovery
+        suppressRecoveryBanner
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+
+    // The pair holds this side back — the buffer keeps the server content (nothing applied, not dirty)
+    // until the pair resolves. A silent auto-apply here would tear the pair.
+    expect(proseSetContentMock).not.toHaveBeenCalled();
+    expect(onProseChange).not.toHaveBeenCalled();
+  });
+
+  it("auto-applies the held-back recovery once holdRecovery clears (pair settled, no conflict)", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: nonConflictingRecovery,
+      clear: vi.fn().mockResolvedValue(undefined),
+      recoverySettled: true,
+    });
+    const onProseChange = vi.fn();
+
+    const { rerender } = render(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        holdRecovery
+        suppressRecoveryBanner
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+    expect(proseSetContentMock).not.toHaveBeenCalled();
+
+    // The pair settled clean — the coordinator releases the hold, and the previously-held recovery
+    // applies now (it was never marked applied, so the release still takes effect).
+    rerender(
+      <EntityEditorShell
+        {...baseProps}
+        isDirty={false}
+        holdRecovery={false}
+        suppressRecoveryBanner
+        onProseChange={onProseChange}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+    );
+    await act(async () => {});
+
+    expect(proseSetContentMock).toHaveBeenCalledWith("cached body from this session");
+    expect(onProseChange).toHaveBeenCalled();
+  });
+
+  it("still applies a held-back recovery via the explicit restoreBackup handle (pair Restore backup)", async () => {
+    swapHookMock.mockReturnValue({
+      recovery: nonConflictingRecovery,
+      clear: vi.fn().mockResolvedValue(undefined),
+      recoverySettled: true,
+    });
+    const shellRef = createRef<EntityEditorShellHandle>();
+
+    render(
+      <EntityEditorShell
+        ref={shellRef}
+        {...baseProps}
+        isDirty={false}
+        holdRecovery
+        suppressRecoveryBanner
+        onProseChange={() => {}}
+        onSaved={() => {}}
+        onKeySave={async () => {}}
+        onContentSave={async () => {}}
+      />,
+      { wrapper: wrap },
+    );
+
+    await act(async () => {});
+    expect(proseSetContentMock).not.toHaveBeenCalled();
+
+    // The pair's "Restore backup" reaches in via the ref; the held-back recovery applies.
+    act(() => shellRef.current?.restoreBackup());
+    expect(proseSetContentMock).toHaveBeenCalledWith("cached body from this session");
   });
 });
 

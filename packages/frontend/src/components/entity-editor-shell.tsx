@@ -99,9 +99,20 @@ type Props = {
   // single banner for a linked swap pair (fragment ↔ Margin). Fragment recovery is still applied.
   // The same flag suppresses the shell's own backup-failed banner, reported up instead.
   suppressRecoveryBanner?: boolean;
+  // When true, hold back this shell's non-conflicting recovery auto-apply — the linked swap pair is
+  // in conflict (or its status is not yet fully known) on the OTHER side, so applying this side now
+  // would tear the pair (one side showing backup content, the other server content) before the user
+  // chooses. Held recoveries are never marked applied, so the pair's explicit "Restore backup"
+  // (`restoreBackup()`) still applies them, and "Keep server version" (`restoreFromServer()`) reverts
+  // them. A conflicting recovery is already held regardless of this flag. Default false — non-pair
+  // shells (notes/references/aspects) never set it and keep the immediate auto-apply.
+  holdRecovery?: boolean;
   // Reports the fragment swap recovery up to a coordinating parent (linked swap pair). `isConflict`
   // marks a backup whose baseline no longer matches the server (multi-tab-swap-hardening, Phase 3).
   onRecoveryChange?: (recovery: { at: Date; isConflict: boolean } | null) => void;
+  // Reports whether this shell's swap read has settled (recovery status known) up to a coordinating
+  // parent, so a linked pair can hold both sides until each side's status is resolved.
+  onRecoverySettledChange?: (settled: boolean) => void;
   // Reports whether this entity's swap write is currently failing, up to a coordinating parent so a
   // linked swap pair (fragment ↔ Margin) can surface one combined "not backed up" warning.
   onBackupFailedChange?: (failed: boolean) => void;
@@ -136,7 +147,9 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       onActiveBlockChange,
       fragmentLanguage,
       suppressRecoveryBanner = false,
+      holdRecovery = false,
       onRecoveryChange,
+      onRecoverySettledChange,
       onBackupFailedChange,
     },
     ref,
@@ -206,6 +219,7 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       recovery,
       clear: clearSwap,
       backupFailed,
+      recoverySettled,
     } = useEntityContentSwap({
       projectId,
       entityType: entityKind,
@@ -246,12 +260,17 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
       // buffer keeps the current server content until the user explicitly chooses (banner below /
       // the linked pair's coordinated banner).
       if (recovery.isConflict) return;
+      // The linked swap pair holds both non-conflicting sides while the pair is in conflict (or its
+      // status is still resolving) on the other side — applying now would tear the pair. Return
+      // WITHOUT marking applied so a later release (holdRecovery → false) or the explicit "Restore
+      // backup" still applies it. Re-runs when holdRecovery flips (it's in the deps).
+      if (holdRecovery) return;
       if (recoveryAppliedRef.current) return;
       recoveryAppliedRef.current = true;
       proseEditorRef.current?.setContent(recovery.content);
       setLiveContent(recovery.content);
       onProseChangeRef.current();
-    }, [recovery]);
+    }, [recovery, holdRecovery]);
 
     // The explicit "Restore backup" choice for a conflicting recovery: apply the held-back backup
     // into the buffer and mark it dirty (buffer authority then protects it; save persists it over
@@ -384,6 +403,14 @@ export const EntityEditorShell = forwardRef<EntityEditorShellHandle, Props>(
         recovery ? { at: recovery.at, isConflict: recovery.isConflict } : null,
       );
     }, [recovery]);
+
+    // Report the swap-read settled state up so the linked pair can hold both sides until each side's
+    // recovery status is known (see holdRecovery). Ref'd so a fresh callback identity doesn't re-fire.
+    const onRecoverySettledChangeRef = useRef(onRecoverySettledChange);
+    onRecoverySettledChangeRef.current = onRecoverySettledChange;
+    useEffect(() => {
+      onRecoverySettledChangeRef.current?.(recoverySettled);
+    }, [recoverySettled]);
 
     // Focus mode lifts the same root into a fixed overlay that starts below the
     // navbar (via --app-navbar-height, set by ProjectShellLayout) and covers the

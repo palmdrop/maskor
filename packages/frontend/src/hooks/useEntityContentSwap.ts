@@ -33,6 +33,12 @@ export type UseEntityContentSwapOptions = {
 
 export type UseEntityContentSwapResult = {
   recovery: SwapRecovery | null;
+  // True once the initial swap read has settled and `recovery` reflects it (present or absent) — the
+  // recovery status is now known. Starts false, flips true after the seed, resets on entity change.
+  // A linked swap pair (fragment ↔ Margin) reads this on both sides so it can hold BOTH auto-applies
+  // until each side's status is known: without it, whichever side's swap read resolves first would
+  // auto-apply before a conflict on the still-loading side is discovered, tearing the pair.
+  recoverySettled: boolean;
   clear: () => Promise<void>;
   // True while the most recent swap write failed and has not since succeeded. Prose has no
   // auto-save, so the swap file is the only crash net for unsaved prose — a silent failure (the
@@ -284,5 +290,5 @@ export const useEntityContentSwap = (
     }
   }, [projectId, entityType, entityUUID]);
 
-  return { recovery, clear, backupFailed };
+  return { recovery, clear, backupFailed, recoverySettled: hasSeeded };
 };

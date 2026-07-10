@@ -30,6 +30,15 @@ const restoreFragmentSpy = vi.fn(
 
 let fragmentRecovery: SwapRecovery | null = null;
 let marginRecovery: SwapRecovery | null = null;
+// Whether the Margin swap read has settled — the pair holds both auto-applies until both sides are
+// known. Default true (the Margin read is synchronous in these mocks).
+let marginRecoverySettled = true;
+// The most recent `holdRecovery` prop the shell stub received — lets the tests assert the coordinator
+// holds the fragment side while the pair is in conflict (the shell itself is stubbed here).
+let capturedHoldRecovery: boolean | undefined;
+// Captured so a test can simulate the fragment swap read settling AFTER mount (as it does in
+// production, asynchronously) rather than synchronously during the initial commit.
+let capturedOnRecoverySettledChange: ((settled: boolean) => void) | undefined;
 // Controllable sequence bundle so the placement-picker filter (import-sequences
 // excluded) is testable.
 let sequenceListData: Array<Record<string, unknown>> = [];
@@ -46,7 +55,9 @@ let capturedOnContentSave: ((content: string) => Promise<unknown>) | undefined;
 type ShellProps = {
   banner?: ReactNode;
   rightPanel?: ReactNode;
+  holdRecovery?: boolean;
   onRecoveryChange?: (recovery: { at: Date; isConflict: boolean } | null) => void;
+  onRecoverySettledChange?: (settled: boolean) => void;
   isDirty?: boolean;
   onProseChange?: () => void;
   onContentSave?: (content: string) => Promise<unknown>;
@@ -62,13 +73,24 @@ type ShellHandle = {
 
 vi.mock("@components/entity-editor-shell", () => ({
   EntityEditorShell: forwardRef<ShellHandle, ShellProps>(function ShellStub(
-    { banner, rightPanel, onRecoveryChange, isDirty, onProseChange, onContentSave }: ShellProps,
+    {
+      banner,
+      rightPanel,
+      holdRecovery,
+      onRecoveryChange,
+      onRecoverySettledChange,
+      isDirty,
+      onProseChange,
+      onContentSave,
+    }: ShellProps,
     ref: Ref<ShellHandle>,
   ) {
     capturedOnRecoveryChange = onRecoveryChange;
+    capturedOnRecoverySettledChange = onRecoverySettledChange;
     capturedIsDirty = isDirty;
     capturedOnProseChange = onProseChange;
     capturedOnContentSave = onContentSave;
+    capturedHoldRecovery = holdRecovery;
     useEffect(() => {
       onRecoveryChange?.(
         fragmentRecovery
@@ -123,7 +145,11 @@ vi.mock("@hooks/useMarginEditor", () => ({
 }));
 
 vi.mock("@hooks/useEntityContentSwap", () => ({
-  useEntityContentSwap: () => ({ recovery: marginRecovery, clear: marginClearSpy }),
+  useEntityContentSwap: () => ({
+    recovery: marginRecovery,
+    clear: marginClearSpy,
+    recoverySettled: marginRecoverySettled,
+  }),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -205,6 +231,9 @@ beforeEach(() => {
   vi.mocked(marginEditor.applySerialized).mockClear();
   fragmentRecovery = null;
   marginRecovery = null;
+  marginRecoverySettled = true;
+  capturedHoldRecovery = undefined;
+  capturedOnRecoverySettledChange = undefined;
   marginEditor.isDirty = false;
   capturedOnRecoveryChange = undefined;
   capturedIsDirty = undefined;
@@ -347,6 +376,41 @@ describe("FragmentEditor linked swap pair — conflicting backup (multi-tab-swap
     // The conflict variant renders (role alert), not the auto-restored variant (role status).
     expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByRole("alert").textContent).toMatch(/backup conflict/i);
+  });
+
+  it("holds the NON-conflicting fragment side (holdRecovery) while only the Margin conflicts", async () => {
+    // Margin conflicts, fragment backup is clean — the pair must hold the fragment side too, or the
+    // fragment buffer would show backup content while the Margin waits for a choice (a torn pair).
+    marginRecovery = { content: "{}", at, isConflict: true };
+    fragmentRecovery = { content: "body", at, isConflict: false };
+    renderEditor();
+    await act(async () => {});
+
+    // The coordinator tells the shell to hold its non-conflicting fragment recovery.
+    expect(capturedHoldRecovery).toBe(true);
+    // And the Margin side is held here too (not auto-applied) until the user chooses.
+    expect(marginEditor.applySerialized).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toMatch(/backup conflict/i);
+  });
+
+  it("still auto-applies both sides when neither conflicts and the pair has settled", async () => {
+    marginRecovery = { content: "{}", at, isConflict: false };
+    fragmentRecovery = { content: "body", at, isConflict: false };
+    renderEditor();
+
+    // Until the fragment swap read settles, the pair holds — the Margin is not auto-applied yet.
+    await act(async () => {});
+    expect(marginEditor.applySerialized).not.toHaveBeenCalled();
+    expect(capturedHoldRecovery).toBe(true);
+
+    // The fragment swap read settles (async, post-mount) with no conflict — the pair is now fully
+    // known and clean, so both sides auto-apply and the shell is released.
+    await act(async () => {
+      capturedOnRecoverySettledChange?.(true);
+    });
+    expect(marginEditor.applySerialized).toHaveBeenCalledWith("{}");
+    expect(capturedHoldRecovery).toBe(false);
+    expect(screen.getByRole("status").textContent).toMatch(/unsaved changes/i);
   });
 
   it("a fragment-side conflict also makes the whole pair conflict", () => {
