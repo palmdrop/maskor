@@ -8,30 +8,30 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] loosing work still happens somehow... usually when I continue from an existing session in a tab... 
+- [x] loosing work still happens somehow... usually when I continue from an existing session in a tab... (FIXED 2026-07-10: stale-tab vectors closed — swap writes carry a baseline fingerprint; the dirty backstop and pagehide flush no longer treat a merely-stale buffer as dirty; conflicting backups need an explicit keep-server/restore choice — plan: `references/plans/multi-tab-swap-hardening.md`, on `agent/fixes`)
 
-- [ ] sometimes, when a fragment is refetched, a comment is temporarily orphaned. I changed the readiness slider and the comment lost its anchor. On refresh, it was back. 
+- [x] sometimes, when a fragment is refetched, a comment is temporarily orphaned. I changed the readiness slider and the comment lost its anchor. On refresh, it was back. (FIXED 2026-07-10: the column reuses the last non-empty block list while a reload transiently empties it, so bound comments never flicker to the orphan group; genuine marker deletion still demotes — plan: `references/plans/margin-orphan-and-notes-tab.md`)
 
-- [ ] document links are sometimes broken. I split a document, added a document link, but then, that link pointed to the next fragment in the sequence, NOT the actually linked fragment
+- [x] document links are sometimes broken. I split a document, added a document link, but then, that link pointed to the next fragment in the sequence, NOT the actually linked fragment (INVESTIGATED 2026-07-10: no reproducible defect remains — split key derivation guarantees distinct keys, the picker and resolver share one snapshot, and the split dialog invalidates the fragment list (stale window closed by the discard-and-split-integrity work). Invariants pinned by regression tests — plan: `references/plans/document-links-polish.md`)
 
-- [ ] comments close to the bottom notes tab are offset on creation, then hidden behind tab... need to move the general notes tab, maybe behind a third tab beside margins/aspect on the right panel 
+- [x] comments close to the bottom notes tab are offset on creation, then hidden behind tab... need to move the general notes tab, maybe behind a third tab beside margins/aspect on the right panel (FIXED 2026-07-10: general notes moved to a third gutter tab (`MarginNotesTab`); the column footer now only holds orphans + controls, so nothing covers or offsets bottom comments — plan: `references/plans/margin-orphan-and-notes-tab.md`)
 
-- [ ] discarding a fragment in a sequence does not remove it in the frontend. Using the remove from sequence command fails, because in the backend, the fragment is probably already removed - the frontend cache was never updated
+- [x] discarding a fragment in a sequence does not remove it in the frontend. Using the remove from sequence command fails, because in the backend, the fragment is probably already removed - the frontend cache was never updated (FIXED 2026-07-10: discard now removes the fragment from sequences server-side and the frontend invalidates the sequence query family; restore returns the fragment to the pool without re-placing; import-sequences keep placements as frozen snapshots. Underlying `fragment_positions` FK-cascade wart noted in `references/suggestions.md` — plan: `references/plans/discard-and-split-integrity.md`)
 
-- [ ] fragment split still "fails", but actually succeeds 
+- [x] fragment split still "fails", but actually succeeds (FIXED 2026-07-10: split restructured into validate → core writes → placement/margin phase; post-commit failures now surface as per-item warnings instead of a bogus 500; key conflicts reject before any write — plan: `references/plans/discard-and-split-integrity.md`)
 
-- [ ] tabbing when selecting link should auto-complete (atm, just enter works)
+- [x] tabbing when selecting link should auto-complete (atm, just enter works) (FIXED 2026-07-10: Tab accepts the `[[` autocomplete in rich, raw, and vim modes — plan: `references/plans/document-links-polish.md`)
 
 
 - [x] Ended up losing a lot of work when save didn't work as expected AND there was no swap file. Maskor was in a strange state and I got no indication. If swap file creation fails, frontend should know and warn the user. If save does not succeed, user needs to know so they can copy their work and not lose it. (in progress — plan: `references/plans/never-lose-writing.md`. Root cause found: a stuck load guard silently killed the editor's change chain, disengaging save+swap+buffer-authority at once. Fixed: crash-safe load guards (Phase 1), a dirty backstop (Phase 2), and a non-dismissable "not backed up" banner when a swap write fails (Phase 3). Split desync = Phase 6.)
 
 - [x] When doing an edit to a fragment, then prompting a split, split sometimes claim to fail, but actually succeeds. Probably has to do with swap/saved state not being committed properly, i.e server and frontend being out of sync? (Fixed: **Split fragment** now saves the open fragment before opening the dialog, so the split reads fresh vault content instead of the pre-edit version — plan `references/plans/never-lose-writing.md`, Phase 6.)
 
-- [ ] Add fragment links in comments!
+- [x] Add fragment links in comments! (DONE 2026-07-10: comment + general-notes editors get `[[` autocomplete in all modes; static comment/notes text renders resolved/broken links with click-to-navigate. Comments are link readers only — no backlinks/link-table sources, recorded as an open question in `specifications/document-links.md` — plan: `references/plans/document-links-polish.md`)
 
 - [ ] Quick-switching (cmd+tab?) between fragments etc?
 
-- [ ] In rich mode, add a button for adding a link 
+- [x] In rich mode, add a button for adding a link (DONE 2026-07-10: toolbar Link button opens the palette aimed at `editor:insert-link`'s entity picker — plan: `references/plans/document-links-polish.md`)
 
 - [x] Margins: if a comment is longer than the block, BUT there is no comments below, let it expand over other blocks. IF there are other comments, then only show the part of the comment that fits. HOWEVER: might be a good idea to add a scrollbar, so it is clear that there is more, and so that the user can scroll inside the comment without having to click it (which also prompts editing). (clip now stops at the next comment, not the paragraph; free extension when none below; thin always-visible scrollbar on overflow — plan: `references/plans/margins-overflow.md`)
 
@@ -96,7 +96,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [x] make it possible to "clone" a sequence, or insert one sequence into another, etc
 
-- [ ] investigate spelling, language settings
+- [x] investigate spelling, language settings (DONE 2026-07-01: project-wide + per-fragment writing language with native browser spell-check behind the SpellProvider seam — plan: `references/plans/language-spelling.md`, merged as 607c013)
 
 - [x] add way to select many fragments in sequence, way of making them into a section
   - way of easily dragging many into an existing section
@@ -130,7 +130,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - fadeout surroundings when focusing a fragment/sequence for editing
   - show sidebars with action log, other views - make UI fully composable, customizable
   - define own flows, concepts, structures?
-  - TODO: consider rebuilding maskor as an obsidian plugin, where the graph view and sequencing and randomiser are obsidian addons, rather than a complete app?
+  - TODO: consider rebuilding maskor as an obsidian plugin, where the graph view and sequencing and randomiser are obsidian addons, rather than a complete app? (investigated 2026-07-05 — see the "Obsidian plugin port" stub in `specifications/_drafts.md`; short answer: Canvas covers the composable/spatial part via generated `.canvas` files, the arc graph stays a custom `ItemView`)
 
 - [x] finish persist cursor position implementation
 
@@ -206,7 +206,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] typography rule for using indentation instead of newlines as paragraph separator — conflicts with markdown syntax but might work out anyway, needs a real exploration conversation
 
-- [ ] obsidian-plugin angle — port Maskor (or part of it) to an Obsidian plugin while keeping the standalone app? side thought from the mermaid draft
+- [ ] obsidian-plugin angle — port Maskor (or part of it) to an Obsidian plugin while keeping the standalone app? side thought from the mermaid draft. Investigated 2026-07-05 — verdict: feasible, core packages port cleanly, storage/API layer gets replaced by Vault + MetadataCache; stub with the full breakdown now in `specifications/_drafts.md` ("Obsidian plugin port")
 
 - [ ] trash folder for aspects / notes / refs instead of hard-delete — spec'd in `specifications/attachments.md`, but worth revisiting once it's been in use (retention policy, restore UX, etc.)
 
