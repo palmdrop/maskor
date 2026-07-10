@@ -1,7 +1,7 @@
 # Document links polish — wrong target after split, Tab-accept, toolbar button, links in comments
 
 **Date**: 04-07-2026
-**Status**: Todo
+**Status**: Done
 **Specs**: `specifications/document-links.md`
 **Branch**: agent/document-links-polish
 
@@ -26,37 +26,37 @@
 
 ### Phase 0 — Branch
 
-- [ ] Create branch `agent/document-links-polish` from main.
+- [x] Create branch `agent/document-links-polish` (from `agent/fixes`, the integration branch — not main).
 
 ### Phase 1 — Wrong target after split (bug)
 
-- [ ] Reproduce: split a fragment (pieces with derived/suffixed keys), insert a `[[fragments/…]]` link picked from autocomplete, navigate it. Establish where the wrong target comes from: stale `useListFragments` cache feeding the suggestion items / `toFragmentLookup`, key suffix mismatch between preview and commit, or server-side link-table binding. Write the failing test at the layer the bug actually lives.
-- [ ] Fix accordingly (candidates, pending reproduction: invalidate the entity-list caches the link lookups read from after a split — the split dialog invalidates `listFragments` already, so check which surface held the stale cache; or resolve inserted links by uuid at insert time rather than key at navigate time — do **not** change the canonical `[[type/key]]` form, see spec Prior decisions).
-- [ ] Regression test.
+- [x] Reproduce + pin root cause. **Finding (surprising — flagged):** no single reproducible defect remains on the base branch. Frontend navigation resolves `[[fragments/key]]` → uuid live at click time via `toFragmentLookup` (from `useListFragments`); the picker and resolver share **one** snapshot, so they can't disagree. The split's key derivation guarantees **distinct active keys** (verified end-to-end at the storage layer — no duplicate keys produced, even when pieces derive the same base key), and the split dialog already invalidates `listFragments` (closed by the earlier discard-and-split-integrity work). The one proven misroute mechanism is a snapshot mapping one key to two fragments, resolving to the last-in-list ("next fragment") — but that state is not reachable through split alone. The real-world report was most likely a transient stale-cache window already closed. Regression tests lock the invariants that prevent it.
+- [x] No behavioural fix required (canonical `[[type/key]]` form unchanged, per spec Prior decisions). Regression tests guard the invariants.
+- [x] Regression tests: backend split key-uniqueness (`split-fragment.test.ts`); frontend deterministic/active-preferring/order-independent resolution (`lib/document-links/post-split-resolution.test.ts`).
 
 ### Phase 2 — Tab accepts autocomplete (all modes)
 
-- [ ] TipTap popup: treat Tab like Enter (accept selected item, consume the event) in `document-link-suggestion-tiptap.ts` `onKeyDown`.
-- [ ] CM6 (raw + vim): bind Tab to `acceptCompletion` while the completion popup is active (scoped so Tab keeps its normal behavior otherwise), in `document-link-cm.ts`.
-- [ ] Tests for both editors.
+- [x] TipTap popup: Tab treated like Enter (accept selected item, consume the event) in `document-link-suggestion-tiptap.ts` `onKeyDown`.
+- [x] CM6 (raw + vim): Tab bound to `acceptCompletion` gated on `completionStatus === "active"` (high precedence; keeps normal Tab behaviour otherwise), in `document-link-cm.ts`.
+- [x] Tests for both editors.
 
 ### Phase 3 — Rich-mode toolbar link button
 
-- [ ] Add a link button to `prose-toolbar.tsx` (lucide `Link` icon, matching the existing `ToolbarButton`s) that dispatches `commands.run("editor:insert-link")` — the command already handles the picker + cursor restoration.
-- [ ] Test: button renders in rich mode and dispatches the command.
+- [x] Link button in `prose-toolbar.tsx` (lucide `Link` icon). Threaded via an `onInsertLink` callback on `ProseEditor`; the shell opens the palette aimed at `editor:insert-link`'s entity picker (the command owns the picker + cursor restoration). `command-palette:open` gained an optional command id to jump straight to a command's arg step.
+- [x] Test: button renders + dispatches; palette opens directly to a command's arg picker given an initial id.
 
 ### Phase 4 — Links in comments (feature)
 
-- [ ] Wire document links into the Margin slot editors (`slot-editor.tsx`): rich mode gets the `DocumentLink` extension + `[[` suggestion popup; raw/vim get `cmDocumentLinkExtension` + the CM autocomplete. Thread the links API (`useDocumentLinks` lookups/resolve/navigate) down from the fragment editor through `margin-column.tsx` props — reuse the existing extension builders, no parallel link implementation.
-- [ ] Render `[[…]]` links in **static** (non-editing) comment text in the column with resolved/broken styling and click-to-navigate (`margin-row.tsx`; check how static comment text is rendered and reuse the resolver).
-- [ ] Scope decision (respect it): comment bodies do **not** become link-table sources — no backlinks from comments, no auto-attach. Comments are Margin blocks, not vault link sources (ADR 0007; `specifications/document-links.md` scopes comments out). Record the decision as an open question in `specifications/document-links.md` if backlinks-from-comments ever becomes desirable.
-- [ ] The general-notes editor in the Margin uses the same `SlotEditor` — verify links work there too (it comes for free or note why not).
-- [ ] Tests: autocomplete triggers in a comment editor; a resolved link in a static comment navigates; a broken link renders broken.
+- [x] Document links wired into the Margin slot editors (`slot-editor.tsx`): rich gets `DocumentLink` + `[[` suggestion; raw/vim get `cmDocumentLinkExtension` + CM autocomplete. Links API prop-threaded from `fragment-editor.tsx` through `margin-column.tsx` (forward-only) — reused the existing builders.
+- [x] `[[…]]` links rendered in **static** comment/notes text via a shared `LinkedText` component (resolved/broken styling + click-to-navigate) — `margin-row.tsx`, `margin-orphan-group.tsx`, `margin-notes-tab.tsx`.
+- [x] Scope decision respected: comment/notes bodies are link **readers** only — no link-table sources, no backlinks, no auto-attach. Recorded as an open question in `specifications/document-links.md`.
+- [x] General-notes editor (`MarginNotesTab`): links work there too — it uses the same `SlotEditor`, so support came for free (the plan-superseding note about the notes tab move was accounted for).
+- [x] Tests: `LinkedText` resolve/alias/broken/plain; notes-tab static link navigate + broken; `SlotEditor` rich-mode decorates resolved/broken links.
 
 ### Phase 5 — Close out
 
-- [ ] `bun run format` then `bun run verify`; fix all issues.
-- [ ] Update the `Shipped` frontmatter of `specifications/document-links.md` (all four phases belong there); set plan status; commit.
+- [x] `bun run format` then `bun run verify`; fix all issues.
+- [x] Updated the `Shipped` frontmatter of `specifications/document-links.md`; set plan status; committed per phase.
 
 ---
 

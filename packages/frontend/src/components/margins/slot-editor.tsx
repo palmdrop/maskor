@@ -3,9 +3,31 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import CodeMirror, { EditorView, type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim } from "@replit/codemirror-vim";
+import type { LinkPathType } from "@maskor/shared";
+import type { LinkLookups } from "@lib/document-links/resolver";
 import { buildSharedProseExtensions, proseClassName } from "../shared-prose-extensions";
+import { DocumentLink, documentLinkPluginKey } from "../document-link-tiptap";
+import {
+  buildDocumentLinkSuggestion,
+  type LinkSuggestionItem,
+} from "../document-link-suggestion-tiptap";
+import {
+  cmDocumentLinkExtension,
+  setCmLinkConfigEffect,
+  type CmLinkConfig,
+} from "../document-link-cm";
 
 export type EditorMode = "rich" | "vim" | "raw";
+
+// The document-link surface a Margin slot editor (comments, notes) needs: the key→uuid lookups for
+// resolved/broken styling + navigation, the flat entity list for `[[` autocomplete, and the navigate
+// action. Reuses the same extension builders as the main prose editor — no parallel link logic. Comment
+// bodies are link *readers* only (they never become link-table sources — ADR 0007; see the spec).
+export type SlotLinkApi = {
+  lookups: LinkLookups;
+  suggestionItems: LinkSuggestionItem[];
+  navigate: (pathType: LinkPathType, uuid: string) => void;
+};
 
 // The line-height the Margin text (static comments, notes, and the active slot editors) shares so the
 // column reads in a consistent serif rhythm. No longer needs to match the prose editor's line-height:
@@ -47,6 +69,9 @@ type Props = {
   onNext?: () => void;
   onPrevious?: () => void;
   onEscape?: () => void;
+  // Document links in the comment/notes body: `[[` autocomplete + resolved/broken styling + navigation.
+  // Omitted where no link surface is wired (links then render as plain text, never resolved).
+  documentLinks?: SlotLinkApi;
 };
 
 type SlotNavHandlers = {
@@ -102,6 +127,7 @@ export const SlotEditor = ({
   onNext,
   onPrevious,
   onEscape,
+  documentLinks,
 }: Props) => {
   const nav: SlotNavHandlers = { onNext, onPrevious, onEscape };
 
@@ -115,6 +141,7 @@ export const SlotEditor = ({
         onChange={onChange}
         onBlur={onBlur}
         nav={nav}
+        documentLinks={documentLinks}
       />
     );
   }
@@ -127,6 +154,7 @@ export const SlotEditor = ({
       onChange={onChange}
       onBlur={onBlur}
       nav={nav}
+      documentLinks={documentLinks}
     />
   );
 };
@@ -139,6 +167,7 @@ const RichSlotEditor = ({
   onChange,
   onBlur,
   nav,
+  documentLinks,
 }: {
   value: string;
   placeholder?: string;
@@ -147,9 +176,29 @@ const RichSlotEditor = ({
   onChange: (value: string) => void;
   onBlur?: () => void;
   nav: SlotNavHandlers;
+  documentLinks?: SlotLinkApi;
 }) => {
+  // Held in a ref so the suggestion extension (built once at editor creation) reads the current items.
+  const suggestionItemsRef = useRef<LinkSuggestionItem[]>([]);
+  suggestionItemsRef.current = documentLinks?.suggestionItems ?? [];
+
+  // Whether link support is present is fixed per editor instance (the config + items are pushed live
+  // below via a ref + the meta effect); only re-create the extension list when that toggles.
+  const linksEnabled = !!documentLinks;
+  const extensions = useMemo(
+    () =>
+      linksEnabled
+        ? [
+            ...buildSharedProseExtensions(),
+            DocumentLink,
+            buildDocumentLinkSuggestion({ getItems: () => suggestionItemsRef.current }),
+          ]
+        : buildSharedProseExtensions(),
+    [linksEnabled],
+  );
+
   const editor = useEditor({
-    extensions: buildSharedProseExtensions(),
+    extensions,
     content: value,
     onUpdate: ({ editor: instance }) => {
       onChange((instance.storage as unknown as MarkdownStorage).markdown.getMarkdown());
@@ -165,6 +214,18 @@ const RichSlotEditor = ({
       },
     },
   });
+
+  // Push the resolved/broken lookups + navigate action into the DocumentLink plugin (same channel the
+  // main prose editor uses). Re-runs when the lookups change so a newly-created target resolves live.
+  useEffect(() => {
+    if (!editor || !documentLinks) return;
+    editor.view.dispatch(
+      editor.state.tr.setMeta(documentLinkPluginKey, {
+        lookups: documentLinks.lookups,
+        navigate: documentLinks.navigate,
+      }),
+    );
+  }, [editor, documentLinks]);
 
   useEffect(() => {
     if (!editor) return;
@@ -212,6 +273,7 @@ const CodeSlotEditor = ({
   onChange,
   onBlur,
   nav,
+  documentLinks,
 }: {
   value: string;
   vimMode: boolean;
@@ -220,15 +282,29 @@ const CodeSlotEditor = ({
   onChange: (value: string) => void;
   onBlur?: () => void;
   nav: SlotNavHandlers;
+  documentLinks?: SlotLinkApi;
 }) => {
   const ref = useRef<ReactCodeMirrorRef>(null);
-  const extensions = useMemo(
-    () =>
-      vimMode
-        ? [markdown(), vim(), EditorView.lineWrapping, slotCmTheme]
-        : [markdown(), EditorView.lineWrapping, slotCmTheme],
-    [vimMode],
-  );
+  // Whether the link extension is present is fixed per editor instance (toggling it would need a
+  // reconfigure); the config itself is pushed live via the effect below.
+  const linksEnabled = !!documentLinks;
+  const extensions = useMemo(() => {
+    const base = vimMode
+      ? [markdown(), vim(), EditorView.lineWrapping, slotCmTheme]
+      : [markdown(), EditorView.lineWrapping, slotCmTheme];
+    return linksEnabled ? [...base, cmDocumentLinkExtension] : base;
+  }, [vimMode, linksEnabled]);
+
+  // Push the current link config (lookups + navigate) into the CM extension whenever it changes.
+  useEffect(() => {
+    const view = ref.current?.view;
+    if (!view || !documentLinks) return;
+    const config: CmLinkConfig = {
+      lookups: documentLinks.lookups,
+      navigate: documentLinks.navigate,
+    };
+    view.dispatch({ effects: setCmLinkConfigEffect.of(config) });
+  }, [documentLinks]);
 
   // ↑/↓ cross slot boundaries only at the buffer's very start / end (offset 0 / doc length); elsewhere
   // the arrow moves the caret a line within the comment.
@@ -260,9 +336,20 @@ const CodeSlotEditor = ({
         onChange={onChange}
         onBlur={() => onBlur?.()}
         onCreateEditor={(view) => {
+          // Seed the link config immediately — the effect above may have run before the view existed.
+          if (documentLinks) {
+            view.dispatch({
+              effects: setCmLinkConfigEffect.of({
+                lookups: documentLinks.lookups,
+                navigate: documentLinks.navigate,
+              }),
+            });
+          }
           if (focusOnMount) view.focus();
         }}
-        basicSetup={{ lineNumbers: false, foldGutter: false }}
+        // The `[[` autocomplete is provided by cmDocumentLinkExtension; disable basicSetup's own so
+        // the two completion sources don't compete (mirrors the main prose editor).
+        basicSetup={{ lineNumbers: false, foldGutter: false, autocompletion: !linksEnabled }}
       />
     </div>
   );

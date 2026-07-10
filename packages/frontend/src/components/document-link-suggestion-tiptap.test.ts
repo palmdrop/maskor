@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildDocumentLink } from "@maskor/shared";
-import { filterItems, type LinkSuggestionItem } from "./document-link-suggestion-tiptap";
+import {
+  filterItems,
+  createPopup,
+  type LinkSuggestionItem,
+} from "./document-link-suggestion-tiptap";
 
 const items: LinkSuggestionItem[] = [
   { pathType: "fragments", key: "chapter-one" },
@@ -55,5 +59,43 @@ describe("insertion format", () => {
   it("inserts the canonical full-path link for a selected item", () => {
     const item = items[1]!;
     expect(buildDocumentLink(item.pathType, item.key)).toBe("[[notes/setting-notes]]");
+  });
+});
+
+describe("popup keyboard handling", () => {
+  const keyEvent = (key: string) => new KeyboardEvent("keydown", { key });
+
+  it("accepts the selected item on Tab, like Enter", () => {
+    const popup = createPopup();
+    const command = vi.fn();
+    popup.mount(items, command, null);
+
+    const handledTab = popup.onKeyDown(keyEvent("Tab"));
+
+    expect(handledTab).toBe(true); // consumed, so the editor doesn't also insert a tab / move focus
+    expect(command).toHaveBeenCalledWith(items[0]);
+    popup.destroy();
+  });
+
+  it("Tab accepts the item highlighted after arrow navigation", () => {
+    const popup = createPopup();
+    const command = vi.fn();
+    popup.mount(items, command, null);
+
+    popup.onKeyDown(keyEvent("ArrowDown"));
+    popup.onKeyDown(keyEvent("Tab"));
+
+    expect(command).toHaveBeenCalledWith(items[1]);
+    popup.destroy();
+  });
+
+  it("does not handle Tab when the popup has no items (falls through to the editor)", () => {
+    const popup = createPopup();
+    const command = vi.fn();
+    popup.mount([], command, null);
+
+    expect(popup.onKeyDown(keyEvent("Tab"))).toBe(false);
+    expect(command).not.toHaveBeenCalled();
+    popup.destroy();
   });
 });

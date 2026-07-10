@@ -1,5 +1,6 @@
 import type { SlotRow } from "@lib/margins/column";
-import { SlotEditor, type EditorMode } from "./slot-editor";
+import { SlotEditor, type EditorMode, type SlotLinkApi } from "./slot-editor";
+import { LinkedText } from "./linked-text";
 import { serifTextStyle } from "./margin-styles";
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
   isOverflowing: boolean;
   mode: EditorMode;
   draft: string;
+  documentLinks?: SlotLinkApi;
   onHoverChange: (markerId: string | null) => void;
   onRemove: (markerId: string) => void;
   onActivateComment: (markerId: string) => void;
@@ -50,6 +52,7 @@ export function MarginRow({
   isOverflowing,
   mode,
   draft,
+  documentLinks,
   onHoverChange,
   onRemove,
   onActivateComment,
@@ -105,6 +108,7 @@ export function MarginRow({
           mode={mode}
           fontSize={fontSize}
           focusOnMount
+          documentLinks={documentLinks}
           placeholder={comment ? "Add a comment…" : "Type to comment this paragraph…"}
           onChange={(next) =>
             comment
@@ -129,17 +133,22 @@ export function MarginRow({
               }
             : {})}
         >
-          <button
-            type="button"
-            className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
+          {/* A div (not a button) so the resolved-link buttons rendered inside can be real, valid
+              nested interactive elements. Clicking the text activates edit mode; clicking a link
+              navigates instead (LinkedText stops propagation so the row doesn't also open). */}
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <div
+            role="button"
+            tabIndex={0}
+            className="w-full cursor-text whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
             style={serifTextStyle(fontSize)}
             onClick={() => {
               onRevealComment(comment.markerId);
               onActivateComment(comment.markerId);
             }}
           >
-            {comment.body}
-          </button>
+            <LinkedText text={comment.body} documentLinks={documentLinks} />
+          </div>
         </div>
       ) : covered ? (
         // A comment above extends over this slot. A full-width button would blanket it (stealing the

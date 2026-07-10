@@ -158,6 +158,33 @@ describe("splitFragmentCommand", () => {
     expect(created.key).toMatch(/_1$/);
   });
 
+  it("gives every active fragment a distinct key when pieces derive the same base key", async () => {
+    // Regression for the "document link points to the next fragment" bug: a link is stored as
+    // `[[fragments/key]]` and resolved key→uuid at navigate time, so two active fragments sharing a
+    // key would make a link resolve to the wrong one. When several pieces derive the same base key,
+    // the split must suffix each so no two active fragments collide.
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `river-${stamp}`,
+      "The river flowed.\n\nThe river flowed.\n\nThe river flowed.",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "blank-line" },
+    });
+    expect(result.createdCount).toBe(2);
+
+    const summaries = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
+    const activeKeys = summaries
+      .filter((summary) => !summary.isDiscarded)
+      .map((summary) => summary.key.toLowerCase());
+    // No duplicate active key — the invariant the frontend link resolver relies on.
+    expect(new Set(activeKeys).size).toBe(activeKeys.length);
+  });
+
   it("applies user-chosen keys to the new pieces (piece 1 keeps the original key)", async () => {
     const ctx = await makeCommandContext();
     const stamp = Date.now();

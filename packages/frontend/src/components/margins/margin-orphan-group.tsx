@@ -1,5 +1,6 @@
 import type { Comment } from "@api/generated/maskorAPI.schemas";
-import { SlotEditor, type EditorMode } from "./slot-editor";
+import { SlotEditor, type EditorMode, type SlotLinkApi } from "./slot-editor";
+import { LinkedText } from "./linked-text";
 import { serifTextStyle } from "./margin-styles";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   mode: EditorMode;
   // The configured Margin text size (`editor.marginFontSize`).
   fontSize: number;
+  documentLinks?: SlotLinkApi;
   // Collapsible panel state (pinned in the column footer, like the notes panel).
   open: boolean;
   onToggle: () => void;
@@ -30,6 +32,7 @@ export function MarginOrphanGroup({
   activeMarkerId,
   mode,
   fontSize,
+  documentLinks,
   open,
   onToggle,
   liveExcerpts,
@@ -90,24 +93,31 @@ export function MarginOrphanGroup({
                     mode={mode}
                     fontSize={fontSize}
                     focusOnMount
+                    documentLinks={documentLinks}
                     placeholder="Re-add the text or remove this comment…"
                     onChange={(next) => onChange(comment.markerId, next)}
                     onBlur={() => onSettle(comment.markerId)}
                     onEscape={() => onSettle(comment.markerId)}
                   />
                 ) : (
-                  <button
-                    type="button"
-                    className="w-full whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
+                  // A div (not a button) so resolved-link buttons nest validly; clicking the text
+                  // activates edit mode, clicking a link navigates (LinkedText stops propagation).
+                  // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="w-full cursor-text whitespace-pre-wrap wrap-break-word text-left text-foreground/90"
                     style={serifTextStyle(fontSize)}
                     onClick={() => onActivate(comment.markerId)}
                   >
-                    {comment.body || (
+                    {comment.body ? (
+                      <LinkedText text={comment.body} documentLinks={documentLinks} />
+                    ) : (
                       <span className="text-muted-foreground">
                         Its block is gone. Re-add the text or remove this comment.
                       </span>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
             );
