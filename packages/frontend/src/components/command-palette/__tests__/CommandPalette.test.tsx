@@ -393,9 +393,7 @@ describe("CommandPalette", () => {
     await userEvent.click(screen.getByRole("button", { name: "open-arg" }));
 
     // Jumps past the command list straight to the arg step.
-    await waitFor(() =>
-      expect(screen.getByPlaceholderText("Choose an item")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByPlaceholderText("Choose an item")).toBeInTheDocument());
     expect(screen.getByRole("option", { name: "Item One" })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search commands…")).not.toBeInTheDocument();
   });

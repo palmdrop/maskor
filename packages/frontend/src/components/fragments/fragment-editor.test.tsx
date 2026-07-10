@@ -150,6 +150,17 @@ vi.mock("@api/generated/projects/projects", () => ({
   }),
 }));
 
+// The Margin document-link plumbing reads the four entity lists; stub it so the editor test doesn't
+// need to mock every list hook (margin-column itself is stubbed above).
+vi.mock("@lib/document-links/useDocumentLinks", () => ({
+  useDocumentLinks: () => ({
+    lookups: { fragments: new Map(), notes: new Map(), references: new Map(), aspects: new Map() },
+    entities: [],
+    resolve: vi.fn(),
+    navigateToLink: vi.fn(),
+  }),
+}));
+
 vi.mock("@api/generated/sequences/sequences", () => ({
   useListSequences: () => ({ data: { status: 200, data: { sequences: sequenceListData } } }),
 }));

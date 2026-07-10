@@ -133,10 +133,10 @@ export function MarginRow({
               }
             : {})}
         >
-          // A div (not a button) so the resolved-link buttons rendered inside can be real, valid
-          // nested interactive elements. Clicking the text activates edit mode; clicking a link
-          // navigates instead (LinkedText stops propagation so the row doesn't also open).
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          {/* A div (not a button) so the resolved-link buttons rendered inside can be real, valid
+              nested interactive elements. Clicking the text activates edit mode; clicking a link
+              navigates instead (LinkedText stops propagation so the row doesn't also open). */}
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
           <div
             role="button"
             tabIndex={0}

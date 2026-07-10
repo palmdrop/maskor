@@ -182,18 +182,19 @@ const RichSlotEditor = ({
   const suggestionItemsRef = useRef<LinkSuggestionItem[]>([]);
   suggestionItemsRef.current = documentLinks?.suggestionItems ?? [];
 
+  // Whether link support is present is fixed per editor instance (the config + items are pushed live
+  // below via a ref + the meta effect); only re-create the extension list when that toggles.
+  const linksEnabled = !!documentLinks;
   const extensions = useMemo(
     () =>
-      documentLinks
+      linksEnabled
         ? [
             ...buildSharedProseExtensions(),
             DocumentLink,
             buildDocumentLinkSuggestion({ getItems: () => suggestionItemsRef.current }),
           ]
         : buildSharedProseExtensions(),
-    // Only re-create when link support is toggled on/off; the config + items are pushed live below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [!documentLinks],
+    [linksEnabled],
   );
 
   const editor = useEditor({
@@ -298,7 +299,10 @@ const CodeSlotEditor = ({
   useEffect(() => {
     const view = ref.current?.view;
     if (!view || !documentLinks) return;
-    const config: CmLinkConfig = { lookups: documentLinks.lookups, navigate: documentLinks.navigate };
+    const config: CmLinkConfig = {
+      lookups: documentLinks.lookups,
+      navigate: documentLinks.navigate,
+    };
     view.dispatch({ effects: setCmLinkConfigEffect.of(config) });
   }, [documentLinks]);
 

@@ -20,7 +20,8 @@ export function LinkedText({ text, documentLinks }: Props) {
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
   ranges.forEach((range, index) => {
-    if (range.from > cursor) nodes.push(<Fragment key={`t-${index}`}>{text.slice(cursor, range.from)}</Fragment>);
+    if (range.from > cursor)
+      nodes.push(<Fragment key={`t-${index}`}>{text.slice(cursor, range.from)}</Fragment>);
     const { resolved } = range;
     if (resolved.uuid && resolved.pathType) {
       const { pathType, uuid } = resolved;

@@ -293,6 +293,8 @@ export const CommandPalette = () => {
   // When opened aimed at a command (`open(initialCommandId)`), jump straight to that command's arg
   // picker — as if the user had selected it from the list. Runs once the palette is open and the
   // command resolves; a disabled or arg-less command clears the request without transitioning.
+  // `commandMap` / `handleSelectCommand` are recreated each render; setting `pendingArgCommandId` to
+  // null makes this a one-shot per open request, so it depends only on `open` + the pending id.
   useEffect(() => {
     if (!open || !pendingArgCommandId) return;
     const command = commandMap.get(pendingArgCommandId);
@@ -300,10 +302,7 @@ export const CommandPalette = () => {
     if (command && command.arg && !getEffectiveDisabledReason(command)) {
       void handleSelectCommand(command);
     }
-    // handleSelectCommand / commandMap are recreated each render; the guard above makes this a
-    // one-shot on the id, so excluding them keeps it from re-firing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pendingArgCommandId]);
+  }, [open, pendingArgCommandId, commandMap]);
 
   const handleSelectArg = (item: unknown) => {
     if (!activeArgCommand) return;
