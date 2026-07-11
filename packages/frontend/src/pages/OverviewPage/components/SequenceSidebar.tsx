@@ -15,6 +15,7 @@ import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
 import { sequenceSidebarScope } from "@lib/commands/scopes/sequence-sidebar";
 import { Heading } from "@components/heading";
+import { ShuffleSequenceDialog } from "@components/sequences/ShuffleSequenceDialog";
 import { SequenceRow } from "./SequenceRow";
 
 type Props = {
@@ -65,6 +66,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingDefaultName, setEditingDefaultName] = useState<string>("");
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [shuffleDialogOpen, setShuffleDialogOpen] = useState(false);
 
   const listQueryKey = getListSequencesQueryKey(projectId);
 
@@ -225,9 +227,18 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
     );
   };
 
+  const handleShuffleGenerated = (sequenceUuid: string) => {
+    void navigate({
+      to: "/projects/$projectId/overview",
+      params: { projectId },
+      search: (prev) => ({ detail: prev.detail, sequence: sequenceUuid }),
+    });
+  };
+
   useCommandScope(sequenceSidebarScope, {
     createSequencePending: createSequence.isPending,
     createSequence: handleCreate,
+    openShuffleDialog: () => setShuffleDialogOpen(true),
     confirmingDeleteSequenceId: confirmingDeleteId,
     deleteSequence: () =>
       confirmingDeleteId ? handleConfirmDelete(confirmingDeleteId) : Promise.resolve(),
@@ -313,7 +324,7 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
           );
         })}
       </ul>
-      <div className="px-2 py-2 border-t border-border mt-auto">
+      <div className="px-2 py-2 border-t border-border mt-auto flex flex-col gap-1">
         <button
           type="button"
           onClick={() => commands.run("overview:create-sequence")}
@@ -322,7 +333,21 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
         >
           + New sequence
         </button>
+        <button
+          type="button"
+          onClick={() => commands.run("overview:shuffle-sequence")}
+          className="w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded px-2 py-1 text-left transition-colors disabled:opacity-50"
+        >
+          ⤨ Shuffle…
+        </button>
       </div>
+      <ShuffleSequenceDialog
+        projectId={projectId}
+        sequences={sequences}
+        open={shuffleDialogOpen}
+        onOpenChange={setShuffleDialogOpen}
+        onGenerated={handleShuffleGenerated}
+      />
     </aside>
   );
 };

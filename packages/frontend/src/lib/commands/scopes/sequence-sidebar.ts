@@ -4,6 +4,9 @@ import { defineScope, defineScopeCommand } from "../define";
 export interface SequenceSidebarContext {
   createSequencePending: boolean;
   createSequence: () => Promise<void>;
+  // Opens the shuffle dialog (local UI state — the generate mutation runs from
+  // inside the dialog, which reports a constraint conflict inline).
+  openShuffleDialog: () => void;
   confirmingDeleteSequenceId: string | null;
   deleteSequence: () => Promise<void>;
   // Non-main sequences eligible for active/inactive toggling.
@@ -34,6 +37,16 @@ const createSequence = defineScopeCommand(sequenceSidebarScope, {
   category: "create",
   disabled: (ctx) => (ctx.createSequencePending ? "Creating…" : undefined),
   run: (ctx) => ctx.createSequence(),
+});
+
+// Opening the dialog only sets local state, so it cannot fail — no onFailure.
+// The generate mutation (and its constraint-cycle conflict) is handled inside
+// the dialog.
+const shuffleSequence = defineScopeCommand(sequenceSidebarScope, {
+  id: "overview:shuffle-sequence",
+  label: "Shuffle into new sequence…",
+  category: "create",
+  run: (ctx) => ctx.openShuffleDialog(),
 });
 
 const deleteSequence = defineScopeCommand(sequenceSidebarScope, {
@@ -111,6 +124,7 @@ const renameSequence = defineScopeCommand(sequenceSidebarScope, {
 
 export const sequenceSidebarCommands = [
   createSequence,
+  shuffleSequence,
   renameSequence,
   deleteSequence,
   toggleSequenceActive,

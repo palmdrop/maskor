@@ -178,6 +178,7 @@ describe("scopes/sequence-sidebar", () => {
   const ctx: SequenceSidebarContext = {
     createSequencePending: false,
     createSequence: vi.fn(),
+    openShuffleDialog: vi.fn(),
     confirmingDeleteSequenceId: null,
     deleteSequence: vi.fn(),
     toggleableSequences: [],
