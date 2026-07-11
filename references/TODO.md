@@ -8,6 +8,10 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] footnotes in export based on references on fragments
+
+- [ ] comments in export, from margin?
+
 - [x] loosing work still happens somehow... usually when I continue from an existing session in a tab... (FIXED 2026-07-10: stale-tab vectors closed — swap writes carry a baseline fingerprint of the content the buffer diverged from; conflicting backups need an explicit keep-server/restore choice instead of silent auto-apply; a linked fragment↔Margin pair is held back atomically while either side conflicts — plan: `references/plans/multi-tab-swap-hardening.md` + review `references/reviews/fixes-batch-2026-07-10.md`, on `agent/fixes`)
   - Original report: when returning to maskor after my computer has been suspended, it fails to save work, with no visual indication for the user. Flow: I return to a maskor-tab in my browser. I make some edits to the current file. I save. Everything looks fine. But when I change fragment, or refresh, all work that session has been lost. This consistently happen after I have suspended my computer, then returned to an already opened tab. Refreshing before making any edits avoids the problem.
 
