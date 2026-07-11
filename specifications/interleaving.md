@@ -107,6 +107,7 @@ The sequencer reads the interleaving config as one of its inputs alongside arc d
 - **Main-sequence-first**: Interleaving defaults to the main sequence. Secondary sequences can optionally carry their own interleaving config, but this is not required.
 - **Hand-drawn patterns are a future UI mechanism**: When added, Maskor approximates the drawn pattern using the existing rule types rather than introducing a separate data model concept.
 - **Storage in vault config file**: `<vault>/.maskor/config/interleaving.yaml`. User-authored intent stored in the vault, not the DB.
+- **Interleaving is a future scoring input to the shuffle/automatic generator (2026-07-11)**: The shipped **shuffle** (`sequencer.md`) generates a random linear extension from ordering constraints only. Interleaving rules plug into the same generation entry point later as an additional scoring/filtering input (hard rules filter the candidate set, soft rules adjust the score) — no separate interleaving pass.
 - **Fragment-level constraints expressed via secondary sequences, not interleaving rules**: Interleaving rules reference aspects only. A secondary sequence is a partial ordering of specific fragments (A → B → C), stored in `<vault>/.maskor/sequences/`. Interleaving can then control how those secondary sequence-streams are woven into the main sequence.
 
 ---

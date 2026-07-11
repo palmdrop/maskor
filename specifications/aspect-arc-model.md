@@ -134,6 +134,7 @@ A fragment may reference an aspect that does not really exist as an entity in th
 
 ## Prior decisions
 
+- **Arc fitting is a future scoring input to the shuffle/automatic generator (2026-07-11)**: The shipped **shuffle** (`sequencer.md`) honors ordering constraints only and scores randomly (scoring off). Arc-based fitting scores plug into the same generation entry point later — replacing the random scorer — which turns the shuffle into the scored automatic placer. No separate placement engine.
 - **Aspect key as join field, not UUID**: Fragment inline fields use a human-readable key so they remain legible in vault markdown and compatible with Obsidian's Dataview syntax. UUID-based joins would be opaque in raw files.
 - **Orphaned keys preserved on save**: Maskor never auto-rewrites fragment files. Key drift is surfaced as a sync warning, not silently repaired. This protects user content from unintended modifications.
 - **Description is vault-only, not indexed in DB**: The aspect description is stored only in the vault file body. List endpoints return aspects without descriptions. A single-get reads the vault file and returns the full aspect including description.

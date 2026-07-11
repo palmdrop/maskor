@@ -5,6 +5,7 @@
 
 **Shipped**:
 
+- 2026-07-11 — Shuffle: generate a new non-main secondary sequence that places all non-discarded fragments in a random flat order honoring the ordering constraints of a chosen set of secondary sequences (a random linear extension of their combined DAG). Framed as the first slice of the `automatic` placement mode with scoring switched off, and the first path to **hard-enforce** ordering constraints (the advisory `computeViolations`/`detectCycles` path against the main sequence is unchanged). Contradictory chosen constraints abort the run with a reported cycle (`409 { reason: "constraint_cycle", cycles }`); nothing is written. No user-facing seed — seeded internally for testability, seed logged only. Reusable pure primitives in `@maskor/sequencer` (exposed `buildConstraintGraph`/`restrictGraphToNodes`/`detectCyclesInGraph`, `computeRandomLinearExtension`, `generateShuffledSequence`) so the future scored placer plugs into the same seam; `POST /sequences/generate`; a sidebar "Shuffle" dialog (constraint checklist pre-checked with the active secondaries). (plan: `references/plans/shuffle-sequence.md`, glossary: Shuffle / Ordering constraint, ADR 0016)
 - 2026-07-04 — Discard ↔ sequence coherence. Discarding a fragment now removes it from every mutable sequence it is placed in (read-only import-sequences keep their snapshot placements); the single `fragment:discarded` action-log entry carries the removed sequence uuids and the history view reports the count. Restoring does **not** re-place the fragment — it returns to the unassigned pool. The frontend invalidates the whole sequence-query family on discard/restore (new `useInvalidateSequences` hook), so the sidebar, Overview, and unplace picker drop the stale placement immediately. (plan: references/plans/discard-and-split-integrity.md, Phases 1–2)
 - 2026-06-19 — Place a fragment into a sequence on creation: the "New fragment" dialog has an optional "Add to sequence" picker (import-sequences excluded — they are read-only). When a sequence is chosen, the new fragment is appended to that sequence's last section after creation. In the fragment list, the picker pre-selects the sequence the list is currently sorted by, so creating a fragment while viewing a sequence's order offers to add it there. Placement is best-effort (the fragment is created regardless; a placement failure surfaces a toast).
 - 2026-05-12 — Users can manually arrange fragments into an ordered main sequence. Non-discarded fragments not yet placed appear in an unassigned pool. Fragments can be dragged from the pool into the sequence, reordered within it, or dragged back out to unplace them; the arrangement survives a reload. (plan: references/plans/sequencer-manual-placement.md)
@@ -86,6 +87,8 @@ The user can arrange their fragments into an ordered sequence — manually, with
 - Secondary sequences are stored in `<vault>/.maskor/sequences/` alongside the main sequence.
 
 > **Constraint enforcement — "soft" vs "hard" (clarified 2026-05-31).** Earlier wording in this spec called secondary-sequence constraints both "soft" and "hard". The shipped behavior is neither in the strict sense: active secondary sequences are consumed to **detect and report** violations and cycles against the main sequence (advisory), not to block placement. Hard enforcement (excluding a fragment from positions that would violate its ordering) is the intended target for the automatic placement engine, which is not yet built.
+>
+> **Update (2026-07-11).** The **shuffle** generator (see Shipped) is the first path to **hard-enforce** ordering constraints: it produces a random linear extension that honors the chosen secondaries' relative order by construction, and aborts on a contradictory (cyclic) selection. This does not change the advisory `computeViolations` path against the main sequence — the two coexist. See ADR 0016.
 
 ### Sections
 
@@ -167,7 +170,7 @@ Vault files in `<vault>/.maskor/sequences/` are the source of truth for sequence
 ## Prior decisions
 
 - **Sequence structure is vault-stored, derived data is DB-only**: Fragment ordering and section layout are stored in `<vault>/.maskor/sequences/` and survive DB loss. Fitting scores and arc positions are derived and DB-only — they can be recomputed. The earlier assumption that all sequence data was "re-derivable" was wrong: a manually-arranged sequence cannot be recomputed from any input.
-- **Deterministic placement with seeded noise**: Randomness is introduced via seeded noise rather than true randomness, so results are reproducible given the same seed.
+- **Deterministic placement with seeded noise**: For the scored automatic placer, randomness is introduced via seeded noise rather than true randomness, so results are reproducible given the same seed. The **shuffle** slice (see Shipped) is a deliberate exception: it is seeded internally for testability but exposes **no user-facing seed** and is treated as non-reproducible from the user's perspective (the seed is written to the action log only). Maskor is not a workflow where a user re-runs a random arrangement with a fixed seed; if that need ever arises, surfacing the logged seed is the additive path.
 - **Sections as containers**: A section owns a set of fragments and has its own internal ordering. This supports a two-phase workflow: assign fragments to sections first (rough sort), then order them within each section (fine placement). Sections are reordered as whole units.
 - **Secondary sequences as the mechanism for fragment-level ordering constraints**: Fragment ordering constraints (A before B, A in section 2) are expressed as secondary sequences — user-authored partial orderings stored in `<vault>/.maskor/sequences/`. The sequencer reads them as inputs alongside arcs and interleaving rules.
 
@@ -191,8 +194,9 @@ Vault files in `<vault>/.maskor/sequences/` are the source of truth for sequence
 - A project with no sequences can create a new named sequence.
 - A sequence can be designated as main; only one sequence is main at a time.
 - A fragment placed in a sequence at position N stays at position N until explicitly moved or the sequence is rebuilt.
-- Running the automatic placer twice with the same seed and the same fragment set produces identical output.
+- Running the automatic placer twice with the same seed and the same fragment set produces identical output. (Applies to the future **scored** placer. The shipped **shuffle** slice exposes no user-facing seed and is intentionally non-reproducible from the user's side — its determinism is verified at the pure-op level with an injected seed instead.)
 - Running the automatic placer with different seeds produces different output (with reasonable probability).
+- The shuffle always produces a valid random linear extension of the chosen constraints: every honored chain's relative order holds, and a contradictory (cyclic) selection aborts with a reported conflict rather than a broken sequence.
 - A fragment with section membership is never placed outside its designated section.
 - A key fragment always appears within its designated positional range.
 - Contradictory secondary sequence constraints (A before B and B before A) cause the sequencer to report a conflict rather than silently produce an invalid sequence.
