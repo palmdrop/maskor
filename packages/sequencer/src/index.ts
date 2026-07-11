@@ -1,4 +1,9 @@
-import { type FragmentPosition, type Sequence, isSequenceReadOnly } from "@maskor/shared";
+import {
+  type FragmentPosition,
+  type RandomSource,
+  type Sequence,
+  isSequenceReadOnly,
+} from "@maskor/shared";
 
 // Re-exported so callers reaching for the read-only predicate alongside the
 // sequencer's mutating ops (and `assertSequenceMutable`) get it from one place.
@@ -206,12 +211,21 @@ export type Cycle = {
   fragmentUuids: string[];
 };
 
-type ConstraintGraph = {
+// The ordering-constraint DAG derived from a set of sequences. `adjacency` maps
+// `from → to → {contributing sequence uuids}`, where an edge `from → to` means
+// "fragment `from` must appear before fragment `to`". Edges are added for every
+// pair (i < j) in each sequence's flattened order, not just adjacent pairs, so
+// the transitive order is captured directly (A → B survives even if an
+// intermediate fragment is later removed from the node set). `allNodes` is every
+// fragment referenced by any constraint. This is the shared primitive consumed
+// by violation/cycle detection and by the shuffle's linear-extension engine —
+// there is exactly one constraint-graph builder.
+export type ConstraintGraph = {
   adjacency: Map<string, Map<string, Set<string>>>;
   allNodes: Set<string>;
 };
 
-const buildConstraintGraph = (secondaries: Sequence[]): ConstraintGraph => {
+export const buildConstraintGraph = (secondaries: Sequence[]): ConstraintGraph => {
   const adjacency = new Map<string, Map<string, Set<string>>>();
   const allNodes = new Set<string>();
 
@@ -234,6 +248,40 @@ const buildConstraintGraph = (secondaries: Sequence[]): ConstraintGraph => {
         }
         edgeSecondaries.add(secondary.uuid);
       }
+    }
+  }
+
+  return { adjacency, allNodes };
+};
+
+// Restrict a constraint graph to a set of nodes, keeping only edges whose both
+// endpoints survive. Because `buildConstraintGraph` already records transitive
+// (all-pairs) edges, the relative order among surviving nodes is preserved when
+// intermediates are dropped — e.g. restricting A → D → B to {A, B} keeps A → B.
+// Used to project the constraints onto the fragment universe before generating
+// a linear extension, so out-of-universe fragments (discarded, missing) simply
+// fall away without breaking the order of the fragments that remain.
+export const restrictGraphToNodes = (
+  graph: ConstraintGraph,
+  nodes: Set<string>,
+): ConstraintGraph => {
+  const adjacency = new Map<string, Map<string, Set<string>>>();
+  const allNodes = new Set<string>();
+
+  for (const node of graph.allNodes) {
+    if (nodes.has(node)) allNodes.add(node);
+  }
+
+  for (const [from, neighbors] of graph.adjacency.entries()) {
+    if (!nodes.has(from)) continue;
+    for (const [to, edgeSecondaries] of neighbors.entries()) {
+      if (!nodes.has(to)) continue;
+      let restrictedNeighbors = adjacency.get(from);
+      if (!restrictedNeighbors) {
+        restrictedNeighbors = new Map();
+        adjacency.set(from, restrictedNeighbors);
+      }
+      restrictedNeighbors.set(to, new Set(edgeSecondaries));
     }
   }
 
@@ -290,7 +338,15 @@ const findStronglyConnectedComponents = (graph: ConstraintGraph): string[][] => 
 };
 
 export function detectCycles(secondaries: Sequence[]): Cycle[] {
-  const graph = buildConstraintGraph(secondaries);
+  return detectCyclesInGraph(buildConstraintGraph(secondaries));
+}
+
+// Cycle detection over an already-built constraint graph. Each cycle is a
+// strongly connected component of size > 1, reported with the fragments it spans
+// and the sequences that contribute its edges. Separated from `detectCycles` so
+// callers holding a graph (e.g. one restricted to the fragment universe) can
+// reuse the SCC pass without rebuilding from sequences.
+export function detectCyclesInGraph(graph: ConstraintGraph): Cycle[] {
   const sccs = findStronglyConnectedComponents(graph);
   const cycles: Cycle[] = [];
 
@@ -678,4 +734,120 @@ export function getUnassignedFragmentUuids(
     }
   }
   return allFragmentUuids.filter((uuid) => !placed.has(uuid));
+}
+
+// Thrown when the chosen ordering constraints contradict each other over the
+// fragments actually being placed (a cycle in the universe-restricted graph), so
+// no valid ordering exists. Carries the offending cycles for the caller to
+// report. Translated to a 409 by the route error mapper. The generator aborts —
+// it never emits a partial or invalid sequence.
+export class ShuffleConstraintCycleError extends Error {
+  constructor(public readonly cycles: Cycle[]) {
+    super("The chosen ordering constraints contradict each other; no valid ordering exists.");
+    this.name = "ShuffleConstraintCycleError";
+  }
+}
+
+// Produce a random topological ordering of `universe` that honors every ordering
+// constraint in `graph` — a random linear extension of the DAG. Constraints are
+// first projected onto the universe (out-of-universe fragments fall away, their
+// transitive order preserved); a cycle among the survivors means no valid
+// ordering exists, so we throw `ShuffleConstraintCycleError` rather than stall.
+// Randomness is injected (`random`) so the engine stays pure and reproducible
+// under a fixed source. Uses a randomized Kahn's algorithm: at each step pick
+// uniformly at random among the fragments whose predecessors are all placed.
+//
+// Note: this samples *a* valid ordering at random, not uniformly over the space
+// of all linear extensions (uniform sampling is #P-hard) — sufficient for a
+// creative shuffle. Unconstrained fragments (the majority) start ready and so
+// spread throughout the result.
+export function computeRandomLinearExtension(
+  graph: ConstraintGraph,
+  universe: string[],
+  random: RandomSource,
+): string[] {
+  const universeSet = new Set(universe);
+  const restricted = restrictGraphToNodes(graph, universeSet);
+
+  const cycles = detectCyclesInGraph(restricted);
+  if (cycles.length > 0) {
+    throw new ShuffleConstraintCycleError(cycles);
+  }
+
+  const inDegree = new Map<string, number>();
+  for (const node of universe) {
+    inDegree.set(node, 0);
+  }
+  for (const neighbors of restricted.adjacency.values()) {
+    for (const to of neighbors.keys()) {
+      inDegree.set(to, (inDegree.get(to) ?? 0) + 1);
+    }
+  }
+
+  const ready: string[] = [];
+  for (const node of universe) {
+    if ((inDegree.get(node) ?? 0) === 0) ready.push(node);
+  }
+
+  const order: string[] = [];
+  while (ready.length > 0) {
+    const pickIndex = Math.floor(random() * ready.length);
+    // Swap-remove the picked node so selection stays O(1) without preserving
+    // ready-list order (which would bias the result toward insertion order).
+    const last = ready.length - 1;
+    const node = ready[pickIndex]!;
+    ready[pickIndex] = ready[last]!;
+    ready.pop();
+    order.push(node);
+
+    const neighbors = restricted.adjacency.get(node);
+    if (neighbors) {
+      for (const to of neighbors.keys()) {
+        const next = (inDegree.get(to) ?? 0) - 1;
+        inDegree.set(to, next);
+        if (next === 0) ready.push(to);
+      }
+    }
+  }
+
+  return order;
+}
+
+// Generate a new secondary sequence that places every fragment in `fragmentUuids`
+// (the non-discarded universe) into a single flat section in a random order that
+// honors the ordering constraints of `constraintSequences`. The result is never
+// main and is active by default; the caller supplies the universe, the chosen
+// constraint sequences, and the injected random source (the API owns seed
+// generation). Throws `ShuffleConstraintCycleError` when the chosen constraints
+// contradict each other — the caller aborts and reports; nothing is written.
+export function generateShuffledSequence(params: {
+  projectUuid: string;
+  name: string;
+  fragmentUuids: string[];
+  constraintSequences: Sequence[];
+  random: RandomSource;
+}): Sequence {
+  const { projectUuid, name, fragmentUuids, constraintSequences, random } = params;
+
+  const graph = buildConstraintGraph(constraintSequences);
+  const order = computeRandomLinearExtension(graph, fragmentUuids, random);
+
+  return {
+    uuid: crypto.randomUUID(),
+    name,
+    isMain: false,
+    active: true,
+    projectUuid,
+    sections: [
+      {
+        uuid: crypto.randomUUID(),
+        name: "Main",
+        fragments: order.map((fragmentUuid, index) => ({
+          uuid: crypto.randomUUID(),
+          fragmentUuid,
+          position: index,
+        })),
+      },
+    ],
+  };
 }

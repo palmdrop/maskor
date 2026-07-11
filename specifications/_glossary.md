@@ -34,6 +34,8 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 
 **Active**: The state of a non-main sequence being currently consumed by the sequencer as an ordering constraint; user-authored secondary sequences are active by default, import-sequences inactive. _Avoid_: enabled, on, included.
 
+**Ordering constraint**: A hard relative-order requirement contributed by a secondary sequence — that one fragment must appear before another (A → B → C) — honored absolutely when consumed. Distinct from the soft scoring influence of an arc, which biases a fitting score but never blocks a placement. Only relative order is an ordering constraint; a secondary's section membership is not. _Avoid_: constraint (unqualified — ambiguous with soft arc scoring), rule (an interleaving term).
+
 **Import-sequence**: A read-only secondary sequence auto-created by an import to record the fragments' original import order; carries an origin and is created inactive. Its placement and ordering are frozen — fragments cannot be added, moved, or removed (guarded in the sequencer/backend, not just the UI); to build on it the user clones it. _Avoid_: import order, import snapshot (the durable snapshot is the import archive, not this).
 
 **Import archive**: The original, unmodified file an import was created from, stored byte-for-byte under `.maskor/imports/`; the durable record of imported content, referenced by a sequence's origin. _Avoid_: backup, source file, archived source.
@@ -83,6 +85,8 @@ Maskor is a fragment-based creative writing tool. Writers compose by drafting, a
 **Key fragment**: A fragment pinned to a target normalized position in the sequence with a user-defined tolerance radius; respected by all placement modes. _Avoid_: anchored fragment, pinned fragment, fixed fragment.
 
 **Noise**: Optional seeded deterministic offsets applied on top of fitting scores by the sequencer to introduce controlled variation without sacrificing reproducibility. _Avoid_: randomness, jitter (jitter is the suggestion-mode cooldown fallback, not a sequencer concept), entropy.
+
+**Shuffle**: The operation that generates a new secondary sequence by randomly ordering all non-discarded fragments into a single flat section, honoring the ordering constraints of a chosen set of secondary sequences — the randomness fills only the freedom those constraints leave. The generated arrangement is an ordinary secondary sequence, editable like any other; there is no distinct "random sequence" entity. A degenerate case of automatic placement with scoring switched off — the future automatic placer layers arc and interleaving scoring on top. _Avoid_: random sequence (names a nonexistent entity, not the act), randomize, scramble.
 
 **Action log**: The persistent, append-only, human-readable `.jsonl` file recording every user-initiated state-changing operation and any command failures; the primary observability artifact. _Avoid_: audit log, history log, event log.
 
