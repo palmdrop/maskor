@@ -64,6 +64,7 @@ export const ActionTypeSchema = z.enum([
   "sequence:sections-merged",
   "sequence:cloned",
   "sequence:inserted",
+  "sequence:shuffled",
   "draft:created",
   "draft:deleted",
   "draft:restored",
@@ -211,6 +212,16 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
   entry("sequence:sections-merged", z.object({ sectionName: z.string() })),
   entry("sequence:cloned", z.object({ sourceName: z.string() })),
   entry("sequence:inserted", z.object({ sourceName: z.string(), sectionCount: z.number() })),
+  entry(
+    "sequence:shuffled",
+    z.object({
+      constraintSequenceUuids: z.array(z.string()),
+      fragmentCount: z.number(),
+      // The internal seed of the shuffle. Not user-facing — logged only so a run
+      // can be reproduced later if reproducibility is ever surfaced.
+      seed: z.number(),
+    }),
+  ),
   entry("draft:created", z.object({ name: z.string(), note: z.string().optional() })),
   entry("draft:deleted", z.object({ name: z.string() })),
   entry(

@@ -1799,3 +1799,128 @@ describe("import-sequence read-only enforcement", () => {
     }
   });
 });
+
+describe("POST /projects/:projectId/sequences/generate — shuffle", () => {
+  const createFragment = async (key: string, content: string) => {
+    const response = await testContext.app.request(`/projects/${project.projectUUID}/fragments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, content }),
+    });
+    return (await response.json()) as { uuid: string };
+  };
+
+  const rebuildIndex = () =>
+    testContext.app.request(`/projects/${project.projectUUID}/index/rebuild`, { method: "POST" });
+
+  const createSecondary = async (name: string) => {
+    const response = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, isMain: false, projectUuid: project.projectUUID }),
+    });
+    const bundle = (await response.json()) as SequenceBundle;
+    return bundle.sequences.find((s) => s.name === name)!;
+  };
+
+  const place = async (
+    sequenceUuid: string,
+    sectionUuid: string,
+    fragmentUuid: string,
+    position: number,
+  ) => {
+    await testContext.app.request(`${baseUrl()}/${sequenceUuid}/positions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fragmentUuid, sectionUuid, position }),
+    });
+  };
+
+  const generate = (body: Record<string, unknown>) =>
+    testContext.app.request(`${baseUrl()}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  const flatOrder = (sequence: SequenceFull) =>
+    [...sequence.sections[0]!.fragments]
+      .sort((a, b) => a.position - b.position)
+      .map((f) => f.fragmentUuid);
+
+  it("generates a non-main single-section sequence containing the created fragments", async () => {
+    const fa = await createFragment("shuffle-a", "A");
+    const fb = await createFragment("shuffle-b", "B");
+    await rebuildIndex();
+
+    const response = await generate({ name: "Shuffle Test 1", constraintSequenceIds: [] });
+    expect(response.status).toBe(201);
+    const bundle = (await response.json()) as SequenceBundle;
+    const generated = bundle.sequences.find((s) => s.name === "Shuffle Test 1")!;
+
+    expect(generated).toBeDefined();
+    expect(generated.isMain).toBe(false);
+    expect(generated.active).toBe(true);
+    expect(generated.sections).toHaveLength(1);
+    const order = flatOrder(generated);
+    expect(order).toContain(fa.uuid);
+    expect(order).toContain(fb.uuid);
+  });
+
+  it("honors the ordering of a chosen constraint sequence", async () => {
+    const first = await createFragment("shuffle-order-first", "first");
+    const second = await createFragment("shuffle-order-second", "second");
+    await rebuildIndex();
+
+    const constraint = await createSecondary("Shuffle Constraint");
+    const sectionUuid = constraint.sections[0]!.uuid;
+    await place(constraint.uuid, sectionUuid, first.uuid, 0);
+    await place(constraint.uuid, sectionUuid, second.uuid, 1);
+
+    // Run several times — the constraint must hold every time.
+    for (let run = 0; run < 5; run++) {
+      const response = await generate({
+        name: `Shuffle Ordered ${run}`,
+        constraintSequenceIds: [constraint.uuid],
+      });
+      expect(response.status).toBe(201);
+      const bundle = (await response.json()) as SequenceBundle;
+      const generated = bundle.sequences.find((s) => s.name === `Shuffle Ordered ${run}`)!;
+      const order = flatOrder(generated);
+      expect(order.indexOf(first.uuid)).toBeLessThan(order.indexOf(second.uuid));
+    }
+  });
+
+  it("returns 409 constraint_cycle when the chosen constraints contradict each other", async () => {
+    const fa = await createFragment("shuffle-cycle-a", "A");
+    const fb = await createFragment("shuffle-cycle-b", "B");
+    await rebuildIndex();
+
+    const forward = await createSecondary("Cycle Forward");
+    const forwardSection = forward.sections[0]!.uuid;
+    await place(forward.uuid, forwardSection, fa.uuid, 0);
+    await place(forward.uuid, forwardSection, fb.uuid, 1);
+
+    const backward = await createSecondary("Cycle Backward");
+    const backwardSection = backward.sections[0]!.uuid;
+    await place(backward.uuid, backwardSection, fb.uuid, 0);
+    await place(backward.uuid, backwardSection, fa.uuid, 1);
+
+    const response = await generate({
+      name: "Shuffle Cycle",
+      constraintSequenceIds: [forward.uuid, backward.uuid],
+    });
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as {
+      reason?: string;
+      cycles?: { fragmentUuids: string[] }[];
+    };
+    expect(body.reason).toBe("constraint_cycle");
+    expect(body.cycles!.length).toBeGreaterThan(0);
+
+    // Nothing was created.
+    const listResponse = await testContext.app.request(baseUrl());
+    const listBundle = (await listResponse.json()) as SequenceBundle;
+    expect(listBundle.sequences.find((s) => s.name === "Shuffle Cycle")).toBeUndefined();
+  });
+});

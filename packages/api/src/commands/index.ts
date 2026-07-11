@@ -73,6 +73,7 @@ export { splitSectionCommand } from "./sequences/split-section";
 export { mergeSectionCommand } from "./sequences/merge-section";
 export { cloneSequenceCommand } from "./sequences/clone-sequence";
 export { insertSequenceCommand } from "./sequences/insert-sequence";
+export { generateShuffleSequenceCommand } from "./sequences/generate-shuffle-sequence";
 
 export { registerProjectCommand } from "./projects/register-project";
 export { updateProjectCommand } from "./projects/update-project";

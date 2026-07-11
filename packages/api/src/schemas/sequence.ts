@@ -139,6 +139,21 @@ export const SequenceCloneSchema = z
   .object({ name: z.string().min(1).openapi({ example: "Revised Order (copy)" }) })
   .openapi("SequenceClone");
 
+// Generate a new sequence by shuffling all non-discarded fragments into a random
+// order that honors the ordering constraints of the chosen non-main sequences.
+export const SequenceGenerateSchema = z
+  .object({
+    name: z.string().min(1).optional().openapi({ example: "Shuffle 1" }),
+    constraintSequenceIds: z
+      .array(z.uuid())
+      .default([])
+      .openapi({
+        description:
+          "Non-main sequences whose relative ordering the shuffle must honor. Empty = a free shuffle.",
+      }),
+  })
+  .openapi("SequenceGenerate");
+
 // Insert another sequence's sections into this one at a section index.
 export const SequenceInsertSchema = z
   .object({

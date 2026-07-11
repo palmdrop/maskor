@@ -8,7 +8,7 @@ import {
   SwapEntityTypeError,
 } from "@maskor/storage";
 import { VaultError } from "@maskor/storage";
-import { SequenceReadOnlyError } from "@maskor/sequencer";
+import { SequenceReadOnlyError, ShuffleConstraintCycleError } from "@maskor/sequencer";
 
 const errorResponse = (body: Record<string, unknown>, status: number): Response =>
   new Response(JSON.stringify(body), {
@@ -88,6 +88,20 @@ export const throwStorageError = (error: unknown): never => {
     throw new HTTPException(409, {
       res: errorResponse(
         { error: "CONFLICT", message: error.message, reason: "sequence_read_only" },
+        409,
+      ),
+    });
+  }
+
+  if (error instanceof ShuffleConstraintCycleError) {
+    throw new HTTPException(409, {
+      res: errorResponse(
+        {
+          error: "CONFLICT",
+          message: error.message,
+          reason: "constraint_cycle",
+          cycles: error.cycles,
+        },
         409,
       ),
     });

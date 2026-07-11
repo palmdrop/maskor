@@ -192,6 +192,31 @@
           "reason": {
             "type": "string",
             "example": "name_conflict"
+          },
+          "cycles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sequenceUuids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "fragmentUuids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "sequenceUuids",
+                "fragmentUuids"
+              ]
+            },
+            "description": "Constraint cycles that made a valid ordering impossible"
           }
         },
         "required": [
@@ -2690,6 +2715,25 @@
           "sourceSequenceId",
           "sectionIndex"
         ]
+      },
+      "SequenceGenerate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "example": "Shuffle 1"
+          },
+          "constraintSequenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": [],
+            "description": "Non-main sequences whose relative ordering the shuffle must honor. Empty = a free shuffle."
+          }
+        }
       },
       "ImportResult": {
         "type": "object",
@@ -12676,6 +12720,98 @@
                           "type": {
                             "type": "string",
                             "enum": [
+                              "sequence:shuffled"
+                            ]
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "constraintSequenceUuids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "fragmentCount": {
+                                "type": "number"
+                              },
+                              "seed": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "constraintSequenceUuids",
+                              "fragmentCount",
+                              "seed"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "timestamp",
+                          "correlationId",
+                          "actor",
+                          "target",
+                          "undoable",
+                          "type",
+                          "payload"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "correlationId": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "system"
+                            ]
+                          },
+                          "target": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "fragment",
+                                  "aspect",
+                                  "note",
+                                  "reference",
+                                  "sequence",
+                                  "draft",
+                                  "margin"
+                                ]
+                              },
+                              "uuid": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "uuid"
+                            ]
+                          },
+                          "undoable": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
                               "draft:created"
                             ]
                           },
@@ -14862,6 +14998,78 @@
           },
           "404": {
             "description": "Target or source sequence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sequences/generate": {
+      "post": {
+        "operationId": "generateSequence",
+        "tags": [
+          "Sequences"
+        ],
+        "summary": "Generate a new sequence by shuffling fragments under ordering constraints",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SequenceGenerate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sequence generated, bundle of all sequences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SequenceBundledResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A chosen constraint sequence was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The chosen constraints contradict each other (constraint_cycle)",
             "content": {
               "application/json": {
                 "schema": {

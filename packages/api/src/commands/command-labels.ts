@@ -45,6 +45,7 @@ export const COMMAND_LABELS = [
   "sequence:designate-main",
   "sequence:clone",
   "sequence:insert",
+  "sequence:shuffle",
   "sequence:place-fragment",
   "sequence:move-fragment",
   "sequence:unplace-fragment",

@@ -19,6 +19,7 @@ import {
   SectionSplitSchema,
   SequenceCloneSchema,
   SequenceInsertSchema,
+  SequenceGenerateSchema,
   SequenceBundledResponseSchema,
   SequenceContentsResponseSchema,
 } from "../schemas/sequence";
@@ -44,6 +45,7 @@ import {
   mergeSectionCommand,
   cloneSequenceCommand,
   insertSequenceCommand,
+  generateShuffleSequenceCommand,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { StorageService, ProjectContext } from "@maskor/storage";
@@ -631,6 +633,39 @@ const insertSequenceRoute = createRoute({
   },
 });
 
+const generateSequenceRoute = createRoute({
+  operationId: "generateSequence",
+  method: "post",
+  path: "/generate",
+  tags: ["Sequences"],
+  summary: "Generate a new sequence by shuffling fragments under ordering constraints",
+  request: {
+    params: projectIdParamSchema,
+    body: {
+      content: { "application/json": { schema: SequenceGenerateSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: SequenceBundledResponseSchema } },
+      description: "Sequence generated, bundle of all sequences",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "A chosen constraint sequence was not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "The chosen constraints contradict each other (constraint_cycle)",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
 // --- handlers ---
 
 sequencesRouter.openapi(listSequencesRoute, async (ctx) => {
@@ -1180,6 +1215,29 @@ sequencesRouter.openapi(insertSequenceRoute, async (ctx) => {
     });
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
+
+sequencesRouter.openapi(generateSequenceRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { name, constraintSequenceIds } = ctx.req.valid("json");
+    const commandContext: CommandContext = {
+      storageService,
+      projectContext,
+      actor: "user",
+      correlationId: ctx.get("correlationId"),
+      logger: ctx.get("logger"),
+    };
+    await executeCommand(generateShuffleSequenceCommand, "sequence:shuffle", commandContext, {
+      name,
+      constraintSequenceIds,
+    });
+    const bundle = await buildBundledResponse(storageService, projectContext);
+    return ctx.json(bundle, 201);
   } catch (error) {
     return throwStorageError(error);
   }
