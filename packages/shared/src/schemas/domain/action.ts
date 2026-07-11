@@ -217,8 +217,10 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
     z.object({
       constraintSequenceUuids: z.array(z.string()),
       fragmentCount: z.number(),
-      // The internal seed of the shuffle. Not user-facing — logged only so a run
-      // can be reproduced later if reproducibility is ever surfaced.
+      // The internal seed of the shuffle. Not user-facing — logged as a forensic
+      // breadcrumb only. Note the seed alone does not reproduce the run: a replay
+      // would also need the same fragment-universe order and constraint set. Kept
+      // so that if reproducibility is ever surfaced, the seed is already recorded.
       seed: z.number(),
     }),
   ),

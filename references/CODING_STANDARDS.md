@@ -57,19 +57,30 @@ NOTE: Anonymous regexes are alright for minor things.
 
 ## Control flow
 
-### Explicit braces on all `if` bodies
+### Braces on `if` bodies, unless the body is a single short statement on the same line
 
-Single-line `if` bodies without braces are not allowed.
+A short, simple body — an early `return`, `continue`, `break`, `throw`, or a single trivial statement — may skip braces **only when it stays on the same line as the condition**. A braceless body split across a newline is not allowed; either put it on one line or add braces.
 
 ```ts
-// Bad
+// Good — single short statement, same line
+if (!match) continue;
+if (index === clamped) return sequence;
+if (nodes.has(node)) allNodes.add(node);
+
+// Bad — braceless body on its own line
+if (typeof frontmatter.title === "string")
+  return frontmatter.title.trim();
+
+// Good — either keep it on one line...
 if (typeof frontmatter.title === "string") return frontmatter.title.trim();
 
-// Good
+// ...or use braces
 if (typeof frontmatter.title === "string") {
   return frontmatter.title.trim();
 }
 ```
+
+Anything longer than a single trivial statement (multiple statements, or a long expression) takes braces.
 
 ### Explicit `return` in multi-condition boolean functions
 

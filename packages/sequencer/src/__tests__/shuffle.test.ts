@@ -39,7 +39,7 @@ function indexOf(order: string[], uuid: string): number {
 }
 
 describe("generateShuffledSequence — output shape", () => {
-  it("returns a non-main, active, single-section sequence named Main", () => {
+  it("returns a non-main, inactive, single-section sequence named Main", () => {
     const result = generateShuffledSequence({
       projectUuid: PROJECT_UUID,
       name: "Random 1",
@@ -48,7 +48,7 @@ describe("generateShuffledSequence — output shape", () => {
       random: createSeededRandom(1),
     });
     expect(result.isMain).toBe(false);
-    expect(result.active).toBe(true);
+    expect(result.active).toBe(false);
     expect(result.projectUuid).toBe(PROJECT_UUID);
     expect(result.sections).toHaveLength(1);
     expect(result.sections[0]!.name).toBe("Main");

@@ -1860,7 +1860,7 @@ describe("POST /projects/:projectId/sequences/generate — shuffle", () => {
 
     expect(generated).toBeDefined();
     expect(generated.isMain).toBe(false);
-    expect(generated.active).toBe(true);
+    expect(generated.active).toBe(false);
     expect(generated.sections).toHaveLength(1);
     const order = flatOrder(generated);
     expect(order).toContain(fa.uuid);
@@ -1922,5 +1922,23 @@ describe("POST /projects/:projectId/sequences/generate — shuffle", () => {
     const listResponse = await testContext.app.request(baseUrl());
     const listBundle = (await listResponse.json()) as SequenceBundle;
     expect(listBundle.sequences.find((s) => s.name === "Shuffle Cycle")).toBeUndefined();
+  });
+
+  it("returns 404 when a chosen constraint sequence does not exist", async () => {
+    await createFragment("shuffle-missing-a", "A");
+    await rebuildIndex();
+
+    // Syntactically valid v4 uuid (passes the schema) that no sequence owns.
+    const missingUuid = "deadbeef-0000-4000-8000-0000000000ff";
+    const response = await generate({
+      name: "Shuffle Missing",
+      constraintSequenceIds: [missingUuid],
+    });
+    expect(response.status).toBe(404);
+
+    // Nothing was created.
+    const listResponse = await testContext.app.request(baseUrl());
+    const listBundle = (await listResponse.json()) as SequenceBundle;
+    expect(listBundle.sequences.find((s) => s.name === "Shuffle Missing")).toBeUndefined();
   });
 });

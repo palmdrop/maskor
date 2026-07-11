@@ -816,10 +816,13 @@ export function computeRandomLinearExtension(
 // Generate a new secondary sequence that places every fragment in `fragmentUuids`
 // (the non-discarded universe) into a single flat section in a random order that
 // honors the ordering constraints of `constraintSequences`. The result is never
-// main and is active by default; the caller supplies the universe, the chosen
-// constraint sequences, and the injected random source (the API owns seed
-// generation). Throws `ShuffleConstraintCycleError` when the chosen constraints
-// contradict each other — the caller aborts and reports; nothing is written.
+// main and is inactive by default: a fresh shuffle is a candidate the user
+// activates deliberately, so it can never silently join the active constraint set
+// and contradict an active secondary that was left out of the chosen constraints.
+// The caller supplies the universe, the chosen constraint sequences, and the
+// injected random source (the API owns seed generation). Throws
+// `ShuffleConstraintCycleError` when the chosen constraints contradict each other
+// — the caller aborts and reports; nothing is written.
 export function generateShuffledSequence(params: {
   projectUuid: string;
   name: string;
@@ -836,7 +839,7 @@ export function generateShuffledSequence(params: {
     uuid: crypto.randomUUID(),
     name,
     isMain: false,
-    active: true,
+    active: false,
     projectUuid,
     sections: [
       {
