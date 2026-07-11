@@ -34,14 +34,20 @@ const sequence = (overrides: Partial<Sequence>): Sequence =>
 
 const main = sequence({ uuid: "main-uuid", name: "Main", isMain: true });
 const activeSecondary = sequence({ uuid: "active-uuid", name: "Active Chain", active: true });
-const inactiveSecondary = sequence({ uuid: "inactive-uuid", name: "Inactive Chain", active: false });
+const inactiveSecondary = sequence({
+  uuid: "inactive-uuid",
+  name: "Inactive Chain",
+  active: false,
+});
 const sequences = [main, activeSecondary, inactiveSecondary];
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
 );
 
-const renderDialog = (overrides: Partial<React.ComponentProps<typeof ShuffleSequenceDialog>> = {}) =>
+const renderDialog = (
+  overrides: Partial<React.ComponentProps<typeof ShuffleSequenceDialog>> = {},
+) =>
   render(
     <ShuffleSequenceDialog
       projectId={projectId}
@@ -66,9 +72,13 @@ describe("ShuffleSequenceDialog", () => {
     // Main sequence is not a candidate.
     expect(screen.queryByText("Main")).toBeNull();
 
-    const activeCheckbox = screen.getByLabelText(/Active Chain/).closest("label")!
+    const activeCheckbox = screen
+      .getByLabelText(/Active Chain/)
+      .closest("label")!
       .querySelector("input")!;
-    const inactiveCheckbox = screen.getByText("Inactive Chain").closest("label")!
+    const inactiveCheckbox = screen
+      .getByText("Inactive Chain")
+      .closest("label")!
       .querySelector("input")!;
     expect(activeCheckbox).toBeChecked();
     expect(inactiveCheckbox).not.toBeChecked();
@@ -107,9 +117,7 @@ describe("ShuffleSequenceDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Shuffle" }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/contradict each other/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/contradict each other/i)).toBeInTheDocument());
     // Names resolved from uuids.
     expect(screen.getByText(/Active Chain ↔ Inactive Chain/)).toBeInTheDocument();
     expect(onGenerated).not.toHaveBeenCalled();

@@ -144,13 +144,10 @@ export const SequenceCloneSchema = z
 export const SequenceGenerateSchema = z
   .object({
     name: z.string().min(1).optional().openapi({ example: "Shuffle 1" }),
-    constraintSequenceIds: z
-      .array(z.uuid())
-      .default([])
-      .openapi({
-        description:
-          "Non-main sequences whose relative ordering the shuffle must honor. Empty = a free shuffle.",
-      }),
+    constraintSequenceIds: z.array(z.uuid()).default([]).openapi({
+      description:
+        "Non-main sequences whose relative ordering the shuffle must honor. Empty = a free shuffle.",
+    }),
   })
   .openapi("SequenceGenerate");
 

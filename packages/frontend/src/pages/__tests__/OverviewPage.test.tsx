@@ -128,6 +128,7 @@ vi.mock("../../api/generated/sequences/sequences", () => ({
   useDeleteSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   useCloneSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   useInsertSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
+  useGenerateSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   getListSequencesQueryKey: (projectId: string) => [`/projects/${projectId}/sequences`],
   getGetSequenceContentsQueryKey: (projectId: string, sequenceId: string) => [
     `/projects/${projectId}/sequences/${sequenceId}/contents`,

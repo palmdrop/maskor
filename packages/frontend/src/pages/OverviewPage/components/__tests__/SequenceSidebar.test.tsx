@@ -42,6 +42,7 @@ vi.mock("@api/generated/sequences/sequences", () => ({
     mutateAsync: insertMutate,
     isPending: false,
   })),
+  useGenerateSequence: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
   getListSequencesQueryKey: () => [`/projects/${PROJECT_ID}/sequences`],
   getGetSequenceContentsQueryKey: () => [`/projects/${PROJECT_ID}/sequences/contents`],
 }));

@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGenerateSequence,
-  getListSequencesQueryKey,
-} from "@api/generated/sequences/sequences";
+import { useGenerateSequence, getListSequencesQueryKey } from "@api/generated/sequences/sequences";
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 import { ApiRequestError } from "@api/errors";
 import { Button } from "@components/ui/button";
