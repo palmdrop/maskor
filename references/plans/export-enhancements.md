@@ -71,11 +71,11 @@ The assembled markdown string cannot carry Word-comment semantics, so the docx p
 
 ### Phase 5 — Frontend
 
-- [ ] `ExportDialog.tsx`: two checkboxes seeded from project `export` config, persisted on change via the project update mutation; export request sends the current toggle state.
-- [ ] Read the warnings header from the download response; show via the existing notification/banner treatment.
-- [ ] `bun run codegen` after schema/route changes.
-- [ ] Tests: dialog toggle rendering + persistence, warning display.
-- [ ] Commit.
+- [x] (2026-07-12) `ExportDialog.tsx`: two checkboxes seeded from project `export` config, persisted on change via the project update mutation; export request sends the current toggle state.
+- [x] (2026-07-12) Read the warnings header from the download response; show orphaned-comment warnings (fragment key + count) via a `toast.warning` — the same non-fatal treatment SplitFragmentDialog uses.
+- [x] (2026-07-12) `bun run codegen` after schema/route changes.
+- [x] (2026-07-12) Tests: dialog toggle rendering + persistence, export request carries toggle state, warning display. (Also fixed a Phase 1 fallout: `PreviewPage.test.tsx`'s Project mock was missing the new `export` block.)
+- [x] (2026-07-12) Commit.
 
 ### Phase 6 — Docs & wrap-up
 

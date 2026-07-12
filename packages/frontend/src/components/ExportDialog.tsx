@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useExportSequence } from "@api/generated/export/export";
-import type { ExportSequenceBody } from "@api/generated/maskorAPI.schemas";
+import type { ExportSequenceBody, ProjectUpdate } from "@api/generated/maskorAPI.schemas";
 import { useListSequences } from "@api/generated/sequences/sequences";
+import {
+  useGetProject,
+  useUpdateProject,
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+} from "@api/generated/projects/projects";
 import { ConfirmDialog } from "@components/ui/confirm-dialog";
+import { CheckboxField } from "@components/ui/checkbox";
 import { Field } from "@components/ui/field";
 import {
   Select,
@@ -13,6 +22,22 @@ import {
 } from "@components/ui/select";
 
 type Format = ExportSequenceBody["format"];
+
+// Shape of one orphaned-comment warning surfaced on the export response header.
+type ExportWarning = { fragmentKey: string; count: number };
+
+// Parse the `X-Maskor-Export-Warnings` response header (URI-encoded JSON). Any
+// malformed value degrades to no warnings rather than throwing on a download.
+const parseExportWarnings = (headers: Headers): ExportWarning[] => {
+  const raw = headers.get("X-Maskor-Export-Warnings");
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(decodeURIComponent(raw));
+    return Array.isArray(parsed) ? (parsed as ExportWarning[]) : [];
+  } catch {
+    return [];
+  }
+};
 
 const FORMAT_LABELS: Record<Format, string> = {
   md: "Markdown (.md)",
@@ -47,18 +72,63 @@ export const ExportDialog = ({
 
   const activeSequenceId = selectedSequenceId ?? initialSequenceId ?? mainSequence?.uuid ?? null;
 
+  // Annotation toggles: seeded from the project's persisted `export` config, held
+  // locally so the current dialog state rides the export request, and persisted
+  // back to the config on every change.
+  const queryClient = useQueryClient();
+  const { data: projectEnvelope } = useGetProject(projectId);
+  const projectExport = projectEnvelope?.status === 200 ? projectEnvelope.data.export : null;
+  const updateProject = useUpdateProject();
+
+  const [includeReferences, setIncludeReferences] = useState(true);
+  const [includeMarginAnnotations, setIncludeMarginAnnotations] = useState(true);
+
+  // Resync from the server config once the project loads (and if it changes).
+  useEffect(() => {
+    if (!projectExport) return;
+    setIncludeReferences(projectExport.includeReferences);
+    setIncludeMarginAnnotations(projectExport.includeMarginAnnotations);
+  }, [projectExport]);
+
+  const persistExportConfig = (patch: ProjectUpdate["export"]) => {
+    updateProject.mutate(
+      { projectId, data: { export: patch } as ProjectUpdate },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        },
+      },
+    );
+  };
+
+  const handleIncludeReferencesChange = (next: boolean) => {
+    setIncludeReferences(next);
+    persistExportConfig({ includeReferences: next });
+  };
+
+  const handleIncludeMarginAnnotationsChange = (next: boolean) => {
+    setIncludeMarginAnnotations(next);
+    persistExportConfig({ includeMarginAnnotations: next });
+  };
+
   const mutation = useExportSequence();
 
   const handleExport = () => {
     if (!activeSequenceId) return;
     mutation.mutate(
-      { projectId, sequenceId: activeSequenceId, data: { format } },
+      {
+        projectId,
+        sequenceId: activeSequenceId,
+        data: { format, includeReferences, includeMarginAnnotations },
+      },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
             const blob = response.data as Blob;
             const fileName = getFileNameFromHeaders(response.headers) ?? `export.${format}`;
             triggerDownload(blob, fileName);
+            surfaceExportWarnings(parseExportWarnings(response.headers));
             onOpenChange(false);
             mutation.reset();
           }
@@ -130,6 +200,19 @@ export const ExportDialog = ({
               </Select>
             )}
           </Field>
+
+          <div className="flex flex-col gap-2">
+            <CheckboxField
+              label="Include references"
+              checked={includeReferences}
+              onCheckedChange={(checked) => handleIncludeReferencesChange(checked === true)}
+            />
+            <CheckboxField
+              label="Include margin annotations"
+              checked={includeMarginAnnotations}
+              onCheckedChange={(checked) => handleIncludeMarginAnnotationsChange(checked === true)}
+            />
+          </div>
         </div>
       }
       error={errorMessage}
@@ -140,6 +223,16 @@ export const ExportDialog = ({
       disabled={!activeSequenceId}
     />
   );
+};
+
+// Warn (non-fatally — the file already downloaded) that some Margin comments
+// could not be placed because their anchors are missing from the fragment body.
+const surfaceExportWarnings = (warnings: ExportWarning[]) => {
+  if (warnings.length === 0) return;
+  const detail = warnings
+    .map((warning) => `${warning.fragmentKey} (${warning.count})`)
+    .join(", ");
+  toast.warning(`Some orphaned comments were skipped: ${detail}`);
 };
 
 const getFileNameFromHeaders = (headers: Headers): string | null => {
