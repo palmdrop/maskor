@@ -31,7 +31,14 @@ const readVaultManifest = async (vaultPath: string): Promise<ProjectManifest | n
 // Keys of the nested config sections in ProjectManifest. Extracted here so that
 // writeVaultManifest performs a deep merge over all of them without enumerating
 // them twice.
-const CONFIG_SECTION_KEYS = ["editor", "suggestion", "advanced", "preview", "overview"] as const;
+const CONFIG_SECTION_KEYS = [
+  "editor",
+  "suggestion",
+  "advanced",
+  "preview",
+  "export",
+  "overview",
+] as const;
 type ConfigSection = (typeof CONFIG_SECTION_KEYS)[number];
 
 const writeVaultManifest = async (
@@ -76,6 +83,7 @@ const PROJECT_CONFIG_DEFAULTS = {
   suggestion: { readinessThreshold: 0.95 },
   advanced: { showFragmentStats: false },
   preview: { showTitles: false, showSectionHeadings: true, separator: "blank-line" as const },
+  export: { includeReferences: true, includeMarginAnnotations: true },
   overview: { detailLevel: "prose" as const },
 };
 
@@ -96,6 +104,7 @@ const toProjectRecord = (
     suggestion: { ...PROJECT_CONFIG_DEFAULTS.suggestion, ...config?.suggestion },
     advanced: { ...PROJECT_CONFIG_DEFAULTS.advanced, ...config?.advanced },
     preview: { ...PROJECT_CONFIG_DEFAULTS.preview, ...config?.preview },
+    export: { ...PROJECT_CONFIG_DEFAULTS.export, ...config?.export },
     overview: { ...PROJECT_CONFIG_DEFAULTS.overview, ...config?.overview },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -250,6 +259,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
         patch.suggestion !== undefined ||
         patch.advanced !== undefined ||
         patch.preview !== undefined ||
+        patch.export !== undefined ||
         patch.overview !== undefined
       ) {
         manifestPatch.config = {
@@ -257,6 +267,7 @@ export const createProjectRegistry = (database: RegistryDatabase) => {
           ...(patch.suggestion !== undefined ? { suggestion: patch.suggestion } : {}),
           ...(patch.advanced !== undefined ? { advanced: patch.advanced } : {}),
           ...(patch.preview !== undefined ? { preview: patch.preview } : {}),
+          ...(patch.export !== undefined ? { export: patch.export } : {}),
           ...(patch.overview !== undefined ? { overview: patch.overview } : {}),
         };
       }

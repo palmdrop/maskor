@@ -30,6 +30,10 @@ export const ProjectSchema = z.object({
     showSectionHeadings: z.boolean(),
     separator: z.enum(["blank-line", "horizontal-rule", "none"]),
   }),
+  export: z.object({
+    includeReferences: z.boolean(),
+    includeMarginAnnotations: z.boolean(),
+  }),
   overview: z.object({
     detailLevel: z.enum(["prose", "excerpt", "title"]),
   }),
@@ -74,6 +78,12 @@ export const ProjectUpdateSchema = z.object({
       showTitles: z.boolean().optional(),
       showSectionHeadings: z.boolean().optional(),
       separator: z.enum(["blank-line", "horizontal-rule", "none"]).optional(),
+    })
+    .optional(),
+  export: z
+    .object({
+      includeReferences: z.boolean().optional(),
+      includeMarginAnnotations: z.boolean().optional(),
     })
     .optional(),
   overview: z

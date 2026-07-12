@@ -339,6 +339,22 @@ describe("registry.updateProject", () => {
     const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
     expect(manifest.config.overview.detailLevel).toBe("excerpt");
   });
+
+  it("updates a single export toggle and persists to manifest, preserving the other", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+    const updated = await registry.updateProject(record.projectUUID, {
+      export: { includeReferences: false },
+    });
+
+    // The untouched toggle is filled from defaults on read, even though only the
+    // patched field is persisted to the manifest (mirrors preview partial updates).
+    expect(updated.export.includeReferences).toBe(false);
+    expect(updated.export.includeMarginAnnotations).toBe(true);
+
+    const manifest = await Bun.file(join(vaultDir, ".maskor", "project.json")).json();
+    expect(manifest.config.export.includeReferences).toBe(false);
+  });
 });
 
 describe("registry preview defaults", () => {
@@ -356,6 +372,23 @@ describe("registry preview defaults", () => {
     expect(found?.preview.showTitles).toBe(false);
     expect(found?.preview.showSectionHeadings).toBe(true);
     expect(found?.preview.separator).toBe("blank-line");
+  });
+});
+
+describe("registry export defaults", () => {
+  it("returns export defaults when project.json has no export field", async () => {
+    const registry = makeRegistry();
+    const record = await registry.registerProject("My Project", vaultDir, "adopt");
+
+    // Remove export config from manifest to simulate an older project.json
+    const manifestPath = join(vaultDir, ".maskor", "project.json");
+    const manifest = await Bun.file(manifestPath).json();
+    delete manifest.config.export;
+    await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const found = await registry.findByUUID(record.projectUUID);
+    expect(found?.export.includeReferences).toBe(true);
+    expect(found?.export.includeMarginAnnotations).toBe(true);
   });
 });
 
