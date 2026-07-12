@@ -21,7 +21,7 @@ Exporting a sequence can include the writer's References and Margin annotations:
 - **Margin comments**: md/txt — marker replaces the `<!--c:ID-->` position (end of the anchored block); content = comment **body only**, bare (no excerpt, no prefix). docx — a Word comment whose range spans the **entire anchored paragraph**.
 - **Margin notes**: anchor at the fragment head — the title line when titles are shown (`### Title[^c1]` / Word comment range on the title text); the fragment's **first block** when titles are off.
 - **Orphaned comments are skipped**, but the export **warns**, listing affected fragments (only when the margin toggle is on). Surfaced in the Export dialog alongside the existing warning treatment.
-- **`.txt` mirrors `.md`** (txt is already byte-identical markdown today — divergence from spec logged in `references/suggestions.md`).
+- **`.txt` mirrors `.md`** — byte-identical markdown, different extension, by design (developer decision 2026-07-12; the spec's old "strip markdown syntax" line was updated to match).
 - **Preview untouched**: preview always assembles with annotations off; the "byte-identical for the same options" criterion holds.
 - **Config asymmetry accepted**: titles/section-headings/separator stay inherited from `preview` config; the new `export` block holds only the two toggles.
 - Inert markers (marker in content, no matching comment) are stripped as today. Discarded-fragment dump is not implemented; this design applies to it whenever it is built.
@@ -82,7 +82,7 @@ The assembled markdown string cannot carry Word-comment semantics, so the docx p
 
 - [x] `specifications/export.md`: annotation behavior section + Shipped entry; note txt = markdown bytes reality. (2026-07-12)
 - [x] `specifications/margins.md`: amend the "export strips markers" constraint (strip in preview always; in export markers are consumed to place annotations when the toggle is on) + Shipped entry. (2026-07-12)
-- [x] `references/suggestions.md`: txt spec/impl divergence entry. (2026-07-12)
+- [x] `references/suggestions.md`: txt spec/impl divergence entry. (2026-07-12; entry later removed the same day — developer confirmed txt = md bytes is by design, so the spec was updated instead of tracking a gap)
 - [x] Check off the two items in `references/TODO.md`. (2026-07-12)
 - [x] `bun run format` + `bun run verify`; fix fallout (two lint errors: an unused test helper, an inline `import()` type annotation). (2026-07-12)
 - [x] Commit; set plan Status. (2026-07-12)

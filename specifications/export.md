@@ -68,7 +68,7 @@ The user can take their main sequence and export it to a single document in a fo
 ### Format conversion
 
 - `.md`: assembled directly from fragment markdown bodies. No conversion needed.
-- `.txt`: currently the assembled markdown bytes with a `.txt` extension (byte-identical to `.md`). True markdown-stripping is an open gap — see `references/suggestions.md`.
+- `.txt`: the assembled markdown bytes with a `.txt` extension — byte-identical to `.md` **by design** (decided 2026-07-12). Markdown syntax is light enough to read as plain text; no stripping step exists or is planned.
 - `.docx`: pure-JS mdast→docx mapping (raw structural conversion; no styling).
 - `.pdf`: requires a conversion step. Tool choice is not decided.
 
