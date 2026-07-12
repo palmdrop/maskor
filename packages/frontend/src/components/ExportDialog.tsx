@@ -229,9 +229,7 @@ export const ExportDialog = ({
 // could not be placed because their anchors are missing from the fragment body.
 const surfaceExportWarnings = (warnings: ExportWarning[]) => {
   if (warnings.length === 0) return;
-  const detail = warnings
-    .map((warning) => `${warning.fragmentKey} (${warning.count})`)
-    .join(", ");
+  const detail = warnings.map((warning) => `${warning.fragmentKey} (${warning.count})`).join(", ");
   toast.warning(`Some orphaned comments were skipped: ${detail}`);
 };
 

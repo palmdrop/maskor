@@ -42,7 +42,7 @@ describe("markdownToDocx — GFM footnotes lowered to Word footnotes", () => {
     const references = document.match(/w:footnoteReference w:id="1"/g) ?? [];
     expect(references).toHaveLength(2);
     // One definition only.
-    expect((textRuns(footnotes).match(/Ulysses — Joyce\./g) ?? [])).toHaveLength(1);
+    expect(textRuns(footnotes).match(/Ulysses — Joyce\./g) ?? []).toHaveLength(1);
   });
 });
 
@@ -120,7 +120,12 @@ describe("assembleSequenceForExport → renderExport docx — footnotes + commen
     const assembly = assembleSequenceForExport(
       sequence,
       fragments,
-      { separator: "blank-line", showTitles: true, showSectionHeadings: true, includeAnchors: false },
+      {
+        separator: "blank-line",
+        showTitles: true,
+        showSectionHeadings: true,
+        includeAnchors: false,
+      },
       {
         includeReferences: true,
         includeMarginAnnotations: true,

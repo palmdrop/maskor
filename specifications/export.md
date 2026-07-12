@@ -1,8 +1,10 @@
 # Spec: Export
 
 **Status**: Draft
-**Last updated**: 2026-06-09
+**Last updated**: 2026-07-12
 **Shipped**:
+
+- 2026-07-12: Export annotations. References render as footnotes (GFM footnote syntax in `.md`/`.txt`; real Word footnotes in `.docx`) anchored at the end of each attaching fragment's body, deduplicated to one definition per reference. Margin notes + comments render as footnotes in `.md`/`.txt` and as Word comments in `.docx` (comments span their anchored paragraph; notes anchor to the title line, or the first block when titles are off). Controlled by two per-project toggles (`export.includeReferences`, `export.includeMarginAnnotations`, both default on) with per-export overrides in the Export dialog. Orphaned comments are skipped and surfaced as a warning (`X-Maskor-Export-Warnings` header → dialog toast). (plan: `references/plans/export-enhancements.md`)
 
 - 18-05-2026: Basic sequence assembly used for the `specifications/preview.md` feature: consumes a sequence and a set of fragments and returns a sequential list of sections and fragments.
 - 30-05-2026: `@maskor/exporter` markdown assembler core landed — a neutral block model + `assembleMarkdown(blocks, options)` lowering a sequence (or import pieces) to a single markdown string, with the full export-superset separator set, title/section-heading toggles, and optional collision-safe anchor sentinels (`includeAnchors`, off for file export). Drives preview and import preview today; no user-facing file-export UI yet. (plan: `references/plans/preview-import-shared-renderer.md`)
@@ -30,6 +32,7 @@ The user can take their main sequence and export it to a single document in a fo
   - Whether to strip all headings and produce one continuous block of text
 - Export is triggered on demand
 - Output file is saved to a user-chosen path on disk
+- **Annotations**: optionally including attached References and the Margin (notes + comments) in the output, controlled by two per-project toggles (references / margin annotations) with per-export overrides
 - **Exporting a dump of all discarded fragments** as a single companion file, separate from the main sequence export — same assembly machinery, but the input is the unordered set of fragments under `fragments/discarded/` rather than a sequence
 
 ### Out of scope
@@ -65,8 +68,21 @@ The user can take their main sequence and export it to a single document in a fo
 ### Format conversion
 
 - `.md`: assembled directly from fragment markdown bodies. No conversion needed.
-- `.txt`: strip markdown syntax; output plain text.
-- `.docx` and `.pdf`: require a conversion step. Tool choice is not decided.
+- `.txt`: currently the assembled markdown bytes with a `.txt` extension (byte-identical to `.md`). True markdown-stripping is an open gap — see `references/suggestions.md`.
+- `.docx`: pure-JS mdast→docx mapping (raw structural conversion; no styling).
+- `.pdf`: requires a conversion step. Tool choice is not decided.
+
+### Annotations (references & Margin)
+
+Two per-project toggles (persisted in the project's `export` config block, both default **on**; the Export dialog can override per export):
+
+- **Include references**: each fragment's attached References render as footnotes — GFM footnote syntax in `.md`/`.txt`, real Word footnotes in `.docx`. Markers are appended to the end of the fragment body's last line, in frontmatter attachment order. Footnote content is `key — body` (an empty body degrades to just the key). Deduplicated: one footnote definition per reference, referenced from every attaching fragment (in Word, repeated marks on one shared footnote).
+- **Include margin annotations**: Margin notes + comments travel together.
+  - **Comments** (block-anchored): in `.md`/`.txt`, the footnote marker sits where the `<!--c:ID-->` anchor sits (end of the anchored block); content is the comment body only — bare, no excerpt, no prefix. In `.docx`, a Word comment whose range spans the entire anchored paragraph (block-granular anchoring rendered honestly).
+  - **Notes** (whole-fragment): anchor at the fragment head — the title line when titles are shown, else the fragment's first block.
+- **Markdown labels**: references use the slugified key (`[^mrs-dalloway]`, deterministic `-2` suffix on slug collision); margin annotations share one sequential counter (`[^c1]`, `[^c2]`…) in document order. Definitions are emitted at the end of the document in first-reference order.
+- **Orphaned comments** (marker no longer present in the fragment body) are skipped, and the export surfaces a warning listing the affected fragments. Inert markers (no matching comment) are stripped as before.
+- Preview never renders annotations; the byte-identity criterion below holds for identical options (annotations off).
 
 ### Discarded-fragment dump
 

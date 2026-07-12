@@ -42,7 +42,11 @@ const makeCommandContext = async (): Promise<CommandContext> => {
   };
 };
 
-const writeReference = async (ctx: CommandContext, key: string, content: string): Promise<Reference> => {
+const writeReference = async (
+  ctx: CommandContext,
+  key: string,
+  content: string,
+): Promise<Reference> => {
   const reference: Reference = { uuid: randomUUID(), key, content };
   await testContext.storageService.references.write(ctx.projectContext, reference);
   return reference;
@@ -103,10 +107,14 @@ describe("exportSequenceCommand annotations", () => {
     await writeReference(ctx, `annot-ref-${stamp}`, "Reference prose about the harbour.");
     const anchoredMarker = "anchored1";
     const content = `Opening block ${buildCommentMarker(anchoredMarker)}\n\nSecond block.`;
-    const fragment = await writeFragment(ctx, `annot-frag-${stamp}`, content, [`annot-ref-${stamp}`]);
+    const fragment = await writeFragment(ctx, `annot-frag-${stamp}`, content, [
+      `annot-ref-${stamp}`,
+    ]);
     await testContext.storageService.margins.write(ctx.projectContext, fragment.uuid, {
       notes: "Whole-fragment note prose.",
-      comments: [{ markerId: anchoredMarker, excerpt: "Opening block", body: "Anchored comment body." }],
+      comments: [
+        { markerId: anchoredMarker, excerpt: "Opening block", body: "Anchored comment body." },
+      ],
     });
     const sequence = await writeSequence(ctx, `Annot Seq On ${stamp}`, [fragment.uuid]);
 
@@ -133,10 +141,14 @@ describe("exportSequenceCommand annotations", () => {
     const stamp = Date.now();
     await writeReference(ctx, `plain-ref-${stamp}`, "Reference prose that must not appear.");
     const content = `Body ${buildCommentMarker("plainmarker")}`;
-    const fragment = await writeFragment(ctx, `plain-frag-${stamp}`, content, [`plain-ref-${stamp}`]);
+    const fragment = await writeFragment(ctx, `plain-frag-${stamp}`, content, [
+      `plain-ref-${stamp}`,
+    ]);
     await testContext.storageService.margins.write(ctx.projectContext, fragment.uuid, {
       notes: "Note that must not appear.",
-      comments: [{ markerId: "plainmarker", excerpt: "Body", body: "Comment that must not appear." }],
+      comments: [
+        { markerId: "plainmarker", excerpt: "Body", body: "Comment that must not appear." },
+      ],
     });
     const sequence = await writeSequence(ctx, `Annot Seq Off ${stamp}`, [fragment.uuid]);
 

@@ -1,7 +1,8 @@
 # Export annotations: references as footnotes, Margin as comments/footnotes
 
 **Date**: 11-07-2026
-**Status**: Todo
+**Status**: Done
+**Closed**: 12-07-2026
 **Specs**: `specifications/export.md`, `specifications/margins.md`, `specifications/references.md`
 
 ---
@@ -79,12 +80,12 @@ The assembled markdown string cannot carry Word-comment semantics, so the docx p
 
 ### Phase 6 — Docs & wrap-up
 
-- [ ] `specifications/export.md`: annotation behavior section + Shipped entry; note txt = markdown bytes reality.
-- [ ] `specifications/margins.md`: amend the "export strips markers" constraint (strip in preview always; in export markers are consumed to place annotations when the toggle is on) + Shipped entry.
-- [ ] `references/suggestions.md`: txt spec/impl divergence entry.
-- [ ] Check off the two items in `references/TODO.md`.
-- [ ] `bun run format` + `bun run verify`; fix fallout.
-- [ ] Commit; set plan Status.
+- [x] `specifications/export.md`: annotation behavior section + Shipped entry; note txt = markdown bytes reality. (2026-07-12)
+- [x] `specifications/margins.md`: amend the "export strips markers" constraint (strip in preview always; in export markers are consumed to place annotations when the toggle is on) + Shipped entry. (2026-07-12)
+- [x] `references/suggestions.md`: txt spec/impl divergence entry. (2026-07-12)
+- [x] Check off the two items in `references/TODO.md`. (2026-07-12)
+- [x] `bun run format` + `bun run verify`; fix fallout (two lint errors: an unused test helper, an inline `import()` type annotation). (2026-07-12)
+- [x] Commit; set plan Status. (2026-07-12)
 
 ---
 

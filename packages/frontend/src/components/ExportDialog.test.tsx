@@ -64,9 +64,7 @@ describe("ExportDialog", () => {
     renderDialog();
 
     expect(screen.getByRole("checkbox", { name: "Include references" })).not.toBeChecked();
-    expect(
-      screen.getByRole("checkbox", { name: "Include margin annotations" }),
-    ).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Include margin annotations" })).toBeChecked();
   });
 
   it("persists a toggle change via the project update mutation", () => {
@@ -112,9 +110,7 @@ describe("ExportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
     await waitFor(() => {
-      expect(toast.warning).toHaveBeenCalledWith(
-        expect.stringContaining("chapter-one (2)"),
-      );
+      expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining("chapter-one (2)"));
     });
   });
 });

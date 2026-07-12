@@ -1,3 +1,5 @@
+import type { OrphanWarning } from "./assemble-markdown";
+
 // Lean navigation payload — the structure that drives the sidebar. It carries
 // no fragment content (the content lives entirely in the assembled markdown
 // string), only stable ids and display keys for navigation.
@@ -26,6 +28,6 @@ export type ExportAssembly = {
   markdown: string;
   docxMarkdown: string;
   commentBodies: Record<string, string>;
-  warnings: import("./assemble-markdown").OrphanWarning[];
+  warnings: OrphanWarning[];
   sections: NavSection[];
 };

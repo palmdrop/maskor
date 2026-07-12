@@ -110,7 +110,9 @@ const phrasingToRuns = (
         break;
       }
       case "strong": {
-        runs.push(...phrasingToRuns((node as Strong).children, context, { ...options, bold: true }));
+        runs.push(
+          ...phrasingToRuns((node as Strong).children, context, { ...options, bold: true }),
+        );
         break;
       }
       case "emphasis": {

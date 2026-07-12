@@ -40,12 +40,6 @@ const singleSection = (fragments: Fragment[]) => ({
   ],
 });
 
-const noAnnotations = (): SequenceAnnotations => ({
-  includeReferences: false,
-  includeMarginAnnotations: false,
-  byFragmentUuid: {},
-});
-
 describe("assembleSequenceForExport — byte-identity when annotations off", () => {
   it("matches assembleSequence output for the same options, markers stripped", () => {
     const fragments = [
@@ -86,7 +80,11 @@ describe("assembleSequenceForExport — Margin comments as footnotes", () => {
       includeReferences: false,
       includeMarginAnnotations: true,
       byFragmentUuid: {
-        "frag-1": { notes: "", comments: [{ markerId: "m1", body: "Heavy imagery." }], references: [] },
+        "frag-1": {
+          notes: "",
+          comments: [{ markerId: "m1", body: "Heavy imagery." }],
+          references: [],
+        },
       },
     });
     expect(result.markdown).toBe(
@@ -96,9 +94,7 @@ describe("assembleSequenceForExport — Margin comments as footnotes", () => {
   });
 
   it("strips an inert marker (no matching comment) with no footnote", () => {
-    const fragments = [
-      makeFragment({ uuid: "frag-1", key: "k", content: "Line. <!--c:ghost-->" }),
-    ];
+    const fragments = [makeFragment({ uuid: "frag-1", key: "k", content: "Line. <!--c:ghost-->" })];
     const result = assembleSequenceForExport(singleSection(fragments), fragments, baseOptions, {
       includeReferences: false,
       includeMarginAnnotations: true,
@@ -300,9 +296,7 @@ describe("assembleSequenceForExport — References as footnotes", () => {
   });
 
   it("emits definitions in first-reference order (notes, comment, reference within a fragment)", () => {
-    const fragments = [
-      makeFragment({ uuid: "frag-1", key: "k", content: "Prose. <!--c:m1-->" }),
-    ];
+    const fragments = [makeFragment({ uuid: "frag-1", key: "k", content: "Prose. <!--c:m1-->" })];
     const result = assembleSequenceForExport(singleSection(fragments), fragments, baseOptions, {
       includeReferences: true,
       includeMarginAnnotations: true,
@@ -316,8 +310,6 @@ describe("assembleSequenceForExport — References as footnotes", () => {
     });
     const definitionsStart = result.markdown.indexOf("[^c1]:");
     const definitionsTail = result.markdown.slice(definitionsStart);
-    expect(definitionsTail).toBe(
-      "[^c1]: Note.\n\n[^c2]: Comment.\n\n[^source]: Source — Cited.",
-    );
+    expect(definitionsTail).toBe("[^c1]: Note.\n\n[^c2]: Comment.\n\n[^source]: Source — Cited.");
   });
 });

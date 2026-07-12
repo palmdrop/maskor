@@ -141,14 +141,20 @@ type FootnoteState = {
 // Resolve (and, on first use, allocate) the footnote label for a reference key.
 // The label is the slugified key with a deterministic `-2`, `-3`, … suffix when a
 // different key already claimed that slug. Empty slugs degrade to `reference`.
-const allocateReferenceLabel = (key: string, state: FootnoteState): { label: string; isNew: boolean } => {
+const allocateReferenceLabel = (
+  key: string,
+  state: FootnoteState,
+): { label: string; isNew: boolean } => {
   const existing = state.referenceLabelByKey.get(key);
   if (existing !== undefined) return { label: existing, isNew: false };
 
   const base = slugify(key) || "reference";
   let candidate = base;
   let suffix = 2;
-  while (state.referenceKeyBySlug.has(candidate) && state.referenceKeyBySlug.get(candidate) !== key) {
+  while (
+    state.referenceKeyBySlug.has(candidate) &&
+    state.referenceKeyBySlug.get(candidate) !== key
+  ) {
     candidate = `${base}-${suffix}`;
     suffix += 1;
   }
