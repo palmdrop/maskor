@@ -5,7 +5,8 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/mdast": "^4.0.4"
+    "@types/mdast": "^4.0.4",
+    "jszip": "^3.10.1"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -13,7 +14,9 @@
   "dependencies": {
     "@maskor/shared": "workspace:*",
     "docx": "^9.7.1",
-    "mdast-util-from-markdown": "^2.0.3"
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm-footnote": "^2.1.0",
+    "micromark-extension-gfm-footnote": "^2.1.0"
   },
   "scripts": {
     "test": "bun test",

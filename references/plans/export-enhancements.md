@@ -47,19 +47,19 @@ The assembled markdown string cannot carry Word-comment semantics, so the docx p
 
 ### Phase 2 — Exporter core (md/txt)
 
-- [ ] Extend the assembly input with per-fragment annotation data: attached references (`key`, `body`) and the Margin (`notes`, `comments[{ markerId, body }]`). New `AnnotationOptions` on `assembleSequence`/`assembleMarkdown` (`packages/exporter/src/`).
-- [ ] Footnote rendering: replace each bound `<!--c:ID-->` with its sequential `[^cN]` ref; insert the notes ref on the title line or first block; append reference refs to the body's last line; collect definitions and emit at document end. Reference label slugging (reuse `packages/shared/src/utils/slugify.ts`) + collision suffixing.
-- [ ] Orphan detection during assembly (margin comment whose marker is absent from the body) → returned as structured warnings, not rendered.
-- [ ] Preview call sites pass annotations off; assembled output without toggles is byte-identical to today.
-- [ ] Tests: labels + counter order, dedupe across fragments, slug collision, empty reference body, titles on/off anchor placement, orphan exclusion + warning, inert marker stripping, no-annotation byte-identity.
-- [ ] Commit.
+- [x] (2026-07-12) Extend the assembly input with per-fragment annotation data: attached references (`key`, `body`) and the Margin (`notes`, `comments[{ markerId, body }]`). New `assembleSequenceForExport` carrying `SequenceAnnotations`; annotations ride the body block (`BlockAnnotations`), toggles ride `AssemblyOptions`.
+- [x] (2026-07-12) Footnote rendering: replace each bound `<!--c:ID-->` with its sequential `[^cN]` ref; insert the notes ref on the title line or first block; append reference refs to the body's last line; collect definitions and emit at document end. Reference label slugging (reuse `packages/shared/src/utils/slugify.ts`) + collision suffixing.
+- [x] (2026-07-12) Orphan detection during assembly (margin comment whose marker is absent from the body) → returned as structured `{ fragmentKey, count }` warnings, not rendered.
+- [x] (2026-07-12) Preview call sites pass annotations off; assembled output without toggles is byte-identical to today (`assembleSequence`/`assemblePieces` unchanged; verified by test).
+- [x] (2026-07-12) Tests: labels + counter order, dedupe across fragments, slug collision, empty reference body, titles on/off anchor placement, orphan exclusion + warning, inert marker stripping, no-annotation byte-identity.
+- [x] (2026-07-12) Commit.
 
 ### Phase 3 — Exporter docx
 
-- [ ] Add `micromark-extension-gfm-footnote` + `mdast-util-gfm-footnote` to `@maskor/exporter`; parse footnote syntax in `markdown-to-docx.ts`; lower to Word footnotes.
-- [ ] docx-bound assembly variant: keep comment markers, add synthetic notes markers; `markdownToDocx(markdown, { comments })` wraps marked paragraphs in Word comment ranges (comment author "Maskor" or the writer — pick one, keep it constant).
-- [ ] Tests: produced docx contains footnote part + comment part with expected text/anchors (unzip or docx-lib level assertions, matching existing markdown-to-docx test style).
-- [ ] Commit.
+- [x] (2026-07-12) Add `micromark-extension-gfm-footnote` + `mdast-util-gfm-footnote` to `@maskor/exporter`; parse footnote syntax in `markdown-to-docx.ts`; lower to Word footnotes (deduped refs share one footnote id).
+- [x] (2026-07-12) docx-bound assembly variant: keep comment markers, add synthetic notes markers; `markdownToDocx(markdown, { commentBodies })` wraps marked paragraphs/headings in Word comment ranges (comment author "Maskor", constant).
+- [x] (2026-07-12) Tests: produced docx contains footnote part + comment part with expected text/anchors (unzip-level assertions via `jszip`).
+- [x] (2026-07-12) Commit.
 
 ### Phase 4 — API
 
