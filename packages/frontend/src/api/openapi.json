@@ -126,6 +126,21 @@
               "separator"
             ]
           },
+          "export": {
+            "type": "object",
+            "properties": {
+              "includeReferences": {
+                "type": "boolean"
+              },
+              "includeMarginAnnotations": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "includeReferences",
+              "includeMarginAnnotations"
+            ]
+          },
           "overview": {
             "type": "object",
             "properties": {
@@ -167,6 +182,7 @@
           "suggestion",
           "advanced",
           "preview",
+          "export",
           "overview",
           "projectUUID",
           "userUUID",
@@ -333,6 +349,17 @@
                   "horizontal-rule",
                   "none"
                 ]
+              }
+            }
+          },
+          "export": {
+            "type": "object",
+            "properties": {
+              "includeReferences": {
+                "type": "boolean"
+              },
+              "includeMarginAnnotations": {
+                "type": "boolean"
               }
             }
           },
