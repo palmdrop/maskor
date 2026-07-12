@@ -1,6 +1,14 @@
 import type { Fragment, AssembledSequence } from "@maskor/shared";
-import { assembleMarkdown, type AssemblyBlock, type AssemblyOptions } from "./assemble-markdown";
-import type { AssembledDocument, NavSection } from "./types";
+import {
+  assembleMarkdown,
+  assembleAnnotated,
+  type AssemblyBlock,
+  type AssemblyOptions,
+  type BlockAnnotations,
+  type CommentAnnotation,
+  type ReferenceAnnotation,
+} from "./assemble-markdown";
+import type { AssembledDocument, ExportAssembly, NavSection } from "./types";
 
 type SequenceInput = {
   uuid: string;
@@ -93,6 +101,90 @@ export const assembleSequence = (
   const markdown = assembleMarkdown(blocks, options);
 
   return { markdown, sections };
+};
+
+// The per-fragment annotation payload the caller resolves (Margin notes/comments
+// and the bodies of attached references) and hands to the export assembly, keyed
+// by fragment uuid. `comments`/`references` mirror the assembler's block shape.
+export type FragmentAnnotations = {
+  notes: string;
+  comments: CommentAnnotation[];
+  references: ReferenceAnnotation[];
+};
+
+// The annotation input for a whole export: the two toggles plus the per-fragment
+// data. When both toggles are off this collapses to the plain assembly (markers
+// stripped, no footnotes) — byte-identical to `assembleSequence`.
+export type SequenceAnnotations = {
+  includeReferences: boolean;
+  includeMarginAnnotations: boolean;
+  byFragmentUuid: Record<string, FragmentAnnotations>;
+};
+
+const EMPTY_FRAGMENT_ANNOTATIONS: FragmentAnnotations = {
+  notes: "",
+  comments: [],
+  references: [],
+};
+
+/**
+ * Assemble a sequence for file export with References/Margin annotations.
+ *
+ * Returns both markdown dialects (see `ExportAssembly`): `markdown` for md/txt
+ * and `docxMarkdown` + `commentBodies` for the Word path, plus the nav payload
+ * and any orphaned-comment warnings. When both toggles are off the two markdown
+ * strings are byte-identical to `assembleSequence`'s output.
+ */
+export const assembleSequenceForExport = (
+  sequence: SequenceInput,
+  fragments: Fragment[],
+  options: SequenceAssemblyOptions,
+  annotations: SequenceAnnotations,
+): ExportAssembly => {
+  const assembled = buildAssembledSequence(sequence, fragments);
+
+  const blocks: AssemblyBlock[] = [];
+  const sections: NavSection[] = [];
+
+  for (const section of assembled.sections) {
+    blocks.push({ kind: "section-heading", text: section.name });
+
+    const navFragments = section.fragments.map((fragment) => {
+      const fragmentAnnotations =
+        annotations.byFragmentUuid[fragment.uuid] ?? EMPTY_FRAGMENT_ANNOTATIONS;
+      const blockAnnotations: BlockAnnotations = {
+        fragmentKey: fragment.key,
+        notes: fragmentAnnotations.notes,
+        comments: fragmentAnnotations.comments,
+        references: fragmentAnnotations.references,
+      };
+      blocks.push({ kind: "title", text: fragment.key });
+      blocks.push({
+        kind: "body",
+        anchorId: fragment.uuid,
+        content: fragment.content,
+        annotations: blockAnnotations,
+      });
+      return { uuid: fragment.uuid, key: fragment.key };
+    });
+
+    sections.push({ uuid: section.uuid, name: section.name, fragments: navFragments });
+  }
+
+  const assemblyOptions: AssemblyOptions = {
+    ...options,
+    includeReferences: annotations.includeReferences,
+    includeMarginAnnotations: annotations.includeMarginAnnotations,
+  };
+  const { footnote, docx } = assembleAnnotated(blocks, assemblyOptions);
+
+  return {
+    markdown: footnote.markdown,
+    docxMarkdown: docx.markdown,
+    commentBodies: docx.commentBodies,
+    warnings: footnote.warnings,
+    sections,
+  };
 };
 
 export type ImportPiece = {
