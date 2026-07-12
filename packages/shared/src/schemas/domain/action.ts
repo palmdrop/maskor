@@ -288,6 +288,10 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       fileName: z.string(),
       archivePath: z.string(),
       fragmentCount: z.number().int(),
+      // Effective annotation-toggle state for this export (config value or the
+      // per-export dialog override).
+      includeReferences: z.boolean(),
+      includeMarginAnnotations: z.boolean(),
     }),
   ),
 ]);

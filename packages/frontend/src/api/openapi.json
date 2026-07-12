@@ -3180,6 +3180,16 @@
             ],
             "description": "Output format for the exported file",
             "example": "md"
+          },
+          "includeReferences": {
+            "type": "boolean",
+            "description": "Override: render attached references as footnotes",
+            "example": true
+          },
+          "includeMarginAnnotations": {
+            "type": "boolean",
+            "description": "Override: render Margin notes and comments as footnotes/comments",
+            "example": true
           }
         },
         "required": [
@@ -13519,6 +13529,12 @@
                               },
                               "fragmentCount": {
                                 "type": "integer"
+                              },
+                              "includeReferences": {
+                                "type": "boolean"
+                              },
+                              "includeMarginAnnotations": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -13526,7 +13542,9 @@
                               "format",
                               "fileName",
                               "archivePath",
-                              "fragmentCount"
+                              "fragmentCount",
+                              "includeReferences",
+                              "includeMarginAnnotations"
                             ]
                           }
                         },

@@ -82,15 +82,25 @@ exportRouter.post("/:sequenceId", async (context) => {
     const result = await executeCommand(exportSequenceCommand, "sequence:export", commandContext, {
       sequenceId: paramResult.data.sequenceId,
       format: bodyResult.data.format,
+      includeReferences: bodyResult.data.includeReferences,
+      includeMarginAnnotations: bodyResult.data.includeMarginAnnotations,
     });
+
+    const headers: Record<string, string> = {
+      "Content-Type": result.mimeType,
+      "Content-Disposition": `attachment; filename="${result.fileName}"`,
+      "Content-Length": String(result.bytes.byteLength),
+    };
+
+    // Surface orphaned-comment warnings out-of-band (the body stays the file
+    // download): JSON, URI-encoded, only when non-empty.
+    if (result.warnings.length > 0) {
+      headers["X-Maskor-Export-Warnings"] = encodeURIComponent(JSON.stringify(result.warnings));
+    }
 
     return new Response(result.bytes, {
       status: 200,
-      headers: {
-        "Content-Type": result.mimeType,
-        "Content-Disposition": `attachment; filename="${result.fileName}"`,
-        "Content-Length": String(result.bytes.byteLength),
-      },
+      headers,
     });
   } catch (error) {
     return throwStorageError(error);

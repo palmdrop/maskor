@@ -63,11 +63,11 @@ The assembled markdown string cannot carry Word-comment semantics, so the docx p
 
 ### Phase 4 — API
 
-- [ ] `export-sequence` command: read the `export` config block; accept per-export overrides from the request body (dialog state); when toggles on, read each fragment's Margin and resolve attached reference keys to bodies via the storage service; pass annotations into assembly; collect orphan warnings into the result.
-- [ ] Route: surface warnings on the binary response (JSON in an `X-Maskor-Export-Warnings` header, URI-encoded) — the response body stays a file download.
-- [ ] Toggle changes persist via the existing project-update route.
-- [ ] Tests: command with toggles on/off, margins/references actually fetched, warnings populated, action-log payload includes the toggle state.
-- [ ] Commit.
+- [x] (2026-07-12) `export-sequence` command: read the `export` config block; accept per-export overrides from the request body (dialog state); when toggles on, read each fragment's Margin and resolve attached reference keys to bodies via the storage service; pass annotations into assembly; collect orphan warnings into the result. Effective toggle state added to the `sequence:exported` action-log payload.
+- [x] (2026-07-12) Route: surface warnings on the binary response (JSON in an `X-Maskor-Export-Warnings` header, URI-encoded) — the response body stays a file download.
+- [x] (2026-07-12) Toggle changes persist via the existing project-update route (Phase 1 wiring; exercised from the dialog in Phase 5).
+- [x] (2026-07-12) Tests: command with toggles on/off, margins/references actually fetched, warnings populated + header surfaced, body override beats config, missing Margin / unresolvable reference key handled, action-log payload includes the toggle state.
+- [x] (2026-07-12) Commit.
 
 ### Phase 5 — Frontend
 

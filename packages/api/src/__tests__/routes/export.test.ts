@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { createTestApp } from "../helpers/create-test-app";
 import { seedVault } from "../helpers/seed-vault";
 import type { ProjectRecord } from "@maskor/storage";
+import type { Fragment, Sequence } from "@maskor/shared";
 
 let testContext: ReturnType<typeof createTestApp>;
 let project: ProjectRecord;
@@ -109,5 +111,69 @@ describe("POST /projects/:projectId/export/:sequenceId", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("does not set the warnings header when there are no orphaned comments", async () => {
+    const response = await testContext.app.request(exportUrl(mainSequenceUuid), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format: "md", includeMarginAnnotations: true }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Maskor-Export-Warnings")).toBeNull();
+  });
+
+  it("surfaces orphaned-comment warnings via the X-Maskor-Export-Warnings header", async () => {
+    const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+
+    const fragment: Fragment = {
+      uuid: randomUUID(),
+      key: `route-orphan-${Date.now()}`,
+      content: "Body without any markers.",
+      readiness: 0.5,
+      contentHash: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      references: [],
+      isDiscarded: false,
+      aspects: {},
+    };
+    await testContext.storageService.fragments.write(projectContext, fragment);
+    await testContext.storageService.margins.write(projectContext, fragment.uuid, {
+      notes: "",
+      comments: [{ markerId: "absentmarker", excerpt: "gone", body: "Orphaned body." }],
+    });
+
+    const sequence: Sequence = {
+      uuid: randomUUID(),
+      name: `Route Orphan Seq ${Date.now()}`,
+      isMain: false,
+      active: false,
+      projectUuid: project.projectUUID,
+      sections: [
+        {
+          uuid: randomUUID(),
+          name: "Section",
+          fragments: [{ uuid: randomUUID(), fragmentUuid: fragment.uuid, position: 0 }],
+        },
+      ],
+    };
+    await testContext.storageService.sequences.write(projectContext, sequence);
+
+    const response = await testContext.app.request(exportUrl(sequence.uuid), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format: "md", includeMarginAnnotations: true }),
+    });
+
+    expect(response.status).toBe(200);
+    const rawHeader = response.headers.get("X-Maskor-Export-Warnings");
+    expect(rawHeader).not.toBeNull();
+    const warnings = JSON.parse(decodeURIComponent(rawHeader!)) as {
+      fragmentKey: string;
+      count: number;
+    }[];
+    expect(warnings).toEqual([{ fragmentKey: fragment.key, count: 1 }]);
   });
 });
