@@ -8,6 +8,8 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
+- [ ] split-into sequence feature: when splitting a fragment, it should be possible to add the fragments, in order, to a new sequence. This is to preserve their order, and possibly add them as a constraint for other sequences.
+
 - [ ] footnotes in export based on references on fragments
 
 - [ ] comments in export, from margin?
