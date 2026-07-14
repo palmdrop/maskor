@@ -57,7 +57,7 @@ export { writeMarginCommand } from "./margins/write-margin";
 export type { WriteMarginInput } from "./margins/write-margin";
 
 export { ensureMainSequenceCommand } from "./sequences/ensure-main-sequence";
-export { createSequenceCommand } from "./sequences/create-sequence";
+export { createSequenceCommand, SequenceNameInvalidError } from "./sequences/create-sequence";
 export { updateSequenceCommand } from "./sequences/update-sequence";
 export { deleteSequenceCommand } from "./sequences/delete-sequence";
 export { designateSequenceMainCommand } from "./sequences/designate-sequence-main";

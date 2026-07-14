@@ -1,4 +1,5 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
+import { HTTPException } from "hono/http-exception";
 import { computeViolations, detectCycles } from "@maskor/sequencer";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
@@ -46,11 +47,30 @@ import {
   cloneSequenceCommand,
   insertSequenceCommand,
   generateShuffleSequenceCommand,
+  SequenceNameInvalidError,
 } from "../commands";
 import type { CommandContext } from "../commands";
 import type { StorageService, ProjectContext } from "@maskor/storage";
 
 export const sequencesRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+// Maps a command-level SequenceNameInvalidError (empty / whitespace-only name,
+// which slips past the route schema's `min(1)`) to a 400 before falling through
+// to the shared storage-error mapping. Used by the create and update handlers.
+const throwSequenceNameOrStorageError = (error: unknown): never => {
+  if (error instanceof SequenceNameInvalidError) {
+    throw new HTTPException(400, {
+      res: new Response(
+        JSON.stringify({ error: "SEQUENCE_NAME_INVALID", message: error.message }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    });
+  }
+  return throwStorageError(error);
+};
 
 async function buildBundledResponse(
   storageService: StorageService,
@@ -168,6 +188,10 @@ const createSequenceRoute = createRoute({
       content: { "application/json": { schema: SequenceBundledResponseSchema } },
       description: "Sequence created",
     },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid sequence name",
+    },
     409: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Name conflict or main conflict",
@@ -196,6 +220,10 @@ const updateSequenceRoute = createRoute({
     200: {
       content: { "application/json": { schema: SequenceBundledResponseSchema } },
       description: "Updated sequence bundle",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid sequence name",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -796,7 +824,7 @@ sequencesRouter.openapi(createSequenceRoute, async (ctx) => {
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 201);
   } catch (error) {
-    return throwStorageError(error);
+    return throwSequenceNameOrStorageError(error);
   }
 });
 
@@ -820,7 +848,7 @@ sequencesRouter.openapi(updateSequenceRoute, async (ctx) => {
     const bundle = await buildBundledResponse(storageService, projectContext);
     return ctx.json(bundle, 200);
   } catch (error) {
-    return throwStorageError(error);
+    return throwSequenceNameOrStorageError(error);
   }
 });
 

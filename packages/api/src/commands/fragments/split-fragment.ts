@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Comment, Fragment, LogEntry, Sequence } from "@maskor/shared";
-import { markerIdSet, validateEntityKey } from "@maskor/shared";
+import { markerIdSet, validateEntityKey, validateSequenceName } from "@maskor/shared";
 import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey } from "@maskor/importer";
 import { placeFragment } from "@maskor/sequencer";
@@ -126,11 +126,10 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // not unique (no collision guard beyond trim/non-empty — matches createSequence).
     let sequenceName: string | undefined;
     if (input.intoSequence) {
-      sequenceName = input.intoSequence.name.trim();
-      if (!sequenceName) {
-        throw new SplitSequenceNameInvalidError(
-          "A sequence name is required to add the pieces to a new sequence.",
-        );
+      try {
+        sequenceName = validateSequenceName(input.intoSequence.name);
+      } catch (error) {
+        throw new SplitSequenceNameInvalidError((error as Error).message);
       }
     }
 

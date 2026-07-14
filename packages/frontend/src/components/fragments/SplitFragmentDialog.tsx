@@ -84,7 +84,7 @@ export const SplitFragmentDialog = ({
   const [splitError, setSplitError] = useState<string | null>(null);
   // Opt-in "add pieces to a new sequence" (default off). `sequenceName` is null
   // until the user types — the input then falls back to the derived default
-  // (`<original key> split`), which tracks the preview's piece 1 as it lands.
+  // (the original fragment's key), which tracks the preview's piece 1 as it lands.
   const [addToSequence, setAddToSequence] = useState(false);
   const [sequenceName, setSequenceName] = useState<string | null>(null);
 
@@ -192,12 +192,12 @@ export const SplitFragmentDialog = ({
   }, [pieces, effectiveKey]);
 
   // The original's key is piece 1 in the preview; the new sequence defaults to
-  // "<original key> split". Empty until the preview lands.
-  const originalKey = useMemo(
+  // that key (sequence names are free-form and not unique, so reusing the
+  // fragment's title verbatim is fine). Empty until the preview lands.
+  const defaultSequenceName = useMemo(
     () => pieces.find((piece) => piece.pieceIndex === 1)?.key ?? "",
     [pieces],
   );
-  const defaultSequenceName = originalKey ? `${originalKey} split` : "";
   // Shown in the input: the user's edit if they've typed, else the derived default.
   const effectiveSequenceName = sequenceName ?? defaultSequenceName;
 

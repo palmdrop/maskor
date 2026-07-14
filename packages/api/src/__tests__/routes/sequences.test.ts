@@ -156,6 +156,36 @@ describe("POST /projects/:projectId/sequences", () => {
     });
     expect(second.status).toBe(201);
   });
+
+  it("returns 400 for a whitespace-only name (slips past the schema's min(1))", async () => {
+    const response = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "   ",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("SEQUENCE_NAME_INVALID");
+  });
+
+  it("trims surrounding whitespace from the name", async () => {
+    const response = await testContext.app.request(baseUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "  Padded Name  ",
+        isMain: false,
+        projectUuid: project.projectUUID,
+      }),
+    });
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as SequenceBundle;
+    expect(body.sequences.find((s) => s.name === "Padded Name")).toBeDefined();
+  });
 });
 
 describe("GET /projects/:projectId/sequences/:sequenceId", () => {
@@ -201,6 +231,30 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
     const body = (await response.json()) as SequenceBundle;
     const renamed = body.sequences.find((s) => s.uuid === created.uuid);
     expect(renamed?.name).toBe("Renamed");
+  });
+
+  it("returns 400 when renaming to a whitespace-only name", async () => {
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Keeps Its Name",
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === "Keeps Its Name")!;
+
+    const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "   " }),
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("SEQUENCE_NAME_INVALID");
   });
 
   it("toggles the active flag", async () => {

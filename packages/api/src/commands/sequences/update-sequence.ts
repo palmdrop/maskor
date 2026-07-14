@@ -1,6 +1,7 @@
 import type { LogEntry } from "@maskor/shared";
 import type { IndexedSequence } from "@maskor/storage";
 import type { Command } from "../types";
+import { resolveSequenceName } from "./create-sequence";
 
 type UpdateSequenceInput = {
   sequenceId: string;
@@ -24,14 +25,15 @@ export const updateSequenceCommand: Command<UpdateSequenceInput, IndexedSequence
     }
 
     if (patch.name !== undefined && patch.name !== indexed.name) {
+      const newName = resolveSequenceName(patch.name);
       const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
-      const updated = { ...reread, name: patch.name };
+      const updated = { ...reread, name: newName };
       await ctx.storageService.sequences.write(ctx.projectContext, updated);
       logEntries.push({
         type: "sequence:renamed" as const,
         actor: ctx.actor,
         target: { type: "sequence" as const, uuid: sequenceId },
-        payload: { oldKey: indexed.name, newKey: patch.name },
+        payload: { oldKey: indexed.name, newKey: newName },
         undoable: false,
       });
     }

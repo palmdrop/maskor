@@ -285,7 +285,7 @@ describe("SplitFragmentDialog", () => {
     expect(screen.queryByText("Split failed. Try again.")).not.toBeInTheDocument();
   });
 
-  it("reveals a name input pre-filled with '<original key> split' when the checkbox is checked", async () => {
+  it("reveals a name input pre-filled with the original fragment's key when the checkbox is checked", async () => {
     previewMutateAsync.mockResolvedValue(
       previewResponse([
         { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
@@ -303,7 +303,7 @@ describe("SplitFragmentDialog", () => {
     fireEvent.click(checkbox);
 
     const nameInput = await screen.findByLabelText("New sequence name");
-    expect(nameInput).toHaveValue("my-fragment split");
+    expect(nameInput).toHaveValue("my-fragment");
   });
 
   it("sends intoSequence with the derived name on confirm when opted in", async () => {
@@ -321,7 +321,7 @@ describe("SplitFragmentDialog", () => {
         createdUuids: ["new-1"],
         warnings: [],
         createdSequenceUuid: "seq-1",
-        createdSequenceName: "my-fragment split",
+        createdSequenceName: "my-fragment",
       },
     });
 
@@ -342,7 +342,7 @@ describe("SplitFragmentDialog", () => {
         data: {
           fragmentId: "fragment-1",
           delimiter: { type: "heading", level: 1 },
-          intoSequence: { name: "my-fragment split" },
+          intoSequence: { name: "my-fragment" },
         },
       }),
     );
@@ -418,7 +418,7 @@ describe("SplitFragmentDialog", () => {
         createdUuids: ["new-1"],
         warnings: [],
         createdSequenceUuid: "seq-1",
-        createdSequenceName: "my-fragment split",
+        createdSequenceName: "my-fragment",
       },
     });
 
@@ -435,7 +435,7 @@ describe("SplitFragmentDialog", () => {
 
     await waitFor(() =>
       expect(toastSuccess).toHaveBeenCalledWith(
-        'Added the pieces to a new sequence "my-fragment split".',
+        'Added the pieces to a new sequence "my-fragment".',
       ),
     );
   });
