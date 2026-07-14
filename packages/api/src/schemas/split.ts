@@ -67,6 +67,13 @@ export const SplitBodySchema = z
     // Optional per-piece key overrides for the new pieces. Any new piece without an
     // override falls back to the derived key. Piece 1 (the original) is never renamed.
     pieceKeys: z.array(SplitPieceKeySchema).optional(),
+    // Optional opt-in: also create a new secondary sequence holding all resulting
+    // pieces in split order (piece 1 = the original, then pieces 2…N). Omitted →
+    // no sequence is created.
+    intoSequence: z
+      .object({ name: z.string().min(1).openapi({ example: "my-fragment split" }) })
+      .optional()
+      .openapi("SplitIntoSequence"),
   })
   .openapi("SplitBody");
 
@@ -83,5 +90,12 @@ export const SplitResultSchema = z
     warnings: z.array(z.string()).openapi({
       example: ['The new pieces could not be inserted into sequence "Main". Place them manually.'],
     }),
+    // Present when `intoSequence` was requested and the sequence write succeeded.
+    // Absent when not requested, or when the write failed (surfaced via `warnings`).
+    createdSequenceUuid: z
+      .string()
+      .optional()
+      .openapi({ example: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }),
+    createdSequenceName: z.string().optional().openapi({ example: "my-fragment split" }),
   })
   .openapi("SplitResult");

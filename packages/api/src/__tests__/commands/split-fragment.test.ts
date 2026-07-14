@@ -11,6 +11,7 @@ import {
   SplitNoOpError,
   SplitKeyConflictError,
   SplitKeyInvalidError,
+  SplitSequenceNameInvalidError,
 } from "../../commands/fragments/split-fragment";
 import type { Logger } from "@maskor/shared/logger";
 
@@ -681,5 +682,181 @@ describe("splitFragmentCommand", () => {
     // The original is untouched — full prose intact.
     const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
     expect(reread.content).toContain("Body three");
+  });
+
+  it("creates a new secondary sequence holding the pieces in split order when intoSequence is given", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `into-seq-${stamp}`,
+      "# One\nBody one\n# Two\nBody two\n# Three\nBody three",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      intoSequence: { name: `into-seq-${stamp} split` },
+    });
+
+    expect(result.createdCount).toBe(2);
+    expect(result.warnings).toEqual([]);
+    expect(result.createdSequenceUuid).toBeDefined();
+    expect(result.createdSequenceName).toBe(`into-seq-${stamp} split`);
+
+    const sequence = await ctx.storageService.sequences.read(
+      ctx.projectContext,
+      result.createdSequenceUuid!,
+    );
+    // A plain user-authored secondary: not main, active, no origin.
+    expect(sequence.isMain).toBe(false);
+    expect(sequence.active).toBe(true);
+    expect(sequence.origin).toBeUndefined();
+    expect(sequence.name).toBe(`into-seq-${stamp} split`);
+    // One "Main" section holding piece 1 (the original) then pieces 2…N in order.
+    expect(sequence.sections).toHaveLength(1);
+    expect(sequence.sections[0]!.name).toBe("Main");
+    const order = sequence.sections[0]!.fragments
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((placement) => placement.fragmentUuid);
+    expect(order).toEqual([original.uuid, result.createdUuids[0]!, result.createdUuids[1]!]);
+  });
+
+  it("creates no sequence when intoSequence is omitted", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `no-into-seq-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+    const sequencesBefore = await ctx.storageService.sequences.readAll(ctx.projectContext);
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.createdSequenceUuid).toBeUndefined();
+    expect(result.createdSequenceName).toBeUndefined();
+    const sequencesAfter = await ctx.storageService.sequences.readAll(ctx.projectContext);
+    expect(sequencesAfter.length).toBe(sequencesBefore.length);
+  });
+
+  it("rejects a blank intoSequence name in Phase A with nothing written", async () => {
+    const ctx = await makeCommandContext();
+    const original = await writeFragment(
+      ctx,
+      `blank-seq-name-${Date.now()}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+    const summariesBefore = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
+    const sequencesBefore = await ctx.storageService.sequences.readAll(ctx.projectContext);
+
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "heading", level: 1 },
+        intoSequence: { name: "   " },
+      }),
+    ).rejects.toBeInstanceOf(SplitSequenceNameInvalidError);
+
+    // Nothing written: no new fragments, no new sequence, original intact.
+    const summariesAfter = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
+    expect(summariesAfter.length).toBe(summariesBefore.length);
+    const sequencesAfter = await ctx.storageService.sequences.readAll(ctx.projectContext);
+    expect(sequencesAfter.length).toBe(sequencesBefore.length);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.content).toContain("Body two");
+  });
+
+  it("collects a sequence-creation failure as a warning; the split itself commits", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `into-seq-fail-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    // Fail every sequence write — the core fragment writes go through untouched.
+    const failingContext: CommandContext = {
+      ...ctx,
+      storageService: {
+        ...ctx.storageService,
+        sequences: {
+          ...ctx.storageService.sequences,
+          write: () => Promise.reject(new Error("sequence write exploded")),
+        },
+      },
+    };
+
+    const { result } = await splitFragmentCommand.execute(failingContext, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      intoSequence: { name: `into-seq-fail-${stamp} split` },
+    });
+
+    // The split committed despite the sequence-creation failure.
+    expect(result.createdUuids).toHaveLength(1);
+    expect(result.createdSequenceUuid).toBeUndefined();
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.content.trim()).toBe("# Two\nBody two");
+    // The failure surfaced as a warning naming the sequence, not a throw.
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain(`into-seq-fail-${stamp} split`);
+  });
+
+  it("records the created sequence on the fragment:split action-log payload", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `into-seq-log-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    const { result, logEntries } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      intoSequence: { name: `into-seq-log-${stamp} split` },
+    });
+
+    expect(logEntries).toHaveLength(1);
+    expect(logEntries[0]!.payload).toMatchObject({
+      sourceFragmentUuid: original.uuid,
+      createdSequenceUuid: result.createdSequenceUuid,
+      createdSequenceName: `into-seq-log-${stamp} split`,
+    });
+  });
+
+  it("places an unplaced original in the new sequence too (piece 1 first)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    // The original is not placed in any existing sequence.
+    const original = await writeFragment(
+      ctx,
+      `into-seq-unplaced-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      intoSequence: { name: `into-seq-unplaced-${stamp} split` },
+    });
+
+    const sequence = await ctx.storageService.sequences.read(
+      ctx.projectContext,
+      result.createdSequenceUuid!,
+    );
+    const order = sequence.sections[0]!.fragments
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((placement) => placement.fragmentUuid);
+    expect(order).toEqual([original.uuid, result.createdUuids[0]!]);
   });
 });

@@ -17,6 +17,7 @@ import {
   SplitNoOpError,
   SplitKeyConflictError,
   SplitKeyInvalidError,
+  SplitSequenceNameInvalidError,
 } from "../commands";
 import type { CommandContext } from "../commands";
 
@@ -110,7 +111,7 @@ splitRouter.openapi(splitPreviewRoute, async (ctx) => {
 });
 
 splitRouter.openapi(splitRoute, async (ctx) => {
-  const { fragmentId, delimiter, pieceKeys } = ctx.req.valid("json");
+  const { fragmentId, delimiter, pieceKeys, intoSequence } = ctx.req.valid("json");
 
   try {
     const result = await executeCommand(
@@ -121,6 +122,7 @@ splitRouter.openapi(splitRoute, async (ctx) => {
         fragmentId,
         delimiter,
         pieceKeys,
+        intoSequence,
       },
     );
     return ctx.json(result, 200);
@@ -147,6 +149,17 @@ splitRouter.openapi(splitRoute, async (ctx) => {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }),
+      });
+    }
+    if (error instanceof SplitSequenceNameInvalidError) {
+      throw new HTTPException(400, {
+        res: new Response(
+          JSON.stringify({ error: "SPLIT_SEQUENCE_NAME_INVALID", message: error.message }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
       });
     }
     return throwStorageError(error);

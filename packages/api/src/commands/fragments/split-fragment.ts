@@ -36,6 +36,17 @@ export class SplitKeyInvalidError extends Error {
   }
 }
 
+// The opt-in "add pieces to a new sequence" name is empty (or whitespace-only).
+// Validated in Phase A so a rejected name leaves the vault untouched. Surfaced as
+// a 400 (SPLIT_SEQUENCE_NAME_INVALID). The dialog gates Confirm on a non-empty
+// name, so this is the rare fall-through (e.g. a direct API call).
+export class SplitSequenceNameInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SplitSequenceNameInvalidError";
+  }
+}
+
 // A user-chosen key for a new piece (pieceIndex is 1-based, as in the preview;
 // piece 1 is the original and is never renamed).
 export type SplitPieceKey = {
@@ -47,6 +58,10 @@ export type SplitFragmentInput = {
   fragmentId: string;
   delimiter: SplitDelimiter;
   pieceKeys?: SplitPieceKey[];
+  // Opt-in: also create a new secondary sequence holding all resulting pieces in
+  // split order (piece 1 = the original, then pieces 2…N). Omitted → no sequence
+  // is created. The name is validated (trimmed, non-empty) in Phase A.
+  intoSequence?: { name: string };
 };
 
 export type SplitFragmentResult = {
@@ -58,6 +73,11 @@ export type SplitFragmentResult = {
   // the original is truncated — so these surface as warnings on a 200 rather than
   // a bogus "Split failed" 500. Empty on a clean split.
   warnings: string[];
+  // The new secondary sequence created when `intoSequence` was requested and the
+  // Phase C write succeeded. Absent when not requested, or when the write failed
+  // (a warning is surfaced instead — see `warnings`).
+  createdSequenceUuid?: string;
+  createdSequenceName?: string;
 };
 
 // The label recorded in the action-log payload + history view.
@@ -99,6 +119,19 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       throw new SplitNoOpError(
         `Delimiter "${delimiterLabel(input.delimiter)}" yields a single piece — nothing to split.`,
       );
+    }
+
+    // Opt-in "add pieces to a new sequence" name: validated here in Phase A so a
+    // blank name rejects the whole split with nothing written. Sequence names are
+    // not unique (no collision guard beyond trim/non-empty — matches createSequence).
+    let sequenceName: string | undefined;
+    if (input.intoSequence) {
+      sequenceName = input.intoSequence.name.trim();
+      if (!sequenceName) {
+        throw new SplitSequenceNameInvalidError(
+          "A sequence name is required to add the pieces to a new sequence.",
+        );
+      }
     }
 
     const summaries = await ctx.storageService.fragments.readAllSummaries(ctx.projectContext);
@@ -300,6 +333,47 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       }
     }
 
+    // Opt-in new sequence: create a plain user-authored secondary sequence holding
+    // all resulting pieces in split order — piece 1 (the original) first, then the
+    // created pieces 2…N. `isMain: false`, `active: true` (a user-requested ordering
+    // constraint, satisfied by construction: the split inserts the pieces
+    // contiguously after the original everywhere, so no violation is manufactured at
+    // creation time), no `origin` (an origin would make it read-only — ADR 0014). A
+    // write failure degrades to a warning like the other Phase C follow-ups.
+    let createdSequenceUuid: string | undefined;
+    let createdSequenceName: string | undefined;
+    if (sequenceName) {
+      try {
+        const orderedFragmentUuids = [original.uuid, ...createdUuids];
+        const newSequence: Sequence = {
+          uuid: randomUUID(),
+          name: sequenceName,
+          isMain: false,
+          active: true,
+          projectUuid: ctx.projectContext.projectUUID,
+          sections: [
+            {
+              uuid: randomUUID(),
+              name: "Main",
+              fragments: orderedFragmentUuids.map((fragmentUuid, position) => ({
+                uuid: randomUUID(),
+                fragmentUuid,
+                position,
+              })),
+            },
+          ],
+        };
+        await ctx.storageService.sequences.write(ctx.projectContext, newSequence);
+        createdSequenceUuid = newSequence.uuid;
+        createdSequenceName = sequenceName;
+      } catch (error) {
+        ctx.logger.warn({ error }, "split: creating the pieces sequence failed");
+        warnings.push(
+          `The pieces could not be added to a new sequence "${sequenceName}". Create it manually.`,
+        );
+      }
+    }
+
     const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [
       {
         type: "fragment:split",
@@ -310,6 +384,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
           delimiter: delimiterLabel(input.delimiter),
           createdCount: createdUuids.length,
           createdUuids,
+          ...(createdSequenceUuid ? { createdSequenceUuid, createdSequenceName } : {}),
         },
         undoable: false,
       },
@@ -321,6 +396,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         createdCount: createdUuids.length,
         createdUuids,
         warnings,
+        ...(createdSequenceUuid ? { createdSequenceUuid, createdSequenceName } : {}),
       },
       logEntries,
     };

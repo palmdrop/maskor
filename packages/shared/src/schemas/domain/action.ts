@@ -252,6 +252,11 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       delimiter: z.string(),
       createdCount: z.number().int(),
       createdUuids: z.array(z.string()),
+      // Present when the split also created a new secondary sequence holding the
+      // pieces (the opt-in "add pieces to a new sequence" path). Folded into this
+      // single entry rather than a separate sequence:created entry.
+      createdSequenceUuid: z.string().optional(),
+      createdSequenceName: z.string().optional(),
     }),
   ),
   entry("margin:updated", empty),

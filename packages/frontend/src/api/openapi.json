@@ -3051,6 +3051,14 @@
             "example": [
               "The new pieces could not be inserted into sequence \"Main\". Place them manually."
             ]
+          },
+          "createdSequenceUuid": {
+            "type": "string",
+            "example": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+          },
+          "createdSequenceName": {
+            "type": "string",
+            "example": "my-fragment split"
           }
         },
         "required": [
@@ -3075,6 +3083,9 @@
             "items": {
               "$ref": "#/components/schemas/SplitPieceKey"
             }
+          },
+          "intoSequence": {
+            "$ref": "#/components/schemas/SplitIntoSequence"
           }
         },
         "required": [
@@ -3099,6 +3110,19 @@
         "required": [
           "pieceIndex",
           "key"
+        ]
+      },
+      "SplitIntoSequence": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "example": "my-fragment split"
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "ExportSequenceBody": {
@@ -13179,6 +13203,12 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "createdSequenceUuid": {
+                                "type": "string"
+                              },
+                              "createdSequenceName": {
+                                "type": "string"
                               }
                             },
                             "required": [
