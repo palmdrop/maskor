@@ -20,8 +20,12 @@ vi.mock("@api/action-log", () => ({
 }));
 
 const toastWarning = vi.fn();
+const toastSuccess = vi.fn();
 vi.mock("sonner", () => ({
-  toast: { warning: (...parameters: unknown[]) => toastWarning(...parameters) },
+  toast: {
+    warning: (...parameters: unknown[]) => toastWarning(...parameters),
+    success: (...parameters: unknown[]) => toastSuccess(...parameters),
+  },
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -60,6 +64,7 @@ beforeEach(() => {
   invalidateQueries.mockReset();
   invalidateQueries.mockResolvedValue(undefined);
   toastWarning.mockReset();
+  toastSuccess.mockReset();
 });
 
 describe("SplitFragmentDialog", () => {
@@ -278,6 +283,161 @@ describe("SplitFragmentDialog", () => {
       'The new pieces could not be inserted into sequence "Main". Place them manually.',
     );
     expect(screen.queryByText("Split failed. Try again.")).not.toBeInTheDocument();
+  });
+
+  it("reveals a name input pre-filled with '<original key> split' when the checkbox is checked", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+
+    renderDialog();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Add pieces to a new sequence",
+    });
+    // Hidden until opted in.
+    expect(screen.queryByLabelText("New sequence name")).not.toBeInTheDocument();
+    fireEvent.click(checkbox);
+
+    const nameInput = await screen.findByLabelText("New sequence name");
+    expect(nameInput).toHaveValue("my-fragment split");
+  });
+
+  it("sends intoSequence with the derived name on confirm when opted in", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+        createdSequenceUuid: "seq-1",
+        createdSequenceName: "my-fragment split",
+      },
+    });
+
+    renderDialog();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Add pieces to a new sequence",
+    });
+    fireEvent.click(checkbox);
+
+    const confirm = screen.getByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(splitMutateAsync).toHaveBeenCalledWith({
+        projectId: "project-1",
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          intoSequence: { name: "my-fragment split" },
+        },
+      }),
+    );
+  });
+
+  it("does not send intoSequence when the checkbox is left unchecked", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "a", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+      },
+    });
+
+    renderDialog();
+
+    const confirm = await screen.findByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(splitMutateAsync).toHaveBeenCalledWith({
+        projectId: "project-1",
+        data: { fragmentId: "fragment-1", delimiter: { type: "heading", level: 1 } },
+      }),
+    );
+    // No intoSequence key in the sent payload.
+    expect(splitMutateAsync.mock.calls[0]![0].data.intoSequence).toBeUndefined();
+  });
+
+  it("blocks confirm when opted in but the sequence name is emptied", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+
+    renderDialog();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Add pieces to a new sequence",
+    });
+    fireEvent.click(checkbox);
+
+    const nameInput = await screen.findByLabelText("New sequence name");
+    fireEvent.change(nameInput, { target: { value: "  " } });
+
+    expect(await screen.findByText("A sequence name is required.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Split" })).toBeDisabled();
+  });
+
+  it("surfaces a success toast naming the created sequence", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+        createdSequenceUuid: "seq-1",
+        createdSequenceName: "my-fragment split",
+      },
+    });
+
+    renderDialog();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Add pieces to a new sequence",
+    });
+    fireEvent.click(checkbox);
+
+    const confirm = screen.getByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        'Added the pieces to a new sequence "my-fragment split".',
+      ),
+    );
   });
 
   it("shows an error and keeps the dialog open when the split itself fails", async () => {

@@ -18,6 +18,7 @@ import type {
   SplitPieceKey,
 } from "@api/generated/maskorAPI.schemas";
 import { Button } from "@components/ui/button";
+import { CheckboxField } from "@components/ui/checkbox";
 import { Input } from "@components/ui/input";
 import {
   Dialog,
@@ -81,6 +82,11 @@ export const SplitFragmentDialog = ({
   const [editedKeys, setEditedKeys] = useState<Record<number, string>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
+  // Opt-in "add pieces to a new sequence" (default off). `sequenceName` is null
+  // until the user types — the input then falls back to the derived default
+  // (`<original key> split`), which tracks the preview's piece 1 as it lands.
+  const [addToSequence, setAddToSequence] = useState(false);
+  const [sequenceName, setSequenceName] = useState<string | null>(null);
 
   const delimiter = useMemo<SplitDelimiter | null>(() => {
     if (delimiterType === null) return null;
@@ -119,6 +125,8 @@ export const SplitFragmentDialog = ({
       setHeadingLevel(1);
       setPreviewError(null);
       setSplitError(null);
+      setAddToSequence(false);
+      setSequenceName(null);
       return;
     }
     let cancelled = false;
@@ -183,15 +191,29 @@ export const SplitFragmentDialog = ({
     return null;
   }, [pieces, effectiveKey]);
 
+  // The original's key is piece 1 in the preview; the new sequence defaults to
+  // "<original key> split". Empty until the preview lands.
+  const originalKey = useMemo(
+    () => pieces.find((piece) => piece.pieceIndex === 1)?.key ?? "",
+    [pieces],
+  );
+  const defaultSequenceName = originalKey ? `${originalKey} split` : "";
+  // Shown in the input: the user's edit if they've typed, else the derived default.
+  const effectiveSequenceName = sequenceName ?? defaultSequenceName;
+
   const pieceCount = pieces.length;
   const isPending = splitFragment.isPending;
   // Gate on the preview being settled too: between switching to a delimiter and
   // its preview returning, `pieces` still holds the previous delimiter's result,
   // so confirming would dispatch against a stale count. Disable until it lands.
+  // When opting into a new sequence, its name must be non-empty.
+  const sequenceNameError =
+    addToSequence && !effectiveSequenceName.trim() ? "A sequence name is required." : null;
   const canConfirm =
     pieceCount > 1 &&
     delimiter !== null &&
     keyError === null &&
+    sequenceNameError === null &&
     !isPending &&
     !previewSplit.isPending;
 
@@ -206,14 +228,26 @@ export const SplitFragmentDialog = ({
     const pieceKeys: SplitPieceKey[] = Object.entries(editedKeys)
       .map(([pieceIndex, key]) => ({ pieceIndex: Number(pieceIndex), key: key.trim() }))
       .filter((override) => override.pieceIndex >= 2);
+    // Opt-in: also create a new sequence holding the pieces. Send only when checked
+    // and the (trimmed) name is non-empty — the confirm gate already enforces this.
+    const trimmedSequenceName = effectiveSequenceName.trim();
+    const intoSequence =
+      addToSequence && trimmedSequenceName ? { name: trimmedSequenceName } : undefined;
     let splitWarnings: string[] = [];
+    let createdSequenceName: string | undefined;
     try {
       const response = await splitFragment.mutateAsync({
         projectId,
-        data: { fragmentId, delimiter, pieceKeys: pieceKeys.length ? pieceKeys : undefined },
+        data: {
+          fragmentId,
+          delimiter,
+          pieceKeys: pieceKeys.length ? pieceKeys : undefined,
+          intoSequence,
+        },
       });
       if (response.status === 200) {
         splitWarnings = response.data.warnings;
+        createdSequenceName = response.data.createdSequenceName;
       }
     } catch (error) {
       // Surface the server's key-conflict message when present (e.g. a chosen key
@@ -243,9 +277,13 @@ export const SplitFragmentDialog = ({
       // on the next fetch. Do not surface this as a split failure.
     }
     invalidateActionLog();
-    // Non-fatal follow-up failures (sequence placement, Margin migration): the
-    // split itself committed, so the dialog closes as a success and the warnings
-    // surface as a toast rather than a bogus "Split failed".
+    // The pieces landed in a new sequence — confirm it by name (no navigation).
+    if (createdSequenceName) {
+      toast.success(`Added the pieces to a new sequence "${createdSequenceName}".`);
+    }
+    // Non-fatal follow-up failures (sequence placement, Margin migration, the new
+    // sequence write): the split itself committed, so the dialog closes as a
+    // success and the warnings surface as a toast rather than a bogus "Split failed".
     for (const warning of splitWarnings) {
       toast.warning(warning);
     }
@@ -257,6 +295,8 @@ export const SplitFragmentDialog = ({
     fragmentId,
     delimiter,
     editedKeys,
+    addToSequence,
+    effectiveSequenceName,
     queryClient,
     invalidateActionLog,
     onOpenChange,
@@ -376,6 +416,29 @@ export const SplitFragmentDialog = ({
             )}
             {keyError && <p className="text-sm text-destructive">{keyError}</p>}
             {splitError && <p className="text-sm text-destructive">{splitError}</p>}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-2">
+            <CheckboxField
+              id="split-into-sequence"
+              label="Add pieces to a new sequence"
+              checked={addToSequence}
+              onCheckedChange={(checked) => setAddToSequence(checked === true)}
+            />
+            {addToSequence && (
+              <div className="flex min-w-0 flex-col gap-1 pl-6">
+                <Input
+                  value={effectiveSequenceName}
+                  onChange={(event) => setSequenceName(event.target.value)}
+                  aria-label="New sequence name"
+                  placeholder="Sequence name"
+                  className="h-8 text-sm"
+                />
+                {sequenceNameError && (
+                  <p className="text-sm text-destructive">{sequenceNameError}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
