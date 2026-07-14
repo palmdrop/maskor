@@ -15,7 +15,9 @@ type BooleanSettingPath =
   | "editor.vimMode"
   | "editor.rawMarkdownMode"
   | "editor.vimClipboardSync"
-  | "advanced.showFragmentStats";
+  | "advanced.showFragmentStats"
+  | "export.includeReferences"
+  | "export.includeMarginAnnotations";
 
 type NumberSettingPath =
   | "editor.fontSize"
@@ -33,7 +35,7 @@ export type SettingValue<P extends SettingPath> = P extends BooleanSettingPath
     ? number
     : string;
 
-type SettingSection = "editor" | "suggestion" | "advanced";
+type SettingSection = "editor" | "suggestion" | "advanced" | "export";
 
 export type UseProjectSetting<V> = {
   /** The authoritative server value (falls back to `fallback` until the project loads). */

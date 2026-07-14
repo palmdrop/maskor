@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const { exportMock, updateProjectMock, projectState } = vi.hoisted(() => ({
   exportMock: { mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null, data: undefined },
-  updateProjectMock: { mutate: vi.fn(), isPending: false },
+  // useProjectSetting commits via mutateAsync (awaited), not fire-and-forget mutate.
+  updateProjectMock: { mutateAsync: vi.fn(() => Promise.resolve()), isPending: false },
   projectState: {
     export: { includeReferences: true, includeMarginAnnotations: true },
   },
@@ -50,7 +51,8 @@ const renderDialog = () =>
 beforeEach(() => {
   exportMock.mutate.mockReset();
   exportMock.reset.mockReset();
-  updateProjectMock.mutate.mockReset();
+  updateProjectMock.mutateAsync.mockReset();
+  updateProjectMock.mutateAsync.mockResolvedValue(undefined);
   (toast.warning as ReturnType<typeof vi.fn>).mockReset();
   projectState.export = { includeReferences: true, includeMarginAnnotations: true };
   // jsdom lacks object-URL support used by the download trigger.
@@ -72,10 +74,10 @@ describe("ExportDialog", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Include references" }));
 
-    expect(updateProjectMock.mutate).toHaveBeenCalledWith(
-      { projectId: "proj-uuid", data: { export: { includeReferences: false } } },
-      expect.anything(),
-    );
+    expect(updateProjectMock.mutateAsync).toHaveBeenCalledWith({
+      projectId: "proj-uuid",
+      data: { export: { includeReferences: false } },
+    });
   });
 
   it("sends the current toggle state with the export request", () => {

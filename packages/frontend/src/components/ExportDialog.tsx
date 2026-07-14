@@ -1,15 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 import { useExportSequence } from "@api/generated/export/export";
-import type { ExportSequenceBody, ProjectUpdate } from "@api/generated/maskorAPI.schemas";
+import type { ExportSequenceBody } from "@api/generated/maskorAPI.schemas";
 import { useListSequences } from "@api/generated/sequences/sequences";
-import {
-  useGetProject,
-  useUpdateProject,
-  getGetProjectQueryKey,
-  getListProjectsQueryKey,
-} from "@api/generated/projects/projects";
+import { useProjectSetting } from "@hooks/useProjectSetting";
 import { ConfirmDialog } from "@components/ui/confirm-dialog";
 import { CheckboxField } from "@components/ui/checkbox";
 import { Field } from "@components/ui/field";
@@ -72,44 +66,25 @@ export const ExportDialog = ({
 
   const activeSequenceId = selectedSequenceId ?? initialSequenceId ?? mainSequence?.uuid ?? null;
 
-  // Annotation toggles: seeded from the project's persisted `export` config, held
-  // locally so the current dialog state rides the export request, and persisted
-  // back to the config on every change.
-  const queryClient = useQueryClient();
-  const { data: projectEnvelope } = useGetProject(projectId);
-  const projectExport = projectEnvelope?.status === 200 ? projectEnvelope.data.export : null;
-  const updateProject = useUpdateProject();
-
-  const [includeReferences, setIncludeReferences] = useState(true);
-  const [includeMarginAnnotations, setIncludeMarginAnnotations] = useState(true);
-
-  // Resync from the server config once the project loads (and if it changes).
-  useEffect(() => {
-    if (!projectExport) return;
-    setIncludeReferences(projectExport.includeReferences);
-    setIncludeMarginAnnotations(projectExport.includeMarginAnnotations);
-  }, [projectExport]);
-
-  const persistExportConfig = (patch: ProjectUpdate["export"]) => {
-    updateProject.mutate(
-      { projectId, data: { export: patch } as ProjectUpdate },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-        },
-      },
-    );
-  };
+  // Annotation toggles own their read-config → draft → commit lifecycle via
+  // `useProjectSetting`. The draft flips the checkbox instantly on click while
+  // `commit` persists back to the project config in the background; the export
+  // request below rides the current draft values.
+  const includeReferences = useProjectSetting(projectId, "export.includeReferences", true);
+  const includeMarginAnnotations = useProjectSetting(
+    projectId,
+    "export.includeMarginAnnotations",
+    true,
+  );
 
   const handleIncludeReferencesChange = (next: boolean) => {
-    setIncludeReferences(next);
-    persistExportConfig({ includeReferences: next });
+    includeReferences.setDraft(next);
+    includeReferences.commit(next);
   };
 
   const handleIncludeMarginAnnotationsChange = (next: boolean) => {
-    setIncludeMarginAnnotations(next);
-    persistExportConfig({ includeMarginAnnotations: next });
+    includeMarginAnnotations.setDraft(next);
+    includeMarginAnnotations.commit(next);
   };
 
   const mutation = useExportSequence();
@@ -120,7 +95,11 @@ export const ExportDialog = ({
       {
         projectId,
         sequenceId: activeSequenceId,
-        data: { format, includeReferences, includeMarginAnnotations },
+        data: {
+          format,
+          includeReferences: includeReferences.draft,
+          includeMarginAnnotations: includeMarginAnnotations.draft,
+        },
       },
       {
         onSuccess: (response) => {
@@ -144,6 +123,10 @@ export const ExportDialog = ({
     }
     onOpenChange(nextOpen);
   };
+
+  // A failed toggle persistence is non-fatal (the export still rides the draft),
+  // so it surfaces inline under the checkboxes rather than blocking the dialog.
+  const settingError = includeReferences.error ?? includeMarginAnnotations.error;
 
   const errorMessage = (() => {
     if (mutation.error) return mutation.error.message;
@@ -204,14 +187,15 @@ export const ExportDialog = ({
           <div className="flex flex-col gap-2">
             <CheckboxField
               label="Include references"
-              checked={includeReferences}
+              checked={includeReferences.draft}
               onCheckedChange={(checked) => handleIncludeReferencesChange(checked === true)}
             />
             <CheckboxField
               label="Include margin annotations"
-              checked={includeMarginAnnotations}
+              checked={includeMarginAnnotations.draft}
               onCheckedChange={(checked) => handleIncludeMarginAnnotationsChange(checked === true)}
             />
+            {settingError && <p className="text-xs text-destructive">{settingError}</p>}
           </div>
         </div>
       }

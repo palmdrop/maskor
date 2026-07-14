@@ -71,6 +71,41 @@ type SequenceAssemblyOptions = Pick<
   "separator" | "showTitles" | "showSectionHeadings" | "includeAnchors"
 >;
 
+// One assembled fragment as it appears in the section/nav loop below.
+type AssembledFragment = AssembledSequence["sections"][number]["fragments"][number];
+
+// Build the ordered assembly blocks and the parallel lean nav from a resolved
+// sequence. Both the plain and the export assemblies build them here so the two
+// can never diverge (skip rules, nav shape, block ordering). Pass
+// `resolveAnnotations` to attach per-fragment annotations to each body block;
+// omit it for the plain, annotation-free assembly.
+const buildSequenceBlocks = (
+  assembled: AssembledSequence,
+  resolveAnnotations?: (fragment: AssembledFragment) => BlockAnnotations,
+): { blocks: AssemblyBlock[]; sections: NavSection[] } => {
+  const blocks: AssemblyBlock[] = [];
+  const sections: NavSection[] = [];
+
+  for (const section of assembled.sections) {
+    blocks.push({ kind: "section-heading", text: section.name });
+
+    const navFragments = section.fragments.map((fragment) => {
+      blocks.push({ kind: "title", text: fragment.key });
+      blocks.push({
+        kind: "body",
+        anchorId: fragment.uuid,
+        content: fragment.content,
+        ...(resolveAnnotations ? { annotations: resolveAnnotations(fragment) } : {}),
+      });
+      return { uuid: fragment.uuid, key: fragment.key };
+    });
+
+    sections.push({ uuid: section.uuid, name: section.name, fragments: navFragments });
+  }
+
+  return { blocks, sections };
+};
+
 /**
  * Assemble a sequence into a complete markdown string plus a lean nav payload.
  * Section names become `##`, fragment keys become `###` titles, and each body
@@ -82,21 +117,7 @@ export const assembleSequence = (
   options: SequenceAssemblyOptions,
 ): AssembledDocument => {
   const assembled = buildAssembledSequence(sequence, fragments);
-
-  const blocks: AssemblyBlock[] = [];
-  const sections: NavSection[] = [];
-
-  for (const section of assembled.sections) {
-    blocks.push({ kind: "section-heading", text: section.name });
-
-    const navFragments = section.fragments.map((fragment) => {
-      blocks.push({ kind: "title", text: fragment.key });
-      blocks.push({ kind: "body", anchorId: fragment.uuid, content: fragment.content });
-      return { uuid: fragment.uuid, key: fragment.key };
-    });
-
-    sections.push({ uuid: section.uuid, name: section.name, fragments: navFragments });
-  }
+  const { blocks, sections } = buildSequenceBlocks(assembled);
 
   const markdown = assembleMarkdown(blocks, options);
 
@@ -142,34 +163,16 @@ export const assembleSequenceForExport = (
   annotations: SequenceAnnotations,
 ): ExportAssembly => {
   const assembled = buildAssembledSequence(sequence, fragments);
-
-  const blocks: AssemblyBlock[] = [];
-  const sections: NavSection[] = [];
-
-  for (const section of assembled.sections) {
-    blocks.push({ kind: "section-heading", text: section.name });
-
-    const navFragments = section.fragments.map((fragment) => {
-      const fragmentAnnotations =
-        annotations.byFragmentUuid[fragment.uuid] ?? EMPTY_FRAGMENT_ANNOTATIONS;
-      const blockAnnotations: BlockAnnotations = {
-        fragmentKey: fragment.key,
-        notes: fragmentAnnotations.notes,
-        comments: fragmentAnnotations.comments,
-        references: fragmentAnnotations.references,
-      };
-      blocks.push({ kind: "title", text: fragment.key });
-      blocks.push({
-        kind: "body",
-        anchorId: fragment.uuid,
-        content: fragment.content,
-        annotations: blockAnnotations,
-      });
-      return { uuid: fragment.uuid, key: fragment.key };
-    });
-
-    sections.push({ uuid: section.uuid, name: section.name, fragments: navFragments });
-  }
+  const { blocks, sections } = buildSequenceBlocks(assembled, (fragment) => {
+    const fragmentAnnotations =
+      annotations.byFragmentUuid[fragment.uuid] ?? EMPTY_FRAGMENT_ANNOTATIONS;
+    return {
+      fragmentKey: fragment.key,
+      notes: fragmentAnnotations.notes,
+      comments: fragmentAnnotations.comments,
+      references: fragmentAnnotations.references,
+    };
+  });
 
   const assemblyOptions: AssemblyOptions = {
     ...options,
