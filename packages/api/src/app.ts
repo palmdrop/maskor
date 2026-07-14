@@ -57,10 +57,23 @@ export const createApp = (
       child: () => log,
     } as unknown as Logger);
 
-  // TODO: cors() with no args allows all origins (*). Once auth headers are added,
-  // browsers will reject credentialed requests to a wildcard origin. Restrict to
-  // the frontend origin before any auth integration.
-  app.use("*", cors());
+  // TODO: cors() allows all origins (*). Once auth headers are added, browsers
+  // will reject credentialed requests to a wildcard origin. Restrict to the
+  // frontend origin before any auth integration.
+  //
+  // exposeHeaders makes the response headers the frontend reads (download
+  // filename, export warnings, error correlation id — see ApiRequestError)
+  // readable when the frontend runs on a different origin than the API. Today
+  // the vite proxy keeps everything same-origin so it is inert, but a packaged
+  // Electron/Tauri build serving the renderer from file:// or a custom protocol
+  // is cross-origin — without this, the headers silently disappear from fetch
+  // responses.
+  app.use(
+    "*",
+    cors({
+      exposeHeaders: ["Content-Disposition", "X-Maskor-Export-Warnings", "X-Correlation-Id"],
+    }),
+  );
 
   app.use("*", async (ctx, next) => {
     const start = Date.now();
