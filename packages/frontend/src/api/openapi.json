@@ -13542,9 +13542,7 @@
                               "format",
                               "fileName",
                               "archivePath",
-                              "fragmentCount",
-                              "includeReferences",
-                              "includeMarginAnnotations"
+                              "fragmentCount"
                             ]
                           }
                         },

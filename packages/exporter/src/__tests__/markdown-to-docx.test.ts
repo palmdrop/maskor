@@ -75,6 +75,42 @@ describe("markdownToDocx — Margin markers lowered to Word comments", () => {
     expect(textRuns(comments)).toContain("A whole-fragment note.");
   });
 
+  it("lowers every marker when multiple markers trail one paragraph (nested ranges)", async () => {
+    const markdown = "Prose.<!--c:a--><!--c:b-->";
+    const bytes = await markdownToDocx(markdown, {
+      commentBodies: { a: "First comment.", b: "Second comment." },
+    });
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+    const comments = (await readDocxPart(bytes, "word/comments.xml"))!;
+
+    // Two comments, nested: Start 1, Start 2, …runs…, End 2, End 1.
+    expect(document).toContain('w:commentRangeStart w:id="1"');
+    expect(document).toContain('w:commentRangeStart w:id="2"');
+    expect(document).toContain('w:commentRangeEnd w:id="1"');
+    expect(document).toContain('w:commentRangeEnd w:id="2"');
+    expect(document).toContain('w:commentReference w:id="1"');
+    expect(document).toContain('w:commentReference w:id="2"');
+    // Both bodies present in document order (a before b) — neither is dropped.
+    const commentTexts = textRuns(comments);
+    expect(commentTexts).toContain("First comment.");
+    expect(commentTexts).toContain("Second comment.");
+    expect(textRuns(document)).not.toContain("<!--c:");
+  });
+
+  it("lowers a comment anchored to a list block (marker trails the last item)", async () => {
+    const markdown = "- item one\n- item two<!--c:listmark-->";
+    const bytes = await markdownToDocx(markdown, {
+      commentBodies: { listmark: "About the second item." },
+    });
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+    const comments = (await readDocxPart(bytes, "word/comments.xml"))!;
+
+    expect(document).toContain('w:commentRangeStart w:id="1"');
+    expect(document).toContain('w:commentRangeEnd w:id="1"');
+    expect(textRuns(comments)).toContain("About the second item.");
+    expect(textRuns(document)).not.toContain("<!--c:");
+  });
+
   it("drops an inert marker with no matching comment body (no comment emitted)", async () => {
     const markdown = "Line. <!--c:ghost-->";
     const bytes = await markdownToDocx(markdown, { commentBodies: {} });

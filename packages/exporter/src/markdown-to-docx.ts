@@ -69,22 +69,31 @@ type DocxContext = {
 
 type RunOptions = { bold?: boolean; italic?: boolean };
 
-// The marker id of a trailing `<!--c:ID-->` inline-HTML node, or null. Trailing
-// whitespace-only text nodes and footnote references are skipped: the docx-bound
-// assembly appends reference footnotes to the same line, so a comment marker can
-// sit just before them yet still anchor its block.
-const trailingCommentMarkerId = (nodes: PhrasingContent[]): string | null => {
+// The marker ids of the trailing `<!--c:ID-->` inline-HTML nodes, in document
+// order (empty when none). The walk keeps going backwards past marker nodes,
+// whitespace-only text nodes, and footnote references: the docx-bound assembly
+// appends reference footnotes to the same line, so a run of comment markers can
+// sit just before them yet still anchor its block. Every adjacent trailing marker
+// anchors the block (external vault edits or a future multi-comment UI can attach
+// more than one), so all are collected — not just the last.
+const trailingCommentMarkerIds = (nodes: PhrasingContent[]): string[] => {
+  const markerIds: string[] = [];
   for (let index = nodes.length - 1; index >= 0; index -= 1) {
     const node = nodes[index]!;
     if (node.type === "text" && (node as Text).value.trim().length === 0) continue;
     if (node.type === "footnoteReference") continue;
     if (node.type === "html") {
       const match = COMMENT_MARKER_NODE_PATTERN.exec((node as Html).value);
-      return match ? match[1]! : null;
+      if (match) {
+        markerIds.push(match[1]!);
+        continue;
+      }
+      break;
     }
-    return null;
+    break;
   }
-  return null;
+  // Collected back-to-front; reverse so marker `a` precedes `b` (document order).
+  return markerIds.reverse();
 };
 
 // Walk a phrasing-content node tree into TextRun[]s. Footnote references lower to
@@ -162,23 +171,30 @@ const phrasingToRuns = (
   return runs;
 };
 
-// Wrap a paragraph/heading's runs in a Word comment range when a bound marker
-// trails it. Returns the runs unchanged when there is no bound comment.
-const withCommentRange = (
+// Wrap a paragraph/heading/list-item's runs in Word comment ranges for every
+// bound marker trailing it. Returns the runs unchanged when none of the markers
+// resolve to a comment body. Inert markers (no bound body) are dropped. Multiple
+// comments nest: `Start a`, `Start b`, …runs…, `End b`, `End a`, then one
+// `CommentReference` run per comment — overlapping comment ranges are valid OOXML.
+const withCommentRanges = (
   runs: (TextRun | FootnoteReferenceRun)[],
-  markerId: string | null,
+  markerIds: string[],
   context: DocxContext,
 ): (TextRun | FootnoteReferenceRun | CommentRangeStart | CommentRangeEnd)[] => {
-  if (markerId === null) return runs;
-  const body = context.commentBodies[markerId];
-  if (body === undefined) return runs; // inert marker — no comment to attach
-  const commentId = context.allocateCommentId();
-  context.collectedComments.push({ id: commentId, body });
+  const commentIds: number[] = [];
+  for (const markerId of markerIds) {
+    const body = context.commentBodies[markerId];
+    if (body === undefined) continue; // inert marker — no comment to attach
+    const commentId = context.allocateCommentId();
+    context.collectedComments.push({ id: commentId, body });
+    commentIds.push(commentId);
+  }
+  if (commentIds.length === 0) return runs;
   return [
-    new CommentRangeStart(commentId),
+    ...commentIds.map((commentId) => new CommentRangeStart(commentId)),
     ...runs,
-    new CommentRangeEnd(commentId),
-    new TextRun({ children: [new CommentReference(commentId)] }),
+    ...[...commentIds].reverse().map((commentId) => new CommentRangeEnd(commentId)),
+    ...commentIds.map((commentId) => new TextRun({ children: [new CommentReference(commentId)] })),
   ];
 };
 
@@ -192,24 +208,24 @@ const blockToDocx = (
   switch (node.type) {
     case "heading": {
       const headingNode = node as Heading;
-      const markerId = trailingCommentMarkerId(headingNode.children);
+      const markerIds = trailingCommentMarkerIds(headingNode.children);
       const runs = phrasingToRuns(headingNode.children, context);
       return [
         new Paragraph({
           heading: HEADING_LEVEL_MAP[headingNode.depth] ?? HeadingLevel.HEADING_6,
-          children: withCommentRange(runs, markerId, context),
+          children: withCommentRanges(runs, markerIds, context),
         }),
       ];
     }
 
     case "paragraph": {
       const paragraphNode = node as MdastParagraph;
-      const markerId = trailingCommentMarkerId(paragraphNode.children);
+      const markerIds = trailingCommentMarkerIds(paragraphNode.children);
       const runs = phrasingToRuns(paragraphNode.children, context);
       return [
         new Paragraph({
           ...(indentLeft > 0 ? { indent: { left: indentLeft } } : {}),
-          children: withCommentRange(runs, markerId, context),
+          children: withCommentRanges(runs, markerIds, context),
         }),
       ];
     }
@@ -245,16 +261,24 @@ const blockToDocx = (
       const walkListItems = (items: ListItem[], depth: number, ordered: boolean) => {
         for (const item of items) {
           const runs: (TextRun | FootnoteReferenceRun)[] = [];
+          // The item's paragraph phrasing content, in order — used to detect a
+          // trailing comment marker. The editor anchors a marker at `range.to` of
+          // its anchored block; when that block is a list, the marker trails the
+          // last list item's paragraph.
+          const phrasingChildren: PhrasingContent[] = [];
           for (const child of item.children) {
             if (child.type === "paragraph") {
-              runs.push(...phrasingToRuns((child as MdastParagraph).children, context));
+              const children = (child as MdastParagraph).children;
+              phrasingChildren.push(...children);
+              runs.push(...phrasingToRuns(children, context));
             }
           }
+          const markerIds = trailingCommentMarkerIds(phrasingChildren);
           paragraphs.push(
             new Paragraph({
               bullet: ordered ? undefined : { level: depth },
               numbering: ordered ? { reference: "default-numbering", level: depth } : undefined,
-              children: runs,
+              children: withCommentRanges(runs, markerIds, context),
             }),
           );
           // Recurse into nested lists embedded in list items.

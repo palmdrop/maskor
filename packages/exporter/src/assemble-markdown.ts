@@ -104,7 +104,7 @@ const separatorSegment = (separator: AssemblySeparator): string | null => {
       // A non-breaking space forms an explicit empty paragraph, yielding a
       // visible blank line beyond the normal paragraph margin. A plain space
       // would be treated as a blank line by markdown and collapse away.
-      return " ";
+      return "\u00a0";
     case "horizontal-rule":
       return "---";
     case "page-break":
@@ -138,9 +138,15 @@ type FootnoteState = {
   commentBodies: Record<string, string>;
 };
 
+// The label shape the shared comment counter mints (`c1`, `c2`, …). A reference
+// slug matching this is reserved so it cannot collide with a comment footnote and
+// bind two definitions to one label.
+const COMMENT_LABEL_PATTERN = /^c\d+$/;
+
 // Resolve (and, on first use, allocate) the footnote label for a reference key.
 // The label is the slugified key with a deterministic `-2`, `-3`, … suffix when a
-// different key already claimed that slug. Empty slugs degrade to `reference`.
+// different key already claimed that slug or the slug collides with the comment
+// counter namespace. Empty slugs degrade to `reference`.
 const allocateReferenceLabel = (
   key: string,
   state: FootnoteState,
@@ -152,8 +158,8 @@ const allocateReferenceLabel = (
   let candidate = base;
   let suffix = 2;
   while (
-    state.referenceKeyBySlug.has(candidate) &&
-    state.referenceKeyBySlug.get(candidate) !== key
+    COMMENT_LABEL_PATTERN.test(candidate) ||
+    (state.referenceKeyBySlug.has(candidate) && state.referenceKeyBySlug.get(candidate) !== key)
   ) {
     candidate = `${base}-${suffix}`;
     suffix += 1;

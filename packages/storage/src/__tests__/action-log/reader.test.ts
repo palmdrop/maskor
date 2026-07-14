@@ -66,6 +66,33 @@ describe("readRecentEntries", () => {
     expect(entries[1]!.id).toBe("3");
   });
 
+  it("keeps legacy sequence:exported entries missing the annotation-toggle fields", async () => {
+    // Written before `includeReferences`/`includeMarginAnnotations` existed. Both
+    // are optional, so the entry must still validate and be returned.
+    const legacyExport = {
+      id: "5",
+      timestamp: "2026-05-08T10:00:05.000Z",
+      correlationId: "corr-5",
+      type: "sequence:exported",
+      actor: "user",
+      target: { type: "sequence", uuid: "seq-1", key: "main" },
+      undoable: false,
+      payload: {
+        sequenceName: "Main",
+        format: "md",
+        fileName: "main.md",
+        archivePath: ".maskor/exports/main.md",
+        fragmentCount: 3,
+      },
+    };
+    writeLog(temporaryDirectory, [JSON.stringify(legacyExport)]);
+
+    const entries = await readRecentEntries(temporaryDirectory, 10);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.id).toBe("5");
+    expect(entries[0]!.type).toBe("sequence:exported");
+  });
+
   it("skips malformed lines and returns valid ones", async () => {
     writeLog(temporaryDirectory, [
       JSON.stringify(makeEntry("1")),

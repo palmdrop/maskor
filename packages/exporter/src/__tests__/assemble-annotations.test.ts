@@ -295,6 +295,27 @@ describe("assembleSequenceForExport — References as footnotes", () => {
     expect(result.markdown).toContain("[^the-bridge-2]: the bridge! — Two");
   });
 
+  it("suffixes a reference slug that collides with the comment counter namespace", () => {
+    const fragments = [makeFragment({ uuid: "frag-1", key: "k", content: "Prose." })];
+    const result = assembleSequenceForExport(singleSection(fragments), fragments, baseOptions, {
+      includeReferences: true,
+      includeMarginAnnotations: true,
+      byFragmentUuid: {
+        "frag-1": {
+          notes: "Note body.",
+          comments: [],
+          // Key slugifies to "c1" — identical to the note's comment label. It must
+          // fall into the suffixing loop and become "c1-2", not shadow the note.
+          references: [{ key: "C1", body: "Ref body." }],
+        },
+      },
+    });
+    // Notes ref rides the title as c1; the reference gets the reserved-suffix c1-2.
+    expect(result.markdown).toBe(
+      "## Chapter\n\n### k[^c1]\n\nProse.[^c1-2]\n\n[^c1]: Note body.\n\n[^c1-2]: C1 — Ref body.",
+    );
+  });
+
   it("emits definitions in first-reference order (notes, comment, reference within a fragment)", () => {
     const fragments = [makeFragment({ uuid: "frag-1", key: "k", content: "Prose. <!--c:m1-->" })];
     const result = assembleSequenceForExport(singleSection(fragments), fragments, baseOptions, {
