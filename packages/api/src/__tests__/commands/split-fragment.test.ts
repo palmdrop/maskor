@@ -716,8 +716,7 @@ describe("splitFragmentCommand", () => {
     // One "Main" section holding piece 1 (the original) then pieces 2…N in order.
     expect(sequence.sections).toHaveLength(1);
     expect(sequence.sections[0]!.name).toBe("Main");
-    const order = sequence.sections[0]!.fragments
-      .slice()
+    const order = sequence.sections[0]!.fragments.slice()
       .sort((a, b) => a.position - b.position)
       .map((placement) => placement.fragmentUuid);
     expect(order).toEqual([original.uuid, result.createdUuids[0]!, result.createdUuids[1]!]);
@@ -853,8 +852,7 @@ describe("splitFragmentCommand", () => {
       ctx.projectContext,
       result.createdSequenceUuid!,
     );
-    const order = sequence.sections[0]!.fragments
-      .slice()
+    const order = sequence.sections[0]!.fragments.slice()
       .sort((a, b) => a.position - b.position)
       .map((placement) => placement.fragmentUuid);
     expect(order).toEqual([original.uuid, result.createdUuids[0]!]);

@@ -8,7 +8,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 ## Codebase
 
-- [ ] split-into sequence feature: when splitting a fragment, it should be possible to add the fragments, in order, to a new sequence. This is to preserve their order, and possibly add them as a constraint for other sequences.
+- [x] split-into sequence feature: when splitting a fragment, it should be possible to add the fragments, in order, to a new sequence. This is to preserve their order, and possibly add them as a constraint for other sequences. (SHIPPED 2026-07-14: opt-in "Add pieces to a new sequence" in the split dialog creates a plain active secondary sequence holding the pieces in split order — plan: `references/plans/split-into-sequence.md`)
 
 - [ ] footnotes in export based on references on fragments
 
