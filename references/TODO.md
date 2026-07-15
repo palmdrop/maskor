@@ -7,6 +7,11 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 ---
 
 ## Codebase
+- [x] investigate obsidian plugin replacement for features of maskor, for example
+    - https://community.obsidian.md/plugins/document-comments
+    - and https://www.youtube.com/watch?v=BTuGvfQGOrY
+    - (INVESTIGATED 2026-07-15: full coverage map + hybrid install model drafted in `specifications/obsidian-port.md`. Document Comments anchors comments with the same `<!--c:ID-->` markers as the Margin (ADR 0009) — adopt-first candidate. YouTube link not assessed.)
+
 - [x] split-into sequence feature: when splitting a fragment, it should be possible to add the fragments, in order, to a new sequence. This is to preserve their order, and possibly add them as a constraint for other sequences. (SHIPPED 2026-07-14: opt-in "Add pieces to a new sequence" in the split dialog creates a plain active secondary sequence holding the pieces in split order — plan: `references/plans/split-into-sequence.md`)
 
 - [x] footnotes in export based on references on fragments (DONE 2026-07-12: references render as footnotes — GFM in `.md`/`.txt`, real Word footnotes in `.docx` — anchored at the end of each attaching fragment, one deduped definition per reference; per-project `export.includeReferences` toggle (default on) with per-export override in the Export dialog — plan: `references/plans/export-enhancements.md`)
@@ -136,7 +141,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
   - fadeout surroundings when focusing a fragment/sequence for editing
   - show sidebars with action log, other views - make UI fully composable, customizable
   - define own flows, concepts, structures?
-  - TODO: consider rebuilding maskor as an obsidian plugin, where the graph view and sequencing and randomiser are obsidian addons, rather than a complete app? (investigated 2026-07-05 — see the "Obsidian plugin port" stub in `specifications/_drafts.md`; short answer: Canvas covers the composable/spatial part via generated `.canvas` files, the arc graph stays a custom `ItemView`)
+  - TODO: consider rebuilding maskor as an obsidian plugin, where the graph view and sequencing and randomiser are obsidian addons, rather than a complete app? (investigated 2026-07-05; graduated 2026-07-15 to `specifications/obsidian-port.md`. Resolution: this graph-view vision becomes a bespoke composable canvas `ItemView` in `maskor-core` — sequence lanes, arc overlay, edit/compare; native Canvas serves only as a generated projection target, its internals are never patched)
 
 - [x] finish persist cursor position implementation
 
@@ -212,7 +217,7 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 
 - [ ] typography rule for using indentation instead of newlines as paragraph separator — conflicts with markdown syntax but might work out anyway, needs a real exploration conversation
 
-- [ ] obsidian-plugin angle — port Maskor (or part of it) to an Obsidian plugin while keeping the standalone app? side thought from the mermaid draft. Investigated 2026-07-05 — verdict: feasible, core packages port cleanly, storage/API layer gets replaced by Vault + MetadataCache; stub with the full breakdown now in `specifications/_drafts.md` ("Obsidian plugin port")
+- [x] obsidian-plugin angle — port Maskor (or part of it) to an Obsidian plugin while keeping the standalone app? side thought from the mermaid draft. Investigated 2026-07-05 — verdict: feasible, core packages port cleanly, storage/API layer gets replaced by Vault + MetadataCache. Graduated 2026-07-15 to `specifications/obsidian-port.md` (full coverage map, hybrid vault-template + vault-doctor install model, capability gaps)
 
 - [ ] trash folder for aspects / notes / refs instead of hard-delete — spec'd in `specifications/attachments.md`, but worth revisiting once it's been in use (retention policy, restore UX, etc.)
 

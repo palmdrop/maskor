@@ -1,7 +1,7 @@
 # Spec Drafts
 
 **Status**: Drafts index
-**Last updated**: 2026-07-05
+**Last updated**: 2026-07-15
 
 ---
 
@@ -106,22 +106,4 @@ This file is not a roadmap. Entries are not prioritized; ordering is rough.
 - Generated on demand (export step) or live-maintained as a project artifact?
 - What's the source artifact — a generated note, a sidecar file, embedded in fragment frontmatter?
 - Which visualizations are mermaid-expressible (arc curves are mostly not), and which need a fallback?
-- Does this open a broader "Maskor as an Obsidian plugin" question, or stay strictly export-side? (That broader question now has its own stub: [[Obsidian plugin port]].)
-
----
-
-## Obsidian plugin port
-
-**Why:** Roughly half of Maskor's shipped surface re-implements what Obsidian provides natively — file management, `[[…]]` links/backlinks/rename cascade, editor (CM6 + vim), quick-switcher, command palette, external-change watching, tabs, full-text search, spell check. A whole class of open bugs (lost work, stale caches, multi-tab clobbering, swap desync) exists only because of the client/server/cache split, which a plugin doesn't have. The Maskor-unique core — sequences/sections, the arc-graph overview, sequencer/fitting-score/interleaving, prompting, import/export, aspects with weights — is portable: `sequencer`/`shared`/`importer`/`exporter` are pure TS, and the React overview can live in a custom `ItemView`. Investigated 2026-07-05 (conversation report); origin notes: `references/TODO.md` graph-view item + exploratory "obsidian-plugin angle" entry.
-
-**Related specs:** `vision.md` (line "the vault is an implementation detail" would invert — the one genuinely philosophical decision), `storage-sync.md` (mostly replaced by Vault + MetadataCache), `document-links.md`, `quick-switcher.md`, `command-palette.md`, `fragment-editor.md` (largely obsoleted), `overview.md`, `sequencer.md`, `margins.md` (hardest UI to port — Obsidian has `%%…%%` but no margin alignment), the mermaid stub above.
-
-**Initial questions:**
-
-- Full port (retire the standalone app), companion plugin (thin plugin talking to the local API), or hybrid (runtime-agnostic core packages serving both)?
-- What replaces the SQLite index? `bun:sqlite` doesn't exist in Obsidian's Electron runtime. Candidates: MetadataCache + in-memory index persisted to `.maskor/` JSON (the Dataview approach), or sql.js/WASM. DB-only state (`fragment_stats`, suggestion pointer) moves to a data file.
-- Graph-view vision (`references/TODO.md` graph-view item): Obsidian Canvas covers the composable/spatial part (open JSON Canvas format, arbitrary extra keys allowed — a plugin can generate canvases from sequences), but the runtime Canvas API for custom node behavior is unofficial (Advanced Canvas patches internals). Custom `ItemView` for the arc graph, Canvas for spatial editing?
-- Where do margins/anchored comments land — port the margin UI into a custom view, adopt `%%…%%` (abandoned `agent/obsidian-comments` branch is recoverable from the branch bundle), or both?
-- Lock-in mitigation: Obsidian is closed-source freeware. Keep core packages runtime-agnostic so a standalone app remains buildable?
-- First de-risking spike: a minimal plugin with one `ItemView` reading fragments + `.maskor/sequences/` from the open vault and rendering the existing arc-graph SVG — validates React-in-Obsidian, style scoping, and the no-DB read path.
-- Mobile: avoiding Node APIs would make the plugin work on Obsidian mobile — in scope or explicitly not?
+- Does this open a broader "Maskor as an Obsidian plugin" question, or stay strictly export-side? (That broader question graduated to its own spec: `specifications/obsidian-port.md`.)
