@@ -6,7 +6,7 @@ const ENTITY_KEY_STRIP_REGEX = new RegExp(`[^${ENTITY_KEY_CHAR_CLASS}]`, "gu");
 
 export const validateEntityKey = (key: string): string => {
   const trimmed = key.trim();
-  if (trimmed.length === 0) {
+  if (!trimmed.length) {
     throw new Error("Key must not be empty");
   }
   if (!ENTITY_KEY_REGEX.test(trimmed)) {

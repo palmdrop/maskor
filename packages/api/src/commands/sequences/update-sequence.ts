@@ -24,18 +24,20 @@ export const updateSequenceCommand: Command<UpdateSequenceInput, IndexedSequence
       });
     }
 
-    if (patch.name !== undefined && patch.name !== indexed.name) {
+    if (patch.name !== undefined) {
       const newName = resolveSequenceName(patch.name);
-      const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
-      const updated = { ...reread, name: newName };
-      await ctx.storageService.sequences.write(ctx.projectContext, updated);
-      logEntries.push({
-        type: "sequence:renamed" as const,
-        actor: ctx.actor,
-        target: { type: "sequence" as const, uuid: sequenceId },
-        payload: { oldKey: indexed.name, newKey: newName },
-        undoable: false,
-      });
+      if (newName !== indexed.name) {
+        const reread = await ctx.storageService.sequences.read(ctx.projectContext, sequenceId);
+        const updated = { ...reread, name: newName };
+        await ctx.storageService.sequences.write(ctx.projectContext, updated);
+        logEntries.push({
+          type: "sequence:renamed" as const,
+          actor: ctx.actor,
+          target: { type: "sequence" as const, uuid: sequenceId },
+          payload: { oldKey: indexed.name, newKey: newName },
+          undoable: false,
+        });
+      }
     }
 
     if (patch.active !== undefined && patch.active !== indexed.active) {

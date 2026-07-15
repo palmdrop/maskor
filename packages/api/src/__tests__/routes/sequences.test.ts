@@ -346,6 +346,41 @@ describe("PATCH /projects/:projectId/sequences/:sequenceId", () => {
     expect(renamed?.name).toBe(created.name);
   });
 
+  it("records no rename log entry when the new name only differs by surrounding whitespace", async () => {
+    const uniqueName = `Padded Rename ${Date.now()}`;
+    const createBundle = (await (
+      await testContext.app.request(baseUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: uniqueName,
+          isMain: false,
+          projectUuid: project.projectUUID,
+        }),
+      })
+    ).json()) as SequenceBundle;
+    const created = createBundle.sequences.find((s) => s.name === uniqueName)!;
+
+    const response = await testContext.app.request(`${baseUrl()}/${created.uuid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `  ${uniqueName}  ` }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as SequenceBundle;
+    const renamed = body.sequences.find((s) => s.uuid === created.uuid);
+    expect(renamed?.name).toBe(uniqueName);
+
+    const logResponse = await testContext.app.request(
+      `/projects/${project.projectUUID}/action-log?limit=50`,
+    );
+    const entries = (await logResponse.json()) as LogEntry[];
+    const renameEntry = entries.find(
+      (entry) => entry.type === "sequence:renamed" && entry.target.uuid === created.uuid,
+    );
+    expect(renameEntry).toBeUndefined();
+  });
+
   it("promotes a non-main sequence to main", async () => {
     const createBundle = (await (
       await testContext.app.request(baseUrl(), {

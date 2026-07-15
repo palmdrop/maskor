@@ -5,7 +5,7 @@
 // `validateEntityKey`.
 export const validateSequenceName = (name: string): string => {
   const trimmed = name.trim();
-  if (trimmed.length === 0) {
+  if (!trimmed.length) {
     throw new Error("Sequence name must not be empty");
   }
   return trimmed;
