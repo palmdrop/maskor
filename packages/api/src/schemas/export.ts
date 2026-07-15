@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { ExportSeparatorSchema } from "@maskor/shared";
 
 export const ExportSequenceParamSchema = z.object({
   projectId: z.uuid(),
@@ -30,7 +31,7 @@ export const ExportSequenceBodySchema = z
       description: "Override: emit section names as headings",
       example: true,
     }),
-    separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional().openapi({
+    separator: ExportSeparatorSchema.optional().openapi({
       description:
         "Override: separator between fragments. `page-break` is a form feed in md/txt and a real page break in docx",
       example: "blank-line",

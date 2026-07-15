@@ -208,11 +208,17 @@ const isPageBreakParagraph = (node: MdastParagraph): boolean =>
 
 // Convert block-level mdast nodes to docx Paragraphs.
 // `indentLeft` (twips) is threaded through for blockquote nesting.
+// `pageBreakBefore` rides a preceding page-break separator onto the first
+// Paragraph this block emits, so the break needs no empty paragraph of its own.
 const blockToDocx = (
   node: BlockContent | Content,
   context: DocxContext,
   indentLeft = 0,
+  pageBreakBefore = false,
 ): Paragraph[] => {
+  // Options for the very first Paragraph this block emits; empty for the rest.
+  const firstParagraphExtras = pageBreakBefore ? { pageBreakBefore: true } : {};
+
   switch (node.type) {
     case "heading": {
       const headingNode = node as Heading;
@@ -220,6 +226,7 @@ const blockToDocx = (
       const runs = phrasingToRuns(headingNode.children, context);
       return [
         new Paragraph({
+          ...firstParagraphExtras,
           heading: HEADING_LEVEL_MAP[headingNode.depth] ?? HeadingLevel.HEADING_6,
           children: withCommentRanges(runs, markerIds, context),
         }),
@@ -228,16 +235,19 @@ const blockToDocx = (
 
     case "paragraph": {
       const paragraphNode = node as MdastParagraph;
-      // The assembler's page-break separator is a form-feed-only paragraph.
-      // Word cannot carry a raw form feed (invalid XML character), so it lowers
-      // to a real page break instead.
+      // A form-feed-only paragraph is the assembler's page-break separator. The
+      // root walk intercepts it (lowering to `pageBreakBefore` on the next
+      // block), so this only fires for a `\f` paragraph nested inside another
+      // block (blockquote, footnote definition). Word cannot carry a raw form
+      // feed (invalid XML character), so still emit a real page break there.
       if (isPageBreakParagraph(paragraphNode)) {
-        return [new Paragraph({ children: [new PageBreak()] })];
+        return [new Paragraph({ ...firstParagraphExtras, children: [new PageBreak()] })];
       }
       const markerIds = trailingCommentMarkerIds(paragraphNode.children);
       const runs = phrasingToRuns(paragraphNode.children, context);
       return [
         new Paragraph({
+          ...firstParagraphExtras,
           ...(indentLeft > 0 ? { indent: { left: indentLeft } } : {}),
           children: withCommentRanges(runs, markerIds, context),
         }),
@@ -247,17 +257,25 @@ const blockToDocx = (
     case "blockquote": {
       const blockquoteNode = node as Blockquote;
       const paragraphs: Paragraph[] = [];
-      for (const child of blockquoteNode.children) {
-        paragraphs.push(...blockToDocx(child as BlockContent, context, indentLeft + 720));
-      }
+      blockquoteNode.children.forEach((child, index) => {
+        paragraphs.push(
+          ...blockToDocx(
+            child as BlockContent,
+            context,
+            indentLeft + 720,
+            index === 0 ? pageBreakBefore : false,
+          ),
+        );
+      });
       return paragraphs;
     }
 
     case "code": {
       const codeNode = node as Code;
       return codeNode.value.split("\n").map(
-        (line) =>
+        (line, index) =>
           new Paragraph({
+            ...(index === 0 ? firstParagraphExtras : {}),
             indent: { left: 720 },
             children: [new TextRun({ text: line, font: "Courier New" })],
           }),
@@ -265,12 +283,21 @@ const blockToDocx = (
     }
 
     case "thematicBreak": {
-      return [new Paragraph({ thematicBreak: true })];
+      return [new Paragraph({ ...firstParagraphExtras, thematicBreak: true })];
     }
 
     case "list": {
       const listNode = node as List;
       const paragraphs: Paragraph[] = [];
+
+      // Consumed by the first list item's paragraph so a preceding page break
+      // rides it; a no-op for every later paragraph.
+      let remainingFirstExtras = pageBreakBefore;
+      const consumeFirstParagraphExtras = () => {
+        if (!remainingFirstExtras) return {};
+        remainingFirstExtras = false;
+        return { pageBreakBefore: true } as const;
+      };
 
       const walkListItems = (items: ListItem[], depth: number, ordered: boolean) => {
         for (const item of items) {
@@ -290,6 +317,7 @@ const blockToDocx = (
           const markerIds = trailingCommentMarkerIds(phrasingChildren);
           paragraphs.push(
             new Paragraph({
+              ...consumeFirstParagraphExtras(),
               bullet: ordered ? undefined : { level: depth },
               numbering: ordered ? { reference: "default-numbering", level: depth } : undefined,
               children: withCommentRanges(runs, markerIds, context),
@@ -311,7 +339,12 @@ const blockToDocx = (
     default: {
       const unknown = node as { value?: string };
       if (typeof unknown.value === "string") {
-        return [new Paragraph({ children: [new TextRun({ text: unknown.value })] })];
+        return [
+          new Paragraph({
+            ...firstParagraphExtras,
+            children: [new TextRun({ text: unknown.value })],
+          }),
+        ];
       }
       return [];
     }
@@ -370,6 +403,12 @@ export const markdownToDocx = async (
   // definitions are pulled out of the body flow.
   const footnotes: Record<string, { children: Paragraph[] }> = {};
   const paragraphs: Paragraph[] = [];
+  // The assembler's page-break separator is a form-feed-only paragraph. Rather
+  // than emitting a standalone break paragraph (which strands a blank first line
+  // at the top of the new page), skip it and flag the next emitted block's first
+  // Paragraph with `pageBreakBefore`. A trailing separator with no following
+  // block is dropped; consecutive separators collapse to one flag.
+  let pendingPageBreakBefore = false;
   for (const node of tree.children) {
     if (node.type === "footnoteDefinition") {
       const definition = node as FootnoteDefinition;
@@ -383,7 +422,15 @@ export const markdownToDocx = async (
       };
       continue;
     }
-    paragraphs.push(...blockToDocx(node as BlockContent, context));
+    if (node.type === "paragraph" && isPageBreakParagraph(node as MdastParagraph)) {
+      pendingPageBreakBefore = true;
+      continue;
+    }
+    const blocks = blockToDocx(node as BlockContent, context, 0, pendingPageBreakBefore);
+    // Keep the flag pending if the block produced no paragraph to carry it, so
+    // the break rides the next real block instead of being lost.
+    if (blocks.length > 0) pendingPageBreakBefore = false;
+    paragraphs.push(...blocks);
   }
 
   const document = new Document({

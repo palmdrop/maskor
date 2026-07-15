@@ -1,4 +1,4 @@
-import type { Fragment, LogEntry, Project } from "@maskor/shared";
+import type { Fragment, LogEntry, ExportSeparator } from "@maskor/shared";
 import {
   assembleSequenceForExport,
   renderExport,
@@ -8,9 +8,6 @@ import {
   type SequenceAnnotations,
 } from "@maskor/exporter";
 import type { Command, CommandContext } from "../types";
-
-// The export-owned separator set (the project `export` config's separator).
-type ExportSeparator = Project["export"]["separator"];
 
 export type ExportSequenceInput = {
   sequenceId: string;

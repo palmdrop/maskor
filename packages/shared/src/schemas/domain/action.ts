@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ExportSeparatorSchema } from "./project";
 
 export const ActionTypeSchema = z.enum([
   "fragment:extracted",
@@ -295,7 +296,7 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       includeMarginAnnotations: z.boolean().optional(),
       showTitles: z.boolean().optional(),
       showSectionHeadings: z.boolean().optional(),
-      separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional(),
+      separator: ExportSeparatorSchema.optional(),
     }),
   ),
 ]);

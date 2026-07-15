@@ -47,16 +47,38 @@ describe("markdownToDocx — GFM footnotes lowered to Word footnotes", () => {
 });
 
 describe("markdownToDocx — page-break separator lowered to a Word page break", () => {
-  it("lowers a form-feed-only paragraph to a real page break (no raw form feed)", async () => {
+  // Count of body paragraphs (`<w:p>`), excluding the section-properties element.
+  const paragraphCount = (xml: string): number => (xml.match(/<w:p[ >]/g) ?? []).length;
+
+  it("lowers a form-feed-only paragraph to `pageBreakBefore` on the next paragraph", async () => {
     const markdown = "First fragment.\n\n\f\n\nSecond fragment.";
     const bytes = await markdownToDocx(markdown);
     const document = (await readDocxPart(bytes, "word/document.xml"))!;
 
-    expect(document).toContain('<w:br w:type="page"/>');
+    // The break rides the following paragraph's properties, not its own paragraph.
+    expect(document).toContain("<w:pageBreakBefore/>");
+    expect(document).not.toContain('<w:br w:type="page"/>');
+    // No standalone empty paragraph is emitted for the separator: just the two
+    // fragment paragraphs survive.
+    expect(paragraphCount(document)).toBe(2);
     // The form feed itself never reaches the XML (it is not a valid XML 1.0 character).
     expect(document).not.toContain("\f");
     expect(textRuns(document)).toContain("First fragment.");
     expect(textRuns(document)).toContain("Second fragment.");
+  });
+
+  it("rides the break onto a following heading (headings are Paragraphs too)", async () => {
+    const markdown = "First fragment.\n\n\f\n\n## Second fragment heading";
+    const bytes = await markdownToDocx(markdown);
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+
+    // The heading paragraph carries both its style and the page break, and no
+    // separate break paragraph is emitted.
+    expect(document).toContain("<w:pageBreakBefore/>");
+    expect(document).not.toContain('<w:br w:type="page"/>');
+    expect(paragraphCount(document)).toBe(2);
+    expect(document).not.toContain("\f");
+    expect(textRuns(document)).toContain("Second fragment heading");
   });
 });
 

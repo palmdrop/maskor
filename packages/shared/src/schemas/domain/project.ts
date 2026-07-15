@@ -1,6 +1,19 @@
 import { z } from "zod";
 import { LanguageCodeSchema } from "./language";
 
+// Export-owned assembly separator — a superset of the preview separators.
+// `page-break` renders as a form feed in md/txt and a real page break in docx.
+// Shared by the project `export` config, the API export-body override, and the
+// `sequence:exported` action-log payload so the three cannot silently diverge.
+export const ExportSeparatorSchema = z.enum([
+  "blank-line",
+  "horizontal-rule",
+  "page-break",
+  "none",
+]);
+
+export type ExportSeparator = z.infer<typeof ExportSeparatorSchema>;
+
 export const ProjectSchema = z.object({
   uuid: z.uuid(),
   name: z.string(),
@@ -35,9 +48,7 @@ export const ProjectSchema = z.object({
     includeMarginAnnotations: z.boolean(),
     showTitles: z.boolean(),
     showSectionHeadings: z.boolean(),
-    // Export-owned assembly separator — a superset of the preview separators:
-    // `page-break` renders as a form feed in md/txt and a real page break in docx.
-    separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]),
+    separator: ExportSeparatorSchema,
   }),
   overview: z.object({
     detailLevel: z.enum(["prose", "excerpt", "title"]),
@@ -91,7 +102,7 @@ export const ProjectUpdateSchema = z.object({
       includeMarginAnnotations: z.boolean().optional(),
       showTitles: z.boolean().optional(),
       showSectionHeadings: z.boolean().optional(),
-      separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional(),
+      separator: ExportSeparatorSchema.optional(),
     })
     .optional(),
   overview: z
