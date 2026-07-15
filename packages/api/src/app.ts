@@ -57,9 +57,11 @@ export const createApp = (
       child: () => log,
     } as unknown as Logger);
 
-  // TODO: cors() allows all origins (*). Once auth headers are added, browsers
+  // TODO: origin "*" allows all origins. Once auth headers are added, browsers
   // will reject credentialed requests to a wildcard origin. Restrict to the
-  // frontend origin before any auth integration.
+  // frontend origin before any auth integration. (The explicit "*" matches the
+  // no-options runtime default; hono ≥4.12 requires `origin` whenever options
+  // are passed.)
   //
   // exposeHeaders makes the response headers the frontend reads (download
   // filename, export warnings, error correlation id — see ApiRequestError)
@@ -71,6 +73,7 @@ export const createApp = (
   app.use(
     "*",
     cors({
+      origin: "*",
       exposeHeaders: ["Content-Disposition", "X-Maskor-Export-Warnings", "X-Correlation-Id"],
     }),
   );
