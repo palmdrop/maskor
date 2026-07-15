@@ -80,9 +80,9 @@ describe("SplitFragmentDialog", () => {
     renderDialog();
 
     await waitFor(() => expect(screen.getByText("3 pieces")).toBeInTheDocument());
-    // Piece 1 keeps the original's key (read-only, marked "kept").
+    // Piece 1 is the original (read-only). With no rename flagged it is "(original)".
     expect(screen.getByText(/intro/)).toBeInTheDocument();
-    expect(screen.getByText("(kept)")).toBeInTheDocument();
+    expect(screen.getByText("(original)")).toBeInTheDocument();
     // Pieces 2…N are editable key inputs seeded with the derived keys.
     expect(screen.getByDisplayValue("middle")).toBeInTheDocument();
     expect(screen.getByDisplayValue("end")).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("SplitFragmentDialog", () => {
     // The first preview request omits the delimiter (auto-detect).
     expect(previewMutateAsync.mock.calls[0]![0]).toEqual({
       projectId: "project-1",
-      data: { fragmentId: "fragment-1", delimiter: undefined },
+      data: { fragmentId: "fragment-1", delimiter: undefined, keepHeadingInBody: false },
     });
   });
 
@@ -139,6 +139,7 @@ describe("SplitFragmentDialog", () => {
           fragmentId: "fragment-1",
           delimiter: { type: "heading", level: 1 },
           pieceKeys: [{ pieceIndex: 2, key: "my-renamed-piece" }],
+          keepHeadingInBody: false,
         },
       }),
     );
@@ -202,7 +203,11 @@ describe("SplitFragmentDialog", () => {
     await waitFor(() =>
       expect(splitMutateAsync).toHaveBeenCalledWith({
         projectId: "project-1",
-        data: { fragmentId: "fragment-1", delimiter: { type: "heading", level: 1 } },
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          keepHeadingInBody: false,
+        },
       }),
     );
     await waitFor(() => {
@@ -342,6 +347,7 @@ describe("SplitFragmentDialog", () => {
         data: {
           fragmentId: "fragment-1",
           delimiter: { type: "heading", level: 1 },
+          keepHeadingInBody: false,
           intoSequence: { name: "my-fragment" },
         },
       }),
@@ -374,7 +380,11 @@ describe("SplitFragmentDialog", () => {
     await waitFor(() =>
       expect(splitMutateAsync).toHaveBeenCalledWith({
         projectId: "project-1",
-        data: { fragmentId: "fragment-1", delimiter: { type: "heading", level: 1 } },
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          keepHeadingInBody: false,
+        },
       }),
     );
     // No intoSequence key in the sent payload.
@@ -460,5 +470,84 @@ describe("SplitFragmentDialog", () => {
     await waitFor(() => expect(screen.getByText("Split failed. Try again.")).toBeInTheDocument());
     expect(onSplit).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("offers a keep-heading toggle (default off) and sends it on split when turned on", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "my-fragment", excerpt: "a" },
+        { pieceIndex: 2, key: "b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+      },
+    });
+
+    renderDialog();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Keep heading in the body" });
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+
+    const confirm = screen.getByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(splitMutateAsync).toHaveBeenCalledWith({
+        projectId: "project-1",
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          keepHeadingInBody: true,
+        },
+      }),
+    );
+  });
+
+  it("marks piece 1 as renamed when the preview flags the original for rename", async () => {
+    previewMutateAsync.mockResolvedValue({
+      status: 200 as const,
+      data: {
+        pieces: [
+          { pieceIndex: 1, key: "chapter-one", excerpt: "Body one", renamedOriginal: true },
+          { pieceIndex: 2, key: "chapter-two", excerpt: "Body two" },
+        ],
+        count: 2,
+        appliedDelimiter: { type: "heading" as const, level: 1 as const },
+      },
+    });
+
+    renderDialog();
+
+    expect(await screen.findByText("(original, renamed)")).toBeInTheDocument();
+    expect(screen.getByText(/chapter-one/)).toBeInTheDocument();
+  });
+
+  it("hides the keep-heading toggle for a non-heading delimiter", async () => {
+    previewMutateAsync.mockResolvedValue({
+      status: 200 as const,
+      data: {
+        pieces: [
+          { pieceIndex: 1, key: "a", excerpt: "a" },
+          { pieceIndex: 2, key: "b", excerpt: "b" },
+        ],
+        count: 2,
+        appliedDelimiter: { type: "thematic-break" as const },
+      },
+    });
+
+    renderDialog();
+
+    await waitFor(() => expect(screen.getByText("2 pieces")).toBeInTheDocument());
+    expect(
+      screen.queryByRole("checkbox", { name: "Keep heading in the body" }),
+    ).not.toBeInTheDocument();
   });
 });

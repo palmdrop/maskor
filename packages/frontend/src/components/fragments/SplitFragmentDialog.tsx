@@ -82,6 +82,11 @@ export const SplitFragmentDialog = ({
   const [editedKeys, setEditedKeys] = useState<Record<number, string>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
+  // Keep the heading line in each piece's body (default off). When off, a heading
+  // that starts a piece is stripped and becomes the piece's key — including piece 1,
+  // where the original is renamed to its leading heading. Only meaningful for a
+  // heading split; the other delimiters carry no heading.
+  const [keepHeadingInBody, setKeepHeadingInBody] = useState(false);
   // Opt-in "add pieces to a new sequence" (default off). `sequenceName` is null
   // until the user types — the input then falls back to the derived default
   // (the original fragment's key), which tracks the preview's piece 1 as it lands.
@@ -125,6 +130,7 @@ export const SplitFragmentDialog = ({
       setHeadingLevel(1);
       setPreviewError(null);
       setSplitError(null);
+      setKeepHeadingInBody(false);
       setAddToSequence(false);
       setSequenceName(null);
       return;
@@ -134,7 +140,7 @@ export const SplitFragmentDialog = ({
       try {
         const response = await previewMutateAsync({
           projectId,
-          data: { fragmentId, delimiter: delimiter ?? undefined },
+          data: { fragmentId, delimiter: delimiter ?? undefined, keepHeadingInBody },
         });
         if (cancelled) return;
         // customFetch throws on non-2xx, so a resolved response is always 200;
@@ -162,7 +168,15 @@ export const SplitFragmentDialog = ({
     return () => {
       cancelled = true;
     };
-  }, [open, projectId, fragmentId, delimiter, delimiterType, previewMutateAsync]);
+  }, [
+    open,
+    projectId,
+    fragmentId,
+    delimiter,
+    delimiterType,
+    keepHeadingInBody,
+    previewMutateAsync,
+  ]);
 
   // The effective key for a piece: the user's override if present, else the
   // derived key from the preview. Piece 1 always reports the original's key.
@@ -242,6 +256,7 @@ export const SplitFragmentDialog = ({
           fragmentId,
           delimiter,
           pieceKeys: pieceKeys.length ? pieceKeys : undefined,
+          keepHeadingInBody,
           intoSequence,
         },
       });
@@ -295,6 +310,7 @@ export const SplitFragmentDialog = ({
     fragmentId,
     delimiter,
     editedKeys,
+    keepHeadingInBody,
     addToSequence,
     effectiveSequenceName,
     queryClient,
@@ -354,6 +370,18 @@ export const SplitFragmentDialog = ({
             )}
           </div>
 
+          {delimiterType === "heading" && (
+            // Only heading splits carry a heading to keep or strip. Default off:
+            // the heading is stripped from the body and becomes the piece's key
+            // (piece 1 → the original is renamed to its leading heading).
+            <CheckboxField
+              id="split-keep-heading"
+              label="Keep heading in the body"
+              checked={keepHeadingInBody}
+              onCheckedChange={(checked) => setKeepHeadingInBody(checked === true)}
+            />
+          )}
+
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
@@ -376,11 +404,14 @@ export const SplitFragmentDialog = ({
                     className="flex min-w-0 flex-col gap-1 rounded-md border border-border/50 px-3 py-2"
                   >
                     {piece.pieceIndex === 1 ? (
-                      // Piece 1 keeps the original fragment's identity, so its key
-                      // is fixed (renaming the original is a separate action).
+                      // Piece 1 is the original fragment (same identity). Its key is
+                      // fixed, unless the heading is stripped and its body starts with
+                      // one — then the original is renamed to that heading.
                       <span className="flex items-center gap-2 text-sm font-medium break-words">
                         1. {piece.key}
-                        <span className="text-xs font-normal text-muted-foreground">(kept)</span>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {piece.renamedOriginal ? "(original, renamed)" : "(original)"}
+                        </span>
                       </span>
                     ) : (
                       <label className="flex items-center gap-2 text-sm">

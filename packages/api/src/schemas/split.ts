@@ -29,6 +29,10 @@ export const SplitPreviewBodySchema = z
     // fragment's content (shallowest splitting heading level → thematic break;
     // never blank-line) and reports it back as `appliedDelimiter`.
     delimiter: SplitDelimiterSchema.optional(),
+    // When false (the default), a heading that starts a piece is stripped from its
+    // body and becomes the piece's key (including piece 1 → the original is
+    // renamed). When true, headings stay in the body. Only affects heading splits.
+    keepHeadingInBody: z.boolean().optional().openapi({ example: false }),
   })
   .openapi("SplitPreviewBody");
 
@@ -37,6 +41,9 @@ const SplitPiecePreviewSchema = z
     pieceIndex: z.number().int().openapi({ example: 1 }),
     key: z.string().openapi({ example: "my-fragment" }),
     excerpt: z.string().openapi({ example: "The opening line of the piece…" }),
+    // Present (true) only for piece 1 when the original will be renamed to its
+    // heading-derived key because the heading is stripped from the body.
+    renamedOriginal: z.boolean().optional().openapi({ example: true }),
   })
   .openapi("SplitPiecePreview");
 
@@ -65,8 +72,14 @@ export const SplitBodySchema = z
     fragmentId: z.string().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     delimiter: SplitDelimiterSchema,
     // Optional per-piece key overrides for the new pieces. Any new piece without an
-    // override falls back to the derived key. Piece 1 (the original) is never renamed.
+    // override falls back to the derived key. Piece 1's key is not set here (it is
+    // the original — renamed automatically to its heading when the heading is stripped).
     pieceKeys: z.array(SplitPieceKeySchema).optional(),
+    // When false (the default), a heading that starts a piece is stripped from its
+    // body and becomes the piece's key (including piece 1 → the original is renamed
+    // to its leading heading). When true, headings stay in the body and the original
+    // keeps its key. Only affects heading splits.
+    keepHeadingInBody: z.boolean().optional().openapi({ example: false }),
     // Optional opt-in: also create a new secondary sequence holding all resulting
     // pieces in split order (piece 1 = the original, then pieces 2…N). Omitted →
     // no sequence is created.
@@ -97,5 +110,8 @@ export const SplitResultSchema = z
       .optional()
       .openapi({ example: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }),
     createdSequenceName: z.string().optional().openapi({ example: "my-fragment split" }),
+    // Present when the original was renamed to its leading heading (heading stripped
+    // from the body). Its pre-rename key is unchanged elsewhere in the vault.
+    originalKeyRenamedTo: z.string().optional().openapi({ example: "chapter-1" }),
   })
   .openapi("SplitResult");

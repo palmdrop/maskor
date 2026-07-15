@@ -5,6 +5,7 @@ import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey } from "@maskor/importer";
 import { placeFragment } from "@maskor/sequencer";
 import type { Command } from "../types";
+import { resolveOriginalPieceKey } from "./split-piece-keys";
 
 // A split that yields a single piece is a no-op (no delimiter occurrence in the
 // body). The frontend disables Confirm in that case; this is the backend guard.
@@ -58,6 +59,13 @@ export type SplitFragmentInput = {
   fragmentId: string;
   delimiter: SplitDelimiter;
   pieceKeys?: SplitPieceKey[];
+  // When false (the default), a heading line that starts a piece is stripped from
+  // the body and becomes that piece's key. This includes piece 1: if the original's
+  // body starts with a heading, the original is renamed to its heading-derived key
+  // (its leading heading would otherwise be lost, since — unlike the new pieces — it
+  // keeps its old key). When true, headings stay in the body and the original keeps
+  // its key (the previous behavior). Only affects heading splits.
+  keepHeadingInBody?: boolean;
   // Opt-in: also create a new secondary sequence holding all resulting pieces in
   // split order (piece 1 = the original, then pieces 2…N). Omitted → no sequence
   // is created. The name is validated (trimmed, non-empty) in Phase A.
@@ -78,6 +86,9 @@ export type SplitFragmentResult = {
   // (a warning is surfaced instead — see `warnings`).
   createdSequenceUuid?: string;
   createdSequenceName?: string;
+  // The original's new key when it was renamed to its leading heading (heading
+  // stripped from the body). Absent when the original kept its key.
+  originalKeyRenamedTo?: string;
 };
 
 // The label recorded in the action-log payload + history view.
@@ -109,10 +120,12 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     // throw here (no-op split, malformed/conflicting key) fails the command with
     // the vault untouched.
     const original = await ctx.storageService.fragments.read(ctx.projectContext, input.fragmentId);
-    // Retain heading lines in piece content: a split must never lose prose (unlike
-    // import, which lifts the heading into the new entity's title). See the spec.
+    // Default: strip the heading that starts each piece from its body (it becomes the
+    // piece's key). Opt in to keep headings in the body via `keepHeadingInBody`. Only
+    // heading splits carry a heading; the other delimiters ignore the option.
+    const keepHeadingInBody = input.keepHeadingInBody ?? false;
     const pieces = splitByDelimiter(original.content, input.delimiter, {
-      retainHeadingInContent: true,
+      retainHeadingInContent: keepHeadingInBody,
     });
 
     if (pieces.length <= 1) {
@@ -149,13 +162,26 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     );
     const pieceMarkerSets = pieces.map((piece) => markerIdSet(piece.content));
 
+    // Key derivation works against the keys of all OTHER fragments — the original's
+    // own key is excluded so it is never a false collision (its old key is freed on a
+    // rename, and re-reserved below when it keeps its key). `resolveOriginalPieceKey`
+    // reserves piece 1's resolved key so the later pieces avoid it.
+    const otherKeys = new Set(existingKeys);
+    otherKeys.delete(original.key.toLowerCase());
+    const originalKeyResolution = resolveOriginalPieceKey(
+      pieces[0]!,
+      original.key,
+      keepHeadingInBody,
+      otherKeys,
+    );
+
     // User-chosen key overrides for the new pieces, keyed by 1-based pieceIndex
-    // (piece 1 is the original and is never renamed, so any override for it is
-    // ignored). Every piece's key is resolved HERE, before the first write, so a
-    // malformed or conflicting override rejects the split with nothing on disk —
-    // no orphan pieces from a mid-loop validation failure. deriveKey suffixes
-    // against existing keys (which still include the original's) and keys minted
-    // earlier in this split; falling back to the derived key when no override.
+    // (piece 1 is the original; its key is resolved above, not via overrides). Every
+    // piece's key is resolved HERE, before the first write, so a malformed or
+    // conflicting override rejects the split with nothing on disk — no orphan pieces
+    // from a mid-loop validation failure. deriveKey suffixes against the other keys
+    // (piece 1's reserved) and keys minted earlier in this split; falling back to the
+    // derived key when no override.
     const overrideKeyByPieceIndex = new Map<number, string>();
     for (const override of input.pieceKeys ?? []) {
       if (override.pieceIndex >= 2) {
@@ -169,8 +195,8 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       // pieceIndex is 1-based (matches the preview); array index 1 is piece 2.
       const override = overrideKeyByPieceIndex.get(index + 1);
       const key = override
-        ? resolveOverrideKey(override, existingKeys)
-        : deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
+        ? resolveOverrideKey(override, otherKeys)
+        : deriveKey({ headingText: piece.title, content: piece.content }, otherKeys);
       keyByPieceIndex.set(index, key);
     }
 
@@ -208,13 +234,17 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       createdUuidByPieceIndex.set(index, written.uuid);
     }
 
-    // Piece 1 keeps the original's identity: truncate the original to the first
-    // piece's content, preserving uuid, key, aspects, readiness, references and
-    // unmanaged frontmatter. Done last, after every new piece is persisted (see
-    // above), so the original is never the sole holder of prose it is about to drop.
+    // Piece 1 keeps the original's identity (uuid, aspects, readiness, references,
+    // unmanaged frontmatter): truncate the original to the first piece's content.
+    // Its key changes only when the heading was stripped and the body started with
+    // one — then the original is renamed to the heading-derived key, and the service
+    // cascades the file + Margin rename and rewrites `[[fragments/oldKey]]` links.
+    // Done last, after every new piece is persisted (see above), so the original is
+    // never the sole holder of prose it is about to drop.
     const firstPiece = pieces[0]!;
     await ctx.storageService.fragments.write(ctx.projectContext, {
       ...original,
+      key: originalKeyResolution.key,
       content: firstPiece.content,
     });
 
@@ -373,6 +403,10 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       }
     }
 
+    const originalKeyRenamedTo = originalKeyResolution.renamed
+      ? originalKeyResolution.key
+      : undefined;
+
     const logEntries: Omit<LogEntry, "id" | "timestamp" | "correlationId">[] = [
       {
         type: "fragment:split",
@@ -384,6 +418,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
           createdCount: createdUuids.length,
           createdUuids,
           ...(createdSequenceUuid ? { createdSequenceUuid, createdSequenceName } : {}),
+          ...(originalKeyRenamedTo ? { originalKeyRenamedTo } : {}),
         },
         undoable: false,
       },
@@ -396,6 +431,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         createdUuids,
         warnings,
         ...(createdSequenceUuid ? { createdSequenceUuid, createdSequenceName } : {}),
+        ...(originalKeyRenamedTo ? { originalKeyRenamedTo } : {}),
       },
       logEntries,
     };

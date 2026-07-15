@@ -89,6 +89,9 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      // Keep the heading in the body so the original retains its key (the default
+      // strips the heading and renames the original — covered by its own test).
+      keepHeadingInBody: true,
     });
 
     expect(result.sourceFragmentUuid).toBe(original.uuid);
@@ -120,6 +123,8 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      // Keep headings so the new piece's content includes its heading line.
+      keepHeadingInBody: true,
     });
 
     expect(result.createdUuids).toHaveLength(1);
@@ -198,6 +203,8 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      // Keep the heading so piece 1 (the original) retains its key.
+      keepHeadingInBody: true,
       pieceKeys: [
         { pieceIndex: 2, key: `chosen-two-${stamp}` },
         { pieceIndex: 3, key: `chosen-three-${stamp}` },
@@ -413,6 +420,7 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
     });
 
     // The heading line is retained, so the first heading + its marker stay in
@@ -445,6 +453,7 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
     });
 
     // Piece 1 is the leading prose (no heading, no marker); the heading line and
@@ -475,6 +484,9 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(ctx, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      // Keep headings so rejoining the pieces reproduces the body verbatim (the
+      // default moves each heading into a key instead — a separate concern).
+      keepHeadingInBody: true,
     });
 
     const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
@@ -595,6 +607,7 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(failingContext, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
     });
 
     // The split committed: new piece on disk, original truncated.
@@ -793,6 +806,7 @@ describe("splitFragmentCommand", () => {
     const { result } = await splitFragmentCommand.execute(failingContext, {
       fragmentId: original.uuid,
       delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
       intoSequence: { name: `into-seq-fail-${stamp} split` },
     });
 
@@ -856,5 +870,134 @@ describe("splitFragmentCommand", () => {
       .sort((a, b) => a.position - b.position)
       .map((placement) => placement.fragmentUuid);
     expect(order).toEqual([original.uuid, result.createdUuids[0]!]);
+  });
+
+  it("strips the heading from each piece and derives keys from it by default", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `strip-src-${stamp}`,
+      `# Chapter${stamp}\nBody one\n# Section${stamp}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // The original (piece 1) is renamed to its leading heading, its body stripped.
+    expect(result.originalKeyRenamedTo).toBe(`Chapter${stamp}`);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.uuid).toBe(original.uuid);
+    expect(reread.key).toBe(`Chapter${stamp}`);
+    expect(reread.content.trim()).toBe("Body one");
+
+    // The new piece is keyed by its heading, with the heading dropped from the body.
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.key).toBe(`Section${stamp}`);
+    expect(created.content.trim()).toBe("Body two");
+  });
+
+  it("records originalKeyRenamedTo on the fragment:split action-log payload", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `strip-log-${stamp}`,
+      `# Renamed${stamp}\nBody one\n# Next${stamp}\nBody two`,
+    );
+
+    const { logEntries } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(logEntries[0]!.payload).toMatchObject({
+      sourceFragmentUuid: original.uuid,
+      originalKeyRenamedTo: `Renamed${stamp}`,
+    });
+  });
+
+  it("keeps the original's key when its body has no leading heading (nothing to rename)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `strip-intro-${stamp}`,
+      `Intro prose ${stamp}\n# Only${stamp}\nBody`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // Piece 1 is the leading prose — no heading to become a key, so no rename.
+    expect(result.originalKeyRenamedTo).toBeUndefined();
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(original.key);
+    expect(reread.content.trim()).toBe(`Intro prose ${stamp}`);
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.key).toBe(`Only${stamp}`);
+    expect(created.content.trim()).toBe("Body");
+  });
+
+  it("suffixes a later piece whose heading equals the original's old key while renaming the original", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const originalKey = `Src${stamp}`;
+    // Piece 1's heading (Lead${stamp}) renames the original away from Src${stamp};
+    // a later piece's heading reuses Src${stamp}. The rename runs after the pieces
+    // are written, so the reused key must be suffixed — not collide mid-split.
+    const original = await writeFragment(
+      ctx,
+      originalKey,
+      `# Lead${stamp}\nBody one\n# ${originalKey}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(`Lead${stamp}`);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(`Lead${stamp}`);
+
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    // The reused key is suffixed rather than colliding with the not-yet-renamed original.
+    expect(created.key).toBe(`${originalKey}_1`);
+  });
+
+  it("keeps headings in the body and the original's key when keepHeadingInBody is true", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `keep-src-${stamp}`,
+      `# Keep${stamp}\nBody one\n# Two${stamp}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+    });
+
+    expect(result.originalKeyRenamedTo).toBeUndefined();
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(original.key);
+    expect(reread.content.trim()).toBe(`# Keep${stamp}\nBody one`);
   });
 });

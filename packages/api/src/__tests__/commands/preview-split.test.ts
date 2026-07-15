@@ -90,11 +90,37 @@ describe("previewSplitCommand", () => {
     const { result } = await previewSplitCommand.execute(ctx, {
       fragmentId: fragment.uuid,
       delimiter: { type: "heading", level: 1 },
+      // Keep the heading in the body so piece 1 reports the original's key (the
+      // default strips it and reports the heading-derived rename instead).
+      keepHeadingInBody: true,
     });
 
     expect(result.pieces[0]?.key).toBe(key);
+    expect(result.pieces[0]?.renamedOriginal).toBeUndefined();
     // Piece 2's derived key must not collide with the original's key.
     expect(result.pieces[1]?.key).not.toBe(key);
+  });
+
+  it("renames piece 1 to its heading and derives every key by default (heading stripped)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const fragment = await writeFragment(
+      ctx,
+      `preview-strip-${stamp}`,
+      `# First${stamp}\nBody one\n# Second${stamp}\nBody two`,
+    );
+
+    const { result } = await previewSplitCommand.execute(ctx, {
+      fragmentId: fragment.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    // Piece 1 reports the heading-derived key and flags the impending rename.
+    expect(result.pieces[0]?.key).toBe(`First${stamp}`);
+    expect(result.pieces[0]?.renamedOriginal).toBe(true);
+    expect(result.pieces[1]?.key).toBe(`Second${stamp}`);
+    // The excerpt no longer includes the stripped heading.
+    expect(result.pieces[0]?.excerpt).not.toContain("#");
   });
 
   it("returns a single piece for a no-op delimiter", async () => {

@@ -2,6 +2,7 @@ import type { SplitDelimiter } from "@maskor/importer";
 import { splitByDelimiter, deriveKey, detectSplitDelimiter } from "@maskor/importer";
 import { deriveExcerpt } from "@maskor/shared";
 import type { Command } from "../types";
+import { resolveOriginalPieceKey } from "./split-piece-keys";
 
 // The fallback when no delimiter is requested and the content has no structural
 // delimiter to auto-detect: heading level 1. It yields a single piece (a no-op the
@@ -13,12 +14,21 @@ export type PreviewSplitInput = {
   // Optional: when omitted, the command auto-detects a smart default delimiter for
   // the fragment's content and returns it as `appliedDelimiter`.
   delimiter?: SplitDelimiter;
+  // When false (the default), a heading line that starts a piece is stripped from
+  // the body and becomes the piece's key — including piece 1 (the original is
+  // renamed to its leading heading). When true, headings stay in the body (piece 1
+  // keeps its key). Only affects heading splits; the other delimiters carry no
+  // heading. Mirrors `retainHeadingInContent` on the importer.
+  keepHeadingInBody?: boolean;
 };
 
 export type SplitPiecePreview = {
   pieceIndex: number;
   key: string;
   excerpt: string;
+  // True for piece 1 only when the original will be renamed to its heading-derived
+  // key (heading stripped). Lets the dialog signal the original's key is changing.
+  renamedOriginal?: boolean;
 };
 
 export type PreviewSplitResult = {
@@ -48,24 +58,37 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
     const appliedDelimiter =
       input.delimiter ?? detectSplitDelimiter(fragment.content) ?? DEFAULT_DELIMITER;
 
-    // Retain heading lines in piece content: a split must never drop prose (unlike
-    // import, which lifts the heading into the new entity's title). See the spec.
+    // Default: strip the heading from each piece's body (it becomes the key). Opt in
+    // to keep headings in the body via `keepHeadingInBody`. Only heading splits carry
+    // a heading; the other delimiters ignore the option.
+    const keepHeadingInBody = input.keepHeadingInBody ?? false;
     const rawPieces = splitByDelimiter(fragment.content, appliedDelimiter, {
-      retainHeadingInContent: true,
+      retainHeadingInContent: keepHeadingInBody,
     });
 
+    // Derive keys the same way the split command does, so the preview matches the
+    // commit. Piece 1 resolves against the other fragments' keys (its own excluded,
+    // so a heading matching the current key is not a false collision); the reserved
+    // key then seeds the later pieces' derivation.
+    const otherKeys = new Set(existingKeys);
+    otherKeys.delete(fragment.key.toLowerCase());
+    const firstPieceKey = rawPieces.length
+      ? resolveOriginalPieceKey(rawPieces[0]!, fragment.key, keepHeadingInBody, otherKeys)
+      : { key: fragment.key, renamed: false };
+
     const pieces: SplitPiecePreview[] = rawPieces.map((piece, index) => {
-      // Piece 1 keeps the original's identity, so it reports the original's
-      // existing key verbatim. Pieces 2…N get a deriveKey-derived key computed
-      // against the existing keys — which still include the original's, so the
-      // original's own key is never a false collision for the later pieces.
-      const key =
-        index === 0
-          ? fragment.key
-          : deriveKey({ headingText: piece.title, content: piece.content }, existingKeys);
+      if (index === 0) {
+        return {
+          pieceIndex: 1,
+          key: firstPieceKey.key,
+          excerpt: deriveExcerpt(piece.content),
+          ...(firstPieceKey.renamed ? { renamedOriginal: true } : {}),
+        };
+      }
+
       return {
         pieceIndex: index + 1,
-        key,
+        key: deriveKey({ headingText: piece.title, content: piece.content }, otherKeys),
         excerpt: deriveExcerpt(piece.content),
       };
     });

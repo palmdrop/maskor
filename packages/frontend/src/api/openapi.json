@@ -2913,6 +2913,10 @@
           "excerpt": {
             "type": "string",
             "example": "The opening line of the piece…"
+          },
+          "renamedOriginal": {
+            "type": "boolean",
+            "example": true
           }
         },
         "required": [
@@ -3017,6 +3021,10 @@
           },
           "delimiter": {
             "$ref": "#/components/schemas/SplitDelimiter"
+          },
+          "keepHeadingInBody": {
+            "type": "boolean",
+            "example": false
           }
         },
         "required": [
@@ -3059,6 +3067,10 @@
           "createdSequenceName": {
             "type": "string",
             "example": "my-fragment split"
+          },
+          "originalKeyRenamedTo": {
+            "type": "string",
+            "example": "chapter-1"
           }
         },
         "required": [
@@ -3083,6 +3095,10 @@
             "items": {
               "$ref": "#/components/schemas/SplitPieceKey"
             }
+          },
+          "keepHeadingInBody": {
+            "type": "boolean",
+            "example": false
           },
           "intoSequence": {
             "$ref": "#/components/schemas/SplitIntoSequence"
@@ -13208,6 +13224,9 @@
                                 "type": "string"
                               },
                               "createdSequenceName": {
+                                "type": "string"
+                              },
+                              "originalKeyRenamedTo": {
                                 "type": "string"
                               }
                             },

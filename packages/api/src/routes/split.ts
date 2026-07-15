@@ -95,14 +95,14 @@ const splitRoute = createRoute({
 export const splitRouter = new OpenAPIHono<{ Variables: AppVariables }>();
 
 splitRouter.openapi(splitPreviewRoute, async (ctx) => {
-  const { fragmentId, delimiter } = ctx.req.valid("json");
+  const { fragmentId, delimiter, keepHeadingInBody } = ctx.req.valid("json");
 
   try {
     const result = await executeCommand(
       previewSplitCommand,
       "split:preview",
       commandContextFrom(ctx),
-      { fragmentId, delimiter },
+      { fragmentId, delimiter, keepHeadingInBody },
     );
     return ctx.json(result, 200);
   } catch (error) {
@@ -111,7 +111,8 @@ splitRouter.openapi(splitPreviewRoute, async (ctx) => {
 });
 
 splitRouter.openapi(splitRoute, async (ctx) => {
-  const { fragmentId, delimiter, pieceKeys, intoSequence } = ctx.req.valid("json");
+  const { fragmentId, delimiter, pieceKeys, keepHeadingInBody, intoSequence } =
+    ctx.req.valid("json");
 
   try {
     const result = await executeCommand(
@@ -122,6 +123,7 @@ splitRouter.openapi(splitRoute, async (ctx) => {
         fragmentId,
         delimiter,
         pieceKeys,
+        keepHeadingInBody,
         intoSequence,
       },
     );

@@ -257,6 +257,9 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       // single entry rather than a separate sequence:created entry.
       createdSequenceUuid: z.string().optional(),
       createdSequenceName: z.string().optional(),
+      // Present when the original was renamed to its leading heading (heading
+      // stripped from the body). The pre-rename key is on `target.key`.
+      originalKeyRenamedTo: z.string().optional(),
     }),
   ),
   entry("margin:updated", empty),
