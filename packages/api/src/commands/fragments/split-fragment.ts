@@ -48,8 +48,9 @@ export class SplitSequenceNameInvalidError extends Error {
   }
 }
 
-// A user-chosen key for a new piece (pieceIndex is 1-based, as in the preview;
-// piece 1 is the original and is never renamed).
+// A user-chosen key for a piece (pieceIndex is 1-based, as in the preview). An
+// override for piece 1 renames the original fragment; it takes precedence over
+// the automatic rename to a stripped heading.
 export type SplitPieceKey = {
   pieceIndex: number;
   key: string;
@@ -86,8 +87,9 @@ export type SplitFragmentResult = {
   // (a warning is surfaced instead — see `warnings`).
   createdSequenceUuid?: string;
   createdSequenceName?: string;
-  // The original's new key when it was renamed to its leading heading (heading
-  // stripped from the body). Absent when the original kept its key.
+  // The original's new key when it was renamed — to its leading heading (heading
+  // stripped from the body) or to a user-chosen piece-1 key override. Absent when
+  // the original kept its key.
   originalKeyRenamedTo?: string;
 };
 
@@ -162,31 +164,43 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
     );
     const pieceMarkerSets = pieces.map((piece) => markerIdSet(piece.content));
 
-    // Key derivation works against the keys of all OTHER fragments — the original's
-    // own key is excluded so it is never a false collision (its old key is freed on a
-    // rename, and re-reserved below when it keeps its key). `resolveOriginalPieceKey`
-    // reserves piece 1's resolved key so the later pieces avoid it.
-    const otherKeys = new Set(existingKeys);
-    otherKeys.delete(original.key.toLowerCase());
-    const originalKeyResolution = resolveOriginalPieceKey(
-      pieces[0]!,
-      original.key,
-      keepHeadingInBody,
-      otherKeys,
-    );
-
-    // User-chosen key overrides for the new pieces, keyed by 1-based pieceIndex
-    // (piece 1 is the original; its key is resolved above, not via overrides). Every
-    // piece's key is resolved HERE, before the first write, so a malformed or
-    // conflicting override rejects the split with nothing on disk — no orphan pieces
-    // from a mid-loop validation failure. deriveKey suffixes against the other keys
-    // (piece 1's reserved) and keys minted earlier in this split; falling back to the
-    // derived key when no override.
+    // User-chosen key overrides, keyed by 1-based pieceIndex. Every piece's key is
+    // resolved HERE, before the first write, so a malformed or conflicting override
+    // rejects the split with nothing on disk — no orphan pieces from a mid-loop
+    // validation failure.
     const overrideKeyByPieceIndex = new Map<number, string>();
     for (const override of input.pieceKeys ?? []) {
-      if (override.pieceIndex >= 2) {
-        overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
-      }
+      overrideKeyByPieceIndex.set(override.pieceIndex, override.key);
+    }
+
+    // Key derivation works against the keys of all OTHER fragments — the original's
+    // own key is excluded so it is never a false collision (its old key is freed on a
+    // rename, and re-reserved below when it keeps its key). Piece 1's resolved key is
+    // reserved so the later pieces avoid it. A user override for piece 1 renames the
+    // original explicitly and wins over the automatic rename to a stripped heading;
+    // resubmitting the original's own key is not a collision (it resolves to no
+    // rename).
+    const otherKeys = new Set(existingKeys);
+    otherKeys.delete(original.key.toLowerCase());
+    const pieceOneOverride = overrideKeyByPieceIndex.get(1);
+    let originalKeyResolution: { key: string; renamed: boolean };
+    if (pieceOneOverride !== undefined) {
+      const key = resolveOverrideKey(pieceOneOverride, otherKeys);
+      // Reserve the original's OLD key too: the rename runs after the new pieces are
+      // written (Phase B ordering), so a later piece must not claim the not-yet-freed
+      // key and collide with the original mid-split.
+      otherKeys.add(original.key.toLowerCase());
+      originalKeyResolution = {
+        key,
+        renamed: key.toLowerCase() !== original.key.toLowerCase(),
+      };
+    } else {
+      originalKeyResolution = resolveOriginalPieceKey(
+        pieces[0]!,
+        original.key,
+        keepHeadingInBody,
+        otherKeys,
+      );
     }
     // Piece array index (1…N-1) → the resolved key for that new piece.
     const keyByPieceIndex = new Map<number, string>();
@@ -236,9 +250,10 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
 
     // Piece 1 keeps the original's identity (uuid, aspects, readiness, references,
     // unmanaged frontmatter): truncate the original to the first piece's content.
-    // Its key changes only when the heading was stripped and the body started with
-    // one — then the original is renamed to the heading-derived key, and the service
-    // cascades the file + Margin rename and rewrites `[[fragments/oldKey]]` links.
+    // Its key changes only on a user-chosen piece-1 override, or when the heading
+    // was stripped and the body started with one — then the original is renamed and
+    // the service cascades the file + Margin rename and rewrites
+    // `[[fragments/oldKey]]` links.
     // Done last, after every new piece is persisted (see above), so the original is
     // never the sole holder of prose it is about to drop.
     const firstPiece = pieces[0]!;

@@ -76,9 +76,10 @@ export const SplitFragmentDialog = ({
   const [delimiterType, setDelimiterType] = useState<DelimiterType | null>(null);
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>(1);
   const [pieces, setPieces] = useState<SplitPiecePreview[]>([]);
-  // User-chosen key overrides for the new pieces (pieceIndex 2…N), keyed by
-  // pieceIndex. Absent → the derived key shown in the preview is used. Cleared
-  // whenever the delimiter changes (the piece set changes with it).
+  // User-chosen key overrides, keyed by pieceIndex. Absent → the key shown in the
+  // preview is used (piece 1: the original's — possibly heading-renamed — key;
+  // pieces 2…N: the derived key). An override for piece 1 renames the original.
+  // Cleared whenever the delimiter changes (the piece set changes with it).
   const [editedKeys, setEditedKeys] = useState<Record<number, string>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
@@ -179,24 +180,22 @@ export const SplitFragmentDialog = ({
   ]);
 
   // The effective key for a piece: the user's override if present, else the
-  // derived key from the preview. Piece 1 always reports the original's key.
+  // key from the preview.
   const effectiveKey = useCallback(
     (piece: SplitPiecePreview): string => editedKeys[piece.pieceIndex] ?? piece.key,
     [editedKeys],
   );
 
-  // Validate the new pieces' keys (pieceIndex 2…N): each non-empty, well-formed,
-  // and unique (case-insensitive) across all pieces. The server is authoritative
-  // for collisions with existing fragments; this is the in-modal fast feedback.
+  // Validate every piece's key: non-empty, well-formed, and unique
+  // (case-insensitive) across all pieces. The server is authoritative for
+  // collisions with existing fragments; this is the in-modal fast feedback.
   const keyError = useMemo<string | null>(() => {
     const seen = new Set<string>();
     for (const piece of pieces) {
       const key = effectiveKey(piece).trim();
-      if (piece.pieceIndex >= 2) {
-        if (!key.length) return "Piece keys must not be empty.";
-        if (!ENTITY_KEY_REGEX.test(key)) {
-          return "Keys may only contain letters, numbers, spaces, hyphens, and underscores.";
-        }
+      if (!key.length) return "Piece keys must not be empty.";
+      if (!ENTITY_KEY_REGEX.test(key)) {
+        return "Keys may only contain letters, numbers, spaces, hyphens, and underscores.";
       }
       const lowered = key.toLowerCase();
       if (seen.has(lowered)) return `Duplicate key "${key}".`;
@@ -237,11 +236,13 @@ export const SplitFragmentDialog = ({
   const handleConfirm = useCallback(async () => {
     if (delimiter === null) return;
     setSplitError(null);
-    // Send only user-overridden keys; un-edited new pieces fall back to the
-    // server's derived key (identical to the preview).
-    const pieceKeys: SplitPieceKey[] = Object.entries(editedKeys)
-      .map(([pieceIndex, key]) => ({ pieceIndex: Number(pieceIndex), key: key.trim() }))
-      .filter((override) => override.pieceIndex >= 2);
+    // Send only user-overridden keys; un-edited pieces fall back to the server's
+    // resolution (identical to the preview). An override for piece 1 renames the
+    // original.
+    const pieceKeys: SplitPieceKey[] = Object.entries(editedKeys).map(([pieceIndex, key]) => ({
+      pieceIndex: Number(pieceIndex),
+      key: key.trim(),
+    }));
     // Opt-in: also create a new sequence holding the pieces. Send only when checked
     // and the (trimmed) name is non-empty — the confirm gate already enforces this.
     const trimmedSequenceName = effectiveSequenceName.trim();
@@ -326,8 +327,8 @@ export const SplitFragmentDialog = ({
           <DialogTitle>Split fragment</DialogTitle>
           <DialogDescription>
             Divide this fragment along a delimiter. The original keeps its identity as the first
-            piece; the rest become new fragments inheriting its aspects and references. Rename the
-            new pieces below before splitting.
+            piece; the rest become new fragments inheriting its aspects and references. Rename any
+            piece below before splitting — renaming the first piece renames the original.
           </DialogDescription>
         </DialogHeader>
 
@@ -403,32 +404,31 @@ export const SplitFragmentDialog = ({
                     key={piece.pieceIndex}
                     className="flex min-w-0 flex-col gap-1 rounded-md border border-border/50 px-3 py-2"
                   >
-                    {piece.pieceIndex === 1 ? (
-                      // Piece 1 is the original fragment (same identity). Its key is
-                      // fixed, unless the heading is stripped and its body starts with
-                      // one — then the original is renamed to that heading.
-                      <span className="flex items-center gap-2 text-sm font-medium break-words">
-                        1. {piece.key}
-                        <span className="text-xs font-normal text-muted-foreground">
-                          {piece.renamedOriginal ? "(original, renamed)" : "(original)"}
+                    <label className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">{piece.pieceIndex}.</span>
+                      <Input
+                        value={effectiveKey(piece)}
+                        onChange={(event) =>
+                          setEditedKeys((previous) => ({
+                            ...previous,
+                            [piece.pieceIndex]: event.target.value,
+                          }))
+                        }
+                        aria-label={`Key for piece ${piece.pieceIndex}`}
+                        className="h-7 flex-1 text-sm"
+                      />
+                      {piece.pieceIndex === 1 && (
+                        // Piece 1 is the original fragment (same identity). Editing
+                        // its key renames the original; with heading stripping the
+                        // preview already flags the automatic heading rename.
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {piece.renamedOriginal ||
+                          (editedKeys[1] !== undefined && editedKeys[1].trim() !== piece.key)
+                            ? "(original, renamed)"
+                            : "(original)"}
                         </span>
-                      </span>
-                    ) : (
-                      <label className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">{piece.pieceIndex}.</span>
-                        <Input
-                          value={effectiveKey(piece)}
-                          onChange={(event) =>
-                            setEditedKeys((previous) => ({
-                              ...previous,
-                              [piece.pieceIndex]: event.target.value,
-                            }))
-                          }
-                          aria-label={`Key for piece ${piece.pieceIndex}`}
-                          className="h-7 flex-1 text-sm"
-                        />
-                      </label>
-                    )}
+                      )}
+                    </label>
                     <span className="text-xs text-muted-foreground break-words line-clamp-2">
                       {piece.excerpt}
                     </span>

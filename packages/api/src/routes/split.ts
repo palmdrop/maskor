@@ -38,7 +38,7 @@ const splitPreviewRoute = createRoute({
   tags: ["Fragments"],
   summary: "Preview how a fragment would divide into pieces along a delimiter",
   description:
-    "Read-derivation: runs the shared split engine over the fragment's body and returns a lean piece list (pieceIndex, key, excerpt) plus a count. Writes nothing. Piece 1 reports the original's existing key; pieces 2…N report deriveKey-derived keys.",
+    "Read-derivation: runs the shared split engine over the fragment's body and returns a lean piece list (pieceIndex, key, excerpt) plus a count. Writes nothing. Piece 1 reports the original's key (renamed to its stripped heading when applicable, flagged via renamedOriginal); pieces 2…N report deriveKey-derived keys.",
   request: {
     params: projectIdParamSchema,
     body: { content: { "application/json": { schema: SplitPreviewBodySchema } }, required: true },
@@ -66,7 +66,7 @@ const splitRoute = createRoute({
   tags: ["Fragments"],
   summary: "Split a fragment into multiple fragments along a delimiter",
   description:
-    "Identity-preserving split: the original is truncated to piece 1 (keeping uuid, key, aspects, readiness, references) and pieces 2…N become new fragments inheriting its aspects + references, inserted immediately after it in every sequence it is placed in. Records a single non-undoable fragment:split action-log entry.",
+    "Identity-preserving split: the original is truncated to piece 1 (keeping uuid, aspects, readiness, references; its key too, unless renamed via a piece-1 pieceKeys override or heading stripping) and pieces 2…N become new fragments inheriting its aspects + references, inserted immediately after it in every sequence it is placed in. Records a single non-undoable fragment:split action-log entry.",
   request: {
     params: projectIdParamSchema,
     body: { content: { "application/json": { schema: SplitBodySchema } }, required: true },

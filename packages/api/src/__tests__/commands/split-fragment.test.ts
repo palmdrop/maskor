@@ -284,6 +284,123 @@ describe("splitFragmentCommand", () => {
     ).rejects.toBeInstanceOf(SplitKeyInvalidError);
   });
 
+  it("renames the original to a user-chosen piece-1 key", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `piece-one-src-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    const { result, logEntries } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+      pieceKeys: [{ pieceIndex: 1, key: `piece-one-chosen-${stamp}` }],
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(`piece-one-chosen-${stamp}`);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.uuid).toBe(original.uuid);
+    expect(reread.key).toBe(`piece-one-chosen-${stamp}`);
+    expect(logEntries[0]!.payload).toMatchObject({
+      originalKeyRenamedTo: `piece-one-chosen-${stamp}`,
+    });
+  });
+
+  it("lets a piece-1 override win over the automatic rename to a stripped heading", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `piece-one-strip-${stamp}`,
+      `# Chapter${stamp}\nBody one\n# Section${stamp}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      // Default heading stripping would rename the original to Chapter${stamp};
+      // the explicit override takes precedence.
+      pieceKeys: [{ pieceIndex: 1, key: `piece-one-override-${stamp}` }],
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(`piece-one-override-${stamp}`);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(`piece-one-override-${stamp}`);
+    // The heading is still stripped from the body.
+    expect(reread.content.trim()).toBe("Body one");
+  });
+
+  it("treats a piece-1 override equal to the original's key as no rename", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const original = await writeFragment(
+      ctx,
+      `piece-one-same-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+      // Resubmitting the current key is not a collision and not a rename.
+      pieceKeys: [{ pieceIndex: 1, key: `piece-one-same-${stamp}` }],
+    });
+
+    expect(result.originalKeyRenamedTo).toBeUndefined();
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(original.key);
+  });
+
+  it("rejects a piece-1 override that collides with an existing fragment", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    await writeFragment(ctx, `piece-one-taken-${stamp}`, "occupier");
+    const original = await writeFragment(
+      ctx,
+      `piece-one-conflict-${stamp}`,
+      "# One\nBody one\n# Two\nBody two",
+    );
+
+    await expect(
+      splitFragmentCommand.execute(ctx, {
+        fragmentId: original.uuid,
+        delimiter: { type: "heading", level: 1 },
+        pieceKeys: [{ pieceIndex: 1, key: `piece-one-taken-${stamp}` }],
+      }),
+    ).rejects.toBeInstanceOf(SplitKeyConflictError);
+  });
+
+  it("suffixes a later piece reusing the old key while a piece-1 override renames the original", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const originalKey = `PieceOneOld${stamp}`;
+    // The override frees originalKey only when the rename lands, after the new
+    // pieces are written — so a piece deriving that key must be suffixed.
+    const original = await writeFragment(
+      ctx,
+      originalKey,
+      `# Lead\nBody one\n# ${originalKey}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+      pieceKeys: [{ pieceIndex: 1, key: `PieceOneNew${stamp}` }],
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(`PieceOneNew${stamp}`);
+    const created = await ctx.storageService.fragments.read(
+      ctx.projectContext,
+      result.createdUuids[0]!,
+    );
+    expect(created.key).toBe(`${originalKey}_1`);
+  });
+
   it("rejects a single-piece (no-op) split and writes nothing", async () => {
     const ctx = await makeCommandContext();
     const original = await writeFragment(

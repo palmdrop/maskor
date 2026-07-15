@@ -80,10 +80,9 @@ describe("SplitFragmentDialog", () => {
     renderDialog();
 
     await waitFor(() => expect(screen.getByText("3 pieces")).toBeInTheDocument());
-    // Piece 1 is the original (read-only). With no rename flagged it is "(original)".
-    expect(screen.getByText(/intro/)).toBeInTheDocument();
+    // Every piece is an editable key input; piece 1 (the original) is annotated.
+    expect(screen.getByDisplayValue("intro")).toBeInTheDocument();
     expect(screen.getByText("(original)")).toBeInTheDocument();
-    // Pieces 2…N are editable key inputs seeded with the derived keys.
     expect(screen.getByDisplayValue("middle")).toBeInTheDocument();
     expect(screen.getByDisplayValue("end")).toBeInTheDocument();
   });
@@ -139,6 +138,49 @@ describe("SplitFragmentDialog", () => {
           fragmentId: "fragment-1",
           delimiter: { type: "heading", level: 1 },
           pieceKeys: [{ pieceIndex: 2, key: "my-renamed-piece" }],
+          keepHeadingInBody: false,
+        },
+      }),
+    );
+  });
+
+  it("lets the user rename piece 1 and sends it as a pieceKey override (renames the original)", async () => {
+    previewMutateAsync.mockResolvedValue(
+      previewResponse([
+        { pieceIndex: 1, key: "original-key", excerpt: "a" },
+        { pieceIndex: 2, key: "derived-b", excerpt: "b" },
+      ]),
+    );
+    splitMutateAsync.mockResolvedValue({
+      status: 200,
+      data: {
+        sourceFragmentUuid: "fragment-1",
+        createdCount: 1,
+        createdUuids: ["new-1"],
+        warnings: [],
+        originalKeyRenamedTo: "renamed-original",
+      },
+    });
+
+    renderDialog();
+
+    const keyInput = await screen.findByDisplayValue("original-key");
+    fireEvent.change(keyInput, { target: { value: "renamed-original" } });
+
+    // Editing piece 1's key flags the pending rename of the original.
+    expect(screen.getByText("(original, renamed)")).toBeInTheDocument();
+
+    const confirm = screen.getByRole("button", { name: "Split" });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(splitMutateAsync).toHaveBeenCalledWith({
+        projectId: "project-1",
+        data: {
+          fragmentId: "fragment-1",
+          delimiter: { type: "heading", level: 1 },
+          pieceKeys: [{ pieceIndex: 1, key: "renamed-original" }],
           keepHeadingInBody: false,
         },
       }),
@@ -527,7 +569,7 @@ describe("SplitFragmentDialog", () => {
     renderDialog();
 
     expect(await screen.findByText("(original, renamed)")).toBeInTheDocument();
-    expect(screen.getByText(/chapter-one/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("chapter-one")).toBeInTheDocument();
   });
 
   it("hides the keep-heading toggle for a non-heading delimiter", async () => {

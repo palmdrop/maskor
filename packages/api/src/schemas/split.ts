@@ -58,11 +58,13 @@ export const SplitPreviewResultSchema = z
   })
   .openapi("SplitPreviewResult");
 
-// A user-chosen key for one of the new pieces (pieceIndex 2…N, 1-based as in the
-// preview). Piece 1 keeps the original fragment's key and cannot be renamed here.
+// A user-chosen key for one of the pieces (1-based pieceIndex, as in the
+// preview). An override for piece 1 renames the original fragment (the storage
+// service cascades the file + Margin rename and rewrites links); it takes
+// precedence over the automatic rename to a stripped heading.
 const SplitPieceKeySchema = z
   .object({
-    pieceIndex: z.number().int().min(2).openapi({ example: 2 }),
+    pieceIndex: z.number().int().min(1).openapi({ example: 2 }),
     key: z.string().min(1).openapi({ example: "renamed-piece" }),
   })
   .openapi("SplitPieceKey");
@@ -71,9 +73,10 @@ export const SplitBodySchema = z
   .object({
     fragmentId: z.string().openapi({ example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890" }),
     delimiter: SplitDelimiterSchema,
-    // Optional per-piece key overrides for the new pieces. Any new piece without an
-    // override falls back to the derived key. Piece 1's key is not set here (it is
-    // the original — renamed automatically to its heading when the heading is stripped).
+    // Optional per-piece key overrides. A new piece without an override falls back
+    // to its derived key; piece 1 without an override keeps the original's key
+    // (renamed automatically to its heading when the heading is stripped). An
+    // override for piece 1 renames the original explicitly.
     pieceKeys: z.array(SplitPieceKeySchema).optional(),
     // When false (the default), a heading that starts a piece is stripped from its
     // body and becomes the piece's key (including piece 1 → the original is renamed
@@ -110,8 +113,8 @@ export const SplitResultSchema = z
       .optional()
       .openapi({ example: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }),
     createdSequenceName: z.string().optional().openapi({ example: "my-fragment split" }),
-    // Present when the original was renamed to its leading heading (heading stripped
-    // from the body). Its pre-rename key is unchanged elsewhere in the vault.
+    // Present when the original was renamed — to its leading heading (heading
+    // stripped from the body) or to a user-chosen piece-1 key override.
     originalKeyRenamedTo: z.string().optional().openapi({ example: "chapter-1" }),
   })
   .openapi("SplitResult");
