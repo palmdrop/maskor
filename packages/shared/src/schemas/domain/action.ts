@@ -288,11 +288,14 @@ export const LogEntrySchema = z.discriminatedUnion("type", [
       fileName: z.string(),
       archivePath: z.string(),
       fragmentCount: z.number().int(),
-      // Effective annotation-toggle state for this export (config value or the
-      // per-export dialog override). Optional so export entries written before
-      // these fields existed still validate (the reader skips parse failures).
+      // Effective option state for this export (config value or the per-export
+      // dialog override). Optional so export entries written before these
+      // fields existed still validate (the reader skips parse failures).
       includeReferences: z.boolean().optional(),
       includeMarginAnnotations: z.boolean().optional(),
+      showTitles: z.boolean().optional(),
+      showSectionHeadings: z.boolean().optional(),
+      separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional(),
     }),
   ),
 ]);

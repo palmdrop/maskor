@@ -33,6 +33,11 @@ export const ProjectSchema = z.object({
   export: z.object({
     includeReferences: z.boolean(),
     includeMarginAnnotations: z.boolean(),
+    showTitles: z.boolean(),
+    showSectionHeadings: z.boolean(),
+    // Export-owned assembly separator — a superset of the preview separators:
+    // `page-break` renders as a form feed in md/txt and a real page break in docx.
+    separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]),
   }),
   overview: z.object({
     detailLevel: z.enum(["prose", "excerpt", "title"]),
@@ -84,6 +89,9 @@ export const ProjectUpdateSchema = z.object({
     .object({
       includeReferences: z.boolean().optional(),
       includeMarginAnnotations: z.boolean().optional(),
+      showTitles: z.boolean().optional(),
+      showSectionHeadings: z.boolean().optional(),
+      separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional(),
     })
     .optional(),
   overview: z

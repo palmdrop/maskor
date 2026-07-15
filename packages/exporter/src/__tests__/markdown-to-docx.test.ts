@@ -46,6 +46,20 @@ describe("markdownToDocx — GFM footnotes lowered to Word footnotes", () => {
   });
 });
 
+describe("markdownToDocx — page-break separator lowered to a Word page break", () => {
+  it("lowers a form-feed-only paragraph to a real page break (no raw form feed)", async () => {
+    const markdown = "First fragment.\n\n\f\n\nSecond fragment.";
+    const bytes = await markdownToDocx(markdown);
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+
+    expect(document).toContain('<w:br w:type="page"/>');
+    // The form feed itself never reaches the XML (it is not a valid XML 1.0 character).
+    expect(document).not.toContain("\f");
+    expect(textRuns(document)).toContain("First fragment.");
+    expect(textRuns(document)).toContain("Second fragment.");
+  });
+});
+
 describe("markdownToDocx — Margin markers lowered to Word comments", () => {
   it("wraps the paragraph in a comment range and drops the marker", async () => {
     const markdown = "The bridge groans. <!--c:m1-->";

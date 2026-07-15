@@ -51,7 +51,8 @@ export type AssemblyBlock =
   | { kind: "body"; anchorId: string; content: string; annotations?: BlockAnnotations };
 
 // The export superset of separators. Preview only ever passes the first three;
-// `page-break` and `custom` are modeled for future file export.
+// `page-break` is file-export-only (form feed in md/txt, a real page break in
+// docx) and `custom` is modeled for future file export.
 export type AssemblySeparator =
   | "none"
   | "blank-line"

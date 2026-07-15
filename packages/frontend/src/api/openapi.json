@@ -134,11 +134,29 @@
               },
               "includeMarginAnnotations": {
                 "type": "boolean"
+              },
+              "showTitles": {
+                "type": "boolean"
+              },
+              "showSectionHeadings": {
+                "type": "boolean"
+              },
+              "separator": {
+                "type": "string",
+                "enum": [
+                  "blank-line",
+                  "horizontal-rule",
+                  "page-break",
+                  "none"
+                ]
               }
             },
             "required": [
               "includeReferences",
-              "includeMarginAnnotations"
+              "includeMarginAnnotations",
+              "showTitles",
+              "showSectionHeadings",
+              "separator"
             ]
           },
           "overview": {
@@ -360,6 +378,21 @@
               },
               "includeMarginAnnotations": {
                 "type": "boolean"
+              },
+              "showTitles": {
+                "type": "boolean"
+              },
+              "showSectionHeadings": {
+                "type": "boolean"
+              },
+              "separator": {
+                "type": "string",
+                "enum": [
+                  "blank-line",
+                  "horizontal-rule",
+                  "page-break",
+                  "none"
+                ]
               }
             }
           },
@@ -3195,6 +3228,27 @@
             "type": "boolean",
             "description": "Override: render Margin notes and comments as footnotes/comments",
             "example": true
+          },
+          "showTitles": {
+            "type": "boolean",
+            "description": "Override: emit fragment titles as headings",
+            "example": false
+          },
+          "showSectionHeadings": {
+            "type": "boolean",
+            "description": "Override: emit section names as headings",
+            "example": true
+          },
+          "separator": {
+            "type": "string",
+            "enum": [
+              "blank-line",
+              "horizontal-rule",
+              "page-break",
+              "none"
+            ],
+            "description": "Override: separator between fragments. `page-break` is a form feed in md/txt and a real page break in docx",
+            "example": "blank-line"
           }
         },
         "required": [
@@ -13540,6 +13594,21 @@
                               },
                               "includeMarginAnnotations": {
                                 "type": "boolean"
+                              },
+                              "showTitles": {
+                                "type": "boolean"
+                              },
+                              "showSectionHeadings": {
+                                "type": "boolean"
+                              },
+                              "separator": {
+                                "type": "string",
+                                "enum": [
+                                  "blank-line",
+                                  "horizontal-rule",
+                                  "page-break",
+                                  "none"
+                                ]
                               }
                             },
                             "required": [

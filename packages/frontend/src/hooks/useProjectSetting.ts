@@ -17,7 +17,9 @@ type BooleanSettingPath =
   | "editor.vimClipboardSync"
   | "advanced.showFragmentStats"
   | "export.includeReferences"
-  | "export.includeMarginAnnotations";
+  | "export.includeMarginAnnotations"
+  | "export.showTitles"
+  | "export.showSectionHeadings";
 
 type NumberSettingPath =
   | "editor.fontSize"
@@ -25,7 +27,7 @@ type NumberSettingPath =
   | "editor.maxParagraphWidth"
   | "suggestion.readinessThreshold";
 
-type StringSettingPath = "editor.language";
+type StringSettingPath = "editor.language" | "export.separator";
 
 export type SettingPath = BooleanSettingPath | NumberSettingPath | StringSettingPath;
 

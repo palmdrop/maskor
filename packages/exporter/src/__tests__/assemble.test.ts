@@ -194,6 +194,12 @@ describe("assembleSequence — markdown assembly", () => {
     expect(markdown).toBe("## Part One\n\n### first\n\nBody one.\n\n### second\n\nBody two.");
   });
 
+  it("page-break separator yields a form-feed paragraph between fragments but not trailing", () => {
+    const markdown = twoFragmentSection({ separator: "page-break" });
+    expect(markdown).toBe("## Part One\n\n### first\n\nBody one.\n\n\f\n\n### second\n\nBody two.");
+    expect(markdown.match(/\f/g)).toHaveLength(1);
+  });
+
   it("hides titles when showTitles is false but keeps fragment separators", () => {
     const markdown = twoFragmentSection({ separator: "horizontal-rule" });
     const noTitles = assembleSequence(

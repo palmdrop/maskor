@@ -9,6 +9,7 @@ import {
   CommentRangeStart,
   CommentRangeEnd,
   CommentReference,
+  PageBreak,
 } from "docx";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFootnote } from "micromark-extension-gfm-footnote";
@@ -198,6 +199,13 @@ const withCommentRanges = (
   ];
 };
 
+// True when a paragraph is exactly the assembler's page-break separator: a
+// single text node whose value is the form feed character.
+const isPageBreakParagraph = (node: MdastParagraph): boolean =>
+  node.children.length === 1 &&
+  node.children[0]!.type === "text" &&
+  (node.children[0] as Text).value === "\f";
+
 // Convert block-level mdast nodes to docx Paragraphs.
 // `indentLeft` (twips) is threaded through for blockquote nesting.
 const blockToDocx = (
@@ -220,6 +228,12 @@ const blockToDocx = (
 
     case "paragraph": {
       const paragraphNode = node as MdastParagraph;
+      // The assembler's page-break separator is a form-feed-only paragraph.
+      // Word cannot carry a raw form feed (invalid XML character), so it lowers
+      // to a real page break instead.
+      if (isPageBreakParagraph(paragraphNode)) {
+        return [new Paragraph({ children: [new PageBreak()] })];
+      }
       const markerIds = trailingCommentMarkerIds(paragraphNode.children);
       const runs = phrasingToRuns(paragraphNode.children, context);
       return [

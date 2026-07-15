@@ -84,6 +84,9 @@ exportRouter.post("/:sequenceId", async (context) => {
       format: bodyResult.data.format,
       includeReferences: bodyResult.data.includeReferences,
       includeMarginAnnotations: bodyResult.data.includeMarginAnnotations,
+      showTitles: bodyResult.data.showTitles,
+      showSectionHeadings: bodyResult.data.showSectionHeadings,
+      separator: bodyResult.data.separator,
     });
 
     const headers: Record<string, string> = {

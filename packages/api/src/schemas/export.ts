@@ -22,5 +22,18 @@ export const ExportSequenceBodySchema = z
       description: "Override: render Margin notes and comments as footnotes/comments",
       example: true,
     }),
+    showTitles: z.boolean().optional().openapi({
+      description: "Override: emit fragment titles as headings",
+      example: false,
+    }),
+    showSectionHeadings: z.boolean().optional().openapi({
+      description: "Override: emit section names as headings",
+      example: true,
+    }),
+    separator: z.enum(["blank-line", "horizontal-rule", "page-break", "none"]).optional().openapi({
+      description:
+        "Override: separator between fragments. `page-break` is a form feed in md/txt and a real page break in docx",
+      example: "blank-line",
+    }),
   })
   .openapi("ExportSequenceBody");

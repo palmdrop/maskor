@@ -254,6 +254,63 @@ describe("exportSequenceCommand annotations", () => {
     });
   });
 
+  it("assembles with the export config's assembly options when no override is present", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const first = await writeFragment(ctx, `options-first-${stamp}`, "First body.");
+    const second = await writeFragment(ctx, `options-second-${stamp}`, "Second body.");
+    const sequence = await writeSequence(ctx, `Options Seq ${stamp}`, [first.uuid, second.uuid]);
+
+    // Config defaults: titles off, section headings on, blank-line separator.
+    const { result } = await exportSequenceCommand.execute(ctx, {
+      sequenceId: sequence.uuid,
+      format: "md",
+    });
+
+    const markdown = new TextDecoder().decode(result.bytes);
+    expect(markdown).not.toContain(`### ${first.key}`);
+    expect(markdown).toContain("## Section");
+    // Blank-line separator: the explicit non-breaking-space paragraph.
+    expect(markdown).toContain("\u00a0");
+    expect(markdown).not.toContain("\f");
+  });
+
+  it("lets body assembly-option overrides beat the export config", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const first = await writeFragment(ctx, `override-options-first-${stamp}`, "First body.");
+    const second = await writeFragment(ctx, `override-options-second-${stamp}`, "Second body.");
+    const sequence = await writeSequence(ctx, `Override Options Seq ${stamp}`, [
+      first.uuid,
+      second.uuid,
+    ]);
+
+    const { result, logEntries } = await exportSequenceCommand.execute(ctx, {
+      sequenceId: sequence.uuid,
+      format: "md",
+      showTitles: true,
+      showSectionHeadings: false,
+      separator: "page-break",
+    });
+
+    const markdown = new TextDecoder().decode(result.bytes);
+    expect(markdown).toContain(`### ${first.key}`);
+    expect(markdown).toContain(`### ${second.key}`);
+    expect(markdown).not.toContain("## Section");
+    // One page-break separator between the two fragments, not trailing.
+    expect(markdown.match(/\f/g)).toHaveLength(1);
+
+    // Effective assembly-option state is recorded on the action-log payload.
+    const payload = logEntries[0]!.payload as {
+      showTitles: boolean;
+      showSectionHeadings: boolean;
+      separator: string;
+    };
+    expect(payload.showTitles).toBe(true);
+    expect(payload.showSectionHeadings).toBe(false);
+    expect(payload.separator).toBe("page-break");
+  });
+
   it("handles a missing Margin and an unresolvable reference key without crashing", async () => {
     const ctx = await makeCommandContext();
     const stamp = Date.now();

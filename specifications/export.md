@@ -1,8 +1,10 @@
 # Spec: Export
 
 **Status**: Draft
-**Last updated**: 2026-07-12
+**Last updated**: 2026-07-15
 **Shipped**:
+
+- 2026-07-15: Export-owned assembly options + page-break separator. The Export dialog now owns the assembly options (fragment titles, section headings, separator) — persisted per-project in the `export` config block with per-export overrides, mirroring the annotation toggles. Export no longer inherits the preview settings. The export separator set gains `page-break` (optional, off by default): a form feed in `.md`/`.txt`, lowered to a real Word page break between fragments in `.docx`.
 
 - 2026-07-12: Export annotations. References render as footnotes (GFM footnote syntax in `.md`/`.txt`; real Word footnotes in `.docx`) anchored at the end of each attaching fragment's body, deduplicated to one definition per reference. Margin notes + comments render as footnotes in `.md`/`.txt` and as Word comments in `.docx` (comments span their anchored paragraph; notes anchor to the title line, or the first block when titles are off). Controlled by two per-project toggles (`export.includeReferences`, `export.includeMarginAnnotations`, both default on) with per-export overrides in the Export dialog. Orphaned comments are skipped and surfaced as a warning (`X-Maskor-Export-Warnings` header → dialog toast). (plan: `references/plans/export-enhancements.md`)
 
@@ -69,7 +71,7 @@ The user can take their main sequence and export it to a single document in a fo
 
 - `.md`: assembled directly from fragment markdown bodies. No conversion needed.
 - `.txt`: the assembled markdown bytes with a `.txt` extension — byte-identical to `.md` **by design** (decided 2026-07-12). Markdown syntax is light enough to read as plain text; no stripping step exists or is planned.
-- `.docx`: pure-JS mdast→docx mapping (raw structural conversion; no styling).
+- `.docx`: pure-JS mdast→docx mapping (raw structural conversion; no styling). The `page-break` separator's form feed is lowered to a real Word page break (a raw form feed is not a valid XML character).
 - `.pdf`: requires a conversion step. Tool choice is not decided.
 
 ### Annotations (references & Margin)

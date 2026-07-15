@@ -16,6 +16,7 @@ import {
 } from "@components/ui/select";
 
 type Format = ExportSequenceBody["format"];
+type Separator = NonNullable<ExportSequenceBody["separator"]>;
 
 // Shape of one orphaned-comment warning surfaced on the export response header.
 type ExportWarning = { fragmentKey: string; count: number };
@@ -37,6 +38,15 @@ const FORMAT_LABELS: Record<Format, string> = {
   md: "Markdown (.md)",
   txt: "Plain text (.txt)",
   docx: "Word document (.docx)",
+};
+
+// Order matches the preview toolbar's separator select; `page-break` is the
+// export-only addition (form feed in md/txt, a real page break in docx).
+const SEPARATOR_LABELS: Record<Separator, string> = {
+  "blank-line": "Blank line",
+  "horizontal-rule": "Horizontal rule",
+  "page-break": "Page break",
+  none: "None",
 };
 
 type ExportDialogProps = {
@@ -66,8 +76,8 @@ export const ExportDialog = ({
 
   const activeSequenceId = selectedSequenceId ?? initialSequenceId ?? mainSequence?.uuid ?? null;
 
-  // Annotation toggles own their read-config → draft → commit lifecycle via
-  // `useProjectSetting`. The draft flips the checkbox instantly on click while
+  // Every export setting owns its read-config → draft → commit lifecycle via
+  // `useProjectSetting`. The draft flips the control instantly on change while
   // `commit` persists back to the project config in the background; the export
   // request below rides the current draft values.
   const includeReferences = useProjectSetting(projectId, "export.includeReferences", true);
@@ -76,6 +86,9 @@ export const ExportDialog = ({
     "export.includeMarginAnnotations",
     true,
   );
+  const showTitles = useProjectSetting(projectId, "export.showTitles", false);
+  const showSectionHeadings = useProjectSetting(projectId, "export.showSectionHeadings", true);
+  const separator = useProjectSetting(projectId, "export.separator", "blank-line");
 
   const handleIncludeReferencesChange = (next: boolean) => {
     includeReferences.setDraft(next);
@@ -85,6 +98,21 @@ export const ExportDialog = ({
   const handleIncludeMarginAnnotationsChange = (next: boolean) => {
     includeMarginAnnotations.setDraft(next);
     includeMarginAnnotations.commit(next);
+  };
+
+  const handleShowTitlesChange = (next: boolean) => {
+    showTitles.setDraft(next);
+    showTitles.commit(next);
+  };
+
+  const handleShowSectionHeadingsChange = (next: boolean) => {
+    showSectionHeadings.setDraft(next);
+    showSectionHeadings.commit(next);
+  };
+
+  const handleSeparatorChange = (next: Separator) => {
+    separator.setDraft(next);
+    separator.commit(next);
   };
 
   const mutation = useExportSequence();
@@ -99,6 +127,9 @@ export const ExportDialog = ({
           format,
           includeReferences: includeReferences.draft,
           includeMarginAnnotations: includeMarginAnnotations.draft,
+          showTitles: showTitles.draft,
+          showSectionHeadings: showSectionHeadings.draft,
+          separator: separator.draft as Separator,
         },
       },
       {
@@ -124,9 +155,14 @@ export const ExportDialog = ({
     onOpenChange(nextOpen);
   };
 
-  // A failed toggle persistence is non-fatal (the export still rides the draft),
+  // A failed setting persistence is non-fatal (the export still rides the draft),
   // so it surfaces inline under the checkboxes rather than blocking the dialog.
-  const settingError = includeReferences.error ?? includeMarginAnnotations.error;
+  const settingError =
+    includeReferences.error ??
+    includeMarginAnnotations.error ??
+    showTitles.error ??
+    showSectionHeadings.error ??
+    separator.error;
 
   const errorMessage = (() => {
     if (mutation.error) return mutation.error.message;
@@ -184,7 +220,37 @@ export const ExportDialog = ({
             )}
           </Field>
 
+          <Field label="Separator">
+            {(control) => (
+              <Select
+                value={separator.draft}
+                onValueChange={(value) => handleSeparatorChange(value as Separator)}
+              >
+                <SelectTrigger {...control} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(SEPARATOR_LABELS) as Separator[]).map((separatorKey) => (
+                    <SelectItem key={separatorKey} value={separatorKey}>
+                      {SEPARATOR_LABELS[separatorKey]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </Field>
+
           <div className="flex flex-col gap-2">
+            <CheckboxField
+              label="Fragment titles"
+              checked={showTitles.draft}
+              onCheckedChange={(checked) => handleShowTitlesChange(checked === true)}
+            />
+            <CheckboxField
+              label="Section headings"
+              checked={showSectionHeadings.draft}
+              onCheckedChange={(checked) => handleShowSectionHeadingsChange(checked === true)}
+            />
             <CheckboxField
               label="Include references"
               checked={includeReferences.draft}

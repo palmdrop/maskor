@@ -1,4 +1,4 @@
-import type { Fragment, LogEntry } from "@maskor/shared";
+import type { Fragment, LogEntry, Project } from "@maskor/shared";
 import {
   assembleSequenceForExport,
   renderExport,
@@ -9,13 +9,19 @@ import {
 } from "@maskor/exporter";
 import type { Command, CommandContext } from "../types";
 
+// The export-owned separator set (the project `export` config's separator).
+type ExportSeparator = Project["export"]["separator"];
+
 export type ExportSequenceInput = {
   sequenceId: string;
   format: ExportFormat;
-  // Per-export toggle overrides from the dialog. When present each beats the
-  // project's persisted `export` config; when absent the config value is used.
+  // Per-export overrides from the dialog. When present each beats the project's
+  // persisted `export` config; when absent the config value is used.
   includeReferences?: boolean;
   includeMarginAnnotations?: boolean;
+  showTitles?: boolean;
+  showSectionHeadings?: boolean;
+  separator?: ExportSeparator;
 };
 
 export type ExportSequenceResult = {
@@ -135,15 +141,18 @@ export const exportSequenceCommand: Command<ExportSequenceInput, ExportSequenceR
       result.status === "fulfilled" ? [result.value] : [],
     );
 
-    // Read project config: `preview` supplies inherited assembly options,
-    // `export` holds the two annotation toggles. A per-export body override
-    // (dialog state) beats the persisted config when present.
+    // Read project config: the `export` block owns every export setting — the
+    // two annotation toggles plus the assembly options (titles, section
+    // headings, separator). A per-export body override (dialog state) beats the
+    // persisted config when present.
     const project = await storageService.getProject(projectContext.projectUUID);
-    const { showTitles, showSectionHeadings, separator } = project.preview;
 
     const includeReferences = input.includeReferences ?? project.export.includeReferences;
     const includeMarginAnnotations =
       input.includeMarginAnnotations ?? project.export.includeMarginAnnotations;
+    const showTitles = input.showTitles ?? project.export.showTitles;
+    const showSectionHeadings = input.showSectionHeadings ?? project.export.showSectionHeadings;
+    const separator = input.separator ?? project.export.separator;
 
     // Gather per-fragment annotation data — only what the enabled toggles need.
     const byFragmentUuid = await gatherFragmentAnnotations(
@@ -218,6 +227,9 @@ export const exportSequenceCommand: Command<ExportSequenceInput, ExportSequenceR
           fragmentCount,
           includeReferences,
           includeMarginAnnotations,
+          showTitles,
+          showSectionHeadings,
+          separator,
         },
         undoable: false,
       },

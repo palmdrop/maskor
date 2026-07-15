@@ -8,7 +8,13 @@ const { exportMock, updateProjectMock, projectState } = vi.hoisted(() => ({
   // useProjectSetting commits via mutateAsync (awaited), not fire-and-forget mutate.
   updateProjectMock: { mutateAsync: vi.fn(() => Promise.resolve()), isPending: false },
   projectState: {
-    export: { includeReferences: true, includeMarginAnnotations: true },
+    export: {
+      includeReferences: true,
+      includeMarginAnnotations: true,
+      showTitles: false,
+      showSectionHeadings: true,
+      separator: "blank-line",
+    },
   },
 }));
 
@@ -54,19 +60,33 @@ beforeEach(() => {
   updateProjectMock.mutateAsync.mockReset();
   updateProjectMock.mutateAsync.mockResolvedValue(undefined);
   (toast.warning as ReturnType<typeof vi.fn>).mockReset();
-  projectState.export = { includeReferences: true, includeMarginAnnotations: true };
+  projectState.export = {
+    includeReferences: true,
+    includeMarginAnnotations: true,
+    showTitles: false,
+    showSectionHeadings: true,
+    separator: "blank-line",
+  };
   // jsdom lacks object-URL support used by the download trigger.
   globalThis.URL.createObjectURL = vi.fn(() => "blob:mock");
   globalThis.URL.revokeObjectURL = vi.fn();
 });
 
 describe("ExportDialog", () => {
-  it("seeds the annotation toggles from the project export config", () => {
-    projectState.export = { includeReferences: false, includeMarginAnnotations: true };
+  it("seeds the toggles from the project export config", () => {
+    projectState.export = {
+      includeReferences: false,
+      includeMarginAnnotations: true,
+      showTitles: true,
+      showSectionHeadings: false,
+      separator: "blank-line",
+    };
     renderDialog();
 
     expect(screen.getByRole("checkbox", { name: "Include references" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Include margin annotations" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Fragment titles" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Section headings" })).not.toBeChecked();
   });
 
   it("persists a toggle change via the project update mutation", () => {
@@ -80,8 +100,25 @@ describe("ExportDialog", () => {
     });
   });
 
-  it("sends the current toggle state with the export request", () => {
-    projectState.export = { includeReferences: false, includeMarginAnnotations: true };
+  it("persists an assembly-option change via the project update mutation", () => {
+    renderDialog();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Fragment titles" }));
+
+    expect(updateProjectMock.mutateAsync).toHaveBeenCalledWith({
+      projectId: "proj-uuid",
+      data: { export: { showTitles: true } },
+    });
+  });
+
+  it("sends the current option state with the export request", () => {
+    projectState.export = {
+      includeReferences: false,
+      includeMarginAnnotations: true,
+      showTitles: true,
+      showSectionHeadings: false,
+      separator: "page-break",
+    };
     renderDialog();
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
@@ -90,7 +127,14 @@ describe("ExportDialog", () => {
       {
         projectId: "proj-uuid",
         sequenceId: "main-uuid",
-        data: { format: "md", includeReferences: false, includeMarginAnnotations: true },
+        data: {
+          format: "md",
+          includeReferences: false,
+          includeMarginAnnotations: true,
+          showTitles: true,
+          showSectionHeadings: false,
+          separator: "page-break",
+        },
       },
       expect.anything(),
     );
