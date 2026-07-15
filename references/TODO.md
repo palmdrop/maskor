@@ -7,12 +7,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 ---
 
 ## Codebase
-- [ ] investigate obsidian plugin replacement for features of maskor, for example, update obsidian-port spec accordingly 
+- [x] investigate obsidian plugin replacement for features of maskor, for example, update obsidian-port spec accordingly 
     - https://forum.obsidian.md/t/plugin-storyline-obsidian-plugin-for-writers/111494 (NOTE: This may cover most of maskor?)
     - https://community.obsidian.md/plugins/document-comments
     - and https://www.youtube.com/watch?v=BTuGvfQGOrY
     - https://traditionkeeper8.gumroad.com/l/asystemforwriting
-    - (INVESTIGATED 2026-07-15: full coverage map + hybrid install model drafted in `specifications/obsidian-port.md`. Document Comments anchors comments with the same `<!--c:ID-->` markers as the Margin (ADR 0009) — adopt-first candidate. YouTube link not assessed.)
+    - (INVESTIGATED 2026-07-15: full coverage map + hybrid install model drafted in `specifications/obsidian-port.md`. Document Comments anchors comments with the same `<!--c:ID-->` markers as the Margin (ADR 0009) — adopt-first candidate.)
+    - (ALL LINKS ASSESSED 2026-07-15. StoryLine (v1.10.41): does NOT cover most of maskor — big overlap on manual surface (scene boards, Scrivenings-style manuscript view, split/merge, status pipeline ≈ readyStatus, stats, ordering snapshots, docx export) and a single-dimension `intensity` tension curve, but no weighted aspects, no target arcs, no sequencer assistance, no prompting, no annotation export; competing frontmatter-ordering data model, book/act/chapter-shaped. Spec updated: coverage note, corrected the "nothing plots frontmatter over position" claim, preview-gap note, new open question. Gumroad = Bob Doto's Zettelkasten book "A System for Writing" — methodology, not tooling, no spec impact. YouTube = recent general "Obsidian for Writers" overview, nothing actionable.)
 
 - [x] split-into sequence feature: when splitting a fragment, it should be possible to add the fragments, in order, to a new sequence. This is to preserve their order, and possibly add them as a constraint for other sequences. (SHIPPED 2026-07-14: opt-in "Add pieces to a new sequence" in the split dialog creates a plain active secondary sequence holding the pieces in split order — plan: `references/plans/split-into-sequence.md`)
 
