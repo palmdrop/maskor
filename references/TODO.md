@@ -7,6 +7,13 @@ Product features and bugs go in `tasks/prd-small-improvements.md`. Future-spec s
 ---
 
 ## Codebase
+- [ ] investigate additional obsidian plugins and tools for `specifications/obsidian-port.md`
+  - Scroll offset
+  - Linter
+  - Wordy
+  - Hotkeys for templates
+  - Bases/dataview for statistics
+
 - [x] investigate obsidian plugin replacement for features of maskor, for example, update obsidian-port spec accordingly 
     - https://forum.obsidian.md/t/plugin-storyline-obsidian-plugin-for-writers/111494 (NOTE: This may cover most of maskor?)
     - https://community.obsidian.md/plugins/document-comments
