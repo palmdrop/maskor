@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { useExportSequence } from "@api/generated/export/export";
+import { useExportSequence, useGetExportAnnotationSummary } from "@api/generated/export/export";
 import type { ExportSequenceBody } from "@api/generated/maskorAPI.schemas";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { useProjectSetting } from "@hooks/useProjectSetting";
@@ -114,6 +114,16 @@ export const ExportDialog = ({
     separator.setDraft(next);
     separator.commit(next);
   };
+
+  // Preflight annotation counts for the info section below the toggles. The
+  // counts are raw (toggle-independent); which lines show follows the drafts.
+  const { data: annotationSummaryEnvelope } = useGetExportAnnotationSummary(
+    projectId,
+    activeSequenceId ?? "",
+    { query: { enabled: open && activeSequenceId !== null } },
+  );
+  const annotationSummary =
+    annotationSummaryEnvelope?.status === 200 ? annotationSummaryEnvelope.data : null;
 
   const mutation = useExportSequence();
 
@@ -263,6 +273,29 @@ export const ExportDialog = ({
             />
             {settingError && <p className="text-xs text-destructive">{settingError}</p>}
           </div>
+
+          {annotationSummary && (includeReferences.draft || includeMarginAnnotations.draft) && (
+            <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground flex flex-col gap-1">
+              {includeReferences.draft && (
+                <p>
+                  {countLabel(annotationSummary.referenceCount, "reference")} will be added as
+                  footnotes.
+                </p>
+              )}
+              {includeMarginAnnotations.draft && (
+                <p>
+                  {countLabel(annotationSummary.commentCount, "comment")} and{" "}
+                  {countLabel(annotationSummary.noteCount, "note")} will be added from the Margin.
+                </p>
+              )}
+              {includeMarginAnnotations.draft && annotationSummary.orphanedCommentCount > 0 && (
+                <p className="text-amber-600 dark:text-amber-500">
+                  {countLabel(annotationSummary.orphanedCommentCount, "orphaned comment")} will be
+                  skipped.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       }
       error={errorMessage}
@@ -274,6 +307,10 @@ export const ExportDialog = ({
     />
   );
 };
+
+// "3 references" / "1 reference" — count plus naively pluralized noun.
+const countLabel = (count: number, noun: string): string =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`;
 
 // Warn (non-fatally — the file already downloaded) that some Margin comments
 // could not be placed because their anchors are missing from the fragment body.

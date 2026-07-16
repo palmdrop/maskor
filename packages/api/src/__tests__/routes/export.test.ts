@@ -177,3 +177,86 @@ describe("POST /projects/:projectId/export/:sequenceId", () => {
     expect(warnings).toEqual([{ fragmentKey: fragment.key, count: 1 }]);
   });
 });
+
+describe("GET /projects/:projectId/export/:sequenceId/annotation-summary", () => {
+  it("counts distinct references, bound comments, notes, and orphaned comments", async () => {
+    const projectContext = await testContext.storageService.resolveProject(project.projectUUID);
+
+    const referenceKey = `summary-ref-${Date.now()}`;
+    await testContext.storageService.references.write(projectContext, {
+      uuid: randomUUID(),
+      key: referenceKey,
+      content: "Reference body.",
+    });
+
+    // Two fragments attaching the same reference — it must count once (deduped,
+    // mirroring the single footnote definition the export emits).
+    const makeSummaryFragment = (key: string, content: string, references: string[]): Fragment => ({
+      uuid: randomUUID(),
+      key,
+      content,
+      readiness: 0.5,
+      contentHash: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      references,
+      isDiscarded: false,
+      aspects: {},
+    });
+    const first = makeSummaryFragment(
+      `summary-first-${Date.now()}`,
+      "First block.<!--c:boundmarker-->\n\nSecond block.",
+      [referenceKey],
+    );
+    const second = makeSummaryFragment(`summary-second-${Date.now()}`, "Plain body.", [
+      referenceKey,
+    ]);
+    await testContext.storageService.fragments.write(projectContext, first);
+    await testContext.storageService.fragments.write(projectContext, second);
+
+    await testContext.storageService.margins.write(projectContext, first.uuid, {
+      notes: "A whole-fragment note.",
+      comments: [
+        { markerId: "boundmarker", excerpt: "First block.", body: "Bound comment." },
+        { markerId: "absentmarker", excerpt: "gone", body: "Orphaned comment." },
+      ],
+    });
+
+    const sequence: Sequence = {
+      uuid: randomUUID(),
+      name: `Summary Seq ${Date.now()}`,
+      isMain: false,
+      active: false,
+      projectUuid: project.projectUUID,
+      sections: [
+        {
+          uuid: randomUUID(),
+          name: "Section",
+          fragments: [
+            { uuid: randomUUID(), fragmentUuid: first.uuid, position: 0 },
+            { uuid: randomUUID(), fragmentUuid: second.uuid, position: 1 },
+          ],
+        },
+      ],
+    };
+    await testContext.storageService.sequences.write(projectContext, sequence);
+
+    const response = await testContext.app.request(
+      `${exportUrl(sequence.uuid)}/annotation-summary`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      referenceCount: 1,
+      commentCount: 1,
+      noteCount: 1,
+      orphanedCommentCount: 1,
+    });
+  });
+
+  it("returns 404 for an unknown sequence", async () => {
+    const response = await testContext.app.request(`${exportUrl(randomUUID())}/annotation-summary`);
+
+    expect(response.status).toBe(404);
+  });
+});

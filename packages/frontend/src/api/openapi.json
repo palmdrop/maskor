@@ -3206,6 +3206,37 @@
           "name"
         ]
       },
+      "ExportAnnotationSummary": {
+        "type": "object",
+        "properties": {
+          "referenceCount": {
+            "type": "integer",
+            "description": "Distinct attached references across the sequence (one footnote each)",
+            "example": 3
+          },
+          "commentCount": {
+            "type": "integer",
+            "description": "Margin comments whose anchor is present in a fragment body",
+            "example": 5
+          },
+          "noteCount": {
+            "type": "integer",
+            "description": "Fragments with non-empty Margin notes (one annotation each)",
+            "example": 2
+          },
+          "orphanedCommentCount": {
+            "type": "integer",
+            "description": "Margin comments whose anchor is missing — skipped on export",
+            "example": 1
+          }
+        },
+        "required": [
+          "referenceCount",
+          "commentCount",
+          "noteCount",
+          "orphanedCommentCount"
+        ]
+      },
       "ExportSequenceBody": {
         "type": "object",
         "properties": {
@@ -15642,6 +15673,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PreviewResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sequence or project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/export/{sequenceId}/annotation-summary": {
+      "get": {
+        "operationId": "getExportAnnotationSummary",
+        "tags": [
+          "Export"
+        ],
+        "summary": "Preflight counts of the annotations an export of this sequence would add",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sequenceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Annotation counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportAnnotationSummary"
                 }
               }
             }

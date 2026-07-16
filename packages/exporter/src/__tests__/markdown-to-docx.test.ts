@@ -82,6 +82,29 @@ describe("markdownToDocx — page-break separator lowered to a Word page break",
   });
 });
 
+describe("markdownToDocx — baseline typography defaults", () => {
+  it("sets Garamond 12pt and one line of spacing after paragraphs as document defaults", async () => {
+    const bytes = await markdownToDocx("First paragraph.\n\nSecond paragraph.");
+    const styles = (await readDocxPart(bytes, "word/styles.xml"))!;
+
+    const docDefaults = styles.match(/<w:docDefaults>.*?<\/w:docDefaults>/s)?.[0] ?? "";
+    expect(docDefaults).toContain('w:ascii="Garamond"');
+    // 12pt body text (Word sizes are half-points).
+    expect(docDefaults).toContain('<w:sz w:val="24"/>');
+    // One line worth of space between paragraphs (240 twips = 12pt).
+    expect(docDefaults).toContain('<w:spacing w:after="240"/>');
+  });
+
+  it("keeps a code block visually contiguous (no inter-line spacing)", async () => {
+    const bytes = await markdownToDocx("    line one\n    line two\n    line three");
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+
+    // The two non-final code lines override the document default with zero
+    // spacing; the last line falls back to the default gap.
+    expect(document.match(/<w:spacing w:after="0"\/>/g) ?? []).toHaveLength(2);
+  });
+});
+
 describe("markdownToDocx — Margin markers lowered to Word comments", () => {
   it("wraps the paragraph in a comment range and drops the marker", async () => {
     const markdown = "The bridge groans. <!--c:m1-->";
@@ -130,6 +153,32 @@ describe("markdownToDocx — Margin markers lowered to Word comments", () => {
     const commentTexts = textRuns(comments);
     expect(commentTexts).toContain("First comment.");
     expect(commentTexts).toContain("Second comment.");
+    expect(textRuns(document)).not.toContain("<!--c:");
+  });
+
+  it("lowers a marker that sits mid-paragraph (end of a soft-wrapped line)", async () => {
+    // A comment anchored to a line inside a soft-wrapped paragraph — and the
+    // assembler's notes marker on the first line of a multi-line opening
+    // paragraph — are not trailing markers. They must still lower to comments.
+    const markdown =
+      "Line one.<!--c:maskor-note-frag-1-->\nLine two.<!--c:mid-->\n\nLast paragraph.<!--c:tail-->";
+    const bytes = await markdownToDocx(markdown, {
+      commentBodies: {
+        "maskor-note-frag-1": "Whole-fragment note.",
+        mid: "Mid-paragraph comment.",
+        tail: "Trailing comment.",
+      },
+    });
+    const document = (await readDocxPart(bytes, "word/document.xml"))!;
+    const comments = (await readDocxPart(bytes, "word/comments.xml"))!;
+
+    const commentTexts = textRuns(comments);
+    expect(commentTexts).toContain("Whole-fragment note.");
+    expect(commentTexts).toContain("Mid-paragraph comment.");
+    expect(commentTexts).toContain("Trailing comment.");
+    expect(document).toContain('w:commentReference w:id="1"');
+    expect(document).toContain('w:commentReference w:id="2"');
+    expect(document).toContain('w:commentReference w:id="3"');
     expect(textRuns(document)).not.toContain("<!--c:");
   });
 

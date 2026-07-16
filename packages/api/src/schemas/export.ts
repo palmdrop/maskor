@@ -6,6 +6,30 @@ export const ExportSequenceParamSchema = z.object({
   sequenceId: z.uuid(),
 });
 
+// Preflight counts for the Export dialog: how many annotations an export of the
+// sequence would add. Raw counts — the dialog applies the toggles (references /
+// margin annotations) when deciding what to show.
+export const ExportAnnotationSummarySchema = z
+  .object({
+    referenceCount: z.number().int().openapi({
+      description: "Distinct attached references across the sequence (one footnote each)",
+      example: 3,
+    }),
+    commentCount: z.number().int().openapi({
+      description: "Margin comments whose anchor is present in a fragment body",
+      example: 5,
+    }),
+    noteCount: z.number().int().openapi({
+      description: "Fragments with non-empty Margin notes (one annotation each)",
+      example: 2,
+    }),
+    orphanedCommentCount: z.number().int().openapi({
+      description: "Margin comments whose anchor is missing — skipped on export",
+      example: 1,
+    }),
+  })
+  .openapi("ExportAnnotationSummary");
+
 export const ExportSequenceBodySchema = z
   .object({
     format: z.enum(["md", "txt", "docx"]).openapi({

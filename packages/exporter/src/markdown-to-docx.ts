@@ -49,6 +49,14 @@ const HEADING_LEVEL_MAP: Record<number, (typeof HeadingLevel)[keyof typeof Headi
 // Maskor is the tool speaking, not a specific writer.
 const COMMENT_AUTHOR = "Maskor";
 
+// Baseline document typography. Not typesetting — just sensible reading defaults
+// so a raw export opens as readable prose in Word: Garamond 12pt body text with
+// one line worth of vertical space between paragraphs (Word sizes are half-points;
+// spacing is twips, 240 = 12pt = one line at the body size).
+const DOCUMENT_FONT = "Garamond";
+const DOCUMENT_FONT_SIZE_HALF_POINTS = 24;
+const PARAGRAPH_SPACING_AFTER_TWIPS = 240;
+
 // Matches a Margin marker as a whole inline-HTML node value (`<!--c:ID-->`).
 const COMMENT_MARKER_NODE_PATTERN = new RegExp(`^<!--c:([${MARKER_ID_CHAR_CLASS}]+)-->$`);
 
@@ -62,7 +70,7 @@ type DocxContext = {
   // Footnote identifier (from the GFM `[^label]`) → the numeric Word footnote id.
   footnoteIdByIdentifier: Map<string, number>;
   // `markerId → comment body` side-channel from the docx-bound assembly. A marker
-  // present here (and trailing a paragraph/heading) becomes a Word comment.
+  // present here (anywhere in a paragraph/heading) becomes a Word comment.
   commentBodies: Record<string, string>;
   collectedComments: CollectedComment[];
   allocateCommentId: () => number;
@@ -70,31 +78,26 @@ type DocxContext = {
 
 type RunOptions = { bold?: boolean; italic?: boolean };
 
-// The marker ids of the trailing `<!--c:ID-->` inline-HTML nodes, in document
-// order (empty when none). The walk keeps going backwards past marker nodes,
-// whitespace-only text nodes, and footnote references: the docx-bound assembly
-// appends reference footnotes to the same line, so a run of comment markers can
-// sit just before them yet still anchor its block. Every adjacent trailing marker
-// anchors the block (external vault edits or a future multi-comment UI can attach
-// more than one), so all are collected — not just the last.
-const trailingCommentMarkerIds = (nodes: PhrasingContent[]): string[] => {
+// The marker ids of every `<!--c:ID-->` inline-HTML node in the tree, in
+// document order (empty when none). A marker anywhere in the block anchors it —
+// not just a trailing one: a soft-wrapped paragraph puts a line-end marker
+// mid-node-list, and the assembler's notes marker rides the first line of a
+// possibly multi-line opening paragraph. The Word comment range spans the whole
+// anchored paragraph anyway (block-granular anchoring), so position within the
+// block does not matter. Recurses into emphasis/strong/etc. so a marker nested
+// in phrasing content is still found.
+const commentMarkerIds = (nodes: PhrasingContent[]): string[] => {
   const markerIds: string[] = [];
-  for (let index = nodes.length - 1; index >= 0; index -= 1) {
-    const node = nodes[index]!;
-    if (node.type === "text" && (node as Text).value.trim().length === 0) continue;
-    if (node.type === "footnoteReference") continue;
+  for (const node of nodes) {
     if (node.type === "html") {
       const match = COMMENT_MARKER_NODE_PATTERN.exec((node as Html).value);
-      if (match) {
-        markerIds.push(match[1]!);
-        continue;
-      }
-      break;
+      if (match) markerIds.push(match[1]!);
+      continue;
     }
-    break;
+    const children = (node as { children?: PhrasingContent[] }).children;
+    if (children) markerIds.push(...commentMarkerIds(children));
   }
-  // Collected back-to-front; reverse so marker `a` precedes `b` (document order).
-  return markerIds.reverse();
+  return markerIds;
 };
 
 // Walk a phrasing-content node tree into TextRun[]s. Footnote references lower to
@@ -173,7 +176,7 @@ const phrasingToRuns = (
 };
 
 // Wrap a paragraph/heading/list-item's runs in Word comment ranges for every
-// bound marker trailing it. Returns the runs unchanged when none of the markers
+// bound marker it carries. Returns the runs unchanged when none of the markers
 // resolve to a comment body. Inert markers (no bound body) are dropped. Multiple
 // comments nest: `Start a`, `Start b`, …runs…, `End b`, `End a`, then one
 // `CommentReference` run per comment — overlapping comment ranges are valid OOXML.
@@ -222,7 +225,7 @@ const blockToDocx = (
   switch (node.type) {
     case "heading": {
       const headingNode = node as Heading;
-      const markerIds = trailingCommentMarkerIds(headingNode.children);
+      const markerIds = commentMarkerIds(headingNode.children);
       const runs = phrasingToRuns(headingNode.children, context);
       return [
         new Paragraph({
@@ -243,7 +246,7 @@ const blockToDocx = (
       if (isPageBreakParagraph(paragraphNode)) {
         return [new Paragraph({ ...firstParagraphExtras, children: [new PageBreak()] })];
       }
-      const markerIds = trailingCommentMarkerIds(paragraphNode.children);
+      const markerIds = commentMarkerIds(paragraphNode.children);
       const runs = phrasingToRuns(paragraphNode.children, context);
       return [
         new Paragraph({
@@ -272,11 +275,15 @@ const blockToDocx = (
 
     case "code": {
       const codeNode = node as Code;
-      return codeNode.value.split("\n").map(
+      const lines = codeNode.value.split("\n");
+      return lines.map(
         (line, index) =>
           new Paragraph({
             ...(index === 0 ? firstParagraphExtras : {}),
             indent: { left: 720 },
+            // The document-default paragraph spacing would tear the block apart
+            // line by line; only the last line keeps the gap to the next block.
+            ...(index < lines.length - 1 ? { spacing: { after: 0 } } : {}),
             children: [new TextRun({ text: line, font: "Courier New" })],
           }),
       );
@@ -314,7 +321,7 @@ const blockToDocx = (
               runs.push(...phrasingToRuns(children, context));
             }
           }
-          const markerIds = trailingCommentMarkerIds(phrasingChildren);
+          const markerIds = commentMarkerIds(phrasingChildren);
           paragraphs.push(
             new Paragraph({
               ...consumeFirstParagraphExtras(),
@@ -353,15 +360,16 @@ const blockToDocx = (
 
 export type MarkdownToDocxOptions = {
   // `{ markerId → comment body }` side-channel from the docx-bound assembly. Every
-  // trailing marker present here becomes a Word comment on its paragraph/heading.
+  // marker present here becomes a Word comment on the paragraph/heading carrying it.
   commentBodies?: Record<string, string>;
 };
 
 /**
  * Convert an assembled markdown string to a .docx file buffer.
- * Raw structural conversion only — no styling, themes, or page layout.
- * GFM footnote references/definitions lower to real Word footnotes, and trailing
- * Margin markers (against `options.commentBodies`) lower to Word comments.
+ * Structural conversion with baseline typography defaults (Garamond 12pt, one
+ * line of space between paragraphs) — no templates, themes, or page layout.
+ * GFM footnote references/definitions lower to real Word footnotes, and Margin
+ * markers (against `options.commentBodies`) lower to Word comments.
  * Unknown nodes fall back to plain text; nothing throws.
  */
 export const markdownToDocx = async (
@@ -434,6 +442,14 @@ export const markdownToDocx = async (
   }
 
   const document = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: DOCUMENT_FONT, size: DOCUMENT_FONT_SIZE_HALF_POINTS },
+          paragraph: { spacing: { after: PARAGRAPH_SPACING_AFTER_TWIPS } },
+        },
+      },
+    },
     numbering: {
       config: [
         {

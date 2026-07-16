@@ -1,12 +1,103 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
+import { markerIdSet } from "@maskor/shared";
 import type { AppVariables } from "../app";
 import { throwStorageError } from "../errors";
-import { ExportSequenceParamSchema, ExportSequenceBodySchema } from "../schemas/export";
+import {
+  ExportSequenceParamSchema,
+  ExportSequenceBodySchema,
+  ExportAnnotationSummarySchema,
+} from "../schemas/export";
 import { ErrorResponseSchema } from "../schemas/error";
 import { exportSequenceCommand, executeCommand, type CommandContext } from "../commands";
 
 export const exportRouter = new OpenAPIHono<{ Variables: AppVariables }>();
+
+const getExportAnnotationSummaryRoute = createRoute({
+  operationId: "getExportAnnotationSummary",
+  method: "get",
+  path: "/{sequenceId}/annotation-summary",
+  tags: ["Export"],
+  summary: "Preflight counts of the annotations an export of this sequence would add",
+  request: { params: ExportSequenceParamSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ExportAnnotationSummarySchema } },
+      description: "Annotation counts",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Sequence or project not found",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Internal error",
+    },
+  },
+});
+
+// Read-only preflight for the Export dialog. Counts mirror what the export
+// assembly would emit: distinct resolvable references (deduped to one footnote
+// definition each), bound Margin comments (anchor marker present in the body),
+// fragments with notes, and orphaned comments (skipped with a warning on export).
+exportRouter.openapi(getExportAnnotationSummaryRoute, async (ctx) => {
+  try {
+    const storageService = ctx.get("storageService");
+    const projectContext = ctx.get("projectContext")!;
+    const { sequenceId } = ctx.req.valid("param");
+
+    const sequence = await storageService.sequences.read(projectContext, sequenceId);
+    const uniqueUuids = [
+      ...new Set(
+        sequence.sections.flatMap((section) =>
+          section.fragments.map((position) => position.fragmentUuid),
+        ),
+      ),
+    ];
+    const fragmentResults = await Promise.allSettled(
+      uniqueUuids.map((uuid) => storageService.fragments.read(projectContext, uuid)),
+    );
+    const fragments = fragmentResults.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+
+    // Resolvable reference keys — a dangling attachment is skipped on export, so
+    // it is not counted here either.
+    const indexedReferences = await storageService.references.readAll(projectContext);
+    const knownReferenceKeys = new Set(indexedReferences.map((indexed) => indexed.key));
+    const attachedReferenceKeys = new Set(
+      fragments.flatMap((fragment) =>
+        fragment.references.filter((key) => knownReferenceKeys.has(key)),
+      ),
+    );
+
+    let commentCount = 0;
+    let noteCount = 0;
+    let orphanedCommentCount = 0;
+    for (const fragment of fragments) {
+      const margin = await storageService.margins.read(projectContext, fragment.uuid);
+      if (!margin) continue;
+      if (margin.notes.trim().length > 0) noteCount += 1;
+      const presentMarkerIds = markerIdSet(fragment.content);
+      for (const comment of margin.comments) {
+        if (presentMarkerIds.has(comment.markerId)) commentCount += 1;
+        else orphanedCommentCount += 1;
+      }
+    }
+
+    return ctx.json(
+      {
+        referenceCount: attachedReferenceKeys.size,
+        commentCount,
+        noteCount,
+        orphanedCommentCount,
+      },
+      200,
+    );
+  } catch (error) {
+    return throwStorageError(error);
+  }
+});
 
 // Declared separately for OpenAPI documentation — the actual handler uses
 // app.post() because hono/zod-openapi's return-type narrowing does not support

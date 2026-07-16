@@ -1,8 +1,10 @@
 # Spec: Export
 
 **Status**: Draft
-**Last updated**: 2026-07-15
+**Last updated**: 2026-07-16
 **Shipped**:
+
+- 2026-07-16: Export fixes + dialog annotation counts. (1) A Margin marker anywhere in a block now lowers to a Word comment — previously only markers trailing their mdast paragraph did, silently dropping comments anchored mid-paragraph (soft-wrapped lines, the notes marker on a multi-line opening paragraph). (2) `.docx` gains baseline typography defaults: Garamond 12pt body text, one line of vertical space between paragraphs (code blocks stay contiguous). (3) The Export dialog shows a preflight info section — how many references, comments, and notes the export will add, plus orphaned comments that will be skipped — backed by `GET /export/:sequenceId/annotation-summary`.
 
 - 2026-07-15: Export-owned assembly options + page-break separator. The Export dialog now owns the assembly options (fragment titles, section headings, separator) — persisted per-project in the `export` config block with per-export overrides, mirroring the annotation toggles. Export no longer inherits the preview settings. The export separator set gains `page-break` (optional, off by default): a form feed in `.md`/`.txt`, lowered to a real Word page break between fragments in `.docx`.
 
@@ -71,7 +73,7 @@ The user can take their main sequence and export it to a single document in a fo
 
 - `.md`: assembled directly from fragment markdown bodies. No conversion needed.
 - `.txt`: the assembled markdown bytes with a `.txt` extension — byte-identical to `.md` **by design** (decided 2026-07-12). Markdown syntax is light enough to read as plain text; no stripping step exists or is planned.
-- `.docx`: pure-JS mdast→docx mapping (raw structural conversion; no styling). The `page-break` separator's form feed is lowered to a real Word page break (a raw form feed is not a valid XML character).
+- `.docx`: pure-JS mdast→docx mapping (structural conversion with baseline typography defaults: Garamond 12pt, one line of space between paragraphs — no templates, themes, or page layout). The `page-break` separator's form feed is lowered to a real Word page break (a raw form feed is not a valid XML character).
 - `.pdf`: requires a conversion step. Tool choice is not decided.
 
 ### Annotations (references & Margin)
@@ -84,6 +86,7 @@ Two per-project toggles (persisted in the project's `export` config block, both 
   - **Notes** (whole-fragment): anchor at the fragment head — the title line when titles are shown, else the fragment's first block.
 - **Markdown labels**: references use the slugified key (`[^mrs-dalloway]`, deterministic `-2` suffix on slug collision); margin annotations share one sequential counter (`[^c1]`, `[^c2]`…) in document order. Definitions are emitted at the end of the document in first-reference order.
 - **Orphaned comments** (marker no longer present in the fragment body) are skipped, and the export surfaces a warning listing the affected fragments. Inert markers (no matching comment) are stripped as before.
+- **Preflight counts**: the Export dialog shows how many annotations the export will add — distinct references, bound comments, fragments with notes — and how many orphaned comments will be skipped (`GET /export/:sequenceId/annotation-summary`). Lines follow the two toggles.
 - Preview never renders annotations; the byte-identity criterion below holds for identical options (annotations off).
 
 ### Discarded-fragment dump
