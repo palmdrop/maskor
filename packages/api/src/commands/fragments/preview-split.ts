@@ -35,6 +35,11 @@ export type PreviewSplitResult = {
   pieces: SplitPiecePreview[];
   count: number;
   appliedDelimiter: SplitDelimiter;
+  // The original fragment's current key. Piece 1's preview key may be a heading-
+  // derived rename (`renamedOriginal`), so the dialog can't recover the pre-rename
+  // key from the piece list alone — it needs this to tell whether editing piece 1
+  // back to the original's own key is actually a rename (it is not).
+  originalKey: string;
 };
 
 // Read-derivation, mirroring `preview-import`: runs through `executeCommand` with
@@ -94,7 +99,7 @@ export const previewSplitCommand: Command<PreviewSplitInput, PreviewSplitResult>
     });
 
     return {
-      result: { pieces, count: pieces.length, appliedDelimiter },
+      result: { pieces, count: pieces.length, appliedDelimiter, originalKey: fragment.key },
       logEntries: [],
     };
   },

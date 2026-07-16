@@ -32,7 +32,12 @@ export const resolveOriginalPieceKey = (
     // key and collide with the original mid-split.
     otherKeys.add(originalKey.toLowerCase());
 
-    return { key, renamed: key.toLowerCase() !== originalKey.toLowerCase() };
+    // Compare case-SENSITIVELY: the storage layer treats a case-only key change as a
+    // real rename (`oldKey !== fragmentToWrite.key` in storage-service.ts), cascading
+    // the file + Margin rename and the `[[fragments/oldKey]]` link rewrite. A
+    // lowercased comparison here would execute that cascade on disk while reporting
+    // "no rename" (no `originalKeyRenamedTo`) — so match the storage definition.
+    return { key, renamed: key !== originalKey };
   }
 
   otherKeys.add(originalKey.toLowerCase());

@@ -76,6 +76,11 @@ export const SplitFragmentDialog = ({
   const [delimiterType, setDelimiterType] = useState<DelimiterType | null>(null);
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>(1);
   const [pieces, setPieces] = useState<SplitPiecePreview[]>([]);
+  // The original fragment's current key (from the preview). Piece 1's preview key
+  // may already be a heading-derived rename, so this is what tells the annotation
+  // whether piece 1 will actually be renamed — including when the user edits it
+  // back to the original's own key (a no-op the server treats as no rename).
+  const [originalKey, setOriginalKey] = useState<string | null>(null);
   // User-chosen key overrides, keyed by pieceIndex. Absent → the key shown in the
   // preview is used (piece 1: the original's — possibly heading-renamed — key;
   // pieces 2…N: the derived key). An override for piece 1 renames the original.
@@ -126,6 +131,7 @@ export const SplitFragmentDialog = ({
   useEffect(() => {
     if (!open) {
       setPieces([]);
+      setOriginalKey(null);
       setEditedKeys({});
       setDelimiterType(null);
       setHeadingLevel(1);
@@ -151,6 +157,7 @@ export const SplitFragmentDialog = ({
           return;
         }
         setPieces(response.data.pieces);
+        setOriginalKey(response.data.originalKey);
         setPreviewError(null);
         // Adopt the server-selected delimiter the first time (auto mode).
         if (delimiterType === null) {
@@ -418,12 +425,14 @@ export const SplitFragmentDialog = ({
                         className="h-7 flex-1 text-sm"
                       />
                       {piece.pieceIndex === 1 && (
-                        // Piece 1 is the original fragment (same identity). Editing
-                        // its key renames the original; with heading stripping the
-                        // preview already flags the automatic heading rename.
+                        // Piece 1 is the original fragment (same identity). It is
+                        // renamed iff its effective key differs from the original's
+                        // current key — case-sensitively, matching the server (a
+                        // case-only change is a real rename). This covers both the
+                        // automatic heading-strip rename and a user edit, and reads
+                        // "(original)" when the user types the original's own key back.
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {piece.renamedOriginal ||
-                          (editedKeys[1] !== undefined && editedKeys[1].trim() !== piece.key)
+                          {originalKey !== null && effectiveKey(piece).trim() !== originalKey
                             ? "(original, renamed)"
                             : "(original)"}
                         </span>

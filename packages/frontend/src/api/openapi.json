@@ -2918,12 +2918,17 @@
           },
           "appliedDelimiter": {
             "$ref": "#/components/schemas/SplitDelimiter"
+          },
+          "originalKey": {
+            "type": "string",
+            "example": "my-fragment"
           }
         },
         "required": [
           "pieces",
           "count",
-          "appliedDelimiter"
+          "appliedDelimiter",
+          "originalKey"
         ]
       },
       "SplitPiecePreview": {

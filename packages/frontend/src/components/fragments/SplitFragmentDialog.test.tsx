@@ -44,6 +44,9 @@ const previewResponse = (
     pieces,
     count: pieces.length,
     appliedDelimiter: { type: "heading" as const, level: 1 as const },
+    // Default: the original's current key is piece 1's key (no automatic rename),
+    // so an un-edited piece 1 reads "(original)".
+    originalKey: pieces.find((piece) => piece.pieceIndex === 1)?.key ?? "",
   },
 });
 
@@ -563,6 +566,9 @@ describe("SplitFragmentDialog", () => {
         ],
         count: 2,
         appliedDelimiter: { type: "heading" as const, level: 1 as const },
+        // The original's current key differs from piece 1's heading-derived key,
+        // so piece 1 is flagged as renamed.
+        originalKey: "chapter-original",
       },
     });
 
@@ -570,6 +576,36 @@ describe("SplitFragmentDialog", () => {
 
     expect(await screen.findByText("(original, renamed)")).toBeInTheDocument();
     expect(screen.getByDisplayValue("chapter-one")).toBeInTheDocument();
+  });
+
+  it("shows '(original)' when the user edits piece 1 back to the original's current key", async () => {
+    // Heading-strip rename: the preview shows the new heading-derived key and flags
+    // the original for rename, but the original's *current* key is `original-key`.
+    // Editing piece 1 back to that key is a server no-op, so it must read "(original)".
+    previewMutateAsync.mockResolvedValue({
+      status: 200 as const,
+      data: {
+        pieces: [
+          { pieceIndex: 1, key: "chapter-one", excerpt: "Body one", renamedOriginal: true },
+          { pieceIndex: 2, key: "chapter-two", excerpt: "Body two" },
+        ],
+        count: 2,
+        appliedDelimiter: { type: "heading" as const, level: 1 as const },
+        originalKey: "original-key",
+      },
+    });
+
+    renderDialog();
+
+    // Before editing, the automatic heading rename is flagged.
+    expect(await screen.findByText("(original, renamed)")).toBeInTheDocument();
+
+    // Typing the original's own current key back cancels the rename.
+    const keyInput = screen.getByDisplayValue("chapter-one");
+    fireEvent.change(keyInput, { target: { value: "original-key" } });
+
+    expect(await screen.findByText("(original)")).toBeInTheDocument();
+    expect(screen.queryByText("(original, renamed)")).not.toBeInTheDocument();
   });
 
   it("hides the keep-heading toggle for a non-heading delimiter", async () => {
@@ -582,6 +618,7 @@ describe("SplitFragmentDialog", () => {
         ],
         count: 2,
         appliedDelimiter: { type: "thematic-break" as const },
+        originalKey: "a",
       },
     });
 

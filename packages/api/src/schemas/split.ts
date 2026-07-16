@@ -55,6 +55,10 @@ export const SplitPreviewResultSchema = z
     // or the smart-detected default when the request omitted one. Lets the dialog
     // seed its delimiter controls to match the auto-selected split.
     appliedDelimiter: SplitDelimiterSchema,
+    // The original fragment's current key. Piece 1's preview key may be a heading-
+    // derived rename, so the dialog needs this to tell whether editing piece 1 back
+    // to the original's own key is actually a rename (it is not).
+    originalKey: z.string().openapi({ example: "my-fragment" }),
   })
   .openapi("SplitPreviewResult");
 

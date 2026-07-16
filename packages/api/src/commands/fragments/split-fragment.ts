@@ -102,17 +102,37 @@ const delimiterLabel = (delimiter: SplitDelimiter): string =>
 // this split. On success the key is reserved in `existingKeys` so a later piece
 // can't reuse it. `existingKeys` holds lowercased keys (the case-insensitive
 // uniqueness space the vault enforces).
-const resolveOverrideKey = (rawKey: string, existingKeys: Set<string>): string => {
+//
+// `reservedOriginalKey` (lowercased) is the original's old key when piece 1 was
+// renamed away from it: the old key stays reserved until the rename lands (Phase B
+// ordering), so a later piece override claiming it is a real conflict — but a
+// misleading one, since the user just renamed piece 1 away from that key in the
+// same dialog. Report it with a message that says so, distinct from a genuine
+// existing-fragment collision.
+const resolveOverrideKey = (
+  rawKey: string,
+  existingKeys: Set<string>,
+  reservedOriginalKey?: string,
+): string => {
   let key: string;
   try {
     key = validateEntityKey(rawKey);
   } catch (error) {
     throw new SplitKeyInvalidError((error as Error).message);
   }
-  if (existingKeys.has(key.toLowerCase())) {
+  const loweredKey = key.toLowerCase();
+  if (reservedOriginalKey !== undefined && loweredKey === reservedOriginalKey) {
+    throw new SplitKeyConflictError(
+      `The key "${key}" is still held by the original fragment until this split completes — ` +
+        `you renamed piece 1 away from it in this dialog, but the rename only lands once the ` +
+        `split runs. Give this piece a different key (key-swapping between pieces is not ` +
+        `possible in one split).`,
+    );
+  }
+  if (existingKeys.has(loweredKey)) {
     throw new SplitKeyConflictError(`A fragment with the key "${key}" already exists.`);
   }
-  existingKeys.add(key.toLowerCase());
+  existingKeys.add(loweredKey);
   return key;
 };
 
@@ -190,9 +210,11 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       // written (Phase B ordering), so a later piece must not claim the not-yet-freed
       // key and collide with the original mid-split.
       otherKeys.add(original.key.toLowerCase());
+      // Compare case-SENSITIVELY (matching the storage layer's rename definition — see
+      // resolveOriginalPieceKey): a case-only edit is a real rename on disk.
       originalKeyResolution = {
         key,
-        renamed: key.toLowerCase() !== original.key.toLowerCase(),
+        renamed: key !== original.key,
       };
     } else {
       originalKeyResolution = resolveOriginalPieceKey(
@@ -202,6 +224,14 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
         otherKeys,
       );
     }
+    // The original's old key stays reserved in `otherKeys` until the rename lands, so
+    // a later piece override equal to it collides. Track it separately (only when the
+    // original was actually renamed) so that collision gets a specific, non-misleading
+    // error rather than the generic "already exists". When the original keeps its key
+    // it is held permanently, so a collision there is genuine — leave it undefined.
+    const reservedOriginalKey = originalKeyResolution.renamed
+      ? original.key.toLowerCase()
+      : undefined;
     // Piece array index (1…N-1) → the resolved key for that new piece.
     const keyByPieceIndex = new Map<number, string>();
     for (let index = 1; index < pieces.length; index++) {
@@ -209,7 +239,7 @@ export const splitFragmentCommand: Command<SplitFragmentInput, SplitFragmentResu
       // pieceIndex is 1-based (matches the preview); array index 1 is piece 2.
       const override = overrideKeyByPieceIndex.get(index + 1);
       const key = override
-        ? resolveOverrideKey(override, otherKeys)
+        ? resolveOverrideKey(override, otherKeys, reservedOriginalKey)
         : deriveKey({ headingText: piece.title, content: piece.content }, otherKeys);
       keyByPieceIndex.set(index, key);
     }

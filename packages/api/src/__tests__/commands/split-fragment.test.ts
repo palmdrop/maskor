@@ -401,6 +401,73 @@ describe("splitFragmentCommand", () => {
     expect(created.key).toBe(`${originalKey}_1`);
   });
 
+  it("reports a case-only piece-1 override as a rename (matches the storage rename definition)", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const originalKey = `casekey-${stamp}`;
+    const original = await writeFragment(ctx, originalKey, "# One\nBody one\n# Two\nBody two");
+
+    // Same key, different casing. The storage layer renames case-sensitively (a
+    // case-only change cascades the file + Margin rename + link rewrite), so the
+    // command must report it rather than swallowing it as a no-op.
+    const overrideKey = originalKey.toUpperCase();
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+      pieceKeys: [{ pieceIndex: 1, key: overrideKey }],
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(overrideKey);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(overrideKey);
+  });
+
+  it("reports an automatic heading rename that differs from the original key only in case", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const originalKey = `chapter-${stamp}`;
+    // The leading heading sanitizes to the same key but with different casing —
+    // still a real rename on disk, so it must be reported.
+    const original = await writeFragment(
+      ctx,
+      originalKey,
+      `# Chapter-${stamp}\nBody one\n# Section-${stamp}\nBody two`,
+    );
+
+    const { result } = await splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+    });
+
+    expect(result.originalKeyRenamedTo).toBe(`Chapter-${stamp}`);
+    const reread = await ctx.storageService.fragments.read(ctx.projectContext, original.uuid);
+    expect(reread.key).toBe(`Chapter-${stamp}`);
+  });
+
+  it("rejects a later-piece override equal to the renamed original's old key with a specific message", async () => {
+    const ctx = await makeCommandContext();
+    const stamp = Date.now();
+    const originalKey = `swap-old-${stamp}`;
+    const original = await writeFragment(ctx, originalKey, "# One\nBody one\n# Two\nBody two");
+
+    // Piece 1 is renamed away from its old key; piece 2 tries to claim that
+    // old key. It is still reserved until the rename lands, so this rejects —
+    // but with a message that says the original still holds it, not the generic
+    // "already exists" (key-swapping between pieces is impossible in one split).
+    const promise = splitFragmentCommand.execute(ctx, {
+      fragmentId: original.uuid,
+      delimiter: { type: "heading", level: 1 },
+      keepHeadingInBody: true,
+      pieceKeys: [
+        { pieceIndex: 1, key: `swap-new-${stamp}` },
+        { pieceIndex: 2, key: originalKey },
+      ],
+    });
+    await expect(promise).rejects.toBeInstanceOf(SplitKeyConflictError);
+    await expect(promise).rejects.toThrow("still held by the original fragment");
+  });
+
   it("rejects a single-piece (no-op) split and writes nothing", async () => {
     const ctx = await makeCommandContext();
     const original = await writeFragment(
