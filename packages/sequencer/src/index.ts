@@ -748,44 +748,77 @@ export class ShuffleConstraintCycleError extends Error {
   }
 }
 
-// Produce a random topological ordering of `universe` that honors every ordering
-// constraint in `graph` — a random linear extension of the DAG. Constraints are
-// first projected onto the universe (out-of-universe fragments fall away, their
-// transitive order preserved); a cycle among the survivors means no valid
-// ordering exists, so we throw `ShuffleConstraintCycleError` rather than stall.
-// Randomness is injected (`random`) so the engine stays pure and reproducible
-// under a fixed source. Uses a randomized Kahn's algorithm: at each step pick
-// uniformly at random among the fragments whose predecessors are all placed.
-//
-// Note: this samples *a* valid ordering at random, not uniformly over the space
-// of all linear extensions (uniform sampling is #P-hard) — sufficient for a
-// creative shuffle. Unconstrained fragments (the majority) start ready and so
-// spread throughout the result.
-export function computeRandomLinearExtension(
-  graph: ConstraintGraph,
-  universe: string[],
-  random: RandomSource,
-): string[] {
-  const universeSet = new Set(universe);
-  const restricted = restrictGraphToNodes(graph, universeSet);
-
-  const cycles = detectCyclesInGraph(restricted);
-  if (cycles.length > 0) {
-    throw new ShuffleConstraintCycleError(cycles);
+// Group the nodes of a constraint graph into weakly connected components —
+// sets of fragments transitively linked by any constraint edge, direction
+// ignored. Fragments in different components share no constraint, so each
+// component can be ordered independently. Deterministic: components and their
+// members follow `allNodes` insertion order.
+const findWeaklyConnectedComponents = (graph: ConstraintGraph): string[][] => {
+  const undirected = new Map<string, Set<string>>();
+  const neighborsOf = (node: string): Set<string> => {
+    let neighbors = undirected.get(node);
+    if (!neighbors) {
+      neighbors = new Set();
+      undirected.set(node, neighbors);
+    }
+    return neighbors;
+  };
+  for (const [from, neighbors] of graph.adjacency.entries()) {
+    for (const to of neighbors.keys()) {
+      neighborsOf(from).add(to);
+      neighborsOf(to).add(from);
+    }
   }
 
+  const visited = new Set<string>();
+  const components: string[][] = [];
+  for (const start of graph.allNodes) {
+    if (visited.has(start)) continue;
+    visited.add(start);
+    const component: string[] = [];
+    const queue = [start];
+    while (queue.length > 0) {
+      const node = queue.pop()!;
+      component.push(node);
+      for (const neighbor of undirected.get(node) ?? []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+    }
+    components.push(component);
+  }
+  return components;
+};
+
+// A random topological ordering of `nodes` under the edges of `graph` that stay
+// within `nodes` — randomized Kahn's algorithm. Only used per constraint
+// component, where every node is constrained: applied to a whole universe it
+// would bias constrained fragments toward the end (a chain exposes one ready
+// node at a time while every free fragment is ready immediately, so free
+// fragments get consumed first). `computeRandomLinearExtension` avoids that by
+// fixing positions with a uniform shuffle first.
+const computeRandomTopologicalOrder = (
+  graph: ConstraintGraph,
+  nodes: string[],
+  random: RandomSource,
+): string[] => {
+  const nodeSet = new Set(nodes);
   const inDegree = new Map<string, number>();
-  for (const node of universe) {
+  for (const node of nodes) {
     inDegree.set(node, 0);
   }
-  for (const neighbors of restricted.adjacency.values()) {
+  for (const [from, neighbors] of graph.adjacency.entries()) {
+    if (!nodeSet.has(from)) continue;
     for (const to of neighbors.keys()) {
+      if (!nodeSet.has(to)) continue;
       inDegree.set(to, (inDegree.get(to) ?? 0) + 1);
     }
   }
 
   const ready: string[] = [];
-  for (const node of universe) {
+  for (const node of nodes) {
     if ((inDegree.get(node) ?? 0) === 0) ready.push(node);
   }
 
@@ -800,14 +833,74 @@ export function computeRandomLinearExtension(
     ready.pop();
     order.push(node);
 
-    const neighbors = restricted.adjacency.get(node);
+    const neighbors = graph.adjacency.get(node);
     if (neighbors) {
       for (const to of neighbors.keys()) {
+        if (!nodeSet.has(to)) continue;
         const next = (inDegree.get(to) ?? 0) - 1;
         inDegree.set(to, next);
         if (next === 0) ready.push(to);
       }
     }
+  }
+
+  return order;
+};
+
+// Produce a random ordering of `universe` that honors every ordering constraint
+// in `graph` — a random linear extension of the DAG. Constraints are first
+// projected onto the universe (out-of-universe fragments fall away, their
+// transitive order preserved); a cycle among the survivors means no valid
+// ordering exists, so we throw `ShuffleConstraintCycleError` rather than stall.
+// Randomness is injected (`random`) so the engine stays pure and reproducible
+// under a fixed source.
+//
+// Two phases, so constrained fragments spread evenly instead of clustering:
+// 1. Fisher–Yates shuffle the whole universe — every fragment gets a uniformly
+//    random slot, constrained or not.
+// 2. Per weakly connected constraint component, rewrite the component's members
+//    into the slots they occupy, in a topological order of the component. Slots
+//    keep their uniform placement; only which member sits in which slot changes.
+// For disjoint chains (the common case) this samples the uniform distribution
+// over linear extensions exactly; for overlapping constraints the component's
+// internal order is a randomized topological sort (uniform sampling over a
+// general DAG's extensions is #P-hard — near-uniform is sufficient for a
+// creative shuffle).
+//
+// An earlier version ran randomized Kahn's over the whole universe, which
+// skewed constrained fragments toward the end of the result: a chain exposes
+// only one ready fragment at a time while every unconstrained fragment is ready
+// from the start, so the unconstrained pool drained first.
+export function computeRandomLinearExtension(
+  graph: ConstraintGraph,
+  universe: string[],
+  random: RandomSource,
+): string[] {
+  const universeSet = new Set(universe);
+  const restricted = restrictGraphToNodes(graph, universeSet);
+
+  const cycles = detectCyclesInGraph(restricted);
+  if (cycles.length > 0) {
+    throw new ShuffleConstraintCycleError(cycles);
+  }
+
+  const order = [...universe];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+
+  for (const component of findWeaklyConnectedComponents(restricted)) {
+    if (component.length < 2) continue;
+    const memberSet = new Set(component);
+    const slots: number[] = [];
+    for (let i = 0; i < order.length; i++) {
+      if (memberSet.has(order[i]!)) slots.push(i);
+    }
+    const componentOrder = computeRandomTopologicalOrder(restricted, component, random);
+    componentOrder.forEach((node, slotIndex) => {
+      order[slots[slotIndex]!] = node;
+    });
   }
 
   return order;

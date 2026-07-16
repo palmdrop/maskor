@@ -175,6 +175,45 @@ describe("generateShuffledSequence — randomness", () => {
   });
 });
 
+describe("generateShuffledSequence — constrained fragments spread evenly", () => {
+  it("does not skew chain members toward the end of the sequence", () => {
+    // Regression: the whole-universe randomized Kahn's approach drained the
+    // unconstrained pool first, piling chain members up at the end. With a
+    // uniform slot assignment, each chain member's position is uniform, so over
+    // many seeds the chain's mean position sits near the sequence midpoint.
+    const chainFragments = [FA, FB, FC, FD];
+    const freeFragments = Array.from(
+      { length: 20 },
+      (_, index) => `${index.toString(16).padStart(8, "0")}-1111-0000-0000-000000000001`,
+    );
+    const universe = [...chainFragments, ...freeFragments];
+    const constraint = chain(...chainFragments);
+
+    const seeds = 200;
+    let chainPositionSum = 0;
+    for (let seed = 0; seed < seeds; seed++) {
+      const order = flatOrder(
+        generateShuffledSequence({
+          projectUuid: PROJECT_UUID,
+          name: "Random",
+          fragmentUuids: universe,
+          constraintSequences: [constraint],
+          random: createSeededRandom(seed),
+        }),
+      );
+      for (const fragment of chainFragments) {
+        chainPositionSum += indexOf(order, fragment);
+      }
+    }
+
+    // Uniform placement puts the expected mean chain position at the sequence
+    // midpoint, (24 - 1) / 2 = 11.5. The old biased algorithm lands far above.
+    const meanChainPosition = chainPositionSum / (seeds * chainFragments.length);
+    expect(meanChainPosition).toBeGreaterThan(10);
+    expect(meanChainPosition).toBeLessThan(13);
+  });
+});
+
 describe("generateShuffledSequence — contradictory constraints", () => {
   it("throws ShuffleConstraintCycleError when two chains contradict over placed fragments", () => {
     const constraints = [chain(FA, FB), chain(FB, FA)];
