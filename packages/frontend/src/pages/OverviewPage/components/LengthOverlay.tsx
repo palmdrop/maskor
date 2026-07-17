@@ -18,6 +18,8 @@ interface LengthOverlayProps {
   onClose: () => void;
   // Fragments of the sidebar-hovered sequence — their points are emphasized.
   highlightedFragmentUuids: Set<string>;
+  // The single fragment hovered in the reorder column or spine — soft emphasis.
+  hoveredFragmentUuid: string | null;
 }
 
 // The length line's fixed color — a single measure, so no per-aspect palette.
@@ -36,6 +38,7 @@ export const LengthOverlay = ({
   onToggleExpanded,
   onClose,
   highlightedFragmentUuids,
+  hoveredFragmentUuid,
 }: LengthOverlayProps) => {
   const { ref, width: containerWidth } = useElementWidth();
 
@@ -106,6 +109,7 @@ export const LengthOverlay = ({
               ariaLabel="Fragment length across the placed sequence"
               testId="length-panel"
               highlightedFragmentUuids={highlightedFragmentUuids}
+              hoveredFragmentUuid={hoveredFragmentUuid}
             />
             <GraphSectionsBar
               width={graphWidth}

@@ -782,6 +782,30 @@ describe("OverviewPage — sequence hover highlight", () => {
     expect(navigateMock).not.toHaveBeenCalled();
     expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
   });
+
+  const spineEntryFor = (fragmentUuid: string) =>
+    screen.getByTestId("prose-spine").querySelector(`[data-fragment-uuid="${fragmentUuid}"]`)!;
+
+  it("soft cross-highlights the spine entry when hovering a fragment's reorder row", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(spineEntryFor(FRAG_A)).not.toHaveAttribute("data-fragment-hovered");
+
+    fireEvent.mouseEnter(reorderRowFor(FRAG_A));
+    expect(spineEntryFor(FRAG_A)).toHaveAttribute("data-fragment-hovered", "true");
+    expect(spineEntryFor(FRAG_B)).not.toHaveAttribute("data-fragment-hovered");
+
+    fireEvent.mouseLeave(reorderRowFor(FRAG_A));
+    expect(spineEntryFor(FRAG_A)).not.toHaveAttribute("data-fragment-hovered");
+  });
+
+  it("soft cross-highlights the reorder row when hovering a spine entry", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.mouseEnter(spineEntryFor(FRAG_B));
+    expect(reorderRowFor(FRAG_B)).toHaveAttribute("data-fragment-hovered", "true");
+    expect(reorderRowFor(FRAG_A)).not.toHaveAttribute("data-fragment-hovered");
+  });
 });
 
 describe("OverviewPage — multi-select section operations", () => {

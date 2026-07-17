@@ -17,10 +17,16 @@ interface ArcPanelProps {
   // are emphasized (enlarged dot + sky ring) so the hovered sequence's members
   // stand out across both graphs.
   highlightedFragmentUuids?: Set<string>;
+  // The single fragment hovered in the reorder column or spine — its point gets
+  // a softer emphasis (slightly enlarged, muted ring). The strong sequence
+  // highlight above takes precedence when a point is both.
+  hoveredFragmentUuid?: string | null;
 }
 
-// Sky ring matching the row/spine highlight, drawn around an emphasized dot.
+// Sky ring matching the row/spine highlight, drawn around a strongly emphasized
+// dot; a muted ring for the soft single-fragment hover.
 const HIGHLIGHT_STROKE = "#38bdf8";
+const SOFT_HOVER_STROKE = "#94a3b8";
 const EMPTY_HIGHLIGHT_SET: Set<string> = new Set();
 
 export const ArcPanel = ({
@@ -30,6 +36,7 @@ export const ArcPanel = ({
   ariaLabel = "Aspect arcs across the placed sequence",
   testId = "arc-panel",
   highlightedFragmentUuids = EMPTY_HIGHLIGHT_SET,
+  hoveredFragmentUuid = null,
 }: ArcPanelProps) => {
   const panelHeight = ARC_PANEL_HEIGHT + ARC_PANEL_TOP_PADDING + ARC_PANEL_BOTTOM_PADDING;
 
@@ -75,17 +82,21 @@ export const ArcPanel = ({
           if (offsetPoints.length === 1) {
             const single = offsetPoints[0]!;
             const highlighted = highlightedFragmentUuids.has(single.fragmentUuid);
+            const softHovered = !highlighted && single.fragmentUuid === hoveredFragmentUuid;
             return (
               <circle
                 key={aspectKey}
                 cx={single.x}
                 cy={single.y}
-                r={highlighted ? 4.5 : 3}
+                r={highlighted ? 4.5 : softHovered ? 3.75 : 3}
                 fill={color}
-                stroke={highlighted ? HIGHLIGHT_STROKE : undefined}
-                strokeWidth={highlighted ? 2 : undefined}
+                stroke={
+                  highlighted ? HIGHLIGHT_STROKE : softHovered ? SOFT_HOVER_STROKE : undefined
+                }
+                strokeWidth={highlighted ? 2 : softHovered ? 1.5 : undefined}
                 data-aspect-key={aspectKey}
                 data-highlighted={highlighted || undefined}
+                data-soft-hovered={softHovered || undefined}
               />
             );
           }
@@ -101,16 +112,20 @@ export const ArcPanel = ({
               />
               {offsetPoints.map((point) => {
                 const highlighted = highlightedFragmentUuids.has(point.fragmentUuid);
+                const softHovered = !highlighted && point.fragmentUuid === hoveredFragmentUuid;
                 return (
                   <circle
                     key={point.fragmentUuid}
                     cx={point.x}
                     cy={point.y}
-                    r={highlighted ? 4.5 : 2.5}
+                    r={highlighted ? 4.5 : softHovered ? 3.75 : 2.5}
                     fill={color}
-                    stroke={highlighted ? HIGHLIGHT_STROKE : undefined}
-                    strokeWidth={highlighted ? 2 : undefined}
+                    stroke={
+                      highlighted ? HIGHLIGHT_STROKE : softHovered ? SOFT_HOVER_STROKE : undefined
+                    }
+                    strokeWidth={highlighted ? 2 : softHovered ? 1.5 : undefined}
                     data-highlighted={highlighted || undefined}
+                    data-soft-hovered={softHovered || undefined}
                   />
                 );
               })}

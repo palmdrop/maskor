@@ -22,6 +22,8 @@ interface SectionGroupProps {
   isUnsaved: (fragmentUuid: string) => boolean;
   getRelativeLength: (fragmentUuid: string) => number | undefined;
   highlightedFragmentUuids: Set<string>;
+  hoveredFragmentUuid: string | null;
+  onHoverFragment: (fragmentUuid: string | null) => void;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -61,6 +63,8 @@ export const SectionGroup = ({
   isUnsaved,
   getRelativeLength,
   highlightedFragmentUuids,
+  hoveredFragmentUuid,
+  onHoverFragment,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -213,6 +217,8 @@ export const SectionGroup = ({
               isUnsaved={isUnsaved(fragmentUuid)}
               relativeLength={getRelativeLength(fragmentUuid)}
               isHighlighted={highlightedFragmentUuids.has(fragmentUuid)}
+              isFragmentHovered={hoveredFragmentUuid === fragmentUuid}
+              onHoverFragment={onHoverFragment}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
               onRemove={onRemoveFragment}

@@ -54,6 +54,12 @@ interface ReorderRowProps {
   // This fragment is a member of the sequence currently hovered in the sidebar —
   // drawn with a ring that reads distinctly from (and coexists with) selection.
   isHighlighted?: boolean;
+  // This fragment is the one hovered in the other surface (spine) — a soft fill,
+  // distinct from the sequence-level ring.
+  isFragmentHovered?: boolean;
+  // Pointer hover over this row reports its uuid (null on leave) so the same
+  // fragment can be softly cross-highlighted in the spine and graphs.
+  onHoverFragment?: (fragmentUuid: string | null) => void;
 }
 
 // A single placed/pool fragment row: a compact, draggable, selectable title line.
@@ -69,6 +75,8 @@ export const ReorderRow = ({
   isUnsaved = false,
   relativeLength,
   isHighlighted = false,
+  isFragmentHovered = false,
+  onHoverFragment,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -91,6 +99,9 @@ export const ReorderRow = ({
       }}
       data-fragment-uuid={fragment.uuid}
       data-highlighted={isHighlighted || undefined}
+      data-fragment-hovered={isFragmentHovered || undefined}
+      onMouseEnter={() => onHoverFragment?.(fragment.uuid)}
+      onMouseLeave={() => onHoverFragment?.(null)}
       onPointerDownCapture={() => {
         pointerFocusRef.current = true;
       }}
@@ -116,7 +127,9 @@ export const ReorderRow = ({
       } ${
         isSelected
           ? "border-primary bg-primary/5 text-foreground"
-          : "border-border bg-card text-foreground hover:bg-muted"
+          : isFragmentHovered
+            ? "border-border bg-muted text-foreground"
+            : "border-border bg-card text-foreground hover:bg-muted"
       } ${fragment.isDiscarded ? "bg-muted" : ""} ${
         isHighlighted ? "ring-2 ring-sky-400 dark:ring-sky-500" : ""
       }`}

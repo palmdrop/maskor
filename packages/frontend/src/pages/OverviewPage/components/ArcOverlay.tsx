@@ -21,6 +21,8 @@ interface ArcOverlayProps {
   onClose: () => void;
   // Fragments of the sidebar-hovered sequence — their points are emphasized.
   highlightedFragmentUuids: Set<string>;
+  // The single fragment hovered in the reorder column or spine — soft emphasis.
+  hoveredFragmentUuid: string | null;
 }
 
 // Summonable compressed horizontal multi-aspect arc graph rendered from
@@ -37,6 +39,7 @@ export const ArcOverlay = ({
   onToggleExpanded,
   onClose,
   highlightedFragmentUuids,
+  hoveredFragmentUuid,
 }: ArcOverlayProps) => {
   const { ref, width: containerWidth } = useElementWidth();
 
@@ -108,6 +111,7 @@ export const ArcOverlay = ({
               series={series}
               colorByAspectKey={colorByAspectKey}
               highlightedFragmentUuids={highlightedFragmentUuids}
+              hoveredFragmentUuid={hoveredFragmentUuid}
             />
             <GraphSectionsBar
               width={arcWidth}

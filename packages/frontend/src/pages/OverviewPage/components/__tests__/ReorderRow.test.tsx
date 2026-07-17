@@ -75,4 +75,26 @@ describe("ReorderRow", () => {
       "data-highlighted",
     );
   });
+
+  it("reports fragment hover on mouse enter and leave", () => {
+    const onHoverFragment = vi.fn();
+    const { container } = wrap(
+      <ReorderRow {...baseProps} fragment={fragment()} onHoverFragment={onHoverFragment} />,
+    );
+    const row = container.querySelector('[data-fragment-uuid="frag-1"]')!;
+    fireEvent.mouseEnter(row);
+    expect(onHoverFragment).toHaveBeenCalledWith("frag-1");
+    fireEvent.mouseLeave(row);
+    expect(onHoverFragment).toHaveBeenCalledWith(null);
+  });
+
+  it("marks a soft fragment-hover distinctly from the sequence-highlight ring", () => {
+    const { container } = wrap(
+      <ReorderRow {...baseProps} fragment={fragment()} isFragmentHovered />,
+    );
+    const row = container.querySelector('[data-fragment-uuid="frag-1"]')!;
+    expect(row).toHaveAttribute("data-fragment-hovered", "true");
+    // Soft hover is not the sky ring used for the sequence-level highlight.
+    expect(row.className).not.toMatch(/ring-2/);
+  });
 });

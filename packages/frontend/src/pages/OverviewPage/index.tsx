@@ -115,6 +115,10 @@ export const OverviewPage = () => {
       setPinnedSequenceId((current) => (current === sequenceUuid ? null : sequenceUuid)),
     [],
   );
+  // A single fragment hovered in the reorder column or the spine — softly
+  // cross-highlighted in the other surface and in both graphs. Distinct from
+  // (and layered under) the sequence-level highlight above.
+  const [hoveredFragmentUuid, setHoveredFragmentUuid] = useState<string | null>(null);
 
   const { isRebuilding } = useRebuildStatus();
 
@@ -707,6 +711,8 @@ export const OverviewPage = () => {
               getCycleTooltips={getCycleTooltips}
               isUnsaved={isFragmentUnsaved}
               highlightedFragmentUuids={highlightedFragmentUuids}
+              hoveredFragmentUuid={hoveredFragmentUuid}
+              onHoverFragment={setHoveredFragmentUuid}
               editingSectionId={sectionManager.editingSectionId}
               setEditingSectionId={sectionManager.setEditingSectionId}
               editingSectionValue={sectionManager.editingSectionValue}
@@ -853,6 +859,7 @@ export const OverviewPage = () => {
                 onToggleExpanded={toggleArcExpanded}
                 onClose={toggleArcOverlay}
                 highlightedFragmentUuids={highlightedFragmentUuids}
+                hoveredFragmentUuid={hoveredFragmentUuid}
               />
             )}
 
@@ -864,6 +871,7 @@ export const OverviewPage = () => {
                 onToggleExpanded={toggleLengthExpanded}
                 onClose={toggleLengthOverlay}
                 highlightedFragmentUuids={highlightedFragmentUuids}
+                hoveredFragmentUuid={hoveredFragmentUuid}
               />
             )}
 
@@ -892,6 +900,8 @@ export const OverviewPage = () => {
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
                     highlightedFragmentUuids={highlightedFragmentUuids}
+                    hoveredFragmentUuid={hoveredFragmentUuid}
+                    onHoverFragment={setHoveredFragmentUuid}
                     onSelectFragment={handleSpineSelectFragment}
                     onRemoveFragment={sequenceReadOnly ? undefined : handleRemoveFragment}
                     onEdit={handleEdit}

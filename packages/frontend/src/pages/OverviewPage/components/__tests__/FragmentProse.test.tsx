@@ -171,6 +171,27 @@ describe("FragmentProse — hover highlight", () => {
     );
     expect(container.firstChild as Element).not.toHaveAttribute("data-highlighted");
   });
+
+  it("reports fragment hover and marks a soft cross-highlight", () => {
+    const onHoverFragment = vi.fn();
+    const { container } = render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+        isFragmentHovered
+        onHoverFragment={onHoverFragment}
+      />,
+    );
+    const root = container.firstChild as Element;
+    expect(root).toHaveAttribute("data-fragment-hovered", "true");
+    fireEvent.mouseEnter(root);
+    expect(onHoverFragment).toHaveBeenCalledWith(FRAGMENT_UUID);
+    fireEvent.mouseLeave(root);
+    expect(onHoverFragment).toHaveBeenCalledWith(null);
+  });
 });
 
 describe("FragmentProse — remove from sequence", () => {

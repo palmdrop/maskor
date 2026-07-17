@@ -33,6 +33,11 @@ interface ReorderListProps {
   // set draw a highlight ring. Pool rows are never highlighted (they are not
   // placed in the active sequence). Optional; only the Overview passes it.
   highlightedFragmentUuids?: Set<string>;
+  // The single fragment hovered in the spine (or another row) — softly filled
+  // here so the same fragment is visible across surfaces. Optional; the Overview
+  // passes it, the placement arranger does not.
+  hoveredFragmentUuid?: string | null;
+  onHoverFragment?: (fragmentUuid: string | null) => void;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -80,6 +85,8 @@ export const ReorderList = ({
   isUnsaved = () => false,
   getRelativeLength = () => undefined,
   highlightedFragmentUuids = EMPTY_HIGHLIGHT_SET,
+  hoveredFragmentUuid = null,
+  onHoverFragment = () => {},
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -120,6 +127,8 @@ export const ReorderList = ({
             isUnsaved={isUnsaved}
             getRelativeLength={getRelativeLength}
             highlightedFragmentUuids={highlightedFragmentUuids}
+            hoveredFragmentUuid={hoveredFragmentUuid}
+            onHoverFragment={onHoverFragment}
             editingSectionId={editingSectionId}
             setEditingSectionId={setEditingSectionId}
             editingSectionValue={editingSectionValue}
@@ -173,6 +182,8 @@ export const ReorderList = ({
               cycleTooltips={getCycleTooltips(fragmentUuid)}
               isUnsaved={isUnsaved(fragmentUuid)}
               relativeLength={getRelativeLength(fragmentUuid)}
+              isFragmentHovered={hoveredFragmentUuid === fragmentUuid}
+              onHoverFragment={onHoverFragment}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
             />

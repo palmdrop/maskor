@@ -44,6 +44,32 @@ describe("ArcPanel — hover highlight", () => {
     expect(container.querySelectorAll("circle[data-highlighted]")).toHaveLength(0);
   });
 
+  it("softly emphasizes the hovered fragment's point, distinct from the strong highlight", () => {
+    const { container } = render(
+      <ArcPanel width={100} series={series} colorByAspectKey={colors} hoveredFragmentUuid="c" />,
+    );
+    const soft = container.querySelectorAll("circle[data-soft-hovered]");
+    expect(soft).toHaveLength(1);
+    expect(container.querySelectorAll("circle[data-highlighted]")).toHaveLength(0);
+    // Soft stroke differs from the strong (sky) highlight stroke.
+    expect(soft[0]!.getAttribute("stroke")).toBe("#94a3b8");
+  });
+
+  it("lets the strong sequence highlight win when a point is both", () => {
+    const { container } = render(
+      <ArcPanel
+        width={100}
+        series={series}
+        colorByAspectKey={colors}
+        highlightedFragmentUuids={new Set(["b"])}
+        hoveredFragmentUuid="b"
+      />,
+    );
+    // "b" is both — it renders as the strong highlight, not the soft hover.
+    expect(container.querySelectorAll("circle[data-highlighted]")).toHaveLength(1);
+    expect(container.querySelectorAll("circle[data-soft-hovered]")).toHaveLength(0);
+  });
+
   it("emphasizes a single-point series when highlighted", () => {
     const single: ArcSeries[] = [
       { aspectKey: "grief", points: [{ x: 5, y: 5, fragmentUuid: "a" }] },

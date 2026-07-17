@@ -40,6 +40,12 @@ interface FragmentProseProps {
   // Member of the sidebar-hovered sequence — drawn with a ring that coexists
   // with the selection border. Only the Overview spine passes this.
   isHighlighted?: boolean;
+  // The fragment hovered in the other surface (reorder column) — a soft fill,
+  // distinct from the sequence-level ring. Only the Overview spine passes this.
+  isFragmentHovered?: boolean;
+  // Pointer hover reports this fragment's uuid (null on leave) so the same
+  // fragment can be softly cross-highlighted in the reorder column and graphs.
+  onHoverFragment?: (fragmentUuid: string | null) => void;
   onSelect?: (fragmentUuid: string) => void;
   // When set, the body becomes double-click/pencil-to-edit: the host opens the
   // full fragment editor as a center-replacing overlay for this fragment (ADR
@@ -66,6 +72,8 @@ export const FragmentProse = ({
   excerpt,
   isSelected,
   isHighlighted,
+  isFragmentHovered,
+  onHoverFragment,
   onSelect,
   onEdit,
   onRemove,
@@ -75,7 +83,9 @@ export const FragmentProse = ({
 
   const selectedClass = isSelected
     ? "border-primary bg-primary/5"
-    : "border-transparent hover:border-border";
+    : isFragmentHovered
+      ? "border-border bg-muted"
+      : "border-transparent hover:border-border";
   const highlightClass = isHighlighted ? "ring-2 ring-sky-400 dark:ring-sky-500" : "";
 
   return (
@@ -85,6 +95,9 @@ export const FragmentProse = ({
       data-fragment-uuid={fragmentUuid}
       data-detail-level={detailLevel}
       data-highlighted={isHighlighted || undefined}
+      data-fragment-hovered={isFragmentHovered || undefined}
+      onMouseEnter={() => onHoverFragment?.(fragmentUuid)}
+      onMouseLeave={() => onHoverFragment?.(null)}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.(fragmentUuid);
