@@ -83,6 +83,63 @@ describe("FragmentProse — edit handoff", () => {
   });
 });
 
+describe("FragmentProse — title-mode length bar", () => {
+  it("renders a bar sized to relativeLength at the title detail level", () => {
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="title"
+        relativeLength={0.5}
+      />,
+    );
+    expect(screen.getByTestId("fragment-length-bar")).toHaveStyle({ width: "50%" });
+  });
+
+  it("keeps a minimum visible width for near-empty fragments", () => {
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="a"
+        isDiscarded={false}
+        detailLevel="title"
+        relativeLength={0.001}
+      />,
+    );
+    expect(screen.getByTestId("fragment-length-bar")).toHaveStyle({ width: "1.5%" });
+  });
+
+  it("renders no bar when relativeLength is absent", () => {
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="title"
+      />,
+    );
+    expect(screen.queryByTestId("fragment-length-bar")).not.toBeInTheDocument();
+  });
+
+  it("renders no bar outside the title detail level", () => {
+    render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+        relativeLength={0.5}
+      />,
+    );
+    expect(screen.queryByTestId("fragment-length-bar")).not.toBeInTheDocument();
+  });
+});
+
 describe("FragmentProse — remove from sequence", () => {
   it("renders no remove affordance when onRemove is absent", () => {
     render(

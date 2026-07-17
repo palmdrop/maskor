@@ -45,6 +45,10 @@ interface FragmentProseProps {
   // active sequence (returns it to the pool). Only passed where the fragment is
   // actually placed.
   onRemove?: () => void;
+  // Content length as a fraction of the longest placed fragment (0, 1]. Drawn
+  // as a thin bar at the "title" detail level so the length distribution is
+  // visible without any body text. Only the spine passes this.
+  relativeLength?: number;
 }
 
 // Shared single-fragment renderer used by both the prose spine and the right
@@ -60,6 +64,7 @@ export const FragmentProse = ({
   onSelect,
   onEdit,
   onRemove,
+  relativeLength,
 }: FragmentProseProps) => {
   const editable = !!onEdit;
 
@@ -126,6 +131,16 @@ export const FragmentProse = ({
           </div>
         )}
       </div>
+
+      {detailLevel === "title" && relativeLength !== undefined && (
+        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          <div
+            data-testid="fragment-length-bar"
+            className="h-full rounded-full bg-muted-foreground/40"
+            style={{ width: `${Math.max(relativeLength, 0.015) * 100}%` }}
+          />
+        </div>
+      )}
 
       {detailLevel === "excerpt" && (
         <p className="mt-1 text-sm leading-snug text-muted-foreground">

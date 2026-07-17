@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import type { OverviewDetailLevel } from "../../../router";
+import { computeRelativeContentLengths } from "../utils/relativeContentLengths";
 import { FragmentProse } from "./FragmentProse";
 import { Heading } from "@components/heading";
 
@@ -43,6 +45,7 @@ interface SortableSpineFragmentProps {
   fragment: FragmentSummary;
   content: string;
   detailLevel: OverviewDetailLevel;
+  relativeLength: number | undefined;
   isSelected: boolean;
   onSelect: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
@@ -54,6 +57,7 @@ const SortableSpineFragment = ({
   fragment,
   content,
   detailLevel,
+  relativeLength,
   isSelected,
   onSelect,
   onEdit,
@@ -90,6 +94,7 @@ const SortableSpineFragment = ({
           content={content}
           excerpt={fragment.excerpt ?? undefined}
           detailLevel={detailLevel}
+          relativeLength={relativeLength}
           isSelected={isSelected}
           onSelect={onSelect}
           onEdit={onEdit}
@@ -105,6 +110,7 @@ interface SpineSectionProps {
   detailLevel: OverviewDetailLevel;
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
+  relativeLengthByFragmentUuid: Map<string, number>;
   selectedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
@@ -117,6 +123,7 @@ const SpineSection = ({
   detailLevel,
   fragmentByUuid,
   contentByFragmentUuid,
+  relativeLengthByFragmentUuid,
   selectedFragmentUuids,
   onSelectFragment,
   onEdit,
@@ -152,6 +159,7 @@ const SpineSection = ({
                 fragment={fragment}
                 content={contentByFragmentUuid.get(fragmentUuid) ?? ""}
                 detailLevel={detailLevel}
+                relativeLength={relativeLengthByFragmentUuid.get(fragmentUuid)}
                 isSelected={selectedFragmentUuids.has(fragmentUuid)}
                 onSelect={onSelectFragment}
                 onEdit={onEdit}
@@ -197,6 +205,18 @@ export const ProseSpine = ({
   onRemoveFragment,
   readOnly,
 }: ProseSpineProps) => {
+  // Each placed fragment's content length relative to the longest one, drawn
+  // as a thin bar at the "title" detail level so the length distribution of
+  // the sequence stays visible when the bodies are collapsed.
+  const relativeLengthByFragmentUuid = useMemo(
+    () =>
+      computeRelativeContentLengths(
+        sectionsData.flatMap((section) => section.fragmentUuids),
+        contentByFragmentUuid,
+      ),
+    [sectionsData, contentByFragmentUuid],
+  );
+
   // Only bail out entirely when the sequence has no sections at all. Empty
   // sections still render as droppable zones so the first fragment can be
   // dropped straight into the spine.
@@ -217,6 +237,7 @@ export const ProseSpine = ({
           detailLevel={detailLevel}
           fragmentByUuid={fragmentByUuid}
           contentByFragmentUuid={contentByFragmentUuid}
+          relativeLengthByFragmentUuid={relativeLengthByFragmentUuid}
           selectedFragmentUuids={selectedFragmentUuids}
           onSelectFragment={onSelectFragment}
           onEdit={onEdit}
