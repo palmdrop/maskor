@@ -21,6 +21,10 @@ interface ReorderListProps {
   // leading "dirty" dot on its row; defaults to no-op for surfaces that don't
   // track it (e.g. the placement-modal arranger).
   isUnsaved?: (fragmentUuid: string) => boolean;
+  // Content length relative to the longest fragment (0, 1] — drawn as the
+  // spine's title-mode length bar on each row. Optional; the placement-modal
+  // arranger passes it, the Overview's left column does not.
+  getRelativeLength?: (fragmentUuid: string) => number | undefined;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -66,6 +70,7 @@ export const ReorderList = ({
   getViolationTooltips,
   getCycleTooltips,
   isUnsaved = () => false,
+  getRelativeLength = () => undefined,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -104,6 +109,7 @@ export const ReorderList = ({
             getViolationTooltips={getViolationTooltips}
             getCycleTooltips={getCycleTooltips}
             isUnsaved={isUnsaved}
+            getRelativeLength={getRelativeLength}
             editingSectionId={editingSectionId}
             setEditingSectionId={setEditingSectionId}
             editingSectionValue={editingSectionValue}
@@ -156,6 +162,7 @@ export const ReorderList = ({
               violationTooltips={[]}
               cycleTooltips={getCycleTooltips(fragmentUuid)}
               isUnsaved={isUnsaved(fragmentUuid)}
+              relativeLength={getRelativeLength(fragmentUuid)}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
             />

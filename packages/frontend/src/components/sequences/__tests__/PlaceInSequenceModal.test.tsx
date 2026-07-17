@@ -6,8 +6,17 @@ const placeMutate = vi.fn();
 const moveMutate = vi.fn();
 const unplaceMutate = vi.fn();
 
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <a href="/mock" onClick={onClick}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock("@api/generated/sequences/sequences", () => ({
   useListSequences: vi.fn(),
+  useGetSequenceContents: vi.fn(),
   usePlaceFragment: vi.fn(() => ({ mutate: placeMutate, isPending: false })),
   useMoveFragment: vi.fn(() => ({ mutate: moveMutate, isPending: false })),
   useUnplaceFragment: vi.fn(() => ({ mutate: unplaceMutate, isPending: false })),
@@ -27,7 +36,8 @@ vi.mock("@api/generated/projects/projects", () => ({
   useGetProject: vi.fn(),
 }));
 
-const { useListSequences } = await import("@api/generated/sequences/sequences");
+const { useListSequences, useGetSequenceContents } =
+  await import("@api/generated/sequences/sequences");
 const { useListFragmentSummaries } = await import("@api/generated/fragments/fragments");
 const { useGetProject } = await import("@api/generated/projects/projects");
 const { PlaceInSequenceModal } = await import("../PlaceInSequenceModal");
@@ -100,6 +110,7 @@ describe("PlaceInSequenceModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setVimMode(false);
+    (useGetSequenceContents as Mock).mockReturnValue({ data: undefined });
   });
 
   it("adds an unplaced fragment to the (only) section at the end", () => {
@@ -226,5 +237,55 @@ describe("PlaceInSequenceModal", () => {
       fragmentUuid: FRAG,
       data: { sectionUuid: "s1", position: 0 },
     });
+  });
+
+  it("renders a length bar per row sized relative to the longest fragment", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG, "x"] }]), makeSummaries([FRAG, "x"]));
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: {
+        status: 200,
+        data: {
+          placed: [
+            { fragmentUuid: FRAG, content: "ab" },
+            { fragmentUuid: "x", content: "abcd" },
+          ],
+          pool: [],
+        },
+      },
+    });
+    renderModal();
+
+    const bars = screen.getAllByTestId("fragment-length-bar");
+    expect(bars).toHaveLength(2);
+    const widths = bars.map((bar) => bar.style.width);
+    expect(widths).toContain("50%");
+    expect(widths).toContain("100%");
+  });
+
+  it("shows no length bars when the sequence contents have not loaded", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG] }]), makeSummaries([FRAG]));
+    renderModal();
+
+    expect(screen.queryAllByTestId("fragment-length-bar")).toHaveLength(0);
+  });
+
+  it("offers an Open in Overview link that closes the modal", () => {
+    setData(makeBundle([{ uuid: "s1", fragmentUuids: [FRAG] }]), makeSummaries([FRAG]));
+    const onOpenChange = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PlaceInSequenceModal
+          projectId={PROJECT_ID}
+          fragmentId={FRAG}
+          sequenceId={SEQUENCE_ID}
+          open
+          onOpenChange={onOpenChange}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: /Open in Overview/ }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

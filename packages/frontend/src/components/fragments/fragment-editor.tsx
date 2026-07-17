@@ -644,7 +644,11 @@ export const FragmentEditor = forwardRef<FragmentEditorHandle, Props>(function F
             <Separator />
             <BacklinksPanel projectId={projectId} targetType="fragment" targetKey={fragment.key} />
             <Separator />
-            <FragmentSequenceMembership projectId={projectId} fragmentId={fragmentId} />
+            <FragmentSequenceMembership
+              projectId={projectId}
+              fragmentId={fragmentId}
+              onOpenSequence={openPlaceInSequence}
+            />
             {showFragmentStats && (
               <>
                 <Separator />

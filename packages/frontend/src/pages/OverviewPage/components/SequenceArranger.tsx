@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import type { FragmentSummary, Sequence } from "@api/generated/maskorAPI.schemas";
-import { getListSequencesQueryKey } from "@api/generated/sequences/sequences";
+import {
+  getListSequencesQueryKey,
+  useGetSequenceContents,
+} from "@api/generated/sequences/sequences";
 import { useSequenceMutations } from "@lib/sequences/useSequenceMutations";
+import { computeRelativeContentLengths } from "../utils/relativeContentLengths";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { isTextEntryTarget } from "@lib/keyboard";
 import { useProjectEditorConfig } from "@hooks/useProjectEditorConfig";
@@ -87,6 +91,23 @@ export const SequenceArranger = ({
   // fragment and is not user-selectable, so it always matches what the footer
   // buttons and ←/→/Backspace act on.
   const selectionSet = useMemo(() => new Set([activeFragmentUuid]), [activeFragmentUuid]);
+
+  // Each row draws the spine's title-mode length bar so the fragment's length
+  // relative to the rest of the sequence (placed and pool) stays visible while
+  // arranging. Fragments whose content has not loaded show no bar.
+  const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence.uuid);
+  const relativeLengthByFragmentUuid = useMemo(() => {
+    const contentByFragmentUuid = new Map<string, string>();
+    if (contentsEnvelope?.status === 200) {
+      for (const entry of [...contentsEnvelope.data.placed, ...contentsEnvelope.data.pool]) {
+        contentByFragmentUuid.set(entry.fragmentUuid, entry.content);
+      }
+    }
+    return computeRelativeContentLengths(
+      [...sectionsData.flatMap((section) => section.fragmentUuids), ...poolFragmentUuids],
+      contentByFragmentUuid,
+    );
+  }, [contentsEnvelope, sectionsData, poolFragmentUuids]);
 
   const dnd = useSequenceDnD({
     sequence,
@@ -209,6 +230,7 @@ export const SequenceArranger = ({
           onRemoveFragment={handleRemove}
           getViolationTooltips={NO_TOOLTIPS}
           getCycleTooltips={NO_TOOLTIPS}
+          getRelativeLength={(fragmentUuid) => relativeLengthByFragmentUuid.get(fragmentUuid)}
           editingSectionId={null}
           setEditingSectionId={NOOP}
           editingSectionValue=""

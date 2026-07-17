@@ -3,6 +3,7 @@ import { Trash2Icon } from "lucide-react";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
+import { FragmentLengthBar } from "./FragmentLengthBar";
 import type { SelectModifiers } from "./reorder-types";
 
 interface RowIndicatorsProps {
@@ -46,6 +47,10 @@ interface ReorderRowProps {
   // (matching the fragment list). Leading position + tooltip distinguish it from
   // the trailing violation/cycle dots.
   isUnsaved?: boolean;
+  // Content length as a fraction of the longest fragment (0, 1] — drawn as the
+  // same thin bar as the spine's title mode. Only the placement arranger passes
+  // this; the Overview's left column stays title-only.
+  relativeLength?: number;
 }
 
 // A single placed/pool fragment row: a compact, draggable, selectable title line.
@@ -59,6 +64,7 @@ export const ReorderRow = ({
   onRemove,
   disabled = false,
   isUnsaved = false,
+  relativeLength,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -123,7 +129,12 @@ export const ReorderRow = ({
           aria-label="Unsaved changes"
         />
       )}
-      <span className="truncate flex-1">{fragment.key}</span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate">{fragment.key}</div>
+        {relativeLength !== undefined && (
+          <FragmentLengthBar relativeLength={relativeLength} className="mt-1" />
+        )}
+      </div>
       <RowIndicators violationTooltips={violationTooltips} cycleTooltips={cycleTooltips} />
       {onRemove && !disabled && (
         <button

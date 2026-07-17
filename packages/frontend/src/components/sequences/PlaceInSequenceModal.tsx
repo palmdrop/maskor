@@ -1,6 +1,9 @@
+import { Link } from "@tanstack/react-router";
+import { ArrowUpRightIcon } from "lucide-react";
 import { useListSequences } from "@api/generated/sequences/sequences";
 import { useListFragmentSummaries } from "@api/generated/fragments/fragments";
 import { SequenceArranger } from "@pages/OverviewPage/components/SequenceArranger";
+import { Button } from "@components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,18 @@ export const PlaceInSequenceModal = ({
             Drag to arrange, or use ↑/↓ to move and Backspace to remove the fragment.
           </DialogDescription>
         </DialogHeader>
+
+        <Button asChild variant="outline" size="sm" className="w-fit">
+          <Link
+            to="/projects/$projectId/overview"
+            params={{ projectId }}
+            search={{ sequence: sequenceId }}
+            onClick={() => onOpenChange(false)}
+          >
+            Open in Overview
+            <ArrowUpRightIcon />
+          </Link>
+        </Button>
 
         {isBundleLoading ? (
           <p className="text-sm text-muted-foreground">Loading sequence…</p>

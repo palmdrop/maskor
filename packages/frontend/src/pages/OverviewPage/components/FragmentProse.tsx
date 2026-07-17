@@ -2,6 +2,7 @@ import { PencilIcon, Trash2Icon } from "lucide-react";
 import { ReadonlyProse } from "@components/readonly-prose";
 import type { OverviewDetailLevel } from "../../../router";
 import { Heading } from "@components/heading";
+import { FragmentLengthBar } from "./FragmentLengthBar";
 
 // Fixed reading style for the working surface. Per ADR 0011 the spine is NOT
 // promised to match Preview/export — it concatenates per-fragment chunks with a
@@ -133,13 +134,7 @@ export const FragmentProse = ({
       </div>
 
       {detailLevel === "title" && relativeLength !== undefined && (
-        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
-          <div
-            data-testid="fragment-length-bar"
-            className="h-full rounded-full bg-muted-foreground/40"
-            style={{ width: `${Math.max(relativeLength, 0.015) * 100}%` }}
-          />
-        </div>
+        <FragmentLengthBar relativeLength={relativeLength} className="mt-1.5" />
       )}
 
       {detailLevel === "excerpt" && (
