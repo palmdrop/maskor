@@ -16,6 +16,8 @@ interface SequenceHeaderProps {
   onSetDetailLevel: (detailLevel: OverviewDetailLevel) => void;
   arcOverlayOpen: boolean;
   onToggleArcOverlay: () => void;
+  lengthOverlayOpen: boolean;
+  onToggleLengthOverlay: () => void;
   verticalStripOpen: boolean;
   onToggleVerticalStrip: () => void;
 }
@@ -28,6 +30,8 @@ export const SequenceHeader = ({
   onSetDetailLevel,
   arcOverlayOpen,
   onToggleArcOverlay,
+  lengthOverlayOpen,
+  onToggleLengthOverlay,
   verticalStripOpen,
   onToggleVerticalStrip,
 }: SequenceHeaderProps) => (
@@ -73,6 +77,18 @@ export const SequenceHeader = ({
         }`}
       >
         Arcs
+      </button>
+      <button
+        type="button"
+        aria-pressed={lengthOverlayOpen}
+        onClick={onToggleLengthOverlay}
+        className={`text-xs px-2 py-1 rounded border transition-colors ${
+          lengthOverlayOpen
+            ? "border-border bg-muted text-foreground"
+            : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+        }`}
+      >
+        Length
       </button>
 
       <div

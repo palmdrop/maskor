@@ -33,6 +33,9 @@ describe("scopes/overview", () => {
     toggleArcOverlay: vi.fn(),
     toggleArcExpanded: vi.fn(),
     toggleVerticalArcStrip: vi.fn(),
+    lengthOverlayOpen: false,
+    toggleLengthOverlay: vi.fn(),
+    toggleLengthExpanded: vi.fn(),
     placedSelectionCount: 0,
     groupSelection: vi.fn(),
     canSplitBefore: false,
@@ -93,6 +96,19 @@ describe("scopes/overview", () => {
     expect(cmd.disabled?.({ ...ctx, arcOverlayOpen: true })).toBeUndefined();
     cmd.run({ ...ctx, arcOverlayOpen: true });
     expect(ctx.toggleArcExpanded).toHaveBeenCalled();
+  });
+
+  it("toggle-length-overlay runs", () => {
+    find(overviewCommands, "overview:toggle-length-overlay").run(ctx);
+    expect(ctx.toggleLengthOverlay).toHaveBeenCalled();
+  });
+
+  it("toggle-length-expanded is gated on the length overlay being open", () => {
+    const cmd = find(overviewCommands, "overview:toggle-length-expanded");
+    expect(cmd.disabled?.({ ...ctx, lengthOverlayOpen: false })).toMatch(/Open the length graph/);
+    expect(cmd.disabled?.({ ...ctx, lengthOverlayOpen: true })).toBeUndefined();
+    cmd.run({ ...ctx, lengthOverlayOpen: true });
+    expect(ctx.toggleLengthExpanded).toHaveBeenCalled();
   });
 
   it("toggle-vertical-arc-strip runs", () => {

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import type { FragmentSummary } from "@api/generated/maskorAPI.schemas";
 import { ArcPanel, ARC_PANEL_HEIGHT } from "./ArcPanel";
-import { ArcLegend } from "./ArcLegend";
 import { GraphSectionsBar } from "./GraphSectionsBar";
-import { buildArcSeries } from "../utils/arcData";
 import { computeArcXLayout, EXPANDED_PX_PER_FRAGMENT } from "../utils/arcLayout";
+import { computeRelativeContentLengths } from "../utils/relativeContentLengths";
+import { buildLengthSeries, LENGTH_SERIES_KEY } from "../utils/lengthData";
 import { useElementWidth } from "../hooks/useElementWidth";
 import { Heading } from "@components/heading";
 
@@ -14,32 +13,32 @@ interface SectionData {
   fragmentUuids: string[];
 }
 
-interface ArcOverlayProps {
+interface LengthOverlayProps {
   sectionsData: SectionData[];
-  fragmentByUuid: Map<string, FragmentSummary>;
-  colorByAspectKey: Map<string, string>;
-  arcAspectKeys: string[];
-  hiddenAspectKeys: Set<string>;
-  onToggleAspectVisibility: (aspectKey: string) => void;
+  // Full body text per fragment (from the sequence-contents query). Fragments
+  // whose content has not loaded are omitted from the line.
+  contentByFragmentUuid: Map<string, string>;
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onClose: () => void;
 }
 
-// Summonable compressed horizontal multi-aspect arc graph rendered from
-// `ArcPanel`, with the x-axis re-mapped from sequence index / fit-to-width (not
-// tile centers). Expands into a larger, horizontally scrollable view.
-export const ArcOverlay = ({
+// The length line's fixed color — a single measure, so no per-aspect palette.
+const LENGTH_LINE_COLOR = "#94a3b8";
+const LENGTH_COLOR_MAP = new Map([[LENGTH_SERIES_KEY, LENGTH_LINE_COLOR]]);
+
+// Summonable horizontal length graph, sibling to the aspect-arc overlay: one raw
+// per-fragment line of content length (characters) normalized to the longest
+// placed fragment, over the same sequence-index x-axis. Advisory only — it
+// surfaces length variation (clusters of long fragments) without enforcing it.
+// Reuses the arc rendering primitives (`ArcPanel`, `GraphSectionsBar`).
+export const LengthOverlay = ({
   sectionsData,
-  fragmentByUuid,
-  colorByAspectKey,
-  arcAspectKeys,
-  hiddenAspectKeys,
-  onToggleAspectVisibility,
+  contentByFragmentUuid,
   isExpanded,
   onToggleExpanded,
   onClose,
-}: ArcOverlayProps) => {
+}: LengthOverlayProps) => {
   const { ref, width: containerWidth } = useElementWidth();
 
   const orderedCount = useMemo(
@@ -48,32 +47,35 @@ export const ArcOverlay = ({
   );
 
   const fitWidth = Math.max(0, containerWidth);
-  const arcWidth = isExpanded
+  const graphWidth = isExpanded
     ? Math.max(fitWidth, orderedCount * EXPANDED_PX_PER_FRAGMENT)
     : fitWidth;
 
   const series = useMemo(() => {
-    if (arcWidth <= 0) return [];
+    if (graphWidth <= 0) return [];
     const { orderedFragmentUuids, centerByFragmentUuid } = computeArcXLayout(
       sectionsData,
-      arcWidth,
+      graphWidth,
     );
-    const allSeries = buildArcSeries(
+    const relativeLengthByFragmentUuid = computeRelativeContentLengths(
       orderedFragmentUuids,
-      fragmentByUuid,
+      contentByFragmentUuid,
+    );
+    return buildLengthSeries(
+      orderedFragmentUuids,
+      relativeLengthByFragmentUuid,
       centerByFragmentUuid,
       ARC_PANEL_HEIGHT,
     );
-    return allSeries.filter((entry) => !hiddenAspectKeys.has(entry.aspectKey));
-  }, [sectionsData, arcWidth, fragmentByUuid, hiddenAspectKeys]);
+  }, [sectionsData, graphWidth, contentByFragmentUuid]);
 
   return (
     <div
       className="flex flex-col gap-2 rounded-md border border-border bg-background/95 p-3"
-      data-testid="arc-overlay"
+      data-testid="length-overlay"
     >
       <div className="flex items-center gap-2">
-        <Heading level={4}>Aspect arcs</Heading>
+        <Heading level={4}>Fragment length</Heading>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
@@ -86,7 +88,7 @@ export const ArcOverlay = ({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Hide aspect arcs"
+            aria-label="Hide fragment length"
             className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             Hide
@@ -94,23 +96,20 @@ export const ArcOverlay = ({
         </div>
       </div>
 
-      {arcAspectKeys.length > 0 && (
-        <ArcLegend
-          aspectKeys={arcAspectKeys}
-          colorByAspectKey={colorByAspectKey}
-          hiddenAspectKeys={hiddenAspectKeys}
-          onToggle={onToggleAspectVisibility}
-        />
-      )}
-
       <div ref={ref} className={isExpanded ? "overflow-x-auto" : "overflow-x-hidden"}>
-        {arcWidth > 0 && orderedCount > 0 ? (
-          <div style={{ width: arcWidth }}>
-            <ArcPanel width={arcWidth} series={series} colorByAspectKey={colorByAspectKey} />
+        {graphWidth > 0 && orderedCount > 0 ? (
+          <div style={{ width: graphWidth }}>
+            <ArcPanel
+              width={graphWidth}
+              series={series}
+              colorByAspectKey={LENGTH_COLOR_MAP}
+              ariaLabel="Fragment length across the placed sequence"
+              testId="length-panel"
+            />
             <GraphSectionsBar
-              width={arcWidth}
+              width={graphWidth}
               sectionsData={sectionsData}
-              testId="arc-sections-bar"
+              testId="length-sections-bar"
             />
           </div>
         ) : (

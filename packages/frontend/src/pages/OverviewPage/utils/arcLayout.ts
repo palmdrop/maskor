@@ -7,6 +7,11 @@
 // step of horizontal padding on each edge so the first and last points are not
 // flush against the panel border.
 
+// Horizontal pixels allotted to each fragment when a sequence graph overlay is
+// expanded into its zoomable/scrollable form. Compressed mode fits to the
+// container instead. Shared by the arc and length overlays.
+export const EXPANDED_PX_PER_FRAGMENT = 64;
+
 export interface ArcSectionBoundary {
   uuid: string;
   name: string;

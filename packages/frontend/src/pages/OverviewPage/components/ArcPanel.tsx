@@ -9,18 +9,28 @@ interface ArcPanelProps {
   width: number;
   series: ArcSeries[];
   colorByAspectKey: Map<string, string>;
+  // Accessible label + test id override so the shared panel can be reused for
+  // non-aspect series (e.g. the length graph). Defaults describe the arc graph.
+  ariaLabel?: string;
+  testId?: string;
 }
 
-export const ArcPanel = ({ width, series, colorByAspectKey }: ArcPanelProps) => {
+export const ArcPanel = ({
+  width,
+  series,
+  colorByAspectKey,
+  ariaLabel = "Aspect arcs across the placed sequence",
+  testId = "arc-panel",
+}: ArcPanelProps) => {
   const panelHeight = ARC_PANEL_HEIGHT + ARC_PANEL_TOP_PADDING + ARC_PANEL_BOTTOM_PADDING;
 
   return (
     <div
       role="img"
-      aria-label="Aspect arcs across the placed sequence"
+      aria-label={ariaLabel}
       className="bg-background/95 backdrop-blur-sm border-b border-border"
       style={{ width, height: panelHeight }}
-      data-testid="arc-panel"
+      data-testid={testId}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

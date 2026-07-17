@@ -20,6 +20,9 @@ export interface OverviewContext {
   toggleArcOverlay: () => void;
   toggleArcExpanded: () => void;
   toggleVerticalArcStrip: () => void;
+  lengthOverlayOpen: boolean;
+  toggleLengthOverlay: () => void;
+  toggleLengthExpanded: () => void;
   placedSelectionCount: number;
   groupSelection: () => Promise<void>;
   canSplitBefore: boolean;
@@ -105,6 +108,21 @@ const toggleVerticalArcStrip = defineScopeCommand(overviewScope, {
   label: "Toggle vertical arc strip",
   category: "other",
   run: (ctx) => ctx.toggleVerticalArcStrip(),
+});
+
+const toggleLengthOverlay = defineScopeCommand(overviewScope, {
+  id: "overview:toggle-length-overlay",
+  label: "Toggle fragment length graph",
+  category: "other",
+  run: (ctx) => ctx.toggleLengthOverlay(),
+});
+
+const toggleLengthExpanded = defineScopeCommand(overviewScope, {
+  id: "overview:toggle-length-expanded",
+  label: "Toggle expanded length graph",
+  category: "other",
+  disabled: (ctx) => (ctx.lengthOverlayOpen ? undefined : "Open the length graph first"),
+  run: (ctx) => ctx.toggleLengthExpanded(),
 });
 
 const groupSelection = defineScopeCommand(overviewScope, {
@@ -219,6 +237,8 @@ export const overviewCommands = [
   toggleArcOverlay,
   toggleArcExpanded,
   toggleVerticalArcStrip,
+  toggleLengthOverlay,
+  toggleLengthExpanded,
   groupSelection,
   splitBefore,
   splitAfter,

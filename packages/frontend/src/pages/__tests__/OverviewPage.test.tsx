@@ -639,6 +639,16 @@ describe("OverviewPage — arc overlay and vertical strip", () => {
     expect(screen.getByTestId("arc-overlay")).toBeInTheDocument();
   });
 
+  it("summons the length overlay when the Length toggle is clicked", () => {
+    mockSequence([FRAG_A]);
+    mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.5 } })]);
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(screen.queryByTestId("length-overlay")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Length" }));
+    expect(screen.getByTestId("length-overlay")).toBeInTheDocument();
+  });
+
   it("toggles the vertical arc strip", () => {
     mockSequence([FRAG_A]);
     mockFragments([makeFragment(FRAG_A, "alpha", null, { grief: { weight: 0.5 } })]);

@@ -37,6 +37,7 @@ import { Button } from "@components/ui/button";
 import { fragmentNavScope } from "@lib/commands/scopes/fragment-nav";
 import { overviewEditOrder } from "@lib/fragments/order-neighbors";
 import { ArcOverlay } from "./components/ArcOverlay";
+import { LengthOverlay } from "./components/LengthOverlay";
 import { VerticalArcStrip } from "./components/VerticalArcStrip";
 import { useCommands } from "@lib/commands/useCommands";
 import { useCommandScope } from "@lib/commands/useCommandScope";
@@ -98,6 +99,8 @@ export const OverviewPage = () => {
 
   const [arcOverlayOpen, setArcOverlayOpen] = useState(false);
   const [arcExpanded, setArcExpanded] = useState(false);
+  const [lengthOverlayOpen, setLengthOverlayOpen] = useState(false);
+  const [lengthExpanded, setLengthExpanded] = useState(false);
   const [verticalStripOpen, setVerticalStripOpen] = useState(false);
 
   const { isRebuilding } = useRebuildStatus();
@@ -507,6 +510,8 @@ export const OverviewPage = () => {
 
   const toggleArcOverlay = useCallback(() => setArcOverlayOpen((open) => !open), []);
   const toggleArcExpanded = useCallback(() => setArcExpanded((expanded) => !expanded), []);
+  const toggleLengthOverlay = useCallback(() => setLengthOverlayOpen((open) => !open), []);
+  const toggleLengthExpanded = useCallback(() => setLengthExpanded((expanded) => !expanded), []);
   const toggleVerticalArcStrip = useCallback(() => setVerticalStripOpen((open) => !open), []);
 
   // Only the placed members of the selection participate in section operations.
@@ -581,6 +586,9 @@ export const OverviewPage = () => {
     toggleArcOverlay,
     toggleArcExpanded,
     toggleVerticalArcStrip,
+    lengthOverlayOpen,
+    toggleLengthOverlay,
+    toggleLengthExpanded,
     placedSelectionCount: placedSelection.length,
     groupSelection,
     canSplitBefore,
@@ -751,6 +759,8 @@ export const OverviewPage = () => {
               onSetDetailLevel={handleSetDetailLevel}
               arcOverlayOpen={arcOverlayOpen}
               onToggleArcOverlay={toggleArcOverlay}
+              lengthOverlayOpen={lengthOverlayOpen}
+              onToggleLengthOverlay={toggleLengthOverlay}
               verticalStripOpen={verticalStripOpen}
               onToggleVerticalStrip={toggleVerticalArcStrip}
             />
@@ -804,6 +814,16 @@ export const OverviewPage = () => {
                 isExpanded={arcExpanded}
                 onToggleExpanded={toggleArcExpanded}
                 onClose={toggleArcOverlay}
+              />
+            )}
+
+            {lengthOverlayOpen && (
+              <LengthOverlay
+                sectionsData={sectionsData}
+                contentByFragmentUuid={contentByFragmentUuid}
+                isExpanded={lengthExpanded}
+                onToggleExpanded={toggleLengthExpanded}
+                onClose={toggleLengthOverlay}
               />
             )}
 
