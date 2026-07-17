@@ -59,19 +59,20 @@ describe("ReorderRow", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("draws a highlight ring when highlighted, coexisting with selection", () => {
+  it("marks the row highlighted, coexisting with selection", () => {
     const { container } = wrap(
       <ReorderRow {...baseProps} fragment={fragment()} isSelected isHighlighted />,
     );
     const row = container.querySelector('[data-fragment-uuid="frag-1"]')!;
-    // Highlight ring and selection border are both present.
-    expect(row.className).toMatch(/ring-2/);
+    expect(row).toHaveAttribute("data-highlighted", "true");
+    // The selection styling still applies alongside the highlight.
     expect(row.className).toMatch(/border-primary/);
   });
 
-  it("draws no highlight ring when not highlighted", () => {
+  it("is not marked highlighted when not highlighted", () => {
     const { container } = wrap(<ReorderRow {...baseProps} fragment={fragment()} />);
-    const row = container.querySelector('[data-fragment-uuid="frag-1"]')!;
-    expect(row.className).not.toMatch(/ring-2/);
+    expect(container.querySelector('[data-fragment-uuid="frag-1"]')).not.toHaveAttribute(
+      "data-highlighted",
+    );
   });
 });

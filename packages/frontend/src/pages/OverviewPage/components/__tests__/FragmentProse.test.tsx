@@ -141,7 +141,7 @@ describe("FragmentProse — title-mode length bar", () => {
 });
 
 describe("FragmentProse — hover highlight", () => {
-  it("draws a ring when highlighted, alongside the selection border", () => {
+  it("marks the entry highlighted, alongside the selection border", () => {
     const { container } = render(
       <FragmentProse
         fragmentUuid={FRAGMENT_UUID}
@@ -154,11 +154,12 @@ describe("FragmentProse — hover highlight", () => {
       />,
     );
     const root = container.firstChild as Element;
-    expect(root.className).toMatch(/ring-2/);
+    expect(root).toHaveAttribute("data-highlighted", "true");
+    // The selection styling still applies alongside the highlight.
     expect(root.className).toMatch(/border-primary/);
   });
 
-  it("draws no ring when not highlighted", () => {
+  it("is not marked highlighted when not highlighted", () => {
     const { container } = render(
       <FragmentProse
         fragmentUuid={FRAGMENT_UUID}
@@ -168,7 +169,7 @@ describe("FragmentProse — hover highlight", () => {
         detailLevel="prose"
       />,
     );
-    expect((container.firstChild as Element).className).not.toMatch(/ring-2/);
+    expect(container.firstChild as Element).not.toHaveAttribute("data-highlighted");
   });
 });
 

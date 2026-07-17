@@ -1,20 +1,15 @@
 import { useMemo } from "react";
 import { ArcPanel, ARC_PANEL_HEIGHT } from "./ArcPanel";
 import { GraphSectionsBar } from "./GraphSectionsBar";
+import type { GraphSectionData } from "../utils/arcLayout";
 import { computeArcXLayout, EXPANDED_PX_PER_FRAGMENT } from "../utils/arcLayout";
 import { computeRelativeContentLengths } from "../utils/relativeContentLengths";
 import { buildLengthSeries, LENGTH_SERIES_KEY } from "../utils/lengthData";
 import { useElementWidth } from "../hooks/useElementWidth";
 import { Heading } from "@components/heading";
 
-interface SectionData {
-  uuid: string;
-  name: string;
-  fragmentUuids: string[];
-}
-
 interface LengthOverlayProps {
-  sectionsData: SectionData[];
+  sectionsData: GraphSectionData[];
   // Full body text per fragment (from the sequence-contents query). Fragments
   // whose content has not loaded are omitted from the line.
   contentByFragmentUuid: Map<string, string>;
@@ -54,23 +49,25 @@ export const LengthOverlay = ({
     ? Math.max(fitWidth, orderedCount * EXPANDED_PX_PER_FRAGMENT)
     : fitWidth;
 
+  // One layout pass feeds both the plotted line and the sections bar.
+  const layout = useMemo(
+    () => computeArcXLayout(sectionsData, graphWidth),
+    [sectionsData, graphWidth],
+  );
+
   const series = useMemo(() => {
     if (graphWidth <= 0) return [];
-    const { orderedFragmentUuids, centerByFragmentUuid } = computeArcXLayout(
-      sectionsData,
-      graphWidth,
-    );
     const relativeLengthByFragmentUuid = computeRelativeContentLengths(
-      orderedFragmentUuids,
+      layout.orderedFragmentUuids,
       contentByFragmentUuid,
     );
     return buildLengthSeries(
-      orderedFragmentUuids,
+      layout.orderedFragmentUuids,
       relativeLengthByFragmentUuid,
-      centerByFragmentUuid,
+      layout.centerByFragmentUuid,
       ARC_PANEL_HEIGHT,
     );
-  }, [sectionsData, graphWidth, contentByFragmentUuid]);
+  }, [layout, graphWidth, contentByFragmentUuid]);
 
   return (
     <div
@@ -112,7 +109,7 @@ export const LengthOverlay = ({
             />
             <GraphSectionsBar
               width={graphWidth}
-              sectionsData={sectionsData}
+              sectionBoundaries={layout.sectionBoundaries}
               testId="length-sections-bar"
             />
           </div>

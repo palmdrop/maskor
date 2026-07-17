@@ -728,25 +728,25 @@ describe("OverviewPage — sequence hover highlight", () => {
   const sidebarRow = (name: string) =>
     screen.getByRole("button", { name: `Actions for "${name}"` }).closest("div.group")!;
 
-  it("rings a shared fragment's reorder row while a non-active sequence is hovered", () => {
+  it("marks a shared fragment's reorder row highlighted while a non-active sequence is hovered", () => {
     render(<OverviewPage />, { wrapper: wrap() });
 
-    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+    expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
 
     fireEvent.mouseEnter(sidebarRow("Side"));
     // FRAG_B is shared → highlighted; FRAG_A is not in "Side" → not highlighted.
-    expect(reorderRowFor(FRAG_B).className).toMatch(/ring-2/);
-    expect(reorderRowFor(FRAG_A).className).not.toMatch(/ring-2/);
+    expect(reorderRowFor(FRAG_B)).toHaveAttribute("data-highlighted", "true");
+    expect(reorderRowFor(FRAG_A)).not.toHaveAttribute("data-highlighted");
 
     fireEvent.mouseLeave(sidebarRow("Side"));
-    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+    expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
   });
 
   it("does not highlight when the active sequence's own row is hovered", () => {
     render(<OverviewPage />, { wrapper: wrap() });
 
     fireEvent.mouseEnter(sidebarRow("Main"));
-    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+    expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
   });
 });
 

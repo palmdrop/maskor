@@ -90,6 +90,7 @@ export const ReorderRow = ({
         opacity: isDragging ? 0.4 : 1,
       }}
       data-fragment-uuid={fragment.uuid}
+      data-highlighted={isHighlighted || undefined}
       onPointerDownCapture={() => {
         pointerFocusRef.current = true;
       }}

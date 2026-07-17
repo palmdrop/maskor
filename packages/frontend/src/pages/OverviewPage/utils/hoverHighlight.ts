@@ -1,5 +1,9 @@
 import type { Sequence } from "@api/generated/maskorAPI.schemas";
 
+// Shared stable empty result for the "nothing to highlight" paths, matching the
+// module-level empty-set pattern used by the graph/reorder surfaces.
+const EMPTY_HIGHLIGHT_SET: Set<string> = new Set();
+
 // Every fragment uuid placed in a sequence, flattened across its sections.
 export const collectSequenceFragmentUuids = (sequence: Sequence): string[] =>
   sequence.sections.flatMap((section) =>
@@ -19,9 +23,9 @@ export const computeHoverHighlightUuids = (
   activeSequenceUuid: string | undefined,
   sequences: readonly Sequence[],
 ): Set<string> => {
-  if (hoveredSequenceId === null) return new Set();
-  if (hoveredSequenceId === activeSequenceUuid) return new Set();
+  if (hoveredSequenceId === null) return EMPTY_HIGHLIGHT_SET;
+  if (hoveredSequenceId === activeSequenceUuid) return EMPTY_HIGHLIGHT_SET;
   const hovered = sequences.find((sequence) => sequence.uuid === hoveredSequenceId);
-  if (!hovered) return new Set();
+  if (!hovered) return EMPTY_HIGHLIGHT_SET;
   return new Set(collectSequenceFragmentUuids(hovered));
 };

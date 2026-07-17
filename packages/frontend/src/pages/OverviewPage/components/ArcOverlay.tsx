@@ -4,18 +4,13 @@ import { ArcPanel, ARC_PANEL_HEIGHT } from "./ArcPanel";
 import { ArcLegend } from "./ArcLegend";
 import { GraphSectionsBar } from "./GraphSectionsBar";
 import { buildArcSeries } from "../utils/arcData";
+import type { GraphSectionData } from "../utils/arcLayout";
 import { computeArcXLayout, EXPANDED_PX_PER_FRAGMENT } from "../utils/arcLayout";
 import { useElementWidth } from "../hooks/useElementWidth";
 import { Heading } from "@components/heading";
 
-interface SectionData {
-  uuid: string;
-  name: string;
-  fragmentUuids: string[];
-}
-
 interface ArcOverlayProps {
-  sectionsData: SectionData[];
+  sectionsData: GraphSectionData[];
   fragmentByUuid: Map<string, FragmentSummary>;
   colorByAspectKey: Map<string, string>;
   arcAspectKeys: string[];
@@ -55,20 +50,19 @@ export const ArcOverlay = ({
     ? Math.max(fitWidth, orderedCount * EXPANDED_PX_PER_FRAGMENT)
     : fitWidth;
 
+  // One layout pass feeds both the plotted series and the sections bar.
+  const layout = useMemo(() => computeArcXLayout(sectionsData, arcWidth), [sectionsData, arcWidth]);
+
   const series = useMemo(() => {
     if (arcWidth <= 0) return [];
-    const { orderedFragmentUuids, centerByFragmentUuid } = computeArcXLayout(
-      sectionsData,
-      arcWidth,
-    );
     const allSeries = buildArcSeries(
-      orderedFragmentUuids,
+      layout.orderedFragmentUuids,
       fragmentByUuid,
-      centerByFragmentUuid,
+      layout.centerByFragmentUuid,
       ARC_PANEL_HEIGHT,
     );
     return allSeries.filter((entry) => !hiddenAspectKeys.has(entry.aspectKey));
-  }, [sectionsData, arcWidth, fragmentByUuid, hiddenAspectKeys]);
+  }, [layout, arcWidth, fragmentByUuid, hiddenAspectKeys]);
 
   return (
     <div
@@ -117,7 +111,7 @@ export const ArcOverlay = ({
             />
             <GraphSectionsBar
               width={arcWidth}
-              sectionsData={sectionsData}
+              sectionBoundaries={layout.sectionBoundaries}
               testId="arc-sections-bar"
             />
           </div>

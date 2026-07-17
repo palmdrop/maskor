@@ -84,6 +84,7 @@ export const FragmentProse = ({
       id={fragmentAnchorId(fragmentUuid)}
       data-fragment-uuid={fragmentUuid}
       data-detail-level={detailLevel}
+      data-highlighted={isHighlighted || undefined}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.(fragmentUuid);

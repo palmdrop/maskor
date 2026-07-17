@@ -51,9 +51,9 @@ describe("computeHoverHighlightUuids", () => {
     expect(computeHoverHighlightUuids("ghost", "active", sequences).size).toBe(0);
   });
 
-  it("highlights against the main sequence when no explicit active id is resolved", () => {
-    // activeSequenceUuid is passed as the resolved active (main) uuid; a
-    // secondary still highlights, the active/main itself does not.
-    expect(computeHoverHighlightUuids("secondary", "active", sequences).size).toBe(3);
+  it("still highlights a hovered secondary when no active uuid is resolved", () => {
+    // The caller passes the resolved active (main) uuid; when it is undefined
+    // (nothing yet resolved) a hovered secondary must still highlight.
+    expect(computeHoverHighlightUuids("secondary", undefined, sequences).size).toBe(3);
   });
 });

@@ -12,6 +12,15 @@
 // container instead. Shared by the arc and length overlays.
 export const EXPANDED_PX_PER_FRAGMENT = 64;
 
+// The minimal section shape the graph overlays and their sections bar consume:
+// an ordered list of fragment uuids under a named section. Shared so a field
+// addition is edited in one place.
+export interface GraphSectionData {
+  uuid: string;
+  name: string;
+  fragmentUuids: string[];
+}
+
 export interface ArcSectionBoundary {
   uuid: string;
   name: string;
@@ -29,10 +38,7 @@ export interface ArcXLayout {
 // Map each placed fragment to an x-coordinate spread evenly across `width`.
 // Sections are returned with their pixel spans so a minimized sections bar can
 // render boundaries aligned to the same x-axis.
-export const computeArcXLayout = (
-  sectionsData: Array<{ uuid: string; name: string; fragmentUuids: string[] }>,
-  width: number,
-): ArcXLayout => {
+export const computeArcXLayout = (sectionsData: GraphSectionData[], width: number): ArcXLayout => {
   const orderedFragmentUuids = sectionsData.flatMap((section) => section.fragmentUuids);
   const totalCount = orderedFragmentUuids.length;
   const centerByFragmentUuid = new Map<string, number>();
