@@ -1,8 +1,10 @@
 # Spec: Export
 
 **Status**: Draft
-**Last updated**: 2026-07-16
+**Last updated**: 2026-07-17
 **Shipped**:
+
+- 2026-07-17: Fix: `.docx` export with a reference attached to multiple fragments no longer corrupts the file (Word forced a "recover" and emptied every footnote). Word allows exactly one anchor per footnote, so the docx lowering now allocates a distinct Word footnote — with a copy of the content — per reference occurrence, instead of repeated anchors on one shared footnote. GFM dedup in `.md`/`.txt` is unchanged.
 
 - 2026-07-16: Export fixes + dialog annotation counts. (1) A Margin marker anywhere in a block now lowers to a Word comment — previously only markers trailing their mdast paragraph did, silently dropping comments anchored mid-paragraph (soft-wrapped lines, the notes marker on a multi-line opening paragraph). (2) `.docx` gains baseline typography defaults: Garamond 12pt body text, one line of vertical space between paragraphs (code blocks stay contiguous). (3) The Export dialog shows a preflight info section — how many references, comments, and notes the export will add, plus orphaned comments that will be skipped — backed by `GET /export/:sequenceId/annotation-summary`.
 
@@ -80,7 +82,7 @@ The user can take their main sequence and export it to a single document in a fo
 
 Two per-project toggles (persisted in the project's `export` config block, both default **on**; the Export dialog can override per export):
 
-- **Include references**: each fragment's attached References render as footnotes — GFM footnote syntax in `.md`/`.txt`, real Word footnotes in `.docx`. Markers are appended to the end of the fragment body's last line, in frontmatter attachment order. Footnote content is `key — body` (an empty body degrades to just the key). Deduplicated: one footnote definition per reference, referenced from every attaching fragment (in Word, repeated marks on one shared footnote).
+- **Include references**: each fragment's attached References render as footnotes — GFM footnote syntax in `.md`/`.txt`, real Word footnotes in `.docx`. Markers are appended to the end of the fragment body's last line, in frontmatter attachment order. Footnote content is `key — body` (an empty body degrades to just the key). Deduplicated in `.md`/`.txt`: one footnote definition per reference, referenced from every attaching fragment. In `.docx`, each reference occurrence gets its own footnote with a copy of the content — Word allows exactly one anchor per footnote, and repeated anchors on a shared footnote make Word repair the file and drop all footnote content.
 - **Include margin annotations**: Margin notes + comments travel together.
   - **Comments** (block-anchored): in `.md`/`.txt`, the footnote marker sits where the `<!--c:ID-->` anchor sits (end of the anchored block); content is the comment body only — bare, no excerpt, no prefix. In `.docx`, a Word comment whose range spans the entire anchored paragraph (block-granular anchoring rendered honestly).
   - **Notes** (whole-fragment): anchor at the fragment head — the title line when titles are shown, else the fragment's first block.

@@ -67,8 +67,14 @@ type CollectedComment = { id: number; body: string };
 // Threaded through the whole conversion so footnote ids, comment allocation, and
 // the marker→body map are shared across every block.
 type DocxContext = {
-  // Footnote identifier (from the GFM `[^label]`) → the numeric Word footnote id.
-  footnoteIdByIdentifier: Map<string, number>;
+  // GFM footnote definitions by identifier (`[^label]`), collected before the
+  // body walk so references can resolve to their definition content.
+  footnoteDefinitionsByIdentifier: Map<string, FootnoteDefinition>;
+  // One entry per footnote reference in the body, in document order. Word allows
+  // exactly one anchor per footnote — repeated anchors on a shared footnote id
+  // make Word repair the file and drop every footnote body — so each reference
+  // allocates its own footnote id and gets its own copy of the definition.
+  allocatedFootnotes: { id: number; identifier: string }[];
   // `markerId → comment body` side-channel from the docx-bound assembly. A marker
   // present here (anywhere in a paragraph/heading) becomes a Word comment.
   commentBodies: Record<string, string>;
@@ -147,8 +153,12 @@ const phrasingToRuns = (
       }
       case "footnoteReference": {
         const identifier = (node as FootnoteReference).identifier;
-        const footnoteId = context.footnoteIdByIdentifier.get(identifier);
-        if (footnoteId !== undefined) runs.push(new FootnoteReferenceRun(footnoteId));
+        if (!context.footnoteDefinitionsByIdentifier.has(identifier)) break;
+        // Word footnote ids start at 1 (0 and -1 are reserved by the docx
+        // library for the separators).
+        const footnoteId = context.allocatedFootnotes.length + 1;
+        context.allocatedFootnotes.push({ id: footnoteId, identifier });
+        runs.push(new FootnoteReferenceRun(footnoteId));
         break;
       }
       case "html": {
@@ -368,8 +378,10 @@ export type MarkdownToDocxOptions = {
  * Convert an assembled markdown string to a .docx file buffer.
  * Structural conversion with baseline typography defaults (Garamond 12pt, one
  * line of space between paragraphs) — no templates, themes, or page layout.
- * GFM footnote references/definitions lower to real Word footnotes, and Margin
- * markers (against `options.commentBodies`) lower to Word comments.
+ * GFM footnote references/definitions lower to real Word footnotes — one Word
+ * footnote per reference occurrence (repeated references to one GFM definition
+ * each get their own copy, since Word allows exactly one anchor per footnote) —
+ * and Margin markers (against `options.commentBodies`) lower to Word comments.
  * Unknown nodes fall back to plain text; nothing throws.
  */
 export const markdownToDocx = async (
@@ -383,7 +395,8 @@ export const markdownToDocx = async (
 
   let nextCommentId = 1;
   const context: DocxContext = {
-    footnoteIdByIdentifier: new Map(),
+    footnoteDefinitionsByIdentifier: new Map(),
+    allocatedFootnotes: [],
     commentBodies: options.commentBodies ?? {},
     collectedComments: [],
     allocateCommentId: () => {
@@ -393,23 +406,19 @@ export const markdownToDocx = async (
     },
   };
 
-  // Assign a numeric Word footnote id per distinct footnote identifier, in
-  // first-definition order. Word footnote ids start at 1 (0 and -1 are reserved
-  // by the docx library for the separators).
-  let nextFootnoteId = 1;
+  // Collect the footnote definitions up front so body references can resolve
+  // them; the first definition wins on a duplicate identifier.
   for (const node of tree.children) {
     if (node.type === "footnoteDefinition") {
-      const identifier = (node as FootnoteDefinition).identifier;
-      if (!context.footnoteIdByIdentifier.has(identifier)) {
-        context.footnoteIdByIdentifier.set(identifier, nextFootnoteId);
-        nextFootnoteId += 1;
+      const definition = node as FootnoteDefinition;
+      if (!context.footnoteDefinitionsByIdentifier.has(definition.identifier)) {
+        context.footnoteDefinitionsByIdentifier.set(definition.identifier, definition);
       }
     }
   }
 
-  // Build the footnote definition paragraphs and the body paragraphs. Footnote
-  // definitions are pulled out of the body flow.
-  const footnotes: Record<string, { children: Paragraph[] }> = {};
+  // Build the body paragraphs. Footnote definitions are pulled out of the body
+  // flow; walking the body allocates one Word footnote per reference.
   const paragraphs: Paragraph[] = [];
   // The assembler's page-break separator is a form-feed-only paragraph. Rather
   // than emitting a standalone break paragraph (which strands a blank first line
@@ -418,18 +427,7 @@ export const markdownToDocx = async (
   // block is dropped; consecutive separators collapse to one flag.
   let pendingPageBreakBefore = false;
   for (const node of tree.children) {
-    if (node.type === "footnoteDefinition") {
-      const definition = node as FootnoteDefinition;
-      const footnoteId = context.footnoteIdByIdentifier.get(definition.identifier)!;
-      const definitionParagraphs: Paragraph[] = [];
-      for (const child of definition.children) {
-        definitionParagraphs.push(...blockToDocx(child as BlockContent, context));
-      }
-      footnotes[String(footnoteId)] = {
-        children: definitionParagraphs.length > 0 ? definitionParagraphs : [new Paragraph({})],
-      };
-      continue;
-    }
+    if (node.type === "footnoteDefinition") continue;
     if (node.type === "paragraph" && isPageBreakParagraph(node as MdastParagraph)) {
       pendingPageBreakBefore = true;
       continue;
@@ -439,6 +437,21 @@ export const markdownToDocx = async (
     // the break rides the next real block instead of being lost.
     if (blocks.length > 0) pendingPageBreakBefore = false;
     paragraphs.push(...blocks);
+  }
+
+  // One footnote entry per allocated reference, each with a fresh conversion of
+  // its definition content (docx elements are single-use, so copies cannot be
+  // shared between footnotes).
+  const footnotes: Record<string, { children: Paragraph[] }> = {};
+  for (const { id, identifier } of context.allocatedFootnotes) {
+    const definition = context.footnoteDefinitionsByIdentifier.get(identifier)!;
+    const definitionParagraphs: Paragraph[] = [];
+    for (const child of definition.children) {
+      definitionParagraphs.push(...blockToDocx(child as BlockContent, context));
+    }
+    footnotes[String(id)] = {
+      children: definitionParagraphs.length > 0 ? definitionParagraphs : [new Paragraph({})],
+    };
   }
 
   const document = new Document({

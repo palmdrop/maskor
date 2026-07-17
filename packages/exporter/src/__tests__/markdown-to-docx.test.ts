@@ -33,16 +33,18 @@ describe("markdownToDocx — GFM footnotes lowered to Word footnotes", () => {
     expect(textRuns(document)).not.toContain("mrs-dalloway");
   });
 
-  it("points repeated references at one shared footnote id (dedupe)", async () => {
+  it("gives each repeated reference its own footnote copy (Word allows one anchor per footnote)", async () => {
     const markdown = "Alpha.[^ulysses]\n\nBeta.[^ulysses]\n\n[^ulysses]: Ulysses — Joyce.";
     const bytes = await markdownToDocx(markdown);
     const document = (await readDocxPart(bytes, "word/document.xml"))!;
     const footnotes = (await readDocxPart(bytes, "word/footnotes.xml"))!;
 
-    const references = document.match(/w:footnoteReference w:id="1"/g) ?? [];
-    expect(references).toHaveLength(2);
-    // One definition only.
-    expect(textRuns(footnotes).match(/Ulysses — Joyce\./g) ?? []).toHaveLength(1);
+    // Repeated anchors on one shared footnote id make Word repair the file and
+    // drop every footnote body, so each reference gets a distinct id.
+    expect(document).toContain('w:footnoteReference w:id="1"');
+    expect(document).toContain('w:footnoteReference w:id="2"');
+    // One definition copy per reference.
+    expect(textRuns(footnotes).match(/Ulysses — Joyce\./g) ?? []).toHaveLength(2);
   });
 });
 
