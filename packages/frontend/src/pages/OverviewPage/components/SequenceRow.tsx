@@ -109,6 +109,10 @@ type SequenceRowProps = {
   status: SequenceStatus;
   count: number;
   isActive: boolean;
+  // Click-selected (pinned) without being the active sequence: its members stay
+  // cross-highlighted in the active sequence's surfaces while the user keeps
+  // working in the active sequence. Never true for the active row.
+  isPinned: boolean;
   isEditing: boolean;
   isConfirmingDelete: boolean;
   editingDefaultName: string;
@@ -118,7 +122,10 @@ type SequenceRowProps = {
   insertTargetName: string | undefined;
   clonePending: boolean;
   insertPending: boolean;
+  // Single click: toggle this row's pinned selection (no-op on the active row).
   onSelect: () => void;
+  // Double click: make this sequence the active one (navigates).
+  onActivate: () => void;
   onCommitRename: (name: string) => Promise<string | null>;
   onRenameDone: () => void;
   onRequestRename: () => void;
@@ -144,6 +151,7 @@ export const SequenceRow = ({
   status,
   count,
   isActive,
+  isPinned,
   isEditing,
   isConfirmingDelete,
   editingDefaultName,
@@ -152,6 +160,7 @@ export const SequenceRow = ({
   clonePending,
   insertPending,
   onSelect,
+  onActivate,
   onCommitRename,
   onRenameDone,
   onRequestRename,
@@ -249,10 +258,13 @@ export const SequenceRow = ({
       <button
         type="button"
         onClick={onSelect}
-        onDoubleClick={onRequestRename}
+        onDoubleClick={onActivate}
+        data-pinned={isPinned || undefined}
         className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors ${
           isActive ? "bg-accent text-accent-foreground" : ""
-        } ${isInactiveConstraint ? "opacity-55" : ""}`}
+        } ${isPinned ? "ring-1 ring-inset ring-sky-400 dark:ring-sky-500" : ""} ${
+          isInactiveConstraint ? "opacity-55" : ""
+        }`}
       >
         <StatusDot status={status} />
         <span className="flex-1 truncate">{sequence.name}</span>

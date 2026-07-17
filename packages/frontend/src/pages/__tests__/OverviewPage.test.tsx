@@ -748,6 +748,40 @@ describe("OverviewPage — sequence hover highlight", () => {
     fireEvent.mouseEnter(sidebarRow("Main"));
     expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
   });
+
+  it("pins a non-active sequence on click, persisting the highlight without hover", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    // Single click pins "Side" — its shared FRAG_B stays highlighted with no hover.
+    fireEvent.click(screen.getByText("Side"));
+    expect(reorderRowFor(FRAG_B)).toHaveAttribute("data-highlighted", "true");
+    expect(reorderRowFor(FRAG_A)).not.toHaveAttribute("data-highlighted");
+    expect(navigateMock).not.toHaveBeenCalled(); // stays in the active sequence
+
+    // Clicking it again deselects.
+    fireEvent.click(screen.getByText("Side"));
+    expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
+  });
+
+  it("double-clicking a non-active sequence navigates to make it active", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.doubleClick(screen.getByText("Side"));
+    expect(navigateMock).toHaveBeenCalled();
+    const search = navigateMock.mock.calls.at(-1)![0].search as (prev: {
+      detail?: string;
+    }) => unknown;
+    expect(search({ detail: "title" })).toEqual({ detail: "title", sequence: "seq-side" });
+  });
+
+  it("single-clicking the active sequence does nothing", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    const activeSelectButton = sidebarRow("Main").querySelector("button")!;
+    fireEvent.click(activeSelectButton);
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(reorderRowFor(FRAG_B)).not.toHaveAttribute("data-highlighted");
+  });
 });
 
 describe("OverviewPage — multi-select section operations", () => {

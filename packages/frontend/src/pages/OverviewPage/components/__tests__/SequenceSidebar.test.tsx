@@ -92,6 +92,8 @@ describe("SequenceSidebar — active toggle", () => {
         cycles={[]}
         activeSequenceId={undefined}
         onHoverSequence={vi.fn()}
+        pinnedSequenceId={null}
+        onTogglePinSequence={vi.fn()}
       />,
       { wrapper: wrap },
     );
@@ -121,6 +123,8 @@ describe("SequenceSidebar — active toggle", () => {
         cycles={[]}
         activeSequenceId={undefined}
         onHoverSequence={vi.fn()}
+        pinnedSequenceId={null}
+        onTogglePinSequence={vi.fn()}
       />,
       { wrapper: wrap },
     );
@@ -150,6 +154,8 @@ describe("SequenceSidebar — rename", () => {
         cycles={[]}
         activeSequenceId={undefined}
         onHoverSequence={vi.fn()}
+        pinnedSequenceId={null}
+        onTogglePinSequence={vi.fn()}
       />,
       { wrapper: wrap },
     );
@@ -173,6 +179,8 @@ describe("SequenceSidebar — clone / insert", () => {
         cycles={[]}
         activeSequenceId={undefined}
         onHoverSequence={vi.fn()}
+        pinnedSequenceId={null}
+        onTogglePinSequence={vi.fn()}
       />,
       { wrapper: wrap },
     );
@@ -206,6 +214,8 @@ describe("SequenceSidebar — clone / insert", () => {
         cycles={[]}
         activeSequenceId={undefined}
         onHoverSequence={vi.fn()}
+        pinnedSequenceId={null}
+        onTogglePinSequence={vi.fn()}
       />,
       { wrapper: wrap },
     );

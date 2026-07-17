@@ -106,6 +106,15 @@ export const OverviewPage = () => {
   // The sequence currently hovered in the left sidebar (null when none). Its
   // members are cross-highlighted in the active sequence's surfaces.
   const [hoveredSequenceId, setHoveredSequenceId] = useState<string | null>(null);
+  // A click-pinned non-active sequence: its highlight persists (the user keeps
+  // working in the active sequence) until re-clicked or the active sequence
+  // changes. Hover takes precedence transiently; the pin is the resting source.
+  const [pinnedSequenceId, setPinnedSequenceId] = useState<string | null>(null);
+  const togglePinnedSequence = useCallback(
+    (sequenceUuid: string) =>
+      setPinnedSequenceId((current) => (current === sequenceUuid ? null : sequenceUuid)),
+    [],
+  );
 
   const { isRebuilding } = useRebuildStatus();
 
@@ -133,12 +142,26 @@ export const OverviewPage = () => {
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
 
-  // Members of the hovered sidebar sequence, cross-highlighted where they appear
-  // in the active sequence's surfaces. Empty when hovering the active row.
+  // Members of the highlighted sidebar sequence — a hovered row transiently, else
+  // the click-pinned one — cross-highlighted where they appear in the active
+  // sequence's surfaces. Empty when the source resolves to the active sequence.
+  const highlightSourceSequenceId = hoveredSequenceId ?? pinnedSequenceId;
   const highlightedFragmentUuids = useMemo(
-    () => computeHoverHighlightUuids(hoveredSequenceId, sequence?.uuid, bundle?.sequences ?? []),
-    [hoveredSequenceId, sequence?.uuid, bundle],
+    () =>
+      computeHoverHighlightUuids(
+        highlightSourceSequenceId,
+        sequence?.uuid,
+        bundle?.sequences ?? [],
+      ),
+    [highlightSourceSequenceId, sequence?.uuid, bundle],
   );
+
+  // The pin is meaningful only against the current active sequence; when the
+  // active sequence changes (e.g. double-clicking a row to switch), drop it.
+  const activeSequenceUuid = sequence?.uuid;
+  useEffect(() => {
+    setPinnedSequenceId(null);
+  }, [activeSequenceUuid]);
 
   const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence?.uuid ?? "", {
     query: { enabled: !!sequence },
@@ -642,6 +665,8 @@ export const OverviewPage = () => {
           cycles={bundle.cycles}
           activeSequenceId={activeSequenceId}
           onHoverSequence={setHoveredSequenceId}
+          pinnedSequenceId={pinnedSequenceId}
+          onTogglePinSequence={togglePinnedSequence}
         />
       )}
 

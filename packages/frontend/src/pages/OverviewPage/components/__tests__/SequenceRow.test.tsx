@@ -20,6 +20,7 @@ const baseProps = {
   status: "ok" as const,
   count: 3,
   isActive: false,
+  isPinned: false,
   isEditing: false,
   isConfirmingDelete: false,
   editingDefaultName: "Draft order",
@@ -28,6 +29,7 @@ const baseProps = {
   clonePending: false,
   insertPending: false,
   onSelect: vi.fn(),
+  onActivate: vi.fn(),
   onCommitRename: vi.fn(),
   onRenameDone: vi.fn(),
   onRequestRename: vi.fn(),
@@ -106,7 +108,7 @@ describe("SequenceRow", () => {
     expect(screen.queryByLabelText("Inactive constraint")).not.toBeInTheDocument();
   });
 
-  it("requests rename from the menu and from a double-click", () => {
+  it("requests rename from the menu", () => {
     const onRequestRename = vi.fn();
     render(
       <SequenceRow {...baseProps} sequence={makeSequence()} onRequestRename={onRequestRename} />,
@@ -114,8 +116,31 @@ describe("SequenceRow", () => {
     openMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: /Rename sequence "Draft order"/ }));
     expect(onRequestRename).toHaveBeenCalledTimes(1);
+  });
+
+  it("activates (not renames) on double-click", () => {
+    const onActivate = vi.fn();
+    const onRequestRename = vi.fn();
+    render(
+      <SequenceRow
+        {...baseProps}
+        sequence={makeSequence()}
+        onActivate={onActivate}
+        onRequestRename={onRequestRename}
+      />,
+    );
     fireEvent.doubleClick(screen.getByText("Draft order"));
-    expect(onRequestRename).toHaveBeenCalledTimes(2);
+    expect(onActivate).toHaveBeenCalledTimes(1);
+    expect(onRequestRename).not.toHaveBeenCalled();
+  });
+
+  it("marks a pinned row with a data-pinned hook", () => {
+    render(<SequenceRow {...baseProps} sequence={makeSequence()} isPinned />);
+    // The row's select button carries the pinned marker.
+    expect(screen.getByText("Draft order").closest("button")).toHaveAttribute(
+      "data-pinned",
+      "true",
+    );
   });
 
   it("renders an inline rename input when editing", () => {

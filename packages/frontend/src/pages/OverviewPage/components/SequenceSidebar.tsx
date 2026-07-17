@@ -26,6 +26,11 @@ type Props = {
   // Hovering a sequence row reports its uuid (null on leave) so the page can
   // cross-highlight that sequence's members in the active sequence's surfaces.
   onHoverSequence: (sequenceUuid: string | null) => void;
+  // The click-pinned non-active sequence (null when none), whose members stay
+  // highlighted while the user works in the active sequence.
+  pinnedSequenceId: string | null;
+  // Single-click toggle of a non-active row's pinned selection.
+  onTogglePinSequence: (sequenceUuid: string) => void;
 };
 
 const sequenceStatus = (
@@ -67,6 +72,8 @@ export const SequenceSidebar = ({
   cycles,
   activeSequenceId,
   onHoverSequence,
+  pinnedSequenceId,
+  onTogglePinSequence,
 }: Props) => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const navigate = useNavigate();
@@ -311,6 +318,7 @@ export const SequenceSidebar = ({
                 status={status}
                 count={count}
                 isActive={isActive}
+                isPinned={pinnedSequenceId === seq.uuid && !isActive}
                 isEditing={isEditing}
                 isConfirmingDelete={isConfirmingDelete}
                 editingDefaultName={editingDefaultName}
@@ -318,7 +326,12 @@ export const SequenceSidebar = ({
                 insertTargetName={insertTarget?.name}
                 clonePending={cloneSequence.isPending}
                 insertPending={insertSequence.isPending}
-                onSelect={() => handleSelect(seq.uuid)}
+                onSelect={() => {
+                  // Single click pins/unpins a non-active sequence; the active
+                  // row does nothing (double-click is how you switch active).
+                  if (!isActive) onTogglePinSequence(seq.uuid);
+                }}
+                onActivate={() => handleSelect(seq.uuid)}
                 onCommitRename={(name) => handleCommitRename(seq.uuid, name)}
                 onRenameDone={() => setEditingRowId(null)}
                 onRequestRename={() => commands.run("overview:rename-sequence", seq)}
