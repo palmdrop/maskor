@@ -37,6 +37,8 @@ const baseProps = {
   onClone: vi.fn(),
   onInsert: vi.fn(),
   onToggleActive: vi.fn(),
+  onHoverStart: vi.fn(),
+  onHoverEnd: vi.fn(),
 };
 
 // All row actions live behind the "⋯" menu; open it before querying items.
@@ -52,6 +54,24 @@ describe("SequenceRow", () => {
     // Click the title text; the click bubbles to the enclosing select button.
     fireEvent.click(screen.getByText("Draft order"));
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires hover callbacks on pointer enter and leave", () => {
+    const onHoverStart = vi.fn();
+    const onHoverEnd = vi.fn();
+    render(
+      <SequenceRow
+        {...baseProps}
+        sequence={makeSequence()}
+        onHoverStart={onHoverStart}
+        onHoverEnd={onHoverEnd}
+      />,
+    );
+    const row = screen.getByText("Draft order").closest("div")!;
+    fireEvent.mouseEnter(row);
+    expect(onHoverStart).toHaveBeenCalledTimes(1);
+    fireEvent.mouseLeave(row);
+    expect(onHoverEnd).toHaveBeenCalledTimes(1);
   });
 
   it("shows the Main badge and hides activate/delete for the main sequence", () => {

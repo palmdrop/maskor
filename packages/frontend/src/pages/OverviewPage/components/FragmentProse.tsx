@@ -37,6 +37,9 @@ interface FragmentProseProps {
   // full content has not yet loaded.
   excerpt?: string;
   isSelected?: boolean;
+  // Member of the sidebar-hovered sequence — drawn with a ring that coexists
+  // with the selection border. Only the Overview spine passes this.
+  isHighlighted?: boolean;
   onSelect?: (fragmentUuid: string) => void;
   // When set, the body becomes double-click/pencil-to-edit: the host opens the
   // full fragment editor as a center-replacing overlay for this fragment (ADR
@@ -62,6 +65,7 @@ export const FragmentProse = ({
   detailLevel,
   excerpt,
   isSelected,
+  isHighlighted,
   onSelect,
   onEdit,
   onRemove,
@@ -72,6 +76,7 @@ export const FragmentProse = ({
   const selectedClass = isSelected
     ? "border-primary bg-primary/5"
     : "border-transparent hover:border-border";
+  const highlightClass = isHighlighted ? "ring-2 ring-sky-400 dark:ring-sky-500" : "";
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
@@ -92,7 +97,7 @@ export const FragmentProse = ({
           onEdit!(fragmentUuid);
         }
       }}
-      className={`group/prose relative scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass}`}
+      className={`group/prose relative scroll-mt-4 rounded-md border px-3 py-2 transition-colors ${selectedClass} ${highlightClass}`}
     >
       <div className="flex items-start justify-between gap-2">
         <Heading level={4}>

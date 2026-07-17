@@ -13,7 +13,15 @@ interface ArcPanelProps {
   // non-aspect series (e.g. the length graph). Defaults describe the arc graph.
   ariaLabel?: string;
   testId?: string;
+  // Fragments belonging to the sidebar-hovered sequence — their plotted points
+  // are emphasized (enlarged dot + sky ring) so the hovered sequence's members
+  // stand out across both graphs.
+  highlightedFragmentUuids?: Set<string>;
 }
+
+// Sky ring matching the row/spine highlight, drawn around an emphasized dot.
+const HIGHLIGHT_STROKE = "#38bdf8";
+const EMPTY_HIGHLIGHT_SET: Set<string> = new Set();
 
 export const ArcPanel = ({
   width,
@@ -21,6 +29,7 @@ export const ArcPanel = ({
   colorByAspectKey,
   ariaLabel = "Aspect arcs across the placed sequence",
   testId = "arc-panel",
+  highlightedFragmentUuids = EMPTY_HIGHLIGHT_SET,
 }: ArcPanelProps) => {
   const panelHeight = ARC_PANEL_HEIGHT + ARC_PANEL_TOP_PADDING + ARC_PANEL_BOTTOM_PADDING;
 
@@ -65,14 +74,18 @@ export const ArcPanel = ({
           }));
           if (offsetPoints.length === 1) {
             const single = offsetPoints[0]!;
+            const highlighted = highlightedFragmentUuids.has(single.fragmentUuid);
             return (
               <circle
                 key={aspectKey}
                 cx={single.x}
                 cy={single.y}
-                r={3}
+                r={highlighted ? 4.5 : 3}
                 fill={color}
+                stroke={highlighted ? HIGHLIGHT_STROKE : undefined}
+                strokeWidth={highlighted ? 2 : undefined}
                 data-aspect-key={aspectKey}
+                data-highlighted={highlighted || undefined}
               />
             );
           }
@@ -86,9 +99,21 @@ export const ArcPanel = ({
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
-              {offsetPoints.map((point) => (
-                <circle key={point.fragmentUuid} cx={point.x} cy={point.y} r={2.5} fill={color} />
-              ))}
+              {offsetPoints.map((point) => {
+                const highlighted = highlightedFragmentUuids.has(point.fragmentUuid);
+                return (
+                  <circle
+                    key={point.fragmentUuid}
+                    cx={point.x}
+                    cy={point.y}
+                    r={highlighted ? 4.5 : 2.5}
+                    fill={color}
+                    stroke={highlighted ? HIGHLIGHT_STROKE : undefined}
+                    strokeWidth={highlighted ? 2 : undefined}
+                    data-highlighted={highlighted || undefined}
+                  />
+                );
+              })}
             </g>
           );
         })}

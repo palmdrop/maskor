@@ -24,6 +24,8 @@ interface ArcOverlayProps {
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onClose: () => void;
+  // Fragments of the sidebar-hovered sequence — their points are emphasized.
+  highlightedFragmentUuids: Set<string>;
 }
 
 // Summonable compressed horizontal multi-aspect arc graph rendered from
@@ -39,6 +41,7 @@ export const ArcOverlay = ({
   isExpanded,
   onToggleExpanded,
   onClose,
+  highlightedFragmentUuids,
 }: ArcOverlayProps) => {
   const { ref, width: containerWidth } = useElementWidth();
 
@@ -106,7 +109,12 @@ export const ArcOverlay = ({
       <div ref={ref} className={isExpanded ? "overflow-x-auto" : "overflow-x-hidden"}>
         {arcWidth > 0 && orderedCount > 0 ? (
           <div style={{ width: arcWidth }}>
-            <ArcPanel width={arcWidth} series={series} colorByAspectKey={colorByAspectKey} />
+            <ArcPanel
+              width={arcWidth}
+              series={series}
+              colorByAspectKey={colorByAspectKey}
+              highlightedFragmentUuids={highlightedFragmentUuids}
+            />
             <GraphSectionsBar
               width={arcWidth}
               sectionsData={sectionsData}

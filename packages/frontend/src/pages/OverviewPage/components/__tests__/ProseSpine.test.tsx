@@ -19,6 +19,7 @@ const baseProps = {
   fragmentByUuid: new Map([["frag-1", fragment("frag-1")]]),
   contentByFragmentUuid: new Map([["frag-1", "body"]]),
   selectedFragmentUuids: new Set<string>(),
+  highlightedFragmentUuids: new Set<string>(),
   onSelectFragment: vi.fn(),
   onRemoveFragment: vi.fn(),
   onEdit: vi.fn(),

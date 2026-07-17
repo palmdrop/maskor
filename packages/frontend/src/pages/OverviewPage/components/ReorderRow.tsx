@@ -51,6 +51,9 @@ interface ReorderRowProps {
   // same thin bar as the spine's title mode. Only the placement arranger passes
   // this; the Overview's left column stays title-only.
   relativeLength?: number;
+  // This fragment is a member of the sequence currently hovered in the sidebar —
+  // drawn with a ring that reads distinctly from (and coexists with) selection.
+  isHighlighted?: boolean;
 }
 
 // A single placed/pool fragment row: a compact, draggable, selectable title line.
@@ -65,6 +68,7 @@ export const ReorderRow = ({
   disabled = false,
   isUnsaved = false,
   relativeLength,
+  isHighlighted = false,
 }: ReorderRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: fragment.uuid,
@@ -112,7 +116,9 @@ export const ReorderRow = ({
         isSelected
           ? "border-primary bg-primary/5 text-foreground"
           : "border-border bg-card text-foreground hover:bg-muted"
-      } ${fragment.isDiscarded ? "bg-muted" : ""}`}
+      } ${fragment.isDiscarded ? "bg-muted" : ""} ${
+        isHighlighted ? "ring-2 ring-sky-400 dark:ring-sky-500" : ""
+      }`}
     >
       {/*
       // HIDDEN FOR NOW SINCE IT COVERS THE FRAGMENT TITLE

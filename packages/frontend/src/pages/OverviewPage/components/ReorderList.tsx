@@ -7,6 +7,10 @@ import { ListDropZone } from "./ListDropZone";
 import { SectionGroup } from "./SectionGroup";
 import type { SectionData, SectionRef, SelectModifiers } from "./reorder-types";
 
+// Stable empty default so surfaces that don't pass a highlight set (the
+// placement arranger) don't create a new Set each render.
+const EMPTY_HIGHLIGHT_SET: Set<string> = new Set();
+
 interface ReorderListProps {
   sectionsData: SectionData[];
   poolFragmentUuids: string[];
@@ -25,6 +29,10 @@ interface ReorderListProps {
   // spine's title-mode length bar on each row. Optional; the placement-modal
   // arranger passes it, the Overview's left column does not.
   getRelativeLength?: (fragmentUuid: string) => number | undefined;
+  // Fragments belonging to the sidebar-hovered sequence — placed rows in this
+  // set draw a highlight ring. Pool rows are never highlighted (they are not
+  // placed in the active sequence). Optional; only the Overview passes it.
+  highlightedFragmentUuids?: Set<string>;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -71,6 +79,7 @@ export const ReorderList = ({
   getCycleTooltips,
   isUnsaved = () => false,
   getRelativeLength = () => undefined,
+  highlightedFragmentUuids = EMPTY_HIGHLIGHT_SET,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -110,6 +119,7 @@ export const ReorderList = ({
             getCycleTooltips={getCycleTooltips}
             isUnsaved={isUnsaved}
             getRelativeLength={getRelativeLength}
+            highlightedFragmentUuids={highlightedFragmentUuids}
             editingSectionId={editingSectionId}
             setEditingSectionId={setEditingSectionId}
             editingSectionValue={editingSectionValue}

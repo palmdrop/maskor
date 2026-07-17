@@ -47,6 +47,7 @@ interface SortableSpineFragmentProps {
   detailLevel: OverviewDetailLevel;
   relativeLength: number | undefined;
   isSelected: boolean;
+  isHighlighted: boolean;
   onSelect: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
@@ -59,6 +60,7 @@ const SortableSpineFragment = ({
   detailLevel,
   relativeLength,
   isSelected,
+  isHighlighted,
   onSelect,
   onEdit,
   onRemoveFragment,
@@ -96,6 +98,7 @@ const SortableSpineFragment = ({
           detailLevel={detailLevel}
           relativeLength={relativeLength}
           isSelected={isSelected}
+          isHighlighted={isHighlighted}
           onSelect={onSelect}
           onEdit={onEdit}
           onRemove={onRemoveFragment ? () => onRemoveFragment(fragment.uuid) : undefined}
@@ -112,6 +115,7 @@ interface SpineSectionProps {
   contentByFragmentUuid: Map<string, string>;
   relativeLengthByFragmentUuid: Map<string, number>;
   selectedFragmentUuids: Set<string>;
+  highlightedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
@@ -125,6 +129,7 @@ const SpineSection = ({
   contentByFragmentUuid,
   relativeLengthByFragmentUuid,
   selectedFragmentUuids,
+  highlightedFragmentUuids,
   onSelectFragment,
   onEdit,
   onRemoveFragment,
@@ -161,6 +166,7 @@ const SpineSection = ({
                 detailLevel={detailLevel}
                 relativeLength={relativeLengthByFragmentUuid.get(fragmentUuid)}
                 isSelected={selectedFragmentUuids.has(fragmentUuid)}
+                isHighlighted={highlightedFragmentUuids.has(fragmentUuid)}
                 onSelect={onSelectFragment}
                 onEdit={onEdit}
                 onRemoveFragment={onRemoveFragment}
@@ -180,6 +186,9 @@ interface ProseSpineProps {
   fragmentByUuid: Map<string, FragmentSummary>;
   contentByFragmentUuid: Map<string, string>;
   selectedFragmentUuids: Set<string>;
+  // Fragments belonging to the sidebar-hovered sequence — highlighted where they
+  // appear in this (active) sequence's spine.
+  highlightedFragmentUuids: Set<string>;
   onSelectFragment: (fragmentUuid: string) => void;
   onEdit?: (fragmentUuid: string) => void;
   onRemoveFragment?: (fragmentUuid: string) => void;
@@ -200,6 +209,7 @@ export const ProseSpine = ({
   fragmentByUuid,
   contentByFragmentUuid,
   selectedFragmentUuids,
+  highlightedFragmentUuids,
   onSelectFragment,
   onEdit,
   onRemoveFragment,
@@ -239,6 +249,7 @@ export const ProseSpine = ({
           contentByFragmentUuid={contentByFragmentUuid}
           relativeLengthByFragmentUuid={relativeLengthByFragmentUuid}
           selectedFragmentUuids={selectedFragmentUuids}
+          highlightedFragmentUuids={highlightedFragmentUuids}
           onSelectFragment={onSelectFragment}
           onEdit={onEdit}
           onRemoveFragment={onRemoveFragment}

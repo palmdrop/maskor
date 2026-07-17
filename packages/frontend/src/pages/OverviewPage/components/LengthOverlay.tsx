@@ -21,6 +21,8 @@ interface LengthOverlayProps {
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onClose: () => void;
+  // Fragments of the sidebar-hovered sequence — their points are emphasized.
+  highlightedFragmentUuids: Set<string>;
 }
 
 // The length line's fixed color — a single measure, so no per-aspect palette.
@@ -38,6 +40,7 @@ export const LengthOverlay = ({
   isExpanded,
   onToggleExpanded,
   onClose,
+  highlightedFragmentUuids,
 }: LengthOverlayProps) => {
   const { ref, width: containerWidth } = useElementWidth();
 
@@ -105,6 +108,7 @@ export const LengthOverlay = ({
               colorByAspectKey={LENGTH_COLOR_MAP}
               ariaLabel="Fragment length across the placed sequence"
               testId="length-panel"
+              highlightedFragmentUuids={highlightedFragmentUuids}
             />
             <GraphSectionsBar
               width={graphWidth}

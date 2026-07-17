@@ -51,6 +51,7 @@ import {
   writeOverviewAuthoredAnchor,
 } from "@lib/nav-state";
 import { resolveOverviewLoadScroll } from "./utils/loadScroll";
+import { computeHoverHighlightUuids } from "./utils/hoverHighlight";
 import { useRebuildStatus } from "@contexts/RebuildStatusContext";
 import { computeStepMoveTarget } from "@lib/sequences/stepMove";
 import { useSectionManager } from "./hooks/useSectionManager";
@@ -102,6 +103,9 @@ export const OverviewPage = () => {
   const [lengthOverlayOpen, setLengthOverlayOpen] = useState(false);
   const [lengthExpanded, setLengthExpanded] = useState(false);
   const [verticalStripOpen, setVerticalStripOpen] = useState(false);
+  // The sequence currently hovered in the left sidebar (null when none). Its
+  // members are cross-highlighted in the active sequence's surfaces.
+  const [hoveredSequenceId, setHoveredSequenceId] = useState<string | null>(null);
 
   const { isRebuilding } = useRebuildStatus();
 
@@ -128,6 +132,13 @@ export const OverviewPage = () => {
   const sequenceReadOnly = sequence ? isSequenceReadOnly(sequence) : false;
   const allFragments = summariesEnvelope?.status === 200 ? summariesEnvelope.data : [];
   const aspectList = aspectsEnvelope?.status === 200 ? aspectsEnvelope.data : [];
+
+  // Members of the hovered sidebar sequence, cross-highlighted where they appear
+  // in the active sequence's surfaces. Empty when hovering the active row.
+  const highlightedFragmentUuids = useMemo(
+    () => computeHoverHighlightUuids(hoveredSequenceId, sequence?.uuid, bundle?.sequences ?? []),
+    [hoveredSequenceId, sequence?.uuid, bundle],
+  );
 
   const { data: contentsEnvelope } = useGetSequenceContents(projectId, sequence?.uuid ?? "", {
     query: { enabled: !!sequence },
@@ -630,6 +641,7 @@ export const OverviewPage = () => {
           violations={bundle.violations}
           cycles={bundle.cycles}
           activeSequenceId={activeSequenceId}
+          onHoverSequence={setHoveredSequenceId}
         />
       )}
 
@@ -669,6 +681,7 @@ export const OverviewPage = () => {
               getViolationTooltips={getViolationTooltips}
               getCycleTooltips={getCycleTooltips}
               isUnsaved={isFragmentUnsaved}
+              highlightedFragmentUuids={highlightedFragmentUuids}
               editingSectionId={sectionManager.editingSectionId}
               setEditingSectionId={sectionManager.setEditingSectionId}
               editingSectionValue={sectionManager.editingSectionValue}
@@ -814,6 +827,7 @@ export const OverviewPage = () => {
                 isExpanded={arcExpanded}
                 onToggleExpanded={toggleArcExpanded}
                 onClose={toggleArcOverlay}
+                highlightedFragmentUuids={highlightedFragmentUuids}
               />
             )}
 
@@ -824,6 +838,7 @@ export const OverviewPage = () => {
                 isExpanded={lengthExpanded}
                 onToggleExpanded={toggleLengthExpanded}
                 onClose={toggleLengthOverlay}
+                highlightedFragmentUuids={highlightedFragmentUuids}
               />
             )}
 
@@ -851,6 +866,7 @@ export const OverviewPage = () => {
                     fragmentByUuid={fragmentByUuid}
                     contentByFragmentUuid={contentByFragmentUuid}
                     selectedFragmentUuids={selectionSet}
+                    highlightedFragmentUuids={highlightedFragmentUuids}
                     onSelectFragment={handleSpineSelectFragment}
                     onRemoveFragment={sequenceReadOnly ? undefined : handleRemoveFragment}
                     onEdit={handleEdit}

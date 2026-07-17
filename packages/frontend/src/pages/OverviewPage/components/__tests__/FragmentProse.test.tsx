@@ -140,6 +140,38 @@ describe("FragmentProse — title-mode length bar", () => {
   });
 });
 
+describe("FragmentProse — hover highlight", () => {
+  it("draws a ring when highlighted, alongside the selection border", () => {
+    const { container } = render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+        isSelected
+        isHighlighted
+      />,
+    );
+    const root = container.firstChild as Element;
+    expect(root.className).toMatch(/ring-2/);
+    expect(root.className).toMatch(/border-primary/);
+  });
+
+  it("draws no ring when not highlighted", () => {
+    const { container } = render(
+      <FragmentProse
+        fragmentUuid={FRAGMENT_UUID}
+        title="frag-one"
+        content="Hello world"
+        isDiscarded={false}
+        detailLevel="prose"
+      />,
+    );
+    expect((container.firstChild as Element).className).not.toMatch(/ring-2/);
+  });
+});
+
 describe("FragmentProse — remove from sequence", () => {
   it("renders no remove affordance when onRemove is absent", () => {
     render(

@@ -128,6 +128,11 @@ type SequenceRowProps = {
   onClone: () => void;
   onInsert: () => void;
   onToggleActive: () => void;
+  // Pointer hover over the row — used to cross-highlight this sequence's members
+  // in the active sequence's surfaces. Fired for every row; the highlight
+  // derivation ignores a hover on the active row.
+  onHoverStart: () => void;
+  onHoverEnd: () => void;
 };
 
 // A single sequence entry in the left rail: select target, status dot, import/
@@ -156,6 +161,8 @@ export const SequenceRow = ({
   onClone,
   onInsert,
   onToggleActive,
+  onHoverStart,
+  onHoverEnd,
 }: SequenceRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({
@@ -238,7 +245,7 @@ export const SequenceRow = ({
   };
 
   return (
-    <div className="group relative">
+    <div className="group relative" onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}>
       <button
         type="button"
         onClick={onSelect}

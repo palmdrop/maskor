@@ -660,6 +660,96 @@ describe("OverviewPage — arc overlay and vertical strip", () => {
   });
 });
 
+describe("OverviewPage — sequence hover highlight", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentSearch = { sequence: undefined, detail: "title" };
+    (useGetSequenceContents as Mock).mockReturnValue({
+      data: { status: 200, data: { placed: [], pool: [] } },
+    });
+    // Active Main sequence (FRAG_A, FRAG_B) plus a secondary "Side" sharing FRAG_B.
+    (useListSequences as Mock).mockReturnValue({
+      isLoading: false,
+      data: {
+        status: 200 as const,
+        data: {
+          sequences: [
+            {
+              uuid: SEQUENCE_UUID,
+              name: "Main",
+              isMain: true,
+              active: true,
+              projectUuid: PROJECT_ID,
+              filePath: `${SEQUENCE_UUID}.yaml`,
+              contentHash: "hash",
+              sections: [
+                {
+                  uuid: SECTION_UUID,
+                  name: SECTION_UUID,
+                  fragments: [
+                    { uuid: "pos-a", fragmentUuid: FRAG_A, position: 0 },
+                    { uuid: "pos-b", fragmentUuid: FRAG_B, position: 1 },
+                  ],
+                },
+              ],
+            },
+            {
+              uuid: "seq-side",
+              name: "Side",
+              isMain: false,
+              active: true,
+              projectUuid: PROJECT_ID,
+              filePath: "seq-side.yaml",
+              contentHash: "hash",
+              sections: [
+                {
+                  uuid: "side-sec",
+                  name: "side-sec",
+                  fragments: [{ uuid: "pos-sb", fragmentUuid: FRAG_B, position: 0 }],
+                },
+              ],
+            },
+          ],
+          violations: [],
+          cycles: [],
+        },
+      },
+    });
+    mockFragments([makeFragment(FRAG_A, "alpha"), makeFragment(FRAG_B, "beta")]);
+  });
+
+  const reorderRowFor = (fragmentUuid: string) =>
+    within(screen.getByTestId("overview-sidebar")).getByText(
+      fragmentUuid === FRAG_A ? "alpha" : "beta",
+    ).parentElement!.parentElement!;
+
+  // The sidebar row's hover container, found via its unique "Actions for …" button
+  // ("Main" as text is ambiguous with the header heading and the main badge).
+  const sidebarRow = (name: string) =>
+    screen.getByRole("button", { name: `Actions for "${name}"` }).closest("div.group")!;
+
+  it("rings a shared fragment's reorder row while a non-active sequence is hovered", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+
+    fireEvent.mouseEnter(sidebarRow("Side"));
+    // FRAG_B is shared → highlighted; FRAG_A is not in "Side" → not highlighted.
+    expect(reorderRowFor(FRAG_B).className).toMatch(/ring-2/);
+    expect(reorderRowFor(FRAG_A).className).not.toMatch(/ring-2/);
+
+    fireEvent.mouseLeave(sidebarRow("Side"));
+    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+  });
+
+  it("does not highlight when the active sequence's own row is hovered", () => {
+    render(<OverviewPage />, { wrapper: wrap() });
+
+    fireEvent.mouseEnter(sidebarRow("Main"));
+    expect(reorderRowFor(FRAG_B).className).not.toMatch(/ring-2/);
+  });
+});
+
 describe("OverviewPage — multi-select section operations", () => {
   beforeEach(() => {
     vi.clearAllMocks();

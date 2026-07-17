@@ -21,6 +21,7 @@ interface SectionGroupProps {
   getCycleTooltips: (fragmentUuid: string) => string[];
   isUnsaved: (fragmentUuid: string) => boolean;
   getRelativeLength: (fragmentUuid: string) => number | undefined;
+  highlightedFragmentUuids: Set<string>;
   editingSectionId: string | null;
   setEditingSectionId: (id: string | null) => void;
   editingSectionValue: string;
@@ -59,6 +60,7 @@ export const SectionGroup = ({
   getCycleTooltips,
   isUnsaved,
   getRelativeLength,
+  highlightedFragmentUuids,
   editingSectionId,
   setEditingSectionId,
   editingSectionValue,
@@ -210,6 +212,7 @@ export const SectionGroup = ({
               cycleTooltips={getCycleTooltips(fragmentUuid)}
               isUnsaved={isUnsaved(fragmentUuid)}
               relativeLength={getRelativeLength(fragmentUuid)}
+              isHighlighted={highlightedFragmentUuids.has(fragmentUuid)}
               isSelected={selectedFragmentUuids.has(fragmentUuid)}
               onSelect={onSelectFragment}
               onRemove={onRemoveFragment}

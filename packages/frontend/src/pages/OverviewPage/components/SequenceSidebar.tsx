@@ -23,6 +23,9 @@ type Props = {
   violations: Violation[];
   cycles: Cycle[];
   activeSequenceId: string | undefined;
+  // Hovering a sequence row reports its uuid (null on leave) so the page can
+  // cross-highlight that sequence's members in the active sequence's surfaces.
+  onHoverSequence: (sequenceUuid: string | null) => void;
 };
 
 const sequenceStatus = (
@@ -58,7 +61,13 @@ const generateCloneName = (baseName: string, existingNames: Set<string>): string
   return `${baseName} (copy ${counter})`;
 };
 
-export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceId }: Props) => {
+export const SequenceSidebar = ({
+  sequences,
+  violations,
+  cycles,
+  activeSequenceId,
+  onHoverSequence,
+}: Props) => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -319,6 +328,8 @@ export const SequenceSidebar = ({ sequences, violations, cycles, activeSequenceI
                 onClone={() => commands.run("overview:clone-sequence", seq)}
                 onInsert={() => commands.run("overview:insert-sequence", seq)}
                 onToggleActive={() => commands.run("overview:toggle-sequence-active", seq)}
+                onHoverStart={() => onHoverSequence(seq.uuid)}
+                onHoverEnd={() => onHoverSequence(null)}
               />
             </li>
           );
